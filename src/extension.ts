@@ -2,9 +2,6 @@ import * as vscode from 'vscode';
 import { BrightScriptFormatter } from 'brightscript-formatter';
 
 export function activate(context: vscode.ExtensionContext) {
-    var inwardKeywords = ['sub', 'for', 'while', 'if'];
-    var outwardKeywords = ['end', 'exit', 'step'];
-
     vscode.languages.registerDocumentFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, {
         provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
             try {
