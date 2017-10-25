@@ -47,28 +47,7 @@
             "type": "object",
             "title": "BrightScript configuration",
             "properties": {
-                "brightscript.format.indentStyle": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": "spaces",
-                    "oneOf": [
-                        "tabs",
-                        "spaces",
-                        null
-                    ],
-                    "description": "The type of indentation to use when indenting the beginning of lines. null disables this setting entirely."
-                },
-                "brightscript.format.indentSpaceCount": {
-                    "type": [
-                        "number",
-                        "null"
-                    ],
-                    "default": 4,
-                    "description": "The number of spaces to use when indentStyle is 'spaces'."
-                },
-                "brightscript.format.keywordCasing": {
+                "brightscript.format.keywordCase": {
                     "type": [
                         "string",
                         "null"
@@ -79,7 +58,7 @@
                         "title",
                         null
                     ],
-                    "default": 4,
+                    "default": "lower",
                     "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all."
                 },
                 "brightscript.format.compositeKeywords": {
@@ -92,7 +71,7 @@
                         "combine",
                         null
                     ],
-                    "default": 4,
+                    "default": "split",
                     "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified."
                 }
             }

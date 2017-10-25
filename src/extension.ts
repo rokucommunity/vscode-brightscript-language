@@ -4,13 +4,16 @@ import { BrightScriptFormatter } from 'brightscript-formatter';
 export function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerDocumentFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, {
         provideDocumentFormattingEdits(document: vscode.TextDocument, options) {
+            let config = vscode.workspace.getConfiguration('brightscript.format');
             let lineEnding = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
             try {
                 var text = document.getText();
                 let formatter = new BrightScriptFormatter
                 var formattedText = formatter.format(text, {
                     indentSpaceCount: options.tabSize,
-                    indentStyle: options.insertSpaces ? 'spaces' : 'tabs'
+                    indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
+                    compositeKeywords: config.compositeKeywords,
+                    keywordCase: config.keywordCase
                 });
 
                 let edits = getEditChunks(formattedText);
