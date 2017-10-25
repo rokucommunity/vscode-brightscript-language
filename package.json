@@ -1,0 +1,103 @@
+{
+    "name": "brightscript-language",
+    "displayName": "BrightScript Language",
+    "description": "Language support for Roku's BrightScript language.",
+    "version": "0.0.1",
+    "publisher": "TwitchBronBron",
+    "engines": {
+        "vscode": "^1.17.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:brightscript"
+    ],
+    "main": "./out/src/extension",
+    "contributes": {
+        "languages": [
+            {
+                "id": "brightscript",
+                "extensions": [
+                    ".brs",
+                    ".bs"
+                ],
+                "aliases": [
+                    "BrightScript"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "BrightScript configuration",
+            "properties": {
+                "brightscript.format.indentStyle": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": "spaces",
+                    "oneOf": [
+                        "tabs",
+                        "spaces",
+                        null
+                    ],
+                    "description": "The type of indentation to use when indenting the beginning of lines. null disables this setting entirely."
+                },
+                "brightscript.format.indentSpaceCount": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "default": 4,
+                    "description": "The number of spaces to use when indentStyle is 'spaces'."
+                },
+                "brightscript.format.keywordCasing": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "oneOf": [
+                        "lower",
+                        "upper",
+                        "title",
+                        null
+                    ],
+                    "default": 4,
+                    "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all."
+                },
+                "brightscript.format.compositeKeywords": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "oneOf": [
+                        "split",
+                        "combine",
+                        null
+                    ],
+                    "default": 4,
+                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "typescript": "^2.5.2",
+        "vscode": "^1.1.5",
+        "mocha": "^3.5.0",
+        "@types/node": "^7.0.43",
+        "@types/mocha": "^2.2.42"
+    },
+    "dependencies": {
+        "brightscript-formatter": "^1.0.0-alpha.9"
+    }
+}
