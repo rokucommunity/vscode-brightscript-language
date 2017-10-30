@@ -16,7 +16,9 @@
         "vscode": "^1.17.0"
     },
     "categories": [
-        "Other"
+        "Formatters",
+        "Languages",
+        "Debuggers"
     ],
     "activationEvents": [
         "onLanguage:brightscript"
@@ -75,7 +77,70 @@
                     "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified."
                 }
             }
-        }
+        },
+        "breakpoints": [
+            {
+                "language": "brightscript"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "brightscript",
+                "label": "BrightScript Debug",
+                "program": "./out/src/debugger.js",
+                "runtime": "node",
+                "initialConfigurations": [
+                    {
+                        "type": "brightscript",
+                        "request": "launch",
+                        "name": "BrightScript Debug: Launch",
+                        "host": "HOST_HERE",
+                        "password": "PASSWORD_HERE",
+                        "rootDir": "${workspaceRoot}"
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "BrightScript Debug: Launch",
+                        "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
+                        "body": {
+                            "type": "brightscript",
+                            "request": "launch",
+                            "name": "BrightScript Debug: Launch",
+                            "host": "HOST_HERE",
+                            "password": "PASSWORD_HERE",
+                            "rootDir": "^\"\\${workspaceRoot}\""
+                        }
+                    }
+                ],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "host",
+                            "password",
+                            "rootDir"
+                        ],
+                        "properties": {
+                            "host": {
+                                "type": "string",
+                                "description": "The host or ip address for the target Roku",
+                                "default": "HOST"
+                            },
+                            "password": {
+                                "type": "string",
+                                "description": "The password for the developer page on the target Roku",
+                                "default": "PASSWORD"
+                            },
+                            "rootDir": {
+                                "type": "string",
+                                "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
+                                "default": true
+                            }
+                        }
+                    }
+                }
+            }
+        ]
     },
     "devDependencies": {
         "@types/mocha": "^2.2.42",
@@ -85,9 +150,15 @@
         "mocha": "^3.5.0",
         "node-wget": "^0.4.2",
         "typescript": "^2.5.2",
+        "vscode-debugadapter-testsupport": "^1.24.0",
+        "tslint": "^5.7.0",
+        "vsce": "^1.31.0",
         "vscode": "^1.1.5"
     },
     "dependencies": {
-        "brightscript-formatter": "^1.0.0-alpha.10"
+        "brightscript-formatter": "^1.0.0-alpha.10",
+        "roku-deploy": "^0.1.5",
+        "vscode-debugadapter": "^1.24.0",
+        "vscode-debugprotocol": "^1.24.0"
     }
 }
