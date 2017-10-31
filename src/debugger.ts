@@ -23,14 +23,17 @@ class BrightScriptDebugSession extends DebugSession {
 		this.setDebuggerColumnsStartAt1(true);
 	}
 
+	private rokuAdapterDeferred = defer<RokuAdapter>();
+
 	private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
 	private breakpointIdCounter = 0;
 	private stackFrameIdCounter = 1;
 
 	private rokuAdapter: RokuAdapter;
 
-	// we don't support multiple threads, so we can use a hardcoded ID for the default thread
-	private threadId = 1;
+	private getRokuAdapter() {
+		return this.rokuAdapterDeferred.promise;
+	}
 
 	private _variableHandles = new Handles<string>();
 
@@ -66,12 +69,14 @@ class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
+
 	private launchRequestWasCalled = false;
 	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
 		console.log('Packaging and deploying to roku');
 		try {
+
 			//copy all project files to the staging folder
 			let stagingFolder = await rokuDeploy.prepublishToStaging(args);
 
@@ -93,7 +98,10 @@ class BrightScriptDebugSession extends DebugSession {
 			//publish the package to the target Roku
 			await rokuDeploy.publish(args);
 
-			console.log('deployed');
+			//tell the adapter adapter that the channel has been launched. 
+			await this.rokuAdapter.activate();
+
+			console.log(`deployed to Roku@${args.host}`);
 			this.sendResponse(response);
 		} catch (e) {
 			console.log(e);
@@ -111,6 +119,7 @@ class BrightScriptDebugSession extends DebugSession {
 		}
 		super.sourceRequest(response, args);
 	}
+
 
 	protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
 		console.log('configurationDoneRequest')
@@ -143,20 +152,27 @@ class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-		console.log('threadsRequest');
+	protected async threadsRequest(response: DebugProtocol.ThreadsResponse) {
+		// console.log('threadsRequest');
+		if (this.rokuAdapter) {
+			let rokuThreads = await this.rokuAdapter.getThreads();
 
-		//TODO - get actal list of threads
-		let threads = [];
-		threads.push(new Thread(this.threadId, `Thread ${this.threadId}`))
-		response.body = {
-			threads: threads
-		};
+			let threads = [];
+			for (let thread of rokuThreads) {
+				threads.push(
+					new Thread(thread.threadId, `Thread ${thread.threadId}`)
+				);
+			}
+			response.body = {
+				threads: threads
+			};
+		}
+
 		this.sendResponse(response);
 	}
 
 	protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
-		console.log('stackTraceRequest');
+		// console.log('stackTraceRequest');
 		let stackTrace = await this.rokuAdapter.getStackTrace();
 		let frames = [];
 
@@ -164,10 +180,9 @@ class BrightScriptDebugSession extends DebugSession {
 
 			let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
 			let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
-			let stackFrameId = this.stackFrameIdCounter++
 			let frame = new StackFrame(
-				stackFrameId,
-				`Stack Frame name ${stackFrameId}`,
+				debugFrame.frameId,
+				`${debugFrame.functionIdentifier}`,
 				new Source(path.basename(clientPath), clientPath),
 				clientLineNumber,
 				1
@@ -184,6 +199,7 @@ class BrightScriptDebugSession extends DebugSession {
 
 	protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
 		console.log('scopesRequest');
+
 		this.sendResponse(response);
 	}
 
@@ -268,14 +284,15 @@ class BrightScriptDebugSession extends DebugSession {
 		//register events
 
 		//when the debugger suspends (pauses for debugger input)
-		this.rokuAdapter.on('suspend', (payload) => {
+		this.rokuAdapter.on('suspend', (threadId) => {
 			let exceptionText = '';
-			const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, this.threadId, exceptionText);
+			const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
 			(event.body as any).allThreadsStopped = false;
 			this.sendEvent(event);
 		});
 		//make the connection
 		await this.rokuAdapter.connect();
+		this.rokuAdapterDeferred.resolve(this.rokuAdapter);
 	}
 
 	private createSource(filePath: string): Source {
@@ -443,6 +460,20 @@ enum StoppedEventReason {
 	exception = 'exception',
 	pause = 'pause',
 	entry = 'entry'
+}
+
+function defer<T>() {
+	let resolve: (value?: T | PromiseLike<T>) => void
+	let reject: (reason?: any) => void
+	let promise = new Promise<T>((_resolve, _reject) => {
+		resolve = _resolve;
+		reject = _reject;
+	});
+	return {
+		promise,
+		resolve,
+		reject
+	}
 }
 
 DebugSession.run(BrightScriptDebugSession);

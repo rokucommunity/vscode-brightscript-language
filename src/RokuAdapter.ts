@@ -18,6 +18,7 @@ export class RokuAdapter {
      * @param eventName 
      * @param handler 
      */
+    public on(eventName: 'suspend', handler: (threadId: number) => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -44,6 +45,27 @@ export class RokuAdapter {
     private clientDisconnectors: any[] = [];
 
     /**
+     * The debugger needs to tell us when to be active (i.e. when the package was deployed)
+     */
+    public isActivated = false;
+    /**
+     * Every time we get a message that ends with the debugger prompt, 
+     * this will be set to true. Otherwise, it will be set to false
+     */
+    public isAtDebuggerPrompt = false;
+    public async activate() {
+        this.isActivated = true;
+        //if we are already sitting at a debugger prompt, we need to emit the first suspend event.
+        //If not, then there are probably still messages being received, so let the normal handler
+        //emit the suspend event when it's ready
+        if (this.isAtDebuggerPrompt === true) {
+            let threads = await this.getThreads();
+            this.emit('suspend', threads[0].threadId);
+
+        }
+    }
+
+    /**
      * Connect to the telnet session. This should be called before the channel is launched, and there should be a breakpoint set at the first
      * line of the entry function of the source code
      */
@@ -52,28 +74,32 @@ export class RokuAdapter {
             var net = require('net');
             this.client = new net.Socket();
 
-            //once the client connection succeeds, resolve the promise
-            this.client.connect(8085, this.host, () => {
-                resolve();
-            });
-
-            var firstData = true;
+            this.client.connect(8085, this.host, () => { });
+            let resolved = false;
             this.clientDisconnectors.push(
-                this.addListener('data', (data) => {
-                    let dataString = data.toString();
-                    console.log(dataString);
-
-                    //eat any first response we get from the server
-                    if (firstData) {
-                        firstData = false;
+                this.addListener('data', async (data) => {
+                    //resolve the connection once the data events have settled
+                    if (!resolved) {
+                        resolved = true;
+                        resolve();
                         return;
                     }
+                    if (this.isActivated) {
+                        let dataString = data.toString();
+                        //console.log(dataString);
 
-                    //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
-                    //wait until we see the brightscript debugger prompt
-                    let match;
-                    if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
-                        this.emit('suspend');
+                        //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
+                        //wait until we see the brightscript debugger prompt
+                        let match;
+                        if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
+                            this.isAtDebuggerPrompt = true;
+                            if (this.isActivated) {
+                                let threads = await this.getThreads();
+                                this.emit('suspend', threads[0].threadId);
+                            }
+                        } else {
+                            this.isAtDebuggerPrompt = false;
+                        }
                     }
                 })
             );
@@ -122,7 +148,7 @@ export class RokuAdapter {
             });
         });
     }
-    
+
     public stepOut() {
         return new Promise((resolve, reject) => {
             this.clearState();
@@ -176,43 +202,91 @@ export class RokuAdapter {
         this.state = <any>{};
     }
 
-    public getStackTrace(): Promise<StackFrame[]> {
-        return new Promise((resolve, reject) => {
-            if (this.state.stackTrace) {
-                return Promise.resolve(this.state.stackTrace);
-            } else {
-                //perform a request to load the stack trace
-                let disconnect = this.addListener('data', (data) => {
-                    let matches = /^\s+file\/line:\s+(.*)\((\d+)\)/img.exec(data.toString())
-                    if (matches) {
-                        let frames: StackFrame[] = [];
-                        //the first index is the whole string
-                        //then the matches should be in pairs
-                        for (let i = 1; i < matches.length; i = i + 2) {
-                            let filePath = matches[i];
-                            let lineNumber = parseInt(matches[i + 1]);
-                            let frame: StackFrame = {
-                                filePath,
-                                lineNumber
-                            }
-                            frames.push(frame);
+    public getStackTrace() {
+        if (this.state.stackTrace) {
+            return this.state.stackTrace;
+        }
+        return this.state.stackTrace = new Promise((resolve, reject) => {
+            let allData = '';
+            //perform a request to load the stack trace
+            let disconnect = this.addListener('data', (data) => {
+                //collect incoming data until it looks like what we were expecting
+                allData = allData + data.toString();
+                let regexp = /#(\d+)\s+(?:function|sub)\s+([\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
+                let matches;
+                let frames: StackFrame[] = [];
+                while (matches = regexp.exec(allData)) {
+                    //the first index is the whole string
+                    //then the matches should be in pairs
+                    for (let i = 1; i < matches.length; i = i + 4) {
+                        let j = 1;
+                        let frameId = parseInt(matches[i]);
+                        let functionIdentifier = matches[i + j++]
+                        let filePath = matches[i + j++];
+                        let lineNumber = parseInt(matches[i + j++]);
+                        let frame: StackFrame = {
+                            frameId,
+                            filePath,
+                            lineNumber,
+                            functionIdentifier
                         }
-                        disconnect();
-                        this.state.stackTrace = frames;
-                        resolve(frames);
+                        frames.push(frame);
                     }
-                });
-                this.client.write(new Buffer('bt\r\n', 'utf8'));
-            }
+                }
+                //if we didn't find frames yet, hope that the next data call will bring some
+                if (frames.length === 0) {
+                    return;
+                }
+                disconnect();
+                resolve(frames);
+            });
+            this.client.write(new Buffer('bt\r\n', 'utf8'));
         });
-        // let promise = new Promise((resolve, reject) => {
-        //     let unsubscribe = this.on(EventName.trace, (payload) => {
-        //         unsubscribe();
-        //         resolve(payload);
-        //     });
-        // });
-        // this.client.write(new Buffer('bt', 'utf8'));
-        // return promise;
+    }
+
+    /**
+     * Get a list of threads. The first thread in the list is the active thread
+     */
+    public getThreads(): Promise<Thread[]> {
+        if (this.state.threads) {
+            return this.state.threads;
+        }
+        return this.state.threads = new Promise((resolve, reject) => {
+            let disconnect = this.addListener('data', (data) => {
+                let dataString = data.toString();
+                let matches;
+                if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
+                    let threads: Thread[] = [];
+                    //skip index 0 because it's the whole string
+                    for (let i = 1; i < matches.length; i = i + 4) {
+                        let threadId: string = matches[i];
+                        let thread = <Thread>{
+                            isSelected: false,
+                            filePath: matches[i + 1],
+                            lineNumber: parseInt(matches[i + 2]),
+                            lineContents: matches[i + 3]
+                        }
+                        if (threadId.indexOf('*') > -1) {
+                            thread.isSelected = true;
+                            threadId = threadId.replace('*', '');
+                        }
+                        thread.threadId = parseInt(threadId);
+                        threads.push(thread);
+                    }
+                    //make sure the selected thread is at the top
+                    threads.sort((a, b) => {
+                        return a.isSelected ? -1 : 1;
+                    });
+                    disconnect();
+                    resolve(threads);
+                }
+            });
+            this.client.write('threads\r\n', 'utf8', (err) => {
+                if (err) {
+                    reject(err);
+                }
+            });
+        });
     }
 
     /**
@@ -232,19 +306,26 @@ export class RokuAdapter {
 }
 
 export interface DebugState {
-    lineNumber: number;
-    filePath: string;
-    stackTrace: StackFrame[];
+    stackTrace: Promise<StackFrame[]>;
     localVariables: { [name: string]: any };
-    threads: any[];
-    threadId: number;
+    threads: Promise<Thread[]>;
 }
 
 export interface StackFrame {
+    frameId: number;
     filePath: string;
     lineNumber: number;
+    functionIdentifier: string;
 }
 
 export enum EventName {
     suspend = 'suspend'
+}
+
+export interface Thread {
+    isSelected: boolean;
+    lineNumber: number;
+    filePath: string;
+    lineContents: string;
+    threadId: number;
 }
