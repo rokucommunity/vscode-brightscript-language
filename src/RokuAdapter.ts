@@ -11,12 +11,13 @@ export class RokuAdapter {
     private client: Socket;
     private emitter: EventEmitter;
 
+    private state: DebugState = <any>{};
+
     /**
      * Subscribe to various events
      * @param eventName 
      * @param handler 
      */
-    public on(eventName: 'break', handler: (payload: BreakPayload) => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -24,108 +25,226 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: EventName, data?) {
+    /**
+     * Add a listener to the client, and provide an easy disconnect 
+     * @param name 
+     * @param listener 
+     */
+    private addListener(name: string, listener: any) {
+        this.client.on(name, listener);
+        return () => {
+            this.client.removeListener(name, listener);
+        };
+    }
+
+    private emit(eventName: 'suspend', data?) {
         this.emitter.emit(eventName, data);
     }
 
+    private clientDisconnectors: any[] = [];
+
+    /**
+     * Connect to the telnet session. This should be called before the channel is launched, and there should be a breakpoint set at the first
+     * line of the entry function of the source code
+     */
     public connect() {
         return new Promise((resolve, reject) => {
             var net = require('net');
-            var client = new net.Socket();
+            this.client = new net.Socket();
 
             //once the client connection succeeds, resolve the promise
-            client.connect(8085, this.host, () => {
-                this.emit(EventName.connect)
+            this.client.connect(8085, this.host, () => {
                 resolve();
             });
 
             var firstData = true;
-            client.on('data', (data) => {
-                //"eat" the first data request which contains all of the old messages from previous sessions
-                if (firstData === false) {
-                    this.parse(data.toString());
-                }
-                firstData = false;
-            });
+            this.clientDisconnectors.push(
+                this.addListener('data', (data) => {
+                    let dataString = data.toString();
+                    console.log(dataString);
 
-            client.on('close', () => {
-                this.emit(EventName.close);
-            });
+                    //eat any first response we get from the server
+                    if (firstData) {
+                        firstData = false;
+                        return;
+                    }
+
+                    //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
+                    //wait until we see the brightscript debugger prompt
+                    let match;
+                    if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
+                        this.emit('suspend');
+                    }
+                })
+            );
+
+            this.clientDisconnectors.push(
+                this.addListener('close', () => {
+                    //this.emit(EventName.close);
+                })
+            );
 
             //if the connection fails, reject the connect promise
-            client.on('error', function (err) {
-                reject(err);
-            })
+            this.clientDisconnectors.push(
+                this.addListener('error', function (err) {
+                    //this.emit(EventName.error, err);
+                    reject(err);
+                })
+            );
         });
     }
 
-    private regexps = {
-        compile: /\-+\s+compiling\s+dev\s*'(.*)'\s+\-+/gi,
-        run: /\-+\s+running\s+dev\s*'(.*)'\s+runuserinterface\s+\-+/gi,
-        break: /brightscript\s+micro debugger\./gi
+    /**
+     * Send command to step over
+     */
+    public stepOver() {
+        return new Promise((resolve, reject) => {
+            this.clearState();
+            this.client.write('over\r\n', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(data);
+                }
+            });
+        });
     }
-    private parse(data: string) {
-        let match: RegExpExecArray;
-        //loop no more than 20 times (alternative to while loop)
-        for (let i = 0; i < 100; i++) {
-            let loopProcessedSomething = false;
-            if (match = this.regexps.compile.exec(data)) {
-                let programName = match[1];
-                //remove the processed part from the string
-                data = data.substring(0, match.index) + data.substring(match.index + match[0].length);
-                this.emit(EventName.compile, programName);
-                loopProcessedSomething = true;
-            } else if (match = this.regexps.run.exec(data)) {
-                let programName = match[1];
-                this.emit(EventName.run, programName);
 
-                loopProcessedSomething = true;
-            } else if (match = this.regexps.break.exec(data)) {
-                this.processBreakData(data);
-                loopProcessedSomething = true;
-            }
-            if (match) {
-                //remove the processed part from the string
-                data = data.substring(0, match.index) + data.substring(match.index + match[0].length);
+    public stepInto() {
+        return new Promise((resolve, reject) => {
+            this.clearState();
+            this.client.write('step\r\n', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(data);
+                }
+            });
+        });
+    }
+    
+    public stepOut() {
+        return new Promise((resolve, reject) => {
+            this.clearState();
+            this.client.write('out\r\n', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(data);
+                }
+            });
+        });
+    }
+
+    /**
+     * Tell the brightscript program to continue (i.e. resume program)
+     */
+    public continue() {
+        return new Promise((resolve, reject) => {
+            this.clearState();
+            this.client.write('c\r\n', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(data);
+                }
+            });
+        });
+    }
+
+    /**
+     * Tell the brightscript program to pause (fall into debug mode)
+     */
+    public pause() {
+        return new Promise((resolve, reject) => {
+            this.clearState();
+            //send the kill signal, which breaks into debugger mode
+            this.client.write('\x03;\r\n', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(data);
+                }
+            });
+        });
+    }
+
+    /**
+     * Clears the state, which means that everything will be retrieved fresh next time it is requested
+     */
+    public clearState() {
+        this.state = <any>{};
+    }
+
+    public getStackTrace(): Promise<StackFrame[]> {
+        return new Promise((resolve, reject) => {
+            if (this.state.stackTrace) {
+                return Promise.resolve(this.state.stackTrace);
             } else {
-                //nothing was processed, quit the loop because we don't care about this data
-                return;
+                //perform a request to load the stack trace
+                let disconnect = this.addListener('data', (data) => {
+                    let matches = /^\s+file\/line:\s+(.*)\((\d+)\)/img.exec(data.toString())
+                    if (matches) {
+                        let frames: StackFrame[] = [];
+                        //the first index is the whole string
+                        //then the matches should be in pairs
+                        for (let i = 1; i < matches.length; i = i + 2) {
+                            let filePath = matches[i];
+                            let lineNumber = parseInt(matches[i + 1]);
+                            let frame: StackFrame = {
+                                filePath,
+                                lineNumber
+                            }
+                            frames.push(frame);
+                        }
+                        disconnect();
+                        this.state.stackTrace = frames;
+                        resolve(frames);
+                    }
+                });
+                this.client.write(new Buffer('bt\r\n', 'utf8'));
             }
-        }
+        });
+        // let promise = new Promise((resolve, reject) => {
+        //     let unsubscribe = this.on(EventName.trace, (payload) => {
+        //         unsubscribe();
+        //         resolve(payload);
+        //     });
+        // });
+        // this.client.write(new Buffer('bt', 'utf8'));
+        // return promise;
     }
 
-    private processBreakData(data: string) {
-        let payload = <BreakPayload>{};
-
-        let match;
-
-        //find the current file path and line number
-        if (match = /^\s+file\/line:\s+(.*)\((\d+)\)/im.exec(data)) {
-            payload.filePath = match[1];
-            payload.lineNumber = parseInt(match[2]);
+    /**
+     * Disconnect from the telnet session and unset all objects
+     */
+    public destroy() {
+        //disconnect all client listeners
+        for (let disconnect of this.clientDisconnectors) {
+            disconnect();
         }
-        //TODO - implement the rest of the parsing
-
-
-        //remove the processed lines from the data
-
-        //emit the message
-        this.emit(EventName.break, payload);
+        this.client.destroy();
+        this.state = undefined;
+        this.client = undefined;
+        this.emitter.removeAllListeners();
+        this.emitter = undefined;
     }
 }
 
-export class BreakPayload {
+export interface DebugState {
     lineNumber: number;
     filePath: string;
-    trace: string[];
+    stackTrace: StackFrame[];
     localVariables: { [name: string]: any };
     threads: any[];
     threadId: number;
 }
+
+export interface StackFrame {
+    filePath: string;
+    lineNumber: number;
+}
+
 export enum EventName {
-    connect = 'connect',
-    compile = 'compile',
-    close = 'close',
-    run = 'run',
-    break = 'break'
+    suspend = 'suspend'
 }

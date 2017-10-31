@@ -18,7 +18,8 @@
             "preLaunchTask": "npm"
         },
 		{
-			"name": "Server",
+            "name": "Server",
+            "stopOnEntry": false,
 			"type": "node",
 			"request": "launch",
 			"cwd": "${workspaceRoot}",
