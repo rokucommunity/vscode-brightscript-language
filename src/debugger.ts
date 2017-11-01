@@ -180,6 +180,16 @@ class BrightScriptDebugSession extends DebugSession {
 
 			let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
 			let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
+			//the stacktrace returns function identifiers in all lower case. Try to get the actual case
+			//load the contents of the file and get the correct casing for the function identifier
+			try {
+				let fileContents = (await fsExtra.readFile(clientPath)).toString();
+				let match = new RegExp(`(?:sub|function)\\s+(${debugFrame.functionIdentifier})`, 'i').exec(fileContents);
+				if (match) {
+					debugFrame.functionIdentifier = match[1];
+				}
+			} catch (e) { }
+
 			let frame = new StackFrame(
 				debugFrame.frameId,
 				`${debugFrame.functionIdentifier}`,
