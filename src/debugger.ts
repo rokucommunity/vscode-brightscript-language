@@ -213,11 +213,6 @@ class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
-		console.log('variablesRequest');
-		this.sendResponse(response);
-	}
-
 	protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments) {
 		await this.rokuAdapter.continue();
 		this.sendResponse(response);
@@ -258,8 +253,36 @@ class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-		console.log('evaluateRequest');
+	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
+		console.log(`variablesRequest: ${JSON.stringify(args)}`);
+		if(args.filter === 'named'){
+			let variables = [
+				new Variable('name','bob'),
+				new Variable('firstChild', `{name: "Kid1", age: 12}`, 2)
+			];
+			response.body = {
+				variables: variables
+			}
+		}
+		this.sendResponse(response);
+	}
+
+	private variablesReferenceCounter = 0;
+	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
+		console.log(`evaluateRequest: ${args.expression}`);
+		let result = <string>(await this.rokuAdapter.evaluate(args.expression));
+		let obj = `{name: 'Bob', firstChild: firstChild }`;
+		const v: DebugProtocol.Variable = new Variable('m.', , 1, 1, 1);
+		if (args.expression) {
+			v.evaluateName = args.expression;
+		}
+
+		response.body = {
+			result: v.value,
+			variablesReference: 1,//v.variablesReference,
+			namedVariables: 1,//v.namedVariables,
+			indexedVariables: 0,//v.indexedVariables
+		};
 		this.sendResponse(response);
 	}
 
