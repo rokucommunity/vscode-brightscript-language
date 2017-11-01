@@ -107,6 +107,7 @@
                             "type": "brightscript",
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
+                            "stopOnEntry": true,
                             "host": "HOST_HERE",
                             "password": "PASSWORD_HERE",
                             "rootDir": "^\"\\${workspaceRoot}\""
@@ -134,6 +135,11 @@
                             "rootDir": {
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
+                                "default": true
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Automatically stop program after launch.",
                                 "default": true
                             }
                         }

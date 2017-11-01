@@ -2,7 +2,7 @@ import {
 	Logger, logger,
 	DebugSession, LoggingDebugSession,
 	InitializedEvent, TerminatedEvent, StoppedEvent, BreakpointEvent, OutputEvent,
-	Thread, StackFrame, Scope, Source, Handles, Breakpoint, ErrorDestination
+	Thread, StackFrame, Scope, Source, Handles, Breakpoint, ErrorDestination, Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol, } from 'vscode-debugprotocol';
 import { basename } from 'path';
@@ -292,13 +292,23 @@ class BrightScriptDebugSession extends DebugSession {
 	private async connectRokuAdapter(host: string) {
 		this.rokuAdapter = new RokuAdapter(host);
 		//register events
-
+		let firstSuspend = true;
 		//when the debugger suspends (pauses for debugger input)
 		this.rokuAdapter.on('suspend', (threadId) => {
-			let exceptionText = '';
-			const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
-			(event.body as any).allThreadsStopped = false;
-			this.sendEvent(event);
+			//determine if this is the "stop on entry" breakpoint
+			let isStoppedOnEntry = firstSuspend && this.entryBreakpoint;
+
+			//skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
+			if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
+				//skip the breakpoint 
+				this.rokuAdapter.continue();
+			} else {
+				let exceptionText = '';
+				const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
+				(event.body as any).allThreadsStopped = false;
+				this.sendEvent(event);
+			}
+			firstSuspend = false;
 		});
 		//make the connection
 		await this.rokuAdapter.connect();
@@ -347,7 +357,7 @@ class BrightScriptDebugSession extends DebugSession {
 		}
 		await Promise.all(promises);
 	}
-
+	private entryBreakpoint: DebugProtocol.Breakpoint;
 	private async addEntryBreakpoint() {
 		let results = Object.assign(
 			{},
@@ -372,11 +382,12 @@ class BrightScriptDebugSession extends DebugSession {
 			}
 		}
 		//create a breakpoint on the line BELOW this location, which is the first line of the program
-		const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber + 1);
-		breakpoint.id = this.breakpointIdCounter++;
+		this.entryBreakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber + 1);
+		this.entryBreakpoint.id = this.breakpointIdCounter++;
+		(this.entryBreakpoint as any).isEntryBreakpoint = true;
 		//put this breakpoint into the list of breakpoints, in order
 		let breakpoints = this.breakpointsByClientPath[entryPath] || [];
-		breakpoints.push(breakpoint);
+		breakpoints.push(this.entryBreakpoint);
 		//sort the breakpoints in order of line number
 		breakpoints.sort((a, b) => {
 			if (a.line > b.line) {
@@ -388,17 +399,17 @@ class BrightScriptDebugSession extends DebugSession {
 			}
 		});
 
-		let lineNumbers = [];
-		//remove any duplicates
-		breakpoints = breakpoints.filter((breakpoint) => {
-			if (lineNumbers.indexOf(breakpoint.line) === -1) {
-				lineNumbers.push(breakpoint.line);
-				return true;
-			} else {
-				//we already have this breakpoint in the list, so ignore this dupe
-				return false;
-			}
-		});
+		//if the user put a breakpoint on the first line of their program, we want to keep THEIR breakpoint, not the entry breakpoint
+		let index = breakpoints.indexOf(this.entryBreakpoint);
+		let bpBefore = breakpoints[index - 1];
+		let bpAfter = breakpoints[index + 1];
+		if (
+			(bpBefore && bpBefore.line === this.entryBreakpoint.line) ||
+			(bpAfter && bpAfter.line === this.entryBreakpoint.line)
+		) {
+			breakpoints.splice(index, 1);
+			this.entryBreakpoint = undefined;
+		}
 		this.breakpointsByClientPath[entryPath] = breakpoints;
 	}
 
@@ -461,6 +472,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * The root directory that contains your Roku project. This path should point to the folder containing your manifest file
 	 */
 	rootDir: string;
+	/**
+	 * If true, stop at the first executable line of the program
+	 */
+	stopOnEntry: boolean;
 }
 
 

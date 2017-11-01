@@ -11,7 +11,9 @@ export class RokuAdapter {
     private client: Socket;
     private emitter: EventEmitter;
 
-    private state: DebugState = <any>{};
+    private state: DebugState = <any>{
+        expressions: {}
+    };
 
     /**
      * Subscribe to various events
@@ -199,7 +201,9 @@ export class RokuAdapter {
      * Clears the state, which means that everything will be retrieved fresh next time it is requested
      */
     public clearState() {
-        this.state = <any>{};
+        this.state = <any>{
+            expressions: {}
+        };
     }
 
     public getStackTrace() {
@@ -242,6 +246,71 @@ export class RokuAdapter {
             });
             this.client.write(new Buffer('bt\r\n', 'utf8'));
         });
+    }
+
+    /**
+     * Get data from the server. Let the callbacks settle before resolving
+     */
+    private getData() {
+        return new Promise<string>((resolve) => {
+            let allData = '';
+            let callCount = 0;
+            let disconnect = this.addListener('data', (data) => {
+                callCount++;
+                allData += data.toString();
+                let myCallId = callCount;
+                setTimeout(() => {
+                    //if nobody else got data then we are the last
+                    if (myCallId === callCount) {
+                        disconnect();
+                        resolve(allData);
+                    }
+                }, 300);
+            });
+        });
+    }
+
+    private execute(command: string) {
+        return new Promise<string>((resolve, reject) => {
+            let dataPromise = this.getData();
+            this.client.write(`${command}\r\n`, 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                }
+            });
+            resolve(dataPromise);
+        });
+    }
+
+    /**
+     * Given an expression, evaluate that statement ON the roku
+     * @param expression
+     */
+    public async evaluate(expression: string) {
+        return this.expressionResolve(`${expression}`, async () => {
+            let data = await this.execute(`print ${expression}`);
+
+            let match;
+            if (match = /(.*?)\s*=(?:\s|\S)([\s\S.]*)(?:[\s\S]*)brightscript\s+debugger/ig.exec(data)) {
+                let objectType = match[1];
+                let objectBody = match[2];
+                return `${objectType} = ${objectBody}`;
+            } else {
+                throw new Error('Unable to procvess evaluation expression');
+            }
+        });
+    }
+
+    /**
+     * Caches the results of expressions in state
+     * @param expression 
+     * @param factory 
+     */
+    private expressionResolve(expression: string, factory) {
+        if (this.state.expressions[expression]) {
+            return this.state.expressions[expression];
+        }
+        return this.state.expressions[expression] = Promise.resolve(factory());
     }
 
     /**
@@ -307,7 +376,7 @@ export class RokuAdapter {
 
 export interface DebugState {
     stackTrace: Promise<StackFrame[]>;
-    localVariables: { [name: string]: any };
+    expressions: { [expression: string]: Promise<any> };
     threads: Promise<Thread[]>;
 }
 
