@@ -24,6 +24,7 @@ export class RokuAdapter {
      */
     public on(eventName: 'suspend', handler: (threadId: number) => void)
     public on(eventName: 'compile-error', handler: (params: { path: string; lineNumber: number; }) => void)
+    public on(eventName: 'close', handler: () => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -43,7 +44,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-error', data?) {
+    private emit(eventName: 'suspend' | 'compile-error' | 'close', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -79,7 +80,9 @@ export class RokuAdapter {
             var net = require('net');
             this.client = new net.Socket();
 
-            this.client.connect(8085, this.host, () => { });
+            this.client.connect(8085, this.host, (err, data) => {
+                let k = 2;
+            });
             let resolved = false;
             this.clientDisconnectors.push(
                 this.addListener('data', async (data) => {
@@ -118,8 +121,8 @@ export class RokuAdapter {
             );
 
             this.clientDisconnectors.push(
-                this.addListener('close', () => {
-                    //this.emit(EventName.close);
+                this.addListener('close', (err, data) => {
+                    this.emit('close');
                 })
             );
 
@@ -326,7 +329,7 @@ export class RokuAdapter {
 
             let children: EvaluateContainer[];
             if (highLevelType === 'object') {
-                children = this.getObjectChildren(value);
+                children = this.getObjectChildren(expression, value);
             } else if (highLevelType === 'array') {
                 children = this.getArrayChildren(expression, value);
             }
@@ -397,8 +400,40 @@ export class RokuAdapter {
 
     }
 
-    getObjectChildren(data: string): EvaluateContainer[] {
-        return [];
+    getObjectChildren(expression: string, data: string): EvaluateContainer[] {
+        let children: EvaluateContainer[] = [];
+        //split by newline. the array contents start at index 2
+        let lines = eol.split(data);
+        for (let i = 2; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line === '}') {
+                return children;
+            }
+            let match;
+            match = /(.*):(.*)/i.exec(line);
+            let name = match[1].trim();
+            let value = match[2].trim();
+
+            let child = <EvaluateContainer>{
+                name: name,
+                evaluateName: `${expression}.${name}`,
+                children: []
+            };
+
+            //if the line is an object, array or function
+            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                let type = match[1];
+                child.type = type;
+                child.highLevelType = this.getHighLevelType(type);
+                child.value = type;
+            } else {
+                child.type = this.getPrimativeTypeFromValue(line);
+                child.value = line;
+                child.highLevelType = 'primative';
+            }
+            children.push(child);
+        }
+        throw new Error('Unable to parse BrightScript array');
     }
 
     /**

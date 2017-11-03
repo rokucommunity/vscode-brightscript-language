@@ -75,6 +75,7 @@ class BrightScriptDebugSession extends DebugSession {
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
 		let disconnect;
+
 		let error: Error;
 		console.log('Packaging and deploying to roku');
 		try {
@@ -95,6 +96,11 @@ class BrightScriptDebugSession extends DebugSession {
 
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
+
+			//listen for a closed connection (shut down when received)
+			this.rokuAdapter.on('close', () => {
+				error = new Error('Lost connection with Roku. Perhaps another device was already connected');
+			});
 
 			//watch 
 			disconnect = this.rokuAdapter.on('compile-error', (compileErrorArgs) => {
@@ -372,11 +378,11 @@ class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-
 	private async connectRokuAdapter(host: string) {
-		this.rokuAdapter = new RokuAdapter(host);
 		//register events
 		let firstSuspend = true;
+		this.rokuAdapter = new RokuAdapter(host);
+
 		//when the debugger suspends (pauses for debugger input)
 		this.rokuAdapter.on('suspend', (threadId) => {
 			//determine if this is the "stop on entry" breakpoint
