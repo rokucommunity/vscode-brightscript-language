@@ -1,5 +1,7 @@
 import { Socket } from "net";
 import * as EventEmitter from 'events';
+import * as eol from 'eol';
+
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -21,6 +23,7 @@ export class RokuAdapter {
      * @param handler 
      */
     public on(eventName: 'suspend', handler: (threadId: number) => void)
+    public on(eventName: 'compile-error', handler: (params: { path: string; lineNumber: number; }) => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -40,7 +43,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend', data?) {
+    private emit(eventName: 'suspend' | 'compile-error', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -86,13 +89,21 @@ export class RokuAdapter {
                         resolve();
                         return;
                     }
+                    let dataString = data.toString();
+                    let match;
+
+                    //watch for compile errors
+                    if (match = /compile error.* in (.*)\((\d+)\)/i.exec(dataString)) {
+                        let path = match[1];
+                        let lineNumber = match[2];
+                        this.emit('compile-error', { path, lineNumber });
+                    }
+
                     if (this.isActivated) {
-                        let dataString = data.toString();
                         //console.log(dataString);
 
                         //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                         //wait until we see the brightscript debugger prompt
-                        let match;
                         if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
                             this.isAtDebuggerPrompt = true;
                             if (this.isActivated) {
@@ -254,18 +265,14 @@ export class RokuAdapter {
     private getData() {
         return new Promise<string>((resolve) => {
             let allData = '';
-            let callCount = 0;
             let disconnect = this.addListener('data', (data) => {
-                callCount++;
                 allData += data.toString();
-                let myCallId = callCount;
-                setTimeout(() => {
-                    //if nobody else got data then we are the last
-                    if (myCallId === callCount) {
-                        disconnect();
-                        resolve(allData);
-                    }
-                }, 300);
+                var match;
+                //if data is stopped at the prompt, return the data
+                if (match = /Brightscript\s+Debugger>\s+$/i.exec(allData)) {
+                    disconnect();
+                    resolve(allData);
+                }
             });
         });
     }
@@ -282,21 +289,156 @@ export class RokuAdapter {
         });
     }
 
+    private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
     /**
      * Given an expression, evaluate that statement ON the roku
      * @param expression
      */
     public async evaluate(expression: string) {
+        //return this.expressionResolve(`${expression}`, async () => {
+        let expressionType = await this.getType(expression);
+
+        let lowerExpressionType = expressionType ? expressionType.toLowerCase() : null;
+
+        let data: string;
+        //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
+        if (lowerExpressionType === 'string') {
+            data = await this.execute(`print "--string-wrap--" + ${expression} + "--string-wrap--"`);
+        }
+        else {
+            data = await this.execute(`print ${expression}`);
+        }
+
+        let match;
+        if (match = this.expressionRegex.exec(data)) {
+            let value = match[1];
+            if (lowerExpressionType === 'string') {
+                value = value.trim().replace(/--string-wrap--/g, '');
+                //add an escape character in front of any existing quotes
+                value = value.replace(/"/g, '\\"');
+                //wrap the string value with literal quote marks
+                value = '"' + value + '"';
+            } else {
+                value = value.trim();
+            }
+
+            let highLevelType = this.getHighLevelType(expressionType);
+
+            let children: EvaluateContainer[];
+            if (highLevelType === 'object') {
+                children = this.getObjectChildren(value);
+            } else if (highLevelType === 'array') {
+                children = this.getArrayChildren(expression, value);
+            }
+
+            let container = <EvaluateContainer>{
+                name: expression,
+                evaluateName: expression,
+                type: expressionType,
+                value: value,
+                highLevelType,
+                children
+            };
+            return container;
+        }
+        //});
+    }
+
+    getArrayChildren(expression: string, data: string): EvaluateContainer[] {
+        let children: EvaluateContainer[] = [];
+        //split by newline. the array contents start at index 2
+        let lines = eol.split(data);
+        let arrayIndex = 0;
+        for (let i = 2; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line === ']') {
+                return children;
+            }
+            let child = <EvaluateContainer>{
+                name: arrayIndex.toString(),
+                evaluateName: `${expression}[${arrayIndex}]`,
+                children: []
+            };
+
+            //if the line is an object, array or function
+            let match;
+            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                let type = match[1];
+                child.type = type;
+                child.highLevelType = this.getHighLevelType(type);
+                child.value = type;
+            } else {
+                child.type = this.getPrimativeTypeFromValue(line);
+                child.value = line;
+                child.highLevelType = 'primative';
+            }
+            children.push(child);
+            arrayIndex++;
+        }
+        throw new Error('Unable to parse BrightScript array');
+    }
+
+    private getPrimativeTypeFromValue(value: string) {
+        value = value ? value.toLowerCase() : value;
+        if (!value || value === 'invalid') {
+            return 'Invalid';
+        }
+        if (value === 'true' || value === 'false') {
+            return 'Boolean';
+        }
+        if (value.indexOf('"') > -1) {
+            return 'String';
+        }
+        if (value.split('.').length > 1) {
+            return 'Integer';
+        } else {
+            return 'Float';
+        }
+
+    }
+
+    getObjectChildren(data: string): EvaluateContainer[] {
+        return [];
+    }
+
+    /**
+     * Determine if this value is a primative type
+     * @param expressionType 
+     */
+    private getHighLevelType(expressionType: string) {
+        if (!expressionType) {
+            return 'unknown';
+        }
+        expressionType = expressionType.toLowerCase();
+        let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'invalid'];
+        if (primativeTypes.indexOf(expressionType) > -1) {
+            return 'primative';
+        } else if (expressionType === 'roarray') {
+            return 'array';
+        } else if (expressionType === 'function') {
+            return 'function'
+        } else {
+            return 'object';
+        }
+    }
+
+    /**
+     * Get the type of the provided expression
+     * @param expression 
+     */
+    public async getType(expression) {
+        expression = `Type(${expression})`;
         return this.expressionResolve(`${expression}`, async () => {
             let data = await this.execute(`print ${expression}`);
 
             let match;
-            if (match = /(.*?)\s*=(?:\s|\S)([\s\S.]*)(?:[\s\S]*)brightscript\s+debugger/ig.exec(data)) {
-                let objectType = match[1];
-                let objectBody = match[2];
-                return `${objectType} = ${objectBody}`;
+            if (match = this.expressionRegex.exec(data)) {
+                let typeValue: string = match[1];
+                //remove whitespace
+                typeValue = typeValue.trim();
+                return typeValue;
             } else {
-                throw new Error('Unable to procvess evaluation expression');
+                return null;
             }
         });
     }
@@ -306,11 +448,11 @@ export class RokuAdapter {
      * @param expression 
      * @param factory 
      */
-    private expressionResolve(expression: string, factory) {
+    private expressionResolve<T>(expression: string, factory: () => T | Thenable<T>): Promise<T> {
         if (this.state.expressions[expression]) {
             return this.state.expressions[expression];
         }
-        return this.state.expressions[expression] = Promise.resolve(factory());
+        return this.state.expressions[expression] = Promise.resolve<T>(factory());
     }
 
     /**
@@ -389,6 +531,15 @@ export interface StackFrame {
 
 export enum EventName {
     suspend = 'suspend'
+}
+
+export interface EvaluateContainer {
+    name: string;
+    evaluateName: string;
+    type: string;
+    value: string;
+    highLevelType: 'primative' | 'object' | 'array' | 'function' | 'unknown';
+    children: EvaluateContainer[];
 }
 
 export interface Thread {

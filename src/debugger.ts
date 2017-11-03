@@ -12,7 +12,7 @@ import * as rokuDeploy from 'roku-deploy';
 import * as Q from 'q';
 import * as fsExtra from 'fs-extra';
 import * as eol from 'eol';
-import { EventName, RokuAdapter } from './RokuAdapter';
+import { EventName, RokuAdapter, EvaluateContainer } from './RokuAdapter';
 import * as findInFiles from 'find-in-files';
 
 class BrightScriptDebugSession extends DebugSession {
@@ -74,9 +74,10 @@ class BrightScriptDebugSession extends DebugSession {
 	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
+		let disconnect;
+		let error: Error;
 		console.log('Packaging and deploying to roku');
 		try {
-
 			//copy all project files to the staging folder
 			let stagingFolder = await rokuDeploy.prepublishToStaging(args);
 
@@ -95,19 +96,35 @@ class BrightScriptDebugSession extends DebugSession {
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
 
+			//watch 
+			disconnect = this.rokuAdapter.on('compile-error', (compileErrorArgs) => {
+				let clientPath = this.convertDebuggerPathToClient(compileErrorArgs.path);
+				let clientLine = this.convertDebuggerLineToClientLine(compileErrorArgs.path, compileErrorArgs.lineNumber);
+				error = new Error(`Compile error: ${clientPath}: ${clientLine}`);
+			});
+
+			//ignore the compile error failure from within the publish
+			(args as any).failOnCompileError = false;
 			//publish the package to the target Roku
 			await rokuDeploy.publish(args);
 
 			//tell the adapter adapter that the channel has been launched. 
 			await this.rokuAdapter.activate();
 
-			console.log(`deployed to Roku@${args.host}`);
-			this.sendResponse(response);
+			if (!error) {
+				console.log(`deployed to Roku@${args.host}`);
+				this.sendResponse(response);
+			} else {
+				throw error;
+			}
 		} catch (e) {
 			console.log(e);
 			this.sendErrorResponse(response, -1, e.message);
 			this.shutdown();
 			return;
+		} finally {
+			//disconnect the compile error watcher
+			disconnect();
 		}
 	}
 
@@ -255,35 +272,79 @@ class BrightScriptDebugSession extends DebugSession {
 
 	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
 		console.log(`variablesRequest: ${JSON.stringify(args)}`);
-		if(args.filter === 'named'){
-			let variables = [
-				new Variable('name','bob'),
-				new Variable('firstChild', `{name: "Kid1", age: 12}`, 2)
-			];
-			response.body = {
-				variables: variables
-			}
+
+		//find the variable with this reference
+		let v = this.variables[args.variablesReference];
+
+		response.body = {
+			variables: (v as any).childVariables
 		}
+		// }
 		this.sendResponse(response);
 	}
 
-	private variablesReferenceCounter = 0;
+	private variables: { [refId: number]: Variable } = {};
+
+	private getVariableFromResult(result: EvaluateContainer) {
+		let refId = this.getEvaluateRefId(result.evaluateName);
+		let arr = [1, 2, 3];
+		let v: DebugProtocol.Variable;
+		if (result.highLevelType === 'primative') {
+			v = new Variable(result.name, `${result.value}`);
+		} else if (result.highLevelType === 'array') {
+			v = new Variable(result.name, `${result.type} `, refId, result.children.length, 0);
+			this.variables[refId] = v;
+		} else if (result.highLevelType === 'object') {
+			v = new Variable(result.name, `${result.type} `, refId, 0, result.children.length);
+			this.variables[refId] = v;
+		} else if (result.highLevelType === 'function') {
+			v = new Variable(result.name, result.value);
+		}
+		v.evaluateName = result.evaluateName;
+		if (result.children) {
+			let childVariables = [];
+			for (let childContainer of result.children) {
+				let childVar = this.getVariableFromResult(childContainer);
+				childVariables.push(childVar);
+			}
+			(v as any).childVariables = childVariables;
+		}
+		return v;
+	}
+
+	private getEvaluateRefId(expression: string) {
+		if (!this.evaluateRefIdLookup[expression]) {
+			this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
+		}
+		return this.evaluateRefIdLookup[expression];
+	}
+	private evaluateRefIdLookup: { [expression: string]: number } = {};
+	private evaluateRefIdCounter = 0;
+
 	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-		console.log(`evaluateRequest: ${args.expression}`);
-		let result = <string>(await this.rokuAdapter.evaluate(args.expression));
-		let obj = `{name: 'Bob', firstChild: firstChild }`;
-		const v: DebugProtocol.Variable = new Variable('m.', , 1, 1, 1);
-		if (args.expression) {
-			v.evaluateName = args.expression;
+		console.log(`evaluateRequest: ${args.expression} `);
+		let refId = this.getEvaluateRefId(args.expression);
+		let v: DebugProtocol.Variable;
+
+		//if we already looked this item up, return it
+		if (this.variables[refId]) {
+			v = this.variables[refId];
+		} else {
+			let result = await this.rokuAdapter.evaluate(args.expression);
+			v = this.getVariableFromResult(result);
 		}
 
 		response.body = {
 			result: v.value,
-			variablesReference: 1,//v.variablesReference,
-			namedVariables: 1,//v.namedVariables,
-			indexedVariables: 0,//v.indexedVariables
+			variablesReference: v.variablesReference,
+			namedVariables: v.namedVariables,
+			indexedVariables: v.indexedVariables
 		};
 		this.sendResponse(response);
+	}
+
+	private getVariable() {
+
 	}
 
 	/**
@@ -365,7 +426,7 @@ class BrightScriptDebugSession extends DebugSession {
 				let lineIndex = breakpoint.line - 1;
 				let line = lines[lineIndex];
 				//add a STOP statement right before this line
-				lines[lineIndex] = `STOP\n${line}`;
+				lines[lineIndex] = `STOP\n${line} `;
 			}
 			fileContents = lines.join('\n');
 			await fsExtra.writeFile(stagingFilePath, fileContents);

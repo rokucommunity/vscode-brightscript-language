@@ -171,7 +171,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.1.9",
+        "roku-deploy": "^0.1.11",
         "vscode-debugadapter": "^1.24.0",
         "vscode-debugprotocol": "^1.24.0"
     }
