@@ -64,7 +64,7 @@
             "patterns":[
                 {
                     "name": "constant.language.brs",
-                    "match": "(?i)true|false|Invalid"
+                    "match": "(?i)\\b(true|false|invalid)\\b"
                 }
             ]
         },
