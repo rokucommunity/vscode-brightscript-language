@@ -30,6 +30,23 @@
             "outFiles": [
                 "${workspaceRoot}/out/src/debugger.js"
             ]
+        },
+        {
+            "preLaunchTask": "compile",
+            "request": "launch",
+            "smartStep": true,
+            "name": "Test",
+            "type": "node",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "stopOnEntry": false,
+            "args": [
+                "out/debugger.spec.js"
+            ],
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": null,
+            "env": {
+                "NODE_ENV": "production"
+            }
         }
     ],
     "compounds": [

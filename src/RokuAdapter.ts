@@ -10,13 +10,11 @@ export class RokuAdapter {
     constructor(private host: string) {
         this.emitter = new EventEmitter();
     }
-    private client: Socket;
+    private requestPipeline: RequestPipeline;
     private emitter: EventEmitter;
     private isSuspended = false;
 
-    private state: DebugState = <any>{
-        expressions: {}
-    };
+    private cache = {};
 
     /**
      * Subscribe to various events
@@ -30,18 +28,6 @@ export class RokuAdapter {
         this.emitter.on(eventName, handler);
         return () => {
             this.emitter.removeListener(eventName, handler);
-        };
-    }
-
-    /**
-     * Add a listener to the client, and provide an easy disconnect 
-     * @param name 
-     * @param listener 
-     */
-    private addListener(name: string, listener: any) {
-        this.client.on(name, listener);
-        return () => {
-            this.client.removeListener(name, listener);
         };
     }
 
@@ -84,14 +70,16 @@ export class RokuAdapter {
     public connect() {
         return new Promise((resolve, reject) => {
             var net = require('net');
-            this.client = new net.Socket();
+            let client: Socket = new net.Socket();
 
-            this.client.connect(8085, this.host, (err, data) => {
+            client.connect(8085, this.host, (err, data) => {
                 let k = 2;
             });
+            this.requestPipeline = new RequestPipeline(client);
+
             let resolved = false;
             this.clientDisconnectors.push(
-                this.addListener('data', async (data) => {
+                this.requestPipeline.on('unhandled-data', async (data) => {
                     if (!this.enableMainDataListener) {
                         return;
                     }
@@ -129,15 +117,22 @@ export class RokuAdapter {
                 })
             );
 
+            function addListener(name: string, handler: any) {
+                client.addListener(name, handler);
+                return () => {
+                    client.removeListener(name, handler);
+                };
+            }
+
             this.clientDisconnectors.push(
-                this.addListener('close', (err, data) => {
+                addListener('close', (err, data) => {
                     this.emit('close');
                 })
             );
 
             //if the connection fails, reject the connect promise
             this.clientDisconnectors.push(
-                this.addListener('error', function (err) {
+                addListener('error', function (err) {
                     //this.emit(EventName.error, err);
                     reject(err);
                 })
@@ -149,214 +144,130 @@ export class RokuAdapter {
      * Send command to step over
      */
     public stepOver() {
-        return new Promise((resolve, reject) => {
-            this.clearState();
-            this.client.write('over\r\n', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        this.clearState();
+        return this.requestPipeline.executeCommand('over', false);
     }
 
     public stepInto() {
-        return new Promise((resolve, reject) => {
-            this.clearState();
-            this.client.write('step\r\n', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        this.clearState();
+        return this.requestPipeline.executeCommand('step', false);
     }
 
     public stepOut() {
-        return new Promise((resolve, reject) => {
-            this.clearState();
-            this.client.write('out\r\n', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        this.clearState();
+        return this.requestPipeline.executeCommand('out', false);
+
     }
 
     /**
      * Tell the brightscript program to continue (i.e. resume program)
      */
     public continue() {
-        return new Promise((resolve, reject) => {
-            this.clearState();
-            this.client.write('c\r\n', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        this.clearState();
+        return this.requestPipeline.executeCommand('c', false);
     }
 
     /**
      * Tell the brightscript program to pause (fall into debug mode)
      */
     public pause() {
-        return new Promise((resolve, reject) => {
-            this.clearState();
-            //send the kill signal, which breaks into debugger mode
-            this.client.write('\x03;\r\n', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        this.clearState();
+        //send the kill signal, which breaks into debugger mode
+        return this.requestPipeline.executeCommand('\x03;', false);
     }
 
     /**
      * Clears the state, which means that everything will be retrieved fresh next time it is requested
      */
     public clearState() {
-        this.state = <any>{
-            expressions: {}
-        };
+        this.cache = {};
         this.isAtDebuggerPrompt = false;
     }
 
     public getStackTrace() {
-        if (this.state.stackTrace) {
-            return this.state.stackTrace;
-        }
-        return this.state.stackTrace = new Promise((resolve, reject) => {
-            let allData = '';
+        return this.resolve('stackTrace', async () => {
             //perform a request to load the stack trace
-            let disconnect = this.addListener('data', (data) => {
-                //collect incoming data until it looks like what we were expecting
-                allData = allData + data.toString();
-                let regexp = /#(\d+)\s+(?:function|sub)\s+([\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
-                let matches;
-                let frames: StackFrame[] = [];
-                while (matches = regexp.exec(allData)) {
-                    //the first index is the whole string
-                    //then the matches should be in pairs
-                    for (let i = 1; i < matches.length; i = i + 4) {
-                        let j = 1;
-                        let frameId = parseInt(matches[i]);
-                        let functionIdentifier = matches[i + j++]
-                        let filePath = matches[i + j++];
-                        let lineNumber = parseInt(matches[i + j++]);
-                        let frame: StackFrame = {
-                            frameId,
-                            filePath,
-                            lineNumber,
-                            functionIdentifier
-                        }
-                        frames.push(frame);
+            let responseText = await this.requestPipeline.executeCommand('bt', true);
+            let regexp = /#(\d+)\s+(?:function|sub)\s+([\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
+            let matches;
+            let frames: StackFrame[] = [];
+            while (matches = regexp.exec(responseText)) {
+                //the first index is the whole string
+                //then the matches should be in pairs
+                for (let i = 1; i < matches.length; i = i + 4) {
+                    let j = 1;
+                    let frameId = parseInt(matches[i]);
+                    let functionIdentifier = matches[i + j++]
+                    let filePath = matches[i + j++];
+                    let lineNumber = parseInt(matches[i + j++]);
+                    let frame: StackFrame = {
+                        frameId,
+                        filePath,
+                        lineNumber,
+                        functionIdentifier
                     }
+                    frames.push(frame);
                 }
-                //if we didn't find frames yet, hope that the next data call will bring some
-                if (frames.length === 0) {
-                    return;
-                }
-                disconnect();
-                resolve(frames);
-            });
-            this.client.write(new Buffer('bt\r\n', 'utf8'));
+            }
+            //if we didn't find frames yet, then there's not much more we can do...
+            return frames;
         });
     }
 
-    /**
-     * Get data from the server. Let the callbacks settle before resolving
-     */
-    private getData() {
-        this.enableMainDataListener = false;
-        return new Promise<string>((resolve) => {
-            let allData = '';
-            let disconnect = this.addListener('data', (data) => {
-                allData += data.toString();
-                var match;
-                //if data is stopped at the prompt, return the data
-                if (match = /Brightscript\s+Debugger>\s+$/i.exec(allData)) {
-                    disconnect();
-                    this.enableMainDataListener = true;
-                    resolve(allData);
-                }
-            });
-        });
-    }
-
-    private execute(command: string) {
-        return new Promise<string>((resolve, reject) => {
-            let dataPromise = this.getData();
-            this.client.write(`${command}\r\n`, 'utf8', (err, data) => {
-                if (err) {
-                    reject(err);
-                }
-            });
-            resolve(dataPromise);
-        });
-    }
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
     /**
      * Given an expression, evaluate that statement ON the roku
      * @param expression
      */
-    public async evaluate(expression: string) {
-        //return this.expressionResolve(`${expression}`, async () => {
-        let expressionType = await this.getType(expression);
+    public async getVariable(expression: string) {
+        return this.resolve(`variable: ${expression}`, async () => {
+            let expressionType = await this.getType(expression);
 
-        let lowerExpressionType = expressionType ? expressionType.toLowerCase() : null;
+            let lowerExpressionType = expressionType ? expressionType.toLowerCase() : null;
 
-        let data: string;
-        //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
-        if (lowerExpressionType === 'string') {
-            data = await this.execute(`print "--string-wrap--" + ${expression} + "--string-wrap--"`);
-        }
-        else {
-            data = await this.execute(`print ${expression}`);
-        }
-
-        let match;
-        if (match = this.expressionRegex.exec(data)) {
-            let value = match[1];
+            let data: string;
+            //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
             if (lowerExpressionType === 'string') {
-                value = value.trim().replace(/--string-wrap--/g, '');
-                //add an escape character in front of any existing quotes
-                value = value.replace(/"/g, '\\"');
-                //wrap the string value with literal quote marks
-                value = '"' + value + '"';
-            } else {
-                value = value.trim();
+                data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
+            }
+            else {
+                data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
             }
 
-            let highLevelType = this.getHighLevelType(expressionType);
+            let match;
+            if (match = this.expressionRegex.exec(data)) {
+                let value = match[1];
+                if (lowerExpressionType === 'string') {
+                    value = value.trim().replace(/--string-wrap--/g, '');
+                    //add an escape character in front of any existing quotes
+                    value = value.replace(/"/g, '\\"');
+                    //wrap the string value with literal quote marks
+                    value = '"' + value + '"';
+                } else {
+                    value = value.trim();
+                }
 
-            let children: EvaluateContainer[];
-            if (highLevelType === 'object') {
-                children = this.getObjectChildren(expression, value);
-            } else if (highLevelType === 'array') {
-                children = this.getArrayChildren(expression, value);
+                let highLevelType = this.getHighLevelType(expressionType);
+
+                let children: EvaluateContainer[];
+                if (highLevelType === 'object') {
+                    children = this.getObjectChildren(expression, value);
+                } else if (highLevelType === 'array') {
+                    children = this.getArrayChildren(expression, value);
+                }
+
+                let container = <EvaluateContainer>{
+                    name: expression,
+                    evaluateName: expression,
+                    type: expressionType,
+                    value: value,
+                    highLevelType,
+                    children
+                };
+                return container;
             }
-
-            let container = <EvaluateContainer>{
-                name: expression,
-                evaluateName: expression,
-                type: expressionType,
-                value: value,
-                highLevelType,
-                children
-            };
-            return container;
-        }
-        //});
+        });
     }
 
     getArrayChildren(expression: string, data: string): EvaluateContainer[] {
@@ -385,7 +296,7 @@ export class RokuAdapter {
             } else {
                 child.type = this.getPrimativeTypeFromValue(line);
                 child.value = line;
-                child.highLevelType = 'primative';
+                child.highLevelType = HighLevelType.primative;
             }
             children.push(child);
             arrayIndex++;
@@ -393,59 +304,63 @@ export class RokuAdapter {
         throw new Error('Unable to parse BrightScript array');
     }
 
-    private getPrimativeTypeFromValue(value: string) {
+    private getPrimativeTypeFromValue(value: string): PrimativeType {
         value = value ? value.toLowerCase() : value;
         if (!value || value === 'invalid') {
-            return 'Invalid';
+            return PrimativeType.invalid;
         }
         if (value === 'true' || value === 'false') {
-            return 'Boolean';
+            return PrimativeType.boolean;
         }
         if (value.indexOf('"') > -1) {
-            return 'String';
+            return PrimativeType.string;
         }
         if (value.split('.').length > 1) {
-            return 'Integer';
+            return PrimativeType.integer;
         } else {
-            return 'Float';
+            return PrimativeType.float;
         }
 
     }
 
     getObjectChildren(expression: string, data: string): EvaluateContainer[] {
-        let children: EvaluateContainer[] = [];
-        //split by newline. the array contents start at index 2
-        let lines = eol.split(data);
-        for (let i = 2; i < lines.length; i++) {
-            let line = lines[i].trim();
-            if (line === '}') {
-                return children;
-            }
-            let match;
-            match = /(\w+):(.+)/i.exec(line);
-            let name = match[1].trim();
-            let value = match[2].trim();
+        try {
+            let children: EvaluateContainer[] = [];
+            //split by newline. the object contents start at index 2
+            let lines = eol.split(data);
+            for (let i = 2; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (line === '}') {
+                    return children;
+                }
+                let match;
+                match = /(\w+):(.+)/i.exec(line);
+                let name = match[1].trim();
+                let value = match[2].trim();
 
-            let child = <EvaluateContainer>{
-                name: name,
-                evaluateName: `${expression}.${name}`,
-                children: []
-            };
+                let child = <EvaluateContainer>{
+                    name: name,
+                    evaluateName: `${expression}.${name}`,
+                    children: []
+                };
 
-            //if the line is an object, array or function
-            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
-                let type = match[1];
-                child.type = type;
-                child.highLevelType = this.getHighLevelType(type);
-                child.value = type;
-            } else {
-                child.type = this.getPrimativeTypeFromValue(line);
-                child.value = value;
-                child.highLevelType = 'primative';
+                //if the line is an object, array or function
+                if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                    let type = match[1];
+                    child.type = type;
+                    child.highLevelType = this.getHighLevelType(type);
+                    child.value = type;
+                } else {
+                    child.type = this.getPrimativeTypeFromValue(line);
+                    child.value = value;
+                    child.highLevelType = HighLevelType.primative;
+                }
+                children.push(child);
             }
-            children.push(child);
+            return children;
+        } catch (e) {
+            throw new Error(`Unable to parse BrightScript object: ${e.message}. Data: ${data}`);
         }
-        throw new Error('Unable to parse BrightScript array');
     }
 
     /**
@@ -454,18 +369,19 @@ export class RokuAdapter {
      */
     private getHighLevelType(expressionType: string) {
         if (!expressionType) {
-            return 'unknown';
+            throw new Error(`Unknown expression type: ${expressionType}`);
         }
+
         expressionType = expressionType.toLowerCase();
         let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'invalid'];
         if (primativeTypes.indexOf(expressionType) > -1) {
-            return 'primative';
+            return HighLevelType.primative;
         } else if (expressionType === 'roarray') {
-            return 'array';
+            return HighLevelType.array;
         } else if (expressionType === 'function') {
-            return 'function'
+            return HighLevelType.function;
         } else {
-            return 'object';
+            return HighLevelType.object;
         }
     }
 
@@ -475,8 +391,8 @@ export class RokuAdapter {
      */
     public async getType(expression) {
         expression = `Type(${expression})`;
-        return this.expressionResolve(`${expression}`, async () => {
-            let data = await this.execute(`print ${expression}`);
+        return this.resolve(`${expression}`, async () => {
+            let data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
 
             let match;
             if (match = this.expressionRegex.exec(data)) {
@@ -491,58 +407,57 @@ export class RokuAdapter {
     }
 
     /**
-     * Caches the results of expressions in state
+     * Cache items by a unique key
      * @param expression 
      * @param factory 
      */
-    private expressionResolve<T>(expression: string, factory: () => T | Thenable<T>): Promise<T> {
-        if (this.state.expressions[expression]) {
-            return this.state.expressions[expression];
+    private resolve<T>(key: string, factory: () => T | Thenable<T>): Promise<T> {
+        if (this.cache[key]) {
+            return this.cache[key];
         }
-        return this.state.expressions[expression] = Promise.resolve<T>(factory());
+        return this.cache[key] = Promise.resolve<T>(factory());
     }
 
     /**
      * Get a list of threads. The first thread in the list is the active thread
      */
     public async getThreads() {
-        if (this.state.threads) {
-            return this.state.threads;
-        }
-        //since the main data listener handles every prompt, but also calls this current function, we need to disable its handling
-        //until we get our threads result
-        this.enableMainDataListener = false;
+        return this.resolve('threads', async () => {
+            //since the main data listener handles every prompt, but also calls this current function, we need to disable its handling
+            //until we get our threads result
+            this.enableMainDataListener = false;
 
-        let data = await this.execute('threads');
-        //re-enable the listener for future requests
-        this.enableMainDataListener = true;
+            let data = await this.requestPipeline.executeCommand('threads', true);
+            //re-enable the listener for future requests
+            this.enableMainDataListener = true;
 
-        let dataString = data.toString();
-        let matches;
-        let threads: Thread[] = [];
-        if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
-            //skip index 0 because it's the whole string
-            for (let i = 1; i < matches.length; i = i + 4) {
-                let threadId: string = matches[i];
-                let thread = <Thread>{
-                    isSelected: false,
-                    filePath: matches[i + 1],
-                    lineNumber: parseInt(matches[i + 2]),
-                    lineContents: matches[i + 3]
+            let dataString = data.toString();
+            let matches;
+            let threads: Thread[] = [];
+            if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
+                //skip index 0 because it's the whole string
+                for (let i = 1; i < matches.length; i = i + 4) {
+                    let threadId: string = matches[i];
+                    let thread = <Thread>{
+                        isSelected: false,
+                        filePath: matches[i + 1],
+                        lineNumber: parseInt(matches[i + 2]),
+                        lineContents: matches[i + 3]
+                    }
+                    if (threadId.indexOf('*') > -1) {
+                        thread.isSelected = true;
+                        threadId = threadId.replace('*', '');
+                    }
+                    thread.threadId = parseInt(threadId);
+                    threads.push(thread);
                 }
-                if (threadId.indexOf('*') > -1) {
-                    thread.isSelected = true;
-                    threadId = threadId.replace('*', '');
-                }
-                thread.threadId = parseInt(threadId);
-                threads.push(thread);
+                //make sure the selected thread is at the top
+                threads.sort((a, b) => {
+                    return a.isSelected ? -1 : 1;
+                });
             }
-            //make sure the selected thread is at the top
-            threads.sort((a, b) => {
-                return a.isSelected ? -1 : 1;
-            });
-        }
-        return threads;
+            return threads;
+        });
     }
 
     /**
@@ -553,18 +468,12 @@ export class RokuAdapter {
         for (let disconnect of this.clientDisconnectors) {
             disconnect();
         }
-        this.client.destroy();
-        this.state = undefined;
-        this.client = undefined;
+        this.requestPipeline.destroy();
+        this.requestPipeline = undefined;
+        this.cache = undefined;
         this.emitter.removeAllListeners();
         this.emitter = undefined;
     }
-}
-
-export interface DebugState {
-    stackTrace: Promise<StackFrame[]>;
-    expressions: { [expression: string]: Promise<any> };
-    threads: Promise<Thread[]>;
 }
 
 export interface StackFrame {
@@ -578,12 +487,19 @@ export enum EventName {
     suspend = 'suspend'
 }
 
+export enum HighLevelType {
+    primative = 'primative',
+    array = 'array',
+    function = 'function',
+    object = 'object'
+}
+
 export interface EvaluateContainer {
     name: string;
     evaluateName: string;
     type: string;
     value: string;
-    highLevelType: 'primative' | 'object' | 'array' | 'function' | 'unknown';
+    highLevelType: HighLevelType;
     children: EvaluateContainer[];
 }
 
@@ -593,4 +509,122 @@ export interface Thread {
     filePath: string;
     lineContents: string;
     threadId: number;
+}
+
+export enum PrimativeType {
+    invalid = 'Invalid',
+    boolean = 'Boolean',
+    string = 'String',
+    integer = 'Integer',
+    float = 'Float'
+}
+
+export class RequestPipeline {
+    constructor(
+        private client: Socket
+    ) {
+        this.connect();
+    }
+    private requests: RequestPipelineRequest[] = [];
+    private get isProcessing() {
+        return this.currentRequest !== undefined;
+    }
+    private currentRequest: RequestPipelineRequest = undefined;
+
+    private emitter = new EventEmitter();
+
+    on(eventName: 'unhandled-data', handler: (data: string) => void)
+    public on(eventName: string, handler: (data: string) => void) {
+        this.emitter.on(eventName, handler);
+        return () => {
+            this.emitter.removeListener(eventName, handler);
+        };
+    }
+
+    private emit(eventName: 'unhandled-data', data: string) {
+        this.emitter.emit(eventName, data);
+    }
+
+    private connect() {
+        let allResponseText = '';
+        this.client.addListener('data', (responseText: string) => {
+            allResponseText += responseText;
+
+            //if we are not processing, immediately broadcast the latest data
+            if (!this.isProcessing) {
+                this.emit('unhandled-data', allResponseText);
+                allResponseText = '';
+            }
+            //we are processing. detect if we have reached a prompt. 
+            else {
+                var match;
+                //if responseText produced a prompt, return the responseText
+                if (match = /Brightscript\s+Debugger>\s+$/i.exec(allResponseText)) {
+                    //resolve the command's promise (if it cares)
+                    this.currentRequest.onComplete(allResponseText);
+                    allResponseText = '';
+                    this.currentRequest = undefined;
+                    //try to run the next request
+                    this.process();
+                }
+            }
+
+        });
+    }
+
+    /**
+     * Schedule a command to be run. Resolves with the result once the command finishes
+     * @param commandFunction
+     * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
+     */
+    public executeCommand(command: string, waitForPrompt: boolean) {
+        return new Promise<string>((resolve, reject) => {
+            let executeCommand = () => {
+                this.client.write(`${command}\r\n`);
+            };
+            this.requests.push({
+                executeCommand,
+                onComplete: resolve,
+                waitForPrompt
+            });
+            //start processing (safe to call multiple times)
+            this.process();
+        });
+    }
+
+    /**
+     * Internall request processing function
+     */
+    private async process() {
+        if (this.isProcessing || this.requests.length === 0) {
+            return;
+        }
+        //get the oldest command
+        let nextRequest = this.requests.shift();
+        if (nextRequest.waitForPrompt) {
+            this.currentRequest = nextRequest;
+        } else {
+            //fire and forget the command
+        }
+
+        //run the request. the data listener will handle launching the next request once this one has finished processing
+        nextRequest.executeCommand();
+
+        //if the command doesn't care about the output, resolve it immediately
+        if (!nextRequest.waitForPrompt) {
+            nextRequest.onComplete(undefined);
+        }
+    }
+
+    public destroy() {
+        this.client.removeAllListeners();
+        this.client.destroy();
+        this.client = undefined;
+    }
+}
+
+interface RequestPipelineRequest {
+    executeCommand: () => void;
+    onComplete: (data: string) => void;
+    waitForPrompt: boolean;
 }

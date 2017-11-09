@@ -56,7 +56,6 @@
     },
     "nyc": {
       "reporter": [
-        "text",
         "html"
       ],
       "exclude": [

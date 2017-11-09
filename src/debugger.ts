@@ -32,7 +32,7 @@ export class BrightScriptDebugSession extends DebugSession {
 	private breakpointIdCounter = 0;
 	private stackFrameIdCounter = 1;
 	private evaluateRefIdLookup: { [expression: string]: number } = {};
-	private evaluateRefIdCounter = 0;
+	private evaluateRefIdCounter = 1;
 
 	private variables: { [refId: number]: AugmentedVariable } = {};
 
@@ -293,14 +293,14 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
+	public async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
 		this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
 		//find the variable with this reference
 		let v = this.variables[args.variablesReference];
 		//query for child vars if we haven't done it yet.
 		if (v.childVariables.length === 0) {
-			let result = await this.rokuAdapter.evaluate(v.evaluateName);
+			let result = await this.rokuAdapter.getVariable(v.evaluateName);
 			let tempVar = this.getVariableFromResult(result);
 			v.childVariables = tempVar.childVariables
 		}
@@ -311,26 +311,30 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-		console.log(`evaluateRequest: ${args.expression} `);
-		let refId = this.getEvaluateRefId(args.expression);
-		let v: DebugProtocol.Variable;
+	public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
+		if (['hover', 'watch'].indexOf(args.context) > -1) {
+			let refId = this.getEvaluateRefId(args.expression);
+			let v: DebugProtocol.Variable;
+			//if we already looked this item up, return it
+			if (this.variables[refId]) {
+				v = this.variables[refId];
+			} else {
+				let result = await this.rokuAdapter.getVariable(args.expression);
+				v = this.getVariableFromResult(result);
+			}
 
-		//if we already looked this item up, return it
-		if (this.variables[refId]) {
-			v = this.variables[refId];
-		} else {
-			let result = await this.rokuAdapter.evaluate(args.expression);
-			v = this.getVariableFromResult(result);
+			response.body = {
+				result: v.value,
+				variablesReference: v.variablesReference,
+				namedVariables: v.namedVariables | 0,
+				indexedVariables: v.indexedVariables | 0
+			};
+			this.sendResponse(response);
 		}
-
-		response.body = {
-			result: v.value,
-			variablesReference: v.variablesReference,
-			namedVariables: v.namedVariables,
-			indexedVariables: v.indexedVariables
-		};
-		this.sendResponse(response);
+		//debug console typing
+		else if (args.context === 'repl') {
+			//response.
+		}
 	}
 
 	private getVariable() {
@@ -535,15 +539,16 @@ export class BrightScriptDebugSession extends DebugSession {
 	}
 
 	private getVariableFromResult(result: EvaluateContainer) {
-		let refId = this.getEvaluateRefId(result.evaluateName);
 		let arr = [1, 2, 3];
 		let v: AugmentedVariable;
 		if (result.highLevelType === 'primative') {
 			v = new Variable(result.name, `${result.value}`);
 		} else if (result.highLevelType === 'array') {
+			let refId = this.getEvaluateRefId(result.evaluateName);
 			v = new Variable(result.name, result.type, refId, result.children.length, 0);
 			this.variables[refId] = v;
 		} else if (result.highLevelType === 'object') {
+			let refId = this.getEvaluateRefId(result.evaluateName);
 			v = new Variable(result.name, result.type, refId, 0, result.children.length);
 			this.variables[refId] = v;
 		} else if (result.highLevelType === 'function') {
@@ -611,7 +616,7 @@ enum StoppedEventReason {
 	entry = 'entry'
 }
 
-function defer<T>() {
+export function defer<T>() {
 	let resolve: (value?: T | PromiseLike<T>) => void
 	let reject: (reason?: any) => void
 	let promise = new Promise<T>((_resolve, _reject) => {
