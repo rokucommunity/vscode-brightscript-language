@@ -12,7 +12,6 @@ export class RokuAdapter {
     }
     private requestPipeline: RequestPipeline;
     private emitter: EventEmitter;
-    private isSuspended = false;
 
     private cache = {};
 
@@ -22,6 +21,8 @@ export class RokuAdapter {
      * @param handler 
      */
     public on(eventName: 'suspend', handler: () => void)
+    public on(eventname: 'console-output', handler: (output: string) => void)
+    public on(eventname: 'unhandled-console-output', handler: (output: string) => void)
     public on(eventName: 'compile-error', handler: (params: { path: string; lineNumber: number; }) => void)
     public on(eventName: 'close', handler: () => void)
     public on(eventName: string, handler: (payload: any) => void) {
@@ -31,7 +32,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-error' | 'close', data?) {
+    private emit(eventName: 'suspend' | 'compile-error' | 'close' | 'console-output' | 'unhandled-console-output', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -77,9 +78,17 @@ export class RokuAdapter {
             });
             this.requestPipeline = new RequestPipeline(client);
 
+            //forward the raw counsole-output
+            this.requestPipeline.on('console-output', (output) => {
+                this.emit('console-output', output);
+            });
+
             let resolved = false;
             this.clientDisconnectors.push(
-                this.requestPipeline.on('unhandled-data', async (data) => {
+                this.requestPipeline.on('unhandled-console-output', async (data) => {
+                    //forward the raw output
+                    this.emit('unhandled-console-output', data);
+
                     if (!this.enableMainDataListener) {
                         return;
                     }
@@ -107,9 +116,11 @@ export class RokuAdapter {
                         if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
                             //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                             if (this.isActivated && this.isAtDebuggerPrompt === false) {
+                                this.isAtDebuggerPrompt = true;
                                 this.emit('suspend');
+                            } else {
+                                this.isAtDebuggerPrompt = true;
                             }
-                            this.isAtDebuggerPrompt = true;
                         } else {
                             this.isAtDebuggerPrompt = false;
                         }
@@ -184,8 +195,11 @@ export class RokuAdapter {
         this.isAtDebuggerPrompt = false;
     }
 
-    public getStackTrace() {
-        return this.resolve('stackTrace', async () => {
+    public async getStackTrace() {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot get stack trace: debugger is not paused');
+        }
+        return await this.resolve('stackTrace', async () => {
             //perform a request to load the stack trace
             let responseText = await this.requestPipeline.executeCommand('bt', true);
             let regexp = /#(\d+)\s+(?:function|sub)\s+([\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
@@ -221,8 +235,11 @@ export class RokuAdapter {
      * @param expression
      */
     public async getVariable(expression: string) {
-        return this.resolve(`variable: ${expression}`, async () => {
-            let expressionType = await this.getType(expression);
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot resolve variable: debugger is not paused');
+        }
+        return await this.resolve(`variable: ${expression}`, async () => {
+            let expressionType = await this.getVariableType(expression);
 
             let lowerExpressionType = expressionType ? expressionType.toLowerCase() : null;
 
@@ -270,7 +287,7 @@ export class RokuAdapter {
         });
     }
 
-    getArrayChildren(expression: string, data: string): EvaluateContainer[] {
+    private getArrayChildren(expression: string, data: string): EvaluateContainer[] {
         let children: EvaluateContainer[] = [];
         //split by newline. the array contents start at index 2
         let lines = eol.split(data);
@@ -323,7 +340,7 @@ export class RokuAdapter {
 
     }
 
-    getObjectChildren(expression: string, data: string): EvaluateContainer[] {
+    private getObjectChildren(expression: string, data: string): EvaluateContainer[] {
         try {
             let children: EvaluateContainer[] = [];
             //split by newline. the object contents start at index 2
@@ -389,9 +406,12 @@ export class RokuAdapter {
      * Get the type of the provided expression
      * @param expression 
      */
-    public async getType(expression) {
+    public async getVariableType(expression) {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot get variable type: debugger is not paused');
+        }
         expression = `Type(${expression})`;
-        return this.resolve(`${expression}`, async () => {
+        return await this.resolve(`${expression}`, async () => {
             let data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
 
             let match;
@@ -422,7 +442,10 @@ export class RokuAdapter {
      * Get a list of threads. The first thread in the list is the active thread
      */
     public async getThreads() {
-        return this.resolve('threads', async () => {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot get threads: debugger is not paused');
+        }
+        return await this.resolve('threads', async () => {
             //since the main data listener handles every prompt, but also calls this current function, we need to disable its handling
             //until we get our threads result
             this.enableMainDataListener = false;
@@ -533,7 +556,7 @@ export class RequestPipeline {
 
     private emitter = new EventEmitter();
 
-    on(eventName: 'unhandled-data', handler: (data: string) => void)
+    on(eventName: 'unhandled-console-output' | 'console-output', handler: (data: string) => void)
     public on(eventName: string, handler: (data: string) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -541,18 +564,20 @@ export class RequestPipeline {
         };
     }
 
-    private emit(eventName: 'unhandled-data', data: string) {
+    private emit(eventName: 'unhandled-console-output' | 'console-output', data: string) {
         this.emitter.emit(eventName, data);
     }
 
     private connect() {
         let allResponseText = '';
-        this.client.addListener('data', (responseText: string) => {
+        this.client.addListener('data', (data) => {
+            let responseText = data.toString();
+            this.emit('console-output', responseText);
             allResponseText += responseText;
 
             //if we are not processing, immediately broadcast the latest data
             if (!this.isProcessing) {
-                this.emit('unhandled-data', allResponseText);
+                this.emit('unhandled-console-output', allResponseText);
                 allResponseText = '';
             }
             //we are processing. detect if we have reached a prompt. 
@@ -580,7 +605,9 @@ export class RequestPipeline {
     public executeCommand(command: string, waitForPrompt: boolean) {
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
-                this.client.write(`${command}\r\n`);
+                let commandText = `${command}\r\n`;
+                this.emit('console-output', commandText);
+                this.client.write(commandText);
             };
             this.requests.push({
                 executeCommand,

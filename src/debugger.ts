@@ -105,6 +105,11 @@ export class BrightScriptDebugSession extends DebugSession {
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
 
+			this.rokuAdapter.on('console-output', (data) => {
+				//forward the console output
+				this.sendEvent(new OutputEvent(data, 'stdout'));
+			});
+
 			//listen for a closed connection (shut down when received)
 			this.rokuAdapter.on('close', () => {
 				error = new Error('Unable to connect to Roku. Is another device already connected?');
@@ -190,14 +195,21 @@ export class BrightScriptDebugSession extends DebugSession {
 		//wait for the roku adapter to load
 		await this.getRokuAdapter();
 
-		let rokuThreads = await this.rokuAdapter.getThreads();
-
 		let threads = [];
-		for (let thread of rokuThreads) {
-			threads.push(
-				new Thread(thread.threadId, `Thread ${thread.threadId}`)
-			);
+
+		//only send the threads request if we are at the debugger prompt
+		if (this.rokuAdapter.isAtDebuggerPrompt) {
+			let rokuThreads = await this.rokuAdapter.getThreads();
+
+			for (let thread of rokuThreads) {
+				threads.push(
+					new Thread(thread.threadId, `Thread ${thread.threadId}`)
+				);
+			}
+		} else {
+			console.log('Skipped getting threads because the RokuAdapter is not accepting input at this time.');
 		}
+
 		response.body = {
 			threads: threads
 		};
@@ -207,33 +219,37 @@ export class BrightScriptDebugSession extends DebugSession {
 
 	protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
 		this.log('stackTraceRequest');
-		let stackTrace = await this.rokuAdapter.getStackTrace();
 		let frames = [];
 
-		for (let debugFrame of stackTrace) {
+		if (this.rokuAdapter.isAtDebuggerPrompt) {
+			let stackTrace = await this.rokuAdapter.getStackTrace();
 
-			let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
-			let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
-			//the stacktrace returns function identifiers in all lower case. Try to get the actual case
-			//load the contents of the file and get the correct casing for the function identifier
-			try {
-				let fileContents = (await fsExtra.readFile(clientPath)).toString();
-				let match = new RegExp(`(?:sub|function)\\s+(${debugFrame.functionIdentifier})`, 'i').exec(fileContents);
-				if (match) {
-					debugFrame.functionIdentifier = match[1];
-				}
-			} catch (e) { }
+			for (let debugFrame of stackTrace) {
 
-			let frame = new StackFrame(
-				debugFrame.frameId,
-				`${debugFrame.functionIdentifier}`,
-				new Source(path.basename(clientPath), clientPath),
-				clientLineNumber,
-				1
-			);
-			frames.push(frame);
+				let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
+				let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
+				//the stacktrace returns function identifiers in all lower case. Try to get the actual case
+				//load the contents of the file and get the correct casing for the function identifier
+				try {
+					let fileContents = (await fsExtra.readFile(clientPath)).toString();
+					let match = new RegExp(`(?:sub|function)\\s+(${debugFrame.functionIdentifier})`, 'i').exec(fileContents);
+					if (match) {
+						debugFrame.functionIdentifier = match[1];
+					}
+				} catch (e) { }
+
+				let frame = new StackFrame(
+					debugFrame.frameId,
+					`${debugFrame.functionIdentifier}`,
+					new Source(path.basename(clientPath), clientPath),
+					clientLineNumber,
+					1
+				);
+				frames.push(frame);
+			}
+		} else {
+			console.log('Skipped calculating stacktrace because the RokuAdapter is not accepting input at this time');
 		}
-
 		response.body = {
 			stackFrames: frames,
 			totalFrames: frames.length
@@ -296,49 +312,54 @@ export class BrightScriptDebugSession extends DebugSession {
 	public async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
 		this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
-		//find the variable with this reference
-		let v = this.variables[args.variablesReference];
-		//query for child vars if we haven't done it yet.
-		if (v.childVariables.length === 0) {
-			let result = await this.rokuAdapter.getVariable(v.evaluateName);
-			let tempVar = this.getVariableFromResult(result);
-			v.childVariables = tempVar.childVariables
+		let childVariables: AugmentedVariable[] = [];
+		if (this.rokuAdapter.isAtDebuggerPrompt) {
+			//find the variable with this reference
+			let v = this.variables[args.variablesReference];
+			//query for child vars if we haven't done it yet.
+			if (v.childVariables.length === 0) {
+				let result = await this.rokuAdapter.getVariable(v.evaluateName);
+				let tempVar = this.getVariableFromResult(result);
+				v.childVariables = tempVar.childVariables
+			}
+			childVariables = v.childVariables;
+		} else {
+			console.log('Skipped getting variables because the RokuAdapter is not accepting input at this time');
 		}
 		response.body = {
-			variables: v.childVariables
+			variables: childVariables
 		}
-		// }
 		this.sendResponse(response);
 	}
 
 	public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-		if (['hover', 'watch'].indexOf(args.context) > -1) {
-			let refId = this.getEvaluateRefId(args.expression);
-			let v: DebugProtocol.Variable;
-			//if we already looked this item up, return it
-			if (this.variables[refId]) {
-				v = this.variables[refId];
-			} else {
-				let result = await this.rokuAdapter.getVariable(args.expression);
-				v = this.getVariableFromResult(result);
+		if (this.rokuAdapter.isAtDebuggerPrompt) {
+			if (['hover', 'watch'].indexOf(args.context) > -1) {
+				let refId = this.getEvaluateRefId(args.expression);
+				let v: DebugProtocol.Variable;
+				//if we already looked this item up, return it
+				if (this.variables[refId]) {
+					v = this.variables[refId];
+				} else {
+					let result = await this.rokuAdapter.getVariable(args.expression);
+					v = this.getVariableFromResult(result);
+				}
+				response.body = {
+					result: v.value,
+					variablesReference: v.variablesReference,
+					namedVariables: v.namedVariables | 0,
+					indexedVariables: v.indexedVariables | 0
+				};
 			}
-
-			response.body = {
-				result: v.value,
-				variablesReference: v.variablesReference,
-				namedVariables: v.namedVariables | 0,
-				indexedVariables: v.indexedVariables | 0
-			};
-			this.sendResponse(response);
+			//debug console typing
+			else if (args.context === 'repl') {
+				
+			}
+		} else {
+			console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
 		}
-		//debug console typing
-		else if (args.context === 'repl') {
-			//response.
-		}
-	}
 
-	private getVariable() {
-
+		this.sendResponse(response);
 	}
 
 	/**
