@@ -353,6 +353,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			}
 			//debug console typing
 			else if (args.context === 'repl') {
+				let result = await this.rokuAdapter.evaluate(args.expression);
 				
 			}
 		} else {

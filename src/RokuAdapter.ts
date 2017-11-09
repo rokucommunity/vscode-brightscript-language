@@ -85,35 +85,31 @@ export class RokuAdapter {
 
             let resolved = false;
             this.clientDisconnectors.push(
-                this.requestPipeline.on('unhandled-console-output', async (data) => {
+                this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
                     //forward the raw output
-                    this.emit('unhandled-console-output', data);
+                    this.emit('unhandled-console-output', responseText);
 
                     if (!this.enableMainDataListener) {
                         return;
                     }
+
                     //resolve the connection once the data events have settled
                     if (!resolved) {
                         resolved = true;
                         resolve();
                         return;
                     }
-                    let dataString = data.toString();
+
                     let match;
 
-                    //watch for compile errors
-                    if (match = /compile error.* in (.*)\((\d+)\)/i.exec(dataString)) {
-                        let path = match[1];
-                        let lineNumber = match[2];
-                        this.emit('compile-error', { path, lineNumber });
-                    }
+                    this.checkForCompileError(responseText);
 
                     if (this.isActivated) {
                         //console.log(dataString);
 
                         //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                         //wait until we see the brightscript debugger prompt
-                        if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
+                        if (match = /Brightscript\s+Debugger>\s+$/i.exec(responseText)) {
                             //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                             if (this.isActivated && this.isAtDebuggerPrompt === false) {
                                 this.isAtDebuggerPrompt = true;
@@ -152,20 +148,49 @@ export class RokuAdapter {
     }
 
     /**
+     * Look through the given responseText for a compiler error
+     * @param responseText
+     */
+    private checkForCompileError(responseText: string) {
+
+        //throw out any lines before the last found compiling line
+        let lines = eol.split(responseText);
+        let lastIndex: number = -1;
+        for (var i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            //if this line looks like the compiling line
+            if (/------\s+compiling.*------/i.exec(line)) {
+                lastIndex = i;
+            }
+        }
+        if (lastIndex > -1) {
+            lines = lines.splice(lastIndex);
+            responseText = lines.join('\r\n');
+        }
+
+        //if there is a line with a compiler error in it, emit an event
+        let match;
+        if (match = /compile error.* in (.*)\((\d+)\)/i.exec(responseText)) {
+            let path = match[1];
+            let lineNumber = match[2];
+            this.emit('compile-error', { path, lineNumber });
+        }
+    }
+    /**
      * Send command to step over
      */
     public stepOver() {
-        this.clearState();
+        this.clearCache();
         return this.requestPipeline.executeCommand('over', false);
     }
 
     public stepInto() {
-        this.clearState();
+        this.clearCache();
         return this.requestPipeline.executeCommand('step', false);
     }
 
     public stepOut() {
-        this.clearState();
+        this.clearCache();
         return this.requestPipeline.executeCommand('out', false);
 
     }
@@ -174,7 +199,7 @@ export class RokuAdapter {
      * Tell the brightscript program to continue (i.e. resume program)
      */
     public continue() {
-        this.clearState();
+        this.clearCache();
         return this.requestPipeline.executeCommand('c', false);
     }
 
@@ -182,7 +207,7 @@ export class RokuAdapter {
      * Tell the brightscript program to pause (fall into debug mode)
      */
     public pause() {
-        this.clearState();
+        this.clearCache();
         //send the kill signal, which breaks into debugger mode
         return this.requestPipeline.executeCommand('\x03;', false);
     }
@@ -190,9 +215,23 @@ export class RokuAdapter {
     /**
      * Clears the state, which means that everything will be retrieved fresh next time it is requested
      */
-    public clearState() {
+    public clearCache() {
         this.cache = {};
         this.isAtDebuggerPrompt = false;
+    }
+
+    /**
+     * Execute a command directly on the roku. Returns the output of the command
+     * @param command 
+     */
+    public async evaluate(command: string) {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot run evaluate: debugger is not paused');
+        }
+        //clear the cache (we don't know what command the user entered)
+        this.clearCache();
+        //don't wait for the output...we don't know what command the user entered
+        await this.requestPipeline.executeCommand(command, false);
     }
 
     public async getStackTrace() {
