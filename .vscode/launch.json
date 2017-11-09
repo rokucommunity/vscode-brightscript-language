@@ -17,35 +17,19 @@
             ],
             "preLaunchTask": "npm"
         },
-		{
+        {
             "name": "Server",
             "stopOnEntry": false,
-			"type": "node",
-			"request": "launch",
-			"cwd": "${workspaceRoot}",
-			"program": "${workspaceRoot}/src/debugger.ts",
-			"args": [
-				"--server=4711"
-			],
-			"outFiles": [
-				"${workspaceRoot}/out/src/debugger.js"
-			]
-		},
-        {
-            "name": "Launch Tests",
-            "type": "extensionHost",
+            "type": "node",
             "request": "launch",
-            "runtimeExecutable": "${execPath}",
+            "cwd": "${workspaceRoot}",
+            "program": "${workspaceRoot}/src/debugger.ts",
             "args": [
-                "--extensionDevelopmentPath=${workspaceRoot}",
-                "--extensionTestsPath=${workspaceRoot}/out/test"
+                "--server=4711"
             ],
-            "stopOnEntry": false,
-            "sourceMaps": true,
             "outFiles": [
-                "${workspaceRoot}/out/test/**/*.js"
-            ],
-            "preLaunchTask": "npm"
+                "${workspaceRoot}/out/src/debugger.js"
+            ]
         }
     ],
     "compounds": [

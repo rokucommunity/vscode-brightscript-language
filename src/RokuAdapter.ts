@@ -12,6 +12,7 @@ export class RokuAdapter {
     }
     private client: Socket;
     private emitter: EventEmitter;
+    private isSuspended = false;
 
     private state: DebugState = <any>{
         expressions: {}
@@ -22,7 +23,7 @@ export class RokuAdapter {
      * @param eventName 
      * @param handler 
      */
-    public on(eventName: 'suspend', handler: (threadId: number) => void)
+    public on(eventName: 'suspend', handler: () => void)
     public on(eventName: 'compile-error', handler: (params: { path: string; lineNumber: number; }) => void)
     public on(eventName: 'close', handler: () => void)
     public on(eventName: string, handler: (payload: any) => void) {
@@ -72,6 +73,11 @@ export class RokuAdapter {
     }
 
     /**
+     * Allows other methods to disable the main data listener
+     */
+    private enableMainDataListener = true;
+
+    /**
      * Connect to the telnet session. This should be called before the channel is launched, and there should be a breakpoint set at the first
      * line of the entry function of the source code
      */
@@ -86,6 +92,9 @@ export class RokuAdapter {
             let resolved = false;
             this.clientDisconnectors.push(
                 this.addListener('data', async (data) => {
+                    if (!this.enableMainDataListener) {
+                        return;
+                    }
                     //resolve the connection once the data events have settled
                     if (!resolved) {
                         resolved = true;
@@ -108,11 +117,11 @@ export class RokuAdapter {
                         //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                         //wait until we see the brightscript debugger prompt
                         if (match = /Brightscript\s+Debugger>\s+$/i.exec(dataString)) {
-                            this.isAtDebuggerPrompt = true;
-                            if (this.isActivated) {
-                                let threads = await this.getThreads();
-                                this.emit('suspend', threads[0].threadId);
+                            //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
+                            if (this.isActivated && this.isAtDebuggerPrompt === false) {
+                                this.emit('suspend');
                             }
+                            this.isAtDebuggerPrompt = true;
                         } else {
                             this.isAtDebuggerPrompt = false;
                         }
@@ -218,6 +227,7 @@ export class RokuAdapter {
         this.state = <any>{
             expressions: {}
         };
+        this.isAtDebuggerPrompt = false;
     }
 
     public getStackTrace() {
@@ -266,6 +276,7 @@ export class RokuAdapter {
      * Get data from the server. Let the callbacks settle before resolving
      */
     private getData() {
+        this.enableMainDataListener = false;
         return new Promise<string>((resolve) => {
             let allData = '';
             let disconnect = this.addListener('data', (data) => {
@@ -274,6 +285,7 @@ export class RokuAdapter {
                 //if data is stopped at the prompt, return the data
                 if (match = /Brightscript\s+Debugger>\s+$/i.exec(allData)) {
                     disconnect();
+                    this.enableMainDataListener = true;
                     resolve(allData);
                 }
             });
@@ -410,7 +422,7 @@ export class RokuAdapter {
                 return children;
             }
             let match;
-            match = /(.*):(.*)/i.exec(line);
+            match = /(\w+):(.+)/i.exec(line);
             let name = match[1].trim();
             let value = match[2].trim();
 
@@ -428,7 +440,7 @@ export class RokuAdapter {
                 child.value = type;
             } else {
                 child.type = this.getPrimativeTypeFromValue(line);
-                child.value = line;
+                child.value = value;
                 child.highLevelType = 'primative';
             }
             children.push(child);
@@ -493,46 +505,44 @@ export class RokuAdapter {
     /**
      * Get a list of threads. The first thread in the list is the active thread
      */
-    public getThreads(): Promise<Thread[]> {
+    public async getThreads() {
         if (this.state.threads) {
             return this.state.threads;
         }
-        return this.state.threads = new Promise((resolve, reject) => {
-            let disconnect = this.addListener('data', (data) => {
-                let dataString = data.toString();
-                let matches;
-                if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
-                    let threads: Thread[] = [];
-                    //skip index 0 because it's the whole string
-                    for (let i = 1; i < matches.length; i = i + 4) {
-                        let threadId: string = matches[i];
-                        let thread = <Thread>{
-                            isSelected: false,
-                            filePath: matches[i + 1],
-                            lineNumber: parseInt(matches[i + 2]),
-                            lineContents: matches[i + 3]
-                        }
-                        if (threadId.indexOf('*') > -1) {
-                            thread.isSelected = true;
-                            threadId = threadId.replace('*', '');
-                        }
-                        thread.threadId = parseInt(threadId);
-                        threads.push(thread);
-                    }
-                    //make sure the selected thread is at the top
-                    threads.sort((a, b) => {
-                        return a.isSelected ? -1 : 1;
-                    });
-                    disconnect();
-                    resolve(threads);
+        //since the main data listener handles every prompt, but also calls this current function, we need to disable its handling
+        //until we get our threads result
+        this.enableMainDataListener = false;
+
+        let data = await this.execute('threads');
+        //re-enable the listener for future requests
+        this.enableMainDataListener = true;
+
+        let dataString = data.toString();
+        let matches;
+        let threads: Thread[] = [];
+        if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
+            //skip index 0 because it's the whole string
+            for (let i = 1; i < matches.length; i = i + 4) {
+                let threadId: string = matches[i];
+                let thread = <Thread>{
+                    isSelected: false,
+                    filePath: matches[i + 1],
+                    lineNumber: parseInt(matches[i + 2]),
+                    lineContents: matches[i + 3]
                 }
-            });
-            this.client.write('threads\r\n', 'utf8', (err) => {
-                if (err) {
-                    reject(err);
+                if (threadId.indexOf('*') > -1) {
+                    thread.isSelected = true;
+                    threadId = threadId.replace('*', '');
                 }
+                thread.threadId = parseInt(threadId);
+                threads.push(thread);
+            }
+            //make sure the selected thread is at the top
+            threads.sort((a, b) => {
+                return a.isSelected ? -1 : 1;
             });
-        });
+        }
+        return threads;
     }
 
     /**

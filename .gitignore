@@ -1,2 +1,5 @@
 out
 node_modules
+coverage
+.nyc_output
+.roku-deploy-staging

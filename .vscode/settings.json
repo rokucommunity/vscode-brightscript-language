@@ -1,6 +1,9 @@
 {
     "files.exclude": {
         "out": false,
-        "node_modules": true
+        "node_modules": true,
+        ".nyc_output": true,
+        ".roku-deploy-staging": true,
+        "coverage": true
     }
 }

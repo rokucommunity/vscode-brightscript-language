@@ -4,18 +4,18 @@ import {
 	InitializedEvent, TerminatedEvent, StoppedEvent, BreakpointEvent, OutputEvent,
 	Thread, StackFrame, Scope, Source, Handles, Breakpoint, ErrorDestination, Variable
 } from 'vscode-debugadapter';
-import { DebugProtocol, } from 'vscode-debugprotocol';
+import { DebugProtocol } from 'vscode-debugprotocol';
 import { basename } from 'path';
 import * as path from 'path';
 import * as glob from 'glob';
-import * as rokuDeploy from 'roku-deploy';
+import * as ImportedRokuDeploy from 'roku-deploy';
 import * as Q from 'q';
 import * as fsExtra from 'fs-extra';
 import * as eol from 'eol';
 import { EventName, RokuAdapter, EvaluateContainer } from './RokuAdapter';
 import * as findInFiles from 'find-in-files';
 
-class BrightScriptDebugSession extends DebugSession {
+export class BrightScriptDebugSession extends DebugSession {
 	public constructor() {
 		super();
 		// this debugger uses zero-based lines and columns
@@ -23,11 +23,18 @@ class BrightScriptDebugSession extends DebugSession {
 		this.setDebuggerColumnsStartAt1(true);
 	}
 
+	//set imports as class properties so they can be spied upon during testing
+	public rokuDeploy = require('roku-deploy');
+
 	private rokuAdapterDeferred = defer<RokuAdapter>();
 
 	private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
 	private breakpointIdCounter = 0;
 	private stackFrameIdCounter = 1;
+	private evaluateRefIdLookup: { [expression: string]: number } = {};
+	private evaluateRefIdCounter = 0;
+
+	private variables: { [refId: number]: AugmentedVariable } = {};
 
 	private rokuAdapter: RokuAdapter;
 
@@ -39,7 +46,7 @@ class BrightScriptDebugSession extends DebugSession {
 
 	private launchArgs: LaunchRequestArguments;
 
-	private get baseProjectPath() {
+	public get baseProjectPath() {
 		return path.normalize(this.launchArgs.rootDir);
 	}
 
@@ -48,8 +55,8 @@ class BrightScriptDebugSession extends DebugSession {
 	 * The 'initialize' request is the first request called by the frontend
 	 * to interrogate the features the debug adapter provides.
 	 */
-	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-
+	public initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
+		this.log('initializeRequest');
 		// since this debug adapter can accept configuration requests like 'setBreakpoint' at any time,
 		// we request them early by sending an 'initializeRequest' to the frontend.
 		// The frontend will end the configuration sequence by calling 'configurationDone' request.
@@ -71,16 +78,17 @@ class BrightScriptDebugSession extends DebugSession {
 
 
 	private launchRequestWasCalled = false;
-	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
+	public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
+		this.log('launchRequest');
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
-		let disconnect;
+		let disconnect = () => { };
 
 		let error: Error;
 		console.log('Packaging and deploying to roku');
 		try {
 			//copy all project files to the staging folder
-			let stagingFolder = await rokuDeploy.prepublishToStaging(args);
+			let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
 
 			//TODO add breakpoint lines to source files and then publish
 			await this.addBreakpointStatements(stagingFolder);
@@ -89,17 +97,17 @@ class BrightScriptDebugSession extends DebugSession {
 			(args as any).retainStagingFolder = true;
 
 			//create zip package from staging folder
-			await rokuDeploy.zipPackage(args);
+			await this.rokuDeploy.zipPackage(args);
 
 			//force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing
-			await rokuDeploy.pressHomeButton(args.host);
+			await this.rokuDeploy.pressHomeButton(args.host);
 
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
 
 			//listen for a closed connection (shut down when received)
 			this.rokuAdapter.on('close', () => {
-				error = new Error('Lost connection with Roku. Perhaps another device was already connected');
+				error = new Error('Unable to connect to Roku. Is another device already connected?');
 			});
 
 			//watch 
@@ -111,8 +119,8 @@ class BrightScriptDebugSession extends DebugSession {
 
 			//ignore the compile error failure from within the publish
 			(args as any).failOnCompileError = false;
-			//publish the package to the target Roku
-			await rokuDeploy.publish(args);
+			//publish the package to the target Roku  
+			await this.rokuDeploy.publish(args);
 
 			//tell the adapter adapter that the channel has been launched. 
 			await this.rokuAdapter.activate();
@@ -135,6 +143,7 @@ class BrightScriptDebugSession extends DebugSession {
 	}
 
 	protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
+		this.log('sourceRequest');
 		let old = this.sendResponse;
 		this.sendResponse = function (...args) {
 			old.apply(this, args);
@@ -149,6 +158,7 @@ class BrightScriptDebugSession extends DebugSession {
 	}
 
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
+		this.log('setBreakpointsRequest');
 		//roku currently only supports in-code breakpoints, so we can't add new breakpoints after the project is running.
 		if (this.launchRequestWasCalled) {
 			this.sendEvent(new OutputEvent('\nBreakpoints cannot be set during a debugging session', 'stdout'));
@@ -176,26 +186,27 @@ class BrightScriptDebugSession extends DebugSession {
 	}
 
 	protected async threadsRequest(response: DebugProtocol.ThreadsResponse) {
-		// console.log('threadsRequest');
-		if (this.rokuAdapter) {
-			let rokuThreads = await this.rokuAdapter.getThreads();
+		this.log('threadsRequest');
+		//wait for the roku adapter to load
+		await this.getRokuAdapter();
 
-			let threads = [];
-			for (let thread of rokuThreads) {
-				threads.push(
-					new Thread(thread.threadId, `Thread ${thread.threadId}`)
-				);
-			}
-			response.body = {
-				threads: threads
-			};
+		let rokuThreads = await this.rokuAdapter.getThreads();
+
+		let threads = [];
+		for (let thread of rokuThreads) {
+			threads.push(
+				new Thread(thread.threadId, `Thread ${thread.threadId}`)
+			);
 		}
+		response.body = {
+			threads: threads
+		};
 
 		this.sendResponse(response);
 	}
 
 	protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
-		// console.log('stackTraceRequest');
+		this.log('stackTraceRequest');
 		let stackTrace = await this.rokuAdapter.getStackTrace();
 		let frames = [];
 
@@ -231,23 +242,25 @@ class BrightScriptDebugSession extends DebugSession {
 	}
 
 	protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-		console.log('scopesRequest');
+		this.log('scopesRequest');
 
 		this.sendResponse(response);
 	}
 
 	protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments) {
+		this.log('continueRequest');
 		await this.rokuAdapter.continue();
 		this.sendResponse(response);
 	}
 
 	protected async pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments) {
+		this.log('pauseRequest');
 		await this.rokuAdapter.pause();
 		this.sendResponse(response);
 	}
 
 	protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments) {
-		console.log('reverseContinueRequest');
+		this.log('reverseContinueRequest');
 		this.sendResponse(response);
 	}
 
@@ -257,75 +270,46 @@ class BrightScriptDebugSession extends DebugSession {
 	 * @param args 
 	 */
 	protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments) {
+		this.log('nextRequest');
 		await this.rokuAdapter.stepOver();
 		this.sendResponse(response);
 	}
 
 	protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments) {
+		this.log('stepInRequest');
 		await this.rokuAdapter.stepInto();
 		this.sendResponse(response);
 	}
 
 	protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments) {
+		this.log('stepOutRequest');
 		await this.rokuAdapter.stepOut();
 		this.sendResponse(response);
 	}
 
 	protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments) {
-		console.log('stepBackRequest');
+		this.log('stepBackRequest');
+
 		this.sendResponse(response);
 	}
 
-	protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
-		console.log(`variablesRequest: ${JSON.stringify(args)}`);
+	protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
+		this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
 		//find the variable with this reference
 		let v = this.variables[args.variablesReference];
-
+		//query for child vars if we haven't done it yet.
+		if (v.childVariables.length === 0) {
+			let result = await this.rokuAdapter.evaluate(v.evaluateName);
+			let tempVar = this.getVariableFromResult(result);
+			v.childVariables = tempVar.childVariables
+		}
 		response.body = {
-			variables: (v as any).childVariables
+			variables: v.childVariables
 		}
 		// }
 		this.sendResponse(response);
 	}
-
-	private variables: { [refId: number]: Variable } = {};
-
-	private getVariableFromResult(result: EvaluateContainer) {
-		let refId = this.getEvaluateRefId(result.evaluateName);
-		let arr = [1, 2, 3];
-		let v: DebugProtocol.Variable;
-		if (result.highLevelType === 'primative') {
-			v = new Variable(result.name, `${result.value}`);
-		} else if (result.highLevelType === 'array') {
-			v = new Variable(result.name, `${result.type} `, refId, result.children.length, 0);
-			this.variables[refId] = v;
-		} else if (result.highLevelType === 'object') {
-			v = new Variable(result.name, `${result.type} `, refId, 0, result.children.length);
-			this.variables[refId] = v;
-		} else if (result.highLevelType === 'function') {
-			v = new Variable(result.name, result.value);
-		}
-		v.evaluateName = result.evaluateName;
-		if (result.children) {
-			let childVariables = [];
-			for (let childContainer of result.children) {
-				let childVar = this.getVariableFromResult(childContainer);
-				childVariables.push(childVar);
-			}
-			(v as any).childVariables = childVariables;
-		}
-		return v;
-	}
-
-	private getEvaluateRefId(expression: string) {
-		if (!this.evaluateRefIdLookup[expression]) {
-			this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
-		}
-		return this.evaluateRefIdLookup[expression];
-	}
-	private evaluateRefIdLookup: { [expression: string]: number } = {};
-	private evaluateRefIdCounter = 0;
 
 	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
 		console.log(`evaluateRequest: ${args.expression} `);
@@ -374,7 +358,7 @@ class BrightScriptDebugSession extends DebugSession {
 	protected async disconnectRequest(response: any, args: any) {
 		this.rokuAdapter.destroy();
 		//return to the home screen
-		await rokuDeploy.pressHomeButton(this.launchArgs.host);
+		await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
 		this.sendResponse(response);
 	}
 
@@ -384,7 +368,9 @@ class BrightScriptDebugSession extends DebugSession {
 		this.rokuAdapter = new RokuAdapter(host);
 
 		//when the debugger suspends (pauses for debugger input)
-		this.rokuAdapter.on('suspend', (threadId) => {
+		this.rokuAdapter.on('suspend', async () => {
+			let threads = await this.rokuAdapter.getThreads();
+			let threadId = threads[0].threadId;
 			//determine if this is the "stop on entry" breakpoint
 			let isStoppedOnEntry = firstSuspend && this.entryBreakpoint;
 
@@ -393,6 +379,7 @@ class BrightScriptDebugSession extends DebugSession {
 				//skip the breakpoint 
 				this.rokuAdapter.continue();
 			} else {
+				this.clearState();
 				let exceptionText = '';
 				const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
 				(event.body as any).allThreadsStopped = false;
@@ -543,6 +530,49 @@ class BrightScriptDebugSession extends DebugSession {
 		return resultLineNumber;
 	}
 
+	private log(...args) {
+		console.log.apply(console, args);
+	}
+
+	private getVariableFromResult(result: EvaluateContainer) {
+		let refId = this.getEvaluateRefId(result.evaluateName);
+		let arr = [1, 2, 3];
+		let v: AugmentedVariable;
+		if (result.highLevelType === 'primative') {
+			v = new Variable(result.name, `${result.value}`);
+		} else if (result.highLevelType === 'array') {
+			v = new Variable(result.name, result.type, refId, result.children.length, 0);
+			this.variables[refId] = v;
+		} else if (result.highLevelType === 'object') {
+			v = new Variable(result.name, result.type, refId, 0, result.children.length);
+			this.variables[refId] = v;
+		} else if (result.highLevelType === 'function') {
+			v = new Variable(result.name, result.value);
+		}
+		v.evaluateName = result.evaluateName;
+		if (result.children) {
+			let childVariables = [];
+			for (let childContainer of result.children) {
+				let childVar = this.getVariableFromResult(childContainer);
+				childVariables.push(childVar);
+			}
+			v.childVariables = childVariables;
+		}
+		return v;
+	}
+
+	private getEvaluateRefId(expression: string) {
+		if (!this.evaluateRefIdLookup[expression]) {
+			this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
+		}
+		return this.evaluateRefIdLookup[expression];
+	}
+
+	private clearState() {
+		//erase all cached variables
+		this.variables = {};
+	}
+
 }
 
 
@@ -566,6 +596,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * If true, stop at the first executable line of the program
 	 */
 	stopOnEntry: boolean;
+}
+
+interface AugmentedVariable extends DebugProtocol.Variable {
+	childVariables?: AugmentedVariable[];
 }
 
 

@@ -4,13 +4,66 @@
     "description": "Language support for Roku's BrightScript language.",
     "version": "0.0.1",
     "publisher": "TwitchBronBron",
+    "watch": {
+        "test": {
+            "extensions": "ts",
+            "patterns": [
+                "src"
+            ]
+        }
+    },
     "scripts": {
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
+        "compile": "tsc",
+        "watch": "tsc -watch",
         "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "npm run compile && node ./node_modules/vscode/bin/test",
+        "test": "npm run compile && nyc mocha out/debugger.spec.js",
+        "test-watch": "npm-watch test",
         "update-grammar": "wget https://raw.githubusercontent.com/celsoaf/BrightScript-vscode/master/syntaxes/brightscript.json -d syntaxes/brightscript.tmLanguage.json"
+    },
+    "devDependencies": {
+        "@types/fs-extra": "^4.0.3",
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^7.0.43",
+        "@types/sinon": "^2.3.7",
+        "cson-parser": "^1.3.3",
+        "fast-plist": "^0.1.2",
+        "mocha": "^3.5.0",
+        "node-wget": "^0.4.2",
+        "npm-watch": "^0.3.0",
+        "nyc": "^11.3.0",
+        "sinon": "^4.1.1",
+        "source-map-support": "^0.5.0",
+        "tslint": "^5.7.0",
+        "typescript": "^2.5.2",
+        "vsce": "^1.31.0",
+        "vscode": "^1.1.5",
+        "vscode-debugadapter-testsupport": "^1.24.0"
+    },
+    "dependencies": {
+        "brightscript-formatter": "^1.0.0",
+        "eol": "^0.9.1",
+        "find-in-files": "^0.4.0",
+        "fs-extra": "^4.0.2",
+        "glob": "^7.1.2",
+        "net": "^1.0.2",
+        "path": "^0.12.7",
+        "q": "^1.5.1",
+        "roku-deploy": "^0.1.11",
+
+        "vscode-debugadapter": "^1.24.0",
+        "vscode-debugprotocol": "^1.24.0"
+    },
+    "nyc": {
+      "reporter": [
+        "text",
+        "html"
+      ],
+      "exclude": [
+        "**/*.spec.*"  
+      ],
+      "sourceMap": true,
+      "instrument": true
     },
     "engines": {
         "vscode": "^1.17.0"
@@ -23,7 +76,7 @@
     "activationEvents": [
         "onLanguage:brightscript"
     ],
-    "main": "./out/src/extension",
+    "main": "./out/extension",
     "contributes": {
         "languages": [
             {
@@ -87,7 +140,7 @@
             {
                 "type": "brightscript",
                 "label": "BrightScript Debug",
-                "program": "./out/src/debugger.js",
+                "program": "./out/debugger.js",
                 "runtime": "node",
                 "initialConfigurations": [
                     {
@@ -147,32 +200,5 @@
                 }
             }
         ]
-    },
-    "devDependencies": {
-        "@types/fs-extra": "^4.0.3",
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^7.0.43",
-        "cson-parser": "^1.3.3",
-        "fast-plist": "^0.1.2",
-        "mocha": "^3.5.0",
-        "node-wget": "^0.4.2",
-        "typescript": "^2.5.2",
-        "vscode-debugadapter-testsupport": "^1.24.0",
-        "tslint": "^5.7.0",
-        "vsce": "^1.31.0",
-        "vscode": "^1.1.5"
-    },
-    "dependencies": {
-        "brightscript-formatter": "^1.0.0",
-        "eol": "^0.9.1",
-        "find-in-files": "^0.4.0",
-        "fs-extra": "^4.0.2",
-        "glob": "^7.1.2",
-        "net": "^1.0.2",
-        "path": "^0.12.7",
-        "q": "^1.5.1",
-        "roku-deploy": "^0.1.11",
-        "vscode-debugadapter": "^1.24.0",
-        "vscode-debugprotocol": "^1.24.0"
     }
 }
