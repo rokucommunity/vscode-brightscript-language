@@ -1,7 +1,5 @@
 # BrightScript Language support for VSCode
 
-This is the README for your extension "brightscript-language". After writing up a brief description, we recommend including the following sections.
-
 ## Features
 
 - Syntax highlighting
