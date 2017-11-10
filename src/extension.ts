@@ -31,7 +31,7 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 			if (config.type === 'brightscript') {
 				config.name = config.name ? config.name : 'BrightScript Debug: Launch';
 				config.request = config.request ? config.request : 'launch';
-				config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : true;
+				config.stopOnEntry = config.stopOnEntry === false ? false : true;
 				config.rootDir = config.rootDir ? config.rootDir : "${workspaceFolder}";
 			}
 			if (config.host === 'IP_ADDRESS_HERE') {

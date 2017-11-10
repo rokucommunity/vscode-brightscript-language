@@ -423,7 +423,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			let threads = await this.rokuAdapter.getThreads();
 			let threadId = threads[0].threadId;
 			//determine if this is the "stop on entry" breakpoint
-			let isStoppedOnEntry = firstSuspend && this.entryBreakpoint;
+			let isStoppedOnEntry = firstSuspend && !!this.entryBreakpoint;
 
 			//skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
 			if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
