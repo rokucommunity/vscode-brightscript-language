@@ -116,9 +116,11 @@ export class BrightScriptDebugSession extends DebugSession {
 			});
 
 			//watch 
-			disconnect = this.rokuAdapter.on('compile-error', (compileErrorArgs) => {
-				let clientPath = this.convertDebuggerPathToClient(compileErrorArgs.path);
-				let clientLine = this.convertDebuggerLineToClientLine(compileErrorArgs.path, compileErrorArgs.lineNumber);
+			disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
+				//for now, just alert the first error found
+				let compileError = compileErrors[0];
+				let clientPath = this.convertDebuggerPathToClient(compileError.path);
+				let clientLine = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
 				error = new Error(`Compile error: ${clientPath}: ${clientLine}`);
 			});
 
@@ -354,7 +356,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			//debug console typing
 			else if (args.context === 'repl') {
 				let result = await this.rokuAdapter.evaluate(args.expression);
-				
+
 			}
 		} else {
 			console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');

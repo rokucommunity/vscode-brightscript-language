@@ -23,7 +23,7 @@ export class RokuAdapter {
     public on(eventName: 'suspend', handler: () => void)
     public on(eventname: 'console-output', handler: (output: string) => void)
     public on(eventname: 'unhandled-console-output', handler: (output: string) => void)
-    public on(eventName: 'compile-error', handler: (params: { path: string; lineNumber: number; }) => void)
+    public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void)
     public on(eventName: 'close', handler: () => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
@@ -32,7 +32,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-error' | 'close' | 'console-output' | 'unhandled-console-output', data?) {
+    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -152,7 +152,6 @@ export class RokuAdapter {
      * @param responseText
      */
     private checkForCompileError(responseText: string) {
-
         //throw out any lines before the last found compiling line
         let lines = eol.split(responseText);
         let lastIndex: number = -1;
@@ -170,10 +169,24 @@ export class RokuAdapter {
 
         //if there is a line with a compiler error in it, emit an event
         let match;
-        if (match = /compile error.* in (.*)\((\d+)\)/i.exec(responseText)) {
+        let regexp = /compile error.* in (.*)\((\d+)\)/gi;
+        let errors: { path: string; lineNumber: number }[] = [];
+
+        while (match = regexp.exec(responseText)) {
             let path = match[1];
-            let lineNumber = match[2];
-            this.emit('compile-error', { path, lineNumber });
+            let lineNumber = parseInt(match[2]);
+            //if this match is a livecompile error, throw out all prior errors because that means we are re-running
+            if (path.toLowerCase().indexOf('$livecompile') > -1) {
+                errors = [];
+            } else {
+                errors.push({
+                    path,
+                    lineNumber
+                });
+            }
+        }
+        if (errors.length > 0) {
+            this.emit('compile-errors', errors);
         }
     }
     /**
