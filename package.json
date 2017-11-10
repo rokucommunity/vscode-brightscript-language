@@ -50,22 +50,22 @@
         "path": "^0.12.7",
         "q": "^1.5.1",
         "roku-deploy": "^0.1.11",
-
         "vscode-debugadapter": "^1.24.0",
         "vscode-debugprotocol": "^1.24.0"
     },
     "nyc": {
-      "reporter": [
-        "html"
-      ],
-      "exclude": [
-        "**/*.spec.*"  
-      ],
-      "sourceMap": true,
-      "instrument": true
+        "reporter": [
+            "html"
+        ],
+        "exclude": [
+            "**/*.spec.*"
+        ],
+        "sourceMap": true,
+        "instrument": true
     },
     "engines": {
-        "vscode": "^1.17.0"
+        "vscode": "^1.17.0",
+        "node": "^7.9.0"
     },
     "categories": [
         "Formatters",
@@ -73,6 +73,7 @@
         "Debuggers"
     ],
     "activationEvents": [
+        "onDebug",
         "onLanguage:brightscript"
     ],
     "main": "./out/extension",
@@ -146,9 +147,10 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
-                        "host": "HOST_HERE",
+                        "host": "IP_ADDRESS_HERE",
                         "password": "PASSWORD_HERE",
-                        "rootDir": "${workspaceRoot}"
+                        "rootDir": "${workspaceFolder}",
+                        "consoleOutput": "normal"
                     }
                 ],
                 "configurationSnippets": [
@@ -160,9 +162,10 @@
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
                             "stopOnEntry": true,
-                            "host": "HOST_HERE",
+                            "host": "IP_ADDRESS_HERE",
                             "password": "PASSWORD_HERE",
-                            "rootDir": "^\"\\${workspaceRoot}\""
+                            "rootDir": "^\"\\${workspaceFolder}\"",
+                            "consoleOutput": "normal"
                         }
                     }
                 ],
@@ -193,6 +196,15 @@
                                 "type": "boolean",
                                 "description": "Automatically stop program after launch.",
                                 "default": true
+                            },
+                            "consoleOutput": {
+                                "type": "string",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
+                                "default": "normal",
+                                "enum": [
+                                    "full",
+                                    "normal"
+                                ]
                             }
                         }
                     }

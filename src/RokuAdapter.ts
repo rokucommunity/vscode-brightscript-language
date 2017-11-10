@@ -1,6 +1,8 @@
 import { Socket } from "net";
 import * as EventEmitter from 'events';
 import * as eol from 'eol';
+import * as rokuDeploy from 'roku-deploy';
+import * as net from 'net';
 
 
 /**
@@ -36,8 +38,6 @@ export class RokuAdapter {
         this.emitter.emit(eventName, data);
     }
 
-    private clientDisconnectors: any[] = [];
-
     /**
      * The debugger needs to tell us when to be active (i.e. when the package was deployed)
      */
@@ -60,90 +60,93 @@ export class RokuAdapter {
     }
 
     /**
-     * Allows other methods to disable the main data listener
+     * Wait until the client has stopped sending messages. This is used mainly during .connect so we can ignore all old messages from the server
+     * @param client 
+     * @param name 
+     * @param maxWaitMilliseconds 
      */
-    private enableMainDataListener = true;
+    private settle(client: Socket, name: string, maxWaitMilliseconds = 400) {
+        return new Promise((resolve, reject) => {
+            let callCount = 0;
+            client.addListener(name, function handler(data) {
+                let myCallCount = callCount;
+                setTimeout(function () {
+                    //if no other calls have been made since the timeout started, then the listener has settled
+                    if (myCallCount === callCount) {
+                        client.removeListener(name, handler);
+                        resolve();
+                    }
+                }, maxWaitMilliseconds);
+            });
+        });
+    }
 
     /**
      * Connect to the telnet session. This should be called before the channel is launched, and there should be a breakpoint set at the first
      * line of the entry function of the source code
      */
     public connect() {
-        return new Promise((resolve, reject) => {
-            var net = require('net');
+        return new Promise(async (resolve, reject) => {
+            //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
+            await rokuDeploy.pressHomeButton(this.host);
+
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
                 let k = 2;
             });
+
+            //listen for the close event
+            client.addListener('close', (err, data) => {
+                this.emit('close');
+            })
+
+            //if the connection fails, reject the connect promise
+            client.addListener('error', function (err) {
+                //this.emit(EventName.error, err);
+                reject(err);
+            })
+
+            await this.settle(client, 'data');
+
+            //hook up the pipeline to the socket
             this.requestPipeline = new RequestPipeline(client);
 
-            //forward the raw counsole-output
+            //forward all raw counsole output
             this.requestPipeline.on('console-output', (output) => {
                 this.emit('console-output', output);
             });
 
-            let resolved = false;
-            this.clientDisconnectors.push(
-                this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
-                    //forward the raw output
-                    this.emit('unhandled-console-output', responseText);
+            //listen for any console output that was not handled by other methods in the adapter
+            this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
+                //forward all unhandled console output
+                this.emit('unhandled-console-output', responseText);
 
-                    if (!this.enableMainDataListener) {
-                        return;
-                    }
+                let match;
 
-                    //resolve the connection once the data events have settled
-                    if (!resolved) {
-                        resolved = true;
-                        resolve();
-                        return;
-                    }
+                this.checkForCompileError(responseText);
 
-                    let match;
+                if (this.isActivated) {
+                    //console.log(dataString);
 
-                    this.checkForCompileError(responseText);
-
-                    if (this.isActivated) {
-                        //console.log(dataString);
-
-                        //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
-                        //wait until we see the brightscript debugger prompt
-                        if (match = /Brightscript\s+Debugger>\s+$/i.exec(responseText)) {
-                            //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
-                            if (this.isActivated && this.isAtDebuggerPrompt === false) {
-                                this.isAtDebuggerPrompt = true;
-                                this.emit('suspend');
-                            } else {
-                                this.isAtDebuggerPrompt = true;
-                            }
+                    //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
+                    //wait until we see the brightscript debugger prompt
+                    if (match = /Brightscript\s+Debugger>\s+$/i.exec(responseText)) {
+                        //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
+                        if (this.isActivated && this.isAtDebuggerPrompt === false) {
+                            this.isAtDebuggerPrompt = true;
+                            this.emit('suspend');
                         } else {
-                            this.isAtDebuggerPrompt = false;
+                            this.isAtDebuggerPrompt = true;
                         }
+                    } else {
+                        this.isAtDebuggerPrompt = false;
                     }
-                })
-            );
+                }
+            })
 
-            function addListener(name: string, handler: any) {
-                client.addListener(name, handler);
-                return () => {
-                    client.removeListener(name, handler);
-                };
-            }
-
-            this.clientDisconnectors.push(
-                addListener('close', (err, data) => {
-                    this.emit('close');
-                })
-            );
-
-            //if the connection fails, reject the connect promise
-            this.clientDisconnectors.push(
-                addListener('error', function (err) {
-                    //this.emit(EventName.error, err);
-                    reject(err);
-                })
-            );
+            //the adapter is connected and running smoothly. resolve the promise
+            resolve();
         });
     }
 
@@ -244,7 +247,10 @@ export class RokuAdapter {
         //clear the cache (we don't know what command the user entered)
         this.clearCache();
         //don't wait for the output...we don't know what command the user entered
-        await this.requestPipeline.executeCommand(command, false);
+        let responseText = await this.requestPipeline.executeCommand(command, true);
+        //we know that if we got a response, we are back at a debugger prompt
+        this.isAtDebuggerPrompt = true;
+        return responseText;
     }
 
     public async getStackTrace() {
@@ -449,6 +455,8 @@ export class RokuAdapter {
             return HighLevelType.array;
         } else if (expressionType === 'function') {
             return HighLevelType.function;
+        } else if (expressionType === '<uninitialized>') {
+            return HighLevelType.uninitialized;
         } else {
             return HighLevelType.object;
         }
@@ -498,13 +506,7 @@ export class RokuAdapter {
             throw new Error('Cannot get threads: debugger is not paused');
         }
         return await this.resolve('threads', async () => {
-            //since the main data listener handles every prompt, but also calls this current function, we need to disable its handling
-            //until we get our threads result
-            this.enableMainDataListener = false;
-
             let data = await this.requestPipeline.executeCommand('threads', true);
-            //re-enable the listener for future requests
-            this.enableMainDataListener = true;
 
             let dataString = data.toString();
             let matches;
@@ -539,10 +541,6 @@ export class RokuAdapter {
      * Disconnect from the telnet session and unset all objects
      */
     public destroy() {
-        //disconnect all client listeners
-        for (let disconnect of this.clientDisconnectors) {
-            disconnect();
-        }
         this.requestPipeline.destroy();
         this.requestPipeline = undefined;
         this.cache = undefined;
@@ -566,7 +564,8 @@ export enum HighLevelType {
     primative = 'primative',
     array = 'array',
     function = 'function',
-    object = 'object'
+    object = 'object',
+    uninitialized = 'uninitialized'
 }
 
 export interface EvaluateContainer {
@@ -658,7 +657,7 @@ export class RequestPipeline {
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
                 let commandText = `${command}\r\n`;
-                this.emit('console-output', commandText);
+                this.emit('console-output', command);
                 this.client.write(commandText);
             };
             this.requests.push({

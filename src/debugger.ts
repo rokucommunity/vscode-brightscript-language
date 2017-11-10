@@ -99,16 +99,21 @@ export class BrightScriptDebugSession extends DebugSession {
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
 
-			//force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing
-			await this.rokuDeploy.pressHomeButton(args.host);
-
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
 
-			this.rokuAdapter.on('console-output', (data) => {
-				//forward the console output
-				this.sendEvent(new OutputEvent(data, 'stdout'));
-			});
+			//pass along the console output
+			if (this.launchArgs.consoleOutput === 'full') {
+				this.rokuAdapter.on('console-output', (data) => {
+					//forward the console output
+					this.sendEvent(new OutputEvent(data, 'stdout'));
+				});
+			} else {
+				this.rokuAdapter.on('unhandled-console-output', (data) => {
+					//forward the console output
+					this.sendEvent(new OutputEvent(data, 'stdout'));
+				});
+			}
 
 			//listen for a closed connection (shut down when received)
 			this.rokuAdapter.on('close', () => {
@@ -174,17 +179,21 @@ export class BrightScriptDebugSession extends DebugSession {
 
 		const clientPath = path.normalize(args.source.path);
 		const clientLines = args.lines || [];
+		let extension = path.extname(clientPath).toLowerCase();
+		let actualBreakpoints: DebugProtocol.Breakpoint[] = [];
 
-		// set and verify breakpoint locations
-		const actualBreakpoints = clientLines.map((lineNumber) => {
-			const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber);
-			breakpoint.id = this.breakpointIdCounter++;
-			return breakpoint;
-		});
+		//only accept breakpoints from brightscript files
+		if (extension === '.brs') {
+			// set and verify breakpoint locations
+			actualBreakpoints = clientLines.map((lineNumber) => {
+				const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber);
+				breakpoint.id = this.breakpointIdCounter++;
+				return breakpoint;
+			});
 
-		//store the breakpoints indexed by clientPath
-		this.breakpointsByClientPath[clientPath] = actualBreakpoints;
-
+			//store the breakpoints indexed by clientPath
+			this.breakpointsByClientPath[clientPath] = actualBreakpoints;
+		}
 		// send back the actual breakpoint positions
 		response.body = {
 			breakpoints: actualBreakpoints
@@ -336,14 +345,16 @@ export class BrightScriptDebugSession extends DebugSession {
 
 	public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
 		if (this.rokuAdapter.isAtDebuggerPrompt) {
-			if (['hover', 'watch'].indexOf(args.context) > -1) {
-				let refId = this.getEvaluateRefId(args.expression);
+			if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
+				//if this command has the word print in front of it, remove that word
+				let expression = args.expression.replace(/^print/i, '').trim();
+				let refId = this.getEvaluateRefId(expression);
 				let v: DebugProtocol.Variable;
 				//if we already looked this item up, return it
 				if (this.variables[refId]) {
 					v = this.variables[refId];
 				} else {
-					let result = await this.rokuAdapter.getVariable(args.expression);
+					let result = await this.rokuAdapter.getVariable(expression);
 					v = this.getVariableFromResult(result);
 				}
 				response.body = {
@@ -355,8 +366,18 @@ export class BrightScriptDebugSession extends DebugSession {
 			}
 			//debug console typing
 			else if (args.context === 'repl') {
-				let result = await this.rokuAdapter.evaluate(args.expression);
-
+				//exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
+				let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
+				if (excludedExpressions.indexOf(args.expression.toLowerCase().trim()) > -1) {
+					this.sendEvent(new OutputEvent(`Expression '${args.expression}' not permitted when debugging in VSCode`, 'stdout'));
+				} else {
+					let result = await this.rokuAdapter.evaluate(args.expression);
+					response.body = <any>{
+						result
+					};
+					// //print the output to the screen
+					// this.sendEvent(new OutputEvent(result, 'stdout'));
+				}
 			}
 		} else {
 			console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
@@ -384,7 +405,9 @@ export class BrightScriptDebugSession extends DebugSession {
 	 * @param args 
 	 */
 	protected async disconnectRequest(response: any, args: any) {
-		this.rokuAdapter.destroy();
+		if (this.rokuAdapter) {
+			this.rokuAdapter.destroy();
+		}
 		//return to the home screen
 		await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
 		this.sendResponse(response);
@@ -565,7 +588,7 @@ export class BrightScriptDebugSession extends DebugSession {
 	private getVariableFromResult(result: EvaluateContainer) {
 		let arr = [1, 2, 3];
 		let v: AugmentedVariable;
-		if (result.highLevelType === 'primative') {
+		if (result.highLevelType === 'primative' || result.highLevelType === 'uninitialized') {
 			v = new Variable(result.name, `${result.value}`);
 		} else if (result.highLevelType === 'array') {
 			let refId = this.getEvaluateRefId(result.evaluateName);
@@ -625,6 +648,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * If true, stop at the first executable line of the program
 	 */
 	stopOnEntry: boolean;
+	/**
+	 * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
+	 */
+	consoleOutput: 'full' | 'normal';
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
