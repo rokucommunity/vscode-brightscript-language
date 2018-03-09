@@ -27,6 +27,8 @@ export class RokuAdapter {
     public on(eventname: 'unhandled-console-output', handler: (output: string) => void)
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void)
     public on(eventName: 'close', handler: () => void)
+    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void)
+    public on(eventName: 'cannot-continue', handler: () => void)
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -34,7 +36,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output', data?) {
+    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -119,12 +121,25 @@ export class RokuAdapter {
 
             //listen for any console output that was not handled by other methods in the adapter
             this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
+                //if there was a runtime error, handle it
+                var hasRuntimeError = this.checkForRuntimeError(responseText);
+                if (hasRuntimeError) {
+                    this.isAtDebuggerPrompt = true;
+                    return;
+                }
+
+                if (this.checkForCantContinue(responseText)) {
+                    this.isAtDebuggerPrompt = true;
+                    return;
+                }
+
                 //forward all unhandled console output
                 this.emit('unhandled-console-output', responseText);
 
                 let match;
 
                 this.checkForCompileError(responseText);
+
 
                 if (this.isActivated) {
                     //console.log(dataString);
@@ -148,6 +163,39 @@ export class RokuAdapter {
             //the adapter is connected and running smoothly. resolve the promise
             resolve();
         });
+    }
+
+    /**
+     * Look through response text for the "Can't continue" text
+     * @param responseText
+     */
+    private checkForCantContinue(responseText: string) {
+        if (/can't continue/gi.exec(responseText.trim())) {
+            this.emit('cannot-continue');
+        }
+    }
+
+    /**
+     * Look through the given response text for a runtime error
+     * @param responseText
+     */
+    private checkForRuntimeError(responseText: string) {
+        var match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
+        if (match) {
+            var message = match[1].trim();
+            var errorCode = match[2].trim().toLowerCase();
+            //if the codes encountered are the STOP or scriptBreak() calls, skip them 
+            if (errorCode === '&hf7' || errorCode === '&hf8') {
+                return false;
+            }
+            this.emit('runtime-error', <BrightScriptRuntimeError>{
+                message,
+                errorCode
+            });
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -260,7 +308,7 @@ export class RokuAdapter {
         return await this.resolve('stackTrace', async () => {
             //perform a request to load the stack trace
             let responseText = await this.requestPipeline.executeCommand('bt', true);
-            let regexp = /#(\d+)\s+(?:function|sub)\s+([\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
+            let regexp = /#(\d+)\s+(?:function|sub)\s+([\$\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
             let matches;
             let frames: StackFrame[] = [];
             while (matches = regexp.exec(responseText)) {
@@ -303,7 +351,7 @@ export class RokuAdapter {
 
             let data: string;
             //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
-            if (lowerExpressionType === 'string') {
+            if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                 data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
             }
             else {
@@ -313,7 +361,7 @@ export class RokuAdapter {
             let match;
             if (match = this.expressionRegex.exec(data)) {
                 let value = match[1];
-                if (lowerExpressionType === 'string') {
+                if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                     value = value.trim().replace(/--string-wrap--/g, '');
                     //add an escape character in front of any existing quotes
                     value = value.replace(/"/g, '\\"');
@@ -448,7 +496,7 @@ export class RokuAdapter {
         }
 
         expressionType = expressionType.toLowerCase();
-        let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'invalid'];
+        let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'rostring', 'invalid'];
         if (primativeTypes.indexOf(expressionType) > -1) {
             return HighLevelType.primative;
         } else if (expressionType === 'roarray') {
@@ -705,4 +753,9 @@ interface RequestPipelineRequest {
     executeCommand: () => void;
     onComplete: (data: string) => void;
     waitForPrompt: boolean;
+}
+
+interface BrightScriptRuntimeError {
+    message: string;
+    errorCode: string;
 }

@@ -41,7 +41,7 @@
         "vscode-debugadapter-testsupport": "^1.24.0"
     },
     "dependencies": {
-        "brightscript-formatter": "^1.0.0",
+        "brightscript-formatter": "^1.1.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.2",

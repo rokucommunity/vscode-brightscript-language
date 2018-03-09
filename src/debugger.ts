@@ -201,6 +201,11 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
+
+	protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
+		this.log('exceptionInfoRequest');
+	}
+
 	protected async threadsRequest(response: DebugProtocol.ThreadsResponse) {
 		this.log('threadsRequest');
 		//wait for the roku adapter to load
@@ -437,6 +442,18 @@ export class BrightScriptDebugSession extends DebugSession {
 				this.sendEvent(event);
 			}
 			firstSuspend = false;
+		});
+
+		//anytime the adapter encounters an exception on the roku,
+		this.rokuAdapter.on('runtime-error', async (exception) => {
+			var threads = await (await this.getRokuAdapter()).getThreads();
+			var threadId = threads[0].threadId;
+			this.sendEvent(new StoppedEvent('exception', threadId, exception.message));
+		});
+
+		// If the roku says it can't continue, we are no longer able to debug, so kill the debug session
+		this.rokuAdapter.on('cannot-continue', () => {
+			this.sendEvent(new TerminatedEvent());
 		});
 		//make the connection
 		await this.rokuAdapter.connect();
