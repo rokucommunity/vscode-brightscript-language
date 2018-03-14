@@ -1,16 +1,28 @@
 {
     "name": "brightscript-language",
     "displayName": "BrightScript Language",
-    "description": "Language support for Roku's BrightScript language.",
     "version": "0.0.1",
     "publisher": "TwitchBronBron",
-    "watch": {
-        "test": {
-            "extensions": "ts",
-            "patterns": [
-                "src"
-            ]
-        }
+    "description": "Language support for Roku's BrightScript language.",
+    "author": {
+        "name": "Bronley Plumb",
+        "email": "bronley@gmail.com"
+    },
+    "license": "MIT",
+    "keywords": [
+        "multi-root-ready"
+    ],
+    "engines": {
+        "vscode": "^1.17.0",
+        "node": "^7.9.0"
+    },
+    "icon": "",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language"
+    },
+    "bugs": {
+        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -20,6 +32,19 @@
         "test": "npm run compile && nyc mocha out/debugger.spec.js",
         "test-watch": "npm-watch test",
         "update-grammar": "wget https://raw.githubusercontent.com/celsoaf/BrightScript-vscode/master/syntaxes/brightscript.json -d syntaxes/brightscript.tmLanguage.json"
+    },
+    "dependencies": {
+        "brightscript-formatter": "^1.1.2",
+        "eol": "^0.9.1",
+        "find-in-files": "^0.4.0",
+        "fs-extra": "^4.0.2",
+        "glob": "^7.1.2",
+        "net": "^1.0.2",
+        "path": "^0.12.7",
+        "q": "^1.5.1",
+        "roku-deploy": "^0.1.11",
+        "vscode-debugadapter": "^1.24.0",
+        "vscode-debugprotocol": "^1.24.0"
     },
     "devDependencies": {
         "@types/fs-extra": "^4.0.3",
@@ -40,44 +65,92 @@
         "vscode": "^1.1.5",
         "vscode-debugadapter-testsupport": "^1.24.0"
     },
-    "dependencies": {
-        "brightscript-formatter": "^1.1.0",
-        "eol": "^0.9.1",
-        "find-in-files": "^0.4.0",
-        "fs-extra": "^4.0.2",
-        "glob": "^7.1.2",
-        "net": "^1.0.2",
-        "path": "^0.12.7",
-        "q": "^1.5.1",
-        "roku-deploy": "^0.1.11",
-        "vscode-debugadapter": "^1.24.0",
-        "vscode-debugprotocol": "^1.24.0"
-    },
-    "nyc": {
-        "reporter": [
-            "html"
-        ],
-        "exclude": [
-            "**/*.spec.*"
-        ],
-        "sourceMap": true,
-        "instrument": true
-    },
-    "engines": {
-        "vscode": "^1.17.0",
-        "node": "^7.9.0"
-    },
-    "categories": [
-        "Formatters",
-        "Languages",
-        "Debuggers"
-    ],
+    "main": "./out/extension",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript"
     ],
-    "main": "./out/extension",
     "contributes": {
+        "breakpoints": [
+            {
+                "language": "brightscript"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "brightscript",
+                "label": "BrightScript Debug",
+                "program": "./out/debugger.js",
+                "runtime": "node",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "host",
+                            "password",
+                            "rootDir"
+                        ],
+                        "properties": {
+                            "host": {
+                                "type": "string",
+                                "description": "The host or ip address for the target Roku",
+                                "default": "HOST"
+                            },
+                            "password": {
+                                "type": "string",
+                                "description": "The password for the developer page on the target Roku",
+                                "default": "PASSWORD"
+                            },
+                            "rootDir": {
+                                "type": "string",
+                                "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
+                                "default": true
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Automatically stop program after launch.",
+                                "default": true
+                            },
+                            "consoleOutput": {
+                                "type": "string",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
+                                "default": "normal",
+                                "enum": [
+                                    "full",
+                                    "normal"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "brightscript",
+                        "request": "launch",
+                        "name": "BrightScript Debug: Launch",
+                        "host": "IP_ADDRESS_HERE",
+                        "password": "PASSWORD_HERE",
+                        "rootDir": "${workspaceFolder}",
+                        "consoleOutput": "normal"
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "BrightScript Debug: Launch",
+                        "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
+                        "body": {
+                            "type": "brightscript",
+                            "request": "launch",
+                            "name": "BrightScript Debug: Launch",
+                            "stopOnEntry": true,
+                            "host": "IP_ADDRESS_HERE",
+                            "password": "PASSWORD_HERE",
+                            "rootDir": "^\"\\${workspaceFolder}\"",
+                            "consoleOutput": "normal"
+                        }
+                    }
+                ]
+            }
+        ],
         "languages": [
             {
                 "id": "brightscript",
@@ -130,86 +203,29 @@
                     "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified."
                 }
             }
-        },
-        "breakpoints": [
-            {
-                "language": "brightscript"
-            }
+        }
+    },
+    "watch": {
+        "test": {
+            "extensions": "ts",
+            "patterns": [
+                "src"
+            ]
+        }
+    },
+    "nyc": {
+        "reporter": [
+            "html"
         ],
-        "debuggers": [
-            {
-                "type": "brightscript",
-                "label": "BrightScript Debug",
-                "program": "./out/debugger.js",
-                "runtime": "node",
-                "initialConfigurations": [
-                    {
-                        "type": "brightscript",
-                        "request": "launch",
-                        "name": "BrightScript Debug: Launch",
-                        "host": "IP_ADDRESS_HERE",
-                        "password": "PASSWORD_HERE",
-                        "rootDir": "${workspaceFolder}",
-                        "consoleOutput": "normal"
-                    }
-                ],
-                "configurationSnippets": [
-                    {
-                        "label": "BrightScript Debug: Launch",
-                        "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
-                        "body": {
-                            "type": "brightscript",
-                            "request": "launch",
-                            "name": "BrightScript Debug: Launch",
-                            "stopOnEntry": true,
-                            "host": "IP_ADDRESS_HERE",
-                            "password": "PASSWORD_HERE",
-                            "rootDir": "^\"\\${workspaceFolder}\"",
-                            "consoleOutput": "normal"
-                        }
-                    }
-                ],
-                "configurationAttributes": {
-                    "launch": {
-                        "required": [
-                            "host",
-                            "password",
-                            "rootDir"
-                        ],
-                        "properties": {
-                            "host": {
-                                "type": "string",
-                                "description": "The host or ip address for the target Roku",
-                                "default": "HOST"
-                            },
-                            "password": {
-                                "type": "string",
-                                "description": "The password for the developer page on the target Roku",
-                                "default": "PASSWORD"
-                            },
-                            "rootDir": {
-                                "type": "string",
-                                "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
-                                "default": true
-                            },
-                            "stopOnEntry": {
-                                "type": "boolean",
-                                "description": "Automatically stop program after launch.",
-                                "default": true
-                            },
-                            "consoleOutput": {
-                                "type": "string",
-                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
-                                "default": "normal",
-                                "enum": [
-                                    "full",
-                                    "normal"
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-        ]
-    }
+        "exclude": [
+            "**/*.spec.*"
+        ],
+        "sourceMap": true,
+        "instrument": true
+    },
+    "categories": [
+        "Formatters",
+        "Languages",
+        "Debuggers"
+    ]
 }
