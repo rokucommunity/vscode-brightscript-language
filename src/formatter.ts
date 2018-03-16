@@ -6,9 +6,9 @@ export class Formatter {
         let config = workspace.getConfiguration('brightscript.format');
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
-            var text = document.getText();
+            let text = document.getText();
             let formatter = new BrightScriptFormatter
-            var formattedText = formatter.format(text, {
+            let formattedText = formatter.format(text, {
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 compositeKeywords: config.compositeKeywords,
@@ -30,11 +30,11 @@ export class Formatter {
                 let formattedLine = lines[lineNumber];
 
                 let docLine = document.lineAt(lineNumber);
-                var range = new Range(
+                let range = new Range(
                     new Position(lineNumber, 0),
                     new Position(lineNumber, docLine.text.length)
                 );
-                let validatedRange = document.validateRange(range);
+                range = document.validateRange(range);
                 let edit = TextEdit.replace(range, formattedLine);
                 edits.push(edit);
             }

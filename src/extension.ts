@@ -25,7 +25,7 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 	 */
 	resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: DebugConfiguration, token?: CancellationToken): ProviderResult<DebugConfiguration> {
 		return Promise.resolve().then(async () => {
-			const editor = vscode.window.activeTextEditor;
+			//const editor = vscode.window.activeTextEditor;
 
 			//fill in any missing configuration values
 			if (config.type === 'brightscript') {

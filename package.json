@@ -1,7 +1,7 @@
 {
     "name": "brightscript-language",
     "displayName": "BrightScript Language",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "publisher": "TwitchBronBron",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -13,10 +13,9 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.17.0",
+        "vscode": "^1.18.0",
         "node": "^7.9.0"
     },
-    "icon": "",
     "repository": {
         "type": "git",
         "url": "https://github.com/TwitchBronBron/vscode-brightscript-language"
@@ -25,12 +24,15 @@
         "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc",
-        "watch": "tsc -watch",
-        "postinstall": "node ./node_modules/vscode/bin/install",
+        "prepublish": "tsc -p ./src",
+        "compile": "tsc -p ./src",
+        "tslint": "tslint ./src/**/*.ts",
+        "watch": "tsc -w -p ./src",
         "test": "npm run compile && nyc mocha out/debugger.spec.js",
         "test-watch": "npm-watch test",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "package": "vsce package",
+        "publish": "vsce publish",
         "update-grammar": "wget https://raw.githubusercontent.com/celsoaf/BrightScript-vscode/master/syntaxes/brightscript.json -d syntaxes/brightscript.tmLanguage.json"
     },
     "dependencies": {
@@ -42,28 +44,28 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.1.11",
-        "vscode-debugadapter": "^1.24.0",
-        "vscode-debugprotocol": "^1.24.0"
+        "roku-deploy": "^0.1.12",
+        "vscode-debugadapter": "1.27.0",
+        "vscode-debugprotocol": "1.27.0"
     },
     "devDependencies": {
         "@types/fs-extra": "^4.0.3",
-        "@types/mocha": "^2.2.42",
-        "@types/node": "^7.0.43",
+        "@types/mocha": "2.2.48",
+        "@types/node": "7.0.55",
         "@types/sinon": "^2.3.7",
         "cson-parser": "^1.3.3",
         "fast-plist": "^0.1.2",
-        "mocha": "^3.5.0",
+        "mocha": "5.0.1",
         "node-wget": "^0.4.2",
         "npm-watch": "^0.3.0",
         "nyc": "^11.3.0",
         "sinon": "^4.1.1",
         "source-map-support": "^0.5.0",
-        "tslint": "^5.7.0",
-        "typescript": "^2.5.2",
-        "vsce": "^1.31.0",
-        "vscode": "^1.1.5",
-        "vscode-debugadapter-testsupport": "^1.24.0"
+        "tslint": "5.9.1",
+        "typescript": "2.6.2",
+        "vsce": "1.37.5",
+        "vscode": "1.1.10",
+        "vscode-debugadapter-testsupport": "1.27.0"
     },
     "main": "./out/extension",
     "activationEvents": [
@@ -80,7 +82,7 @@
             {
                 "type": "brightscript",
                 "label": "BrightScript Debug",
-                "program": "./out/debugger.js",
+                "program": "./out/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {
                     "launch": {

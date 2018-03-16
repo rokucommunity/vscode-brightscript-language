@@ -22,13 +22,13 @@ export class RokuAdapter {
      * @param eventName 
      * @param handler 
      */
-    public on(eventName: 'suspend', handler: () => void)
-    public on(eventname: 'console-output', handler: (output: string) => void)
-    public on(eventname: 'unhandled-console-output', handler: (output: string) => void)
-    public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void)
-    public on(eventName: 'close', handler: () => void)
-    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void)
-    public on(eventName: 'cannot-continue', handler: () => void)
+    public on(eventName: 'suspend', handler: () => void);
+    public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
+    public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
+    public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
+    public on(eventName: 'cannot-continue', handler: () => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -101,13 +101,13 @@ export class RokuAdapter {
             //listen for the close event
             client.addListener('close', (err, data) => {
                 this.emit('close');
-            })
+            });
 
             //if the connection fails, reject the connect promise
             client.addListener('error', function (err) {
                 //this.emit(EventName.error, err);
                 reject(err);
-            })
+            });
 
             await this.settle(client, 'data');
 
@@ -122,7 +122,7 @@ export class RokuAdapter {
             //listen for any console output that was not handled by other methods in the adapter
             this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
                 //if there was a runtime error, handle it
-                var hasRuntimeError = this.checkForRuntimeError(responseText);
+                let hasRuntimeError = this.checkForRuntimeError(responseText);
                 if (hasRuntimeError) {
                     this.isAtDebuggerPrompt = true;
                     return;
@@ -158,7 +158,7 @@ export class RokuAdapter {
                         this.isAtDebuggerPrompt = false;
                     }
                 }
-            })
+            });
 
             //the adapter is connected and running smoothly. resolve the promise
             resolve();
@@ -180,10 +180,10 @@ export class RokuAdapter {
      * @param responseText
      */
     private checkForRuntimeError(responseText: string) {
-        var match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
+        let match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
         if (match) {
-            var message = match[1].trim();
-            var errorCode = match[2].trim().toLowerCase();
+            let message = match[1].trim();
+            let errorCode = match[2].trim().toLowerCase();
             //if the codes encountered are the STOP or scriptBreak() calls, skip them 
             if (errorCode === '&hf7' || errorCode === '&hf8') {
                 return false;
@@ -206,7 +206,7 @@ export class RokuAdapter {
         //throw out any lines before the last found compiling line
         let lines = eol.split(responseText);
         let lastIndex: number = -1;
-        for (var i = 0; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
             //if this line looks like the compiling line
             if (/------\s+compiling.*------/i.exec(line)) {
@@ -317,7 +317,7 @@ export class RokuAdapter {
                 for (let i = 1; i < matches.length; i = i + 4) {
                     let j = 1;
                     let frameId = parseInt(matches[i]);
-                    let functionIdentifier = matches[i + j++]
+                    let functionIdentifier = matches[i + j++];
                     let filePath = matches[i + j++];
                     let lineNumber = parseInt(matches[i + j++]);
                     let frame: StackFrame = {
@@ -325,7 +325,7 @@ export class RokuAdapter {
                         filePath,
                         lineNumber,
                         functionIdentifier
-                    }
+                    };
                     frames.push(frame);
                 }
             }
@@ -568,7 +568,7 @@ export class RokuAdapter {
                         filePath: matches[i + 1],
                         lineNumber: parseInt(matches[i + 2]),
                         lineContents: matches[i + 3]
-                    }
+                    };
                     if (threadId.indexOf('*') > -1) {
                         thread.isSelected = true;
                         threadId = threadId.replace('*', '');
@@ -655,7 +655,7 @@ export class RequestPipeline {
 
     private emitter = new EventEmitter();
 
-    on(eventName: 'unhandled-console-output' | 'console-output', handler: (data: string) => void)
+    on(eventName: 'unhandled-console-output' | 'console-output', handler: (data: string) => void);
     public on(eventName: string, handler: (data: string) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -681,7 +681,7 @@ export class RequestPipeline {
             }
             //we are processing. detect if we have reached a prompt. 
             else {
-                var match;
+                let match;
                 //if responseText produced a prompt, return the responseText
                 if (match = /Brightscript\s+Debugger>\s+$/i.exec(allResponseText)) {
                     //resolve the command's promise (if it cares)

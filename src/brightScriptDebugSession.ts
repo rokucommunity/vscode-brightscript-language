@@ -1,18 +1,12 @@
 import {
-	Logger, logger,
-	DebugSession, LoggingDebugSession,
-	InitializedEvent, TerminatedEvent, StoppedEvent, BreakpointEvent, OutputEvent,
-	Thread, StackFrame, Scope, Source, Handles, Breakpoint, ErrorDestination, Variable
+	DebugSession, InitializedEvent, TerminatedEvent, StoppedEvent, OutputEvent,
+	Thread, StackFrame, Source, Breakpoint, Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { basename } from 'path';
 import * as path from 'path';
-import * as glob from 'glob';
-import * as ImportedRokuDeploy from 'roku-deploy';
-import * as Q from 'q';
 import * as fsExtra from 'fs-extra';
 import * as eol from 'eol';
-import { EventName, RokuAdapter, EvaluateContainer } from './RokuAdapter';
+import { RokuAdapter, EvaluateContainer } from './RokuAdapter';
 import * as findInFiles from 'find-in-files';
 
 export class BrightScriptDebugSession extends DebugSession {
@@ -30,7 +24,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
 	private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
 	private breakpointIdCounter = 0;
-	private stackFrameIdCounter = 1;
 	private evaluateRefIdLookup: { [expression: string]: number } = {};
 	private evaluateRefIdCounter = 1;
 
@@ -42,7 +35,6 @@ export class BrightScriptDebugSession extends DebugSession {
 		return this.rokuAdapterDeferred.promise;
 	}
 
-	private _variableHandles = new Handles<string>();
 
 	private launchArgs: LaunchRequestArguments;
 
@@ -160,13 +152,13 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse = function (...args) {
 			old.apply(this, args);
 			this.sendResponse = old;
-		}
+		};
 		super.sourceRequest(response, args);
 	}
 
 
 	protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
-		console.log('configurationDoneRequest')
+		console.log('configurationDoneRequest');
 	}
 
 	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
@@ -336,7 +328,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			if (v.childVariables.length === 0) {
 				let result = await this.rokuAdapter.getVariable(v.evaluateName);
 				let tempVar = this.getVariableFromResult(result);
-				v.childVariables = tempVar.childVariables
+				v.childVariables = tempVar.childVariables;
 			}
 			childVariables = v.childVariables;
 		} else {
@@ -344,7 +336,7 @@ export class BrightScriptDebugSession extends DebugSession {
 		}
 		response.body = {
 			variables: childVariables
-		}
+		};
 		this.sendResponse(response);
 	}
 
@@ -365,8 +357,8 @@ export class BrightScriptDebugSession extends DebugSession {
 				response.body = {
 					result: v.value,
 					variablesReference: v.variablesReference,
-					namedVariables: v.namedVariables | 0,
-					indexedVariables: v.indexedVariables | 0
+					namedVariables: v.namedVariables || 0,
+					indexedVariables: v.indexedVariables || 0
 				};
 			}
 			//debug console typing
@@ -446,8 +438,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
 		//anytime the adapter encounters an exception on the roku,
 		this.rokuAdapter.on('runtime-error', async (exception) => {
-			var threads = await (await this.getRokuAdapter()).getThreads();
-			var threadId = threads[0].threadId;
+			let threads = await (await this.getRokuAdapter()).getThreads();
+			let threadId = threads[0].threadId;
 			this.sendEvent(new StoppedEvent('exception', threadId, exception.message));
 		});
 
@@ -460,9 +452,6 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.rokuAdapterDeferred.resolve(this.rokuAdapter);
 	}
 
-	private createSource(filePath: string): Source {
-		return new Source(basename(filePath), this.convertDebuggerPathToClient(filePath), undefined, undefined, 'mock-adapter-data');
-	}
 
 
 	/**
@@ -603,7 +592,6 @@ export class BrightScriptDebugSession extends DebugSession {
 	}
 
 	private getVariableFromResult(result: EvaluateContainer) {
-		let arr = [1, 2, 3];
 		let v: AugmentedVariable;
 		if (result.highLevelType === 'primative' || result.highLevelType === 'uninitialized') {
 			v = new Variable(result.name, `${result.value}`);
@@ -685,8 +673,8 @@ enum StoppedEventReason {
 }
 
 export function defer<T>() {
-	let resolve: (value?: T | PromiseLike<T>) => void
-	let reject: (reason?: any) => void
+	let resolve: (value?: T | PromiseLike<T>) => void;
+	let reject: (reason?: any) => void;
 	let promise = new Promise<T>((_resolve, _reject) => {
 		resolve = _resolve;
 		reject = _reject;
@@ -695,7 +683,5 @@ export function defer<T>() {
 		promise,
 		resolve,
 		reject
-	}
+	};
 }
-
-DebugSession.run(BrightScriptDebugSession);

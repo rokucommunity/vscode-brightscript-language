@@ -1,7 +1,7 @@
 import * as  assert from 'assert';
 import * as sinon from 'sinon';
 import * as path from 'path';
-import { BrightScriptDebugSession, defer } from './debugger';
+import { BrightScriptDebugSession, defer } from './brightScriptDebugSession';
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 import { EvaluateContainer, HighLevelType, PrimativeType } from './RokuAdapter';
 describe('Debugger', () => {
@@ -13,11 +13,14 @@ describe('Debugger', () => {
 	beforeEach(() => {
 		session = new BrightScriptDebugSession();
 		//mock the rokuDeploy module with promises so we can have predictable tests
-		session.rokuDeploy = {
-			prepublishToStaging: () => { return Promise.resolve() },
-			zipPackage: () => { return Promise.resolve() },
-			pressHomeButton: () => { return Promise.resolve() },
-			publish: () => { return Promise.resolve() },
+		session.rokuDeploy = <any>{
+			prepublishToStaging: () => { return Promise.resolve(); },
+			zipPackage: () => { return Promise.resolve(); },
+			pressHomeButton: () => { return Promise.resolve(); },
+			publish: () => { return Promise.resolve(); },
+			createPackage: () => { return Promise.resolve(); },
+			deploy: () => { return Promise.resolve(); },
+			getOptions: () => { }
 		};
 		(session as any).rokuAdapter = rokuAdapter;
 		//mock the roku adapter
@@ -86,7 +89,7 @@ describe('Debugger', () => {
 			});
 			rokuAdapter.getVariable = function () {
 				return Promise.resolve(getVariableValue);
-			}
+			};
 		});
 
 		it('returns the correct boolean variable', async () => {
@@ -156,7 +159,7 @@ describe('Debugger', () => {
 				children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
 			};
 			session.evaluateRequest(<any>{}, { context: 'hover', expression });
-			let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
+			/*let response = <DebugProtocol.EvaluateResponse>*/await getResponse(0);
 
 			//get variables
 			session.variablesRequest(<any>{}, { variablesReference: 1 });
