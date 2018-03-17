@@ -95,17 +95,22 @@
                             "host": {
                                 "type": "string",
                                 "description": "The host or ip address for the target Roku",
-                                "default": "HOST"
+                                "default": "${promptForHost}"
                             },
                             "password": {
                                 "type": "string",
                                 "description": "The password for the developer page on the target Roku",
-                                "default": "PASSWORD"
+                                "default": "${promptForPassword}"
                             },
                             "rootDir": {
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
                                 "default": true
+                            },
+                            "outDir": {
+                                "type": "string",
+                                "description": "The folder where the build artifacts and zip folder are placed",
+                                "default": "${workspaceFolder}/out"
                             },
                             "stopOnEntry": {
                                 "type": "boolean",
@@ -129,8 +134,8 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
-                        "host": "IP_ADDRESS_HERE",
-                        "password": "PASSWORD_HERE",
+                        "host": "${promptForHost}",
+                        "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
                         "consoleOutput": "normal"
                     }
@@ -144,8 +149,8 @@
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
                             "stopOnEntry": true,
-                            "host": "IP_ADDRESS_HERE",
-                            "password": "PASSWORD_HERE",
+                            "host": "${promptForHost}",
+                            "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
                             "consoleOutput": "normal"
                         }

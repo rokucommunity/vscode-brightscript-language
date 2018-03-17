@@ -33,20 +33,21 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 				config.request = config.request ? config.request : 'launch';
 				config.stopOnEntry = config.stopOnEntry === false ? false : true;
 				config.rootDir = config.rootDir ? config.rootDir : "${workspaceFolder}";
+				config.outDir = config.outDir ? config.outDir : "${workspaceFolder}/out";
 			}
-			if (config.host === 'IP_ADDRESS_HERE') {
+			if (config.host === '${promptForHost}') {
 				return vscode.window.showInputBox({
-					placeHolder: "Please enter the IP address of your Roku device",
-					value: "IP_ADDRESS_HERE"
+					placeHolder: "The IP address of your Roku device",
+					value: ""
 				}).then((host) => {
 					config.host = host;
 				});
 			}
 		}).then(() => {
-			if (config.password === 'PASSWORD_HERE') {
+			if (config.password === '${promptForPassword}') {
 				return vscode.window.showInputBox({
-					placeHolder: "Please enter the developer account password for your Roku device",
-					value: "PASSWORD_HERE"
+					placeHolder: "The developer account password for your Roku device",
+					value: ""
 				}).then((password) => {
 					config.password = password;
 				});

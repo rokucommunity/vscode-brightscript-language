@@ -86,7 +86,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			await this.addBreakpointStatements(stagingFolder);
 
 			//TODO - Remove this once this project is completed.
-			(args as any).retainStagingFolder = true;
+			(args as any).retainStagingFolder = false;
 
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
@@ -649,6 +649,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * The root directory that contains your Roku project. This path should point to the folder containing your manifest file
 	 */
 	rootDir: string;
+	/**
+	 * The folder where the output files are places during the packaging process
+	 */
+	outDir?: string;
 	/**
 	 * If true, stop at the first executable line of the program
 	 */
