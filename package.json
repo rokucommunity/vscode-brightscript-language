@@ -1,13 +1,14 @@
 {
-    "name": "brightscript-language",
+    "name": "brightscript",
     "displayName": "BrightScript Language",
     "version": "1.0.0",
-    "publisher": "TwitchBronBron",
+    "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
         "name": "Bronley Plumb",
         "email": "bronley@gmail.com"
     },
+    "icon": "images/icon.png",
     "license": "MIT",
     "keywords": [
         "multi-root-ready"
@@ -25,7 +26,7 @@
     },
     "scripts": {
         "prepublish": "tsc -p ./src",
-        "vscode:prepublish": "tsc -p ./src",
+        "vscode:prepublish1": "tsc -p ./src",
         "compile": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",
