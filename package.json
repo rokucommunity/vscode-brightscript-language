@@ -1,7 +1,7 @@
 {
     "name": "brightscript-language",
     "displayName": "BrightScript Language",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "publisher": "TwitchBronBron",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,6 +25,7 @@
     },
     "scripts": {
         "prepublish": "tsc -p ./src",
+        "vscode:prepublish": "tsc -p ./src",
         "compile": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",

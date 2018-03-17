@@ -4,7 +4,7 @@
 
 - Syntax highlighting
 - Basic code formatting (provided by the included [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter)) library
-- Publish directly from VSCode to a roku device (provided by the included[roku-deploy](https://github.com/TwitchBronBron/roku-deploy) library)
+- Publish directly from VSCode to a roku device (provided by the included [roku-deploy](https://github.com/TwitchBronBron/roku-deploy) library)
 - Debug your source code running on the Roku device from within VSCode 
 
 ## Requirements
@@ -33,7 +33,7 @@ Here is a sample launch configuration
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}", //update if roku files are nested
+            "rootDir": "${workspaceRoot}", //update if roku project lives in a subdirectory
             "stopOnEntry": false,
             "debugServer": 4711
         }

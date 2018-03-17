@@ -5,5 +5,7 @@ test/**
 src/**
 **/*.map
 .gitignore
-tsconfig.json
+**/tsconfig.json
+**/tslint.json
 vsc-extension-quickstart.md
+**coverage/**/*
