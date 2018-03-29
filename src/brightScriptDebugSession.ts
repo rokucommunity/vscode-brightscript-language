@@ -8,6 +8,7 @@ import * as fsExtra from 'fs-extra';
 import * as eol from 'eol';
 import { RokuAdapter, EvaluateContainer } from './RokuAdapter';
 import * as findInFiles from 'find-in-files';
+import * as glob from 'glob';
 
 export class BrightScriptDebugSession extends DebugSession {
 	public constructor() {
@@ -81,6 +82,9 @@ export class BrightScriptDebugSession extends DebugSession {
 		try {
 			//copy all project files to the staging folder
 			let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
+
+			//build a list of all files in the staging folder
+			this.loadStagingDirPaths(stagingFolder);
 
 			//TODO add breakpoint lines to source files and then publish
 			await this.addBreakpointStatements(stagingFolder);
@@ -383,6 +387,20 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
+	private loadStagingDirPaths(stagingDir: string) {
+		if (!this.stagingDirPaths) {
+			let paths = glob.sync(path.join(stagingDir, '**/*'));
+			this.stagingDirPaths = [];
+			for (let filePath of paths) {
+				//make the path relative (+1 for removing the slash)
+				let relativePath = filePath.substring(stagingDir.length + 1);
+				this.stagingDirPaths.push(relativePath);
+			}
+		}
+		return this.stagingDirPaths;
+	}
+	private stagingDirPaths: string[];
+
 	/**
 	 * Given a path from the debugger, convert it to a client path
 	 * @param debuggerPath
@@ -391,6 +409,25 @@ export class BrightScriptDebugSession extends DebugSession {
 		//remove preceeding pkg: 
 		if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
 			debuggerPath = debuggerPath.substring(4);
+			//the debugger path was truncated, so try and map it to a file in the outdir
+		} else if (debuggerPath.indexOf("...") === 0) {
+			debuggerPath = debuggerPath.substring(3);
+			//find any files from the outDir that end the same as this file
+			let results: string[] = [];
+
+			for (let stagingPath of this.stagingDirPaths) {
+				let idx = stagingPath.indexOf(debuggerPath);
+				//if the staging path looks like the debugger path, keep it for now
+				if (idx > -1 && stagingPath.endsWith(debuggerPath)) {
+					results.push(stagingPath);
+				}
+			}
+			if (results.length === 1) {
+				//we found a single match, this is the full relative path to the file we were looking for
+				debuggerPath = results[0];
+			} else {
+				//we found multiple files with the exact same path (unlikely)...nothing we can do about it.
+			}
 		}
 		let clientPath = path.normalize(path.join(this.launchArgs.rootDir, debuggerPath));
 		return clientPath;

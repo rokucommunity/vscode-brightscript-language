@@ -4,9 +4,9 @@
         {
             "command": "npm",
             "identifier": "npm",
-            "taskName": "npm",
+            "label": "npm",
             "type": "shell",
-            "presentation": {
+            "presentation": { 
                 "echo": true,
                 "reveal": "silent",
                 "focus": false,
@@ -23,7 +23,7 @@
         },
         {
             "type": "shell",
-            "taskName": "test",
+            "label": "test",
             "command": "npm",
             "args": [
                 "run",

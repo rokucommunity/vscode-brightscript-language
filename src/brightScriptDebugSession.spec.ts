@@ -1,9 +1,13 @@
-import * as  assert from 'assert';
+/* tslint:disable:no-unused-expression */
+import { expect } from 'chai';
+import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as path from 'path';
+
 import { BrightScriptDebugSession, defer } from './brightScriptDebugSession';
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 import { EvaluateContainer, HighLevelType, PrimativeType } from './RokuAdapter';
+
 describe('Debugger', () => {
 	let session: BrightScriptDebugSession;
 	let rokuAdapter: any = {
@@ -11,7 +15,11 @@ describe('Debugger', () => {
 		activate: () => { return Promise.resolve(); }
 	};
 	beforeEach(() => {
-		session = new BrightScriptDebugSession();
+		try {
+			session = new BrightScriptDebugSession();
+		} catch (e) {
+			console.log(e);
+		}
 		//mock the rokuDeploy module with promises so we can have predictable tests
 		session.rokuDeploy = <any>{
 			prepublishToStaging: () => { return Promise.resolve(); },
@@ -95,6 +103,7 @@ describe('Debugger', () => {
 		it('returns the correct boolean variable', async () => {
 			let expression = 'someBool';
 			getVariableValue = getBooleanEvaluateContainer(expression);
+			rokuAdapter.isAtDebuggerPrompt = true;
 			session.evaluateRequest(<any>{}, { context: 'hover', expression });
 			let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
 			assert.deepEqual(response.body, {
@@ -147,7 +156,7 @@ describe('Debugger', () => {
 			});
 		});
 
-		it.only('allows retrieval of children', async () => {
+		it('allows retrieval of children', async () => {
 			let expression = 'someObject';
 			getVariableValue = <EvaluateContainer>{
 				name: expression,
@@ -179,4 +188,35 @@ describe('Debugger', () => {
 			]);
 		});
 	});
+	describe.only('convertDebuggerPathToClient', () => {
+		it('handles truncated paths', () => {
+			let s: any = session;
+			s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
+			s.launchArgs = {
+				rootDir: 'C:/someproject/src'
+			};
+			let clientPath = s.convertDebuggerPathToClient('...erA/file1.brs');
+			expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
+
+			clientPath = s.convertDebuggerPathToClient('...erB/file2.brs');
+			expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
+
+		});
+
+		it('handles pkg paths', () => {
+			let s: any = session;
+			s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
+			s.launchArgs = {
+				rootDir: 'C:/someproject/src'
+			};
+			let clientPath = s.convertDebuggerPathToClient('pkg:folderA/file1.brs');
+			expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
+
+			clientPath = s.convertDebuggerPathToClient('pkg:folderB/file2.brs');
+			expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
+		});
+
+	});
+
 });
+
