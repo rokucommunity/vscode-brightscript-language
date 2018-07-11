@@ -99,3 +99,4 @@ This is a brand new extension, so there are probably tons of edge cases that hav
 - Added debugger support
 - Added code formatter
 - Fixed issues with language colorization
+ 
