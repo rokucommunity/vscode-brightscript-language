@@ -39,7 +39,7 @@
     },
     "dependencies": {
         "@types/glob": "^5.0.35",
-        "brightscript-formatter": "^1.1.2",
+        "brightscript-formatter": "^1.2.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.2",
@@ -70,7 +70,7 @@
         "ts-node": "^5.0.1",
         "tslint": "5.9.1",
         "typescript": "2.6.2",
-        "vsce": "1.37.5",
+        "vsce": "^1.39.0",
         "vscode": "1.1.10",
         "vscode-debugadapter-testsupport": "1.27.0"
     },
@@ -194,27 +194,35 @@
                         "string",
                         "null"
                     ],
-                    "oneOf": [
+                    "enum": [
                         "lower",
                         "upper",
                         "title",
                         null
                     ],
                     "default": "lower",
-                    "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all."
+                    "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
+                    "scope": "resource"
                 },
                 "brightscript.format.compositeKeywords": {
                     "type": [
                         "string",
                         "null"
                     ],
-                    "oneOf": [
+                    "enum": [
                         "split",
                         "combine",
                         null
                     ],
                     "default": "split",
-                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified."
+                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
+                    "scope": "resource"
+                },
+                "brightscript.format.removeTrailingWhiteSpace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Removes all trailing whitespace at the end of each line.",
+                    "scope": "resource"
                 }
             }
         }
@@ -244,7 +252,7 @@
         ],
         "sourceMap": true,
         "instrument": true,
-        "check-coverage": true,
+        "check-coverage": false,
         "lines": 100,
         "statements": 100,
         "functions": 100,
@@ -252,7 +260,7 @@
     },
     "categories": [
         "Formatters",
-        "Languages",
+        "Programming Languages",
         "Debuggers"
     ]
 }

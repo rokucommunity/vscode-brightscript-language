@@ -18,8 +18,6 @@ Your project must be structured in the way that Roku expects, which looks someth
 - source/
     - main.brs
 
-This extension expects that the manifest file is located at the root of the brightscript project. If the BrightScript project is located in a subfolder of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file. 
-
 Here is a sample launch configuration
 
 ```json
@@ -41,6 +39,37 @@ Here is a sample launch configuration
 }
 ```
 
+If your BrightScript project is located in a subdirectory of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file. 
+
+For example, if you have this structure:
+
+- Root Workspace Folder/
+  - Images/
+  - Roku App/
+    - manifest
+    - components/
+        - HomeScene.brs
+        - HomeScene.xml
+    - source/
+        - main.brs
+
+then you would need change `rootDir` in your launch config to look like this:
+
+```json
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            ...
+            "rootDir": "Roku App/${workspaceRoot}",
+            ...
+        }
+    ]
+}
+```
+
+
 ## Extension Settings
 
 This extension contributes the following settings:
@@ -54,8 +83,13 @@ This is a brand new extension, so there are probably tons of edge cases that hav
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+## [1.0.2] - 2018-07-11
+ - Upgraded to the latest brightscript-formatter version that enables removing trailing whitespace when formatting.
 
-### 1.0.0
+## [1.0.1] - 2018-04-04
+ - Fixed issue in debugger that was not properly handling truncated file paths received from Roku. 
 
-Initial release
+## [1.0.0] - 2018-03-16
+- Added debugger support
+- Added code formatter
+- Fixed issues with language colorization

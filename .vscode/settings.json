@@ -4,6 +4,8 @@
         "node_modules": false,
         ".nyc_output": true,
         ".roku-deploy-staging": false,
-        "coverage": true
+        "coverage": true,
+        "**/node_modules": true,
+        "**/out": true
     }
 }

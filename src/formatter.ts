@@ -7,12 +7,13 @@ export class Formatter {
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
             let text = document.getText();
-            let formatter = new BrightScriptFormatter
+            let formatter = new BrightScriptFormatter();
             let formattedText = formatter.format(text, {
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 compositeKeywords: config.compositeKeywords,
-                keywordCase: config.keywordCase
+                keywordCase: config.keywordCase,
+                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace
             });
 
             let edits = getEditChunks(formattedText);
