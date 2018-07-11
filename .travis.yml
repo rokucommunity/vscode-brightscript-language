@@ -5,4 +5,5 @@ before_script:
   - npm install
 script:
   - npm run compile
+  - npm run test
 after_success: npm run coverage

@@ -252,11 +252,11 @@
         ],
         "sourceMap": true,
         "instrument": true,
-        "check-coverage": false,
-        "lines": 100,
-        "statements": 100,
-        "functions": 100,
-        "branches": 100
+        "check-coverage": true,
+        "lines": 5,
+        "statements": 5,
+        "functions": 5,
+        "branches": 5
     },
     "categories": [
         "Formatters",
