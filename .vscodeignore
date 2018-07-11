@@ -9,3 +9,4 @@ src/**
 **/tslint.json
 vsc-extension-quickstart.md
 **coverage/**/*
+vscode-marketplace-publish.sh

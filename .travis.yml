@@ -6,4 +6,18 @@ before_script:
 script:
   - npm run compile
   - npm run test
+  - npm run package
 after_success: npm run coverage
+deploy:
+  - provider: releases
+    api_key: $GITHUB_OAUTH_TOKEN
+    file_glob: true
+    file: ./*.vsix
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: script
+    script: bash vscode-marketplace-publish.sh
+    on:
+      tags: true
+
