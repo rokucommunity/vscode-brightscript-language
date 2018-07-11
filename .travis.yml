@@ -18,6 +18,7 @@ deploy:
       tags: true
   - provider: script
     script: bash vscode-marketplace-publish.sh
+    skip_cleanup: true
     on:
       tags: true
 
