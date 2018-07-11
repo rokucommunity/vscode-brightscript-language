@@ -89,7 +89,7 @@ This is a brand new extension, so there are probably tons of edge cases that hav
 
 ## Release Notes
 
-## [1.0.2] - 2018-07-11
+## [1.1.0] - 2018-07-11
  - Upgraded to the latest brightscript-formatter version that enables removing trailing whitespace when formatting.
 
 ## [1.0.1] - 2018-04-04
