@@ -47,7 +47,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.1.12",
+        "roku-deploy": "^0.2.0",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0"
     },
@@ -71,7 +71,7 @@
         "tslint": "5.9.1",
         "typescript": "2.6.2",
         "vsce": "^1.39.0",
-        "vscode": "1.1.10",
+        "vscode": "^1.1.21",
         "vscode-debugadapter-testsupport": "1.27.0"
     },
     "main": "./out/extension",
@@ -124,6 +124,16 @@
                                 "description": "Automatically stop program after launch.",
                                 "default": true
                             },
+                            "retainStagingFolder": {
+                                "type": "boolean",
+                                "description": "Prevent the staging folder from being deleted after the deployment package is created.  This is helpful for troubleshooting why your package isn't being created the way you expected.",
+                                "default": false
+                            },
+                            "retainDeploymentArchive": {
+                                "type": "boolean",
+                                "description": "Prevent the deployment package from being deleted after launching a debug session.",
+                                "default": true
+                            },
                             "consoleOutput": {
                                 "type": "string",
                                 "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
@@ -132,6 +142,37 @@
                                     "full",
                                     "normal"
                                 ]
+                            },
+                            "files": {
+                                "type": "array",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files.",
+                                "default": [
+                                    "manifest",
+                                    "source/**/*.*",
+                                    "components/**/*.*",
+                                    "images/**/*.*"
+                                ],
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "description": "A file path or file glob that should be copied to the deployment package."
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "src": {
+                                                    "type": "string",
+                                                    "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                },
+                                                "dest": {
+                                                    "type": "string",
+                                                    "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
                             }
                         }
                     }
@@ -143,8 +184,7 @@
                         "name": "BrightScript Debug: Launch",
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
-                        "rootDir": "${workspaceFolder}",
-                        "consoleOutput": "normal"
+                        "rootDir": "${workspaceFolder}"
                     }
                 ],
                 "configurationSnippets": [

@@ -89,9 +89,6 @@ export class BrightScriptDebugSession extends DebugSession {
 			//TODO add breakpoint lines to source files and then publish
 			await this.addBreakpointStatements(stagingFolder);
 
-			//TODO - Remove this once this project is completed.
-			(args as any).retainStagingFolder = false;
-
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
 

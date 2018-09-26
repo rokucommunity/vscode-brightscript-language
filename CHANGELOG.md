@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.2.0] - 2018-09-26
+ - Upgraded to roku-deploy v0.2.0 which adds support for moving and renaming files during the packaging process (see [the files property](https://github.com/TwitchBronBron/roku-deploy#options) for more details).
+
 ## [1.1.0] - 2018-07-11
  - Upgraded to the latest brightscript-formatter version that enables removing trailing whitespace when formatting.
 
