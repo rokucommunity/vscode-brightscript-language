@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.2.1] - 2018-09-26
+ - Upgraded to roku-deploy v0.2.1 which removed some packages containing security vulnerabilities.
+
 ## [1.2.0] - 2018-09-26
  - Upgraded to roku-deploy v0.2.0 which adds support for moving and renaming files during the packaging process (see [the files property](https://github.com/TwitchBronBron/roku-deploy#options) for more details).
 
