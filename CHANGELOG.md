@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.2.2] - 2018-09-26
+ - Upgraded to brightscript-formatter version 1.3.0 which brings support for formatting conditional compile statements. 
+
 ## [1.2.1] - 2018-09-26
  - Upgraded to roku-deploy v0.2.1 which removed some packages containing security vulnerabilities.
 
