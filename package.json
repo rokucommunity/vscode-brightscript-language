@@ -48,7 +48,10 @@
         "q": "^1.5.1",
         "roku-deploy": "^0.2.1",
         "vscode-debugadapter": "1.27.0",
-        "vscode-debugprotocol": "1.27.0"
+        "vscode-debugprotocol": "1.27.0",
+        "hoek": "^5.0.3",
+        "vscode-uri": "1.0.1",
+        "iconv-lite": "latest"
     },
     "devDependencies": {
         "@types/chai": "^4.1.5",
@@ -267,7 +270,14 @@
                     "scope": "resource"
                 }
             }
-        }
+        },
+        "commands": [
+            {
+                "command": "extension.brightscript.toggleXML",
+                "title": "Toggle xml/brs",
+                "category": "Brightscript"
+            }
+        ]
     },
     "watch": {
         "test": {
