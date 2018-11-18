@@ -101,6 +101,11 @@
                                 "description": "The host or ip address for the target Roku",
                                 "default": "${promptForHost}"
                             },
+                            "deepLinkUrl": {
+                                "type": "string",
+                                "description": "A full deep link url to use to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be published, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForContentId}, ${promptForMediaType}, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "default": "http://${host}:8060/launch/dev?contentId=${promptForContentId}&mediaType=${promptForMediaType}"
+                            },
                             "password": {
                                 "type": "string",
                                 "description": "The password for the developer page on the target Roku",
@@ -109,7 +114,7 @@
                             "rootDir": {
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
-                                "default": true
+                                "default": "${workspaceFolder}"
                             },
                             "outDir": {
                                 "type": "string",
@@ -118,7 +123,7 @@
                             },
                             "stopOnEntry": {
                                 "type": "boolean",
-                                "description": "Automatically stop program after launch.",
+                                "description": "Have the debugger break on on the first line of the program after launch.",
                                 "default": true
                             },
                             "retainStagingFolder": {

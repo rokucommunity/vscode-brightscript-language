@@ -35,7 +35,7 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 			config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
 		}
 		//prompt for host if not hardcoded
-		if (config.host === '${promptForHost}') {
+		if (config.host === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
 			config.host = await vscode.window.showInputBox({
 				placeHolder: 'The IP address of your Roku device',
 				value: ''
@@ -54,6 +54,31 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 				throw new Error('Debug session terminated: password is required.');
 			}
 		}
+		if (config.deepLinkUrl) {
+			config.deepLinkUrl = config.deepLinkUrl.replace("${host}", config.host);
+			config.deepLinkUrl = config.deepLinkUrl.replace("${promptForHost}", config.host);
+			if (config.deepLinkUrl.indexOf('${promptForContentId') > -1) {
+				let contentId = await vscode.window.showInputBox({
+					placeHolder: "Content id for deep link",
+					value: ""
+				});
+				config.deepLinkUrl = config.deepLinkUrl.replace('${promptForContentId}', contentId);
+			}
+			if (config.deepLinkUrl.indexOf('${promptForMediaType') > -1) {
+				let mediaType = await vscode.window.showInputBox({
+					placeHolder: "Content id for deep link",
+					value: ""
+				});
+				config.deepLinkUrl = config.deepLinkUrl.replace('${promptForMediaType}', mediaType);
+			}
+			if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
+				config.deepLinkUrl = await vscode.window.showInputBox({
+					placeHolder: "Full deep link url",
+					value: ""
+				});
+			}
+		}
+
 
 		//await vscode.window.showInformationMessage('Invalid Roku IP address')
 		return config;
@@ -65,6 +90,7 @@ export function deactivate() {
 
 interface BrightscriptDebugConfiguration extends DebugConfiguration {
 	host: string;
+	deepLinkUrl: string;
 	password: string;
 	rootDir: string;
 	outDir: string;

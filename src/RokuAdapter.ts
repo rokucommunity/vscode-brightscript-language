@@ -89,7 +89,7 @@ export class RokuAdapter {
      */
     public connect() {
         return new Promise(async (resolve, reject) => {
-            //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
+            //force roku to return to home screen. This gives the roku adapter some consistency in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
 
             let client: Socket = new net.Socket();

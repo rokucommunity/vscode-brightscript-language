@@ -75,10 +75,21 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.log('launchRequest');
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
-		let disconnect = () => { };
 
-		let error: Error;
+
 		console.log('Packaging and deploying to roku');
+		if (args.deepLinkUrl) {
+			this.launchWithDeepLink(response, args);
+		} else {
+			this.launchStandard(response, args);
+		}
+
+	}
+
+	protected async launchWithDeepLink(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
+		let disconnect = () => { };
+		let stoppedOnEntryPromise = defer();
+		let error: Error;
 		try {
 			//copy all project files to the staging folder
 			let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
@@ -91,6 +102,97 @@ export class BrightScriptDebugSession extends DebugSession {
 
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
+
+			let rokuAdapter: RokuAdapter;
+			//connect our own private roku adapter to know when the app has been published successfully
+			{
+				//register events
+				rokuAdapter = new RokuAdapter(args.host);
+
+				//when the debugger suspends (pauses for debugger input)
+				rokuAdapter.on('suspend', async () => {
+					stoppedOnEntryPromise.resolve();
+				});
+ 
+				//make the connection
+				await this.rokuAdapter.connect();
+				this.rokuAdapterDeferred.resolve(this.rokuAdapter);
+			}
+
+			//pass along the console output
+			if (this.launchArgs.consoleOutput === 'full') {
+				rokuAdapter.on('console-output', (data) => {
+					//forward the console output
+					this.sendEvent(new OutputEvent(`Pre-deep-link publish: ${data}`, 'stdout'));
+				});
+			} else {
+				rokuAdapter.on('unhandled-console-output', (data) => {
+					//forward the console output
+					this.sendEvent(new OutputEvent(`Pre-deep-link publish: ${data}`, 'stdout'));
+				});
+			}
+
+			//listen for a closed connection (shut down when received)
+			rokuAdapter.on('close', () => {
+				error = new Error('Unable to connect to Roku. Is another device already connected?');
+			});
+
+			//watch 
+			disconnect = rokuAdapter.on('compile-errors', (compileErrors) => {
+				//for now, just alert the first error found
+				let compileError = compileErrors[0];
+				let clientPath = this.convertDebuggerPathToClient(compileError.path);
+				let clientLine = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
+				error = new Error(`Compile error: ${clientPath}: ${clientLine}`);
+			});
+
+			//ignore the compile error failure from within the publish
+			(args as any).failOnCompileError = false;
+			//publish the package to the target Roku  
+			await this.rokuDeploy.publish(args);
+
+			//tell the adapter adapter that the channel has been launched. 
+			await rokuAdapter.activate();
+
+			if (!error) {
+				console.log(`deployed to Roku@${args.host}`);
+				this.sendResponse(response);
+			} else {
+				throw error;
+			}
+		} catch (e) {
+			console.log(e);
+			this.sendErrorResponse(response, -1, e.message);
+			this.shutdown();
+			return;
+		} finally {
+			//disconnect the compile error watcher
+			disconnect();
+		}
+
+		
+	}
+
+	protected async launchStandard(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
+		let disconnect = () => { };
+		let error: Error;
+		try {
+			//copy all project files to the staging folder
+			let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
+
+			//build a list of all files in the staging folder
+			this.loadStagingDirPaths(stagingFolder);
+
+			//TODO add breakpoint lines to source files and then publish
+			await this.addBreakpointStatements(stagingFolder);
+
+			//create zip package from staging folder
+			await this.rokuDeploy.zipPackage(args);
+
+
+			if (args.deepLinkUrl) {
+				//
+			}
 
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
@@ -695,6 +797,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
 	 */
 	consoleOutput: 'full' | 'normal';
+	/**
+	 * If specified, the debug session will start the roku app using the deep link
+	 */
+	deepLinkUrl?: string;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
