@@ -9,7 +9,7 @@ import {
     FormattingOptions,
     DocumentRangeFormattingEditProvider, ProviderResult,
 } from 'vscode';
-import { BrightScriptFormatter } from './BrightScriptFormatter';
+import { BrightScriptFormatter } from 'brightscript-formatter';
 
 export class Formatter implements DocumentRangeFormattingEditProvider{
 
