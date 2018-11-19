@@ -35,7 +35,7 @@ export class Declaration {
 
 function* iterlines(input: string): IterableIterator<[number, string]> {
   const lines = input.split(/\r?\n/);
-  loop: for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const text = lines[i];
     if (/^\s*(?:$|;(?![!#];))/.test(text)) {
       continue;
