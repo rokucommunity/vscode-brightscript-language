@@ -9,6 +9,8 @@ import * as eol from 'eol';
 import { RokuAdapter, EvaluateContainer } from './RokuAdapter';
 import * as findInFiles from 'find-in-files';
 import * as glob from 'glob';
+import * as rokuDeploy from 'roku-deploy';
+import * as request from 'request';
 
 export class BrightScriptDebugSession extends DebugSession {
 	public constructor() {
@@ -19,9 +21,13 @@ export class BrightScriptDebugSession extends DebugSession {
 	}
 
 	//set imports as class properties so they can be spied upon during testing
-	public rokuDeploy = require('roku-deploy');
+	public rokuDeploy = rokuDeploy;
 
 	private rokuAdapterDeferred = defer<RokuAdapter>();
+	/**
+	 * A promise that is resolved whenever the entry breakpoint has been hit
+	 */
+	private hitEntryBreakpointDeferred = defer<void>();
 
 	private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
 	private breakpointIdCounter = 0;
@@ -76,104 +82,7 @@ export class BrightScriptDebugSession extends DebugSession {
 		this.launchArgs = args;
 		this.launchRequestWasCalled = true;
 
-
 		console.log('Packaging and deploying to roku');
-		if (args.deepLinkUrl) {
-			this.launchWithDeepLink(response, args);
-		} else {
-			this.launchStandard(response, args);
-		}
-
-	}
-
-	protected async launchWithDeepLink(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
-		let disconnect = () => { };
-		let stoppedOnEntryPromise = defer();
-		let error: Error;
-		try {
-			//copy all project files to the staging folder
-			let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
-
-			//build a list of all files in the staging folder
-			this.loadStagingDirPaths(stagingFolder);
-
-			//TODO add breakpoint lines to source files and then publish
-			await this.addBreakpointStatements(stagingFolder);
-
-			//create zip package from staging folder
-			await this.rokuDeploy.zipPackage(args);
-
-			let rokuAdapter: RokuAdapter;
-			//connect our own private roku adapter to know when the app has been published successfully
-			{
-				//register events
-				rokuAdapter = new RokuAdapter(args.host);
-
-				//when the debugger suspends (pauses for debugger input)
-				rokuAdapter.on('suspend', async () => {
-					stoppedOnEntryPromise.resolve();
-				});
- 
-				//make the connection
-				await this.rokuAdapter.connect();
-				this.rokuAdapterDeferred.resolve(this.rokuAdapter);
-			}
-
-			//pass along the console output
-			if (this.launchArgs.consoleOutput === 'full') {
-				rokuAdapter.on('console-output', (data) => {
-					//forward the console output
-					this.sendEvent(new OutputEvent(`Pre-deep-link publish: ${data}`, 'stdout'));
-				});
-			} else {
-				rokuAdapter.on('unhandled-console-output', (data) => {
-					//forward the console output
-					this.sendEvent(new OutputEvent(`Pre-deep-link publish: ${data}`, 'stdout'));
-				});
-			}
-
-			//listen for a closed connection (shut down when received)
-			rokuAdapter.on('close', () => {
-				error = new Error('Unable to connect to Roku. Is another device already connected?');
-			});
-
-			//watch 
-			disconnect = rokuAdapter.on('compile-errors', (compileErrors) => {
-				//for now, just alert the first error found
-				let compileError = compileErrors[0];
-				let clientPath = this.convertDebuggerPathToClient(compileError.path);
-				let clientLine = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
-				error = new Error(`Compile error: ${clientPath}: ${clientLine}`);
-			});
-
-			//ignore the compile error failure from within the publish
-			(args as any).failOnCompileError = false;
-			//publish the package to the target Roku  
-			await this.rokuDeploy.publish(args);
-
-			//tell the adapter adapter that the channel has been launched. 
-			await rokuAdapter.activate();
-
-			if (!error) {
-				console.log(`deployed to Roku@${args.host}`);
-				this.sendResponse(response);
-			} else {
-				throw error;
-			}
-		} catch (e) {
-			console.log(e);
-			this.sendErrorResponse(response, -1, e.message);
-			this.shutdown();
-			return;
-		} finally {
-			//disconnect the compile error watcher
-			disconnect();
-		}
-
-		
-	}
-
-	protected async launchStandard(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
 		let disconnect = () => { };
 		let error: Error;
 		try {
@@ -198,11 +107,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
-
-
-			if (args.deepLinkUrl) {
-				//
-			}
 
 			//connect to the roku debug via telnet
 			await this.connectRokuAdapter(args.host);
@@ -256,6 +160,22 @@ export class BrightScriptDebugSession extends DebugSession {
 		} finally {
 			//disconnect the compile error watcher
 			disconnect();
+		}
+
+		//at this point, the project has been deployed. If we need to use a deep link, launch it now.
+		if (args.deepLinkUrl) {
+			//wait until the first entry breakpoint has been hit
+			await this.hitEntryBreakpointDeferred.promise;
+			//if we are at a breakpoint, continue
+			await this.rokuAdapter.continue();
+			//kill the app on the roku
+			await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+			//send the deep link http request
+			await new Promise((resolve, reject) => {
+				request.post(this.launchArgs.deepLinkUrl, function (err, response) {
+					return err ? reject(err) : resolve(response);
+				});
+			});
 		}
 	}
 
@@ -585,6 +505,18 @@ export class BrightScriptDebugSession extends DebugSession {
 			//determine if this is the "stop on entry" breakpoint
 			let isStoppedOnEntry = firstSuspend && !!this.entryBreakpoint;
 
+			let hitEntryBreakpointDeferredWasCompleted = this.hitEntryBreakpointDeferred.isCompleted;
+
+			//if this is the entry breakpoint, resolve a promise for use other places
+			if (isStoppedOnEntry && !hitEntryBreakpointDeferredWasCompleted) {
+				this.hitEntryBreakpointDeferred.resolve();
+			}
+
+			//if we are launching a deep link, don't break in the UI for this iteration (it will happen next time)
+			if (firstSuspend === true && this.launchArgs.deepLinkUrl && !hitEntryBreakpointDeferredWasCompleted) {
+				return;
+			}
+
 			//skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
 			if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
 				//skip the breakpoint 
@@ -848,15 +780,36 @@ enum StoppedEventReason {
 }
 
 export function defer<T>() {
-	let resolve: (value?: T | PromiseLike<T>) => void;
-	let reject: (reason?: any) => void;
+	let resolve: any;
+	let reject: any;
 	let promise = new Promise<T>((_resolve, _reject) => {
 		resolve = _resolve;
 		reject = _reject;
 	});
 	return {
 		promise,
-		resolve,
-		reject
+		resolve(value?: T | PromiseLike<T>) {
+			if (!this.isResolved) {
+				this.isResolved = true;
+				resolve(value);
+				resolve = undefined;
+			} else {
+				throw new Error('Already completed');
+			}
+		},
+		reject(reason?: any) {
+			if (!this.isCompleted) {
+				this.isRejected = true;
+				reject(reason);
+				reject = undefined;
+			} else {
+				throw new Error('Already completed');
+			}
+		},
+		isResolved: false,
+		isRejected: false,
+		get isCompleted() {
+			return this.isResolved || this.isRejected;
+		}
 	};
 }

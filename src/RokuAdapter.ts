@@ -128,7 +128,7 @@ export class RokuAdapter {
                     return;
                 }
 
-                if (this.checkForCantContinue(responseText)) {
+                if (this.isAtCantContinue(responseText)) {
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
@@ -169,9 +169,12 @@ export class RokuAdapter {
      * Look through response text for the "Can't continue" text
      * @param responseText
      */
-    private checkForCantContinue(responseText: string) {
+    private isAtCantContinue(responseText: string) {
         if (/can't continue/gi.exec(responseText.trim())) {
             this.emit('cannot-continue');
+            return true;
+        } else {
+            return false;
         }
     }
 
