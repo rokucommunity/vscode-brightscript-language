@@ -70,7 +70,7 @@ export class BrightScriptDebugSession extends DebugSession {
 	}
 
 
-	private launchRequestWasCalled = false;
+	public launchRequestWasCalled = false;
 	public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
 		this.log('launchRequest');
 		this.launchArgs = args;
@@ -183,41 +183,51 @@ export class BrightScriptDebugSession extends DebugSession {
 		console.log('configurationDoneRequest');
 	}
 
-	protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
+	public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
 		this.log('setBreakpointsRequest');
-		//roku currently only supports in-code breakpoints, so we can't add new breakpoints after the project is running.
-		if (this.launchRequestWasCalled) {
-			this.sendEvent(new OutputEvent('\nBreakpoints cannot be set during a debugging session', 'stdout'));
-			return;
-		}
+
 		let clientPath = path.normalize(args.source.path);
+		console.log(clientPath);
 		//if we have a debugRootDir, convert the rootDir path to debugRootDir path
 		if (this.launchArgs && this.launchArgs.debugRootDir) {
 			clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
+			console.log(clientPath);
 		}
-		const clientLines = args.lines || [];
 		let extension = path.extname(clientPath).toLowerCase();
-		let actualBreakpoints: DebugProtocol.Breakpoint[] = [];
 
 		//only accept breakpoints from brightscript files
 		if (extension === '.brs') {
-			// set and verify breakpoint locations
-			actualBreakpoints = clientLines.map((lineNumber) => {
-				const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber);
-				breakpoint.id = this.breakpointIdCounter++;
-				return breakpoint;
-			});
-
-			//store the breakpoints indexed by clientPath
-			this.breakpointsByClientPath[clientPath] = actualBreakpoints;
+			if (!this.launchRequestWasCalled) {
+				//store the breakpoints indexed by clientPath
+				this.breakpointsByClientPath[clientPath] = <any>args.breakpoints;
+				for (let b of args.breakpoints) {
+					(b as any).verified = true;
+				}
+			} else {
+				//mark the breakpoints as verified or not based on the original breakpoints
+				let verifiedBreakpoints = this.breakpointsByClientPath[clientPath];
+				outer: for (let breakpoint of args.breakpoints) {
+					for (let verifiedBreakpoint of verifiedBreakpoints) {
+						if (breakpoint.line === verifiedBreakpoint.line) {
+							(breakpoint as any).verified = true;
+							continue outer;
+						}
+					}
+					(breakpoint as any).verified = false;
+				}
+			}
+		} else {
+			//mark every breakpoint as NOT verified
+			for (let bp of args.breakpoints) {
+				(bp as any).verified = false;
+			}
 		}
-		// send back the actual breakpoint positions
+
 		response.body = {
-			breakpoints: actualBreakpoints
+			breakpoints: <any>args.breakpoints
 		};
 		this.sendResponse(response);
 	}
-
 
 	protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
 		this.log('exceptionInfoRequest');
@@ -577,7 +587,7 @@ export class BrightScriptDebugSession extends DebugSession {
 			}
 		}
 		//create a breakpoint on the line BELOW this location, which is the first line of the program
-		this.entryBreakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, lineNumber + 1);
+		this.entryBreakpoint = new Breakpoint(true, lineNumber + 1);
 		this.entryBreakpoint.id = this.breakpointIdCounter++;
 		(this.entryBreakpoint as any).isEntryBreakpoint = true;
 		//put this breakpoint into the list of breakpoints, in order
