@@ -4,7 +4,7 @@ import { WorkspaceFolder, DebugConfiguration, CancellationToken, ProviderResult 
 
 export function activate(context: vscode.ExtensionContext) {
 	//register the code formatter
-	vscode.languages.registerDocumentFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
+  vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
 
 	context.subscriptions.push(vscode.commands.registerCommand('extension.mock-debug.getProgramName', config => {
 		return vscode.window.showInputBox({

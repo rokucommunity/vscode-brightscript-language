@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -38,7 +38,7 @@
     },
     "dependencies": {
         "@types/glob": "^5.0.36",
-        "brightscript-formatter": "^1.2.0",
+        "brightscript-formatter": "^1.3.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
@@ -114,6 +114,11 @@
                             "rootDir": {
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
+                                "default": "${workspaceFolder}"
+                            },
+                            "debugRootDir": {
+                                "type": "string",
+                                "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
                             },
                             "outDir": {

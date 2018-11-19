@@ -183,8 +183,18 @@ export class BrightScriptDebugSession extends DebugSession {
 			//build a list of all files in the staging folder
 			this.loadStagingDirPaths(stagingFolder);
 
+			//convert source breakpoint paths to build paths
+			if (this.launchArgs.debugRootDir) {
+				this.convertBreakpointPaths(this.launchArgs.debugRootDir, this.launchArgs.rootDir);
+			}
+
 			//TODO add breakpoint lines to source files and then publish
 			await this.addBreakpointStatements(stagingFolder);
+
+			//convert source breakpoint paths to build paths
+			if (this.launchArgs.debugRootDir) {
+				this.convertBreakpointPaths(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
+			}
 
 			//create zip package from staging folder
 			await this.rokuDeploy.zipPackage(args);
@@ -259,6 +269,17 @@ export class BrightScriptDebugSession extends DebugSession {
 		super.sourceRequest(response, args);
 	}
 
+	protected convertBreakpointPaths(fromRootPath: string, toRootPath: string) {
+		//convert paths to debugRootDir paths for any breakpoints set before this launch call
+		if (fromRootPath) {
+			for (let clientPath in this.breakpointsByClientPath) {
+				let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
+				this.breakpointsByClientPath[debugClientPath] = this.breakpointsByClientPath[clientPath];
+				delete this.breakpointsByClientPath[clientPath];
+			}
+		}
+	}
+
 
 	protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
 		console.log('configurationDoneRequest');
@@ -271,8 +292,11 @@ export class BrightScriptDebugSession extends DebugSession {
 			this.sendEvent(new OutputEvent('\nBreakpoints cannot be set during a debugging session', 'stdout'));
 			return;
 		}
-
-		const clientPath = path.normalize(args.source.path);
+		let clientPath = path.normalize(args.source.path);
+		//if we have a debugRootDir, convert the rootDir path to debugRootDir path
+		if (this.launchArgs && this.launchArgs.debugRootDir) {
+			clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
+		}
 		const clientLines = args.lines || [];
 		let extension = path.extname(clientPath).toLowerCase();
 		let actualBreakpoints: DebugProtocol.Breakpoint[] = [];
@@ -528,7 +552,10 @@ export class BrightScriptDebugSession extends DebugSession {
 				//we found multiple files with the exact same path (unlikely)...nothing we can do about it.
 			}
 		}
-		let clientPath = path.normalize(path.join(this.launchArgs.rootDir, debuggerPath));
+		//use debugRootDir if provided, or rootDir if not provided. 
+		let rootDir = this.launchArgs.debugRootDir ? this.launchArgs.debugRootDir : this.launchArgs.rootDir;
+
+		let clientPath = path.normalize(path.join(rootDir, debuggerPath));
 		return clientPath;
 	}
 
@@ -785,6 +812,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
 	 * The root directory that contains your Roku project. This path should point to the folder containing your manifest file
 	 */
 	rootDir: string;
+	/**
+	 * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.
+	 */
+	debugRootDir: string;
 	/**
 	 * The folder where the output files are places during the packaging process
 	 */
