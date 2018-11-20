@@ -9,8 +9,9 @@ A VSCode extension to support Roku's BrightScript language.
 
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
-- Debugging support - debug your source code running on the Roku device from within VSCode 
-- Publish directly from VSCode to a roku device (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
+- Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode  
+- Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
+- Basic symbol navigation. 
 
 
 ## Requirements
@@ -75,6 +76,47 @@ then you would need change `rootDir` in your launch config to look like this:
 }
 ```
 
+## Special Cases
+
+### Debug source files with Custom build process
+
+If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files. 
+
+**IF** your build process does not alter the contents of your source files, this extension allows you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease. 
+
+**Example:**
+  - src/
+    - main.brs
+    - language.brs
+    - manifest
+  - languages/
+    - english.brs
+    - french.brs
+  - dist/
+    - main.brs
+    - language.brs
+    - manifest
+
+Here's a sample launch.json for this scenario: 
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "brightscript",
+            "request": "launch",
+            "name": "BrightScript Debug: Launch",
+            "host": "192.168.1.100",
+            "password": "password",
+            "rootDir": "${workspaceFolder}/dist",
+            "debugRootDir": "${workspaceFolder}/src",
+            "preLaunchTask": "your-build-task-here"
+        }
+    ]
+}
+
+```
 
 ## Extension Settings
 
@@ -86,7 +128,7 @@ This extension contributes the following settings:
 
 ## Known Issues
 
-This is a brand new extension, so there are probably tons of edge cases that haven't been tested yet. 
+Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
 
 ## Changelog
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.

@@ -1,6 +1,16 @@
 # Change Log
 
-## [1.2.2] - 2018-09-26
+
+## [1.3.0] - 2018-11-20
+ - Added support for declarations and symbols
+ - Added support for go to definition
+ - Added ability to format hightlighted code without formatting the whole document. 
+ - Added new launch setting called 'debugRootDir' that allows deploying a build file, while still debugging a source file.
+ - Added command for switching between xml and brs files for a component. 
+ - Added support for conditional statements without the `then`.
+ - Breakpoints added after a debug session is launched are now correctly show as disabled.
+
+ ## [1.2.2] - 2018-09-26
  - Upgraded to brightscript-formatter version 1.3.0 which brings support for formatting conditional compile statements. 
 
 ## [1.2.1] - 2018-09-26
