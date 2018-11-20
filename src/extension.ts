@@ -16,9 +16,11 @@ import { DefinitionRepository } from "./definitionProvider";
 import { DeclarationProvider } from "./declaration";
 import { readSymbolInformations, SymbolInformationRepository } from "./symbol";
 import { registerCommands } from './commands';
+import URI from "vscode-uri";
+import {registerDebugErrorHandler} from "./DebugErrorHandler";
 
 export function activate(context: vscode.ExtensionContext) {
-	//register the code formatter
+  //register the code formatter
   vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
 
   // const selector: DocumentSelector = { language: "Brightscript" };
@@ -34,6 +36,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
   context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(provider)));
   context.subscriptions.push(provider);
+  registerDebugErrorHandler();
 
   registerCommands(context);
 }
