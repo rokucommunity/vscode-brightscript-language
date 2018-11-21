@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.2.2",
+    "version": "1.3.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -112,7 +112,7 @@
                             "rootDir": {
                                 "type": "string",
                                 "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
-                                "default": true
+                                "default": "${workspaceFolder}"
                             },
                             "debugRootDir": {
                                 "type": "string",
@@ -126,7 +126,7 @@
                             },
                             "stopOnEntry": {
                                 "type": "boolean",
-                                "description": "Automatically stop program after launch.",
+                                "description": "Have the debugger break on on the first line of the program after launch.",
                                 "default": true
                             },
                             "retainStagingFolder": {
