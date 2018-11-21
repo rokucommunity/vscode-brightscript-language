@@ -11,7 +11,9 @@ A VSCode extension to support Roku's BrightScript language.
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode  
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
-- Basic symbol navigation. 
+- Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
+- Goto definition (F12)
+- Peek definition (Alt+F12)
 
 
 ## Requirements
@@ -82,7 +84,7 @@ then you would need change `rootDir` in your launch config to look like this:
 
 If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files. 
 
-**IF** your build process does not alter the contents of your source files, this extension allows you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease. 
+**IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease. 
 
 **Example:**
   - src/
