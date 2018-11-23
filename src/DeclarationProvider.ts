@@ -64,7 +64,7 @@ export function readDeclarations(uri : Uri, input: string): BrightscriptDeclarat
     //FUNCTION END
     match = /^\s*(end)\s*(function|sub)/i.exec(text);
     if (match !== null) {
-      console.log("function END");
+      // console.log("function END");
       if (currentFunction !== undefined) {
         currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
       }
@@ -174,7 +174,6 @@ export class DeclarationProvider implements Disposable {
   }
 
   public sync(): Promise<void> {
-    console.log("syncing 11");
     if (this.syncing === undefined) {
       this.syncing = this.flush().then(() => {
         this.syncing = undefined;
