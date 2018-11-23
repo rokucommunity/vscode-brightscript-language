@@ -5,11 +5,13 @@ import {
   CancellationToken,
   SignatureInformation,
   ParameterInformation,
+  Range,
   ProviderResult, Position, DefinitionProvider, MarkdownString
 } from "vscode";
 import { DefinitionRepository } from "./DefinitionRepository";
 import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
 import BrightscriptDefinitionProvider from "./BrightscriptDefinitionProvider";
+import { getFnRegex } from './symbolProvider';
 
 export default class BrightscriptSignatureHelpProvider implements SignatureHelpProvider {
   definitionRepo: DefinitionRepository;
@@ -23,32 +25,73 @@ export default class BrightscriptSignatureHelpProvider implements SignatureHelpP
   //
   //
   public async provideSignatureHelp(document: TextDocument, position: Position, token: CancellationToken): Promise<SignatureHelp> {
-    //TODO make sure we're on the definition, not the space, or after it.. 
-    const adjustedPosition = new Position(position.line, position.character - 1);
+    //TODO - use AST/Parse tree e.g. bright https://github.com/RokuRoad/bright
+    //get the position of a symbol to our left
+    //1. get first bracket to our left, - then get the symbol before that..
+    //really crude crappy parser.. 
+    let closeBracketCount = 0;
+    let commaCount = 0;
+    let index = position.character;
+    let line = document.getText(new Range(position.line, 0, position.line, position.character));
+    let isArgStartFound = false;
+    while (index >= 0) {
+      if (isArgStartFound) {
+        if (line.charAt(index) !== " ") {
+          break;
+        }
+      } else {
+        if (line.charAt(index) === ")") {
+          closeBracketCount++;
+        }
+        if (line.charAt(index) === "," && closeBracketCount === 0) {
+          commaCount++;
+        }
+
+        if (line.charAt(index) === "(") {
+          if (closeBracketCount === 0) {
+            isArgStartFound = true;
+          } else {
+            closeBracketCount--;
+          }
+        }
+      }
+      index--;
+    }
+    if (index === 0) {
+      return undefined;
+    }
+
+    //count number of commas from defintion start, to current pos
+    const adjustedPosition = new Position(position.line, index - 1);
     let definition: any;
-    //   return {
-    //     activeParameter: 0,
-    //     activeSignature: 0,
-    //     signatures: [{
-    //         label: "LABEL",
-    //         parameters: [
-    //             {
-    //                 label: "PARAM_LABEL",
-    //                 documentation: "PARAM_DOC",
-    //             }
-    //         ]
-    //     }]
-    // };
     while (definition = await this.definitionRepo.findDefinition(document, adjustedPosition).next()) {
       let signatureHelp = new SignatureHelp();
-      let signatureInfo = new SignatureInformation(definition.value.name + "(" +definition.value.params.join(", ")+")");
-
+      
       let params: ParameterInformation[] = [];
-      definition.value.params.forEach(param => params.push(new ParameterInformation(param, param)));
+      let paramNames: string[] = [];
+      definition.value.params.forEach(param => {
+        let paramName: string = param.trim();
+        let infoText = "";
+        let infoIndex = param.indexOf("=");
+        let hasDefault= infoIndex !== -1;
+        if (infoIndex === -1) {
+          infoIndex = param.indexOf(" as");
+        }
+        if (infoIndex !== -1) {
+          paramName = param.substring(0, infoIndex).trim();
+          infoText = param.substring(infoIndex).trim();
+          if (hasDefault) {
+            infoText = infoText.replace("=", "default:");
+          }
+        }
+        paramNames.push(paramName);
+        params.push(new ParameterInformation(paramName, infoText));
+      });
+      let signatureInfo = new SignatureInformation(definition.value.name + "(" + paramNames.join(", ") + ")");
       signatureInfo.parameters = params;
 
       signatureHelp.signatures.push(signatureInfo);
-      signatureHelp.activeParameter = 0;
+      signatureHelp.activeParameter = commaCount;
       signatureHelp.activeSignature = 0;
       return signatureHelp;
     }
