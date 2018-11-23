@@ -17,7 +17,6 @@ export default class BrightscriptSignatureHelpProvider implements SignatureHelpP
   definitionRepo: DefinitionRepository;
 
   public constructor(provider: DefinitionRepository) {
-    console.log("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<11");
     this.definitionRepo = provider;
   }
   //1. Get symbold
@@ -29,7 +28,8 @@ export default class BrightscriptSignatureHelpProvider implements SignatureHelpP
     //get the position of a symbol to our left
     //1. get first bracket to our left, - then get the symbol before that..
     //really crude crappy parser.. 
-    let closeBracketCount = 0;
+    //TODO this is whack - it's not even LTR ugh..
+    let bracketCounts = {normal:0, square:0, curly:0};
     let commaCount = 0;
     let index = position.character;
     let line = document.getText(new Range(position.line, 0, position.line, position.character));
@@ -41,18 +41,30 @@ export default class BrightscriptSignatureHelpProvider implements SignatureHelpP
         }
       } else {
         if (line.charAt(index) === ")") {
-          closeBracketCount++;
+          bracketCounts.normal++;
         }
-        if (line.charAt(index) === "," && closeBracketCount === 0) {
+        if (line.charAt(index) === "]") {
+          bracketCounts.square++;
+        }
+        if (line.charAt(index) === "}") {
+          bracketCounts.curly++;
+        }
+        if (line.charAt(index) === "," && bracketCounts.normal <= 0 && bracketCounts.curly <= 0 && bracketCounts.square <= 0) {
           commaCount++;
         }
 
         if (line.charAt(index) === "(") {
-          if (closeBracketCount === 0) {
+          if (bracketCounts.normal === 0) {
             isArgStartFound = true;
           } else {
-            closeBracketCount--;
+            bracketCounts.normal--;
           }
+        }
+        if (line.charAt(index) === "[") {
+          bracketCounts.square--;
+        }
+        if (line.charAt(index) === "{") {
+          bracketCounts.curly--;
         }
       }
       index--;

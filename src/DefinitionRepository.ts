@@ -82,7 +82,6 @@ export class DefinitionRepository {
   }
   
   private findInDocument(document: TextDocument, word: string): Location[] {
-    console.log("FID >>>> "  + document.fileName);
     return readDeclarations(document.uri, document.getText())
       .filter((d) => d.name.toLowerCase() === word && d.isGlobal)
       .map((d) => d.getLocation());

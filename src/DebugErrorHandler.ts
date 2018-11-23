@@ -50,7 +50,7 @@ export function registerDebugErrorHandler() {
     if (doc !== undefined) {
       documentUri = doc.uri;
     }
-    console.log("got " + documentUri);
+    // console.log("got " + documentUri);
 
     //debug crap - for some reason - using this URI works - using the one from the path does not :()
     // const document = vscode.window.activeTextEditor.document;
