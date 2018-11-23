@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as iconv from "iconv-lite";
 import * as vscode from "vscode";
-
+const mm = require('micromatch');
 import { Disposable, Event, EventEmitter, Position, Range, SymbolInformation, SymbolKind, Uri } from "vscode";
 import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
 
@@ -24,6 +24,7 @@ export function* iterlines(input: string): IterableIterator<[number, string]> {
 
 export function readDeclarations(uri : Uri, input: string): BrightscriptDeclaration[] {
   const container = BrightscriptDeclaration.fromUri(uri);
+  console.log(">>>>>>readDeclarations>>>>>>>" + uri.path);
   const symbols: BrightscriptDeclaration[] = [];
   let currentFunction: BrightscriptDeclaration;
   let funcEndLine: number;
@@ -187,8 +188,12 @@ export class DeclarationProvider implements Disposable {
   }
 
   private onDidChangeFile(uri: Uri) {
-    console.log("onDidChangeFile 11");
-    this.dirty.set(uri.fsPath, uri);
+    console.log("onDidChangeFile " + uri.path);
+    const excludes = getExcludeGlob();
+    const isMatch = mm.matcher(excludes);
+    if (!isMatch){
+      this.dirty.set(uri.fsPath, uri);
+    }
   }
 
   private onDidDeleteFile(uri: Uri) {
@@ -204,15 +209,12 @@ export class DeclarationProvider implements Disposable {
     this.onDidResetEmitter.fire();
   }
   private async flush(): Promise<void> {
-    const exclude = [
-      ...Object.keys(await vscode.workspace.getConfiguration('search', null).get('exclude') || {}),
-      ...Object.keys(await vscode.workspace.getConfiguration('files', null).get('exclude') || {})
-    ].join(',');
+    const excludes = getExcludeGlob();
   
     if (this.fullscan) {
       this.fullscan = false;
       
-      for (const uri of await vscode.workspace.findFiles("**/*.brs", `{${exclude}}`)) {
+      for (const uri of await vscode.workspace.findFiles("**/*.brs", excludes)) {
         this.dirty.set(uri.fsPath, uri);
       }
     }
@@ -243,4 +245,11 @@ export class DeclarationProvider implements Disposable {
       }
     }
   }
+}
+export function getExcludeGlob() : string{
+  const exclude = [
+    ...Object.keys(vscode.workspace.getConfiguration('search', null).get('exclude') || {}),
+    ...Object.keys(vscode.workspace.getConfiguration('files', null).get('exclude') || {})
+  ].join(',');
+  return `{${exclude}}`;
 }
