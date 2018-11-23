@@ -204,11 +204,16 @@ export class DeclarationProvider implements Disposable {
     this.encoding.reset();
     this.onDidResetEmitter.fire();
   }
-
   private async flush(): Promise<void> {
+    const exclude = [
+      ...Object.keys(await vscode.workspace.getConfiguration('search', null).get('exclude') || {}),
+      ...Object.keys(await vscode.workspace.getConfiguration('files', null).get('exclude') || {})
+    ].join(',');
+  
     if (this.fullscan) {
       this.fullscan = false;
-      for (const uri of await vscode.workspace.findFiles("**/*.brs")) {
+      
+      for (const uri of await vscode.workspace.findFiles("**/*.brs", `{${exclude}}`)) {
         this.dirty.set(uri.fsPath, uri);
       }
     }
