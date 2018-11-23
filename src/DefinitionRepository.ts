@@ -4,9 +4,6 @@ import { Location, Position, TextDocument, Uri } from "vscode";
 import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
 import {DeclarationProvider,  readDeclarations } from "./DeclarationProvider";
 
-function declToDefinition(uri: Uri, decl: BrightscriptDeclaration): Location {
-  return new Location(uri, decl.nameRange);
-}
 
 export class DefinitionRepository {
   private cache: Map<string, BrightscriptDeclaration[]> = new Map();
@@ -41,8 +38,6 @@ export class DefinitionRepository {
     }
     const fresh: Set<string> = new Set([document.uri.fsPath]);
     for (const doc of vscode.workspace.textDocuments) {
-      console.log(">>>>>doc " + doc.uri.path);
-
       if (!doc.isDirty) {
         continue;
       }
@@ -65,7 +60,7 @@ export class DefinitionRepository {
       if (!path.startsWith(ws.uri.fsPath)) {
         continue;
       }
-      yield* defs.filter((d) => d.name.toLowerCase() === word).map((d) => new Location(ws.uri, d.nameRange));
+      yield* defs.filter((d) => d.name.toLowerCase() === word).map((d) => d.getLocation());
     }
   }
 
@@ -77,15 +72,20 @@ export class DefinitionRepository {
   }
 
   private findInCurrentDocument(document: TextDocument, position: Position, word: string): Location[] {
-    return readDeclarations(document.getText())
-      .filter((d) => d.name.toLowerCase() === word && d.visible(position))
-      .map((d) => declToDefinition(document.uri, d));
+    return readDeclarations(document.uri, document.getText())
+    .filter((d) => {
+      return d.name.toLowerCase() === word && d.visible(position);
+    })
+    .map((d) => { 
+      return d.getLocation();
+    });
   }
-
+  
   private findInDocument(document: TextDocument, word: string): Location[] {
-    return readDeclarations(document.getText())
+    console.log("FID >>>> "  + document.fileName);
+    return readDeclarations(document.uri, document.getText())
       .filter((d) => d.name.toLowerCase() === word && d.isGlobal)
-      .map((d) => declToDefinition(document.uri, d));
+      .map((d) => d.getLocation());
   }
 
   // duplicating some of this to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
@@ -132,12 +132,12 @@ export class DefinitionRepository {
   }
 
   private findDefinitionInCurrentDocument(document: TextDocument, position: Position, word: string): BrightscriptDeclaration[] {
-    return readDeclarations(document.getText())
+    return readDeclarations(document.uri, document.getText())
       .filter((d) => d.name.toLowerCase() === word && d.visible(position));
   }
 
   private findDefinitionInDocument(document: TextDocument, word: string): BrightscriptDeclaration[] {
-    return readDeclarations(document.getText())
+    return readDeclarations(document.uri, document.getText())
       .filter((d) => d.name.toLowerCase() === word && d.isGlobal);
   }
 }

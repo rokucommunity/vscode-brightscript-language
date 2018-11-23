@@ -15,7 +15,7 @@ function declToSymbolInformation(uri: Uri, decl: BrightscriptDeclaration): Symbo
 }
 
 export function readSymbolInformations(uri: Uri, input: string): SymbolInformation[] {
-  return readDeclarations(input).map((d) => declToSymbolInformation(uri, d));
+  return readDeclarations(uri, input).map((d) => declToSymbolInformation(uri, d));
 }
 
 export class SymbolInformationRepository {
@@ -75,7 +75,7 @@ export class SymbolInformationRepository {
   }
 
   private findInDocument(document: TextDocument, pattern: RegExp): SymbolInformation[] {
-    return readDeclarations(document.getText())
+    return readDeclarations(document.uri, document.getText())
       .filter((d) => pattern.test(d.name))
       .map((d) => declToSymbolInformation(document.uri, d));
   }

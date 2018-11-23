@@ -22,13 +22,15 @@ export function* iterlines(input: string): IterableIterator<[number, string]> {
   }
 }
 
-export function readDeclarations(input: string): BrightscriptDeclaration[] {
+export function readDeclarations(uri : Uri, input: string): BrightscriptDeclaration[] {
+  const container = BrightscriptDeclaration.fromUri(uri);
   const symbols: BrightscriptDeclaration[] = [];
   let currentFunction: BrightscriptDeclaration;
   let funcEndLine: number;
   let funcEndChar: number;
   let mDefs = {};
   console.log("READ DECLARATIONS");
+
   for (const [line, text] of iterlines(input)) {
     // console.log("" + line + ": " + text);
     funcEndLine = line;
@@ -38,7 +40,6 @@ export function readDeclarations(input: string): BrightscriptDeclaration[] {
     let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
     // console.log("match " + match);
     if (match !== null) {
-      // console.log("function START");
       // function has started
       if (currentFunction !== undefined) {
         currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
@@ -46,12 +47,16 @@ export function readDeclarations(input: string): BrightscriptDeclaration[] {
       currentFunction = new BrightscriptDeclaration(
         match[1],
         SymbolKind.Function,
-        undefined,
+        container,
         match[2].split(","),
-        new Range(line, match[0].length - match[1].length - 1, line, match[0].length - 1),
+        new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
         new Range(line, 0, line, text.length),
-      );
-      console.log("function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
+        );
+        // console.log(">>>>>>>>>>>>>>>> function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
+        // console.log(text);
+        // console.log(match[0]+ ">>>" + match[1]);
+        // console.log(match[0].length+ ">>>" +match[1].length);
+        // console.log(currentFunction.nameRange.start.character + " ," + currentFunction.nameRange.end.character);
       symbols.push(currentFunction);
       continue;
     }
@@ -76,7 +81,7 @@ export function readDeclarations(input: string): BrightscriptDeclaration[] {
         let varSymbol = new BrightscriptDeclaration(
           name,
           SymbolKind.Field,
-          undefined,
+          container,
           undefined,
           new Range(line, match[0].length - match[1].length, line, match[0].length),
           new Range(line, 0, line, text.length),
@@ -230,7 +235,7 @@ export class DeclarationProvider implements Disposable {
         continue;
       }
       if (this.dirty.delete(path)) {
-        this.onDidChangeEmitter.fire(new DeclarationChangeEvent(uri, readDeclarations(input)));
+        this.onDidChangeEmitter.fire(new DeclarationChangeEvent(uri, readDeclarations(uri, input)));
       }
     }
   }
