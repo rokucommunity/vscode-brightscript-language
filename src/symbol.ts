@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 
 import { Location, SymbolInformation, TextDocument, Uri } from "vscode";
 
-import { Declaration, DeclarationProvider, readDeclarations } from "./declaration";
+import { DeclarationProvider, readDeclarations } from "./DeclarationProvider";
+import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
 
-function declToSymbolInformation(uri: Uri, decl: Declaration): SymbolInformation {
+function declToSymbolInformation(uri: Uri, decl: BrightscriptDeclaration): SymbolInformation {
   return new SymbolInformation(
     decl.name,
     decl.kind,

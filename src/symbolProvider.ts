@@ -31,7 +31,7 @@ const symbolProvider = {
     for (let line = 0; line < lineCount; line++) {
       const symbol = getSymbolForLine(document, line);
       if (symbol) {
-        console.log("got symbol " + symbol);
+        // console.log("got symbol " + symbol);
         result.push(symbol);
       }
     }

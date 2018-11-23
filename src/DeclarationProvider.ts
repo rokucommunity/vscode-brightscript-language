@@ -3,37 +3,15 @@ import * as iconv from "iconv-lite";
 import * as vscode from "vscode";
 
 import { Disposable, Event, EventEmitter, Position, Range, SymbolInformation, SymbolKind, Uri } from "vscode";
+import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CREDIT WHERE CREDIT IS DUE
 // georgejecook: I lifted most of the declration and symbol work from sasami's era basic implementation
 // at https://github.com/sasami/vscode-erabasic and hcked it in with some basic changes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-export class Declaration {
-  constructor(
-    public name: string,
-    public kind: SymbolKind,
-    public container: Declaration | undefined,
-    public nameRange: Range,
-    public bodyRange: Range) {
 
-  }
-
-
-  get isGlobal(): boolean {
-    return this.container === undefined;
-  }
-
-  get containerName(): string | undefined {
-    return this.container && this.container.name;
-  }
-
-  public visible(position: Position): boolean {
-    return this.container === undefined || this.container.bodyRange.contains(position);
-  }
-}
-
-function* iterlines(input: string): IterableIterator<[number, string]> {
+export function* iterlines(input: string): IterableIterator<[number, string]> {
   const lines = input.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i];
@@ -44,9 +22,9 @@ function* iterlines(input: string): IterableIterator<[number, string]> {
   }
 }
 
-export function readDeclarations(input: string): Declaration[] {
-  const symbols: Declaration[] = [];
-  let currentFunction: Declaration;
+export function readDeclarations(input: string): BrightscriptDeclaration[] {
+  const symbols: BrightscriptDeclaration[] = [];
+  let currentFunction: BrightscriptDeclaration;
   let funcEndLine: number;
   let funcEndChar: number;
   let mDefs = {};
@@ -57,22 +35,23 @@ export function readDeclarations(input: string): Declaration[] {
     funcEndChar = text.length;
 
     //FUNCTION START
-    let match = /^(?:function|sub)\s+(.*[^\(])\(/i.exec(text);
-    console.log("match " + match);
+    let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
+    // console.log("match " + match);
     if (match !== null) {
-      console.log("function START");
+      // console.log("function START");
       // function has started
       if (currentFunction !== undefined) {
         currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
       }
-      currentFunction = new Declaration(
+      currentFunction = new BrightscriptDeclaration(
         match[1],
         SymbolKind.Function,
         undefined,
-        new Range(line, match[0].length - match[1].length -1, line, match[0].length -1),
+        match[2].split(","),
+        new Range(line, match[0].length - match[1].length - 1, line, match[0].length - 1),
         new Range(line, 0, line, text.length),
       );
-      console.log("function START", currentFunction.name);
+      console.log("function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
       symbols.push(currentFunction);
       continue;
     }
@@ -94,9 +73,10 @@ export function readDeclarations(input: string): Declaration[] {
       const name = match[1].trim();
       if (mDefs[name] !== true) {
         mDefs[name] = true;
-        let varSymbol = new Declaration(
+        let varSymbol = new BrightscriptDeclaration(
           name,
           SymbolKind.Field,
+          undefined,
           undefined,
           new Range(line, match[0].length - match[1].length, line, match[0].length),
           new Range(line, 0, line, text.length),
@@ -138,7 +118,7 @@ class WorkspaceEncoding {
 }
 
 export class DeclarationChangeEvent {
-  constructor(public uri: Uri, public decls: Declaration[]) {
+  constructor(public uri: Uri, public decls: BrightscriptDeclaration[]) {
   }
 }
 

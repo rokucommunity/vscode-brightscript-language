@@ -1,25 +1,19 @@
 import * as vscode from "vscode";
 
 import { Location, Position, TextDocument, Uri } from "vscode";
+import { BrightscriptDeclaration } from "./BrightscriptDeclaration";
+import {DeclarationProvider,  readDeclarations } from "./DeclarationProvider";
 
-import { Declaration, DeclarationProvider, readDeclarations } from "./declaration";
-
-function declToDefinition(uri: Uri, decl: Declaration): Location {
+function declToDefinition(uri: Uri, decl: BrightscriptDeclaration): Location {
   return new Location(uri, decl.nameRange);
 }
 
-class DefinitionInfo {
-  constructor(public name: string, public location: Location) {
-  }
-}
-
 export class DefinitionRepository {
-  private cache: Map<string, DefinitionInfo[]> = new Map();
+  private cache: Map<string, BrightscriptDeclaration[]> = new Map();
 
   constructor(private provider: DeclarationProvider) {
     provider.onDidChange((e) => {
-      this.cache.set(e.uri.fsPath, e.decls.filter((d) => d.isGlobal)
-        .map((d) => new DefinitionInfo(d.name, declToDefinition(e.uri, d))));
+      this.cache.set(e.uri.fsPath, e.decls.filter((d) => d.isGlobal));
     });
     provider.onDidDelete((e) => {
       this.cache.delete(e.uri.fsPath);
@@ -35,7 +29,7 @@ export class DefinitionRepository {
 
   public *find(document: TextDocument, position: Position): IterableIterator<Location> {
     const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
-    console.log("find word" + word);
+
     this.sync();
     if (word === undefined) {
       return;
@@ -47,6 +41,8 @@ export class DefinitionRepository {
     }
     const fresh: Set<string> = new Set([document.uri.fsPath]);
     for (const doc of vscode.workspace.textDocuments) {
+      console.log(">>>>>doc " + doc.uri.path);
+
       if (!doc.isDirty) {
         continue;
       }
@@ -69,7 +65,7 @@ export class DefinitionRepository {
       if (!path.startsWith(ws.uri.fsPath)) {
         continue;
       }
-      yield* defs.filter((d) => d.name.toLowerCase() === word).map((d) => d.location);
+      yield* defs.filter((d) => d.name.toLowerCase() === word).map((d) => new Location(ws.uri, d.nameRange));
     }
   }
 
@@ -90,5 +86,58 @@ export class DefinitionRepository {
     return readDeclarations(document.getText())
       .filter((d) => d.name.toLowerCase() === word && d.isGlobal)
       .map((d) => declToDefinition(document.uri, d));
+  }
+
+  // duplicating some of this to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
+  public *findDefinition(document: TextDocument, position: Position): IterableIterator<BrightscriptDeclaration> {
+    const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
+
+    this.sync();
+    if (word === undefined) {
+      return;
+    }
+    yield* this.findDefinitionInCurrentDocument(document, position, word);
+    const ws = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (ws === undefined) {
+      return;
+    }
+    const fresh: Set<string> = new Set([document.uri.fsPath]);
+    for (const doc of vscode.workspace.textDocuments) {
+      console.log(">>>>>doc " + doc.uri.path);
+
+      if (!doc.isDirty) {
+        continue;
+      }
+      if (doc === document) {
+        continue;
+      }
+      if (!this.cache.has(doc.uri.fsPath)) {
+        continue;
+      }
+      if (!doc.uri.fsPath.startsWith(ws.uri.fsPath)) {
+        continue;
+      }
+      fresh.add(doc.uri.fsPath);
+      yield* this.findDefinitionInDocument(doc, word);
+    }
+    for (const [path, defs] of this.cache.entries()) {
+      if (fresh.has(path)) {
+        continue;
+      }
+      if (!path.startsWith(ws.uri.fsPath)) {
+        continue;
+      }
+      yield* defs.filter((d) => d.name.toLowerCase() === word);
+    }
+  }
+
+  private findDefinitionInCurrentDocument(document: TextDocument, position: Position, word: string): BrightscriptDeclaration[] {
+    return readDeclarations(document.getText())
+      .filter((d) => d.name.toLowerCase() === word && d.visible(position));
+  }
+
+  private findDefinitionInDocument(document: TextDocument, word: string): BrightscriptDeclaration[] {
+    return readDeclarations(document.getText())
+      .filter((d) => d.name.toLowerCase() === word && d.isGlobal);
   }
 }
