@@ -12,30 +12,34 @@ import {
 } from 'vscode';
 
 import { BuiltinComplationItems } from "./completion";
-import { DefinitionRepository } from "./definitionProvider";
-import { DeclarationProvider } from "./declaration";
+import { DefinitionRepository } from "./DefinitionRepository";
+import { DeclarationProvider } from "./DeclarationProvider";
 import { readSymbolInformations, SymbolInformationRepository } from "./symbol";
 import { registerCommands } from './commands';
 import URI from "vscode-uri";
 import {registerDebugErrorHandler} from "./DebugErrorHandler";
+import BrightscriptDefinitionProvider from './BrightscriptDefinitionProvider';
+import BrightscriptSignatureHelpProvider from './BrightscriptSignatureHelpProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   //register the code formatter
   vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
 
   // const selector: DocumentSelector = { language: "Brightscript" };
-  const provider: DeclarationProvider = new DeclarationProvider();
-  const definitionProvider = new BrightscriptDefinitionProvider(provider);
+  const declarationProvider: DeclarationProvider = new DeclarationProvider();
+  const definitionRepo = new DefinitionRepository(declarationProvider);
+  const definitionProvider = new BrightscriptDefinitionProvider(definitionRepo);
   const selector = { scheme: 'file', pattern: '**/*.{brs}' };
   const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
   context.subscriptions.push(registerDefinitionProvider);
 
   // experimental placeholder
   // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightscriptCompletionItemProvider()));
-  context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightscriptDefinitionProvider(provider)));
+  context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightscriptDefinitionProvider(definitionRepo)));
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
-  context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(provider)));
-  context.subscriptions.push(provider);
+  context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(declarationProvider)));
+  context.subscriptions.push(declarationProvider);
+  vscode.languages.registerSignatureHelpProvider(selector, new BrightscriptSignatureHelpProvider(definitionRepo), '(', ',');
   registerDebugErrorHandler();
 
   registerCommands(context);
@@ -96,18 +100,6 @@ interface BrightscriptDebugConfiguration extends DebugConfiguration {
   consoleOutput: 'full' | 'normal';
   retainDeploymentArchive: boolean;
   retainStagingFolder: boolean;
-}
-
-class BrightscriptDefinitionProvider implements DefinitionProvider {
-  private repo: DefinitionRepository;
-
-  constructor(provider: DeclarationProvider) {
-    this.repo = new DefinitionRepository(provider);
-  }
-
-  public provideDefinition(document: TextDocument, position: Position, token: CancellationToken): Promise<Definition> {
-    return this.repo.sync().then(() => Array.from(this.repo.find(document, position)));
-  }
 }
 
 class BrightscriptDocumentSymbolProvider implements DocumentSymbolProvider {
