@@ -95,8 +95,7 @@ export function readDeclarations(uri : Uri, input: string): BrightscriptDeclarat
   }
   return symbols;
 }
-
-class WorkspaceEncoding {
+export class WorkspaceEncoding {
   private encoding: string[][];
 
   constructor() {

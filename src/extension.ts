@@ -20,6 +20,7 @@ import URI from "vscode-uri";
 import {registerDebugErrorHandler} from "./DebugErrorHandler";
 import BrightscriptDefinitionProvider from './BrightscriptDefinitionProvider';
 import BrightscriptSignatureHelpProvider from './BrightscriptSignatureHelpProvider';
+import { BrightscriptReferenceProvider } from './BrightscriptReferenceProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   //register the code formatter
@@ -39,6 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
   context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(declarationProvider)));
   context.subscriptions.push(declarationProvider);
+  vscode.languages.registerReferenceProvider(selector, new BrightscriptReferenceProvider());
   vscode.languages.registerSignatureHelpProvider(selector, new BrightscriptSignatureHelpProvider(definitionRepo), '(', ',');
   registerDebugErrorHandler();
 
