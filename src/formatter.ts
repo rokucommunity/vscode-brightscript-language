@@ -1,20 +1,19 @@
+import { BrightScriptFormatter } from 'brightscript-formatter';
 import {
+    DocumentRangeFormattingEditProvider,
+    EndOfLine,
+    FormattingOptions,
+    Position,
+    ProviderResult,
+    Range,
     TextDocument,
     TextEdit,
-    Position,
-    Range,
-    window,
-    EndOfLine,
-    workspace,
-    FormattingOptions,
-    DocumentRangeFormattingEditProvider, ProviderResult,
+    window, workspace,
 } from 'vscode';
-import { BrightScriptFormatter } from 'brightscript-formatter';
 
-export class Formatter implements DocumentRangeFormattingEditProvider{
+export class Formatter implements DocumentRangeFormattingEditProvider {
 
-
-    provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: FormattingOptions): ProviderResult<TextEdit[]> {
+    public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: FormattingOptions): ProviderResult<TextEdit[]> {
         let config = workspace.getConfiguration('brightscript.format');
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
@@ -35,8 +34,8 @@ export class Formatter implements DocumentRangeFormattingEditProvider{
             window.showErrorMessage(e.message, e.stack.split('\n')[0]);
         }
 
-        function getEditChunks(formattedText: string, range : Range) {
-            
+        function getEditChunks(formattedText: string, range: Range) {
+
             let lines = formattedText.split(lineEnding);
             //make an edit per line of the doc
             let edits: TextEdit[] = [];
