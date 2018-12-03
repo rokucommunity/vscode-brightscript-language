@@ -25,7 +25,8 @@ export class Formatter implements DocumentRangeFormattingEditProvider{
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 compositeKeywords: config.compositeKeywords,
                 keywordCase: config.keywordCase,
-                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace
+                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace,
+                keywordCaseOverride: config.keywordCaseOverride
             });
 
             let edits = getEditChunks(formattedText, range);

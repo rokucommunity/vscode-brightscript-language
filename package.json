@@ -249,17 +249,21 @@
                     "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
                     "scope": "resource"
                 },
-                "brightscript.format.compositeKeywords": {
+                "brightscript.format.keywordCaseOverride": {
                     "type": [
-                        "string",
+                        "object",
                         "null"
                     ],
-                    "enum": [
-                        "split",
-                        "combine",
-                        null
+                    "default": null,
+                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
+                    "scope": "resource"
+                },
+                "brightscript.format.compositeKeywords": {
+                    "type": [
+                        "object",
+                        "null"
                     ],
-                    "default": "split",
+                    "default": "null",
                     "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
                     "scope": "resource"
                 },
