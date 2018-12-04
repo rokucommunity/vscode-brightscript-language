@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import { CancellationToken, DebugConfiguration, ProviderResult, WorkspaceFolder } from 'vscode';
+import {
+    CancellationToken,
+    DebugConfiguration,
+    ProviderResult,
+    WorkspaceFolder
+} from 'vscode';
 
 import { Formatter } from './formatter';
 
