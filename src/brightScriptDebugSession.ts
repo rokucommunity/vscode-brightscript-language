@@ -5,13 +5,26 @@ import * as glob from 'glob';
 import * as path from 'path';
 import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
+
 import {
-    Breakpoint, DebugSession, InitializedEvent, OutputEvent, Source,
-    StackFrame, StoppedEvent, TerminatedEvent, Thread, Variable
+    Breakpoint,
+    DebugSession,
+    InitializedEvent,
+    OutputEvent,
+    Source,
+    StackFrame,
+    StoppedEvent,
+    TerminatedEvent,
+    Thread,
+    Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-import { EvaluateContainer, RokuAdapter } from './RokuAdapter';
+//becomes this
+import {
+    EvaluateContainer,
+    RokuAdapter
+} from './RokuAdapter';
 
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
@@ -79,10 +92,10 @@ export class BrightScriptDebugSession extends DebugSession {
         this.log('launchRequest');
         this.launchArgs = args;
         this.launchRequestWasCalled = true;
-
-        console.log('Packaging and deploying to roku');
         let disconnect = () => { };
+
         let error: Error;
+        console.log('Packaging and deploying to roku');
         try {
             //copy all project files to the staging folder
             let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
@@ -746,9 +759,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     rootDir: string;
     /**
-     * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source
-     * folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process
-     * cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.
+     * If you have a build system, rootDir will point to the build output folder, and this path should point
+     * to the actual source folder so that breakpoints can be set in the source files when debugging.
+     * In order for this to work, your build process cannot change line offsets between source files and built files,
+     * otherwise debugger lines will be out of sync.
      */
     debugRootDir: string;
     /**
@@ -784,9 +798,9 @@ enum StoppedEventReason {
 export function defer<T>() {
     let resolve: any;
     let reject: any;
-    let promise = new Promise<T>((_resolve, _reject) => {
-        resolve = _resolve;
-        reject = _reject;
+    let promise = new Promise<T>((actualResolve, actualReject) => {
+        resolve = actualResolve;
+        reject = actualReject;
     });
     return {
         promise: promise,

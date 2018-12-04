@@ -5,8 +5,15 @@ import * as path from 'path';
 import * as sinon from 'sinon';
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
-import { BrightScriptDebugSession, defer } from './brightScriptDebugSession';
-import { EvaluateContainer, HighLevelType, PrimativeType } from './RokuAdapter';
+import {
+    BrightScriptDebugSession,
+    defer
+} from './brightScriptDebugSession';
+import {
+    EvaluateContainer,
+    HighLevelType,
+    PrimativeType
+} from './RokuAdapter';
 
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
@@ -95,7 +102,7 @@ describe('Debugger', () => {
                     }
                 }
             });
-            rokuAdapter.getVariable = function() {
+            rokuAdapter.getVariable = () => {
                 return Promise.resolve(getVariableValue);
             };
         });
@@ -225,7 +232,7 @@ describe('Debugger', () => {
         beforeEach(() => {
             response = undefined;
             //intercept the sent response
-            session.sendResponse = function(res) {
+            session.sendResponse = (res) => {
                 response = res;
             };
 

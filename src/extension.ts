@@ -1,25 +1,50 @@
 import * as vscode from 'vscode';
 import {
     CancellationToken,
+    CompletionItem,
+    CompletionItemProvider,
     DebugConfiguration,
-    ProviderResult,
-    WorkspaceFolder
+    Definition,
+    DefinitionProvider,
+    DocumentSymbolProvider,
+    Position,
+    SymbolInformation,
+    TextDocument,
+    WorkspaceFolder,
+    WorkspaceSymbolProvider
 } from 'vscode';
 
+import { registerCommands } from './commands';
+import { BuiltinComplationItems } from './completion';
+import { DeclarationProvider } from './declaration';
+import { DefinitionRepository } from './definitionProvider';
 import { Formatter } from './formatter';
+import {
+    readSymbolInformations,
+    SymbolInformationRepository
+} from './symbol';
 
 export function activate(context: vscode.ExtensionContext) {
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
 
-    context.subscriptions.push(vscode.commands.registerCommand('extension.mock-debug.getProgramName', (config) => {
-        return vscode.window.showInputBox({
-            placeHolder: 'Please enter the name of a markdown file in the workspace folder',
-            value: 'readme.md'
-        });
-    }));
-
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightscriptConfigurationProvider()));
+
+    // const selector: DocumentSelector = { language: "Brightscript" };
+    const provider: DeclarationProvider = new DeclarationProvider();
+    const definitionProvider = new BrightscriptDefinitionProvider(provider);
+    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
+    const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
+    context.subscriptions.push(registerDefinitionProvider);
+
+    // experimental placeholder
+    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightscriptCompletionItemProvider()));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightscriptDefinitionProvider(provider)));
+    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
+    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(provider)));
+    context.subscriptions.push(provider);
+
+    registerCommands(context);
 }
 
 class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -102,4 +127,43 @@ interface BrightscriptDebugConfiguration extends DebugConfiguration {
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     retainStagingFolder: boolean;
+}
+
+class BrightscriptDefinitionProvider implements DefinitionProvider {
+
+    constructor(provider: DeclarationProvider) {
+        this.repo = new DefinitionRepository(provider);
+    }
+
+    private repo: DefinitionRepository;
+
+    public provideDefinition(document: TextDocument, position: Position, token: CancellationToken): Promise<Definition> {
+        return this.repo.sync().then(() => Array.from(this.repo.find(document, position)));
+    }
+}
+
+class BrightscriptDocumentSymbolProvider implements DocumentSymbolProvider {
+    public provideDocumentSymbols(document: TextDocument, token: CancellationToken): SymbolInformation[] {
+        return readSymbolInformations(document.uri, document.getText());
+    }
+}
+
+class BrightscriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
+
+    constructor(provider: DeclarationProvider) {
+        this.repo = new SymbolInformationRepository(provider);
+    }
+
+    private repo: SymbolInformationRepository;
+
+    public provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]> {
+        return this.repo.sync().then(() => Array.from(this.repo.find(query)));
+    }
+}
+
+class BrightscriptCompletionItemProvider implements CompletionItemProvider {
+    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
+        //TODO - do something useful here!
+        return BuiltinComplationItems;
+    }
 }
