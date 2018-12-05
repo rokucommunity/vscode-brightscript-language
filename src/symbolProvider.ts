@@ -16,7 +16,7 @@ export function getSymbolForMatch(testFnMatch: RegExpMatchArray, document: vscod
 const functionRegexPattern = getFnRegex();
 
 export function getSymbolForLine(document: vscode.TextDocument, line: number): vscode.SymbolInformation | undefined {
-    const { text } = document.lineAt(line);
+    const {text} = document.lineAt(line);
     const functionMatch = text.match(functionRegexPattern);
     if (functionMatch) {
         return getSymbolForMatch(functionMatch, document, line, vscode.SymbolKind.Module);
@@ -31,7 +31,7 @@ const symbolProvider = {
         for (let line = 0; line < lineCount; line++) {
             const symbol = getSymbolForLine(document, line);
             if (symbol) {
-                console.log('got symbol ' + symbol);
+                // console.log("got symbol " + symbol);
                 result.push(symbol);
             }
         }

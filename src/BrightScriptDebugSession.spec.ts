@@ -1,25 +1,25 @@
 /* tslint:disable:no-unused-expression */
-import * as assert from 'assert';
 import { expect } from 'chai';
+
+import * as assert from 'assert';
 import * as path from 'path';
 import * as sinon from 'sinon';
+
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
-import {
-    BrightScriptDebugSession,
-    defer
-} from './brightScriptDebugSession';
-import {
-    EvaluateContainer,
-    HighLevelType,
-    PrimativeType
-} from './RokuAdapter';
+import { BrightScriptDebugSession, defer } from './BrightScriptDebugSession';
+import { EvaluateContainer, HighLevelType, PrimativeType } from './RokuAdapter';
 
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {
-        on: () => { return () => { }; },
-        activate: () => { return Promise.resolve(); }
+        on: () => {
+            return () => {
+            };
+        },
+        activate: () => {
+            return Promise.resolve();
+        }
     };
     beforeEach(() => {
         try {
@@ -29,17 +29,32 @@ describe('Debugger', () => {
         }
         //mock the rokuDeploy module with promises so we can have predictable tests
         session.rokuDeploy = <any>{
-            prepublishToStaging: () => { return Promise.resolve(); },
-            zipPackage: () => { return Promise.resolve(); },
-            pressHomeButton: () => { return Promise.resolve(); },
-            publish: () => { return Promise.resolve(); },
-            createPackage: () => { return Promise.resolve(); },
-            deploy: () => { return Promise.resolve(); },
-            getOptions: () => { }
+            prepublishToStaging: () => {
+                return Promise.resolve();
+            },
+            zipPackage: () => {
+                return Promise.resolve();
+            },
+            pressHomeButton: () => {
+                return Promise.resolve();
+            },
+            publish: () => {
+                return Promise.resolve();
+            },
+            createPackage: () => {
+                return Promise.resolve();
+            },
+            deploy: () => {
+                return Promise.resolve();
+            },
+            getOptions: () => {
+            }
         };
         (session as any).rokuAdapter = rokuAdapter;
         //mock the roku adapter
-        (session as any).connectRokuAdapter = () => { return Promise.resolve(rokuAdapter); };
+        (session as any).connectRokuAdapter = () => {
+            return Promise.resolve(rokuAdapter);
+        };
     });
 
     describe('initializeRequest', () => {
@@ -76,6 +91,7 @@ describe('Debugger', () => {
             responseDeferreds.push(deferred);
             return deferred.promise;
         }
+
         function getBooleanEvaluateContainer(expression: string, name: string = null) {
             return <EvaluateContainer>{
                 name: name || expression,
@@ -86,6 +102,7 @@ describe('Debugger', () => {
                 children: null
             };
         }
+
         beforeEach(() => {
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
@@ -102,7 +119,7 @@ describe('Debugger', () => {
                     }
                 }
             });
-            rokuAdapter.getVariable = () => {
+            rokuAdapter.getVariable = function() {
                 return Promise.resolve(getVariableValue);
             };
         });
@@ -111,7 +128,7 @@ describe('Debugger', () => {
             let expression = 'someBool';
             getVariableValue = getBooleanEvaluateContainer(expression);
             rokuAdapter.isAtDebuggerPrompt = true;
-            session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
+            session.evaluateRequest(<any>{}, {context: 'hover', expression: expression});
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'true',
@@ -132,7 +149,7 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someArray[0]', '0'), getBooleanEvaluateContainer('someArray[1]', '1')]
             };
-            session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
+            session.evaluateRequest(<any>{}, {context: 'hover', expression: expression});
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'roArray',
@@ -153,7 +170,7 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'true'), getBooleanEvaluateContainer('someObject.ownsHouse', 'false')]
             };
-            session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
+            session.evaluateRequest(<any>{}, {context: 'hover', expression: expression});
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'roAssociativeArray',
@@ -174,12 +191,12 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
             };
-            session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
+            session.evaluateRequest(<any>{}, {context: 'hover', expression: expression});
             /*let response = <DebugProtocol.EvaluateResponse>*/
             await getResponse(0);
 
             //get variables
-            session.variablesRequest(<any>{}, { variablesReference: 1 });
+            session.variablesRequest(<any>{}, {variablesReference: 1});
             let childVars = <DebugProtocol.VariablesResponse>await getResponse(1);
             assert.deepEqual(childVars.body.variables, [
                 {
@@ -232,7 +249,7 @@ describe('Debugger', () => {
         beforeEach(() => {
             response = undefined;
             //intercept the sent response
-            session.sendResponse = (res) => {
+            session.sendResponse = function(res) {
                 response = res;
             };
 
@@ -243,11 +260,11 @@ describe('Debugger', () => {
                 breakpoints: []
             };
 
-            args.breakpoints = [{ line: 1 }];
+            args.breakpoints = [{line: 1}];
         });
         it('returns correct results', () => {
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }]);
+            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: true}]);
 
             //mark debugger as 'launched' which should change the behavior of breakpoints.
             session.launchRequestWasCalled = true;
@@ -258,18 +275,18 @@ describe('Debugger', () => {
             expect(response.body.breakpoints).to.deep.equal([]);
 
             //add breakpoint after launchRequestWasCalled finished (i.e. can't set breakpoints anymore)
-            args.breakpoints = [{ line: 1 }, { line: 2 }];
+            args.breakpoints = [{line: 1}, {line: 2}];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }, { line: 2, verified: false }]);
+            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: true}, {line: 2, verified: false}]);
 
         });
 
         it('handles breakpoints for non-brightscript files', () => {
             args.source.path = '/some/xml-file.xml';
-            args.breakpoints = [{ line: 1 }];
+            args.breakpoints = [{line: 1}];
             session.setBreakPointsRequest(<any>{}, args);
             //breakpoint should be disabled
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: false }]);
+            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: false}]);
 
         });
 
@@ -278,7 +295,7 @@ describe('Debugger', () => {
                 debugRootDir: path.normalize('/src'),
                 rootDir: path.normalize('/dest')
             };
-            args.breakpoints = [{ line: 1 }];
+            args.breakpoints = [{line: 1}];
 
             session.setBreakPointsRequest(<any>{}, args);
             expect((session as any).breakpointsByClientPath[path.normalize('/src/some/file.brs')]).not.to.be.undefined;

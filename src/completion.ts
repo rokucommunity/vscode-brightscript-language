@@ -1,11 +1,8 @@
-import {
-    CompletionItem,
-    CompletionItemKind
-} from 'vscode';
+import { CompletionItem, CompletionItemKind } from 'vscode';
 
 const Command = CompletionItemKind.Function;
 
-export const BuiltinComplationItems: CompletionItem[] = [
+export const BuiltinCompletionItems: CompletionItem[] = [
     //WIP - can do way better than this!
     {
         label: 'print',

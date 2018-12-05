@@ -1,4 +1,5 @@
 import * as eol from 'eol';
+
 import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
@@ -10,9 +11,23 @@ import * as rokuDeploy from 'roku-deploy';
 export class RokuAdapter {
     constructor(private host: string) {
         this.emitter = new EventEmitter();
+        this.status = RokuAdapterStatus.none;
+        this.startCompilingLine = -1;
+        this.endCompilingLine = -1;
+        this.compilingLines = [];
+        this.lastUnhandledDataTime = 0;
+        this.maxDataMsWhenCompiling = 500;
     }
+
+    private status: RokuAdapterStatus;
     private requestPipeline: RequestPipeline;
     private emitter: EventEmitter;
+    private startCompilingLine: number;
+    private endCompilingLine: number;
+    private compilingLines: string[];
+    private lastUnhandledDataTime: number;
+    private maxDataMsWhenCompiling: number;
+    private staleTimer: any;
 
     private cache = {};
 
@@ -21,17 +36,19 @@ export class RokuAdapter {
      * @param eventName
      * @param handler
      */
-    public on(eventName: 'cannot-continue', handler: () => void);
-    public on(eventName: 'close', handler: () => void);
-    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
-    public on(eventName: 'console-output', handler: (output: string) => void);
-    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);
-    public on(eventName: 'unhandled-console-output', handler: (output: string) => void);
+    public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
+    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
+    public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
+    public on(eventName: 'cannot-continue', handler: () => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
-            this.emitter.removeListener(eventName, handler);
+            if (this.emitter !== undefined) {
+                this.emitter.removeListener(eventName, handler);
+            }
         };
     }
 
@@ -48,6 +65,7 @@ export class RokuAdapter {
      * this will be set to true. Otherwise, it will be set to false
      */
     public isAtDebuggerPrompt = false;
+
     public async activate() {
         this.isActivated = true;
         //if we are already sitting at a debugger prompt, we need to emit the first suspend event.
@@ -71,7 +89,7 @@ export class RokuAdapter {
             let callCount = 0;
             client.addListener(name, function handler(data) {
                 let myCallCount = callCount;
-                setTimeout(() => {
+                setTimeout(function() {
                     //if no other calls have been made since the timeout started, then the listener has settled
                     if (myCallCount === callCount) {
                         client.removeListener(name, handler);
@@ -103,7 +121,7 @@ export class RokuAdapter {
             });
 
             //if the connection fails, reject the connect promise
-            client.addListener('error', (err) => {
+            client.addListener('error', function(err) {
                 //this.emit(EventName.error, err);
                 reject(err);
             });
@@ -127,23 +145,24 @@ export class RokuAdapter {
                     return;
                 }
 
-                if (this.isAtCannotContinue(responseText)) {
+                //forward all unhandled console output
+                this.emit('unhandled-console-output', responseText);
+
+                this.processUnhandledLines(responseText);
+                let match;
+
+                if (this.checkForCantContinue(responseText)) {
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
 
-                //forward all unhandled console output
-                this.emit('unhandled-console-output', responseText);
-
-                this.checkForCompileError(responseText);
-
                 if (this.isActivated) {
-                    //console.log(dataString);
+                    console.log(responseText);
 
                     //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                     //wait until we see the brightscript debugger prompt
-                    let match = /Brightscript\s+Debugger>\s+$/i.exec(responseText);
-                    if (match) {
+                    if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText)) {
+                        // if (responseText.indexOf("Brightscript Debugger>") !== -1) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                         if (this.isActivated && this.isAtDebuggerPrompt === false) {
                             this.isAtDebuggerPrompt = true;
@@ -166,13 +185,12 @@ export class RokuAdapter {
      * Look through response text for the "Can't continue" text
      * @param responseText
      */
-    private isAtCannotContinue(responseText: string) {
+    private checkForCantContinue(responseText: string): boolean {
         if (/can't continue/gi.exec(responseText.trim())) {
             this.emit('cannot-continue');
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -198,13 +216,66 @@ export class RokuAdapter {
         }
     }
 
-    /**
-     * Look through the given responseText for a compiler error
-     * @param responseText
-     */
-    private checkForCompileError(responseText: string) {
-        //throw out any lines before the last found compiling line
-        let lines = eol.split(responseText);
+    private processUnhandledLines(responseText: string) {
+        let newLines = eol.split(responseText);
+        switch (this.status) {
+        case RokuAdapterStatus.compiling:
+            this.endCompilingLine = this.getEndCompilingLine(newLines);
+            if (this.endCompilingLine !== -1) {
+                console.log('processUnhandledLines: entering state RokuAdapterStatus.running');
+                this.status = RokuAdapterStatus.running;
+                this.resetCompilingStaleTimer(false);
+            } else {
+                this.compilingLines = this.compilingLines.concat(newLines);
+                this.resetCompilingStaleTimer(true);
+            }
+            break;
+        case RokuAdapterStatus.compileError:
+            console.debug('ignoring lines while status = RokuAdapterStatus.compileError ' + responseText);
+            break;
+        case RokuAdapterStatus.running:
+            console.debug('ignoring unhandle lines while stauts = RokuAdapterStatus.running ' + responseText);
+            break;
+        case RokuAdapterStatus.none:
+            this.startCompilingLine = this.getStartingCompilingLine(newLines);
+            if (this.startCompilingLine !== -1) {
+                console.log('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                newLines.splice(0, this.startCompilingLine);
+                this.status = RokuAdapterStatus.compiling;
+                this.resetCompilingStaleTimer(true);
+            }
+            break;
+        }
+    }
+
+    public resetCompilingStaleTimer(isRunning): any {
+        console.log('getStartingCompilingLine isRunning' + isRunning);
+
+        if (this.staleTimer) {
+            console.log('>>>clearing existing interval');
+            clearInterval(this.staleTimer);
+            this.staleTimer = undefined;
+        }
+
+        if (isRunning) {
+            let that = this;
+            this.staleTimer = setInterval(() => this.onCompilingStaleTimer(), 2000);
+        }
+    }
+
+    public onCompilingStaleTimer() {
+        if (this.status !== RokuAdapterStatus.compileError) {
+            console.log('+++++++++onCompilingStaleTimer: took too long while in compile mode - assuming it\'s an error');
+            this.status = RokuAdapterStatus.compileError;
+            this.resetCompilingStaleTimer(false);
+            this.reportErrors();
+        } else {
+            console.log('+++++++++onCompilingStaleTimer: CALLED WHEN ALREADY IN ERROR STATE');
+
+        }
+    }
+
+    private getStartingCompilingLine(lines: string[]): number {
         let lastIndex: number = -1;
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
@@ -213,33 +284,133 @@ export class RokuAdapter {
                 lastIndex = i;
             }
         }
-        if (lastIndex > -1) {
-            lines = lines.splice(lastIndex);
-            responseText = lines.join('\r\n');
-        }
+        return lastIndex;
+    }
 
-        //if there is a line with a compiler error in it, emit an event
-        let match;
-        let regexp = /compile error.* in (.*)\((\d+)\)/gi;
-        let errors: Array<{ path: string; lineNumber: number }> = [];
-
-        while (match = regexp.exec(responseText)) {
-            let path = match[1];
-            let lineNumber = parseInt(match[2]);
-            //if this match is a livecompile error, throw out all prior errors because that means we are re-running
-            if (path.toLowerCase().indexOf('$livecompile') > -1) {
-                errors = [];
-            } else {
-                errors.push({
-                    path: path,
-                    lineNumber: lineNumber
-                });
+    private getEndCompilingLine(lines: string[]): number {
+        let lastIndex: number = -1;
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            //if this line looks like the compiling line
+            if (/------\s+Running.*------/i.exec(line)) {
+                lastIndex = i;
             }
         }
+        return lastIndex;
+
+    }
+
+    /**
+     * Look through the given responseText for a compiler error
+     * @param responseText
+     */
+    private reportErrors() {
+        console.log('>>>>>>>>>>>>>>>>>> reportErrors');
+        //throw out any lines before the last found compiling line
+
+        let syntaxErrors = this.getSyntaxErrors(this.compilingLines);
+        let compileErrors = this.getCompileErrors(this.compilingLines);
+        let errors = syntaxErrors.concat(compileErrors);
+
+        errors = errors.filter((e) => e.path.toLowerCase().endsWith('.brs') || e.path.toLowerCase().endsWith('.xml'));
+
+        console.log('>>>>>>>>>>>>>>>>>> errors.length ' + errors.length);
         if (errors.length > 0) {
             this.emit('compile-errors', errors);
         }
     }
+
+    public getSyntaxErrors(lines: string[]): BrightScriptDebugCompileError[] {
+        let match;
+        let errors = [];
+        let syntaxRegEx = /(syntax|compile) error.* in (.*)\((\d+)\)/gim;
+        lines.forEach((line) => {
+            match = syntaxRegEx.exec(line);
+            if (match) {
+                let path = match[2];
+                let lineNumber = parseInt(match[3]) - 1;
+
+                //FIXME
+                //if this match is a livecompile error, throw out all prior errors because that means we are re-running
+                if (path.toLowerCase().indexOf('$livecompile') === -1) {
+
+                    errors.push({
+                        path: path,
+                        lineNumber: lineNumber,
+                        line: line,
+                        message: match[0],
+                        charStart: 0,
+                        charEnd: 999 //TODO
+                    });
+                }
+            }
+        });
+        return errors;
+    }
+
+    public getCompileErrors(lines: string[]): BrightScriptDebugCompileError[] {
+        let errors = [];
+        let match;
+        let responseText = lines.join('\n');
+        const filesWithErrors = responseText.split('=================================================================');
+        if (filesWithErrors.length < 2) {
+            return [];
+        }
+        for (let index = 1; index < filesWithErrors.length - 1; index++) {
+            const fileErrorText = filesWithErrors[index];
+            //TODO - for now just a simple parse - later on someone can improve with proper line checks + all parse/compile types
+            //don't have time to do this now; just doing what keeps me productive.
+            let getFileInfoRexEx = /found(?:.*)file (.*)$/gim;
+            match = getFileInfoRexEx.exec(fileErrorText);
+            if (!match) {
+                continue;
+            }
+
+            let path = match[1];
+            let lineNumber = 0; //TODO this should iterate over all line numbers found in a file
+            let errorText = 'ERR_COMPILE:';
+            let message = fileErrorText;
+
+            errors.push({
+                path: path,
+                lineNumber: lineNumber,
+                errorText: errorText,
+                message: message,
+                charStart: 0,
+                charEnd: 999 //TODO
+            });
+
+            //now iterate over the lines, to see if there's any errors we can extract
+            let lineErrors = this.getLineErrors(path, fileErrorText);
+            if (lineErrors.length > 0) {
+                errors = lineErrors;
+            }
+        }
+        return errors;
+    }
+
+    public getLineErrors(path: string, fileErrorText: string): any[] {
+        let errors = [];
+        let getFileInfoRexEx = /^--- Line (\d*): (.*)$/gim;
+        let match;
+        while (match = getFileInfoRexEx.exec(fileErrorText)) {
+            let lineNumber = parseInt(match[1]) - 1;
+            let errorText = 'ERR_COMPILE:';
+            let message = match[2];
+
+            errors.push({
+                path: path,
+                lineNumber: lineNumber,
+                errorText: errorText,
+                message: message,
+                charStart: 0,
+                charEnd: 999 //TODO
+            });
+        }
+
+        return errors;
+    }
+
     /**
      * Send command to step over
      */
@@ -335,6 +506,7 @@ export class RokuAdapter {
     }
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
+
     /**
      * Given an expression, evaluate that statement ON the roku
      * @param expression
@@ -587,10 +759,15 @@ export class RokuAdapter {
      * Disconnect from the telnet session and unset all objects
      */
     public destroy() {
-        this.requestPipeline.destroy();
+        if (this.requestPipeline) {
+            this.requestPipeline.destroy();
+        }
+
         this.requestPipeline = undefined;
         this.cache = undefined;
-        this.emitter.removeAllListeners();
+        if (this.emitter) {
+            this.emitter.removeAllListeners();
+        }
         this.emitter = undefined;
     }
 }
@@ -645,10 +822,13 @@ export class RequestPipeline {
     ) {
         this.connect();
     }
+
     private requests: RequestPipelineRequest[] = [];
+
     private get isProcessing() {
         return this.currentRequest !== undefined;
     }
+
     private currentRequest: RequestPipelineRequest = undefined;
 
     private emitter = new EventEmitter();
@@ -679,7 +859,7 @@ export class RequestPipeline {
             } else {
                 let match;
                 //if responseText produced a prompt, return the responseText
-                if (match = /Brightscript\s+Debugger>\s+$/i.exec(allResponseText)) {
+                if (match = /Brightscript\s+Debugger>\s*$/i.exec(allResponseText)) {
                     //resolve the command's promise (if it cares)
                     this.currentRequest.onComplete(allResponseText);
                     allResponseText = '';
@@ -754,4 +934,20 @@ interface RequestPipelineRequest {
 interface BrightScriptRuntimeError {
     message: string;
     errorCode: string;
+}
+
+export interface BrightScriptDebugCompileError {
+    path: string;
+    lineNumber: number;
+    message: string;
+    errorText: string;
+    charStart: number;
+    charEnd: number;
+}
+
+export enum RokuAdapterStatus {
+    none = 'none',
+    compiling = 'compiling',
+    compileError = 'compileError',
+    running = 'running'
 }
