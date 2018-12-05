@@ -60,7 +60,6 @@ export class BrightScriptDebugSession extends DebugSession {
      * to interrogate the features the debug adapter provides.
      */
     public initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-        this.log('initializeRequest');
         // since this debug adapter can accept configuration requests like 'setBreakpoint' at any time,
         // we request them early by sending an 'initializeRequest' to the frontend.
         // The frontend will end the configuration sequence by calling 'configurationDone' request.
@@ -193,14 +192,10 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        this.log('setBreakpointsRequest');
-
         let clientPath = path.normalize(args.source.path);
-        console.log(clientPath);
         //if we have a debugRootDir, convert the rootDir path to debugRootDir path
         if (this.launchArgs && this.launchArgs.debugRootDir) {
             clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
-            console.log(clientPath);
         }
         let extension = path.extname(clientPath).toLowerCase();
 
@@ -310,8 +305,6 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        this.log('scopesRequest');
-
         this.sendResponse(response);
     }
 

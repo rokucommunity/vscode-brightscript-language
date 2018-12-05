@@ -9,7 +9,6 @@ export const BuiltinComplationItems: CompletionItem[] = [
     //WIP - can do way better than this!
     {
         label: 'print',
-
         kind: Command,
     },
     {

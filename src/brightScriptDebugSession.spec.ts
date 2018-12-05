@@ -14,7 +14,7 @@ import {
     HighLevelType,
     PrimativeType
 } from './RokuAdapter';
-
+let stagingFolderPath = '/staging/folder/path';
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {
@@ -24,12 +24,17 @@ describe('Debugger', () => {
     beforeEach(() => {
         try {
             session = new BrightScriptDebugSession();
+
         } catch (e) {
             console.log(e);
         }
+        //override the error response function and throw an exception so we can fail any tests
+        (session as any).sendErrorResponse = function(...args) {
+            throw new Error(args[2]);
+        };
         //mock the rokuDeploy module with promises so we can have predictable tests
         session.rokuDeploy = <any>{
-            prepublishToStaging: () => { return Promise.resolve(); },
+            prepublishToStaging: () => { return Promise.resolve(stagingFolderPath); },
             zipPackage: () => { return Promise.resolve(); },
             pressHomeButton: () => { return Promise.resolve(); },
             publish: () => { return Promise.resolve(); },
@@ -54,6 +59,8 @@ describe('Debugger', () => {
             //do nothing
         });
 
+        //skip adding breakpoint statements since that's not what we are currently testing
+        (session as any).addBreakpointStatements = () => { };
         await session.launchRequest(<any>{}, <any>{
             rootDir: '1/2/3'
         });
@@ -87,6 +94,9 @@ describe('Debugger', () => {
             };
         }
         beforeEach(() => {
+            //clear out the responses before each test
+            responses = [];
+
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
 
@@ -107,21 +117,22 @@ describe('Debugger', () => {
             };
         });
 
-        it.skip('returns the correct boolean variable', async () => {
+        it('returns the correct boolean variable', async () => {
             let expression = 'someBool';
             getVariableValue = getBooleanEvaluateContainer(expression);
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'true',
-                variablesReference: 1,
+                variablesReference: 0,
                 namedVariables: 0,
                 indexedVariables: 0
             });
         });
 
-        it.skip('returns the correct indexed variables count', async () => {
+        it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -132,6 +143,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someArray[0]', '0'), getBooleanEvaluateContainer('someArray[1]', '1')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -142,7 +155,7 @@ describe('Debugger', () => {
             });
         });
 
-        it.skip('returns the correct named variables count', async () => {
+        it('returns the correct named variables count', async () => {
             let expression = 'someObject';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -153,6 +166,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'true'), getBooleanEvaluateContainer('someObject.ownsHouse', 'false')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -174,6 +189,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             /*let response = <DebugProtocol.EvaluateResponse>*/
             await getResponse(0);
@@ -226,7 +243,7 @@ describe('Debugger', () => {
 
     });
 
-    describe.only('setBreakPointsRequest', () => {
+    describe('setBreakPointsRequest', () => {
         let response;
         let args;
         beforeEach(() => {
