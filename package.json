@@ -30,8 +30,9 @@
         "compile": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",
-        "test": "npm run compile && nyc mocha src/**/*.spec.ts --full-trace --bail",
-        "coverage": "nyc report --reporter=text-lcov | coveralls",
+        "build-and-test": "npm run compile && npm run test",
+        "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
+        "coverage": "nyc report --reporter=text-lcov | coveralls --verbose",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"

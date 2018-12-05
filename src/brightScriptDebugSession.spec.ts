@@ -94,6 +94,9 @@ describe('Debugger', () => {
             };
         }
         beforeEach(() => {
+            //clear out the responses before each test
+            responses = [];
+
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
 
@@ -114,21 +117,22 @@ describe('Debugger', () => {
             };
         });
 
-        it.skip('returns the correct boolean variable', async () => {
+        it('returns the correct boolean variable', async () => {
             let expression = 'someBool';
             getVariableValue = getBooleanEvaluateContainer(expression);
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'true',
-                variablesReference: 1,
+                variablesReference: 0,
                 namedVariables: 0,
                 indexedVariables: 0
             });
         });
 
-        it.skip('returns the correct indexed variables count', async () => {
+        it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -139,6 +143,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someArray[0]', '0'), getBooleanEvaluateContainer('someArray[1]', '1')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -149,7 +155,7 @@ describe('Debugger', () => {
             });
         });
 
-        it.skip('returns the correct named variables count', async () => {
+        it('returns the correct named variables count', async () => {
             let expression = 'someObject';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -160,6 +166,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'true'), getBooleanEvaluateContainer('someObject.ownsHouse', 'false')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -181,6 +189,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             /*let response = <DebugProtocol.EvaluateResponse>*/
             await getResponse(0);
