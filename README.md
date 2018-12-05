@@ -2,7 +2,7 @@
 A VSCode extension to support Roku's BrightScript language.
 
 [![Build Status](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language)
-[![Coverage Status](https://coveralls.io/repos/github/TwitchBronBron/vscode-brightscript-language/badge.svg?branch=master)](https://coveralls.io/github/TwitchBronBron/vscode-brightscript-language?branch=master)
+[![codecov](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 <!--[![GitHub](https://img.shields.io/github/release/twitchbronbron/vscode-brightscript-language.svg?style=flat-square)](https://github.com/twitchbronbron/vscode-brightscript-language/releases)-->
 ## Features
