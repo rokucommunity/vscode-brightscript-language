@@ -6,6 +6,7 @@ before_script:
 script:
   - npm run compile
   - npm run test
+  - npm run tslint
   - npm run package
 after_success: npm run coverage
 deploy:

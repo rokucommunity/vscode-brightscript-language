@@ -128,6 +128,10 @@ This extension contributes the following settings:
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
 
+## Contributing
+
+View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
+
 ## Known Issues
 
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.

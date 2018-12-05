@@ -1,9 +1,8 @@
-import { Socket } from "net";
-import * as EventEmitter from 'events';
 import * as eol from 'eol';
-import * as rokuDeploy from 'roku-deploy';
+import * as EventEmitter from 'events';
+import { Socket } from 'net';
 import * as net from 'net';
-
+import * as rokuDeploy from 'roku-deploy';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -19,16 +18,16 @@ export class RokuAdapter {
 
     /**
      * Subscribe to various events
-     * @param eventName 
-     * @param handler 
+     * @param eventName
+     * @param handler
      */
-    public on(eventName: 'suspend', handler: () => void);
-    public on(eventname: 'console-output', handler: (output: string) => void);
-    public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
-    public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
-    public on(eventName: 'close', handler: () => void);
-    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'cannot-continue', handler: () => void);
+    public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
+    public on(eventName: 'console-output', handler: (output: string) => void);
+    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
+    public on(eventName: 'suspend', handler: () => void);
+    public on(eventName: 'unhandled-console-output', handler: (output: string) => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -45,7 +44,7 @@ export class RokuAdapter {
      */
     public isActivated = false;
     /**
-     * Every time we get a message that ends with the debugger prompt, 
+     * Every time we get a message that ends with the debugger prompt,
      * this will be set to true. Otherwise, it will be set to false
      */
     public isAtDebuggerPrompt = false;
@@ -63,16 +62,16 @@ export class RokuAdapter {
 
     /**
      * Wait until the client has stopped sending messages. This is used mainly during .connect so we can ignore all old messages from the server
-     * @param client 
-     * @param name 
-     * @param maxWaitMilliseconds 
+     * @param client
+     * @param name
+     * @param maxWaitMilliseconds
      */
     private settle(client: Socket, name: string, maxWaitMilliseconds = 400) {
         return new Promise((resolve, reject) => {
             let callCount = 0;
             client.addListener(name, function handler(data) {
                 let myCallCount = callCount;
-                setTimeout(function () {
+                setTimeout(() => {
                     //if no other calls have been made since the timeout started, then the listener has settled
                     if (myCallCount === callCount) {
                         client.removeListener(name, handler);
@@ -104,7 +103,7 @@ export class RokuAdapter {
             });
 
             //if the connection fails, reject the connect promise
-            client.addListener('error', function (err) {
+            client.addListener('error', (err) => {
                 //this.emit(EventName.error, err);
                 reject(err);
             });
@@ -128,7 +127,7 @@ export class RokuAdapter {
                     return;
                 }
 
-                if (this.checkForCantContinue(responseText)) {
+                if (this.isAtCannotContinue(responseText)) {
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
@@ -136,17 +135,15 @@ export class RokuAdapter {
                 //forward all unhandled console output
                 this.emit('unhandled-console-output', responseText);
 
-                let match;
-
                 this.checkForCompileError(responseText);
-
 
                 if (this.isActivated) {
                     //console.log(dataString);
 
                     //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                     //wait until we see the brightscript debugger prompt
-                    if (match = /Brightscript\s+Debugger>\s+$/i.exec(responseText)) {
+                    let match = /Brightscript\s+Debugger>\s+$/i.exec(responseText);
+                    if (match) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                         if (this.isActivated && this.isAtDebuggerPrompt === false) {
                             this.isAtDebuggerPrompt = true;
@@ -169,9 +166,12 @@ export class RokuAdapter {
      * Look through response text for the "Can't continue" text
      * @param responseText
      */
-    private checkForCantContinue(responseText: string) {
+    private isAtCannotContinue(responseText: string) {
         if (/can't continue/gi.exec(responseText.trim())) {
             this.emit('cannot-continue');
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -184,13 +184,13 @@ export class RokuAdapter {
         if (match) {
             let message = match[1].trim();
             let errorCode = match[2].trim().toLowerCase();
-            //if the codes encountered are the STOP or scriptBreak() calls, skip them 
+            //if the codes encountered are the STOP or scriptBreak() calls, skip them
             if (errorCode === '&hf7' || errorCode === '&hf8') {
                 return false;
             }
             this.emit('runtime-error', <BrightScriptRuntimeError>{
-                message,
-                errorCode
+                message: message,
+                errorCode: errorCode
             });
             return true;
         } else {
@@ -221,7 +221,7 @@ export class RokuAdapter {
         //if there is a line with a compiler error in it, emit an event
         let match;
         let regexp = /compile error.* in (.*)\((\d+)\)/gi;
-        let errors: { path: string; lineNumber: number }[] = [];
+        let errors: Array<{ path: string; lineNumber: number }> = [];
 
         while (match = regexp.exec(responseText)) {
             let path = match[1];
@@ -231,8 +231,8 @@ export class RokuAdapter {
                 errors = [];
             } else {
                 errors.push({
-                    path,
-                    lineNumber
+                    path: path,
+                    lineNumber: lineNumber
                 });
             }
         }
@@ -286,7 +286,7 @@ export class RokuAdapter {
 
     /**
      * Execute a command directly on the roku. Returns the output of the command
-     * @param command 
+     * @param command
      */
     public async evaluate(command: string) {
         if (!this.isAtDebuggerPrompt) {
@@ -321,10 +321,10 @@ export class RokuAdapter {
                     let filePath = matches[i + j++];
                     let lineNumber = parseInt(matches[i + j++]);
                     let frame: StackFrame = {
-                        frameId,
-                        filePath,
-                        lineNumber,
-                        functionIdentifier
+                        frameId: frameId,
+                        filePath: filePath,
+                        lineNumber: lineNumber,
+                        functionIdentifier: functionIdentifier
                     };
                     frames.push(frame);
                 }
@@ -333,7 +333,6 @@ export class RokuAdapter {
             return frames;
         });
     }
-
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
     /**
@@ -353,8 +352,7 @@ export class RokuAdapter {
             //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
             if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                 data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
-            }
-            else {
+            } else {
                 data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
             }
 
@@ -385,8 +383,8 @@ export class RokuAdapter {
                     evaluateName: expression,
                     type: expressionType,
                     value: value,
-                    highLevelType,
-                    children
+                    highLevelType: highLevelType,
+                    children: children
                 };
                 return container;
             }
@@ -488,7 +486,7 @@ export class RokuAdapter {
 
     /**
      * Determine if this value is a primative type
-     * @param expressionType 
+     * @param expressionType
      */
     private getHighLevelType(expressionType: string) {
         if (!expressionType) {
@@ -512,7 +510,7 @@ export class RokuAdapter {
 
     /**
      * Get the type of the provided expression
-     * @param expression 
+     * @param expression
      */
     public async getVariableType(expression) {
         if (!this.isAtDebuggerPrompt) {
@@ -536,8 +534,8 @@ export class RokuAdapter {
 
     /**
      * Cache items by a unique key
-     * @param expression 
-     * @param factory 
+     * @param expression
+     * @param factory
      */
     private resolve<T>(key: string, factory: () => T | Thenable<T>): Promise<T> {
         if (this.cache[key]) {
@@ -655,7 +653,7 @@ export class RequestPipeline {
 
     private emitter = new EventEmitter();
 
-    on(eventName: 'unhandled-console-output' | 'console-output', handler: (data: string) => void);
+    public on(eventName: 'unhandled-console-output' | 'console-output', handler: (data: string) => void);
     public on(eventName: string, handler: (data: string) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -678,9 +676,7 @@ export class RequestPipeline {
             if (!this.isProcessing) {
                 this.emit('unhandled-console-output', allResponseText);
                 allResponseText = '';
-            }
-            //we are processing. detect if we have reached a prompt. 
-            else {
+            } else {
                 let match;
                 //if responseText produced a prompt, return the responseText
                 if (match = /Brightscript\s+Debugger>\s+$/i.exec(allResponseText)) {
@@ -709,9 +705,9 @@ export class RequestPipeline {
                 this.client.write(commandText);
             };
             this.requests.push({
-                executeCommand,
+                executeCommand: executeCommand,
                 onComplete: resolve,
-                waitForPrompt
+                waitForPrompt: waitForPrompt
             });
             //start processing (safe to call multiple times)
             this.process();
