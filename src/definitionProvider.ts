@@ -41,7 +41,7 @@ export class DefinitionRepository {
         return this.provider.sync();
     }
 
-    public *find(document: TextDocument, position: Position): IterableIterator<Location> {
+    public* find(document: TextDocument, position: Position): IterableIterator<Location> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
         console.log('find word' + word);
         this.sync();

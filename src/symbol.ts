@@ -1,19 +1,11 @@
 import * as vscode from 'vscode';
 
-import {
-    Location,
-    SymbolInformation,
-    TextDocument,
-    Uri
-} from 'vscode';
+import { Location, SymbolInformation, TextDocument, Uri } from 'vscode';
 
-import {
-    Declaration,
-    DeclarationProvider,
-    readDeclarations
-} from './declaration';
+import { BrightScriptDeclaration } from './BrightScriptDeclaration';
+import { DeclarationProvider, readDeclarations } from './DeclarationProvider';
 
-function declToSymbolInformation(uri: Uri, decl: Declaration): SymbolInformation {
+function declToSymbolInformation(uri: Uri, decl: BrightScriptDeclaration): SymbolInformation {
     return new SymbolInformation(
         decl.name,
         decl.kind,
@@ -23,7 +15,7 @@ function declToSymbolInformation(uri: Uri, decl: Declaration): SymbolInformation
 }
 
 export function readSymbolInformations(uri: Uri, input: string): SymbolInformation[] {
-    return readDeclarations(input).map((d) => declToSymbolInformation(uri, d));
+    return readDeclarations(uri, input).map((d) => declToSymbolInformation(uri, d));
 }
 
 export class SymbolInformationRepository {
@@ -40,13 +32,14 @@ export class SymbolInformationRepository {
             this.cache.clear();
         });
     }
+
     private cache: Map<string, SymbolInformation[]> = new Map();
 
     public sync(): Promise<void> {
         return this.provider.sync();
     }
 
-    public *find(query: string): IterableIterator<SymbolInformation> {
+    public* find(query: string): IterableIterator<SymbolInformation> {
         const pattern = this.compileQuery(query);
         if (pattern === undefined) {
             return;
@@ -83,7 +76,7 @@ export class SymbolInformationRepository {
     }
 
     private findInDocument(document: TextDocument, pattern: RegExp): SymbolInformation[] {
-        return readDeclarations(document.getText())
+        return readDeclarations(document.uri, document.getText())
             .filter((d) => pattern.test(d.name))
             .map((d) => declToSymbolInformation(document.uri, d));
     }
