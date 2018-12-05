@@ -38,7 +38,7 @@
     },
     "dependencies": {
         "@types/glob": "^5.0.36",
-        "brightscript-formatter": "^1.4.0",
+        "brightscript-formatter": "^1.5.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
@@ -260,10 +260,15 @@
                 },
                 "brightscript.format.compositeKeywords": {
                     "type": [
-                        "object",
+                        "string",
                         "null"
                     ],
-                    "default": "null",
+                    "enum": [
+                        "split",
+                        "combine",
+                        null
+                    ],
+                    "default": "split",
                     "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
                     "scope": "resource"
                 },
