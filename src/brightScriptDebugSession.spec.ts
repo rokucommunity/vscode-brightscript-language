@@ -14,7 +14,7 @@ import {
     HighLevelType,
     PrimativeType
 } from './RokuAdapter';
-
+let stagingFolderPath = '/staging/folder/path';
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {
@@ -24,12 +24,17 @@ describe('Debugger', () => {
     beforeEach(() => {
         try {
             session = new BrightScriptDebugSession();
+
         } catch (e) {
             console.log(e);
         }
+        //override the error response function and throw an exception so we can fail any tests
+        (session as any).sendErrorResponse = function(...args) {
+            throw new Error(args[2]);
+        };
         //mock the rokuDeploy module with promises so we can have predictable tests
         session.rokuDeploy = <any>{
-            prepublishToStaging: () => { return Promise.resolve(); },
+            prepublishToStaging: () => { return Promise.resolve(stagingFolderPath); },
             zipPackage: () => { return Promise.resolve(); },
             pressHomeButton: () => { return Promise.resolve(); },
             publish: () => { return Promise.resolve(); },
@@ -54,6 +59,8 @@ describe('Debugger', () => {
             //do nothing
         });
 
+        //skip adding breakpoint statements since that's not what we are currently testing
+        (session as any).addBreakpointStatements = () => { };
         await session.launchRequest(<any>{}, <any>{
             rootDir: '1/2/3'
         });

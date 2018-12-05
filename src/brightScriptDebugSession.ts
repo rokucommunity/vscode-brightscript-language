@@ -60,7 +60,6 @@ export class BrightScriptDebugSession extends DebugSession {
      * to interrogate the features the debug adapter provides.
      */
     public initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-        this.log('initializeRequest');
         // since this debug adapter can accept configuration requests like 'setBreakpoint' at any time,
         // we request them early by sending an 'initializeRequest' to the frontend.
         // The frontend will end the configuration sequence by calling 'configurationDone' request.
@@ -306,8 +305,6 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        this.log('scopesRequest');
-
         this.sendResponse(response);
     }
 
