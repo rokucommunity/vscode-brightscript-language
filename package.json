@@ -38,7 +38,7 @@
     },
     "dependencies": {
         "@types/glob": "^5.0.36",
-        "brightscript-formatter": "^1.4.0",
+        "brightscript-formatter": "^1.5.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
@@ -249,6 +249,15 @@
                     ],
                     "default": "lower",
                     "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
+                    "scope": "resource"
+                },
+                "brightscript.format.keywordCaseOverride": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
                     "scope": "resource"
                 },
                 "brightscript.format.compositeKeywords": {
