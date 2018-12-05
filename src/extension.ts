@@ -27,8 +27,10 @@ import {
 export function activate(context: vscode.ExtensionContext) {
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
+    //register the debug configuration provider
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightscriptConfigurationProvider()));
 
-    // const selector: DocumentSelector = { language: "Brightscript" };
+    //register the definition provider
     const provider: DeclarationProvider = new DeclarationProvider();
     const definitionProvider = new BrightscriptDefinitionProvider(provider);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
@@ -37,12 +39,16 @@ export function activate(context: vscode.ExtensionContext) {
 
     // experimental placeholder
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightscriptCompletionItemProvider()));
-    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightscriptDefinitionProvider(provider)));
+
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
     context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(provider)));
     context.subscriptions.push(provider);
 
     registerCommands(context);
+}
+
+export function _activate(context: vscode.ExtensionContext, vscode) {
+
 }
 
 class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProvider {

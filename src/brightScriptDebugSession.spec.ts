@@ -226,7 +226,7 @@ describe('Debugger', () => {
 
     });
 
-    describe.only('setBreakPointsRequest', () => {
+    describe('setBreakPointsRequest', () => {
         let response;
         let args;
         beforeEach(() => {

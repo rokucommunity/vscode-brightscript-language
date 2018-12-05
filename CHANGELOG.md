@@ -1,5 +1,7 @@
 # Change Log
 
+## [1.3.1] - 2018-12-05
+ - Fixed bug introduced in 1.3.0 that was preventing a debug session from starting due to incorrect "out" path. 
 
 ## [1.3.0] - 2018-11-20
  - Added support for declarations and symbols

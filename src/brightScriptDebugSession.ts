@@ -193,14 +193,10 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        this.log('setBreakpointsRequest');
-
         let clientPath = path.normalize(args.source.path);
-        console.log(clientPath);
         //if we have a debugRootDir, convert the rootDir path to debugRootDir path
         if (this.launchArgs && this.launchArgs.debugRootDir) {
             clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
-            console.log(clientPath);
         }
         let extension = path.extname(clientPath).toLowerCase();
 
