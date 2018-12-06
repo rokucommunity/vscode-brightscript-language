@@ -2,6 +2,7 @@
 
 ## [1.3.1] - 2018-12-05
  - Fixed bug introduced in 1.3.0 that was preventing a debug session from starting due to incorrect "out" path. 
+ - Upgraded to brightscript-formatter version 1.5.0 which brings support for overriding keywordCase for specific keywords.
 
 ## [1.3.0] - 2018-11-20
  - Added support for declarations and symbols
