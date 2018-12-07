@@ -4,14 +4,22 @@ import * as vscode from 'vscode';
 
 import mm from 'micromatch';
 
-import { Disposable, Event, EventEmitter, Position, Range, SymbolInformation, SymbolKind, Uri } from 'vscode';
+import {
+    Disposable,
+    Event,
+    EventEmitter,
+    Position,
+    Range,
+    SymbolKind,
+    Uri
+} from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CREDIT WHERE CREDIT IS DUE
-// georgejecook: I lifted most of the declration and symbol work from sasami's era basic implementation
-// at https://github.com/sasami/vscode-erabasic and hcked it in with some basic changes
+// georgejecook: I lifted most of the declaration and symbol work from sasami's era basic implementation
+// at https://github.com/sasami/vscode-erabasic and hacked it in with some basic changes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export function* iterlines(input: string): IterableIterator<[number, string]> {

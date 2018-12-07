@@ -18,7 +18,10 @@ import {
 
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-import { EvaluateContainer, RokuAdapter } from './RokuAdapter';
+import {
+    EvaluateContainer,
+    RokuAdapter
+} from './RokuAdapter';
 
 class CompileFailureEvent implements DebugProtocol.Event {
     constructor(compileError: any) {
