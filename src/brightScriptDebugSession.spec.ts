@@ -244,7 +244,7 @@ describe('Debugger', () => {
 
     });
 
-    describe.only('findMainFunction', () => {
+    describe('findMainFunction', () => {
         let folder;
         afterEach(() => {
             fs.emptyDirSync('./.tmp');
