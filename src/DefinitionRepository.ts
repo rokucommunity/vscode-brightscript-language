@@ -3,11 +3,12 @@ import * as vscode from 'vscode';
 import { Location, Position, TextDocument, Uri } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
-import { DeclarationProvider, readDeclarations } from './DeclarationProvider';
+import { DeclarationProvider } from './DeclarationProvider';
 
 export class DefinitionRepository {
 
     constructor(private provider: DeclarationProvider) {
+        this.declarationProvider = provider;
         provider.onDidChange((e) => {
             this.cache.set(e.uri.fsPath, e.decls.filter((d) => d.isGlobal));
         });
@@ -19,6 +20,7 @@ export class DefinitionRepository {
         });
     }
 
+    private declarationProvider: DeclarationProvider;
     private cache: Map<string, BrightScriptDeclaration[]> = new Map();
 
     public sync(): Promise<void> {
@@ -73,7 +75,7 @@ export class DefinitionRepository {
     }
 
     private findInCurrentDocument(document: TextDocument, position: Position, word: string): Location[] {
-        return readDeclarations(document.uri, document.getText())
+        return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => {
                 return d.name.toLowerCase() === word && d.visible(position);
             })
@@ -83,7 +85,7 @@ export class DefinitionRepository {
     }
 
     private findInDocument(document: TextDocument, word: string): Location[] {
-        return readDeclarations(document.uri, document.getText())
+        return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => d.name.toLowerCase() === word && d.isGlobal)
             .map((d) => d.getLocation());
     }
@@ -132,12 +134,12 @@ export class DefinitionRepository {
     }
 
     private findDefinitionInCurrentDocument(document: TextDocument, position: Position, word: string): BrightScriptDeclaration[] {
-        return readDeclarations(document.uri, document.getText())
+        return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => d.name.toLowerCase() === word && d.visible(position));
     }
 
     private findDefinitionInDocument(document: TextDocument, word: string): BrightScriptDeclaration[] {
-        return readDeclarations(document.uri, document.getText())
+        return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => d.name.toLowerCase() === word && d.isGlobal);
     }
 }

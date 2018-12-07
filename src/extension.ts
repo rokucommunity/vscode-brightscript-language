@@ -16,17 +16,17 @@ import {
 import { Formatter } from './formatter';
 
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
+import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
-import { BuiltinCompletionItems } from './BuiltinCompletionItems';
 import { registerCommands } from './commands';
 import { DebugErrorHandler } from './DebugErrorHandler';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import {
-    readSymbolInformations,
+    BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
-} from './symbol';
+} from './SymbolInformationRepository';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -52,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
     // experimental placeholder
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
-    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider()));
+    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
     context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));
     context.subscriptions.push(declarationProvider);
     vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
@@ -125,30 +125,4 @@ interface BrightScriptDebugConfiguration extends DebugConfiguration {
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
-}
-
-class BrightScriptDocumentSymbolProvider implements DocumentSymbolProvider {
-    public provideDocumentSymbols(document: TextDocument, token: CancellationToken): SymbolInformation[] {
-        return readSymbolInformations(document.uri, document.getText());
-    }
-}
-
-class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
-
-    constructor(provider: DeclarationProvider) {
-        this.repo = new SymbolInformationRepository(provider);
-    }
-
-    private repo: SymbolInformationRepository;
-
-    public provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]> {
-        return this.repo.sync().then(() => Array.from(this.repo.find(query)));
-    }
-}
-
-class BrightScriptCompletionItemProvider implements CompletionItemProvider {
-    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
-        //TODO - do something useful here!
-        return BuiltinCompletionItems;
-    }
 }

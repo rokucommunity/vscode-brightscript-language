@@ -7,9 +7,9 @@ import mm from 'micromatch';
 import {
     Disposable,
     Event,
-    EventEmitter,
+    EventEmitter, Location,
     Position,
-    Range,
+    Range, SymbolInformation,
     SymbolKind,
     Uri
 } from 'vscode';
@@ -31,80 +31,6 @@ export function* iterlines(input: string): IterableIterator<[number, string]> {
         }
         yield [i, text];
     }
-}
-
-export function readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
-    const container = BrightScriptDeclaration.fromUri(uri);
-    console.log('>>>>>>readDeclarations>>>>>>>' + uri.path);
-    const symbols: BrightScriptDeclaration[] = [];
-    let currentFunction: BrightScriptDeclaration;
-    let funcEndLine: number;
-    let funcEndChar: number;
-    let mDefs = {};
-    console.log('READ DECLARATIONS');
-
-    for (const [line, text] of iterlines(input)) {
-        // console.log("" + line + ": " + text);
-        funcEndLine = line;
-        funcEndChar = text.length;
-
-        //FUNCTION START
-        let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
-        // console.log("match " + match);
-        if (match !== null) {
-            // function has started
-            if (currentFunction !== undefined) {
-                currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
-            }
-            currentFunction = new BrightScriptDeclaration(
-                match[1],
-                SymbolKind.Function,
-                container,
-                match[2].split(','),
-                new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
-                new Range(line, 0, line, text.length),
-            );
-            // console.log(">>>>>>>>>>>>>>>> function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
-            // console.log(text);
-            // console.log(match[0]+ ">>>" + match[1]);
-            // console.log(match[0].length+ ">>>" +match[1].length);
-            // console.log(currentFunction.nameRange.start.character + " ," + currentFunction.nameRange.end.character);
-            symbols.push(currentFunction);
-            continue;
-        }
-
-        //FUNCTION END
-        match = /^\s*(end)\s*(function|sub)/i.exec(text);
-        if (match !== null) {
-            // console.log("function END");
-            if (currentFunction !== undefined) {
-                currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
-            }
-            continue;
-        }
-
-        // //VAR
-        match = /^\s*(?:m\.)([a-zA-Z_0-9]*)/i.exec(text);
-        if (match !== null) {
-            // console.log("FOUND VAR " + match);
-            const name = match[1].trim();
-            if (mDefs[name] !== true) {
-                mDefs[name] = true;
-                let varSymbol = new BrightScriptDeclaration(
-                    name,
-                    SymbolKind.Field,
-                    container,
-                    undefined,
-                    new Range(line, match[0].length - match[1].length, line, match[0].length),
-                    new Range(line, 0, line, text.length),
-                );
-                console.log('FOUND VAR ' + varSymbol.name);
-                symbols.push(varSymbol);
-            }
-            continue;
-        }
-    }
-    return symbols;
 }
 
 export class WorkspaceEncoding {
@@ -254,9 +180,92 @@ export class DeclarationProvider implements Disposable {
                 continue;
             }
             if (this.dirty.delete(path)) {
-                this.onDidChangeEmitter.fire(new DeclarationChangeEvent(uri, readDeclarations(uri, input)));
+                this.onDidChangeEmitter.fire(new DeclarationChangeEvent(uri, this.readDeclarations(uri, input)));
             }
         }
+    }
+
+    public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
+        const container = BrightScriptDeclaration.fromUri(uri);
+        console.log('>>>>>>readDeclarations>>>>>>>' + uri.path);
+        const symbols: BrightScriptDeclaration[] = [];
+        let currentFunction: BrightScriptDeclaration;
+        let funcEndLine: number;
+        let funcEndChar: number;
+        let mDefs = {};
+        console.log('READ DECLARATIONS');
+
+        for (const [line, text] of iterlines(input)) {
+            // console.log("" + line + ": " + text);
+            funcEndLine = line;
+            funcEndChar = text.length;
+
+            //FUNCTION START
+            let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
+            // console.log("match " + match);
+            if (match !== null) {
+                // function has started
+                if (currentFunction !== undefined) {
+                    currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
+                }
+                currentFunction = new BrightScriptDeclaration(
+                    match[1],
+                    SymbolKind.Function,
+                    container,
+                    match[2].split(','),
+                    new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
+                    new Range(line, 0, line, text.length),
+                );
+                // console.log(">>>>>>>>>>>>>>>> function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
+                // console.log(text);
+                // console.log(match[0]+ ">>>" + match[1]);
+                // console.log(match[0].length+ ">>>" +match[1].length);
+                // console.log(currentFunction.nameRange.start.character + " ," + currentFunction.nameRange.end.character);
+                symbols.push(currentFunction);
+                continue;
+            }
+
+            //FUNCTION END
+            match = /^\s*(end)\s*(function|sub)/i.exec(text);
+            if (match !== null) {
+                // console.log("function END");
+                if (currentFunction !== undefined) {
+                    currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
+                }
+                continue;
+            }
+
+            // //VAR
+            match = /^\s*(?:m\.)([a-zA-Z_0-9]*)/i.exec(text);
+            if (match !== null) {
+                // console.log("FOUND VAR " + match);
+                const name = match[1].trim();
+                if (mDefs[name] !== true) {
+                    mDefs[name] = true;
+                    let varSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Field,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[1].length, line, match[0].length),
+                        new Range(line, 0, line, text.length),
+                    );
+                    console.log('FOUND VAR ' + varSymbol.name);
+                    symbols.push(varSymbol);
+                }
+                continue;
+            }
+        }
+        return symbols;
+    }
+
+    public declToSymbolInformation(uri: Uri, decl: BrightScriptDeclaration): SymbolInformation {
+        return new SymbolInformation(
+            decl.name,
+            decl.kind,
+            decl.containerName ? decl.containerName : decl.name,
+            new Location(uri, decl.bodyRange),
+        );
     }
 }
 

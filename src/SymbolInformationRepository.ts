@@ -1,29 +1,37 @@
 import * as vscode from 'vscode';
 
-import { Location, SymbolInformation, TextDocument, Uri } from 'vscode';
+import { CancellationToken,
+    Location,
+    SymbolInformation,
+    TextDocument,
+    Uri,
+    WorkspaceSymbolProvider
+} from 'vscode';
 
-import { BrightScriptDeclaration } from './BrightScriptDeclaration';
-import { DeclarationProvider, readDeclarations } from './DeclarationProvider';
+import { DeclarationProvider } from './DeclarationProvider';
 
-function declToSymbolInformation(uri: Uri, decl: BrightScriptDeclaration): SymbolInformation {
-    return new SymbolInformation(
-        decl.name,
-        decl.kind,
-        decl.containerName ? decl.containerName : decl.name,
-        new Location(uri, decl.bodyRange),
-    );
-}
+export class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
 
-export function readSymbolInformations(uri: Uri, input: string): SymbolInformation[] {
-    return readDeclarations(uri, input).map((d) => declToSymbolInformation(uri, d));
+    constructor(provider: DeclarationProvider) {
+        this.declarationProvider = provider;
+        this.repo = new SymbolInformationRepository(provider);
+    }
+
+    private declarationProvider: DeclarationProvider;
+    private repo: SymbolInformationRepository;
+
+    public provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]> {
+        return this.repo.sync().then(() => Array.from(this.repo.find(query)));
+    }
 }
 
 export class SymbolInformationRepository {
 
     constructor(private provider: DeclarationProvider) {
+        this.declarationProvider = provider;
         provider.onDidChange((e) => {
             this.cache.set(e.uri.fsPath, e.decls
-                .map((d) => declToSymbolInformation(e.uri, d)));
+                .map((d) => this.declarationProvider.declToSymbolInformation(e.uri, d)));
         });
         provider.onDidDelete((e) => {
             this.cache.delete(e.uri.fsPath);
@@ -33,6 +41,7 @@ export class SymbolInformationRepository {
         });
     }
 
+    private declarationProvider: DeclarationProvider;
     private cache: Map<string, SymbolInformation[]> = new Map();
 
     public sync(): Promise<void> {
@@ -76,8 +85,8 @@ export class SymbolInformationRepository {
     }
 
     private findInDocument(document: TextDocument, pattern: RegExp): SymbolInformation[] {
-        return readDeclarations(document.uri, document.getText())
+        return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => pattern.test(d.name))
-            .map((d) => declToSymbolInformation(document.uri, d));
+            .map((d) => this.declarationProvider.declToSymbolInformation(document.uri, d));
     }
 }
