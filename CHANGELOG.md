@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.3.2] - 2018-12-07
+ - Fixed bug that was preventing using `function Main` as an entry function. 
+
 ## [1.3.1] - 2018-12-05
  - Fixed bug introduced in 1.3.0 that was preventing a debug session from starting due to incorrect "out" path. 
  - Upgraded to brightscript-formatter version 1.5.0 which brings support for overriding keywordCase for specific keywords.
