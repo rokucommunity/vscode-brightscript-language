@@ -602,14 +602,12 @@ export class BrightScriptDebugSession extends DebugSession {
         await Promise.all(promises);
     }
 
-    private entryBreakpoint: DebugProtocol.Breakpoint;
-
-    private async addEntryBreakpoint() {
+    public async findEntryPoint(projectPath: string) {
         let results = Object.assign(
             {},
-            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/)
+            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
         );
         let keys = Object.keys(results);
         if (keys.length === 0) {
@@ -639,6 +637,41 @@ export class BrightScriptDebugSession extends DebugSession {
         };
     }
 
+    private entryBreakpoint: DebugProtocol.Breakpoint;
+    private async addEntryBreakpoint() {
+        let entryPoint = await this.findEntryPoint(this.baseProjectPath);
+
+        //create a breakpoint on the line BELOW this location, which is the first line of the program
+        this.entryBreakpoint = new Breakpoint(true, entryPoint.lineNumber + 1);
+        this.entryBreakpoint.id = this.breakpointIdCounter++;
+        (this.entryBreakpoint as any).isEntryBreakpoint = true;
+        //put this breakpoint into the list of breakpoints, in order
+        let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
+        breakpoints.push(this.entryBreakpoint);
+        //sort the breakpoints in order of line number
+        breakpoints.sort((a, b) => {
+            if (a.line > b.line) {
+                return 1;
+            } else if (a.line < b.line) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
+
+        //if the user put a breakpoint on the first line of their program, we want to keep THEIR breakpoint, not the entry breakpoint
+        let index = breakpoints.indexOf(this.entryBreakpoint);
+        let bpBefore = breakpoints[index - 1];
+        let bpAfter = breakpoints[index + 1];
+        if (
+            (bpBefore && bpBefore.line === this.entryBreakpoint.line) ||
+            (bpAfter && bpAfter.line === this.entryBreakpoint.line)
+        ) {
+            breakpoints.splice(index, 1);
+            this.entryBreakpoint = undefined;
+        }
+        this.breakpointsByClientPath[entryPoint.path] = breakpoints;
+    }
     /**
      * Given a full path to a file, walk up the tree until we have found the base project path (full path to the folder containing the manifest file)
      * @param filePath
