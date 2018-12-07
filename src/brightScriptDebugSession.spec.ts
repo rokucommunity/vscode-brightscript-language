@@ -1,6 +1,7 @@
 /* tslint:disable:no-unused-expression */
 import * as assert from 'assert';
 import { expect } from 'chai';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
@@ -241,6 +242,52 @@ describe('Debugger', () => {
             expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
         });
 
+    });
+
+    describe.only('findMainFunction', () => {
+        let folder;
+        afterEach(() => {
+            fs.emptyDirSync('./.tmp');
+            fs.rmdirSync('./.tmp');
+        });
+
+        async function doTest(fileContents: string, lineContents: string, lineNumber: number) {
+            fs.emptyDirSync('./.tmp');
+            folder = path.resolve('./.tmp/findMainFunctionTests/');
+            fs.mkdirSync(folder);
+
+            let filePath = path.resolve(`${folder}/main.brs`);
+            fs.writeFileSync(filePath, fileContents);
+            let entryPoint = await session.findEntryPoint(folder);
+            expect(entryPoint.path).to.equal(filePath);
+            expect(entryPoint.lineNumber).to.equal(lineNumber);
+            expect(entryPoint.contents).to.equal(lineContents);
+        }
+
+        it('works for RunUserInterface', async () => {
+            await doTest('\nsub RunUserInterface()\nend sub', 'sub RunUserInterface()', 2);
+            //works with args
+            await doTest('\n\nsub RunUserInterface(args as Dynamic)\nend sub', 'sub RunUserInterface(args as Dynamic)', 3);
+            //works with extra spacing
+            await doTest('\n\nsub   RunUserInterface()\nend sub', 'sub   RunUserInterface()', 3);
+            await doTest('\n\nsub RunUserInterface   ()\nend sub', 'sub RunUserInterface   ()', 3);
+        });
+        it('works for sub main', async () => {
+            await doTest('\nsub Main()\nend sub', 'sub Main()', 2);
+            //works with args
+            await doTest('sub Main(args as Dynamic)\nend sub', 'sub Main(args as Dynamic)', 1);
+            //works with extra spacing
+            await doTest('sub   Main()\nend sub', 'sub   Main()', 1);
+            await doTest('sub Main   ()\nend sub', 'sub Main   ()', 1);
+        });
+
+        it('works for function main', async () => {
+            await doTest('function Main()\nend function', 'function Main()', 1);
+            await doTest('function Main(args as Dynamic)\nend function', 'function Main(args as Dynamic)', 1);
+            //works with extra spacing
+            await doTest('function   Main()\nend function', 'function   Main()', 1);
+            await doTest('function Main   ()\nend function', 'function Main   ()', 1);
+        });
     });
 
     describe('setBreakPointsRequest', () => {

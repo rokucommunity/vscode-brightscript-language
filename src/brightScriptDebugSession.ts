@@ -560,18 +560,22 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         await Promise.all(promises);
     }
-    private entryBreakpoint: DebugProtocol.Breakpoint;
-    private async addEntryBreakpoint() {
+
+    public async findEntryPoint(projectPath: string) {
         let results = Object.assign(
             {},
-            await findInFiles.find({ term: 'sub RunUserInterface\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'sub main\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/)
+            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
         );
-        let entryPath = Object.keys(results)[0];
-        if (!entryPath) {
-            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub declared in your BrightScript project');
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub/function declared in your BrightScript project');
         }
-        let entryLine = results[entryPath].line[0];
+        let entryPath = keys[0];
+
+        let entryLineContents = results[entryPath].line[0];
+
         let lineNumber: number;
         //load the file contents
         let contents = await fsExtra.readFile(entryPath);
@@ -579,17 +583,29 @@ export class BrightScriptDebugSession extends DebugSession {
         //loop through the lines until we find the entry line
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            if (line.indexOf(entryLine) > -1) {
+            if (line.indexOf(entryLineContents) > -1) {
                 lineNumber = i + 1;
                 break;
             }
         }
+
+        return {
+            path: entryPath,
+            contents: entryLineContents,
+            lineNumber: lineNumber
+        };
+    }
+
+    private entryBreakpoint: DebugProtocol.Breakpoint;
+    private async addEntryBreakpoint() {
+        let entryPoint = await this.findEntryPoint(this.baseProjectPath);
+
         //create a breakpoint on the line BELOW this location, which is the first line of the program
-        this.entryBreakpoint = new Breakpoint(true, lineNumber + 1);
+        this.entryBreakpoint = new Breakpoint(true, entryPoint.lineNumber + 1);
         this.entryBreakpoint.id = this.breakpointIdCounter++;
         (this.entryBreakpoint as any).isEntryBreakpoint = true;
         //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.breakpointsByClientPath[entryPath] || [];
+        let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
         breakpoints.push(this.entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
@@ -613,7 +629,7 @@ export class BrightScriptDebugSession extends DebugSession {
             breakpoints.splice(index, 1);
             this.entryBreakpoint = undefined;
         }
-        this.breakpointsByClientPath[entryPath] = breakpoints;
+        this.breakpointsByClientPath[entryPoint.path] = breakpoints;
     }
 
     /**
