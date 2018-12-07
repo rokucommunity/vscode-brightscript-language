@@ -3,7 +3,10 @@ import {
     ParameterInformation,
     Position,
     Range,
-    SignatureHelp, SignatureHelpProvider, SignatureInformation, TextDocument
+    SignatureHelp,
+    SignatureHelpProvider,
+    SignatureInformation,
+    TextDocument
 } from 'vscode';
 
 import { DefinitionRepository } from './DefinitionRepository';
@@ -15,10 +18,7 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
     }
 
     public definitionRepo: DefinitionRepository;
-    //1. Get symbold
-    //2. Get param
-    //
-    //
+
     public async provideSignatureHelp(document: TextDocument, position: Position, token: CancellationToken): Promise<SignatureHelp> {
         //TODO - use AST/Parse tree e.g. bright https://github.com/RokuRoad/bright
         //get the position of a symbol to our left
