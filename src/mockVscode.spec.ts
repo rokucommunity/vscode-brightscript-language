@@ -1,5 +1,3 @@
-import {MarkdownString, ParameterInformation, SignatureHelp, SignatureInformation, SymbolKind} from "vscode";
-
 export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },

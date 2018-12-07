@@ -16,7 +16,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { Range, SymbolKind, Uri } from 'vscode';
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 
@@ -81,11 +80,11 @@ describe('BrightScriptSignatureHelpProvider ', () => {
                 nextStub.onCall(0).returns(
                     {value: new BrightScriptDeclaration(
                         'methodNoArgs',
-                        25,
+                        vscode.SymbolKind.TypeParameter,
                         undefined,
                         ['arg1'],
-                        new Range(0, 0, 0, 0),
-                        new Range(0, 0, 0, 0),
+                        new vscode.Range(0, 0, 0, 0) as any,
+                        new vscode.Range(0, 0, 0, 0) as any,
                         undefined)});
 
                 let def = { next: nextStub};
