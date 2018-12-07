@@ -1,12 +1,17 @@
 export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
+        onDidStartDebugSession: () => { },
+        onDidReceiveDebugSessionCustomEvent: () => { },
     },
     languages: {
         registerDefinitionProvider: () => { },
         registerDocumentSymbolProvider: () => { },
         registerWorkspaceSymbolProvider: () => { },
-        registerDocumentRangeFormattingEditProvider: () => { }
+        registerDocumentRangeFormattingEditProvider: () => { },
+        registerSignatureHelpProvider: () => { },
+        registerReferenceProvider: () => { },
+        createDiagnosticCollection: () => { }
     },
     subscriptions: [],
     commands: {
@@ -41,6 +46,13 @@ export let vscode = {
 
         }
     },
+    window: {
+        createOutputChannel: function() {
+            return {
+                show: () => {}
+            };
+        },
+    },
     CompletionItemKind: {
         Function: 2
     },
@@ -69,5 +81,13 @@ export let vscode = {
         public sync = () => {
 
         }
+    },
+    OutputChannel: class {
+        public clear() {}
+        public appendLine() {}
+    },
+    DebugCollection: class {
+        public clear() {}
+        public set() {}
     }
 };
