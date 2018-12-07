@@ -1,42 +1,51 @@
 import * as vscode from 'vscode';
 
-import { getOutputChannel } from './extension';
+import { DiagnosticCollection } from 'vscode';
+
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
-const collection = vscode.languages.createDiagnosticCollection('BrightScript');
+export class DebugErrorHandler {
 
-export function registerDebugErrorHandler() {
-    vscode.debug.onDidStartDebugSession((e) => {
+    constructor(outputChannel) {
+        this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
+        this.outputChannel = outputChannel;
+    }
+
+    private collection: DiagnosticCollection;
+    private outputChannel: vscode.OutputChannel;
+
+    public onDidStartDebugSession() {
         //TODO make this a config setting
-        getOutputChannel().clear();
-        collection.clear();
-    });
+        this.outputChannel.clear();
+        this.collection.clear();
+    }
 
-    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+    public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
-            getOutputChannel().appendLine(e.body);
+            this.outputChannel.appendLine(e.body);
         } else {
 
-            collection.clear();
+            this.collection.clear();
             let errorsByPath = {};
-            e.body.forEach(async (compileError) => {
-                if (!errorsByPath[compileError.path]) {
-                    errorsByPath[compileError.path] = [];
-                }
-                errorsByPath[compileError.path].push(compileError);
-            });
-
+            if (e.body) {
+                e.body.forEach(async (compileError) => {
+                    if (!errorsByPath[compileError.path]) {
+                        errorsByPath[compileError.path] = [];
+                    }
+                    errorsByPath[compileError.path].push(compileError);
+                });
+            }
             for (const path in errorsByPath) {
                 if (errorsByPath.hasOwnProperty(path)) {
                     const errors = errorsByPath[path];
-                    addDiagnosticForError(path, errors);
+                    this.addDiagnosticForError(path, errors);
                 }
             }
         }
-    });
+    }
 
-    async function addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {
+    public async addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {
 
         //TODO get the actual folder
         let documentUri: vscode.Uri;
@@ -71,7 +80,7 @@ export function registerDebugErrorHandler() {
                         source: source
                     });
                 });
-                collection.set(documentUri, diagnostics);
+                this.collection.set(documentUri, diagnostics);
             }
         }
     }

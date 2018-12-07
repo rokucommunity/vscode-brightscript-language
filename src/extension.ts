@@ -18,33 +18,34 @@ import { Formatter } from './formatter';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
+import { BuiltinCompletionItems } from './BuiltinCompletionItems';
 import { registerCommands } from './commands';
-import { BuiltinCompletionItems } from './completion';
-import { registerDebugErrorHandler } from './DebugErrorHandler';
+import { DebugErrorHandler } from './DebugErrorHandler';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
-import { readSymbolInformations, SymbolInformationRepository } from './symbol';
+import {
+    readSymbolInformations,
+    SymbolInformationRepository
+} from './symbol';
 
 let outputChannel: vscode.OutputChannel;
-
-export function getOutputChannel(): vscode.OutputChannel {
-    if (!outputChannel) {
-        outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-    }
-    return outputChannel;
-}
 
 export function activate(context: vscode.ExtensionContext) {
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
-        language: 'BrightScript',
+        language: 'brightscript',
         scheme: 'file'
     }, new Formatter());
+    outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider()));
 
     //register the definition provider
+    const debugErrorHandler: DebugErrorHandler = new DebugErrorHandler(outputChannel);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
-    const definitionProvider = new BrightscriptDefinitionProvider(declarationProvider);
-    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
+    const definitionRepo = new DefinitionRepository(declarationProvider);
+    const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
+    const selector = {scheme: 'file', pattern: '**/*.{brs}'};
     const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
     context.subscriptions.push(registerDefinitionProvider);
 
@@ -56,8 +57,11 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(declarationProvider);
     vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
     vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
-    registerDebugErrorHandler();
-    getOutputChannel().show();
+
+    vscode.debug.onDidStartDebugSession((e) => debugErrorHandler.onDidStartDebugSession());
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => debugErrorHandler.onDidReceiveDebugSessionCustomEvent(e));
+
+    outputChannel.show();
 
     registerCommands(context);
 }

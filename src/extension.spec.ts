@@ -1,14 +1,13 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
-import * as assert from 'assert';
 import { expect } from 'chai';
-import * as path from 'path';
 import * as sinon from 'sinon';
 let Module = require('module');
 
 import { vscode } from './mockVscode.spec';
 
 let registerCommands = sinon.spy();
+
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {
@@ -64,6 +63,34 @@ describe('extension', () => {
 
     it('registers all commands', () => {
         let spy = registerCommands;
+        expect(spy.calledOnce).to.be.false;
+        extension.activate(<any>{ subscriptions: [] });
+        expect(spy.calledOnce).to.be.true;
+    });
+
+    it('registers signatureHelpProvider', () => {
+        let spy = sinon.spy(vscode.languages, 'registerSignatureHelpProvider');
+        expect(spy.calledOnce).to.be.false;
+        extension.activate(<any>{ subscriptions: [] });
+        expect(spy.calledOnce).to.be.true;
+    });
+
+    it('registers referenceProvider', () => {
+        let spy = sinon.spy(vscode.languages, 'registerReferenceProvider');
+        expect(spy.calledOnce).to.be.false;
+        extension.activate(<any>{ subscriptions: [] });
+        expect(spy.calledOnce).to.be.true;
+    });
+
+    it('registers onDidStartDebugSession', () => {
+        let spy = sinon.spy(vscode.debug, 'onDidStartDebugSession');
+        expect(spy.calledOnce).to.be.false;
+        extension.activate(<any>{ subscriptions: [] });
+        expect(spy.calledOnce).to.be.true;
+    });
+
+    it('registers onDidReceiveDebugSessionCustomEvent', () => {
+        let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
         extension.activate(<any>{ subscriptions: [] });
         expect(spy.calledOnce).to.be.true;

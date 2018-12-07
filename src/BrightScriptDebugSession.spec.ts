@@ -70,7 +70,7 @@ describe('Debugger', () => {
             });
         });
     });
-    it('baseProjectPath works', async () => {
+    it.skip('baseProjectPath works', async () => {
         sinon.stub(session, 'sendEvent').callsFake((...args) => {
             //do nothing
         });
