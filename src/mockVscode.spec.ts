@@ -49,7 +49,7 @@ export let vscode = {
     window: {
         createOutputChannel: function() {
             return {
-                show: () => {}
+                show: () => { }
             };
         },
     },
@@ -83,12 +83,12 @@ export let vscode = {
         }
     },
     OutputChannel: class {
-        public clear() {}
-        public appendLine() {}
+        public clear() { }
+        public appendLine() { }
     },
     DebugCollection: class {
-        public clear() {}
-        public set() {}
+        public clear() { }
+        public set() { }
     },
     Position: class {
         constructor(line, character) {

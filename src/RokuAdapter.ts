@@ -36,13 +36,13 @@ export class RokuAdapter {
      * @param eventName
      * @param handler
      */
-    public on(eventName: 'suspend', handler: () => void);
-    public on(eventname: 'console-output', handler: (output: string) => void);
-    public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
-    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
-    public on(eventName: 'close', handler: () => void);
-    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'cannot-continue', handler: () => void);
+    public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
+    public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
+    public on(eventName: 'suspend', handler: () => void);
+    public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
         return () => {
@@ -89,7 +89,7 @@ export class RokuAdapter {
             let callCount = 0;
             client.addListener(name, function handler(data) {
                 let myCallCount = callCount;
-                setTimeout(function() {
+                setTimeout(() => {
                     //if no other calls have been made since the timeout started, then the listener has settled
                     if (myCallCount === callCount) {
                         client.removeListener(name, handler);
@@ -121,7 +121,7 @@ export class RokuAdapter {
             });
 
             //if the connection fails, reject the connect promise
-            client.addListener('error', function(err) {
+            client.addListener('error', (err) => {
                 //this.emit(EventName.error, err);
                 reject(err);
             });
@@ -151,18 +151,15 @@ export class RokuAdapter {
                 this.processUnhandledLines(responseText);
                 let match;
 
-                if (this.checkForCantContinue(responseText)) {
+                if (this.isAtCannotContinue(responseText)) {
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
 
                 if (this.isActivated) {
-                    console.log(responseText);
-
                     //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
                     //wait until we see the brightscript debugger prompt
-                    if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText)) {
-                        // if (responseText.indexOf("Brightscript Debugger>") !== -1) {
+                    if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                         if (this.isActivated && this.isAtDebuggerPrompt === false) {
                             this.isAtDebuggerPrompt = true;
@@ -185,12 +182,13 @@ export class RokuAdapter {
      * Look through response text for the "Can't continue" text
      * @param responseText
      */
-    private checkForCantContinue(responseText: string): boolean {
+    private isAtCannotContinue(responseText: string) {
         if (/can't continue/gi.exec(responseText.trim())) {
             this.emit('cannot-continue');
             return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     /**
@@ -219,32 +217,32 @@ export class RokuAdapter {
     private processUnhandledLines(responseText: string) {
         let newLines = eol.split(responseText);
         switch (this.status) {
-        case RokuAdapterStatus.compiling:
-            this.endCompilingLine = this.getEndCompilingLine(newLines);
-            if (this.endCompilingLine !== -1) {
-                console.log('processUnhandledLines: entering state RokuAdapterStatus.running');
-                this.status = RokuAdapterStatus.running;
-                this.resetCompilingStaleTimer(false);
-            } else {
-                this.compilingLines = this.compilingLines.concat(newLines);
-                this.resetCompilingStaleTimer(true);
-            }
-            break;
-        case RokuAdapterStatus.compileError:
-            console.debug('ignoring lines while status = RokuAdapterStatus.compileError ' + responseText);
-            break;
-        case RokuAdapterStatus.running:
-            console.debug('ignoring unhandle lines while stauts = RokuAdapterStatus.running ' + responseText);
-            break;
-        case RokuAdapterStatus.none:
-            this.startCompilingLine = this.getStartingCompilingLine(newLines);
-            if (this.startCompilingLine !== -1) {
-                console.log('processUnhandledLines: entering state RokuAdapterStatus.compiling');
-                newLines.splice(0, this.startCompilingLine);
-                this.status = RokuAdapterStatus.compiling;
-                this.resetCompilingStaleTimer(true);
-            }
-            break;
+            case RokuAdapterStatus.compiling:
+                this.endCompilingLine = this.getEndCompilingLine(newLines);
+                if (this.endCompilingLine !== -1) {
+                    console.log('processUnhandledLines: entering state RokuAdapterStatus.running');
+                    this.status = RokuAdapterStatus.running;
+                    this.resetCompilingStaleTimer(false);
+                } else {
+                    this.compilingLines = this.compilingLines.concat(newLines);
+                    this.resetCompilingStaleTimer(true);
+                }
+                break;
+            case RokuAdapterStatus.compileError:
+                console.debug('ignoring lines while status = RokuAdapterStatus.compileError ' + responseText);
+                break;
+            case RokuAdapterStatus.running:
+                console.debug('ignoring unhandle lines while stauts = RokuAdapterStatus.running ' + responseText);
+                break;
+            case RokuAdapterStatus.none:
+                this.startCompilingLine = this.getStartingCompilingLine(newLines);
+                if (this.startCompilingLine !== -1) {
+                    console.log('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                    newLines.splice(0, this.startCompilingLine);
+                    this.status = RokuAdapterStatus.compiling;
+                    this.resetCompilingStaleTimer(true);
+                }
+                break;
         }
     }
 
@@ -859,7 +857,7 @@ export class RequestPipeline {
             } else {
                 let match;
                 //if responseText produced a prompt, return the responseText
-                if (match = /Brightscript\s+Debugger>\s*$/i.exec(allResponseText)) {
+                if (match = /Brightscript\s+Debugger>\s*$/i.exec(allResponseText.trim())) {
                     //resolve the command's promise (if it cares)
                     this.currentRequest.onComplete(allResponseText);
                     allResponseText = '';

@@ -206,7 +206,7 @@ export class DeclarationProvider implements Disposable {
             if (match !== null) {
                 // function has started
                 if (currentFunction !== undefined) {
-                    currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
+                    currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
                 }
                 currentFunction = new BrightScriptDeclaration(
                     match[1],
@@ -230,7 +230,7 @@ export class DeclarationProvider implements Disposable {
             if (match !== null) {
                 // console.log("function END");
                 if (currentFunction !== undefined) {
-                    currentFunction.bodyRange = currentFunction.bodyRange.with({end: new Position(funcEndLine, funcEndChar)});
+                    currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
                 }
                 continue;
             }

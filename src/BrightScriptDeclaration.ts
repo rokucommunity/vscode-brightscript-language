@@ -1,9 +1,11 @@
-import { Location,
+import {
+    Location,
     Position,
     Range,
     SymbolKind,
     TextDocument,
-    Uri } from 'vscode';
+    Uri
+} from 'vscode';
 import * as vscode from 'vscode';
 
 export class BrightScriptDeclaration {

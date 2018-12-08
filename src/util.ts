@@ -4,15 +4,12 @@ import * as path from 'path';
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
 async function readDir(dirPath: string) {
-    let result = await new Promise((resolve, reject) => {
+    return await new Promise<string[]>((resolve, reject) => {
         fs.readdir(dirPath, (err, result) => {
-            if (err) {
-                reject(err);
-            }
+            if (err) { reject(err); }
             resolve(result);
         });
     });
-    return <string[]>result;
 }
 
 async function stat(filePath: string) {

@@ -499,6 +499,8 @@ export class BrightScriptDebugSession extends DebugSession {
             if (results.length > 0) {
                 //a wrong file, which has output is more useful than nothing!
                 debuggerPath = results[0];
+            } else {
+                //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
             }
         }
         //use debugRootDir if provided, or rootDir if not provided.
@@ -672,6 +674,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         this.breakpointsByClientPath[entryPoint.path] = breakpoints;
     }
+
     /**
      * Given a full path to a file, walk up the tree until we have found the base project path (full path to the folder containing the manifest file)
      * @param filePath

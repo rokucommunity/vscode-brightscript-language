@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-import { CancellationToken,
+import {
+    CancellationToken,
     Location,
     SymbolInformation,
     TextDocument,
@@ -48,7 +49,7 @@ export class SymbolInformationRepository {
         return this.provider.sync();
     }
 
-    public* find(query: string): IterableIterator<SymbolInformation> {
+    public * find(query: string): IterableIterator<SymbolInformation> {
         const pattern = this.compileQuery(query);
         if (pattern === undefined) {
             return;

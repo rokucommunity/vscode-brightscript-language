@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
-    const selector = {scheme: 'file', pattern: '**/*.{brs}'};
+    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
     const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
     context.subscriptions.push(registerDefinitionProvider);
 
@@ -73,7 +73,7 @@ class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProv
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         //fill in default configuration values
-        if (config.type === 'BrightScript') {
+        if (config.type.toLowerCase() === 'brightscript') {
             config.name = config.name ? config.name : 'BrightScript Debug: Launch';
             config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
             config.request = config.request ? config.request : 'launch';

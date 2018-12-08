@@ -8,8 +8,16 @@ import * as sinon from 'sinon';
 
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
-import { BrightScriptDebugSession, defer } from './BrightScriptDebugSession';
-import { EvaluateContainer, HighLevelType, PrimativeType } from './RokuAdapter';
+import {
+    BrightScriptDebugSession,
+    defer
+} from './BrightScriptDebugSession';
+import {
+    EvaluateContainer,
+    HighLevelType,
+    PrimativeType
+} from './RokuAdapter';
+
 let stagingFolderPath = '/staging/folder/path';
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
@@ -131,7 +139,7 @@ describe('Debugger', () => {
                 }
             });
 
-            rokuAdapter.getVariable = function() {
+            rokuAdapter.getVariable = () => {
                 return Promise.resolve(getVariableValue);
             };
         });
@@ -139,8 +147,9 @@ describe('Debugger', () => {
         it('returns the correct boolean variable', async () => {
             let expression = 'someBool';
             getVariableValue = getBooleanEvaluateContainer(expression);
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
-            session.evaluateRequest(<any>{}, {context: 'hover', expression: expression});
+            session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'true',
@@ -161,6 +170,7 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someArray[0]', '0'), getBooleanEvaluateContainer('someArray[1]', '1')]
             };
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
@@ -183,6 +193,7 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'true'), getBooleanEvaluateContainer('someObject.ownsHouse', 'false')]
             };
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
@@ -205,13 +216,14 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
             };
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             /*let response = <DebugProtocol.EvaluateResponse>*/
             await getResponse(0);
 
             //get variables
-            session.variablesRequest(<any>{}, {variablesReference: 1});
+            session.variablesRequest(<any>{}, { variablesReference: 1 });
             let childVars = <DebugProtocol.VariablesResponse>await getResponse(1);
             assert.deepEqual(childVars.body.variables, [
                 {
@@ -310,7 +322,7 @@ describe('Debugger', () => {
         beforeEach(() => {
             response = undefined;
             //intercept the sent response
-            session.sendResponse = function(res) {
+            session.sendResponse = (res) => {
                 response = res;
             };
 
@@ -321,11 +333,11 @@ describe('Debugger', () => {
                 breakpoints: []
             };
 
-            args.breakpoints = [{line: 1}];
+            args.breakpoints = [{ line: 1 }];
         });
         it('returns correct results', () => {
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: true}]);
+            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }]);
 
             //mark debugger as 'launched' which should change the behavior of breakpoints.
             session.launchRequestWasCalled = true;
@@ -336,18 +348,18 @@ describe('Debugger', () => {
             expect(response.body.breakpoints).to.deep.equal([]);
 
             //add breakpoint after launchRequestWasCalled finished (i.e. can't set breakpoints anymore)
-            args.breakpoints = [{line: 1}, {line: 2}];
+            args.breakpoints = [{ line: 1 }, { line: 2 }];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: true}, {line: 2, verified: false}]);
+            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }, { line: 2, verified: false }]);
 
         });
 
         it('handles breakpoints for non-brightscript files', () => {
             args.source.path = '/some/xml-file.xml';
-            args.breakpoints = [{line: 1}];
+            args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
             //breakpoint should be disabled
-            expect(response.body.breakpoints).to.deep.equal([{line: 1, verified: false}]);
+            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: false }]);
 
         });
 
@@ -356,7 +368,7 @@ describe('Debugger', () => {
                 debugRootDir: path.normalize('/src'),
                 rootDir: path.normalize('/dest')
             };
-            args.breakpoints = [{line: 1}];
+            args.breakpoints = [{ line: 1 }];
 
             session.setBreakPointsRequest(<any>{}, args);
             expect((session as any).breakpointsByClientPath[path.normalize('/src/some/file.brs')]).not.to.be.undefined;

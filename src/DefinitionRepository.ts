@@ -27,7 +27,7 @@ export class DefinitionRepository {
         return this.provider.sync();
     }
 
-    public* find(document: TextDocument, position: Position): IterableIterator<Location> {
+    public * find(document: TextDocument, position: Position): IterableIterator<Location> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
 
         this.sync();
@@ -91,7 +91,7 @@ export class DefinitionRepository {
     }
 
     // duplicating some of this to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
-    public* findDefinition(document: TextDocument, position: Position): IterableIterator<BrightScriptDeclaration> {
+    public * findDefinition(document: TextDocument, position: Position): IterableIterator<BrightScriptDeclaration> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
 
         this.sync();

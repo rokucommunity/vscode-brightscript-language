@@ -28,9 +28,9 @@ describe('BrightScriptSignatureHelpProvider ', () => {
     let document;
 
     beforeEach(() => {
-        definitionRepo = { findDefinition: () => {}};
+        definitionRepo = { findDefinition: () => { } };
         definitionRepoMock = sinon.mock(definitionRepo);
-        document = { getText: () => {}};
+        document = { getText: () => { } };
         documentMock = sinon.mock(document);
         provider = new BrightScriptSignatureHelpProvider(definitionRepo);
         providerMock = sinon.mock(provider);
@@ -49,7 +49,7 @@ describe('BrightScriptSignatureHelpProvider ', () => {
                 documentMock.expects('getText').once().returns(text);
                 let nextStub = sinon.stub();
                 nextStub.onCall(0).returns(undefined);
-                let def = { next: nextStub};
+                let def = { next: nextStub };
 
                 definitionRepoMock.expects('findDefinition').once().returns(def);
                 let position: any = new vscode.Position(10, 10);
@@ -62,7 +62,7 @@ describe('BrightScriptSignatureHelpProvider ', () => {
                 documentMock.expects('getText').once().returns(text);
                 let nextStub = sinon.stub();
                 nextStub.onCall(0).returns(undefined);
-                let def = { next: nextStub};
+                let def = { next: nextStub };
 
                 definitionRepoMock.expects('findDefinition').once().returns(def);
                 let position: any = new vscode.Position(10, 10);
@@ -78,16 +78,18 @@ describe('BrightScriptSignatureHelpProvider ', () => {
                 documentMock.expects('getText').once().returns(text);
                 let nextStub = sinon.stub();
                 nextStub.onCall(0).returns(
-                    {value: new BrightScriptDeclaration(
-                        'methodNoArgs',
-                        vscode.SymbolKind.TypeParameter,
-                        undefined,
-                        ['arg1'],
-                        new vscode.Range(0, 0, 0, 0) as any,
-                        new vscode.Range(0, 0, 0, 0) as any,
-                        undefined)});
+                    {
+                        value: new BrightScriptDeclaration(
+                            'methodNoArgs',
+                            vscode.SymbolKind.TypeParameter,
+                            undefined,
+                            ['arg1'],
+                            new vscode.Range(0, 0, 0, 0) as any,
+                            new vscode.Range(0, 0, 0, 0) as any,
+                            undefined)
+                    });
 
-                let def = { next: nextStub};
+                let def = { next: nextStub };
                 definitionRepoMock.expects('findDefinition').once().returns(def);
                 let position: any = new vscode.Position(10, 10);
                 provider.provideSignatureHelp(document, position, undefined).then((res) => {

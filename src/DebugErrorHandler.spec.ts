@@ -54,7 +54,7 @@ describe('DebugErrorHandler ', () => {
 
     it('tests onDidReceiveDebugSessionCustomEvent - BSLogOutputEvent', () => {
         outputChannelMock.expects('appendLine').once();
-        handler.onDidReceiveDebugSessionCustomEvent({event: 'BSLogOutputEvent'});
+        handler.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent' });
         outputChannelMock.verify();
         collectionMock.verify();
         handlerMock.verify();
@@ -62,7 +62,7 @@ describe('DebugErrorHandler ', () => {
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - empty', () => {
         collectionMock.expects('clear').once();
-        handler.onDidReceiveDebugSessionCustomEvent({event: '', body: []});
+        handler.onDidReceiveDebugSessionCustomEvent({ event: '', body: [] });
         outputChannelMock.verify();
         collectionMock.verify();
         handlerMock.verify();
@@ -70,7 +70,7 @@ describe('DebugErrorHandler ', () => {
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - undefined', () => {
         collectionMock.expects('clear').once();
-        handler.onDidReceiveDebugSessionCustomEvent({event: ''});
+        handler.onDidReceiveDebugSessionCustomEvent({ event: '' });
         outputChannelMock.verify();
         collectionMock.verify();
         handlerMock.verify();
@@ -79,8 +79,8 @@ describe('DebugErrorHandler ', () => {
     it('tests onDidReceiveDebugSessionCustomEvent - errors', () => {
         collectionMock.expects('clear').once();
         handlerMock.expects('addDiagnosticForError').once();
-        let compileErrors = [{path: 'path1', message: 'message1'}];
-        handler.onDidReceiveDebugSessionCustomEvent({event: '', body: compileErrors});
+        let compileErrors = [{ path: 'path1', message: 'message1' }];
+        handler.onDidReceiveDebugSessionCustomEvent({ event: '', body: compileErrors });
         outputChannelMock.verify();
         collectionMock.verify();
         handlerMock.verify();

@@ -13,8 +13,12 @@ import { getExcludeGlob, iterlines, WorkspaceEncoding } from './DeclarationProvi
 export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
     private encoding: WorkspaceEncoding = new WorkspaceEncoding();
 
-    public async provideReferences(document: vscode.TextDocument, position: vscode.Position,
-                                   options: { includeDeclaration: boolean }, token: vscode.CancellationToken): Promise<vscode.Location[]> {
+    public async provideReferences(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        options: { includeDeclaration: boolean },
+        token: vscode.CancellationToken
+    ): Promise<vscode.Location[]> {
         return await this.find(document, position);
     }
 

@@ -25,7 +25,7 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
         //1. get first bracket to our left, - then get the symbol before that..
         //really crude crappy parser..
         //TODO this is whack - it's not even LTR ugh..
-        let bracketCounts = {normal: 0, square: 0, curly: 0};
+        let bracketCounts = { normal: 0, square: 0, curly: 0 };
         let commaCount = 0;
         let index = position.character;
         let line = document.getText(new Range(position.line, 0, position.line, position.character));
