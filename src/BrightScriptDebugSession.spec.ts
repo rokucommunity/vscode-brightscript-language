@@ -78,9 +78,12 @@ describe('Debugger', () => {
             });
         });
     });
-    it.skip('baseProjectPath works', async () => {
+    it('baseProjectPath works', async () => {
         sinon.stub(session, 'sendEvent').callsFake((...args) => {
             //do nothing
+        });
+        (sinon.stub(session, <any>'loadStagingDirPaths') as any).callsFake(() => {
+
         });
 
         //skip adding breakpoint statements since that's not what we are currently testing
