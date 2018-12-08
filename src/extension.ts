@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
+
 import {
     CancellationToken,
     CompletionItem,
     CompletionItemProvider,
     DebugConfiguration,
-    Definition,
-    DefinitionProvider,
     DocumentSymbolProvider,
     Position,
     SymbolInformation,
@@ -14,51 +13,67 @@ import {
     WorkspaceSymbolProvider
 } from 'vscode';
 
-import { registerCommands } from './commands';
-import { BuiltinComplationItems } from './completion';
-import { DeclarationProvider } from './declaration';
-import { DefinitionRepository } from './definitionProvider';
 import { Formatter } from './formatter';
+
+import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
+import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
+import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
+import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
+import { registerCommands } from './commands';
+import { DebugErrorHandler } from './DebugErrorHandler';
+import { DeclarationProvider } from './DeclarationProvider';
+import { DefinitionRepository } from './DefinitionRepository';
 import {
-    readSymbolInformations,
+    BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
-} from './symbol';
+} from './SymbolInformationRepository';
+
+let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     //register the code formatter
-    vscode.languages.registerDocumentRangeFormattingEditProvider({ language: 'brightscript', scheme: 'file' }, new Formatter());
-    //register the debug configuration provider
-    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightscriptConfigurationProvider()));
+    vscode.languages.registerDocumentRangeFormattingEditProvider({
+        language: 'brightscript',
+        scheme: 'file'
+    }, new Formatter());
+    outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider()));
 
     //register the definition provider
-    const provider: DeclarationProvider = new DeclarationProvider();
-    const definitionProvider = new BrightscriptDefinitionProvider(provider);
-    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
+    const debugErrorHandler: DebugErrorHandler = new DebugErrorHandler(outputChannel);
+    const declarationProvider: DeclarationProvider = new DeclarationProvider();
+    const definitionRepo = new DefinitionRepository(declarationProvider);
+    const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
+    const selector = {scheme: 'file', pattern: '**/*.{brs}'};
     const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
     context.subscriptions.push(registerDefinitionProvider);
 
     // experimental placeholder
-    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightscriptCompletionItemProvider()));
+    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
+    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
+    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));
+    context.subscriptions.push(declarationProvider);
+    vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
+    vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
 
-    context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightscriptDocumentSymbolProvider()));
-    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightscriptWorkspaceSymbolProvider(provider)));
-    context.subscriptions.push(provider);
+    vscode.debug.onDidStartDebugSession((e) => debugErrorHandler.onDidStartDebugSession());
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => debugErrorHandler.onDidReceiveDebugSessionCustomEvent(e));
+
+    outputChannel.show();
 
     registerCommands(context);
 }
 
-export function _activate(context: vscode.ExtensionContext, vscode) {
-
-}
-
-class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProvider {
+class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProvider {
     /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightscriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
+    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         //fill in default configuration values
-        if (config.type === 'brightscript') {
+        if (config.type === 'BrightScript') {
             config.name = config.name ? config.name : 'BrightScript Debug: Launch';
             config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
             config.request = config.request ? config.request : 'launch';
@@ -67,6 +82,8 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
             config.outDir = config.outDir ? config.outDir : '${workspaceFolder}/out';
             config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
             config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
+            config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
+            config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
         }
         //prompt for host if not hardcoded
         if (config.host === '${promptForHost}') {
@@ -97,7 +114,7 @@ class BrightscriptConfigurationProvider implements vscode.DebugConfigurationProv
 export function deactivate() {
 }
 
-interface BrightscriptDebugConfiguration extends DebugConfiguration {
+interface BrightScriptDebugConfiguration extends DebugConfiguration {
     host: string;
     password: string;
     rootDir: string;
@@ -106,43 +123,6 @@ interface BrightscriptDebugConfiguration extends DebugConfiguration {
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     retainStagingFolder: boolean;
-}
-
-class BrightscriptDefinitionProvider implements DefinitionProvider {
-
-    constructor(provider: DeclarationProvider) {
-        this.repo = new DefinitionRepository(provider);
-    }
-
-    private repo: DefinitionRepository;
-
-    public provideDefinition(document: TextDocument, position: Position, token: CancellationToken): Promise<Definition> {
-        return this.repo.sync().then(() => Array.from(this.repo.find(document, position)));
-    }
-}
-
-class BrightscriptDocumentSymbolProvider implements DocumentSymbolProvider {
-    public provideDocumentSymbols(document: TextDocument, token: CancellationToken): SymbolInformation[] {
-        return readSymbolInformations(document.uri, document.getText());
-    }
-}
-
-class BrightscriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
-
-    constructor(provider: DeclarationProvider) {
-        this.repo = new SymbolInformationRepository(provider);
-    }
-
-    private repo: SymbolInformationRepository;
-
-    public provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]> {
-        return this.repo.sync().then(() => Array.from(this.repo.find(query)));
-    }
-}
-
-class BrightscriptCompletionItemProvider implements CompletionItemProvider {
-    public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
-        //TODO - do something useful here!
-        return BuiltinComplationItems;
-    }
+    clearOutputOnLaunch: boolean;
+    selectOutputOnLogMessage: boolean;
 }
