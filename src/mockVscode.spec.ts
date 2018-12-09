@@ -52,6 +52,9 @@ export let vscode = {
                 show: () => { }
             };
         },
+        activeTextEditor : {
+            document : undefined
+        }
     },
     CompletionItemKind: {
         Function: 2

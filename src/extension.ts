@@ -15,11 +15,11 @@ import {
 
 import { Formatter } from './formatter';
 
+import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
-import { registerCommands } from './commands';
 import { DebugErrorHandler } from './DebugErrorHandler';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
@@ -47,7 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
     const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
+    const brightScriptCommands = getBrightScriptCommandsInstance();
     context.subscriptions.push(registerDefinitionProvider);
+    brightScriptCommands.registerCommands(context);
 
     // experimental placeholder
     // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
@@ -62,8 +64,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => debugErrorHandler.onDidReceiveDebugSessionCustomEvent(e));
 
     outputChannel.show();
-
-    registerCommands(context);
 }
 
 class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProvider {
