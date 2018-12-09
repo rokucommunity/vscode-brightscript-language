@@ -18,7 +18,6 @@ import {
     PrimativeType
 } from './RokuAdapter';
 
-let stagingFolderPath = '/staging/folder/path';
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {

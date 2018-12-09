@@ -3,29 +3,31 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 let Module = require('module');
+import { assert } from 'chai';
 
 import { vscode } from './mockVscode.spec';
 
-let registerCommands = sinon.spy();
+let commandsMock;
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {
     if (file === 'vscode') {
         return vscode;
-    } else if (file === './commands') {
-        return { registerCommands: registerCommands };
+    } else if (file === './BrightScriptCommands') {
+        let command = { registerCommands: () => {} };
+        commandsMock = sinon.mock(command);
+        return { getBrightScriptCommandsInstance : () => command };
     } else {
         return oldRequire.apply(this, arguments);
     }
 };
 
-afterEach(() => {
-    (registerCommands as any).resetHistory();
-});
-
+import BrightScriptCommands from './BrightScriptCommands';
 import * as  extension from './extension';
+
 describe('extension', () => {
+
     it('registers configuration provider', () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
         expect(spy.calledOnce).to.be.false;
@@ -62,10 +64,9 @@ describe('extension', () => {
     });
 
     it('registers all commands', () => {
-        let spy = registerCommands;
-        expect(spy.calledOnce).to.be.false;
+        commandsMock.expects('registerCommands');
         extension.activate(<any>{ subscriptions: [] });
-        expect(spy.calledOnce).to.be.true;
+        commandsMock.verify();
     });
 
     it('registers signatureHelpProvider', () => {
