@@ -20,6 +20,7 @@ import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
+import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { DebugErrorHandler } from './DebugErrorHandler';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
@@ -46,9 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
-    const registerDefinitionProvider = vscode.languages.registerDefinitionProvider(selector, definitionProvider);
     const brightScriptCommands = getBrightScriptCommandsInstance();
-    context.subscriptions.push(registerDefinitionProvider);
     brightScriptCommands.registerCommands(context);
 
     // experimental placeholder
@@ -64,6 +63,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => debugErrorHandler.onDidReceiveDebugSessionCustomEvent(e));
 
     outputChannel.show();
+
+    //xml support
+    const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 }
 
 class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProvider {

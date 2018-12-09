@@ -71,8 +71,8 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
 
         //count number of commas from defintion start, to current pos
         const adjustedPosition = new Position(position.line, index - 1);
-        let definition: any;
-        while (definition = await this.definitionRepo.findDefinition(document, adjustedPosition).next()) {
+        let definition = this.definitionRepo.findDefinition(document, adjustedPosition).next();
+        if (definition) {
             let signatureHelp = new SignatureHelp();
 
             let params: ParameterInformation[] = [];

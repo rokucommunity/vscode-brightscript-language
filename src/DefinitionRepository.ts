@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { Location, Position, TextDocument, Uri } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
-import { DeclarationProvider } from './DeclarationProvider';
+import { DeclarationProvider, getExcludeGlob } from './DeclarationProvider';
 
 export class DefinitionRepository {
 
@@ -90,9 +90,13 @@ export class DefinitionRepository {
             .map((d) => d.getLocation());
     }
 
-    // duplicating some of this to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
     public * findDefinition(document: TextDocument, position: Position): IterableIterator<BrightScriptDeclaration> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
+        let result = yield* this.findDefinitionForWord(document, position, word);
+        return result;
+    }
+        // duplicating some of thisactivate.olympicchanel.com to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
+    public * findDefinitionForWord(document: TextDocument, position: Position, word: string): IterableIterator<BrightScriptDeclaration> {
 
         this.sync();
         if (word === undefined) {
@@ -138,8 +142,22 @@ export class DefinitionRepository {
             .filter((d) => d.name.toLowerCase() === word && d.visible(position));
     }
 
-    private findDefinitionInDocument(document: TextDocument, word: string): BrightScriptDeclaration[] {
+    public findDefinitionInDocument(document: TextDocument, word: string): BrightScriptDeclaration[] {
         return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => d.name.toLowerCase() === word && d.isGlobal);
+    }
+
+    public async findDefinitionForBrsDocument(name: string): Promise<BrightScriptDeclaration[]> {
+        let declarations = [];
+        this.sync();
+        const excludes = getExcludeGlob();
+        //get usable bit of name
+        let fileName = name.replace(/^.*[\\\/]/, '').toLowerCase();
+        for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+            if (uri.path.toLowerCase().indexOf(fileName) !== -1) {
+                declarations.push(BrightScriptDeclaration.fromUri(uri));
+            }
+        }
+        return declarations;
     }
 }
