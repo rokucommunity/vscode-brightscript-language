@@ -164,5 +164,15 @@ export let vscode = {
         Event: 23,
         Operator: 24,
         TypeParameter: 25
+    },
+    TextDocument: class {
+        constructor(fileName: string, text?: string) {
+            this.fileName = fileName;
+            this.text = text;
+        }
+
+        private text: any;
+        private fileName: string;
+        public getText() { return this.text; }
     }
 };
