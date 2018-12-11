@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.3.3] - 2018-12-10
+ - Added basic goto declaration support in xml documents
+ - Added inline errors for compilation failures
+ - Added BrightScript Log output window, which can have colors/searches applied to it
+ - Added crude message signature support
+ - Added find usage support for brs documents
+
 ## [1.3.2] - 2018-12-07
  - Fixed bug that was preventing using `function Main` as an entry function. 
 

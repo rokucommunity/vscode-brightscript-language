@@ -14,6 +14,10 @@ A VSCode extension to support Roku's BrightScript language.
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
+- Find usages (Shift+F12)
+- XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
+- Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
+- Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
 
 
 ## Requirements
