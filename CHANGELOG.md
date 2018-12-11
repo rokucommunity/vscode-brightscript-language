@@ -1,6 +1,6 @@
 # Change Log
 
-## [1.3.3] - 2018-12-10
+## [1.4.0] - 2018-12-10
  - Added basic goto declaration support in xml documents
  - Added inline errors for compilation failures
  - Added BrightScript Log output window, which can have colors/searches applied to it
