@@ -54,6 +54,7 @@
         "no-duplicate-variable": true,
         "no-empty": false,
         "no-shadowed-variable": false,
+        "no-trailing-whitespace": true,
         "no-unused-expression": true,
         "no-var-keyword": true,
         "object-curly-spacing": true,
@@ -77,6 +78,7 @@
             true,
             "always"
         ],
+        "ter-arrow-spacing": true,
         "ter-indent": [
             true,
             4,
@@ -84,6 +86,8 @@
                 "SwitchCase": 1
             }
         ],
+        "ter-no-irregular-whitespace": true,
+        "ter-no-mixed-spaces-and-tabs": true,
         "trailing-comma": [
             true,
             "never"

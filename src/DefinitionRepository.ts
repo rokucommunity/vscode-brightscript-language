@@ -95,7 +95,7 @@ export class DefinitionRepository {
         let result = yield* this.findDefinitionForWord(document, position, word);
         return result;
     }
-        // duplicating some of thisactivate.olympicchanel.com to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
+    // duplicating some of thisactivate.olympicchanel.com to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
     public * findDefinitionForWord(document: TextDocument, position: Position, word: string): IterableIterator<BrightScriptDeclaration> {
 
         this.sync();

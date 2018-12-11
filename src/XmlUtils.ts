@@ -1,11 +1,12 @@
-import { CancellationToken,
+import {
+    CancellationToken,
     Position,
     Range,
     TextDocument
 } from 'vscode';
 
 export enum XmlWordType {
-    Illegal= -1,
+    Illegal = -1,
     Tag = 0,
     AttributeValue = 1,
     Attribute = 2,
@@ -36,7 +37,7 @@ export class XmlUtils {
                 return this.getTextWithOffsets(document, position);
                 break;
             case XmlWordType.AttributeValue:
-                return this.getTextWithOffsets(document, position,  /[^\s\"]+/);
+                return this.getTextWithOffsets(document, position, /[^\s\"]+/);
                 break;
         }
     }
@@ -51,7 +52,7 @@ export class XmlUtils {
 
     // Check if the cursor is about complete the value of an attribute.
     private isAttributeValue(document: TextDocument, position: Position): boolean {
-        let wordRange = document.getWordRangeAtPosition(position,  /[^\s\"\']+/);
+        let wordRange = document.getWordRangeAtPosition(position, /[^\s\"\']+/);
         let wordStart = wordRange ? wordRange.start : position;
         let wordEnd = wordRange ? wordRange.end : position;
         if (wordStart.character === 0 || wordEnd.character > document.lineAt(wordEnd.line).text.length - 1) {
@@ -84,10 +85,10 @@ export class XmlUtils {
     }
 
     private getTextWithOffsets(document: TextDocument, position: Position, wordRegex?) {
-        let wordRange = document.getWordRangeAtPosition(position,  wordRegex);
+        let wordRange = document.getWordRangeAtPosition(position, wordRegex);
         let wordStart = wordRange ? wordRange.start : position;
         return document.getText(
             new Range(new Position(wordStart.line, wordStart.character),
-            new Position(wordRange.end.line, wordRange.end.character)));
+                new Position(wordRange.end.line, wordRange.end.character)));
     }
 }

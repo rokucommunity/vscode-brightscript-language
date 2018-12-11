@@ -15,9 +15,9 @@ Module.prototype.require = function hijacked(file) {
     if (file === 'vscode') {
         return vscode;
     } else if (file === './BrightScriptCommands') {
-        let command = { registerCommands: () => {} };
+        let command = { registerCommands: () => { } };
         commandsMock = sinon.mock(command);
-        return { getBrightScriptCommandsInstance : () => command };
+        return { getBrightScriptCommandsInstance: () => command };
     } else {
         return oldRequire.apply(this, arguments);
     }
