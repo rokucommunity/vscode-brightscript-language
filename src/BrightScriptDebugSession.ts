@@ -49,6 +49,12 @@ class LogOutputEvent implements DebugProtocol.Event {
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
         super();
+        console.log('>+_ ALIVE');
+        console.log('>+_ ALIVE');
+        console.log('>+_ ALIVE');
+        console.log('>+_ ALIVE');
+        console.log('>+_ ALIVE');
+        console.log('>+_ ALIVE');
         // this debugger uses zero-based lines and columns
         this.setDebuggerLinesStartAt1(true);
         this.setDebuggerColumnsStartAt1(true);
@@ -78,14 +84,18 @@ export class BrightScriptDebugSession extends DebugSession {
         return path.normalize(this.launchArgs.rootDir);
     }
 
+    public debugLog(message: string) {
+        this.sendEvent(new OutputEvent('[D] ' + message + '\n', 'stdout'));
+    }
+
     /**
-     * The 'initialize' request is the first request called by the frontend
      * to interrogate the features the debug adapter provides.
      */
     public initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
         // since this debug adapter can accept configuration requests like 'setBreakpoint' at any time,
         // we request them early by sending an 'initializeRequest' to the frontend.
         // The frontend will end the configuration sequence by calling 'configurationDone' request.
+        this.sendEvent(new OutputEvent('I AM ALIVE!!!!!', 'stdout'));
         this.sendEvent(new InitializedEvent());
         response.body = response.body || {};
 
@@ -163,7 +173,6 @@ export class BrightScriptDebugSession extends DebugSession {
             });
 
             //watch
-            // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
             this.rokuAdapter.on('compile-errors', (compileErrors) => {
                 for (let compileError of compileErrors) {
                     compileError.lineNumber = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
@@ -528,25 +537,38 @@ export class BrightScriptDebugSession extends DebugSession {
         //register events
         let firstSuspend = true;
         this.rokuAdapter = new RokuAdapter(host);
+        this.rokuAdapter.debugSession = this;
 
         //when the debugger suspends (pauses for debugger input)
         this.rokuAdapter.on('suspend', async () => {
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
+            this.debugLog ('SUSPSEND IS INVOKVED');
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
             //determine if this is the "stop on entry" breakpoint
             let isStoppedOnEntry = firstSuspend && !!this.entryBreakpoint;
-
+            this.debugLog ('SUSPSEND IS INVOKVED 1111');
             //skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
             if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
+                this.debugLog ('SUSPSEND IS INVOKVED 222');
                 //skip the breakpoint
                 this.rokuAdapter.continue();
             } else {
+                this.debugLog ('SUSPSEND IS INVOKVED 333');
                 this.clearState();
                 let exceptionText = '';
                 const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
                 (event.body as any).allThreadsStopped = false;
                 this.sendEvent(event);
             }
+            this.debugLog ('SUSPSEND IS INVOKVED 444');
             firstSuspend = false;
         });
 

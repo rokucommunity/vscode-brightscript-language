@@ -34,7 +34,8 @@ export class DefinitionRepository {
         if (word === undefined) {
             return;
         }
-        yield* this.findInCurrentDocument(document, position, word);
+        let fuzzyWord = '_' + word;
+        yield* this.findInCurrentDocument(document, position, word, fuzzyWord);
         const ws = vscode.workspace.getWorkspaceFolder(document.uri);
         if (ws === undefined) {
             return;
@@ -54,7 +55,7 @@ export class DefinitionRepository {
                 continue;
             }
             fresh.add(doc.uri.fsPath);
-            yield* this.findInDocument(doc, word);
+            yield* this.findInDocument(doc, word, fuzzyWord);
         }
         for (const [path, defs] of this.cache.entries()) {
             if (fresh.has(path)) {
@@ -63,7 +64,7 @@ export class DefinitionRepository {
             if (!path.startsWith(ws.uri.fsPath)) {
                 continue;
             }
-            yield* defs.filter((d) => d.name.toLowerCase() === word).map((d) => d.getLocation());
+            yield* defs.filter((d) => d.name.toLowerCase() === word || d.name.toLowerCase().endsWith(fuzzyWord)).map((d) => d.getLocation());
         }
     }
 
@@ -74,19 +75,19 @@ export class DefinitionRepository {
         }
     }
 
-    private findInCurrentDocument(document: TextDocument, position: Position, word: string): Location[] {
+    private findInCurrentDocument(document: TextDocument, position: Position, word: string, fuzzyWord?: string): Location[] {
         return this.declarationProvider.readDeclarations(document.uri, document.getText())
             .filter((d) => {
-                return d.name.toLowerCase() === word && d.visible(position);
+                return (d.name.toLowerCase() === word || (fuzzyWord && d.name.toLowerCase().endsWith(fuzzyWord))) && d.visible(position);
             })
             .map((d) => {
                 return d.getLocation();
             });
     }
 
-    private findInDocument(document: TextDocument, word: string): Location[] {
+    private findInDocument(document: TextDocument, word: string, fuzzyWord?: string): Location[] {
         return this.declarationProvider.readDeclarations(document.uri, document.getText())
-            .filter((d) => d.name.toLowerCase() === word && d.isGlobal)
+            .filter((d) => (d.name.toLowerCase() === word || (fuzzyWord && d.name.toLowerCase().endsWith(fuzzyWord))) && d.isGlobal)
             .map((d) => d.getLocation());
     }
 

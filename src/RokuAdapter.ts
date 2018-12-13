@@ -5,6 +5,10 @@ import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
 
+import { OutputEvent } from 'vscode-debugadapter';
+
+import { BrightScriptDebugSession } from './BrightScriptDebugSession';
+
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
@@ -18,6 +22,8 @@ export class RokuAdapter {
         this.lastUnhandledDataTime = 0;
         this.maxDataMsWhenCompiling = 500;
     }
+
+    public debugSession: BrightScriptDebugSession;
 
     private status: RokuAdapterStatus;
     private requestPipeline: RequestPipeline;
@@ -139,8 +145,10 @@ export class RokuAdapter {
             //listen for any console output that was not handled by other methods in the adapter
             this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
                 //if there was a runtime error, handle it
+                // this.debugLog('UNHANDLED console output VVVV');
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
                 if (hasRuntimeError) {
+                    this.debugLog('hasRuntimeError!!');
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
@@ -148,18 +156,29 @@ export class RokuAdapter {
                 //forward all unhandled console output
                 this.emit('unhandled-console-output', responseText);
 
-                this.processUnhandledLines(responseText);
+                this.debugLog('1111111');
+                // this.processUnhandledLines(responseText);
                 let match;
 
+                this.debugLog('2222');
                 if (this.isAtCannotContinue(responseText)) {
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
 
+                this.debugLog('3333');
+                this.debugLog('this.isActivated ' + this.isActivated);
                 if (this.isActivated) {
+                    this.debugLog('IS ACTIVATED');
                     //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
+                    this.debugLog('4444');
                     //wait until we see the brightscript debugger prompt
+                    this.debugLog('>>>>>>>>>>>>>>>>>');
+                    this.debugLog('regex mathching ' + responseText.trim());
+                    this.debugLog('>>>>>>>>>>>>>>>>>');
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
+                        this.debugLog('55555');
+                        this.debugLog('REGEX MATCH');
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                         if (this.isActivated && this.isAtDebuggerPrompt === false) {
                             this.isAtDebuggerPrompt = true;
@@ -168,9 +187,12 @@ export class RokuAdapter {
                             this.isAtDebuggerPrompt = true;
                         }
                     } else {
+                        this.debugLog('666');
                         this.isAtDebuggerPrompt = false;
+                        this.debugLog('REGEX DID NOT MATCH');
                     }
                 }
+                this.debugLog('777');
             });
 
             //the adapter is connected and running smoothly. resolve the promise
@@ -214,18 +236,38 @@ export class RokuAdapter {
         }
     }
 
+    private debugLog(message: string) {
+        console.log(message);
+        this.debugSession.debugLog(message);
+    }
     private processUnhandledLines(responseText: string) {
+
+        // this.debugLog('processUnhandledLines: text is');
+        // this.debugLog('-START--------------------------------');
+        // this.debugLog(responseText);
+        // this.debugLog('-END--------------------------------');
+
         let newLines = eol.split(responseText);
+        this.debugLog('processUnhandledLines: this.status ' + this.status);
+        this.debugLog('aaaa');
         switch (this.status) {
             case RokuAdapterStatus.compiling:
+                this.debugLog('bbbb');
+
                 this.endCompilingLine = this.getEndCompilingLine(newLines);
+                this.debugLog('cccc');
                 if (this.endCompilingLine !== -1) {
-                    console.log('processUnhandledLines: entering state RokuAdapterStatus.running');
+                    this.debugLog('dddd');
+                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.running');
                     this.status = RokuAdapterStatus.running;
                     this.resetCompilingStaleTimer(false);
+                    this.debugLog('eee');
                 } else {
+                    this.debugLog('ffff');
                     this.compilingLines = this.compilingLines.concat(newLines);
+                    this.debugLog('gggg');
                     this.resetCompilingStaleTimer(true);
+                    this.debugLog('hhhh');
                 }
                 break;
             case RokuAdapterStatus.compileError:
@@ -235,22 +277,28 @@ export class RokuAdapter {
                 console.debug('ignoring unhandle lines while stauts = RokuAdapterStatus.running ' + responseText);
                 break;
             case RokuAdapterStatus.none:
+                this.debugLog('jjj');
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
+                this.debugLog('kkk');
                 if (this.startCompilingLine !== -1) {
-                    console.log('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                    this.debugLog('lll');
+                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
+                    this.debugLog('mmm');
                     this.status = RokuAdapterStatus.compiling;
                     this.resetCompilingStaleTimer(true);
+                    this.debugLog('nnn');
                 }
                 break;
         }
+        this.debugLog('zzzz');
     }
 
     public resetCompilingStaleTimer(isRunning): any {
-        console.log('getStartingCompilingLine isRunning' + isRunning);
+        this.debugLog('getStartingCompilingLine isRunning' + isRunning);
 
         if (this.staleTimer) {
-            console.log('>>>clearing existing interval');
+            this.debugLog('>>>clearing existing interval');
             clearInterval(this.staleTimer);
             this.staleTimer = undefined;
         }
@@ -263,12 +311,13 @@ export class RokuAdapter {
 
     public onCompilingStaleTimer() {
         if (this.status !== RokuAdapterStatus.compileError) {
-            console.log('+++++++++onCompilingStaleTimer: took too long while in compile mode - assuming it\'s an error');
+            this.debugLog('+++++++++onCompilingStaleTimer: took too long while in compile mode - assuming it\'s an error');
+
             this.status = RokuAdapterStatus.compileError;
             this.resetCompilingStaleTimer(false);
             this.reportErrors();
         } else {
-            console.log('+++++++++onCompilingStaleTimer: CALLED WHEN ALREADY IN ERROR STATE');
+            this.debugLog('+++++++++onCompilingStaleTimer: CALLED WHEN ALREADY IN ERROR STATE');
 
         }
     }
@@ -303,7 +352,7 @@ export class RokuAdapter {
      * @param responseText
      */
     private reportErrors() {
-        console.log('>>>>>>>>>>>>>>>>>> reportErrors');
+        this.debugLog('>>>>>>>>>>>>>>>>>> reportErrors');
         //throw out any lines before the last found compiling line
 
         let syntaxErrors = this.getSyntaxErrors(this.compilingLines);
@@ -312,7 +361,8 @@ export class RokuAdapter {
 
         errors = errors.filter((e) => e.path.toLowerCase().endsWith('.brs') || e.path.toLowerCase().endsWith('.xml'));
 
-        console.log('>>>>>>>>>>>>>>>>>> errors.length ' + errors.length);
+        this.debugLog('>>>>>>>>>>>>>>>>>> errors.length ' + errors.length);
+        this.emit('console-output', 'errors.length ' + errors.length);
         if (errors.length > 0) {
             this.emit('compile-errors', errors);
         }
