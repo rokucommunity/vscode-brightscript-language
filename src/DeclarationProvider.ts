@@ -2,8 +2,6 @@ import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
 import * as vscode from 'vscode';
 
-import mm from 'micromatch';
-
 import {
     Disposable,
     Event,
@@ -128,10 +126,7 @@ export class DeclarationProvider implements Disposable {
     private onDidChangeFile(uri: Uri) {
         console.log('onDidChangeFile ' + uri.path);
         const excludes = getExcludeGlob();
-        const isMatch = mm.matcher(excludes);
-        if (!isMatch) {
-            this.dirty.set(uri.fsPath, uri);
-        }
+        this.dirty.set(uri.fsPath, uri);
     }
 
     private onDidDeleteFile(uri: Uri) {

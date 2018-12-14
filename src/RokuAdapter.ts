@@ -27,7 +27,7 @@ export class RokuAdapter {
     private compilingLines: string[];
     private lastUnhandledDataTime: number;
     private maxDataMsWhenCompiling: number;
-    private staleTimer: any;
+    private compileErrorTimer: any;
 
     private cache = {};
 
@@ -141,6 +141,7 @@ export class RokuAdapter {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
                 if (hasRuntimeError) {
+                    this.debugLog('hasRuntimeError!!');
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
@@ -214,63 +215,75 @@ export class RokuAdapter {
         }
     }
 
+    private debugLog(message: string) {
+        console.log(message);
+    }
+
     private processUnhandledLines(responseText: string) {
+        if (this.status === RokuAdapterStatus.running) {
+            return;
+        }
+
         let newLines = eol.split(responseText);
+        this.debugLog('processUnhandledLines: this.status ' + this.status);
         switch (this.status) {
             case RokuAdapterStatus.compiling:
+            case RokuAdapterStatus.compileError:
                 this.endCompilingLine = this.getEndCompilingLine(newLines);
                 if (this.endCompilingLine !== -1) {
-                    console.log('processUnhandledLines: entering state RokuAdapterStatus.running');
+                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.running');
                     this.status = RokuAdapterStatus.running;
-                    this.resetCompilingStaleTimer(false);
+                    this.resetCompileErrorTimer(false);
                 } else {
                     this.compilingLines = this.compilingLines.concat(newLines);
-                    this.resetCompilingStaleTimer(true);
+                    if (this.status === RokuAdapterStatus.compiling) {
+                        //check to see if we've entered an error scenario
+                        let errors = this.getErrors();
+                        if (errors.length > 0) {
+                            this.status = RokuAdapterStatus.compileError;
+                        }
+                    }
+                    if (this.status === RokuAdapterStatus.compileError) {
+                        //every input line while in error status will reset the stale timer, so we can wait for more errors to roll in.
+                        this.resetCompileErrorTimer(true);
+                    }
                 }
-                break;
-            case RokuAdapterStatus.compileError:
-                console.debug('ignoring lines while status = RokuAdapterStatus.compileError ' + responseText);
-                break;
-            case RokuAdapterStatus.running:
-                console.debug('ignoring unhandle lines while stauts = RokuAdapterStatus.running ' + responseText);
                 break;
             case RokuAdapterStatus.none:
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
                 if (this.startCompilingLine !== -1) {
-                    console.log('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
                     this.status = RokuAdapterStatus.compiling;
-                    this.resetCompilingStaleTimer(true);
+                    this.resetCompileErrorTimer(true);
                 }
                 break;
         }
     }
 
-    public resetCompilingStaleTimer(isRunning): any {
-        console.log('getStartingCompilingLine isRunning' + isRunning);
+    public resetCompileErrorTimer(isRunning): any {
+        this.debugLog('resetCompileErrorTimer isRunning' + isRunning);
 
-        if (this.staleTimer) {
-            console.log('>>>clearing existing interval');
-            clearInterval(this.staleTimer);
-            this.staleTimer = undefined;
+        if (this.compileErrorTimer) {
+            clearInterval(this.compileErrorTimer);
+            this.compileErrorTimer = undefined;
         }
 
         if (isRunning) {
-            let that = this;
-            this.staleTimer = setInterval(() => this.onCompilingStaleTimer(), 2000);
+            if (this.status === RokuAdapterStatus.compileError) {
+                let that = this;
+                this.debugLog('resetting resetCompileErrorTimer');
+                this.compileErrorTimer = setTimeout(() => that.onCompileErrorTimer(), 1000);
+            }
         }
     }
 
-    public onCompilingStaleTimer() {
-        if (this.status !== RokuAdapterStatus.compileError) {
-            console.log('+++++++++onCompilingStaleTimer: took too long while in compile mode - assuming it\'s an error');
-            this.status = RokuAdapterStatus.compileError;
-            this.resetCompilingStaleTimer(false);
-            this.reportErrors();
-        } else {
-            console.log('+++++++++onCompilingStaleTimer: CALLED WHEN ALREADY IN ERROR STATE');
+    public onCompileErrorTimer() {
+        this.debugLog('onCompileErrorTimer: timer complete. should\'ve caught all errors ');
 
-        }
+        this.status = RokuAdapterStatus.compileError;
+        this.resetCompileErrorTimer(false);
+        this.reportErrors();
     }
 
     private getStartingCompilingLine(lines: string[]): number {
@@ -289,7 +302,7 @@ export class RokuAdapter {
         let lastIndex: number = -1;
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            //if this line looks like the compiling line
+            // if this line looks like the compiling line
             if (/------\s+Running.*------/i.exec(line)) {
                 lastIndex = i;
             }
@@ -298,21 +311,27 @@ export class RokuAdapter {
 
     }
 
+    private getErrors() {
+        let syntaxErrors = this.getSyntaxErrors(this.compilingLines);
+        let compileErrors = this.getCompileErrors(this.compilingLines);
+        let xmlCompileErrors = this.getSingleFileXmlError(this.compilingLines);
+        let multipleXmlCompileErrors = this.getMultipleFileXmlError(this.compilingLines);
+        return syntaxErrors.concat(compileErrors).concat(multipleXmlCompileErrors).concat(xmlCompileErrors);
+    }
+
     /**
      * Look through the given responseText for a compiler error
      * @param responseText
      */
     private reportErrors() {
-        console.log('>>>>>>>>>>>>>>>>>> reportErrors');
+        this.debugLog('reportErrors');
         //throw out any lines before the last found compiling line
 
-        let syntaxErrors = this.getSyntaxErrors(this.compilingLines);
-        let compileErrors = this.getCompileErrors(this.compilingLines);
-        let errors = syntaxErrors.concat(compileErrors);
+        let errors = this.getErrors();
 
         errors = errors.filter((e) => e.path.toLowerCase().endsWith('.brs') || e.path.toLowerCase().endsWith('.xml'));
 
-        console.log('>>>>>>>>>>>>>>>>>> errors.length ' + errors.length);
+        this.debugLog('errors.length ' + errors.length);
         if (errors.length > 0) {
             this.emit('compile-errors', errors);
         }
@@ -405,6 +424,53 @@ export class RokuAdapter {
                 charEnd: 999 //TODO
             });
         }
+
+        return errors;
+    }
+
+    public getSingleFileXmlError(lines): any[] {
+        let errors = [];
+        let getFileInfoRexEx = /^-------> Error parsing XML component (.*).*$/gim;
+        let match;
+        lines.forEach((line) => {
+            while (match = getFileInfoRexEx.exec(line)) {
+                let errorText = 'ERR_COMPILE:';
+                let path = match[1];
+
+                errors.push({
+                    path: path,
+                    lineNumber: 0,
+                    errorText: errorText,
+                    message: 'general compile error in xml file',
+                    charStart: 0,
+                    charEnd: 999 //TODO
+                });
+            }
+        });
+
+        return errors;
+    }
+
+    public getMultipleFileXmlError(lines): any[] {
+        let errors = [];
+        let getFileInfoRexEx = /^-------> Error parsing multiple XML components \((.*)\)/gim;
+        let match;
+        lines.forEach((line) => {
+            while (match = getFileInfoRexEx.exec(line)) {
+                let errorText = 'ERR_COMPILE:';
+                let files = match[1].split(',');
+                files.forEach((path) => {
+                    errors.push({
+                        path: path.trim(),
+                        lineNumber: 0,
+                        errorText: errorText,
+                        message: 'general compile error in xml file',
+                        charStart: 0,
+                        charEnd: 999 //TODO
+                    });
+                });
+            }
+        });
 
         return errors;
     }
