@@ -136,6 +136,8 @@ This extension contributes the following settings:
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
+You can also chat with us [on slack](https://rokudevelopers.slack.com/messages/CEGCA7AKF/).
+
 ## Known Issues
 
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
