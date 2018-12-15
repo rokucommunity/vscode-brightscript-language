@@ -281,6 +281,12 @@
                     "default": true,
                     "description": "Removes all trailing whitespace at the end of each line.",
                     "scope": "resource"
+                },
+                "brightscript.remoteControl.host": {
+                    "type": "string",
+                    "default": "192.168.1.100",
+                    "description": "IP address of the roku to remotely control",
+                    "scope": "resource"
                 }
             }
         },
@@ -288,6 +294,16 @@
             {
                 "command": "extension.brightscript.toggleXML",
                 "title": "Toggle xml/brs",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.toggleRemote",
+                "title": "Toggle the Roku Remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteCommand",
+                "title": "Send 'arg' button key press to Roku as a remote control",
                 "category": "Brightscript"
             }
         ]
