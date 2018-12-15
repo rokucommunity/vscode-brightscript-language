@@ -1,5 +1,8 @@
 # Change Log
 
+## [1.4.1] - 2018-12-14
+ - Fixed bug that was preventing debugger from working.
+
 ## [1.4.0] - 2018-12-10
  - Added basic goto declaration support in xml documents
  - Added inline errors for compilation failures
