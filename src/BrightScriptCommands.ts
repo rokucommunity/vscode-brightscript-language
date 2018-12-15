@@ -20,6 +20,7 @@ export default class BrightScriptCommands {
 
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
+    private host: string;
     public function;
 
     public rokuDeploy = require('roku-deploy');
@@ -59,15 +60,13 @@ export default class BrightScriptCommands {
         let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
         console.log(`onToggleRemoteMode ${this.valueName} was ${isInRemoteMode}. Setting it to ${!isInRemoteMode}`);
         await this.context.workspaceState.update(this.valueName, !isInRemoteMode);
+        await vscode.commands.executeCommand('setContext', this.valueName, !isInRemoteMode);
     }
 
     public async sendRemoteCommand(key){
-        let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
-        console.log(`sendHome ${this.valueName} is ${isInRemoteMode}`);
-        if (isInRemoteMode){
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
-            let host = config.get("host")
-            let clickUrl = `http://${host}:8060/keypress/${key}`;
+        await this.getRemoteHost()
+        if (this.host){
+            let clickUrl = `http://${this.host}:8060/keypress/${key}`;
             console.log(`send ${clickUrl}`);
             return new Promise(function (resolve, reject) {
                 request.post(clickUrl, function (err, response) {
@@ -77,7 +76,26 @@ export default class BrightScriptCommands {
                     return resolve(response);
                 });
             });
+        };
+    }
 
+    public async getRemoteHost(){
+        let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
+        this.host = await this.context.workspaceState.get('remoteHost');
+        if (this.host == undefined){
+            let config = await vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            this.host = config.get("host")
+            if (this.host === '${promptForHost}') {
+                this.host = await vscode.window.showInputBox({
+                    placeHolder: 'The IP address of your Roku device',
+                    value: ''
+                });
+            }
+        }
+        if (!this.host) {
+            throw new Error('Can\'t send command: host is required.');
+        }else{
+            await this.context.workspaceState.update('remoteHost', this.host);
         }
     }
 }

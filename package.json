@@ -81,7 +81,10 @@
     "main": "./out/extension",
     "activationEvents": [
         "onDebug",
-        "onLanguage:brightscript"
+        "onLanguage:brightscript",
+        "onCommand:extension.brightscript.sendRemoteCommand",
+        "onCommand:toggleXML",
+        "onCommand:extension.brightscript.toggleRemote"
     ],
     "contributes": {
         "breakpoints": [
