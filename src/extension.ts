@@ -38,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
         scheme: 'file'
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+    context.workspaceState.update('isInRemoteMode', false);
 
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
 

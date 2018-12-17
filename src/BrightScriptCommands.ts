@@ -21,20 +21,28 @@ export default class BrightScriptCommands {
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
     private host: string;
+    private myStatusBarItem: vscode.StatusBarItem;
+    private remoteInfoMessage: vscode.MessageItem;
+    private colorCustomizations: Object;
     public function;
 
     public rokuDeploy = require('roku-deploy');
     private valueName = 'isInRemoteMode';
 
+
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
         let subscriptions = context.subscriptions;
+        
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
         } ));
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteCommand', (key: string) => {
             this.sendRemoteCommand(key);
         } ));
+        this.myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+        this.myStatusBarItem.command = 'brightscript.showRokuRemoteEnabled';
+        subscriptions.push(this.myStatusBarItem);
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleRemote', async () => {
             await this.onToggleRemoteMode();
         }));
@@ -61,13 +69,22 @@ export default class BrightScriptCommands {
         console.log(`onToggleRemoteMode ${this.valueName} was ${isInRemoteMode}. Setting it to ${!isInRemoteMode}`);
         await this.context.workspaceState.update(this.valueName, !isInRemoteMode);
         await vscode.commands.executeCommand('setContext', this.valueName, !isInRemoteMode);
+        this.updateStatusBarItem(!isInRemoteMode);
+        const configuration = vscode.workspace.getConfiguration('workbench');
+        if (!isInRemoteMode){
+            configuration.update('colorCustomizations', {"statusBar.background" : "#551A8B", "statusBar.debuggingBackground": "#551A8B"}, true);
+        }else{
+            configuration.update('colorCustomizations', {}, true);
+        }
     }
 
-    public async sendRemoteCommand(key){
+
+    public async sendRemoteCommand(key: string){
         await this.getRemoteHost()
         if (this.host){
             let clickUrl = `http://${this.host}:8060/keypress/${key}`;
             console.log(`send ${clickUrl}`);
+            this.updateStatusBarItem(true, key);
             return new Promise(function (resolve, reject) {
                 request.post(clickUrl, function (err, response) {
                     if (err) {
@@ -96,6 +113,20 @@ export default class BrightScriptCommands {
             throw new Error('Can\'t send command: host is required.');
         }else{
             await this.context.workspaceState.update('remoteHost', this.host);
+        }
+    }
+
+    public async updateStatusBarItem(isInRemoteMode: boolean, keyPressed = undefined){
+        console.log(`updateStatusBarItem isInRemoteMode: ${isInRemoteMode}.`);
+        if (isInRemoteMode){
+            if (keyPressed){
+                this.myStatusBarItem.text = `Roku Remote Active and ${keyPressed} pressed`;
+            }else{
+                this.myStatusBarItem.text = "Roku Remote Active";
+            }
+            this.myStatusBarItem.show();
+        } else{
+            this.myStatusBarItem.hide();
         }
     }
 }
