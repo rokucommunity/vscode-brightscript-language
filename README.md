@@ -18,6 +18,7 @@ A VSCode extension to support Roku's BrightScript language.
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Roku remote control from keyboard
 
 
 ## Requirements
@@ -131,6 +132,32 @@ This extension contributes the following settings:
 * `brightscript.format.keywordCase`: specify case of keywords when formatting
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
+
+## Roku Remote Control
+
+This extension contributes keybindings to send keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues) using `extension.brightscript.sendRemoteCommand` and passing the key to send as the `args`.  
+
+Example Keybindings:
+```
+{
+	"key": "alt+z",
+	"command": "extension.brightscript.toggleRemote"
+},
+{
+	"key": "Backspace",
+	"command": "extension.brightscript.sendRemoteCommand",
+	"args": "Back",
+	"when": "isInRemoteMode && panelFocus && !inDebugRepl && !findWidgetVisible"
+},
+...
+```
+
+Using the above keybindings as an example, you can toggle the Remote on and off by pressing `alt+z`. The remote commands will be sent to the Roku IP that is being used in the last launched debugging session or will prompt you to enter the Roku IP address.
+
+The `when` clause will only send the remote commands if the remote is in an "on" state (`isInRemoteMode`) AND the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+
+You can see an exmaple [keybindings.json file here](example_remote_keybindings.json) to grab (and copy) the 106 keybindings to send the full keyboard and Roku remote buttons.
+
 
 ## Contributing
 
