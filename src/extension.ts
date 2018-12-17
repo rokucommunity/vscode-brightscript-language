@@ -38,9 +38,15 @@ export function activate(context: vscode.ExtensionContext) {
         scheme: 'file'
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-    context.workspaceState.update('isInRemoteMode', false);
+    
 
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
+    
+    //reset the workspace config and context vars
+    context.workspaceState.update('isInRemoteMode', false);
+    let configuration = vscode.workspace.getConfiguration('workbench');
+    configuration.update('colorCustomizations', {}, true);
+    context.workspaceState.update('remoteHost', undefined);
 
     //register the definition provider
     const debugErrorHandler: DebugErrorHandler = new DebugErrorHandler(outputChannel);
