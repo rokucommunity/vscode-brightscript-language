@@ -1,5 +1,5 @@
-import * as vscode from 'vscode';
 import * as request from 'request';
+import * as vscode from 'vscode';
 
 // tslint:disable-next-line
 export var __request: any = request;
@@ -23,17 +23,16 @@ export default class BrightScriptCommands {
     private host: string;
     private myStatusBarItem: vscode.StatusBarItem;
     private remoteInfoMessage: vscode.MessageItem;
-    private colorCustomizations: Object;
+    private colorCustomizations: object;
     public function;
 
     public rokuDeploy = require('roku-deploy');
     private valueName = 'isInRemoteMode';
 
-
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
         let subscriptions = context.subscriptions;
-        
+
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
         } ));
@@ -67,43 +66,42 @@ export default class BrightScriptCommands {
     public async onToggleRemoteMode() {
         let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
         const configuration = vscode.workspace.getConfiguration('workbench');
-        if (!isInRemoteMode){
+        if (!isInRemoteMode) {
             await this.getRemoteHost();
-            configuration.update('colorCustomizations', {"statusBar.background" : "#551A8B", "statusBar.debuggingBackground": "#551A8B"}, true);
-        }else{
+            configuration.update('colorCustomizations', { 'statusBar.background' : '#551A8B', 'statusBar.debuggingBackground': '#551A8B' }, true);
+        } else {
             configuration.update('colorCustomizations', {}, true);
         }
         console.log(`onToggleRemoteMode ${this.valueName} was ${isInRemoteMode}. Setting it to ${!isInRemoteMode}`);
         this.updateStatusBarItem(!isInRemoteMode);
         await this.context.workspaceState.update(this.valueName, !isInRemoteMode);
         await vscode.commands.executeCommand('setContext', this.valueName, !isInRemoteMode);
-        
+
     }
 
-
-    public async sendRemoteCommand(key: string){
-        await this.getRemoteHost()
-        if (this.host){
+    public async sendRemoteCommand(key: string) {
+        await this.getRemoteHost();
+        if (this.host) {
             let clickUrl = `http://${this.host}:8060/keypress/${key}`;
             console.log(`send ${clickUrl}`);
             this.updateStatusBarItem(true, key);
-            return new Promise(function (resolve, reject) {
-                request.post(clickUrl, function (err, response) {
+            return new Promise(function(resolve, reject) {
+                request.post(clickUrl, function(err, response) {
                     if (err) {
                         return reject(err);
                     }
                     return resolve(response);
                 });
             });
-        };
+        }
     }
 
-    public async getRemoteHost(){
+    public async getRemoteHost() {
         let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
         this.host = await this.context.workspaceState.get('remoteHost');
-        if (this.host == undefined){
+        if (this.host === undefined) {
             let config = await vscode.workspace.getConfiguration('brightscript.remoteControl', null);
-            this.host = config.get("host")
+            this.host = config.get('host');
             if (this.host === '${promptForHost}') {
                 this.host = await vscode.window.showInputBox({
                     placeHolder: 'The IP address of your Roku device',
@@ -113,21 +111,21 @@ export default class BrightScriptCommands {
         }
         if (!this.host) {
             throw new Error('Can\'t send command: host is required.');
-        }else{
+        } else {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
     }
 
-    public async updateStatusBarItem(isInRemoteMode: boolean, keyPressed = undefined){
+    public async updateStatusBarItem(isInRemoteMode: boolean, keyPressed?: string) {
         console.log(`updateStatusBarItem isInRemoteMode: ${isInRemoteMode}.`);
-        if (isInRemoteMode){
-            if (keyPressed){
+        if (isInRemoteMode) {
+            if (keyPressed) {
                 this.myStatusBarItem.text = `Roku Remote Active and ${keyPressed} pressed`;
-            }else{
-                this.myStatusBarItem.text = "Roku Remote Active";
+            } else {
+                this.myStatusBarItem.text = 'Roku Remote Active';
             }
             this.myStatusBarItem.show();
-        } else{
+        } else {
             this.myStatusBarItem.hide();
         }
     }

@@ -38,10 +38,9 @@ export function activate(context: vscode.ExtensionContext) {
         scheme: 'file'
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-    
 
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
-    
+
     //reset the workspace config and context vars
     context.workspaceState.update('isInRemoteMode', false);
     let configuration = vscode.workspace.getConfiguration('workbench');
@@ -77,13 +76,13 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProvider {
-    
-    public context: vscode.ExtensionContext;
 
-    constructor(context){
+    public constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
-    
+
+    public context: vscode.ExtensionContext;
+
     /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
@@ -111,7 +110,7 @@ class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProv
         }
         if (!config.host) {
             throw new Error('Debug session terminated: host is required.');
-        }else{
+        } else {
             await this.context.workspaceState.update('remoteHost', config.host);
         }
         //prompt for password if not hardcoded
@@ -124,7 +123,7 @@ class BrightScriptConfigurationProvider implements vscode.DebugConfigurationProv
                 throw new Error('Debug session terminated: password is required.');
             }
         }
-        
+
         //await vscode.window.showInformationMessage('Invalid Roku IP address')
         return config;
     }
