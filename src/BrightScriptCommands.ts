@@ -20,7 +20,7 @@ export default class BrightScriptCommands {
 
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
-    private host: string;
+    private host;
     private myStatusBarItem: vscode.StatusBarItem;
     private remoteInfoMessage: vscode.MessageItem;
     private colorCustomizations: object;
@@ -99,7 +99,7 @@ export default class BrightScriptCommands {
     public async getRemoteHost() {
         let isInRemoteMode = this.context.workspaceState.get(this.valueName, false);
         this.host = await this.context.workspaceState.get('remoteHost');
-        if (this.host === undefined) {
+        if (!this.host) {
             let config = await vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.host = config.get('host');
             if (this.host === '${promptForHost}') {
