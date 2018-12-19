@@ -35,13 +35,13 @@ export default class BrightScriptCommands {
         } ));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
-            var stuffUserTyped: string = await vscode.window.showInputBox({
+            let stuffUserTyped: string = await vscode.window.showInputBox({
                 placeHolder: 'Press enter to send all typed characters to the Roku',
                 value: ''
             });
             if (stuffUserTyped) {
-                for (let index = 0; index < stuffUserTyped.length; index++) {
-                    let commandToSend: string = "Lit_" + encodeURIComponent(stuffUserTyped[index]);
+                for (let character of stuffUserTyped) {
+                    let commandToSend: string = 'Lit_' + encodeURIComponent(character);
                     await this.sendRemoteCommand(commandToSend);
                 }
             }
