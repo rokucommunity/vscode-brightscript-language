@@ -68,9 +68,9 @@ export default class BrightScriptCommands {
         const configuration = vscode.workspace.getConfiguration('workbench');
         if (!isInRemoteMode) {
             await this.getRemoteHost();
-            configuration.update('colorCustomizations', { 'statusBar.background' : '#551A8B', 'statusBar.debuggingBackground': '#551A8B' }, true);
+            configuration.update('colorCustomizations', { 'statusBar.background' : '#551A8B', 'statusBar.debuggingBackground': '#551A8B' });
         } else {
-            configuration.update('colorCustomizations', {}, true);
+            configuration.update('colorCustomizations', {});
         }
         console.log(`onToggleRemoteMode ${this.valueName} was ${isInRemoteMode}. Setting it to ${!isInRemoteMode}`);
         this.updateStatusBarItem(!isInRemoteMode);
