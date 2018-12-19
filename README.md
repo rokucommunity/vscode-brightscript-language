@@ -141,18 +141,20 @@ The basic 11 remote keys are already mapped with this extension as defined below
 
 ```
 format is [Keyboard Key] = [Roku Remote Key]
-[Backspace] = Back Button
-[Escape] = Home Button
-[ArrowUp] = Up Button
-[ArrowDown] = Down Button
-[ArrowRight] = Right Button
-[ArrowLeft] = Left Button
-[Enter] = Select Button (OK)
-win+p (or cmd+p on mac) = Play Button
-win+[ArrowLeft] (or cmd+[ArrowLeft] on mac) = Rev Button
-win+[ArrowRight] (or cmd+[ArrowRight] on mac) = Fwd Button
+Backspace = Back Button
+Escape = Home Button
+up = Up Button
+down = Down Button
+right = Right Button
+left = Left Button
+Enter = Select Button (OK)
+win+Enter (or cmd+Enter on mac) = Play Button
+win+left (or cmd+left on mac) = Rev Button
+win+right (or cmd+right on mac) = Fwd Button
 win+8 (or cmd+8 on mac) = Star Button
 ```
+
+You can also press `win+k (or cmd+k on mac)` when the focus in in the Output Console and that will bring up a text input box to send text to the Roku device.
 
 Example Keybindings for other keys:
 ```

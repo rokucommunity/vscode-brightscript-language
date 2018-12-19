@@ -400,7 +400,7 @@
             { "key": "right", "command": "extension.brightscript.pressRightButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "left", "command": "extension.brightscript.pressLeftButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "Enter", "command": "extension.brightscript.pressSelectButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
-            { "key": "win+p", "mac": "cmd+p", "command": "extension.brightscript.pressPlayButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+Enter", "mac": "cmd+Enter", "command": "extension.brightscript.pressPlayButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "win+left", "mac": "cmd+left", "command": "extension.brightscript.pressRevButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "win+right", "mac": "cmd+right", "command": "extension.brightscript.pressFwdButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "win+8", "mac": "cmd+8", "command": "extension.brightscript.pressStarButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
