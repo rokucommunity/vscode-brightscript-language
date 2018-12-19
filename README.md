@@ -1,4 +1,4 @@
-# BrightScript Extension for VSCode 
+# BrightScript Extension for VSCode
 A VSCode extension to support Roku's BrightScript language.
 
 [![Build Status](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language)
@@ -9,7 +9,7 @@ A VSCode extension to support Roku's BrightScript language.
 
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
-- Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode  
+- Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
@@ -53,7 +53,7 @@ Here is a sample launch configuration
 }
 ```
 
-If your BrightScript project is located in a subdirectory of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file. 
+If your BrightScript project is located in a subdirectory of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file.
 
 For example, if you have this structure:
 
@@ -87,9 +87,9 @@ then you would need change `rootDir` in your launch config to look like this:
 
 ### Debug source files with Custom build process
 
-If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files. 
+If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files.
 
-**IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease. 
+**IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease.
 
 **Example:**
   - src/
@@ -104,7 +104,7 @@ If you have a build process that moves files from a source directory to an outpu
     - language.brs
     - manifest
 
-Here's a sample launch.json for this scenario: 
+Here's a sample launch.json for this scenario:
 
 ```
 {
@@ -135,29 +135,34 @@ This extension contributes the following settings:
 
 ## Roku Remote Control
 
-This extension contributes keybindings to send keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues) using `extension.brightscript.sendRemoteCommand` and passing the key to send as the `args`.  
+This extension contributes keybindings to send keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues) using `extension.brightscript.sendRemoteCommand` and passing the key to send as the `args`.
 
-Example Keybindings:
+The basic 11 remote keys are already mapped with this extension as defined below. The keys are mapped using the `when` clause so it will only send the remote commands if the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+
+```
+format is [Keyboard Key] = [Roku Remote Key]
+[Backspace] = Back Button
+[Escape] = Home Button
+[ArrowUp] = Up Button
+[ArrowDown] = Down Button
+[ArrowRight] = Right Button
+[ArrowLeft] = Left Button
+[Enter] = Select Button (OK)
+win+p (or cmd+p on mac) = Play Button
+win+[ArrowLeft] (or cmd+[ArrowLeft] on mac) = Rev Button
+win+[ArrowRight] (or cmd+[ArrowRight] on mac) = Fwd Button
+win+8 (or cmd+8 on mac) = Star Button
+```
+
+Example Keybindings for other keys:
 ```
 {
-	"key": "alt+z",
-	"command": "extension.brightscript.toggleRemote"
-},
-{
-	"key": "Backspace",
+	"key": "Space",
 	"command": "extension.brightscript.sendRemoteCommand",
-	"args": "Back",
-	"when": "isInRemoteMode && panelFocus && !inDebugRepl && !findWidgetVisible"
+	"args": "Lit_%20",
+	"when": "panelFocus && !inDebugRepl && !findWidgetVisible"
 },
-...
 ```
-
-Using the above keybindings as an example, you can toggle the Remote on and off by pressing `alt+z`. The remote commands will be sent to the Roku IP that is being used in the last launched debugging session or will prompt you to enter the Roku IP address.
-
-The `when` clause will only send the remote commands if the remote is in an "on" state (`isInRemoteMode`) AND the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
-
-You can see an exmaple [keybindings.json file here](example_remote_keybindings.json) to grab (and copy) the 106 keybindings to send the full keyboard and Roku remote buttons.
-
 
 ## Contributing
 

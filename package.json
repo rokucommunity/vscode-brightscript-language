@@ -82,9 +82,19 @@
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
+        "onLanguage:xml",
         "onCommand:extension.brightscript.sendRemoteCommand",
-        "onCommand:toggleXML",
-        "onCommand:extension.brightscript.toggleRemote"
+        "onCommand:extension.brightscript.pressBackButton",
+        "onCommand:extension.brightscript.pressHomeButton",
+        "onCommand:extension.brightscript.pressUpButton",
+        "onCommand:extension.brightscript.pressDownButton",
+        "onCommand:extension.brightscript.pressRightButton",
+        "onCommand:extension.brightscript.pressLeftButton",
+        "onCommand:extension.brightscript.pressSelectButton",
+        "onCommand:extension.brightscript.pressPlayButton",
+        "onCommand:extension.brightscript.pressRevButton",
+        "onCommand:extension.brightscript.pressFwdButton",
+        "onCommand:extension.brightscript.pressStarButton"
     ],
     "contributes": {
         "breakpoints": [
@@ -300,15 +310,78 @@
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.toggleRemote",
-                "title": "Toggle the Roku Remote",
-                "category": "Brightscript"
-            },
-            {
                 "command": "extension.brightscript.sendRemoteCommand",
                 "title": "Send 'arg' button key press to Roku as a remote control",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBackButton",
+                "title": "Press the Back button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressHomeButton",
+                "title": "Press the Home button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressUpButton",
+                "title": "Press the Up button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressDownButton",
+                "title": "Press the Down button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRightButton",
+                "title": "Press the Right button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressLeftButton",
+                "title": "Press the Left button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressSelectButton",
+                "title": "Press the Select button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressPlayButton",
+                "title": "Press the Play button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRevButton",
+                "title": "Press the Rev button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressFwdButton",
+                "title": "Press the Fwd button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressStarButton",
+                "title": "Press the Star button on the Roku remote",
+                "category": "Brightscript"
             }
+        ],
+        "keybindings": [
+            { "key": "Backspace", "command": "extension.brightscript.pressBackButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "Escape", "command": "extension.brightscript.pressHomeButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "up", "command": "extension.brightscript.pressUpButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "down", "command": "extension.brightscript.pressDownButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "right", "command": "extension.brightscript.pressRightButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "left", "command": "extension.brightscript.pressLeftButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "Enter", "command": "extension.brightscript.pressSelectButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+p", "mac": "cmd+p", "command": "extension.brightscript.pressPlayButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+left", "mac": "cmd+left", "command": "extension.brightscript.pressRevButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+right", "mac": "cmd+right", "command": "extension.brightscript.pressFwdButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+8", "mac": "cmd+8", "command": "extension.brightscript.pressStarButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"}
         ]
     },
     "watch": {

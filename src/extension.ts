@@ -41,12 +41,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
 
-    //reset the workspace config and context vars
-    context.workspaceState.update('isInRemoteMode', false);
-    let configuration = vscode.workspace.getConfiguration('workbench');
-    configuration.update('colorCustomizations', {});
-    context.workspaceState.update('remoteHost', undefined);
-
     //register the definition provider
     const debugErrorHandler: DebugErrorHandler = new DebugErrorHandler(outputChannel);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
