@@ -94,7 +94,8 @@
         "onCommand:extension.brightscript.pressPlayButton",
         "onCommand:extension.brightscript.pressRevButton",
         "onCommand:extension.brightscript.pressFwdButton",
-        "onCommand:extension.brightscript.pressStarButton"
+        "onCommand:extension.brightscript.pressStarButton",
+        "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
         "breakpoints": [
@@ -384,6 +385,11 @@
                 "command": "extension.brightscript.pressStarButton",
                 "title": "Press the Star button on the Roku remote",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteText",
+                "title": "Send text characters to the Roku Device",
+                "category": "Brightscript"
             }
         ],
         "keybindings": [
@@ -397,7 +403,8 @@
             { "key": "win+p", "mac": "cmd+p", "command": "extension.brightscript.pressPlayButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "win+left", "mac": "cmd+left", "command": "extension.brightscript.pressRevButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "win+right", "mac": "cmd+right", "command": "extension.brightscript.pressFwdButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
-            { "key": "win+8", "mac": "cmd+8", "command": "extension.brightscript.pressStarButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"}
+            { "key": "win+8", "mac": "cmd+8", "command": "extension.brightscript.pressStarButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+k", "mac": "cmd+k", "command": "extension.brightscript.sendRemoteText", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"}
         ]
     },
     "watch": {

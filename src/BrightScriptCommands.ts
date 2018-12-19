@@ -34,6 +34,19 @@ export default class BrightScriptCommands {
             this.sendRemoteCommand(key);
         } ));
 
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
+            var stuffUserTyped: string = await vscode.window.showInputBox({
+                placeHolder: 'Press enter to send all typed characters to the Roku',
+                value: ''
+            });
+            if (stuffUserTyped) {
+                for (let index = 0; index < stuffUserTyped.length; index++) {
+                    let commandToSend: string = "Lit_" + encodeURIComponent(stuffUserTyped[index]);
+                    await this.sendRemoteCommand(commandToSend);
+                }
+            }
+        } ));
+
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
             this.sendRemoteCommand('Back');
         }));
