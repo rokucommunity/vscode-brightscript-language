@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -50,7 +50,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.2.1",
+        "roku-deploy": "^1.0.0",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-uri": "1.0.1"
@@ -167,7 +167,7 @@
                             },
                             "files": {
                                 "type": "array",
-                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files.",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
                                 "default": [
                                     "manifest",
                                     "source/**/*.*",
@@ -184,14 +184,30 @@
                                             "type": "object",
                                             "properties": {
                                                 "src": {
-                                                    "type": "string",
-                                                    "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string",
+                                                            "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "description": "An array of file path or globs",
+                                                            "items": {
+                                                                "type": "string",
+                                                                "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                            }
+                                                        }
+                                                    ]
                                                 },
                                                 "dest": {
                                                     "type": "string",
                                                     "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
                                                 }
-                                            }
+                                            },
+                                            "required": [
+                                                "src",
+                                                "dest"
+                                            ]
                                         }
                                     ]
                                 }
