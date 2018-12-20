@@ -18,7 +18,7 @@ A VSCode extension to support Roku's BrightScript language.
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-- Roku remote control from keyboard
+- [Roku remote control from keyboard](#rokuRemote)
 
 
 ## Requirements
@@ -133,26 +133,28 @@ This extension contributes the following settings:
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
 
-## Roku Remote Control
+## <a name="rokuRemote"></a></a>Roku Remote Control
 
 This extension contributes keybindings to send keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues) using `extension.brightscript.sendRemoteCommand` and passing the key to send as the `args`.
 
-The basic 11 remote keys are already mapped with this extension as defined below. The keys are mapped using the `when` clause so it will only send the remote commands if the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+The basic 12 remote keys are already mapped with this extension as defined below. The keys are mapped using the `when` clause so it will only send the remote commands if the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
 
-```
-format is [Keyboard Key] = [Roku Remote Key]
-Backspace = Back Button
-Escape = Home Button
-up = Up Button
-down = Down Button
-right = Right Button
-left = Left Button
-Enter = Select Button (OK)
-win+Enter (or cmd+Enter on mac) = Play Button
-win+left (or cmd+left on mac) = Rev Button
-win+right (or cmd+right on mac) = Fwd Button
-win+8 (or cmd+8 on mac) = Star Button
-```
+
+|Keyboard Key | Roku Remote Key | Keybinging Command|
+|--|--|--|
+|`Backspace` | Back Button  | `extension.brightscript.pressBackButton` |
+|`win+Backspace` (or `cmd+Backspace` on mac)  | Backspace |  `extension.brightscript.pressBackspaceButton` |
+|`Escape` | Home Button | `extension.brightscript.pressHomeButton` |
+|`up` | Up Button | `extension.brightscript.pressUpButton` |
+|`down` | Down Button | `extension.brightscript.pressDownButton` |
+|`right` | Right Button | `extension.brightscript.pressRightButton` |
+|`left` | Left Button | `extension.brightscript.pressLeftButton` |
+|`Enter` | Select Button (OK) | `extension.brightscript.pressSelectButton` |
+|`win+Enter` (or `cmd+Enter` on mac) | Play Button | `extension.brightscript.pressPlayButton` |
+|`win+left` (or `cmd+left` on mac) | Rev Button | `extension.brightscript.pressRevButton` |
+|`win+right` (or `cmd+right` on mac) | Fwd Button | `extension.brightscript.pressFwdButton` |
+|`win+8` (or `cmd+8` on mac) | Info Button | `extension.brightscript.pressStarButton` |
+
 
 You can also press `win+k (or cmd+k on mac)` when the focus in in the Output Console and that will bring up a text input box to send text to the Roku device.
 

@@ -50,6 +50,9 @@ export default class BrightScriptCommands {
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
             this.sendRemoteCommand('Back');
         }));
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackspaceButton', () => {
+            this.sendRemoteCommand('Backspace');
+        }));
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressHomeButton', () => {
             this.sendRemoteCommand('Home');
         }));

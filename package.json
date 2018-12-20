@@ -337,6 +337,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.pressBackspaceButton",
+                "title": "Press the Backspace button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressHomeButton",
                 "title": "Press the Home button on the Roku remote",
                 "category": "Brightscript"
@@ -394,6 +399,7 @@
         ],
         "keybindings": [
             { "key": "Backspace", "command": "extension.brightscript.pressBackButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
+            { "key": "win+Backspace", "mac": "cmd+Backspace", "command": "extension.brightscript.pressBackspaceButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "Escape", "command": "extension.brightscript.pressHomeButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "up", "command": "extension.brightscript.pressUpButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
             { "key": "down", "command": "extension.brightscript.pressDownButton", "when": "panelFocus && !inDebugRepl && !findWidgetVisible"},
