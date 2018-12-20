@@ -45,6 +45,7 @@ export default class BrightScriptCommands {
                     await this.sendRemoteCommand(commandToSend);
                 }
             }
+            vscode.commands.executeCommand('workbench.action.output.toggleOutput');
         } ));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
