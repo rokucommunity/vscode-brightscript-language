@@ -1,4 +1,5 @@
 {
+    "files.trimTrailingWhitespace": true,
     "files.exclude": {
         "out": false,
         "node_modules": false,
