@@ -18,7 +18,7 @@ A VSCode extension to support Roku's BrightScript language.
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-- [Roku remote control from keyboard](#rokuRemote)
+- [Roku remote control from keyboard](#Roku-Remote-Control)
 
 
 ## Requirements
@@ -133,12 +133,13 @@ This extension contributes the following settings:
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
 
-## <a name="rokuRemote"></a></a>Roku Remote Control
+## Roku Remote Control
 
-This extension contributes keybindings to send keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues) using `extension.brightscript.sendRemoteCommand` and passing the key to send as the `args`.
+You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below. You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
 
-The basic 12 remote keys are already mapped with this extension as defined below. The keys are mapped using the `when` clause so it will only send the remote commands if the Panel has focus (`panelFocus`) AND the focus in NOT in the Debug Console REPL (`!inDebugRepl`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+This extension sends keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
 
+Here are the commands included in this extension:
 
 |Keyboard Key | Roku Remote Key | Keybinging Command|
 |--|--|--|
@@ -155,17 +156,14 @@ The basic 12 remote keys are already mapped with this extension as defined below
 |`win+right` (or `cmd+right` on mac) | Fwd Button | `extension.brightscript.pressFwdButton` |
 |`win+8` (or `cmd+8` on mac) | Info Button | `extension.brightscript.pressStarButton` |
 
-
-You can also press `win+k (or cmd+k on mac)` when the focus in in the Output Console and that will bring up a text input box to send text to the Roku device.
-
-Example Keybindings for other keys:
+You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
 ```
 {
 	"key": "Space",
 	"command": "extension.brightscript.sendRemoteCommand",
 	"args": "Lit_%20",
 	"when": "panelFocus && !inDebugRepl && !findWidgetVisible"
-},
+}
 ```
 
 ## Contributing
