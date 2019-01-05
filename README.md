@@ -170,7 +170,7 @@ You also have the ability to create keybindings for any other Roku supported key
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
-You can also chat with us [on slack](https://rokudevelopers.slack.com/messages/CEGCA7AKF/).
+You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel). 
 
 ## Known Issues
 
