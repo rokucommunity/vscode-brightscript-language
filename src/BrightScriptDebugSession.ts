@@ -526,28 +526,21 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private async connectRokuAdapter(host: string) {
         //register events
-        let firstSuspend = true;
         this.rokuAdapter = new RokuAdapter(host);
+
+        this.rokuAdapter.on('start', async () => {
+
+        });
 
         //when the debugger suspends (pauses for debugger input)
         this.rokuAdapter.on('suspend', async () => {
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
-            //determine if this is the "stop on entry" breakpoint
-            let isStoppedOnEntry = firstSuspend && !!this.entryBreakpoint;
-
-            //skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
-            if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
-                //skip the breakpoint
-                this.rokuAdapter.continue();
-            } else {
-                this.clearState();
-                let exceptionText = '';
-                const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
-                (event.body as any).allThreadsStopped = false;
-                this.sendEvent(event);
-            }
-            firstSuspend = false;
+            this.clearState();
+            let exceptionText = '';
+            const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
+            (event.body as any).allThreadsStopped = false;
+            this.sendEvent(event);
         });
 
         //anytime the adapter encounters an exception on the roku,
@@ -594,8 +587,10 @@ export class BrightScriptDebugSession extends DebugSession {
             await fsExtra.writeFile(stagingFilePath, fileContents);
         };
 
-        //add a breakpoint to the first line of the entry point method for consistency when debugging
-        await this.addEntryBreakpoint();
+        //add the entry breakpoint if stopOnEntry is true
+        if (this.launchArgs.stopOnEntry) {
+            await this.addEntryBreakpoint();
+        }
 
         //add breakpoints to each client file
         for (let clientPath in this.breakpointsByClientPath) {

@@ -42,6 +42,7 @@ export class RokuAdapter {
     public on(eventname: 'console-output', handler: (output: string) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);
+    public on(eventName: 'start', handler: () => void);
     public on(eventname: 'unhandled-console-output', handler: (output: string) => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
@@ -52,7 +53,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue', data?) {
+    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -60,6 +61,12 @@ export class RokuAdapter {
      * The debugger needs to tell us when to be active (i.e. when the package was deployed)
      */
     public isActivated = false;
+
+    /**
+     * This will be set to true When the roku emits the [scrpt.ctx.run.enter] text,
+     * which indicates that the app is running on the Roku
+     */
+    public isAppRunning = false;
     /**
      * Every time we get a message that ends with the debugger prompt,
      * this will be set to true. Otherwise, it will be set to false
@@ -68,13 +75,20 @@ export class RokuAdapter {
 
     public async activate() {
         this.isActivated = true;
-        //if we are already sitting at a debugger prompt, we need to emit the first suspend event.
-        //If not, then there are probably still messages being received, so let the normal handler
-        //emit the suspend event when it's ready
-        if (this.isAtDebuggerPrompt === true) {
-            let threads = await this.getThreads();
-            this.emit('suspend', threads[0].threadId);
+        this.handleStartupIfReady();
+    }
 
+    private async handleStartupIfReady() {
+        if (this.isActivated && this.isAppRunning) {
+            this.emit('start');
+
+            //if we are already sitting at a debugger prompt, we need to emit the first suspend event.
+            //If not, then there are probably still messages being received, so let the normal handler
+            //emit the suspend event when it's ready
+            if (this.isAtDebuggerPrompt === true) {
+                let threads = await this.getThreads();
+                this.emit('suspend', threads[0].threadId);
+            }
         }
     }
 
@@ -85,24 +99,29 @@ export class RokuAdapter {
      * @param maxWaitMilliseconds
      */
     private settle(client: Socket, name: string, maxWaitMilliseconds = 400) {
-        return new Promise((resolve, reject) => {
-            let callCount = 0;
-            client.addListener(name, function handler(data) {
+        return new Promise((resolve) => {
+            let callCount = -1;
+
+            function handler() {
+                callCount++;
                 let myCallCount = callCount;
                 setTimeout(() => {
                     //if no other calls have been made since the timeout started, then the listener has settled
                     if (myCallCount === callCount) {
                         client.removeListener(name, handler);
-                        resolve();
+                        resolve(callCount);
                     }
                 }, maxWaitMilliseconds);
-            });
+            }
+
+            client.addListener(name, handler);
+            //call the handler immediately so we have a timeout
+            handler();
         });
     }
 
     /**
-     * Connect to the telnet session. This should be called before the channel is launched, and there should be a breakpoint set at the first
-     * line of the entry function of the source code
+     * Connect to the telnet session. This should be called before the channel is launched.
      */
     public connect() {
         return new Promise(async (resolve, reject) => {
@@ -158,8 +177,13 @@ export class RokuAdapter {
                 }
 
                 if (this.isActivated) {
-                    //we are guaranteed that there will be a breakpoint on the first line of the entry sub, so
-                    //wait until we see the brightscript debugger prompt
+                    //watch for the start of the program
+                    if (match = /\[scrpt.ctx.run.enter\]/i.exec(responseText.trim())) {
+                        this.isAppRunning = true;
+                        this.handleStartupIfReady();
+                    }
+
+                    //watch for debugger prompt output
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
                         if (this.isActivated && this.isAtDebuggerPrompt === false) {
