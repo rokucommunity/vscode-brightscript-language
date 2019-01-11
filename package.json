@@ -14,7 +14,7 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.18.0",
+        "vscode": "^1.23.0",
         "node": "^7.9.0"
     },
     "repository": {
@@ -38,6 +38,7 @@
         "publish": "vsce publish"
     },
     "dependencies": {
+        "@roku-road/bright": "^1.2.11",
         "@types/glob": "^5.0.36",
         "brightscript-formatter": "^1.5.0",
         "eol": "^0.9.1",
@@ -53,6 +54,7 @@
         "roku-deploy": "^1.0.0",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
+        "vscode-languageclient": "^4.1.4",
         "vscode-uri": "1.0.1"
     },
     "devDependencies": {
@@ -76,7 +78,8 @@
         "typescript": "^3.2.1",
         "vsce": "^1.50.0",
         "vscode": "^1.1.21",
-        "vscode-debugadapter-testsupport": "1.27.0"
+        "vscode-debugadapter-testsupport": "1.27.0",
+        "vscode-languageserver": "^4.1.3"
     },
     "main": "./out/extension",
     "activationEvents": [

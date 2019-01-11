@@ -15,12 +15,20 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Server",
+			"name": "Debug Server",
 			"cwd": "${workspaceFolder}",
 			"program": "${workspaceFolder}/src/debugAdapter.ts",
 			"args": [ "--server=4711" ],
 			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
 			"stopOnEntry": false
+        },
+        {
+			"type": "node",
+			"request": "attach",
+			"name": "Language Server",
+			"port": 6009,
+			"restart": true,
+			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
 		},
 		{
 			"type": "node",
@@ -40,8 +48,8 @@
 	],
 	"compounds": [
 		{
-			"name": "Extension + Server",
-			"configurations": [ "Extension", "Server" ]
+			"name": "Extension, Debug Server, Language Server",
+			"configurations": [ "Extension", "Debug Server", "Language Server" ]
 		}
 	]
 }
