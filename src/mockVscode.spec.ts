@@ -19,6 +19,9 @@ export let vscode = {
 
         }
     },
+    context: {
+        subscriptions: [],
+    },
     workspace: {
         workspaceFolders: [],
         createFileSystemWatcher: () => {

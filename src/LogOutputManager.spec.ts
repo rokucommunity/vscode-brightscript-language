@@ -16,11 +16,11 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { DebugErrorHandler } from './DebugErrorHandler';
+import { LogOutputManager } from './LogOutputManager';
 
-describe('DebugErrorHandler ', () => {
+describe('LogOutputManager ', () => {
     let handlerMock;
-    let handler: DebugErrorHandler;
+    let handler: LogOutputManager;
     let languagesMock;
     let outputChannelMock;
     let collectionMock;
@@ -33,7 +33,7 @@ describe('DebugErrorHandler ', () => {
         languagesMock = sinon.mock(vscode.languages);
         languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
 
-        handler = new DebugErrorHandler(outputChannel);
+        handler = new LogOutputManager(outputChannel, context);
         handlerMock = sinon.mock(handler);
     });
 
