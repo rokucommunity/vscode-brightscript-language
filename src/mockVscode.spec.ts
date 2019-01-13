@@ -11,7 +11,11 @@ export let vscode = {
         registerDocumentRangeFormattingEditProvider: () => { },
         registerSignatureHelpProvider: () => { },
         registerReferenceProvider: () => { },
-        createDiagnosticCollection: () => { }
+        createDiagnosticCollection: () => {
+            return {
+                clear: () => { }
+            };
+        }
     },
     subscriptions: [],
     commands: {
@@ -52,7 +56,8 @@ export let vscode = {
     window: {
         createOutputChannel: function() {
             return {
-                show: () => { }
+                show: () => { },
+                clear: () => { }
             };
         },
         activeTextEditor: {
