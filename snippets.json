@@ -1,0 +1,18 @@
+{
+    "CreateObject": {
+        "prefix": "CreateObject",
+        "body": "CreateObject(\"$1\")",
+        "description": "Creates a new instance of the specified BrightScript component."
+    },
+
+    "ifAppInfo": {
+        "prefix": "ifAppInfo",
+        "body": "ifAppInfo",
+        "description": "Implemented By:\nroAppInfo\n"
+    },
+    "ifAppManager": {
+        "prefix": "ifAppManager",
+        "body": "ifAppManager",
+        "description": "Implemented By:\nroAppManager\n"
+    }
+}

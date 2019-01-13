@@ -75,7 +75,7 @@
         "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.2.1",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.21",
+        "vscode": "^1.1.26",
         "vscode-debugadapter-testsupport": "1.27.0"
     },
     "main": "./out/extension",
@@ -262,6 +262,12 @@
                 "language": "brightscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "brightscript",
+                "path": "./snippets.json"
             }
         ],
         "configuration": {

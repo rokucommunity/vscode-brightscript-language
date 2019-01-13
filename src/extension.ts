@@ -16,6 +16,7 @@ import {
 import { Formatter } from './formatter';
 
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
+import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
@@ -51,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
     brightScriptCommands.registerCommands(context);
 
     // experimental placeholder
-    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
     context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));

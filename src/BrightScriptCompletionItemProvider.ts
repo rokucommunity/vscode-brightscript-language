@@ -8,23 +8,24 @@ import {
 
 import * as vscode from 'vscode';
 
-export class BrightScriptCompletionItemProvider implements CompletionItemProvider {
-    private Command = CompletionItemKind.Function;
+import { ifAppInfoCompletionItems } from './BrightScriptCompletionItems/ifAppInfoCompletionItems';
+import { ifAppManagerCompletionItems } from './BrightScriptCompletionItems/ifAppManagerCompletionItems';
 
-    private BuiltinCompletionItems: CompletionItem[] = [
-        //WIP - can do way better than this!
-        {
-            label: 'print',
-            kind: this.Command,
-        },
-        {
-            label: 'createObject',
-            kind: this.Command,
-        },
-    ];
+export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
+    private interfaceDictionary: { [key: string]: CompletionItem[] } = {
+        ifAppInfo: ifAppInfoCompletionItems,
+        ifAppManager: ifAppManagerCompletionItems
+    };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
-        //TODO - do something useful here!
-        return this.BuiltinCompletionItems;
+        let linePrefix = document.lineAt(position).text.substr(0, position.character);
+
+        for (let key in this.interfaceDictionary) {
+            if (linePrefix.endsWith(key + '.')) {
+                return this.interfaceDictionary[key];
+            }
+        }
+
+        return undefined;
     }
 }
