@@ -62,9 +62,9 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
     /**
-     * A promise that is resolved whenever the entry breakpoint has been hit
+     * A promise that is resolved whenever the app has started running for the first time
      */
-    private hitEntryBreakpointDeferred = defer<void>();
+    private firstRunDeferred = defer<void>();
 
     private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
     private breakpointIdCounter = 0;
@@ -214,7 +214,7 @@ export class BrightScriptDebugSession extends DebugSession {
         //at this point, the project has been deployed. If we need to use a deep link, launch it now.
         if (args.deepLinkUrl) {
             //wait until the first entry breakpoint has been hit
-            await this.hitEntryBreakpointDeferred.promise;
+            await this.firstRunDeferred.promise;
             //if we are at a breakpoint, continue
             await this.rokuAdapter.continue();
             //kill the app on the roku
@@ -552,8 +552,8 @@ export class BrightScriptDebugSession extends DebugSession {
         this.rokuAdapter = new RokuAdapter(host);
 
         this.rokuAdapter.on('start', async () => {
-            if (!this.hitEntryBreakpointDeferred.isCompleted) {
-                this.hitEntryBreakpointDeferred.resolve();
+            if (!this.firstRunDeferred.isCompleted) {
+                this.firstRunDeferred.resolve();
             }
         });
 
