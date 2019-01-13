@@ -51,7 +51,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^1.0.0",
+        "roku-deploy": "^2.0.0-beta1",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-languageclient": "^4.1.4",
@@ -404,73 +404,73 @@
             {
                 "key": "Backspace",
                 "command": "extension.brightscript.pressBackButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+Backspace",
                 "mac": "cmd+Backspace",
                 "command": "extension.brightscript.pressBackspaceButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "Escape",
                 "command": "extension.brightscript.pressHomeButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "up",
                 "command": "extension.brightscript.pressUpButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "down",
                 "command": "extension.brightscript.pressDownButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "right",
                 "command": "extension.brightscript.pressRightButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "left",
                 "command": "extension.brightscript.pressLeftButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "Enter",
                 "command": "extension.brightscript.pressSelectButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+Enter",
                 "mac": "cmd+Enter",
                 "command": "extension.brightscript.pressPlayButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+left",
                 "mac": "cmd+left",
                 "command": "extension.brightscript.pressRevButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+right",
                 "mac": "cmd+right",
                 "command": "extension.brightscript.pressFwdButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+8",
                 "mac": "cmd+8",
                 "command": "extension.brightscript.pressStarButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             },
             {
                 "key": "win+k",
                 "mac": "cmd+k",
                 "command": "extension.brightscript.sendRemoteText",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
             }
         ]
     },
