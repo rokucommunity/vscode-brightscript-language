@@ -18,13 +18,36 @@ import {
     Thread,
     Variable
 } from 'vscode-debugadapter';
+
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-//becomes this
 import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
+
+class CompileFailureEvent implements DebugProtocol.Event {
+    constructor(compileError: any) {
+        this.body = compileError;
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class LogOutputEvent implements DebugProtocol.Event {
+    constructor(lines: string) {
+        this.body = lines;
+        this.event = 'BSLogOutputEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
 
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
@@ -35,7 +58,7 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     //set imports as class properties so they can be spied upon during testing
-    public rokuDeploy = rokuDeploy;
+    public rokuDeploy = require('roku-deploy');
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
     /**
@@ -67,12 +90,10 @@ export class BrightScriptDebugSession extends DebugSession {
      * to interrogate the features the debug adapter provides.
      */
     public initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
-        this.log('initializeRequest');
         // since this debug adapter can accept configuration requests like 'setBreakpoint' at any time,
         // we request them early by sending an 'initializeRequest' to the frontend.
         // The frontend will end the configuration sequence by calling 'configurationDone' request.
         this.sendEvent(new InitializedEvent());
-
         response.body = response.body || {};
 
         // This debug adapter implements the configurationDoneRequest.
@@ -88,11 +109,13 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     public launchRequestWasCalled = false;
+
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.log('launchRequest');
         this.launchArgs = args;
         this.launchRequestWasCalled = true;
-        let disconnect = () => { };
+        let disconnect = () => {
+        };
 
         let error: Error;
         console.log('Packaging and deploying to roku');
@@ -127,26 +150,37 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.rokuAdapter.on('console-output', (data) => {
                     //forward the console output
                     this.sendEvent(new OutputEvent(data, 'stdout'));
+                    this.sendEvent(new LogOutputEvent(data));
                 });
             } else {
                 this.rokuAdapter.on('unhandled-console-output', (data) => {
                     //forward the console output
                     this.sendEvent(new OutputEvent(data, 'stdout'));
+                    this.sendEvent(new LogOutputEvent(data));
                 });
             }
 
             //listen for a closed connection (shut down when received)
-            this.rokuAdapter.on('close', () => {
-                error = new Error('Unable to connect to Roku. Is another device already connected?');
+            this.rokuAdapter.on('close', (reason = '') => {
+                if (reason === 'compileErrors') {
+                    error = new Error('compileErrors');
+                } else {
+                    error = new Error('Unable to connect to Roku. Is another device already connected?');
+                }
             });
 
             //watch
-            disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
-                //for now, just alert the first error found
-                let compileError = compileErrors[0];
-                let clientPath = this.convertDebuggerPathToClient(compileError.path);
-                let clientLine = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
-                error = new Error(`Compile error: ${clientPath}: ${clientLine}`);
+            // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
+            this.rokuAdapter.on('compile-errors', (compileErrors) => {
+                for (let compileError of compileErrors) {
+                    compileError.lineNumber = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
+                    compileError.path = this.convertDebuggerPathToClient(compileError.path);
+                }
+
+                this.sendEvent(new CompileFailureEvent(compileErrors));
+                //TODO - shot gracefull
+                this.rokuAdapter.destroy();
+                this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
 
             //ignore the compile error failure from within the publish
@@ -165,7 +199,11 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         } catch (e) {
             console.log(e);
-            this.sendErrorResponse(response, -1, e.message);
+            if (e.message !== 'compileErrors') {
+                this.sendErrorResponse(response, -1, e.message);
+            } else {
+                //TODO make the debugger stop!
+            }
             this.shutdown();
             return;
         } finally {
@@ -216,14 +254,10 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        this.log('setBreakpointsRequest');
-
         let clientPath = path.normalize(args.source.path);
-        console.log(clientPath);
         //if we have a debugRootDir, convert the rootDir path to debugRootDir path
         if (this.launchArgs && this.launchArgs.debugRootDir) {
             clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
-            console.log(clientPath);
         }
         let extension = path.extname(clientPath).toLowerCase();
 
@@ -311,7 +345,8 @@ export class BrightScriptDebugSession extends DebugSession {
                     if (match) {
                         debugFrame.functionIdentifier = match[1];
                     }
-                } catch (e) { }
+                } catch (e) {
+                }
 
                 let frame = new StackFrame(
                     debugFrame.frameId,
@@ -333,8 +368,6 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        this.log('scopesRequest');
-
         this.sendResponse(response);
     }
 
@@ -460,6 +493,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         return this.stagingDirPaths;
     }
+
     private stagingDirPaths: string[];
 
     /**
@@ -471,8 +505,10 @@ export class BrightScriptDebugSession extends DebugSession {
         if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
             debuggerPath = debuggerPath.substring(4);
             //the debugger path was truncated, so try and map it to a file in the outdir
-        } else if (debuggerPath.indexOf('...') === 0) {
-            debuggerPath = debuggerPath.substring(3);
+        } else {
+            if (debuggerPath.indexOf('...') === 0) {
+                debuggerPath = debuggerPath.substring(3);
+            }
             //find any files from the outDir that end the same as this file
             let results: string[] = [];
 
@@ -483,8 +519,8 @@ export class BrightScriptDebugSession extends DebugSession {
                     results.push(stagingPath);
                 }
             }
-            if (results.length === 1) {
-                //we found a single match, this is the full relative path to the file we were looking for
+            if (results.length > 0) {
+                //a wrong file, which has output is more useful than nothing!
                 debuggerPath = results[0];
             } else {
                 //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
@@ -513,40 +549,24 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private async connectRokuAdapter(host: string) {
         //register events
-        let firstSuspend = true;
         this.rokuAdapter = new RokuAdapter(host);
+
+        this.rokuAdapter.on('start', async () => {
+            if (!this.hitEntryBreakpointDeferred.isCompleted) {
+                this.hitEntryBreakpointDeferred.resolve();
+            }
+        });
 
         //when the debugger suspends (pauses for debugger input)
         this.rokuAdapter.on('suspend', async () => {
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
-            //determine if this is the "stop on entry" breakpoint
-            let isStoppedOnEntry = firstSuspend && !!this.entryBreakpoint;
 
-            let hitEntryBreakpointDeferredWasCompleted = this.hitEntryBreakpointDeferred.isCompleted;
-
-            //if this is the entry breakpoint, resolve a promise for use other places
-            if (isStoppedOnEntry && !hitEntryBreakpointDeferredWasCompleted) {
-                this.hitEntryBreakpointDeferred.resolve();
-            }
-
-            //if we are launching a deep link, don't break in the UI for this iteration (it will happen next time)
-            if (firstSuspend === true && this.launchArgs.deepLinkUrl && !hitEntryBreakpointDeferredWasCompleted) {
-                return;
-            }
-
-            //skip the breakpoint if this is the entry breakpoint and stopOnEntry is false
-            if (isStoppedOnEntry && !this.launchArgs.stopOnEntry) {
-                //skip the breakpoint
-                this.rokuAdapter.continue();
-            } else {
-                this.clearState();
-                let exceptionText = '';
-                const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
-                (event.body as any).allThreadsStopped = false;
-                this.sendEvent(event);
-            }
-            firstSuspend = false;
+            this.clearState();
+            let exceptionText = '';
+            const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
+            (event.body as any).allThreadsStopped = false;
+            this.sendEvent(event);
         });
 
         //anytime the adapter encounters an exception on the roku,
@@ -593,8 +613,10 @@ export class BrightScriptDebugSession extends DebugSession {
             await fsExtra.writeFile(stagingFilePath, fileContents);
         };
 
-        //add a breakpoint to the first line of the entry point method for consistency when debugging
-        await this.addEntryBreakpoint();
+        //add the entry breakpoint if stopOnEntry is true
+        if (this.launchArgs.stopOnEntry) {
+            await this.addEntryBreakpoint();
+        }
 
         //add breakpoints to each client file
         for (let clientPath in this.breakpointsByClientPath) {
@@ -602,18 +624,22 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         await Promise.all(promises);
     }
-    private entryBreakpoint: DebugProtocol.Breakpoint;
-    private async addEntryBreakpoint() {
+
+    public async findEntryPoint(projectPath: string) {
         let results = Object.assign(
             {},
-            await findInFiles.find({ term: 'sub RunUserInterface\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'sub main\\(', flags: 'ig' }, this.baseProjectPath, /.*\.brs/)
+            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
         );
-        let entryPath = Object.keys(results)[0];
-        if (!entryPath) {
-            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub declared in your BrightScript project');
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub/function declared in your BrightScript project');
         }
-        let entryLine = results[entryPath].line[0];
+        let entryPath = keys[0];
+
+        let entryLineContents = results[entryPath].line[0];
+
         let lineNumber: number;
         //load the file contents
         let contents = await fsExtra.readFile(entryPath);
@@ -621,17 +647,29 @@ export class BrightScriptDebugSession extends DebugSession {
         //loop through the lines until we find the entry line
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
-            if (line.indexOf(entryLine) > -1) {
+            if (line.indexOf(entryLineContents) > -1) {
                 lineNumber = i + 1;
                 break;
             }
         }
+
+        return {
+            path: entryPath,
+            contents: entryLineContents,
+            lineNumber: lineNumber
+        };
+    }
+
+    private entryBreakpoint: DebugProtocol.Breakpoint;
+    private async addEntryBreakpoint() {
+        let entryPoint = await this.findEntryPoint(this.baseProjectPath);
+
         //create a breakpoint on the line BELOW this location, which is the first line of the program
-        this.entryBreakpoint = new Breakpoint(true, lineNumber + 1);
+        this.entryBreakpoint = new Breakpoint(true, entryPoint.lineNumber + 1);
         this.entryBreakpoint.id = this.breakpointIdCounter++;
         (this.entryBreakpoint as any).isEntryBreakpoint = true;
         //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.breakpointsByClientPath[entryPath] || [];
+        let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
         breakpoints.push(this.entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
@@ -655,7 +693,7 @@ export class BrightScriptDebugSession extends DebugSession {
             breakpoints.splice(index, 1);
             this.entryBreakpoint = undefined;
         }
-        this.breakpointsByClientPath[entryPath] = breakpoints;
+        this.breakpointsByClientPath[entryPoint.path] = breakpoints;
     }
 
     /**
@@ -663,17 +701,17 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param filePath
      */
     // private async getBaseProjectPath(filePath: string) {
-    //     //try walking up 10 levels. If we haven't found it by then, there is nothing we can do.
-    //     let folderPath = filePath;
-    //     for (let i = 0; i < 10; i++) {
-    //         folderPath = path.dirname(folderPath);
-    //         let files = await Q.nfcall(glob, path.join(folderPath, 'manifest'));
-    //         if (files.length === 1) {
-    //             let dir = path.dirname(files[0]);
-    //             return path.normalize(dir);
-    //         }
-    //     }
-    //     throw new Error('Unable to find base project path');
+    // 	//try walking up 10 levels. If we haven't found it by then, there is nothing we can do.
+    // 	let folderPath = filePath;
+    // 	for (let i = 0; i < 10; i++) {
+    // 		folderPath = path.dirname(folderPath);
+    // 		let files = await Q.nfcall(glob, path.join(folderPath, 'manifest'));
+    // 		if (files.length === 1) {
+    // 			let dir = path.dirname(files[0]);
+    // 			return path.normalize(dir);
+    // 		}
+    // 	}
+    // 	throw new Error('Unable to find base project path');
     // }
 
     /**
@@ -759,10 +797,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     rootDir: string;
     /**
-     * If you have a build system, rootDir will point to the build output folder, and this path should point
-     * to the actual source folder so that breakpoints can be set in the source files when debugging.
-     * In order for this to work, your build process cannot change line offsets between source files and built files,
-     * otherwise debugger lines will be out of sync.
+     * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder
+     * so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change
+     * line offsets between source files and built files, otherwise debugger lines will be out of sync.
      */
     debugRootDir: string;
     /**
@@ -796,11 +833,11 @@ enum StoppedEventReason {
 }
 
 export function defer<T>() {
-    let resolve: any;
-    let reject: any;
-    let promise = new Promise<T>((actualResolve, actualReject) => {
-        resolve = actualResolve;
-        reject = actualReject;
+    let resolve: (value?: T | PromiseLike<T>) => void;
+    let reject: (reason?: any) => void;
+    let promise = new Promise<T>((resolveValue, rejectValue) => {
+        resolve = resolveValue;
+        reject = rejectValue;
     });
     return {
         promise: promise,

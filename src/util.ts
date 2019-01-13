@@ -15,7 +15,9 @@ async function readDir(dirPath: string) {
 async function stat(filePath: string) {
     return await new Promise((resolve, reject) => {
         fs.stat(filePath, (err, result) => {
-            if (err) { reject(err); }
+            if (err) {
+                reject(err);
+            }
             resolve(result);
         });
     });
@@ -26,7 +28,9 @@ export async function fixFilePathExtension(filePath: string) {
     const fileName = filePath.replace(dirPath, '');
 
     // with extension, return directly
-    if (fileName.indexOf('.') > 0) { return filePath; }
+    if (fileName.indexOf('.') > 0) {
+        return filePath;
+    }
 
     async function traverse(dirPath: string, fileName: string) {
         let dir = await readDir(dirPath);
@@ -45,11 +49,14 @@ export async function fixFilePathExtension(filePath: string) {
         }
         return null;
     }
+
     // Traverse the directory where the file is located, match the file name. Suffix
     let filePathWithExt = await traverse(dirPath, fileName);
     if (filePathWithExt === 'dir') {
         filePathWithExt = await traverse(filePath, 'index');
     }
-    if (filePathWithExt && filePathWithExt !== 'dir') { return filePathWithExt; }
+    if (filePathWithExt && filePathWithExt !== 'dir') {
+        return filePathWithExt;
+    }
     return null;
 }

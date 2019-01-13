@@ -1,19 +1,24 @@
-# BrightScript Extension for VSCode 
+# BrightScript Extension for VSCode
 A VSCode extension to support Roku's BrightScript language.
 
 [![Build Status](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language)
-[![Coverage Status](https://coveralls.io/repos/github/TwitchBronBron/vscode-brightscript-language/badge.svg?branch=master)](https://coveralls.io/github/TwitchBronBron/vscode-brightscript-language?branch=master)
+[![codecov](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 <!--[![GitHub](https://img.shields.io/github/release/twitchbronbron/vscode-brightscript-language.svg?style=flat-square)](https://github.com/twitchbronbron/vscode-brightscript-language/releases)-->
 ## Features
 
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
-- Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode  
+- Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
+- Find usages (Shift+F12)
+- XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
+- Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
+- Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- [Roku remote control from keyboard](#Roku-Remote-Control)
 
 
 ## Requirements
@@ -48,7 +53,7 @@ Here is a sample launch configuration
 }
 ```
 
-If your BrightScript project is located in a subdirectory of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file. 
+If your BrightScript project is located in a subdirectory of the workspace, you will need to update the launch configuration property called 'rootDir' to point to the root folder containing the manifest file.
 
 For example, if you have this structure:
 
@@ -82,9 +87,9 @@ then you would need change `rootDir` in your launch config to look like this:
 
 ### Debug source files with Custom build process
 
-If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files. 
+If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory's versions of the files.
 
-**IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease. 
+**IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease.
 
 **Example:**
   - src/
@@ -99,7 +104,7 @@ If you have a build process that moves files from a source directory to an outpu
     - language.brs
     - manifest
 
-Here's a sample launch.json for this scenario: 
+Here's a sample launch.json for this scenario:
 
 ```
 {
@@ -128,9 +133,44 @@ This extension contributes the following settings:
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
 
+## Roku Remote Control
+
+You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below. You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
+
+This extension sends keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+
+Here are the commands included in this extension:
+
+|Keyboard Key | Roku Remote Key | Keybinging Command|
+|--|--|--|
+|`Backspace` | Back Button  | `extension.brightscript.pressBackButton` |
+|`win+Backspace` (or `cmd+Backspace` on mac)  | Backspace |  `extension.brightscript.pressBackspaceButton` |
+|`Escape` | Home Button | `extension.brightscript.pressHomeButton` |
+|`up` | Up Button | `extension.brightscript.pressUpButton` |
+|`down` | Down Button | `extension.brightscript.pressDownButton` |
+|`right` | Right Button | `extension.brightscript.pressRightButton` |
+|`left` | Left Button | `extension.brightscript.pressLeftButton` |
+|`Enter` | Select Button (OK) | `extension.brightscript.pressSelectButton` |
+|`win+Enter` (or `cmd+Enter` on mac) | Play Button | `extension.brightscript.pressPlayButton` |
+|`win+left` (or `cmd+left` on mac) | Rev Button | `extension.brightscript.pressRevButton` |
+|`win+right` (or `cmd+right` on mac) | Fwd Button | `extension.brightscript.pressFwdButton` |
+|`win+8` (or `cmd+8` on mac) | Info Button | `extension.brightscript.pressStarButton` |
+
+You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
+```
+{
+	"key": "Space",
+	"command": "extension.brightscript.sendRemoteCommand",
+	"args": "Lit_%20",
+	"when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+}
+```
+
 ## Contributing
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
+
+You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel). 
 
 ## Known Issues
 

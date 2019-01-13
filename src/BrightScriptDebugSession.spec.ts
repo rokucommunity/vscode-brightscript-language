@@ -1,14 +1,17 @@
 /* tslint:disable:no-unused-expression */
-import * as assert from 'assert';
 import { expect } from 'chai';
+
+import * as assert from 'assert';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as sinon from 'sinon';
+
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
 import {
     BrightScriptDebugSession,
     defer
-} from './brightScriptDebugSession';
+} from './BrightScriptDebugSession';
 import {
     EvaluateContainer,
     HighLevelType,
@@ -18,28 +21,53 @@ import {
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {
-        on: () => { return () => { }; },
-        activate: () => { return Promise.resolve(); }
+        on: () => {
+            return () => {
+            };
+        },
+        activate: () => {
+            return Promise.resolve();
+        }
     };
     beforeEach(() => {
         try {
             session = new BrightScriptDebugSession();
+
         } catch (e) {
             console.log(e);
         }
+        //override the error response function and throw an exception so we can fail any tests
+        (session as any).sendErrorResponse = function(...args) {
+            throw new Error(args[2]);
+        };
         //mock the rokuDeploy module with promises so we can have predictable tests
         session.rokuDeploy = <any>{
-            prepublishToStaging: () => { return Promise.resolve(); },
-            zipPackage: () => { return Promise.resolve(); },
-            pressHomeButton: () => { return Promise.resolve(); },
-            publish: () => { return Promise.resolve(); },
-            createPackage: () => { return Promise.resolve(); },
-            deploy: () => { return Promise.resolve(); },
-            getOptions: () => { }
+            prepublishToStaging: () => {
+                return Promise.resolve();
+            },
+            zipPackage: () => {
+                return Promise.resolve();
+            },
+            pressHomeButton: () => {
+                return Promise.resolve();
+            },
+            publish: () => {
+                return Promise.resolve();
+            },
+            createPackage: () => {
+                return Promise.resolve();
+            },
+            deploy: () => {
+                return Promise.resolve();
+            },
+            getOptions: () => {
+            }
         };
         (session as any).rokuAdapter = rokuAdapter;
         //mock the roku adapter
-        (session as any).connectRokuAdapter = () => { return Promise.resolve(rokuAdapter); };
+        (session as any).connectRokuAdapter = () => {
+            return Promise.resolve(rokuAdapter);
+        };
     });
 
     describe('initializeRequest', () => {
@@ -53,7 +81,12 @@ describe('Debugger', () => {
         sinon.stub(session, 'sendEvent').callsFake((...args) => {
             //do nothing
         });
+        (sinon.stub(session, <any>'loadStagingDirPaths') as any).callsFake(() => {
 
+        });
+
+        //skip adding breakpoint statements since that's not what we are currently testing
+        (session as any).addBreakpointStatements = () => { };
         await session.launchRequest(<any>{}, <any>{
             rootDir: '1/2/3'
         });
@@ -76,6 +109,7 @@ describe('Debugger', () => {
             responseDeferreds.push(deferred);
             return deferred.promise;
         }
+
         function getBooleanEvaluateContainer(expression: string, name: string = null) {
             return <EvaluateContainer>{
                 name: name || expression,
@@ -86,7 +120,11 @@ describe('Debugger', () => {
                 children: null
             };
         }
+
         beforeEach(() => {
+            //clear out the responses before each test
+            responses = [];
+
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
 
@@ -102,26 +140,28 @@ describe('Debugger', () => {
                     }
                 }
             });
+
             rokuAdapter.getVariable = () => {
                 return Promise.resolve(getVariableValue);
             };
         });
 
-        it.skip('returns the correct boolean variable', async () => {
+        it('returns the correct boolean variable', async () => {
             let expression = 'someBool';
             getVariableValue = getBooleanEvaluateContainer(expression);
+            //adapter has to be at prompt for evaluates to work
             rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
                 result: 'true',
-                variablesReference: 1,
+                variablesReference: 0,
                 namedVariables: 0,
                 indexedVariables: 0
             });
         });
 
-        it.skip('returns the correct indexed variables count', async () => {
+        it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -132,6 +172,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someArray[0]', '0'), getBooleanEvaluateContainer('someArray[1]', '1')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -142,7 +184,7 @@ describe('Debugger', () => {
             });
         });
 
-        it.skip('returns the correct named variables count', async () => {
+        it('returns the correct named variables count', async () => {
             let expression = 'someObject';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -153,6 +195,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'true'), getBooleanEvaluateContainer('someObject.ownsHouse', 'false')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             let response = <DebugProtocol.EvaluateResponse>await getResponse(0);
             assert.deepEqual(response.body, {
@@ -174,6 +218,8 @@ describe('Debugger', () => {
                 //shouldn't actually process the children
                 children: [getBooleanEvaluateContainer('someObject.isAlive', 'isAlive'), getBooleanEvaluateContainer('someObject.ownsHouse', 'ownsHouse')]
             };
+            //adapter has to be at prompt for evaluates to work
+            rokuAdapter.isAtDebuggerPrompt = true;
             session.evaluateRequest(<any>{}, { context: 'hover', expression: expression });
             /*let response = <DebugProtocol.EvaluateResponse>*/
             await getResponse(0);
@@ -226,7 +272,53 @@ describe('Debugger', () => {
 
     });
 
-    describe.only('setBreakPointsRequest', () => {
+    describe('findMainFunction', () => {
+        let folder;
+        afterEach(() => {
+            fs.emptyDirSync('./.tmp');
+            fs.rmdirSync('./.tmp');
+        });
+
+        async function doTest(fileContents: string, lineContents: string, lineNumber: number) {
+            fs.emptyDirSync('./.tmp');
+            folder = path.resolve('./.tmp/findMainFunctionTests/');
+            fs.mkdirSync(folder);
+
+            let filePath = path.resolve(`${folder}/main.brs`);
+            fs.writeFileSync(filePath, fileContents);
+            let entryPoint = await session.findEntryPoint(folder);
+            expect(entryPoint.path).to.equal(filePath);
+            expect(entryPoint.lineNumber).to.equal(lineNumber);
+            expect(entryPoint.contents).to.equal(lineContents);
+        }
+
+        it('works for RunUserInterface', async () => {
+            await doTest('\nsub RunUserInterface()\nend sub', 'sub RunUserInterface()', 2);
+            //works with args
+            await doTest('\n\nsub RunUserInterface(args as Dynamic)\nend sub', 'sub RunUserInterface(args as Dynamic)', 3);
+            //works with extra spacing
+            await doTest('\n\nsub   RunUserInterface()\nend sub', 'sub   RunUserInterface()', 3);
+            await doTest('\n\nsub RunUserInterface   ()\nend sub', 'sub RunUserInterface   ()', 3);
+        });
+        it('works for sub main', async () => {
+            await doTest('\nsub Main()\nend sub', 'sub Main()', 2);
+            //works with args
+            await doTest('sub Main(args as Dynamic)\nend sub', 'sub Main(args as Dynamic)', 1);
+            //works with extra spacing
+            await doTest('sub   Main()\nend sub', 'sub   Main()', 1);
+            await doTest('sub Main   ()\nend sub', 'sub Main   ()', 1);
+        });
+
+        it('works for function main', async () => {
+            await doTest('function Main()\nend function', 'function Main()', 1);
+            await doTest('function Main(args as Dynamic)\nend function', 'function Main(args as Dynamic)', 1);
+            //works with extra spacing
+            await doTest('function   Main()\nend function', 'function   Main()', 1);
+            await doTest('function Main   ()\nend function', 'function Main   ()', 1);
+        });
+    });
+
+    describe('setBreakPointsRequest', () => {
         let response;
         let args;
         beforeEach(() => {

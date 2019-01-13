@@ -7,6 +7,10 @@
         "tslint:recommended"
     ],
     "rules": {
+        "array-bracket-spacing": [
+            true,
+            "never"
+        ],
         "arrow-return-shorthand": false,
         "class-name": true,
         "comment-format": false,
@@ -50,8 +54,10 @@
         "no-duplicate-variable": true,
         "no-empty": false,
         "no-shadowed-variable": false,
+        "no-trailing-whitespace": true,
         "no-unused-expression": true,
         "no-var-keyword": true,
+        "object-curly-spacing": true,
         "object-literal-shorthand": [
             true,
             "never"
@@ -72,10 +78,16 @@
             true,
             "always"
         ],
+        "ter-arrow-spacing": true,
         "ter-indent": [
             true,
-            4
+            4,
+            {
+                "SwitchCase": 1
+            }
         ],
+        "ter-no-irregular-whitespace": true,
+        "ter-no-mixed-spaces-and-tabs": true,
         "trailing-comma": [
             true,
             "never"

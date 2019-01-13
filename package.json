@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.3.0",
+    "version": "1.5.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -30,25 +30,27 @@
         "compile": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",
+        "build-and-test": "npm run compile && npm run test",
         "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
-        "coverage": "nyc report --reporter=text-lcov | coveralls",
+        "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"
     },
     "dependencies": {
         "@types/glob": "^5.0.36",
-        "brightscript-formatter": "^1.4.0",
+        "brightscript-formatter": "^1.5.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
         "glob": "^7.1.3",
         "hoek": "^5.0.3",
         "iconv-lite": "0.4.24",
+        "micromatch": "^3.1.10",
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.2.1",
+        "roku-deploy": "^2.0.0-beta1",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-uri": "1.0.1"
@@ -58,20 +60,20 @@
         "@types/fs-extra": "^4.0.8",
         "@types/mocha": "^5.2.5",
         "@types/node": "7.0.55",
-        "@types/sinon": "^2.3.7",
+        "@types/sinon": "5.0.7",
         "chai": "^4.2.0",
-        "coveralls": "^3.0.2",
+        "codecov": "^3.1.0",
         "cson-parser": "^1.3.5",
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
-        "nyc": "^11.9.0",
+        "nyc": "^13.1.0",
         "sinon": "^4.5.0",
         "source-map-support": "^0.5.9",
         "ts-node": "^5.0.1",
-        "tslint": "5.9.1",
+        "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
         "tslint-origin-ordered-imports-rule": "^1.1.2",
-        "typescript": "2.6.2",
+        "typescript": "^3.2.1",
         "vsce": "^1.50.0",
         "vscode": "^1.1.21",
         "vscode-debugadapter-testsupport": "1.27.0"
@@ -79,7 +81,21 @@
     "main": "./out/extension",
     "activationEvents": [
         "onDebug",
-        "onLanguage:brightscript"
+        "onLanguage:brightscript",
+        "onLanguage:xml",
+        "onCommand:extension.brightscript.sendRemoteCommand",
+        "onCommand:extension.brightscript.pressBackButton",
+        "onCommand:extension.brightscript.pressHomeButton",
+        "onCommand:extension.brightscript.pressUpButton",
+        "onCommand:extension.brightscript.pressDownButton",
+        "onCommand:extension.brightscript.pressRightButton",
+        "onCommand:extension.brightscript.pressLeftButton",
+        "onCommand:extension.brightscript.pressSelectButton",
+        "onCommand:extension.brightscript.pressPlayButton",
+        "onCommand:extension.brightscript.pressRevButton",
+        "onCommand:extension.brightscript.pressFwdButton",
+        "onCommand:extension.brightscript.pressStarButton",
+        "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
         "breakpoints": [
@@ -157,7 +173,7 @@
                             },
                             "files": {
                                 "type": "array",
-                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files.",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
                                 "default": [
                                     "manifest",
                                     "source/**/*.*",
@@ -174,14 +190,30 @@
                                             "type": "object",
                                             "properties": {
                                                 "src": {
-                                                    "type": "string",
-                                                    "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string",
+                                                            "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "description": "An array of file path or globs",
+                                                            "items": {
+                                                                "type": "string",
+                                                                "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                            }
+                                                        }
+                                                    ]
                                                 },
                                                 "dest": {
                                                     "type": "string",
                                                     "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
                                                 }
-                                            }
+                                            },
+                                            "required": [
+                                                "src",
+                                                "dest"
+                                            ]
                                         }
                                     ]
                                 }
@@ -256,6 +288,15 @@
                     "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
                     "scope": "resource"
                 },
+                "brightscript.format.keywordCaseOverride": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
+                    "scope": "resource"
+                },
                 "brightscript.format.compositeKeywords": {
                     "type": [
                         "string",
@@ -275,6 +316,12 @@
                     "default": true,
                     "description": "Removes all trailing whitespace at the end of each line.",
                     "scope": "resource"
+                },
+                "brightscript.remoteControl.host": {
+                    "type": "string",
+                    "default": "${promptForHost}",
+                    "description": "IP address of the roku to remotely control",
+                    "scope": "resource"
                 }
             }
         },
@@ -283,6 +330,149 @@
                 "command": "extension.brightscript.toggleXML",
                 "title": "Toggle xml/brs",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteCommand",
+                "title": "Send 'arg' button key press to Roku as a remote control",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBackButton",
+                "title": "Press the Back button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBackspaceButton",
+                "title": "Press the Backspace button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressHomeButton",
+                "title": "Press the Home button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressUpButton",
+                "title": "Press the Up button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressDownButton",
+                "title": "Press the Down button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRightButton",
+                "title": "Press the Right button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressLeftButton",
+                "title": "Press the Left button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressSelectButton",
+                "title": "Press the Select button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressPlayButton",
+                "title": "Press the Play button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRevButton",
+                "title": "Press the Rev button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressFwdButton",
+                "title": "Press the Fwd button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressStarButton",
+                "title": "Press the Star button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteText",
+                "title": "Send text characters to the Roku Device",
+                "category": "Brightscript"
+            }
+        ],
+        "keybindings": [
+            {
+                "key": "Backspace",
+                "command": "extension.brightscript.pressBackButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+Backspace",
+                "mac": "cmd+Backspace",
+                "command": "extension.brightscript.pressBackspaceButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "Escape",
+                "command": "extension.brightscript.pressHomeButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "up",
+                "command": "extension.brightscript.pressUpButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "down",
+                "command": "extension.brightscript.pressDownButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "right",
+                "command": "extension.brightscript.pressRightButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "left",
+                "command": "extension.brightscript.pressLeftButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "Enter",
+                "command": "extension.brightscript.pressSelectButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+Enter",
+                "mac": "cmd+Enter",
+                "command": "extension.brightscript.pressPlayButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+left",
+                "mac": "cmd+left",
+                "command": "extension.brightscript.pressRevButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+right",
+                "mac": "cmd+right",
+                "command": "extension.brightscript.pressFwdButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+8",
+                "mac": "cmd+8",
+                "command": "extension.brightscript.pressStarButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "win+k",
+                "mac": "cmd+k",
+                "command": "extension.brightscript.sendRemoteText",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
             }
         ]
     },
