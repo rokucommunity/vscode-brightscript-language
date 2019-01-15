@@ -478,6 +478,21 @@
                 "key": "ctrl+k",
                 "mac": "ctrl+k",
                 "command": "extension.brightscript.clearLogOutput"
+            },
+            {
+                "key": "win+ctrl+l",
+                "mac": "cmd+ctrl+l",
+                "command": "extension.brightscript.setOutputLogLevelFilter"
+            },
+            {
+                "key": "win+ctrl+i",
+                "mac": "cmd+ctrl+i",
+                "command": "extension.brightscript.setOutputIncludeFilter"
+            },
+            {
+                "key": "win+ctrl+x",
+                "mac": "cmd+ctrl+x",
+                "command": "extension.brightscript.setOutputExcludeFilter"
             }
         ]
     },
