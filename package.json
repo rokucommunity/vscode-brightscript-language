@@ -467,7 +467,17 @@
                 "key": "win+k",
                 "mac": "cmd+k",
                 "command": "extension.brightscript.sendRemoteText",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "ctrl+l",
+                "mac": "ctrl+l",
+                "command": "extension.brightscript.markLogOutput"
+            },
+            {
+                "key": "ctrl+k",
+                "mac": "ctrl+k",
+                "command": "extension.brightscript.clearLogOutput"
             }
         ]
     },

@@ -4,29 +4,41 @@ import { DiagnosticCollection } from 'vscode';
 
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
-export class DebugErrorHandler {
-
-    constructor(outputChannel) {
+export class LogOutputManager {
+    constructor(outputChannel, context) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
+        this.context = context;
+        let subscriptions = context.subscriptions;
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
+            this.markOutput();
+        }));
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearLogOutput', () => {
+            this.clearOutput();
+        }));
+        this.clearOutput();
+
     }
+    private context: any;
+    private displayedLogLines: string[];
+    private allLogLines: string[];
+    private markCount: number;
 
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
 
     public onDidStartDebugSession() {
         //TODO make this a config setting
-        this.outputChannel.clear();
-        this.collection.clear();
+        this.clearOutput();
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
-            this.outputChannel.appendLine(e.body);
+            this.appendLine(e.body);
         } else {
-
-            this.collection.clear();
+            this.clearOutput();
             let errorsByPath = {};
             if (e.body) {
                 e.body.forEach(async (compileError) => {
@@ -83,5 +95,35 @@ export class DebugErrorHandler {
                 this.collection.set(documentUri, diagnostics);
             }
         }
+    }
+
+    /**
+     * Log output methods
+     */
+
+    public appendLine(line: string, mustInclude: boolean = false): void {
+        this.allLogLines.push(line);
+        if (this.matchesFilter(line) || mustInclude) {
+            this.displayedLogLines.push(line);
+            this.outputChannel.appendLine(line);
+        }
+    }
+
+    public matchesFilter(body: string): boolean {
+        // TODO implement filter feature
+        return true;
+    }
+
+    public clearOutput(): any {
+        this.markCount = 0;
+        this.allLogLines = [];
+        this.displayedLogLines = [];
+        this.outputChannel.clear();
+        this.collection.clear();
+    }
+
+    public markOutput(): void {
+        this.appendLine(`---------------------- MARK ${this.markCount} ----------------------`);
+        this.markCount++;
     }
 }
