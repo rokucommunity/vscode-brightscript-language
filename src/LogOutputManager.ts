@@ -3,7 +3,8 @@ import * as vscode from 'vscode';
 import { DiagnosticCollection } from 'vscode';
 
 import { BrightScriptDebugCompileError } from './RokuAdapter';
-class LogLine {
+
+export class LogLine {
     constructor(text, mustInclude) {
         this.text = text;
         this.isMustInclude = mustInclude;
@@ -160,7 +161,6 @@ export class LogOutputManager {
     }
 
     public matchesFilter(logLine: LogLine): boolean {
-        console.log(`IS MATCHED ? ${logLine.text} ${logLine.isMustInclude} ${(!this.logLevelRegex || this.logLevelRegex.test(logLine.text))}`);
         return (logLine.isMustInclude || (
             (!this.logLevelRegex || this.logLevelRegex.test(logLine.text)))
             && (!this.includeRegex || this.includeRegex.test(logLine.text)))
