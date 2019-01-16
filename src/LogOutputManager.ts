@@ -4,12 +4,24 @@ import { DiagnosticCollection } from 'vscode';
 
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
+export class LogLine {
+    constructor(text, mustInclude) {
+        this.text = text;
+        this.isMustInclude = mustInclude;
+    }
+    public text: string;
+    public isMustInclude: boolean;
+}
+
 export class LogOutputManager {
     constructor(outputChannel, context) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.context = context;
         let subscriptions = context.subscriptions;
+        this.includeRegex = null;
+        this.logLevelRegex = null;
+        this.excludeRegex = null;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -17,13 +29,46 @@ export class LogOutputManager {
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearLogOutput', () => {
             this.clearOutput();
         }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputIncludeFilter', async () => {
+            let entryText: string = await vscode.window.showInputBox({
+                placeHolder: 'Enter log include regex',
+                value: this.includeRegex ? this.includeRegex.source : ''
+            });
+            if (entryText || entryText === '') {
+                this.setIncludeFilter(entryText);
+            }
+        } ));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputLogLevelFilter', async () => {
+            let entryText: string = await vscode.window.showInputBox({
+                placeHolder: 'Enter log level regex',
+                value: this.logLevelRegex ? this.logLevelRegex.source : ''
+            });
+            if (entryText || entryText === '') {
+                this.setLevelFilter(entryText);
+            }
+        } ));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputExcludeFilter', async () => {
+            let entryText: string = await vscode.window.showInputBox({
+                placeHolder: 'Enter log exclude regex',
+                value: this.excludeRegex ? this.excludeRegex.source : ''
+            });
+            if (entryText || entryText === '') {
+                this.setExcludeFilter(entryText);
+            }
+        } ));
         this.clearOutput();
 
     }
     private context: any;
-    private displayedLogLines: string[];
-    private allLogLines: string[];
+    private displayedLogLines: LogLine[];
+    private allLogLines: LogLine[];
     private markCount: number;
+    private includeRegex?: RegExp;
+    private logLevelRegex?: RegExp;
+    private excludeRegex?: RegExp;
 
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
@@ -101,17 +146,26 @@ export class LogOutputManager {
      * Log output methods
      */
 
-    public appendLine(line: string, mustInclude: boolean = false): void {
-        this.allLogLines.push(line);
-        if (this.matchesFilter(line) || mustInclude) {
-            this.displayedLogLines.push(line);
-            this.outputChannel.appendLine(line);
-        }
+    public appendLine(lineText: string, mustInclude: boolean = false): void {
+        let lines = lineText.split('\n');
+        lines.forEach((line) => {
+            if (line !== '') {
+                const logLine = new LogLine(line, mustInclude);
+                this.allLogLines.push(logLine);
+                if (this.matchesFilter(logLine)) {
+                    this.displayedLogLines.push(logLine);
+                    this.outputChannel.appendLine(logLine.text);
+                }
+            }
+        });
     }
 
-    public matchesFilter(body: string): boolean {
-        // TODO implement filter feature
-        return true;
+    public matchesFilter(logLine: LogLine): boolean {
+        return (logLine.isMustInclude || (
+            (!this.logLevelRegex || this.logLevelRegex.test(logLine.text)))
+            && (!this.includeRegex || this.includeRegex.test(logLine.text)))
+            && (!this.excludeRegex || !this.excludeRegex.test(logLine.text)
+        );
     }
 
     public clearOutput(): any {
@@ -122,8 +176,35 @@ export class LogOutputManager {
         this.collection.clear();
     }
 
+    public setIncludeFilter(text: string): void {
+        this.includeRegex = text && text.trim() !== '' ? new RegExp(text, 'i') : null;
+        this.reFilterOutput();
+    }
+
+    public setExcludeFilter(text: string): void {
+        this.excludeRegex = text && text.trim() !== '' ? new RegExp(text, 'i') : null;
+        this.reFilterOutput();
+    }
+
+    public setLevelFilter(text: string): void {
+        this.logLevelRegex = text && text.trim() !== '' ? new RegExp(text, 'i') : null;
+        this.reFilterOutput();
+    }
+
+    public reFilterOutput(): void {
+        this.outputChannel.clear();
+
+        for (let i = 0; i < this.allLogLines.length - 1; i++) {
+            let logLine = this.allLogLines[i];
+            if (this.matchesFilter(logLine)) {
+                console.log(`IS MATCHED !!! ${logLine.text}`);
+                this.outputChannel.appendLine(logLine.text);
+            }
+        }
+    }
+
     public markOutput(): void {
-        this.appendLine(`---------------------- MARK ${this.markCount} ----------------------`);
+        this.appendLine(`---------------------- MARK ${this.markCount} ----------------------`, true);
         this.markCount++;
     }
 }
