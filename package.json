@@ -476,8 +476,8 @@
                 "command": "extension.brightscript.markLogOutput"
             },
             {
-                "key": "ctrl+k",
-                "mac": "ctrl+k",
+                "key": "ctrl+alt+k",
+                "mac": "ctrl+alt+k",
                 "command": "extension.brightscript.clearLogOutput"
             },
             {
