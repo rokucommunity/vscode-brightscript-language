@@ -18,8 +18,13 @@ A VSCode extension to support Roku's BrightScript language.
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+  - Marking the output log (CTRL+L)
+  - Clearing the output log (CTRL+K), which also clears the mark indexes
+  - Filtering the output log - 3 filters are available:
+     - LogLevel (CMD|WIN+L) - example `^\[(info|warn|debug\]`
+     - Include (CMD|WIN+I)- example `NameOfSomeInterestingComponent`
+     - Exclude (CMD|WIN+X)- example `NameOfSomeNoisyComponent`
 - [Roku remote control from keyboard](#Roku-Remote-Control)
-
 
 ## Requirements
 
