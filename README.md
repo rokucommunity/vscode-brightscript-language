@@ -174,8 +174,8 @@ You also have the ability to create keybindings for any other Roku supported key
 
 ## Other keyboard shortcuts
 
-| Keybinding (Windows) |  | Keybinding (Mac) | Command | Description|
-|--|--|--|
+| Keybinding (Windows) | Keybinding (Mac) | Command | Description|
+|--|--|--|--|
 | `ctrl+L` |  `ctrl+L` | extension.brightscript.markLogOutput | Add a new mark line in the BrightScript output panel |
 | `ctrl+alt+k` | `ctrl+alt+k` | extension.brightscript.clearLogOutput | Clear the current log output |
 | `win+ctrl+l` | `cmd+ctrl+l` | extension.brightscript.setOutputLogLevelFilter | Filter the BrightScript Output by log level (info, warn, debug)  |

@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.6.0] - 2019-01-15
+ - Prevent adding entry breakpoint when `stopOnEntry` is `false` in launch.json.
+ - Upgraded to roku-deploy@2.0.0-beta2 which fixes some regression issues introduced in 1.0.0
+ - Added ability to filter log output
+ - Added ability to clear log output
+ - Updated textmate grammar to include `step` as reserved word.
+ - Added `not searchViewletVisible` as part of the roku keyboard remote keybindings so the search panel is more usable in the output window.
+
 ## [1.5.0] - 2019-01-03
  - Added ability to send remote control commands from the keyboard. See readme for more details.
 
