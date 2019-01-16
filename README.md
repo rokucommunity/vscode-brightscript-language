@@ -17,14 +17,16 @@ A VSCode extension to support Roku's BrightScript language.
 - Find usages (Shift+F12)
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
-- Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-  - Marking the output log (CTRL+L)
-  - Clearing the output log (CTRL+K), which also clears the mark indexes
-  - Filtering the output log - 3 filters are available:
-     - LogLevel (CMD|WIN+L) - example `^\[(info|warn|debug\]`
-     - Include (CMD|WIN+I)- example `NameOfSomeInterestingComponent`
-     - Exclude (CMD|WIN+X)- example `NameOfSomeNoisyComponent`
-- [Roku remote control from keyboard](#Roku-Remote-Control)
+- Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
+- Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Marking the output log (CTRL+L)
+- Clearing the output log (CTRL+K), which also clears the mark indexes
+- Filtering the output log - 3 filters are available:
+  - LogLevel (example `^\[(info|warn|debug\]`)
+  - Include (example `NameOfSomeInterestingComponent`)
+  - Exclude (example `NameOfSomeNoisyComponent`)
+
+
 
 ## Requirements
 
@@ -50,9 +52,8 @@ Here is a sample launch configuration
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}", //update if roku project lives in a subdirectory
-            "stopOnEntry": false,
-            "debugServer": 4711
+            "rootDir": "${workspaceRoot}",
+            "stopOnEntry": false
         }
     ]
 }
@@ -81,7 +82,7 @@ then you would need change `rootDir` in your launch config to look like this:
     "configurations": [
         {
             ...
-            "rootDir": "Roku App/${workspaceRoot}",
+            "rootDir": "${workspaceRoot}/Roku App",
             ...
         }
     ]
@@ -146,7 +147,7 @@ This extension sends keypresses to the Roku device through Roku's [External Cont
 
 Here are the commands included in this extension:
 
-|Keyboard Key | Roku Remote Key | Keybinging Command|
+|Keyboard Key | Roku Remote Key | Keybinding Command|
 |--|--|--|
 |`Backspace` | Back Button  | `extension.brightscript.pressBackButton` |
 |`win+Backspace` (or `cmd+Backspace` on mac)  | Backspace |  `extension.brightscript.pressBackspaceButton` |
@@ -171,11 +172,21 @@ You also have the ability to create keybindings for any other Roku supported key
 }
 ```
 
+## Other keyboard shortcuts
+
+| Keybinding (Windows) |  | Keybinding (Mac) | Command | Description|
+|--|--|--|
+| `ctrl+L` |  `ctrl+L` | extension.brightscript.markLogOutput | Add a new mark line in the BrightScript output panel |
+| `ctrl+alt+k` | `ctrl+alt+k` | extension.brightscript.clearLogOutput | Clear the current log output |
+| `win+ctrl+l` | `cmd+ctrl+l` | extension.brightscript.setOutputLogLevelFilter | Filter the BrightScript Output by log level (info, warn, debug)  |
+| `win+ctrl+i` | `cmd+ctrl+i` | extension.brightscript.setOutputIncludeFilter | Filter the BrightScript Output by typing text you want to *include* |
+| `win+ctrl+x` | `cmd+ctrl+x` | extension.brightscript.setOutputExcludeFilter | Filter the BrightScript output by typing text you want to *exclude* |
+
 ## Contributing
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
-You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel). 
+You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 
 ## Known Issues
 
