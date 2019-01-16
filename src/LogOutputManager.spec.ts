@@ -1,5 +1,6 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
+import { assert } from 'chai';
 import * as sinon from 'sinon';
 let Module = require('module');
 
@@ -16,7 +17,8 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { LogOutputManager } from './LogOutputManager';
+import { LogLine, LogOutputManager } from './LogOutputManager';
+const itParam = require('mocha-param');
 
 describe('LogOutputManager ', () => {
     let logOutputManagerMock;
@@ -54,7 +56,7 @@ describe('LogOutputManager ', () => {
 
     it('tests onDidReceiveDebugSessionCustomEvent - BSLogOutputEvent', () => {
         outputChannelMock.expects('appendLine').once();
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent' });
+        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent', body: 'test1' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
@@ -138,6 +140,18 @@ describe('LogOutputManager ', () => {
             outputChannelMock.verify();
             collectionMock.verify();
         });
+
+        it('splits multiple lines', () => {
+            outputChannelMock.expects('appendLine')
+              .withExactArgs('test1').once();
+            outputChannelMock.expects('appendLine')
+              .withExactArgs('test2').once();
+
+            logOutputManager.appendLine('test1\ntest2', true);
+
+            outputChannelMock.verify();
+            collectionMock.verify();
+        });
     });
 
     describe('tests markOutput', () => {
@@ -156,4 +170,102 @@ describe('LogOutputManager ', () => {
             collectionMock.verify();
         });
     });
+
+    describe('tests setLevelFilter', () => {
+        it('tests reFilterOutput is called', () => {
+            logOutputManagerMock.expects('reFilterOutput').once();
+            logOutputManager.setLevelFilter('test1');
+            logOutputManagerMock.verify();
+        });
+    });
+
+    describe('tests setExcludeFilter', () => {
+        it('tests reFilterOutput is called', () => {
+            logOutputManagerMock.expects('reFilterOutput').once();
+            logOutputManager.setExcludeFilter('test1');
+            logOutputManagerMock.verify();
+        });
+    });
+
+    describe('tests setIncludeFilter', () => {
+        it('tests reFilterOutput is called', () => {
+            logOutputManagerMock.expects('reFilterOutput').once();
+            logOutputManager.setIncludeFilter('test1');
+            logOutputManagerMock.verify();
+        });
+    });
+
+    describe('tests matchesFilter', () => {
+        describe('mustInclude items', () => {
+            let mustIncludeParams = [
+                { text: 'test1', levelFilter: null, includeFilter: null, excludeFilter: null, expected: true },
+                { text: 'test1', levelFilter: 'INFO', includeFilter: null, excludeFilter: null, expected: true },
+                { text: 'test1', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: null, expected: true },
+                { text: 'test1', levelFilter: null, includeFilter: null, excludeFilter: 'EXCLUDE', expected: true },
+                { text: 'test1', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: null, expected: true },
+                { text: 'test1', levelFilter: 'INFO', includeFilter: null, excludeFilter: 'EXCLUDE', expected: true },
+                { text: 'test1', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: true },
+                { text: 'test1', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: true },
+            ];
+            itParam('lf ${value.levelFilter} if {$value.levelFilter} ' +
+              'ef ${value.excludeFilter}', mustIncludeParams, (params) => {
+                  const logLine = new LogLine(params.text, true);
+                  logOutputManager.setIncludeFilter(params.includeFilter);
+                  logOutputManager.setExcludeFilter(params.excludeFilter);
+                  logOutputManager.setLevelFilter(params.levelFilter);
+                  assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+              });
+        });
+        describe('non-mustinclude items true scenarios', () => {
+            let mustIncludeParams = [
+            { text: 'INFO test1 INCLUDE', levelFilter: null, includeFilter: null, excludeFilter: null, expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: 'INFO', includeFilter: null, excludeFilter: null, expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: null, expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: null, includeFilter: null, excludeFilter: 'EXCLUDE', expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: null, expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: 'INFO', includeFilter: null, excludeFilter: 'EXCLUDE', expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: true },
+            { text: 'INFO test1 INCLUDE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: true },
+            ];
+            itParam('lf ${value.levelFilter} if {$value.levelFilter} ' +
+            'ef ${value.excludeFilter}', mustIncludeParams, (params) => {
+                const logLine = new LogLine(params.text, false);
+                logOutputManager.setIncludeFilter(params.includeFilter);
+                logOutputManager.setExcludeFilter(params.excludeFilter);
+                logOutputManager.setLevelFilter(params.levelFilter);
+                assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+            });
+        });
+        describe('non-must include items false scenarios', () => {
+            let mustIncludeParams = [
+          { text: 'INFO test1 INCLUDE', levelFilter: 'DEBUG', includeFilter: null, excludeFilter: null, expected: false },
+          { text: 'INFO test1 NOTTHERE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: null, expected: false },
+          { text: 'INFO test1 INCLUDE EXCLUDE', levelFilter: null, includeFilter: null, excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTTHERE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: null, expected: false },
+          { text: 'INFO test1 INCLUDE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: null, expected: false },
+          { text: 'INFO test1 NOTTHERE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: null, expected: false },
+          { text: 'INFO test1 INCLUDE EXCLUDE', levelFilter: 'INFO', includeFilter: null, excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 INCLUDE', levelFilter: 'DEBUG', includeFilter: null, excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 INCLUDE EXCLUDE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE EXCLUDE', levelFilter: null, includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTTHERE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTTHERE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE', levelFilter: 'INFO', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE EXCLUDE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 INCLUDE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+          { text: 'INFO test1 NOTHERE EXCLUDE', levelFilter: 'DEBUG', includeFilter: 'INCLUDE', excludeFilter: 'EXCLUDE', expected: false },
+            ];
+            itParam('lf ${value.levelFilter} if {$value.levelFilter} ' +
+          'ef ${value.excludeFilter}', mustIncludeParams, (params) => {
+              const logLine = new LogLine(params.text, false);
+              logOutputManager.setIncludeFilter(params.includeFilter);
+              logOutputManager.setExcludeFilter(params.excludeFilter);
+              logOutputManager.setLevelFilter(params.levelFilter);
+              assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+          });
+        });
+    });
+
 });
