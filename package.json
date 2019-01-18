@@ -41,7 +41,7 @@
         "@roku-road/bright": "^1.2.11",
         "@types/glob": "^5.0.36",
         "brightscript-formatter": "^1.5.0",
-        "brs": "^0.13.0-beta.0",
+        "brs": "^0.13.0-beta.2",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
