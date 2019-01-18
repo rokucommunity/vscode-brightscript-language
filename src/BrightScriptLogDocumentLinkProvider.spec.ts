@@ -3,7 +3,6 @@ import * as path from 'path';
 import * as sinonImport from 'sinon';
 
 import { BrightScriptLogDocumentLinkProvider } from './BrightScriptLogDocumentLinkProvider';
-import { link } from 'fs';
 
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
