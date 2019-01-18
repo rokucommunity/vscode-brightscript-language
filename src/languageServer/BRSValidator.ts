@@ -1,4 +1,7 @@
-import { ast, parse } from '@roku-road/bright';
+import * as bright from '@roku-road/bright';
+import { Lexer, Parser, Preprocessor } from 'brs';
+import { BrsError } from 'brs/lib';
+
 import {
     Diagnostic,
     DiagnosticSeverity,
@@ -7,11 +10,12 @@ import {
     TextDocuments,
 } from 'vscode-languageserver';
 
-export function getIssues(textDocument: TextDocument) {
-    let text = textDocument.getText();
-    const { value, lexErrors, tokens, parseErrors } = parse(text, 'Program');
-
+export function getIssuesWithBright(textDocument: TextDocument) {
     let issues: Diagnostic[] = [];
+
+    let text = textDocument.getText();
+    const { value, lexErrors, tokens, parseErrors } = bright.parse(text, 'Program');
+
     lexErrors.forEach((x) => x.severity = DiagnosticSeverity.Warning);
     parseErrors.forEach((x) => x.severity = DiagnosticSeverity.Error);
 
@@ -38,5 +42,15 @@ export function getIssues(textDocument: TextDocument) {
             source: 'brs'
         });
     }
+    return issues;
+}
+
+export function getIssuesWithBrs(textDocument: TextDocument) {
+    let issues: Diagnostic[] = [];
+    let text = textDocument.getText();
+
+    let tokens = Lexer.scan(text);
+    let statements = Parser.parse(tokens);
+
     return issues;
 }
