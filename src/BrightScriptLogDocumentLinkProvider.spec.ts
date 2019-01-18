@@ -36,15 +36,18 @@ describe('BrightScriptFileUtils', () => {
                 outDir: path.normalize('C:/project/out')
             });
 
-            expect(linkProvider.fileMaps).to.eql([{
-                src: path.normalize('C:/project/manifest'),
-                dest: path.normalize('C:/project/out/manifest'),
-                pkgPath: 'pkg:/manifest'
-            }, {
-                src: path.normalize('C:/project/source/main.brs'),
-                dest: path.normalize('C:/project/out/source/main.brs'),
-                pkgPath: 'pkg:/source/main.brs'
-            }]);
+            expect(linkProvider.fileMaps).to.eql({
+                'pkg:/manifest': {
+                    src: path.normalize('C:/project/manifest'),
+                    dest: path.normalize('C:/project/out/manifest'),
+                    pkgPath: 'pkg:/manifest'
+                },
+                'pkg:/source/main.brs': {
+                    src: path.normalize('C:/project/source/main.brs'),
+                    dest: path.normalize('C:/project/out/source/main.brs'),
+                    pkgPath: 'pkg:/source/main.brs'
+                }
+            });
         });
     });
 });
