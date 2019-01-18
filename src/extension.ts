@@ -16,6 +16,7 @@ import {
 } from 'vscode';
 
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
+import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';

@@ -5,6 +5,8 @@ import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
 
+import { defer } from './BrightScriptDebugSession';
+
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
@@ -123,8 +125,9 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public connect() {
-        return new Promise(async (resolve, reject) => {
+    public async connect() {
+        let deferred = defer();
+        try {
             //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
 
@@ -142,7 +145,7 @@ export class RokuAdapter {
             //if the connection fails, reject the connect promise
             client.addListener('error', (err) => {
                 //this.emit(EventName.error, err);
-                reject(err);
+                deferred.reject(err);
             });
 
             await this.settle(client, 'data');
@@ -199,8 +202,11 @@ export class RokuAdapter {
             });
 
             //the adapter is connected and running smoothly. resolve the promise
-            resolve();
-        });
+            deferred.resolve();
+        } catch (e) {
+            deferred.reject(e);
+        }
+        return await deferred.promise;
     }
 
     /**
