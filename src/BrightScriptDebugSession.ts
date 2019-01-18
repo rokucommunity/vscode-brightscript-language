@@ -118,8 +118,10 @@ export class BrightScriptDebugSession extends DebugSession {
         };
 
         let error: Error;
-        console.log('Packaging and deploying to roku');
+        this.log('Packaging and deploying to roku');
         try {
+
+            this.sendDebugLogLine('Moving selected files to staging area');
             //copy all project files to the staging folder
             let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
 
@@ -131,7 +133,8 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.convertBreakpointPaths(this.launchArgs.debugRootDir, this.launchArgs.rootDir);
             }
 
-            //TODO add breakpoint lines to source files and then publish
+            //add breakpoint lines to source files and then publish
+            this.sendDebugLogLine('Adding stop statements for active breakpoints');
             await this.addBreakpointStatements(stagingFolder);
 
             //convert source breakpoint paths to build paths
@@ -140,8 +143,10 @@ export class BrightScriptDebugSession extends DebugSession {
             }
 
             //create zip package from staging folder
+            this.sendDebugLogLine('Creating zip archive from project sources');
             await this.rokuDeploy.zipPackage(args);
 
+            this.sendDebugLogLine('Connecting to Roku via telnet');
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
 
@@ -199,10 +204,12 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         } catch (e) {
             console.log(e);
+            //if the message is anything other than compile errors, we want to display the error
             if (e.message !== 'compileErrors') {
-                this.sendErrorResponse(response, -1, e.message);
-            } else {
                 //TODO make the debugger stop!
+                this.sendDebugLogLine('Encountered an issue during the publish process');
+                this.sendDebugLogLine(e.message);
+                this.sendErrorResponse(response, -1, e.message);
             }
             this.shutdown();
             return;
@@ -737,6 +744,10 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private log(...args) {
         console.log.apply(console, args);
+    }
+
+    private sendDebugLogLine(message: string) {
+        this.sendEvent(new LogOutputEvent(`debugger: ${message}`));
     }
 
     private getVariableFromResult(result: EvaluateContainer) {

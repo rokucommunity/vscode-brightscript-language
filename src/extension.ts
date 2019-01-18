@@ -21,9 +21,9 @@ import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbol
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
-import { DebugErrorHandler } from './DebugErrorHandler';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
+import { LogOutputManager } from './LogOutputManager';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
 
     //register the definition provider
-    const debugErrorHandler: DebugErrorHandler = new DebugErrorHandler(outputChannel);
+    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
@@ -59,8 +59,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
     vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
 
-    vscode.debug.onDidStartDebugSession((e) => debugErrorHandler.onDidStartDebugSession());
-    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => debugErrorHandler.onDidReceiveDebugSessionCustomEvent(e));
+    vscode.debug.onDidStartDebugSession((e) => logOutputManager.onDidStartDebugSession());
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => logOutputManager.onDidReceiveDebugSessionCustomEvent(e));
 
     outputChannel.show();
 
