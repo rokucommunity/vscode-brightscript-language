@@ -121,7 +121,8 @@ documents.onDidChangeContent((change) => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     let diagnostics: Diagnostic[] = [];
     if (textDocument.languageId === 'brightscript') {
-        diagnostics = BRSValidator.getIssues(textDocument);
+        diagnostics = BRSValidator.getIssuesWithBright(textDocument);
+        // diagnostics = BRSValidator.getIssuesWithBrs(textDocument);
     } else {
 
     }
