@@ -1,5 +1,8 @@
 # Change Log
 
+## [Unreleased]
+ - Fixed bug that was not showing an error message when a deployment failed.
+
 ## [1.6.0] - 2019-01-15
  - Prevent adding entry breakpoint when `stopOnEntry` is `false` in launch.json.
  - Upgraded to roku-deploy@2.0.0-beta2 which fixes some regression issues introduced in 1.0.0
