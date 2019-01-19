@@ -48,7 +48,7 @@ export class BrightScriptLogDocumentLinkProvider implements vscode.DocumentLinkP
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         let k = doc;
         let links = <DocumentLink[]>[];
-        let pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)\))?/g;
+        let pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/g;
         let outputText = doc.getText();
         let match: RegExpExecArray;
 
@@ -57,6 +57,8 @@ export class BrightScriptLogDocumentLinkProvider implements vscode.DocumentLinkP
             let pkgPath = match[1];
             let fileNumber = match[2];
             let lineNumber = match[3];
+            //we don't do anything with column number right now...but maybe we can someday
+            let columnNumber = match[4];
             let fileMap = this.fileMaps[pkgPath];
             if (fileMap) {
                 let uri = vscode.Uri.file(fileMap.src);
