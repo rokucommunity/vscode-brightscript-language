@@ -160,6 +160,11 @@
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
                                 "default": true
                             },
+                            "envFile": {
+                                "type": "string",
+                                "description": "A path to an environment variables file.",
+                                "default": ".env"
+                            },
                             "consoleOutput": {
                                 "type": "string",
                                 "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
