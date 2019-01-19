@@ -19,20 +19,18 @@ import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
+import { BrightScriptLogDocumentLinkProvider } from './BrightScriptLogDocumentLinkProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
+import { Formatter } from './formatter';
 import { LogOutputManager } from './LogOutputManager';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
 } from './SymbolInformationRepository';
-
-import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
-import { BrightScriptLogDocumentLinkProvider } from './BrightScriptLogDocumentLinkProvider';
-import { Formatter } from './formatter';
 
 let outputChannel: vscode.OutputChannel;
 
