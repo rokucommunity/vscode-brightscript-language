@@ -60,12 +60,12 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
-            if (config.deepLinkUrl.indexOf('${promptForDeepLinkParams') > -1) {
+            if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
                 let contentId = await vscode.window.showInputBox({
                     placeHolder: 'Querystring params for deep link',
                     value: ''
                 });
-                config.deepLinkUrl = config.deepLinkUrl.replace('${promptForDeepLinkParams}', contentId);
+                config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', contentId);
             }
             if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
                 config.deepLinkUrl = await vscode.window.showInputBox({
