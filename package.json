@@ -125,8 +125,8 @@
                             },
                             "deepLinkUrl": {
                                 "type": "string",
-                                "description": "A full deep link url to use to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be published, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForContentId}, ${promptForMediaType}, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
-                                "default": "http://${host}:8060/launch/dev?contentId=${promptForContentId}&mediaType=${promptForMediaType}"
+                                "description": "A full deep link url to use to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be published, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForDeepLinkParams} which only asks for the URL-endocded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "default": "http://${host}:8060/launch/dev?${promptForDeepLinkParams}"
                             },
                             "password": {
                                 "type": "string",
