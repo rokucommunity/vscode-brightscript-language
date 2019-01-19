@@ -1,5 +1,3 @@
-import { EventEmitter } from 'events';
-import { FilesType } from 'roku-deploy';
 import {
     CancellationToken,
     DebugConfiguration,
@@ -58,20 +56,11 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
             }
         }
 
-        //emit this config for listeners
-        this.emitter.emit('resolved', config);
-
         return config;
-    }
-
-    private emitter = new EventEmitter();
-
-    public on(name: 'resolved', handler) {
-        this.emitter.on(name, handler);
     }
 }
 
-interface BrightScriptDebugConfiguration extends DebugConfiguration {
+export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     host: string;
     password: string;
     rootDir: string;
