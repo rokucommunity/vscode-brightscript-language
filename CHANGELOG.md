@@ -1,7 +1,7 @@
 # Change Log
 
-## [Unreleased]
- - Fixed bug that was not showing an error message when a deployment failed.
+## [1.6.1]
+ - Fixed bug where the debugger would hang indefinitely on deployment error.
 
 ## [1.6.0] - 2019-01-15
  - Prevent adding entry breakpoint when `stopOnEntry` is `false` in launch.json.

@@ -188,9 +188,5 @@ View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brights
 
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 
-## Known Issues
-
-Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
-
 ## Changelog
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
