@@ -1,4 +1,7 @@
 export let vscode = {
+    CompletionItem: class { },
+    CodeLens: class { },
+    DocumentLink: class { },
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
@@ -25,6 +28,7 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
+        asAbsolutePath: function() { }
     },
     workspace: {
         workspaceFolders: [],
