@@ -5,7 +5,7 @@ import * as sinon from 'sinon';
 let Module = require('module');
 import { assert } from 'chai';
 
-import { vscode } from './mockVscode.spec';
+import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 
 let commandsMock;
 
@@ -14,6 +14,8 @@ const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {
     if (file === 'vscode') {
         return vscode;
+    } else if (file === 'vscode-languageclient') {
+        return vscodeLanguageClient;
     } else if (file === './BrightScriptCommands') {
         let command = { registerCommands: () => { } };
         commandsMock = sinon.mock(command);
@@ -27,73 +29,80 @@ import BrightScriptCommands from './BrightScriptCommands';
 import * as  extension from './extension';
 
 describe('extension', () => {
+    let context: any;
+    beforeEach(() => {
+        context = {
+            subscriptions: [],
+            asAbsolutePath: () => { }
+        };
+    });
 
     it('registers configuration provider', () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers formatter', () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentRangeFormattingEditProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers definition provider', () => {
         let spy = sinon.spy(vscode.languages, 'registerDefinitionProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.callCount).to.be.greaterThan(0);
     });
 
     it('registers document symbol provider', () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentSymbolProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers workspace symbol provider', () => {
         let spy = sinon.spy(vscode.languages, 'registerWorkspaceSymbolProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers all commands', () => {
         commandsMock.expects('registerCommands');
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         commandsMock.verify();
     });
 
     it('registers signatureHelpProvider', () => {
         let spy = sinon.spy(vscode.languages, 'registerSignatureHelpProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers referenceProvider', () => {
         let spy = sinon.spy(vscode.languages, 'registerReferenceProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers onDidStartDebugSession', () => {
         let spy = sinon.spy(vscode.debug, 'onDidStartDebugSession');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers onDidReceiveDebugSessionCustomEvent', () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 });
