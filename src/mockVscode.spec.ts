@@ -188,3 +188,15 @@ export let vscode = {
         public getText() { return this.text; }
     }
 };
+
+export let vscodeLanguageClient = {
+    LanguageClient: class {
+        public start() { }
+    },
+    TransportKind: {
+        stdio: 0,
+        ipc: 1,
+        pipe: 2,
+        socket: 3
+    }
+};
