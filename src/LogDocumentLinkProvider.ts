@@ -9,7 +9,7 @@ import { BrightScriptDebugConfiguration } from './BrightScriptConfigurationProvi
  * Provides file links in any output window that has the pkg:/ format.
  * This only works after a debug session has started,  because the file mappings are provided in the debug launch arguments
  */
-export class BrightScriptLogDocumentLinkProvider implements vscode.DocumentLinkProvider {
+export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
     }
 

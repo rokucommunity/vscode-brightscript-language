@@ -19,13 +19,13 @@ import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
-import { BrightScriptLogDocumentLinkProvider } from './BrightScriptLogDocumentLinkProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
+import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import {
     BrightScriptWorkspaceSymbolProvider,
@@ -45,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
     let configProvider = new BrightScriptConfigurationProvider(context);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
-    let docLinkProvider = new BrightScriptLogDocumentLinkProvider();
+    let docLinkProvider = new LogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
     vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
     //give the launch config to the link provder any time we launch the app

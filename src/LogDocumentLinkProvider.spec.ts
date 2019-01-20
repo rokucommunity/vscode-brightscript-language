@@ -2,7 +2,7 @@ import { assert, expect } from 'chai';
 import * as path from 'path';
 import * as sinonImport from 'sinon';
 
-import { BrightScriptLogDocumentLinkProvider } from './BrightScriptLogDocumentLinkProvider';
+import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
@@ -12,11 +12,11 @@ afterEach(() => {
     sinon.restore();
 });
 describe('BrightScriptFileUtils', () => {
-    let linkProvider: BrightScriptLogDocumentLinkProvider;
+    let linkProvider: LogDocumentLinkProvider;
     let l: any;
 
     beforeEach(() => {
-        linkProvider = new BrightScriptLogDocumentLinkProvider();
+        linkProvider = new LogDocumentLinkProvider();
         l = linkProvider;
     });
 
