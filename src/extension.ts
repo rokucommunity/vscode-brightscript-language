@@ -47,7 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     let docLinkProvider = new BrightScriptLogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
-    vscode.languages.registerDocumentLinkProvider({ language: 'brightscript-log' }, docLinkProvider);
+    vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
     //give the launch config to the link provder any time we launch the app
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         if (e.event === 'BSLaunchStartEvent') {

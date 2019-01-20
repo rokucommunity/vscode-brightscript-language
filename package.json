@@ -258,9 +258,20 @@
                 "configuration": "./language-configuration.json"
             },
             {
-                "id": "brightscript-log",
+                "id": "Log",
+                "aliases": [
+                    "log"
+                ],
+                "extensions": [
+                    ".log"
+                ],
+                "configuration": "./log.configuration.json",
                 "mimetypes": [
-                    "text/x-code-output"
+                    "log",
+                    "text/log",
+                    "text/x-log",
+                    "text/x-code-output",
+                    "x-code-output"
                 ]
             }
         ],
