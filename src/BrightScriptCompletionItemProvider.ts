@@ -10,11 +10,13 @@ import * as vscode from 'vscode';
 
 import { ifAppInfoCompletionItems } from './BrightScriptCompletionItems/ifAppInfoCompletionItems';
 import { ifAppManagerCompletionItems } from './BrightScriptCompletionItems/ifAppManagerCompletionItems';
+import { ifArrayCompletionItems } from './BrightScriptCompletionItems/ifArrayCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
         ifAppInfo: ifAppInfoCompletionItems,
-        ifAppManager: ifAppManagerCompletionItems
+        ifAppManager: ifAppManagerCompletionItems,
+        ifArray: ifArrayCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

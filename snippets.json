@@ -14,5 +14,10 @@
         "prefix": "ifAppManager",
         "body": "ifAppManager",
         "description": "Implemented By:\nroAppManager\n"
+    },
+    "ifArray": {
+        "prefix": "ifArray",
+        "body": "ifArray",
+        "description": "Implemented By:\nroArray\nroByteArray\nroList\nroXMLList\n"
     }
 }
