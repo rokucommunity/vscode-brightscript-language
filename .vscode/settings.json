@@ -12,6 +12,5 @@
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
-    "files.eol": "\r\n",
     "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
 }
