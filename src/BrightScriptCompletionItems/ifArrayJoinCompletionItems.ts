@@ -14,7 +14,7 @@ export const ifArrayJoinCompletionItems: CompletionItem[] = [
         documentation: new vscode.MarkdownString(
 `
 Creates a string by joining all array elements together separated by the specified separator.
-All elements must be of type string, otherwise an empty string is returned.  \n\
+All elements must be of type string, otherwise an empty string is returned.\\
 _This function is available in firmware 7.5 or later._
 
 Examples

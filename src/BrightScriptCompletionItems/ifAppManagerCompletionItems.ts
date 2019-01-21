@@ -102,7 +102,7 @@ This method accepts the signedIn parameter, which if set to true indicates the u
         detail: 'SetAutomaticAudioGuideEnabled(enabled as Boolean) as Void',
         documentation: new vscode.MarkdownString(
 `
-_Available since firmware version 7.5_  \n\
+_Available since firmware version 7.5_\\
 Enables or disables automatic Audio Guide and override any manifest setting. This is useful for channels that want to temporarily turn off automatic Audio Guide for specific screens.
 `
         )
