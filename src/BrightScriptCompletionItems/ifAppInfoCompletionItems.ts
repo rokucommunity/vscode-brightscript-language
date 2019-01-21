@@ -13,7 +13,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'GetID()',
         detail: 'GetID() as String',
         documentation: new vscode.MarkdownString(
-            `Returns the app's channel ID, e.g. "12345" or "dev".`
+`
+Returns the app's channel ID, e.g. "12345" or "dev".
+`
         )
     },
     {
@@ -22,7 +24,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'IsDev()',
         detail: 'IsDev() as Boolean',
         documentation: new vscode.MarkdownString(
-            `Returns true if the application is side-loaded, i.e. the channel ID is "dev"`
+`
+Returns true if the application is side-loaded, i.e. the channel ID is "dev"
+`
         )
     },
     {
@@ -31,7 +35,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'GetVersion()',
         detail: 'GetVersion() as String',
         documentation: new vscode.MarkdownString(
-            `Returns the conglomerate version number from the manifest, e.g. "1.2.3", as formatted major_version + minor_version + build_version.`
+`
+Returns the conglomerate version number from the manifest, e.g. "1.2.3", as formatted major_version + minor_version + build_version.
+`
         )
     },
     {
@@ -40,7 +46,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'GetTitle()',
         detail: 'GetTitle() as String',
         documentation: new vscode.MarkdownString(
-            `Returns the title value from the manifest.`
+`
+Returns the title value from the manifest.
+`
         )
     },
     {
@@ -49,7 +57,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'GetSubtitle()',
         detail: 'GetSubtitle() as String',
         documentation: new vscode.MarkdownString(
-            `Returns the subtitle value from the manifest.`
+`
+Returns the subtitle value from the manifest.
+`
         )
     },
     {
@@ -58,7 +68,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: 'GetDevID()',
         detail: 'GetDevID() as String',
         documentation: new vscode.MarkdownString(
-            `Returns the app's developer ID, or the keyed developer ID, if the application is side-loaded.`
+`
+Returns the app's developer ID, or the keyed developer ID, if the application is side-loaded.
+`
         )
     },
     {
@@ -67,7 +79,9 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         insertText: new vscode.SnippetString('GetValue(${1:key as String})'),
         detail: 'GetValue(key as String) as String',
         documentation: new vscode.MarkdownString(
-            `Returns the named manifest value, or an empty string if the entry is does not exist.`
+`
+Returns the named manifest value, or an empty string if the entry is does not exist.
+`
         )
     },
 ];
