@@ -19,6 +19,7 @@ A VSCode extension to support Roku's BrightScript language.
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Navigate to source files referenced as `pkg:/` paths from output log
 - Marking the output log (CTRL+L)
 - Clearing the output log (CTRL+K), which also clears the mark indexes
 - Filtering the output log - 3 filters are available:

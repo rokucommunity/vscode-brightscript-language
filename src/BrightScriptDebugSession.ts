@@ -46,6 +46,18 @@ class LogOutputEvent implements DebugProtocol.Event {
     public type: string;
 }
 
+class LaunchStartEvent implements DebugProtocol.Event {
+    constructor(args: LaunchRequestArguments) {
+        this.body = args;
+        this.event = 'BSLaunchStartEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
         super();
@@ -109,6 +121,8 @@ export class BrightScriptDebugSession extends DebugSession {
         this.launchRequestWasCalled = true;
         let disconnect = () => {
         };
+
+        this.sendEvent(new LaunchStartEvent(args));
 
         let error: Error;
         this.log('Packaging and deploying to roku');
