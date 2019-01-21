@@ -7,13 +7,13 @@ import {
     DebugConfiguration,
     DocumentSymbolProvider,
     Position,
+    Range,
     SymbolInformation,
     TextDocument,
+    Uri,
     WorkspaceFolder,
-    WorkspaceSymbolProvider
+    WorkspaceSymbolProvider,
 } from 'vscode';
-
-import { Formatter } from './formatter';
 
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
@@ -24,6 +24,8 @@ import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvid
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
+import { Formatter } from './formatter';
+import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import {
     BrightScriptWorkspaceSymbolProvider,
@@ -40,7 +42,18 @@ export function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', new BrightScriptConfigurationProvider(context)));
+    let configProvider = new BrightScriptConfigurationProvider(context);
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
+
+    let docLinkProvider = new LogDocumentLinkProvider();
+    //register a link provider for this extension's "BrightScript Log" output
+    vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
+    //give the launch config to the link provder any time we launch the app
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+        if (e.event === 'BSLaunchStartEvent') {
+            docLinkProvider.setLaunchConfig(e.body);
+        }
+    });
 
     //register the definition provider
     const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
