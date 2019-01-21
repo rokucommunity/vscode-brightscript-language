@@ -2,7 +2,9 @@
 
 ## [Unreleased]
  - Added ability to click on `pkg:/` links in BrightScript output window to open that file at the specified line number.
- - Fixed bug that was not showing an error message when a deployment failed.
+
+## [1.6.1]
+ - Fixed bug where the debugger would hang indefinitely on certain deployment errors.
 
 ## [1.6.0] - 2019-01-15
  - Prevent adding entry breakpoint when `stopOnEntry` is `false` in launch.json.
