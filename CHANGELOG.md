@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased]
+## [1.7.0]
  - Added ability to click on `pkg:/` links in BrightScript output window to open that file at the specified line number.
 
 ## [1.6.1]
