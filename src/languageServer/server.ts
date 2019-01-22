@@ -12,6 +12,10 @@ import {
     TextDocuments
 } from 'vscode-languageserver';
 
+import { BRSLanguageServer } from 'C:/projects/brightscript';
+
+let brightscriptServer = new BRSLanguageServer();
+
 import * as BRSValidator from './BRSValidator';
 
 // Create a connection for the server. The connection uses Node's IPC as a transport.
@@ -27,6 +31,9 @@ let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
 connection.onInitialize((params: InitializeParams) => {
+    brightscriptServer = new BRSLanguageServer();
+    process.chdir(params.rootPath);
+    brightscriptServer.run();
     let capabilities = params.capabilities;
 
     // Does the client support the `workspace/configuration` request?
@@ -121,8 +128,9 @@ documents.onDidChangeContent((change) => {
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     let diagnostics: Diagnostic[] = [];
     if (textDocument.languageId === 'brightscript') {
-        diagnostics = BRSValidator.getIssuesWithBright(textDocument);
+        //diagnostics = BRSValidator.getIssuesWithBright(textDocument);
         // diagnostics = BRSValidator.getIssuesWithBrs(textDocument);
+        diagnostics = await BRSValidator.getIssuesWithBrightscriptLanguageServer(textDocument, brightscriptServer);
     } else {
 
     }
