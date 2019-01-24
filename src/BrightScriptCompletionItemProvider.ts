@@ -12,13 +12,15 @@ import { ifAppInfoCompletionItems } from './BrightScriptCompletionItems/ifAppInf
 import { ifAppManagerCompletionItems } from './BrightScriptCompletionItems/ifAppManagerCompletionItems';
 import { ifArrayCompletionItems } from './BrightScriptCompletionItems/ifArrayCompletionItems';
 import { ifArrayJoinCompletionItems } from './BrightScriptCompletionItems/ifArrayJoinCompletionItems';
+import { ifArraySortCompletionItems } from './BrightScriptCompletionItems/ifArraySortCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
         ifAppInfo: ifAppInfoCompletionItems,
         ifAppManager: ifAppManagerCompletionItems,
         ifArray: ifArrayCompletionItems,
-        ifArrayJoin: ifArrayJoinCompletionItems
+        ifArrayJoin: ifArrayJoinCompletionItems,
+        ifArraySort: ifArraySortCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

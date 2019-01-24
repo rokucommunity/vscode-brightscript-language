@@ -24,5 +24,10 @@
         "prefix": "ifArrayJoin",
         "body": "ifArrayJoin",
         "description": "Implemented By:\nroArray\n"
+    },
+    "ifArraySort": {
+        "prefix": "ifArraySort",
+        "body": "ifArraySort",
+        "description": "Implemented By:\nroArray\n"
     }
 }
