@@ -48,11 +48,7 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
                 value: ''
             });
         }
-        if (!config.host) {
-            throw new Error('Debug session terminated: host is required.');
-        } else {
-            await this.context.workspaceState.update('remoteHost', config.host);
-        }
+
         //prompt for password if not hardcoded
         if (config.password === '${promptForPassword}') {
             config.password = await vscode.window.showInputBox({
@@ -91,6 +87,13 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
                     }
                 }
                 config[key] = configValue;
+            }
+
+            //chech the host and throw error if not provided or update the workspace to set last host
+            if (!config.host) {
+                throw new Error('Debug session terminated: host is required.');
+            } else {
+                await this.context.workspaceState.update('remoteHost', config.host);
             }
 
         }
