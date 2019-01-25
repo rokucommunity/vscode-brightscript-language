@@ -1,5 +1,8 @@
 # Change Log
 
+##[Unreleased]
+ - Fixed bug in `Go to definition` that wasn't finding function declarations with leading whitespace
+
 ## [1.7.0]
  - Added ability to click on `pkg:/` links in BrightScript output window to open that file at the specified line number.
 
