@@ -30,10 +30,17 @@ let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
-connection.onInitialize((params: InitializeParams) => {
+connection.onInitialize(async (params: InitializeParams) => {
     brightscriptServer = new BRSLanguageServer();
-    process.chdir(params.rootPath);
-    brightscriptServer.run();
+    //start up a new brightscript language server in watch mode,
+    //disable all output file generation and deployments, as this
+    //is purely for the language server options
+    await brightscriptServer.run({
+        cwd: params.rootPath,
+        watch: true,
+        skipPackage: false,
+        deploy: false
+    });
     let capabilities = params.capabilities;
 
     // Does the client support the `workspace/configuration` request?
@@ -130,7 +137,11 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
     if (textDocument.languageId === 'brightscript') {
         //diagnostics = BRSValidator.getIssuesWithBright(textDocument);
         // diagnostics = BRSValidator.getIssuesWithBrs(textDocument);
-        diagnostics = await BRSValidator.getIssuesWithBrightscriptLanguageServer(textDocument, brightscriptServer);
+        try {
+            diagnostics = await BRSValidator.getIssuesWithBrightscriptLanguageServer(textDocument, brightscriptServer);
+        } catch (e) {
+            debugger;
+        }
     } else {
 
     }
