@@ -196,7 +196,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
+            let match = /^\s*(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
