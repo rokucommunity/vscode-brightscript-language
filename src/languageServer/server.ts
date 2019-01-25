@@ -41,6 +41,7 @@ connection.onInitialize(async (params: InitializeParams) => {
         skipPackage: false,
         deploy: false
     });
+    console.log('Server is running');
     let capabilities = params.capabilities;
 
     // Does the client support the `workspace/configuration` request?
@@ -133,6 +134,7 @@ documents.onDidChangeContent((change) => {
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
+    console.log('validating text document');
     let diagnostics: Diagnostic[] = [];
     if (textDocument.languageId === 'brightscript') {
         //diagnostics = BRSValidator.getIssuesWithBright(textDocument);
