@@ -24,7 +24,7 @@ export function* iterlines(input: string): IterableIterator<[number, string]> {
     const lines = input.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
-        if (/^(?:$|;(?![!#];))/.test(text)) {
+        if (/^\s*(?:$|;(?![!#];))/.test(text)) {
             continue;
         }
         yield [i, text];
