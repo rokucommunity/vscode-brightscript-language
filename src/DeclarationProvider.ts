@@ -24,7 +24,7 @@ export function* iterlines(input: string): IterableIterator<[number, string]> {
     const lines = input.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
-        if (/^\s*(?:$|;(?![!#];))/.test(text)) {
+        if (/^(?:$|;(?![!#];))/.test(text)) {
             continue;
         }
         yield [i, text];
@@ -196,7 +196,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
+            let match = /^\s*(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
