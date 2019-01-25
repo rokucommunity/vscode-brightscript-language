@@ -62,6 +62,7 @@ export async function getIssuesWithBrightscriptLanguageServer(textDocument: Text
     let uri = Uri.parse(textDocument.uri);
     await server.program.reloadFile(uri.fsPath, textDocument.getText());
     await server.program.validate();
+    debugger;
     for (let error of server.program.errors) {
         issues.push({
             severity: error.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
