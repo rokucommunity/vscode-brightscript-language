@@ -196,7 +196,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^\s*(?:function|sub)\s+(.*[^\(])\((.*)\)/i.exec(text);
+            let match = /^\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
@@ -204,7 +204,7 @@ export class DeclarationProvider implements Disposable {
                     currentFunction.bodyRange = currentFunction.bodyRange.with({ end: new Position(funcEndLine, funcEndChar) });
                 }
                 currentFunction = new BrightScriptDeclaration(
-                    match[1],
+                    match[1].trim(),
                     SymbolKind.Function,
                     container,
                     match[2].split(','),
