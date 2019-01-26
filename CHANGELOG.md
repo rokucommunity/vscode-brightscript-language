@@ -1,7 +1,13 @@
 # Change Log
 
-## [Unreleased]
- - Fixed bug that was not showing an error message when a deployment failed.
+##[Unreleased]
+ - Fixed bug in `Go to definition` that wasn't finding function declarations with leading whitespace
+
+## [1.7.0]
+ - Added ability to click on `pkg:/` links in BrightScript output window to open that file at the specified line number.
+
+## [1.6.1]
+ - Fixed bug where the debugger would hang indefinitely on certain deployment errors.
 
 ## [1.6.0] - 2019-01-15
  - Prevent adding entry breakpoint when `stopOnEntry` is `false` in launch.json.

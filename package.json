@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -51,7 +51,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^2.0.0-beta2",
+        "roku-deploy": "^2.0.0-beta4",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-uri": "1.0.1"
@@ -263,6 +263,23 @@
                     "BrightScript"
                 ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "Log",
+                "aliases": [
+                    "log"
+                ],
+                "extensions": [
+                    ".log"
+                ],
+                "configuration": "./log.configuration.json",
+                "mimetypes": [
+                    "log",
+                    "text/log",
+                    "text/x-log",
+                    "text/x-code-output",
+                    "x-code-output"
+                ]
             }
         ],
         "grammars": [

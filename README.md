@@ -19,6 +19,7 @@ A VSCode extension to support Roku's BrightScript language.
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Navigate to source files referenced as `pkg:/` paths from output log
 - Marking the output log (CTRL+L)
 - Clearing the output log (CTRL+K), which also clears the mark indexes
 - Filtering the output log - 3 filters are available:
@@ -221,10 +222,6 @@ This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm modul
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
-
-## Known Issues
-
-Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
 
 ## Changelog
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
