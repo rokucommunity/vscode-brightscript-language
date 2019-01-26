@@ -1,6 +1,7 @@
 # Change Log
 
 ##[Unreleased]
+ - Added support for reading variables from a `.env` file in `launch.json`
  - Fixed bug in `Go to definition` that wasn't finding function declarations with leading whitespace
 
 ## [1.7.0]
