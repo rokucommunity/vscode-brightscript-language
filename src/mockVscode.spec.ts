@@ -14,6 +14,7 @@ export let vscode = {
         registerDocumentRangeFormattingEditProvider: () => { },
         registerSignatureHelpProvider: () => { },
         registerReferenceProvider: () => { },
+        registerDocumentLinkProvider: () => { },
         createDiagnosticCollection: () => {
             return {
                 clear: () => { }

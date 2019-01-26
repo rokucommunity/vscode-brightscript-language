@@ -19,6 +19,7 @@ A VSCode extension to support Roku's BrightScript language.
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Navigate to source files referenced as `pkg:/` paths from output log
 - Marking the output log (CTRL+L)
 - Clearing the output log (CTRL+K), which also clears the mark indexes
 - Filtering the output log - 3 filters are available:
@@ -182,15 +183,45 @@ You also have the ability to create keybindings for any other Roku supported key
 | `win+ctrl+i` | `cmd+ctrl+i` | extension.brightscript.setOutputIncludeFilter | Filter the BrightScript Output by typing text you want to *include* |
 | `win+ctrl+x` | `cmd+ctrl+x` | extension.brightscript.setOutputExcludeFilter | Filter the BrightScript output by typing text you want to *exclude* |
 
+## Config file for user-specific launch settings
+If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${end:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
+
+```javascript
+//launch.json
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            ...
+            "envFile": "${workspaceRoot}/.env",
+            "username": "${env:ROKU_USERNAME}",
+            "password": "${env:ROKU_PASSWORD}"
+            ...
+        }
+    ]
+}
+```
+
+```bash
+# .env
+
+#the username for the roku
+ROKU_USERNAME=rokudev
+#the password for the roku
+ROKU_PASSWORD=password123
+```
+
+This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
+
+
+
+
 ## Contributing
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
-
-## Known Issues
-
-Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
 
 ## Changelog
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
