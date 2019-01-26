@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.6.0",
+    "version": "1.8.1",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -40,6 +40,7 @@
     "dependencies": {
         "@types/glob": "^5.0.36",
         "brightscript-formatter": "^1.5.0",
+        "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
@@ -50,7 +51,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^2.0.0-beta2",
+        "roku-deploy": "^2.0.0-beta4",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-uri": "1.0.1"
@@ -60,6 +61,7 @@
         "@types/fs-extra": "^4.0.8",
         "@types/mocha": "^5.2.5",
         "@types/node": "7.0.55",
+        "@types/q": "^1.5.1",
         "@types/sinon": "5.0.7",
         "chai": "^4.2.0",
         "codecov": "^3.1.0",
@@ -163,6 +165,11 @@
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
                                 "default": true
                             },
+                            "envFile": {
+                                "type": "string",
+                                "description": "A path to an environment variables file.",
+                                "default": ".env"
+                            },
                             "consoleOutput": {
                                 "type": "string",
                                 "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
@@ -261,6 +268,23 @@
                     "BrightScript"
                 ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "Log",
+                "aliases": [
+                    "log"
+                ],
+                "extensions": [
+                    ".log"
+                ],
+                "configuration": "./log.configuration.json",
+                "mimetypes": [
+                    "log",
+                    "text/log",
+                    "text/x-log",
+                    "text/x-code-output",
+                    "x-code-output"
+                ]
             }
         ],
         "grammars": [
