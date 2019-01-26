@@ -76,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.1] - 2018-12-05
 ### Changed
- - Upgraded to [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) version 1.5.0 which brings support for overriding keywordCase for specific keywords.
+ - Upgraded to [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) version `1.5.0` which brings support for overriding keywordCase for specific keywords.
 
 ### Fixed
  - Bug introduced in [1.3.0](#130---2018-11-20) that was preventing a debug session from starting due to incorrect "out" path.
@@ -91,6 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - A new launch setting called `debugRootDir` that allows deploying a build file while still debugging a source file
  - Command for switching between xml and brs files for a component.
  - Support for conditional statements without the `then`.
+
+### Changed
+ - Upgraded to [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) version `1.4.0` which brings better support for multi-line if statements without the trailing then.
 
 ### Fixed
  - Breakpoints added after a debug session is launched are now correctly show as disabled.
