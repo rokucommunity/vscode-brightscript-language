@@ -11,6 +11,10 @@
             true,
             "never"
         ],
+        "array-type": [
+            true,
+            "array"
+        ],
         "arrow-return-shorthand": false,
         "class-name": true,
         "comment-format": false,

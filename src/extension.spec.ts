@@ -102,7 +102,7 @@ describe('extension', () => {
     it('registers onDidReceiveDebugSessionCustomEvent', () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
+        extension.activate(<any>{ subscriptions: [] });
+        expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 });

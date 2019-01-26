@@ -40,7 +40,7 @@ export class RokuAdapter {
      */
     public on(eventName: 'cannot-continue', handler: () => void);
     public on(eventName: 'close', handler: () => void);
-    public on(eventName: 'compile-errors', handler: (params: Array<{ path: string; lineNumber: number; }>) => void);
+    public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);

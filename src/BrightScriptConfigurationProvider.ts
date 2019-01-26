@@ -1,4 +1,5 @@
-import { EventEmitter } from 'events';
+import * as dotenv from 'dotenv';
+import * as fsExtra from 'fs-extra';
 import { FilesType } from 'roku-deploy';
 import {
     CancellationToken,
@@ -9,6 +10,8 @@ import {
 } from 'vscode';
 import * as vscode from 'vscode';
 
+import * as util from './util';
+
 export class BrightScriptConfigurationProvider implements DebugConfigurationProvider {
 
     public constructor(context: ExtensionContext) {
@@ -16,6 +19,10 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
     }
 
     public context: ExtensionContext;
+
+    //make unit testing easier by adding these imports properties
+    public fsExtra = fsExtra;
+    public util = util;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -42,11 +49,7 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
                 value: ''
             });
         }
-        if (!config.host) {
-            throw new Error('Debug session terminated: host is required.');
-        } else {
-            await this.context.workspaceState.update('remoteHost', config.host);
-        }
+
         //prompt for password if not hardcoded
         if (config.password === '${promptForPassword}') {
             config.password = await vscode.window.showInputBox({
@@ -58,28 +61,59 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
             }
         }
 
-        //emit this config for listeners
-        this.emitter.emit('resolved', config);
+        //process .env file if present
+        if (config.envFile) {
+            let envFilePath = config.envFile;
+            //resolve ${workspaceFolder} so we can actually load the .env file now
+            if (config.envFile.indexOf('${workspaceFolder}') > -1) {
+                envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
+            }
+            if (await this.util.fileExists(envFilePath) === false) {
+                throw new Error(`Cannot find .env file at "${envFilePath}`);
+            }
+            //parse the .env file
+            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
 
+            //replace any env placeholders
+            for (let key in config) {
+                let configValue = config[key];
+                let match: RegExpMatchArray;
+                let regexp = /\$\{env:([\w\d_]*)\}/g;
+                //replace all environment variable placeholders with their values
+                while (match = regexp.exec(configValue)) {
+                    let environmentVariableName = match[1];
+                    let environmentVariableValue = envConfig[environmentVariableName];
+                    if (environmentVariableValue) {
+                        configValue = configValue.replace(match[0], environmentVariableValue);
+                    }
+                }
+                config[key] = configValue;
+            }
+
+            //chech the host and throw error if not provided or update the workspace to set last host
+            if (!config.host) {
+                throw new Error('Debug session terminated: host is required.');
+            } else {
+                await this.context.workspaceState.update('remoteHost', config.host);
+            }
+
+        }
         return config;
-    }
-
-    private emitter = new EventEmitter();
-
-    public on(name: 'resolved', handler) {
-        this.emitter.on(name, handler);
     }
 }
 
-interface BrightScriptDebugConfiguration extends DebugConfiguration {
+export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     host: string;
     password: string;
     rootDir: string;
+    debugRootDir?: string;
     outDir: string;
     stopOnEntry: boolean;
+    files?: FilesType[];
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
+    envFile?: string;
 }
