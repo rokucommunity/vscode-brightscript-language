@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 import * as fsExtra from 'fs-extra';
+import { FilesType } from 'roku-deploy';
 import {
     CancellationToken,
     DebugConfiguration,
