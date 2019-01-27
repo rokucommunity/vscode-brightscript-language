@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - Upgraded to [roku-deploy](https://www.npmjs.com/package/roku-deploy)@2.0.0 which brings support for dereferencing symbolic links, and copying files located outside of rootDir.
 
+
+
 ## [1.8.1] - 2019-01-25
 ### Fixed
  - Issue in `Go to definition` that would not find functions/subs with a space between the name and the opening parenthesis ([#85](https://github.com/TwitchBronBron/vscode-brightscript-language/issues/85))
@@ -148,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-
+[1.8.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
