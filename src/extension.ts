@@ -13,6 +13,7 @@ import {
     SymbolInformation,
     TextDocument,
     Uri,
+    window,
     workspace,
     WorkspaceFolder,
     WorkspaceSymbolProvider,
@@ -45,8 +46,8 @@ import {
 let outputChannel: vscode.OutputChannel;
 let client: LanguageClient;
 
-export function activate(context: vscode.ExtensionContext) {
-    configureLanguageServer(context);
+export async function activate(context: vscode.ExtensionContext) {
+    await configureLanguageServer(context);
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
         language: 'brightscript',
@@ -95,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 }
 
-export function configureLanguageServer(context: vscode.ExtensionContext) {
+export async function configureLanguageServer(context: vscode.ExtensionContext) {
     // The server is implemented in node
     let serverModule = context.asAbsolutePath(
         path.join('out', 'languageServer', 'server.js')
@@ -137,9 +138,12 @@ export function configureLanguageServer(context: vscode.ExtensionContext) {
         serverOptions,
         clientOptions
     );
-
     // Start the client. This will also launch the server
     client.start();
+    await client.onReady();
+    client.onNotification('critical-failure', (message) => {
+        window.showErrorMessage(message);
+    });
 }
 export function deactivate() {
     if (!client) {

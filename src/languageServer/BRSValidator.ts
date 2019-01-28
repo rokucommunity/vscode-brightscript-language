@@ -1,6 +1,4 @@
 import * as bright from '@roku-road/bright';
-import { Lexer, Parser, Preprocessor } from 'brs';
-import { BrsError } from 'brs/lib';
 import { BRSLanguageServer } from 'C:/projects/brightscript';
 import Uri from 'vscode-uri';
 
@@ -8,8 +6,6 @@ import {
     Diagnostic,
     DiagnosticSeverity,
     TextDocument,
-    TextDocumentPositionParams,
-    TextDocuments,
 } from 'vscode-languageserver';
 
 export function getIssuesWithBright(textDocument: TextDocument) {
@@ -47,22 +43,11 @@ export function getIssuesWithBright(textDocument: TextDocument) {
     return issues;
 }
 
-export function getIssuesWithBrs(textDocument: TextDocument) {
-    let issues: Diagnostic[] = [];
-    let text = textDocument.getText();
-
-    let tokens = Lexer.scan(text);
-    let statements = Parser.parse(tokens);
-
-    return issues;
-}
-
 export async function getIssuesWithBrightscriptLanguageServer(textDocument: TextDocument, server: BRSLanguageServer) {
     let issues: Diagnostic[] = [];
     let uri = Uri.parse(textDocument.uri);
-    await server.program.reloadFile(uri.fsPath, textDocument.getText());
+    await server.program.loadOrReloadFile(uri.fsPath, textDocument.getText());
     await server.program.validate();
-    debugger;
     for (let error of server.program.errors) {
         issues.push({
             severity: error.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
@@ -70,13 +55,13 @@ export async function getIssuesWithBrightscriptLanguageServer(textDocument: Text
                 start: textDocument.positionAt(
                     textDocument.offsetAt({
                         line: error.lineIndex,
-                        character: error.columnBeginIndex
+                        character: error.columnIndexBegin
                     })
                 ),
                 end: textDocument.positionAt(
                     textDocument.offsetAt({
                         line: error.lineIndex,
-                        character: error.columnEndIndex
+                        character: error.columnIndexEnd
                     })
                 )
             },
