@@ -1,3 +1,4 @@
+import * as rpc from 'vscode-jsonrpc';
 import {
     CompletionItem,
     CompletionItemKind,
@@ -6,11 +7,13 @@ import {
     DiagnosticSeverity,
     DidChangeConfigurationNotification,
     InitializeParams,
+    Position,
     ProposedFeatures,
     TextDocument,
     TextDocumentPositionParams,
     TextDocuments
 } from 'vscode-languageserver';
+import Uri from 'vscode-uri';
 
 import { BRSLanguageServer } from 'C:/projects/brightscript';
 
@@ -30,15 +33,17 @@ let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
+let serverFinishedFirstRunPromise;
+
 connection.onInitialize(async (params: InitializeParams) => {
     brightscriptServer = new BRSLanguageServer();
     //start up a new brightscript language server in watch mode,
     //disable all output file generation and deployments, as this
     //is purely for the language server options
-    await brightscriptServer.run({
+    serverFinishedFirstRunPromise = brightscriptServer.run({
         cwd: params.rootPath,
         watch: true,
-        skipPackage: false,
+        skipPackage: true,
         deploy: false
     });
     console.log('Server is running');
@@ -64,7 +69,7 @@ connection.onInitialize(async (params: InitializeParams) => {
     };
 });
 
-connection.onInitialized(() => {
+connection.onInitialized(async () => {
     if (hasConfigurationCapability) {
         // Register for all configuration changes.
         connection.client.register(
@@ -77,6 +82,15 @@ connection.onInitialized(() => {
             connection.console.log('Workspace folder change event received.');
         });
     }
+    //send all diagnostics
+    //send all of the initial diagnostics for the whole project
+    try {
+        await serverFinishedFirstRunPromise;
+    } catch (e) {
+        //send a message explaining what went wrong
+        connection.sendNotification('critical-failure', `BrightScript language server failed to start: \n${e.message}`);
+    }
+    sendDiagnostics();
 });
 
 // The example settings
@@ -134,51 +148,12 @@ documents.onDidChangeContent((change) => {
 });
 
 async function validateTextDocument(textDocument: TextDocument): Promise<void> {
-    console.log('validating text document');
-    let diagnostics: Diagnostic[] = [];
-    if (textDocument.languageId === 'brightscript') {
-        //diagnostics = BRSValidator.getIssuesWithBright(textDocument);
-        // diagnostics = BRSValidator.getIssuesWithBrs(textDocument);
-        try {
-            diagnostics = await BRSValidator.getIssuesWithBrightscriptLanguageServer(textDocument, brightscriptServer);
-        } catch (e) {
-            debugger;
-        }
-    } else {
-
-    }
-
-    let settings = await getDocumentSettings(textDocument.uri);
-
-    //if we have more diagnostics than allowed, truncate
-    if (settings && diagnostics.length > settings.maxNumberOfProblems) {
-        diagnostics.splice(settings.maxNumberOfProblems);
-    }
-
-    // if (diagnostics.length > 0) {
-    //     for (let diagnosic of diagnostics) {
-    //         if (hasDiagnosticRelatedInformationCapability) {
-    //             diagnosic.relatedInformation = [
-    //                 {
-    //                     location: {
-    //                         uri: textDocument.uri,
-    //                         range: Object.assign({}, diagnosic.range)
-    //                     },
-    //                     message: 'Spelling matters'
-    //                 },
-    //                 {
-    //                     location: {
-    //                         uri: textDocument.uri,
-    //                         range: Object.assign({}, diagnosic.range)
-    //                     },
-    //                     message: 'Particularly for names'
-    //                 }
-    //             ];
-    //         }
-    //     }
-    // }
-    // Send the computed diagnostics to VSCode.
-    connection.sendDiagnostics({ uri: textDocument.uri, diagnostics: diagnostics });
+    //make sure the server has finished loading
+    await serverFinishedFirstRunPromise;
+    let filePath = Uri.parse(textDocument.uri).fsPath;
+    await brightscriptServer.program.loadOrReloadFile(filePath, textDocument.getText());
+    await brightscriptServer.program.validate();
+    sendDiagnostics();
 }
 
 connection.onDidChangeWatchedFiles((change) => {
@@ -248,3 +223,42 @@ documents.listen(connection);
 
 // Listen on the connection
 connection.listen();
+
+/**
+ * The list of all issues, indexed by file. This allows us to keep track of which buckets of
+ * diagnostics to send and which to skip because nothing has changed
+ */
+let latestDiagnosticsByFile = {} as { [key: string]: Diagnostic[] };
+function sendDiagnostics() {
+    //compute the new list of diagnostics for whole project
+    let issuesByFile = {} as { [key: string]: Diagnostic[] };
+    // let uri = Uri.parse(textDocument.uri);
+
+    //make a bucket for every file in the project
+    for (let filePath in brightscriptServer.program.files) {
+        issuesByFile[filePath] = [];
+    }
+
+    for (let error of brightscriptServer.program.errors) {
+        issuesByFile[error.filePath].push({
+            severity: error.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error,
+            range: {
+                start: Position.create(error.lineIndex, error.columnIndexBegin),
+                end: Position.create(error.lineIndex, error.columnIndexEnd)
+            },
+            message: error.message,
+            //code: 'NO CODE',
+            source: 'brs'
+        });
+    }
+
+    //send all diagnostics
+    for (let filePath in issuesByFile) {
+        //TODO filter by only the files that have changed
+        connection.sendDiagnostics({
+            uri: Uri.file(filePath).toString(),
+            diagnostics: issuesByFile[filePath]
+        });
+    }
+    latestDiagnosticsByFile = issuesByFile;
+}
