@@ -193,6 +193,8 @@ export let vscode = {
 export let vscodeLanguageClient = {
     LanguageClient: class {
         public start() { }
+        public onReady() { return Promise.resolve<any>(null); }
+        public onNotification() { }
     },
     TransportKind: {
         stdio: 0,
