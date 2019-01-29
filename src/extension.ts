@@ -99,11 +99,8 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function configureLanguageServer(context: vscode.ExtensionContext) {
     // The server is implemented in node
     let serverModule = context.asAbsolutePath(
-        path.join('out', 'languageServer', 'runner.js')
+        path.join('node_modules', 'brightscript-languageServer', 'dist', 'runner.js')
     );
-    // The debug options for the server
-    // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-    let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
 
     // If the extension is launched in debug mode then the debug server options are used
     // Otherwise the run options are used
@@ -115,19 +112,21 @@ export async function configureLanguageServer(context: vscode.ExtensionContext) 
         debug: {
             module: serverModule,
             transport: TransportKind.ipc,
-            options: debugOptions
+            // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
+            options: { execArgv: ['--nolazy', '--inspect=6009'] }
         }
     };
 
     // Options to control the language client
     let clientOptions: LanguageClientOptions = {
-        // Register the server for plain text documents
+        // Register the server for various types of documents
         documentSelector: [
-            { scheme: 'file', language: 'brightscript' }
+            { scheme: 'file', language: 'brightscript' },
+            { scheme: 'file', language: 'xml' }
         ],
         synchronize: {
-            // Notify the server about file changes to '.clientrc files contained in the workspace
-            fileEvents: workspace.createFileSystemWatcher('**/.clientrc')
+            // Notify the server about file changes to every filetype it cares about
+            fileEvents: workspace.createFileSystemWatcher('**/*')
         }
     };
 

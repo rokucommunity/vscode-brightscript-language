@@ -38,7 +38,7 @@
         },
         {
             "type": "npm",
-            "label": "compile",
+            "label": "build",
             "script": "compile",
             "problemMatcher": []
         }
