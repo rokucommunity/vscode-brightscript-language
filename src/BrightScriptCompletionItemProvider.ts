@@ -13,6 +13,7 @@ import { ifAppManagerCompletionItems } from './BrightScriptCompletionItems/ifApp
 import { ifArrayCompletionItems } from './BrightScriptCompletionItems/ifArrayCompletionItems';
 import { ifArrayJoinCompletionItems } from './BrightScriptCompletionItems/ifArrayJoinCompletionItems';
 import { ifArraySortCompletionItems } from './BrightScriptCompletionItems/ifArraySortCompletionItems';
+import { ifAssociativeArrayCompletionItems } from './BrightScriptCompletionItems/ifAssociativeArrayCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -20,7 +21,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifAppManager: ifAppManagerCompletionItems,
         ifArray: ifArrayCompletionItems,
         ifArrayJoin: ifArrayJoinCompletionItems,
-        ifArraySort: ifArraySortCompletionItems
+        ifArraySort: ifArraySortCompletionItems,
+        ifAssociativeArray: ifAssociativeArrayCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

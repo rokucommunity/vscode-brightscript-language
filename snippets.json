@@ -29,5 +29,10 @@
         "prefix": "ifArraySort",
         "body": "ifArraySort",
         "description": "Implemented By:\nroArray\n"
+    },
+    "ifAssociativeArray": {
+        "prefix": "ifAssociativeArray",
+        "body": "ifAssociativeArray",
+        "description": "Implemented By:\nroAssociativeArray\nroSGNode\n"
     }
 }
