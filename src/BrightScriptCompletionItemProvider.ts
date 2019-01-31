@@ -24,10 +24,10 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
-        let linePrefix = document.lineAt(position).text.substr(0, position.character);
+        let linePrefix = document.lineAt(position).text.substr(0, position.character).toLowerCase();
 
         for (let key in this.interfaceDictionary) {
-            if (linePrefix.endsWith(key + '.')) {
+            if (linePrefix.endsWith('.' + key.toLowerCase() + '.')) {
                 return this.interfaceDictionary[key];
             }
         }
