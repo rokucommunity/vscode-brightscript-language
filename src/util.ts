@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
@@ -59,4 +60,14 @@ export async function fixFilePathExtension(filePath: string) {
         return filePathWithExt;
     }
     return null;
+}
+
+/**
+ * Determine if a file exists
+ * @param filePath
+ */
+export async function fileExists(filePath: string) {
+    return new Promise((resolve) => {
+        fsExtra.exists(filePath, resolve);
+    });
 }

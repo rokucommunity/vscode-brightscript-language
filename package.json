@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.5.0",
+    "version": "1.8.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -40,6 +40,7 @@
     "dependencies": {
         "@types/glob": "^5.0.36",
         "brightscript-formatter": "^1.5.0",
+        "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.4.0",
         "fs-extra": "^4.0.3",
@@ -50,7 +51,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^2.0.0-beta1",
+        "roku-deploy": "^2.0.0",
         "vscode-debugadapter": "1.27.0",
         "vscode-debugprotocol": "1.27.0",
         "vscode-uri": "1.0.1"
@@ -60,12 +61,14 @@
         "@types/fs-extra": "^4.0.8",
         "@types/mocha": "^5.2.5",
         "@types/node": "7.0.55",
+        "@types/q": "^1.5.1",
         "@types/sinon": "5.0.7",
         "chai": "^4.2.0",
         "codecov": "^3.1.0",
         "cson-parser": "^1.3.5",
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
+        "mocha-param": "^2.0.0",
         "nyc": "^13.1.0",
         "sinon": "^4.5.0",
         "source-map-support": "^0.5.9",
@@ -156,6 +159,11 @@
                                 "type": "boolean",
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
                                 "default": true
+                            },
+                            "envFile": {
+                                "type": "string",
+                                "description": "A path to an environment variables file.",
+                                "default": ".env"
                             },
                             "consoleOutput": {
                                 "type": "string",
@@ -255,6 +263,23 @@
                     "BrightScript"
                 ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "Log",
+                "aliases": [
+                    "log"
+                ],
+                "extensions": [
+                    ".log"
+                ],
+                "configuration": "./log.configuration.json",
+                "mimetypes": [
+                    "log",
+                    "text/log",
+                    "text/x-log",
+                    "text/x-code-output",
+                    "x-code-output"
+                ]
             }
         ],
         "grammars": [
@@ -473,7 +498,32 @@
                 "key": "win+k",
                 "mac": "cmd+k",
                 "command": "extension.brightscript.sendRemoteText",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "ctrl+l",
+                "mac": "ctrl+l",
+                "command": "extension.brightscript.markLogOutput"
+            },
+            {
+                "key": "ctrl+alt+k",
+                "mac": "ctrl+alt+k",
+                "command": "extension.brightscript.clearLogOutput"
+            },
+            {
+                "key": "win+ctrl+l",
+                "mac": "cmd+ctrl+l",
+                "command": "extension.brightscript.setOutputLogLevelFilter"
+            },
+            {
+                "key": "win+ctrl+i",
+                "mac": "cmd+ctrl+i",
+                "command": "extension.brightscript.setOutputIncludeFilter"
+            },
+            {
+                "key": "win+ctrl+x",
+                "mac": "cmd+ctrl+x",
+                "command": "extension.brightscript.setOutputExcludeFilter"
             }
         ]
     },

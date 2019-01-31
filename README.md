@@ -17,8 +17,16 @@ A VSCode extension to support Roku's BrightScript language.
 - Find usages (Shift+F12)
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
-- Brightscript output log (which is searchable and can be colorized with a plugin like this: [https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-- [Roku remote control from keyboard](#Roku-Remote-Control)
+- Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
+- Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
+- Navigate to source files referenced as `pkg:/` paths from output log
+- Marking the output log (CTRL+L)
+- Clearing the output log (CTRL+K), which also clears the mark indexes
+- Filtering the output log - 3 filters are available:
+  - LogLevel (example `^\[(info|warn|debug\]`)
+  - Include (example `NameOfSomeInterestingComponent`)
+  - Exclude (example `NameOfSomeNoisyComponent`)
+
 
 
 ## Requirements
@@ -45,9 +53,8 @@ Here is a sample launch configuration
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}", //update if roku project lives in a subdirectory
-            "stopOnEntry": false,
-            "debugServer": 4711
+            "rootDir": "${workspaceRoot}",
+            "stopOnEntry": false
         }
     ]
 }
@@ -76,7 +83,7 @@ then you would need change `rootDir` in your launch config to look like this:
     "configurations": [
         {
             ...
-            "rootDir": "Roku App/${workspaceRoot}",
+            "rootDir": "${workspaceRoot}/Roku App",
             ...
         }
     ]
@@ -135,13 +142,13 @@ This extension contributes the following settings:
 
 ## Roku Remote Control
 
-You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below. You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
+You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
 
 This extension sends keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
 
-Here are the commands included in this extension:
+### Keyboard Commands:
 
-|Keyboard Key | Roku Remote Key | Keybinging Command|
+|Keyboard Key | Roku Remote Key | Keybinding Command|
 |--|--|--|
 |`Backspace` | Back Button  | `extension.brightscript.pressBackButton` |
 |`win+Backspace` (or `cmd+Backspace` on mac)  | Backspace |  `extension.brightscript.pressBackspaceButton` |
@@ -166,15 +173,55 @@ You also have the ability to create keybindings for any other Roku supported key
 }
 ```
 
+## Other keyboard shortcuts
+
+| Keybinding (Windows) | Keybinding (Mac) | Command | Description|
+|--|--|--|--|
+| `ctrl+L` |  `ctrl+L` | extension.brightscript.markLogOutput | Add a new mark line in the BrightScript output panel |
+| `ctrl+alt+k` | `ctrl+alt+k` | extension.brightscript.clearLogOutput | Clear the current log output |
+| `win+ctrl+l` | `cmd+ctrl+l` | extension.brightscript.setOutputLogLevelFilter | Filter the BrightScript Output by log level (info, warn, debug)  |
+| `win+ctrl+i` | `cmd+ctrl+i` | extension.brightscript.setOutputIncludeFilter | Filter the BrightScript Output by typing text you want to *include* |
+| `win+ctrl+x` | `cmd+ctrl+x` | extension.brightscript.setOutputExcludeFilter | Filter the BrightScript output by typing text you want to *exclude* |
+
+## Config file for user-specific launch settings
+If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${end:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
+
+```javascript
+//launch.json
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            ...
+            "envFile": "${workspaceRoot}/.env",
+            "username": "${env:ROKU_USERNAME}",
+            "password": "${env:ROKU_PASSWORD}"
+            ...
+        }
+    ]
+}
+```
+
+```bash
+# .env
+
+#the username for the roku
+ROKU_USERNAME=rokudev
+#the password for the roku
+ROKU_PASSWORD=password123
+```
+
+This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
+
+
+
+
 ## Contributing
 
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
-You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel). 
-
-## Known Issues
-
-Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/issues) to see the list of known issues.
+You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 
 ## Changelog
 Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
