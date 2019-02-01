@@ -219,6 +219,17 @@ This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm modul
 
 ## Contributing
 
+Much of this extension depends on the [brightscript](https://github.com/twitchbronbron/brightscript) project, which contributes the language server. To get up and running, do the following:
+
+ 1. Clone this project
+ 1. Clone [brightscript](https://github.com/twitchbronbron/brightscript)
+ 1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript`):
+
+    `"brightscript": "file:C:/projects/brightscript"`
+ 1. run `npm install` in both directories
+ 1. Open vscode in each directory, build, and run as usual
+
+
 View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
