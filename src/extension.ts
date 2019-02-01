@@ -99,7 +99,7 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function configureLanguageServer(context: vscode.ExtensionContext) {
     // The server is implemented in node
     let serverModule = context.asAbsolutePath(
-        path.join('node_modules', 'brightscript-languageServer', 'dist', 'runner.js')
+        path.join('out', 'LanguageServerRunner.js')
     );
 
     // If the extension is launched in debug mode then the debug server options are used
