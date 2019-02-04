@@ -140,8 +140,22 @@ export async function configureLanguageServer(context: vscode.ExtensionContext) 
     // Start the client. This will also launch the server
     client.start();
     await client.onReady();
+
     client.onNotification('critical-failure', (message) => {
         window.showErrorMessage(message);
+    });
+
+    let buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+    buildStatusStatusBar.text = 'BrightScript building...';
+    buildStatusStatusBar.show();
+    //update the statusbar with build statuses
+    client.onNotification('build-status', (message) => {
+        if (message === 'building') {
+            buildStatusStatusBar.text = 'BrightScript building...';
+            buildStatusStatusBar.show();
+        } else if (message === 'success') {
+            buildStatusStatusBar.hide();
+        }
     });
 }
 export function deactivate() {
