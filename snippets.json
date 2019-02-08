@@ -39,5 +39,10 @@
         "prefix": "ifAudioGuide",
         "body": "ifAudioGuide",
         "description": "Implemented By:\nroAudioGuide\n"
+    },
+    "ifAudioMetadata": {
+        "prefix": "ifAudioMetadata",
+        "body": "ifAudioMetadata",
+        "description": "Implemented By:\nroAudioMetadata\n"
     }
 }
