@@ -34,5 +34,10 @@
         "prefix": "ifAssociativeArray",
         "body": "ifAssociativeArray",
         "description": "Implemented By:\nroAssociativeArray\nroSGNode\n"
+    },
+    "ifAudioGuide": {
+        "prefix": "ifAudioGuide",
+        "body": "ifAudioGuide",
+        "description": "Implemented By:\nroAudioGuide\n"
     }
 }

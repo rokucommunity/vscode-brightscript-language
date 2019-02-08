@@ -14,6 +14,7 @@ import { ifArrayCompletionItems } from './BrightScriptCompletionItems/ifArrayCom
 import { ifArrayJoinCompletionItems } from './BrightScriptCompletionItems/ifArrayJoinCompletionItems';
 import { ifArraySortCompletionItems } from './BrightScriptCompletionItems/ifArraySortCompletionItems';
 import { ifAssociativeArrayCompletionItems } from './BrightScriptCompletionItems/ifAssociativeArrayCompletionItems';
+import { ifAudioGuideCompletionItems } from './BrightScriptCompletionItems/ifAudioGuideCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -22,7 +23,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifArray: ifArrayCompletionItems,
         ifArrayJoin: ifArrayJoinCompletionItems,
         ifArraySort: ifArraySortCompletionItems,
-        ifAssociativeArray: ifAssociativeArrayCompletionItems
+        ifAssociativeArray: ifAssociativeArrayCompletionItems,
+        ifAudioGuide: ifAudioGuideCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
