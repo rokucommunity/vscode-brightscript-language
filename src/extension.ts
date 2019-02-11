@@ -145,16 +145,17 @@ export async function configureLanguageServer(context: vscode.ExtensionContext) 
         window.showErrorMessage(message);
     });
 
-    let buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    buildStatusStatusBar.text = 'BrightScript building...';
+    let buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    buildStatusStatusBar.text = '$(flame)';
+    buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
+    buildStatusStatusBar.color = '#673293';
     buildStatusStatusBar.show();
     //update the statusbar with build statuses
     client.onNotification('build-status', (message) => {
         if (message === 'building') {
-            buildStatusStatusBar.text = 'BrightScript building...';
-            buildStatusStatusBar.show();
+            buildStatusStatusBar.text = '$(flame)...';
         } else if (message === 'success') {
-            buildStatusStatusBar.hide();
+            buildStatusStatusBar.text = '$(flame)';
         }
     });
 }
