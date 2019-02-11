@@ -2,6 +2,10 @@ export let vscode = {
     CompletionItem: class { },
     CodeLens: class { },
     DocumentLink: class { },
+    StatusBarAlignment: {
+        Left: 1,
+        Right: 2
+    },
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
@@ -59,6 +63,12 @@ export let vscode = {
         }
     },
     window: {
+        createStatusBarItem: () => {
+            return {
+                text: '',
+                show: () => { }
+            };
+        },
         createOutputChannel: function() {
             return {
                 show: () => { },

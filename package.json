@@ -38,7 +38,7 @@
         "publish": "vsce publish"
     },
     "dependencies": {
-        "brightscript": "github:TwitchBronBron/brightscript#94ceffc",
+        "brightscript": "file:C:/projects/brightscript",
         "brightscript-formatter": "^1.5.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -85,6 +85,8 @@
         "onDebug",
         "onLanguage:brightscript",
         "onLanguage:xml",
+        "workspaceContains:**/manifest",
+        "workspaceContains:**/brsconfig.json",
         "onCommand:extension.brightscript.sendRemoteCommand",
         "onCommand:extension.brightscript.pressBackButton",
         "onCommand:extension.brightscript.pressHomeButton",
