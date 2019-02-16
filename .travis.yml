@@ -18,7 +18,7 @@ deploy:
     on:
       tags: true
       #skip pre-release tags
-      condition: $TRAVIS_TAG =~ ^\d+\.\d+\.\d+$
+      condition: $TRAVIS_TAG =~ ^v\d+\.\d+\.\d+$
   #- provider: script
   #  script: bash vscode-marketplace-publish.sh
   #  skip_cleanup: true
