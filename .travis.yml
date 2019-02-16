@@ -17,9 +17,12 @@ deploy:
     skip_cleanup: true
     on:
       tags: true
-  - provider: script
-    script: bash vscode-marketplace-publish.sh
-    skip_cleanup: true
-    on:
-      tags: true
+      #skip pre-release tags
+      condition: $TRAVIS_TAG =~ ^\d+\.\d+\.\d+$
+  #- provider: script
+  #  script: bash vscode-marketplace-publish.sh
+  #  skip_cleanup: true
+  #  on:
+  #    branch: master
+  #    tags: true
 
