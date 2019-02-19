@@ -54,5 +54,10 @@
         "prefix": "ifAudioResource",
         "body": "ifAudioResource",
         "description": "Implemented By:\nroAudioResource\n"
+    },
+    "ifByteArray": {
+        "prefix": "ifByteArray",
+        "body": "ifByteArray",
+        "description": "Implemented By:\nroByteArray\n"
     }
 }

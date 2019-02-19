@@ -18,6 +18,7 @@ import { ifAudioGuideCompletionItems } from './BrightScriptCompletionItems/ifAud
 import { ifAudioMetadataCompletionItems } from './BrightScriptCompletionItems/ifAudioMetadataCompletionItems';
 import { ifAudioPlayerCompletionItems } from './BrightScriptCompletionItems/ifAudioPlayerCompletionItems';
 import { ifAudioResourceCompletionItems } from './BrightScriptCompletionItems/ifAudioResourceCompletionItems';
+import { ifByteArrayCompletionItems } from './BrightScriptCompletionItems/ifByteArrayCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -30,7 +31,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifAudioGuide: ifAudioGuideCompletionItems,
         ifAudioMetadata: ifAudioMetadataCompletionItems,
         ifAudioPlayer: ifAudioPlayerCompletionItems,
-        ifAudioResource: ifAudioResourceCompletionItems
+        ifAudioResource: ifAudioResourceCompletionItems,
+        ifByteArray: ifByteArrayCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
