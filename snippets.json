@@ -49,5 +49,10 @@
         "prefix": "ifAudioPlayer",
         "body": "ifAudioPlayer",
         "description": "Implemented By:\nroAudioPlayer\n"
+    },
+    "ifAudioResource": {
+        "prefix": "ifAudioResource",
+        "body": "ifAudioResource",
+        "description": "Implemented By:\nroAudioResource\n"
     }
 }
