@@ -44,5 +44,10 @@
         "prefix": "ifAudioMetadata",
         "body": "ifAudioMetadata",
         "description": "Implemented By:\nroAudioMetadata\n"
+    },
+    "ifAudioPlayer": {
+        "prefix": "ifAudioPlayer",
+        "body": "ifAudioPlayer",
+        "description": "Implemented By:\nroAudioPlayer\n"
     }
 }
