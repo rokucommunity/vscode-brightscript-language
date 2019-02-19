@@ -7,6 +7,7 @@ A VSCode extension to support Roku's BrightScript language.
 [![GitHub](https://img.shields.io/github/release/twitchbronbron/vscode-brightscript-language.svg?style=flat-square)](https://github.com/twitchbronbron/vscode-brightscript-language/releases)
 ## Features
 
+- Static analysis (code validation)
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
@@ -40,7 +41,23 @@ Your project must be structured in the way that Roku expects, which looks someth
 - source/
     - main.brs
 
-Here is a sample launch configuration
+If your project lives in a subdirectory, you will need to create a `brsconfig.json` file at the root of your project, and reference your subdirectory like such:
+
+```json
+{
+    "rootDir": "./someSubdir"
+}
+```
+
+
+This project relies heavily on the [brightscript](https://github.com/twitchbronbron/brightscript) project for language server support. See [this link](asdf) for all all of the supported options in the `brsconfig.json` file.
+
+
+## Debugging
+
+This extension supports launching and debugging your local project on a Roku device. In order to do this, you will need to create a `launch.json` configuration file.
+
+Here is a sample `launch.json` file where your roku project lives at the root of your workspace:
 
 ```json
 
@@ -89,6 +106,10 @@ then you would need change `rootDir` in your launch config to look like this:
     ]
 }
 ```
+
+### Using both `launch.json` and `brsconfig.json`
+
+When launching a debug session, this extension will first read all configurations from `brsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `brsconfig.json`, and only add values you wish to override in `launch.json`.
 
 ## Special Cases
 
