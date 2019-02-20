@@ -64,5 +64,10 @@
         "prefix": "ifChannelStore",
         "body": "ifChannelStore",
         "description": "Implemented By:\nroChannelStore\n"
+    },
+    "ifCompositor": {
+        "prefix": "ifCompositor",
+        "body": "ifCompositor",
+        "description": "Implemented By:\nroCompositor\n"
     }
 }
