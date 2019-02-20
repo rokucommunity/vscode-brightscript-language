@@ -59,5 +59,10 @@
         "prefix": "ifByteArray",
         "body": "ifByteArray",
         "description": "Implemented By:\nroByteArray\n"
+    },
+    "ifChannelStore": {
+        "prefix": "ifChannelStore",
+        "body": "ifChannelStore",
+        "description": "Implemented By:\nroChannelStore\n"
     }
 }
