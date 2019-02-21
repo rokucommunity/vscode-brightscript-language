@@ -69,5 +69,10 @@
         "prefix": "ifCompositor",
         "body": "ifCompositor",
         "description": "Implemented By:\nroCompositor\n"
+    },
+    "ifDateTime": {
+        "prefix": "ifDateTime",
+        "body": "ifDateTime",
+        "description": "Implemented By:\nroDateTime\n"
     }
 }
