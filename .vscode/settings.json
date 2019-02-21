@@ -7,8 +7,7 @@
         ".roku-deploy-staging": false,
         "coverage": true,
         "**/node_modules": true,
-        "**/out": true,
-        "**/package-lock.json": true
+        "**/out": true
     },
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
