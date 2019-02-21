@@ -27,9 +27,10 @@
     "scripts": {
         "prepare": "npm run compile",
         "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./src",
+        "copy-schema": "cpx ./node_modules/brightscript/brsconfig.schema.json ./ -L",
+        "compile": "npm run copy-schema && tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
-        "watch": "tsc -w -p ./src",
+        "watch": "npm run copy-schema && tsc -w -p ./src",
         "build-and-test": "npm run compile && npm run test",
         "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
@@ -38,7 +39,7 @@
         "publish": "vsce publish"
     },
     "dependencies": {
-        "brightscript": "github:twitchbronbron/brightscript#c9e8c72",
+        "brightscript": "github:twitchbronbron/brightscript#2cd4b4f",
         "brightscript-formatter": "^1.5.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -68,6 +69,7 @@
         "@types/sinon": "7.0.6",
         "chai": "^4.2.0",
         "codecov": "^3.1.0",
+        "cpx": "^1.5.0",
         "cson-parser": "^4.0.1",
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
@@ -285,6 +287,12 @@
                     "text/x-code-output",
                     "x-code-output"
                 ]
+            }
+        ],
+        "jsonValidation": [
+            {
+                "fileMatch": "brsconfig.json",
+                "url": "./brsconfig.schema.json"
             }
         ],
         "grammars": [
