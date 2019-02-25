@@ -1,3 +1,3 @@
-import { LanguageServer } from 'brightscript';
+import { LanguageServer } from 'brightscript-language';
 let server = new LanguageServer();
 server.run();
