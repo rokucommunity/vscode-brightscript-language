@@ -39,7 +39,7 @@
         "publish": "vsce publish"
     },
     "dependencies": {
-        "brightscript": "github:twitchbronbron/brightscript#38c5bf3",
+        "brightscript-language": "0.1.2",
         "brightscript-formatter": "^1.5.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
