@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
+import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
 export class LogLine {
@@ -14,14 +16,16 @@ export class LogLine {
 }
 
 export class LogOutputManager {
-    constructor(outputChannel, context) {
+    constructor(outputChannel, context, docLinkProvider) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
+        this.docLinkProvider = docLinkProvider;
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
+        this.customLogMatcher = /(\[#pkg:\/)#(.*)#(.*)#]/;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -69,9 +73,11 @@ export class LogOutputManager {
     private includeRegex?: RegExp;
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
+    private customLogMatcher: RegExp;
 
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
+    private docLinkProvider: LogDocumentLinkProvider;
 
     public onDidStartDebugSession() {
         //TODO make this a config setting
@@ -152,12 +158,30 @@ export class LogOutputManager {
             if (line !== '') {
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
-                if (this.matchesFilter(logLine)) {
-                    this.displayedLogLines.push(logLine);
-                    this.outputChannel.appendLine(logLine.text);
-                }
+                this.addLogLineToOutput(logLine);
             }
         });
+    }
+
+    public addLogLineToOutput(logLine) {
+        const lineNumber = this.displayedLogLines.length;
+        if (this.matchesFilter(logLine)) {
+            this.displayedLogLines.push(logLine);
+            let match = this.customLogMatcher.exec(logLine.text);
+            if (match) {
+                const customText = match[2];
+                const pkgPath = match[3];
+                const customLink = new CustomDocumentLink(lineNumber, match.index, customText.length, pkgPath);
+                console.debug(`adding custom link ${customLink}`);
+                this.docLinkProvider.addCustomLink(customLink);
+                let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
+                // this.outputChannel.appendLine(lineNumber.toString() + ': ' + logText);
+                this.outputChannel.appendLine(logText);
+            } else {
+                // this.outputChannel.appendLine(lineNumber.toString() + ': ' + logLine.text);
+                this.outputChannel.appendLine(logLine.text);
+            }
+        }
     }
 
     public matchesFilter(logLine: LogLine): boolean {
@@ -174,6 +198,7 @@ export class LogOutputManager {
         this.displayedLogLines = [];
         this.outputChannel.clear();
         this.collection.clear();
+        this.docLinkProvider.resetCustomLinks();
     }
 
     public setIncludeFilter(text: string): void {
@@ -193,12 +218,12 @@ export class LogOutputManager {
 
     public reFilterOutput(): void {
         this.outputChannel.clear();
+        this.docLinkProvider.resetCustomLinks();
 
         for (let i = 0; i < this.allLogLines.length - 1; i++) {
             let logLine = this.allLogLines[i];
             if (this.matchesFilter(logLine)) {
-                console.log(`IS MATCHED !!! ${logLine.text}`);
-                this.outputChannel.appendLine(logLine.text);
+                this.addLogLineToOutput(logLine);
             }
         }
     }

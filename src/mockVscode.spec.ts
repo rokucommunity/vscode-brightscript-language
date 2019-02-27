@@ -1,3 +1,5 @@
+import { Range } from 'vscode';
+
 export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
@@ -183,5 +185,23 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
-    }
+    },
+    DocumentLink: class {
+        constructor(range: Range, uri: string) {
+            this.range = range;
+            this.uri = uri;
+        }
+
+        private range: any;
+        private uri: string;
+    },
+    Uri: {
+        file: (src: string) => {
+            return {
+                with: ({}) => {
+                    return {};
+                }
+            };
+        }
+    },
 };

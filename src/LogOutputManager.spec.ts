@@ -17,6 +17,7 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
+import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
 const itParam = require('mocha-param');
 
@@ -25,17 +26,20 @@ describe('LogOutputManager ', () => {
     let logOutputManager: LogOutputManager;
     let languagesMock;
     let outputChannelMock;
+    let logDocumentLinkProviderMock;
     let collectionMock;
 
     beforeEach(() => {
         const outputChannel = new vscode.OutputChannel();
         const debugCollection = new vscode.DebugCollection();
+        const logDocumentLinkProvider = new LogDocumentLinkProvider();
         outputChannelMock = sinon.mock(outputChannel);
+        logDocumentLinkProviderMock = sinon.mock(logDocumentLinkProvider);
         collectionMock = sinon.mock(debugCollection);
         languagesMock = sinon.mock(vscode.languages);
         languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
         collectionMock.expects('clear');
-        logOutputManager = new LogOutputManager(outputChannel, vscode.context);
+        logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider);
         logOutputManagerMock = sinon.mock(logOutputManager);
     });
 

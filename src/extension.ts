@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     //register the definition provider
-    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
+    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);

@@ -1,8 +1,24 @@
+/* tslint:disable:no-unused-expression */
+/* tslint:disable:no-var-requires */
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import * as sinonImport from 'sinon';
 
-import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+let Module = require('module');
+
+import { vscode } from './mockVscode.spec';
+
+const { require: oldRequire } = Module.prototype;
+
+Module.prototype.require = function hijacked(file) {
+    if (file === 'vscode') {
+        return vscode;
+    } else {
+        return oldRequire.apply(this, arguments);
+    }
+};
+
+import { CustomDocumentLink, LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 
 let sinon: sinonImport.SinonSandbox;
 beforeEach(() => {
@@ -11,7 +27,7 @@ beforeEach(() => {
 afterEach(() => {
     sinon.restore();
 });
-describe('BrightScriptFileUtils', () => {
+describe('LogDocumentLinkProvider', () => {
     let linkProvider: LogDocumentLinkProvider;
     let l: any;
 
@@ -47,6 +63,31 @@ describe('BrightScriptFileUtils', () => {
                     pkgPath: 'pkg:/source/main.brs'
                 }
             });
+        });
+    });
+    describe('resetCustomLinks', () => {
+        it('resets links', () => {
+            let linkProviderMock = sinon.mock(linkProvider);
+            linkProviderMock.expects('getFileMap').returns({
+                src: path.normalize('C:/project/source/main.brs'),
+                dest: path.normalize('C:/project/out/source/main.brs')
+            });
+            linkProvider.addCustomLink(new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)'));
+            expect(linkProvider.customLinks.length).to.equal(1);
+            linkProvider.resetCustomLinks();
+            expect(linkProvider.customLinks.length).to.equal(0);
+        });
+    });
+
+    describe('addCustomLink', () => {
+        it('adds links', () => {
+            let linkProviderMock = sinon.mock(linkProvider);
+            linkProviderMock.expects('getFileMap').returns({
+                src: path.normalize('C:/project/source/main.brs'),
+                dest: path.normalize('C:/project/out/source/main.brs')
+            });
+            linkProvider.addCustomLink(new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)'));
+            expect(linkProvider.customLinks.length).to.equal(1);
         });
     });
 });
