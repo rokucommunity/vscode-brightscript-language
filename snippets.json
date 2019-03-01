@@ -84,5 +84,10 @@
         "prefix": "ifDraw2D",
         "body": "ifDraw2D",
         "description": "Implemented By:\nroBitmap\nroRegion\nroScreen\n"
+    },
+    "ifEnum": {
+        "prefix": "ifEnum",
+        "body": "ifEnum",
+        "description": "Implemented By:\nroArray\nroAssociativeArray\nroByteArray\nroList\nroMessagePort\nroXMLList\n"
     }
 }

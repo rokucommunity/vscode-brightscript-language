@@ -24,6 +24,7 @@ import { ifCompositorCompletionItems } from './BrightScriptCompletionItems/ifCom
 import { ifDateTimeCompletionItems } from './BrightScriptCompletionItems/ifDateTimeCompletionItems';
 import { ifDeviceInfoCompletionItems } from './BrightScriptCompletionItems/ifDeviceInfoCompletionItems';
 import { ifDraw2DCompletionItems } from './BrightScriptCompletionItems/ifDraw2DCompletionItems';
+import { ifEnumCompletionItems } from './BrightScriptCompletionItems/ifEnumCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -42,7 +43,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifCompositor: ifCompositorCompletionItems,
         ifDateTime: ifDateTimeCompletionItems,
         ifDeviceInfo: ifDeviceInfoCompletionItems,
-        ifDraw2D: ifDraw2DCompletionItems
+        ifDraw2D: ifDraw2DCompletionItems,
+        ifEnum: ifEnumCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
