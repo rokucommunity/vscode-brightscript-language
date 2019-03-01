@@ -74,5 +74,10 @@
         "prefix": "ifDateTime",
         "body": "ifDateTime",
         "description": "Implemented By:\nroDateTime\n"
+    },
+    "ifDeviceInfo": {
+        "prefix": "ifDeviceInfo",
+        "body": "ifDeviceInfo",
+        "description": "Implemented By:\nroDeviceInfo\n"
     }
 }
