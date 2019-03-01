@@ -79,5 +79,10 @@
         "prefix": "ifDeviceInfo",
         "body": "ifDeviceInfo",
         "description": "Implemented By:\nroDeviceInfo\n"
+    },
+    "ifDraw2D": {
+        "prefix": "ifDraw2D",
+        "body": "ifDraw2D",
+        "description": "Implemented By:\nroBitmap\nroRegion\nroScreen\n"
     }
 }
