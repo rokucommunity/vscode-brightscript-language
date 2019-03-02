@@ -27,6 +27,7 @@ import { ifDraw2DCompletionItems } from './BrightScriptCompletionItems/ifDraw2DC
 import { ifEnumCompletionItems } from './BrightScriptCompletionItems/ifEnumCompletionItems';
 import { ifEVPCipherCompletionItems } from './BrightScriptCompletionItems/ifEVPCipherCompletionItems';
 import { ifEVPDigestCompletionItems } from './BrightScriptCompletionItems/ifEVPDigestCompletionItems';
+import { ifFileSystemCompletionItems } from './BrightScriptCompletionItems/ifFileSystemCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -48,7 +49,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifDraw2D: ifDraw2DCompletionItems,
         ifEnum: ifEnumCompletionItems,
         ifEVPCipher: ifEVPCipherCompletionItems,
-        ifEVPDigest: ifEVPDigestCompletionItems
+        ifEVPDigest: ifEVPDigestCompletionItems,
+        ifFileSystem: ifFileSystemCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

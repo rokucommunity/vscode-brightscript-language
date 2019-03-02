@@ -99,5 +99,10 @@
         "prefix": "ifEVPDigest",
         "body": "ifEVPDigest",
         "description": "Implemented By:\nroEVPDigest\n"
+    },
+    "ifFileSystem": {
+        "prefix": "ifFileSystem",
+        "body": "ifFileSystem",
+        "description": "Implemented By:\nroFileSystem\n"
     }
 }
