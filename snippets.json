@@ -104,5 +104,10 @@
         "prefix": "ifFileSystem",
         "body": "ifFileSystem",
         "description": "Implemented By:\nroFileSystem\n"
+    },
+    "ifFont": {
+        "prefix": "ifFont",
+        "body": "ifFont",
+        "description": "Implemented By:\nroFont\n"
     }
 }
