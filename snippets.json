@@ -119,5 +119,10 @@
         "prefix": "ifHdmiStatus",
         "body": "ifHdmiStatus",
         "description": "Implemented By:\nroHdmiStatus\n"
+    },
+    "ifHMAC": {
+        "prefix": "ifHMAC",
+        "body": "ifHMAC",
+        "description": "Implemented By:\nroHMAC\n"
     }
 }
