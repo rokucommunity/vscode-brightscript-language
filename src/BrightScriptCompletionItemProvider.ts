@@ -26,6 +26,7 @@ import { ifDeviceInfoCompletionItems } from './BrightScriptCompletionItems/ifDev
 import { ifDraw2DCompletionItems } from './BrightScriptCompletionItems/ifDraw2DCompletionItems';
 import { ifEnumCompletionItems } from './BrightScriptCompletionItems/ifEnumCompletionItems';
 import { ifEVPCipherCompletionItems } from './BrightScriptCompletionItems/ifEVPCipherCompletionItems';
+import { ifEVPDigestCompletionItems } from './BrightScriptCompletionItems/ifEVPDigestCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -47,6 +48,7 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifDraw2D: ifDraw2DCompletionItems,
         ifEnum: ifEnumCompletionItems,
         ifEVPCipher: ifEVPCipherCompletionItems,
+        ifEVPDigest: ifEVPDigestCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

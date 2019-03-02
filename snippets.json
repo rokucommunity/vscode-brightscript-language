@@ -94,5 +94,10 @@
         "prefix": "ifEVPCipher",
         "body": "ifEVPCipher",
         "description": "Implemented By:\nroEVPCipher\n"
+    },
+    "ifEVPDigest": {
+        "prefix": "ifEVPDigest",
+        "body": "ifEVPDigest",
+        "description": "Implemented By:\nroEVPDigest\n"
     }
 }
