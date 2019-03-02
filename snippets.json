@@ -114,5 +114,10 @@
         "prefix": "ifFontRegistry",
         "body": "ifFontRegistry",
         "description": "Implemented By:\nroFontRegistry\n"
+    },
+    "ifHdmiStatus": {
+        "prefix": "ifHdmiStatus",
+        "body": "ifHdmiStatus",
+        "description": "Implemented By:\nroHdmiStatus\n"
     }
 }
