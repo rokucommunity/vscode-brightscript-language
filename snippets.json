@@ -89,5 +89,10 @@
         "prefix": "ifEnum",
         "body": "ifEnum",
         "description": "Implemented By:\nroArray\nroAssociativeArray\nroByteArray\nroList\nroMessagePort\nroXMLList\n"
+    },
+    "ifEVPCipher": {
+        "prefix": "ifEVPCipher",
+        "body": "ifEVPCipher",
+        "description": "Implemented By:\nroEVPCipher\n"
     }
 }
