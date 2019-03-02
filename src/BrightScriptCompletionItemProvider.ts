@@ -29,6 +29,7 @@ import { ifEVPCipherCompletionItems } from './BrightScriptCompletionItems/ifEVPC
 import { ifEVPDigestCompletionItems } from './BrightScriptCompletionItems/ifEVPDigestCompletionItems';
 import { ifFileSystemCompletionItems } from './BrightScriptCompletionItems/ifFileSystemCompletionItems';
 import { ifFontCompletionItems } from './BrightScriptCompletionItems/ifFontCompletionItems';
+import { ifFontRegistryCompletionItems } from './BrightScriptCompletionItems/ifFontRegistryCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -52,7 +53,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifEVPCipher: ifEVPCipherCompletionItems,
         ifEVPDigest: ifEVPDigestCompletionItems,
         ifFileSystem: ifFileSystemCompletionItems,
-        ifFont: ifFontCompletionItems
+        ifFont: ifFontCompletionItems,
+        ifFontRegistry: ifFontRegistryCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

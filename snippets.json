@@ -109,5 +109,10 @@
         "prefix": "ifFont",
         "body": "ifFont",
         "description": "Implemented By:\nroFont\n"
+    },
+    "ifFontRegistry": {
+        "prefix": "ifFontRegistry",
+        "body": "ifFontRegistry",
+        "description": "Implemented By:\nroFontRegistry\n"
     }
 }
