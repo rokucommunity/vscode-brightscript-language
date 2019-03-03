@@ -134,5 +134,10 @@
         "prefix": "ifImageMetadata",
         "body": "ifImageMetadata",
         "description": "Implemented By:\nroImageMetadata\n"
+    },
+    "ifList": {
+        "prefix": "ifList",
+        "body": "ifList",
+        "description": "Implemented By:\nroList\nroXMLList\n"
     }
 }
