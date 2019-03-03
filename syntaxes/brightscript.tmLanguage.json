@@ -9,13 +9,13 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
-            "include": "#function_name"
+            "include": "#function_declaration"
+        },
+        {
+            "include": "#inline_function_declaration"
         },
         {
             "include": "#end_function"
-        },
-        {
-            "include": "#inline_function"
         },
         {
             "include": "#literal"
@@ -72,7 +72,7 @@
         }
     ],
     "repository": {
-        "function_name": {
+        "function_declaration": {
             "captures": {
                 "1": {
                     "name": "keyword.declaration.function"
@@ -87,7 +87,14 @@
             "name": "keyword.declaration.function",
             "match": "(?i)end (sub|function)"
         },
-        "inline_function": {},
+        "inline_function_declaration": {
+            "captures": {
+                "1": {
+                    "name": "keyword.declaration.function"
+                }
+            },
+            "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
+        },
         "literal": {
             "patterns": [
                 {
