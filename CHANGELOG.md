@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0-beta4]
+### Changed
+ - Upgraded to [brightscript-language@0.1.14](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.14) that brings syntax fixes for using `then` as an object property name and now allows `function` as an argument type.
+### Fixed
+ - textmate grammar related to `run`, `stop`, and `then` when used as object property names
+
+## [1.9.0-beta3]
+### Fixed
+ - bugs with errors showing up for script imports inside of comments.
+
+
+## [1.9.0-beta2]
+### Changed
+ - Upgraded to latest `brightscript` project, which fixes bitshift assignment operators and `stop` and `run` keywords on object literals.
+
+## [1.9.0-beta1]
+### Added
+ - Experimental language validation support. Catches most parse errors and a few basic language errors.
+
 ## [1.8.2] - 2019-01-27
 ### Changed
  - Upgraded to [roku-deploy](https://www.npmjs.com/package/roku-deploy)@2.0.0 which brings support for dereferencing symbolic links, and copying files located outside of rootDir.
@@ -150,6 +169,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[1.9.0-beta4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta3...v1.9.0-beta4
+[1.9.0-beta3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta2...v1.9.0-beta3
+[1.9.0-beta2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
+[1.9.0-beta1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
 [1.8.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
