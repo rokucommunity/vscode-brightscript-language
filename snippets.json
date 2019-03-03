@@ -129,5 +129,10 @@
         "prefix": "ifHttpAgent",
         "body": "ifHttpAgent",
         "description": "Implemented By:\nroAppManager\nroAudioPlayer\nroImageCanvas\nroSGNode\nroTextureManager\nroTextureRequest\nroUrlTransfer\nroVideoPlayer\n"
+    },
+    "ifImageMetadata": {
+        "prefix": "ifImageMetadata",
+        "body": "ifImageMetadata",
+        "description": "Implemented By:\nroImageMetadata\n"
     }
 }
