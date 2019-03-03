@@ -124,5 +124,10 @@
         "prefix": "ifHMAC",
         "body": "ifHMAC",
         "description": "Implemented By:\nroHMAC\n"
+    },
+    "ifHttpAgent": {
+        "prefix": "ifHttpAgent",
+        "body": "ifHttpAgent",
+        "description": "Implemented By:\nroAppManager\nroAudioPlayer\nroImageCanvas\nroSGNode\nroTextureManager\nroTextureRequest\nroUrlTransfer\nroVideoPlayer\n"
     }
 }
