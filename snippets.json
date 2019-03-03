@@ -139,5 +139,10 @@
         "prefix": "ifList",
         "body": "ifList",
         "description": "Implemented By:\nroList\nroXMLList\n"
+    },
+    "ifLocalization": {
+        "prefix": "ifLocalization",
+        "body": "ifLocalization",
+        "description": "Implemented By:\nroLocalization\n"
     }
 }
