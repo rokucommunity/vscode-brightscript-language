@@ -57,6 +57,9 @@
             "include": "#string_literal"
         },
         {
+            "include": "#function_call"
+        },
+        {
             "include": "#variables_and_params"
         }
     ],
@@ -135,6 +138,14 @@
                 }
             }
         },
+        "function_call": {
+            "captures": {
+                "1": {
+                    "name": "entity.name.function.brs"
+                }
+            },
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\s*\\()"
+        },
         "function_declaration": {
             "captures": {
                 "1": {
@@ -167,7 +178,7 @@
             ]
         },
         "non_identifier_keywords": {
-            "comment": "Several keywords can be used as an object property name, in which case it should NOT be colorized",
+            "comment": "Several keywords can be used as an object property name, in which case it should NOT be colorized. This match captures the keywords where they are NOT used as object property names",
             "captures": {
                 "1": {
                     "name": "keyword.control.brs"
