@@ -274,5 +274,10 @@
         "prefix": "ifTimespan",
         "body": "ifTimespan",
         "description": "Implemented By:\nroTimespan\n"
+    },
+    "ifUrlTransfer": {
+        "prefix": "ifUrlTransfer",
+        "body": "ifUrlTransfer",
+        "description": "Implemented By:\nroUrlTransfer\n"
     }
 }
