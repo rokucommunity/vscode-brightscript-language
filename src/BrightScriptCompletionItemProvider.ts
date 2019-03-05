@@ -56,6 +56,7 @@ import { ifSocketOptionCompletionItems } from './BrightScriptCompletionItems/ifS
 import { ifSocketStatusCompletionItems } from './BrightScriptCompletionItems/ifSocketStatusCompletionItems';
 import { ifSourceIdentityCompletionItems } from './BrightScriptCompletionItems/ifSourceIdentityCompletionItems';
 import { ifSpriteCompletionItems } from './BrightScriptCompletionItems/ifSpriteCompletionItems';
+import { ifStringOpsCompletionItems } from './BrightScriptCompletionItems/ifStringOpsCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -106,7 +107,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifSocketOption: ifSocketOptionCompletionItems,
         ifSocketStatus: ifSocketStatusCompletionItems,
         ifSourceIdentity: ifSourceIdentityCompletionItems,
-        ifSprite: ifSpriteCompletionItems
+        ifSprite: ifSpriteCompletionItems,
+        ifStringOps: ifStringOpsCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

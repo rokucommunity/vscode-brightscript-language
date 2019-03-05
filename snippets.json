@@ -244,5 +244,10 @@
         "prefix": "ifSprite",
         "body": "ifSprite",
         "description": "Implemented By:\nroSprite\n"
+    },
+    "ifStringOps": {
+        "prefix": "ifStringOps",
+        "body": "ifStringOps",
+        "description": "Implemented By:\nroString\n"
     }
 }
