@@ -174,5 +174,10 @@
         "prefix": "ifRegistry",
         "body": "ifRegistry",
         "description": "Implemented By:\nroRegistry\n"
+    },
+    "ifRegistrySection": {
+        "prefix": "ifRegistrySection",
+        "body": "ifRegistrySection",
+        "description": "Implemented By:\nroRegistrySection\n"
     }
 }
