@@ -43,6 +43,7 @@ import { ifRegexCompletionItems } from './BrightScriptCompletionItems/ifRegexCom
 import { ifRegionCompletionItems } from './BrightScriptCompletionItems/ifRegionCompletionItems';
 import { ifRegistryCompletionItems } from './BrightScriptCompletionItems/ifRegistryCompletionItems';
 import { ifRegistrySectionCompletionItems } from './BrightScriptCompletionItems/ifRegistrySectionCompletionItems';
+import { ifRSACompletionItems } from './BrightScriptCompletionItems/ifRSACompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -80,7 +81,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifRegex: ifRegexCompletionItems,
         ifRegion: ifRegionCompletionItems,
         ifRegistry: ifRegistryCompletionItems,
-        ifRegistrySection: ifRegistrySectionCompletionItems
+        ifRegistrySection: ifRegistrySectionCompletionItems,
+        ifRSA: ifRSACompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

@@ -179,5 +179,10 @@
         "prefix": "ifRegistrySection",
         "body": "ifRegistrySection",
         "description": "Implemented By:\nroRegistrySection\n"
+    },
+    "ifRSA": {
+        "prefix": "ifRSA",
+        "body": "ifRSA",
+        "description": "Implemented By:\nroRSA\n"
     }
 }
