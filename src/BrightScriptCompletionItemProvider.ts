@@ -44,6 +44,7 @@ import { ifRegionCompletionItems } from './BrightScriptCompletionItems/ifRegionC
 import { ifRegistryCompletionItems } from './BrightScriptCompletionItems/ifRegistryCompletionItems';
 import { ifRegistrySectionCompletionItems } from './BrightScriptCompletionItems/ifRegistrySectionCompletionItems';
 import { ifRSACompletionItems } from './BrightScriptCompletionItems/ifRSACompletionItems';
+import { ifScreenCompletionItems } from './BrightScriptCompletionItems/ifScreenCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -82,7 +83,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifRegion: ifRegionCompletionItems,
         ifRegistry: ifRegistryCompletionItems,
         ifRegistrySection: ifRegistrySectionCompletionItems,
-        ifRSA: ifRSACompletionItems
+        ifRSA: ifRSACompletionItems,
+        ifScreen: ifScreenCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

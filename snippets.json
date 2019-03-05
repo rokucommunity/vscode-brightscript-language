@@ -184,5 +184,10 @@
         "prefix": "ifRSA",
         "body": "ifRSA",
         "description": "Implemented By:\nroRSA\n"
+    },
+    "ifScreen": {
+        "prefix": "ifScreen",
+        "body": "ifScreen",
+        "description": "Implemented By:\nroScreen\n"
     }
 }
