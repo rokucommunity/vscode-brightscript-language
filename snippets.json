@@ -249,5 +249,10 @@
         "prefix": "ifStringOps",
         "body": "ifStringOps",
         "description": "Implemented By:\nroString\n"
+    },
+    "ifSystemLog": {
+        "prefix": "ifSystemLog",
+        "body": "ifSystemLog",
+        "description": "Implemented By:\nroSystemLog\n"
     }
 }
