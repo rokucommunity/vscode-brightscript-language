@@ -284,5 +284,10 @@
         "prefix": "ifVideoPlayer",
         "body": "ifVideoPlayer",
         "description": "Implemented By:\nroVideoPlayer\n"
+    },
+    "ifXMLElement": {
+        "prefix": "ifXMLElement",
+        "body": "ifXMLElement",
+        "description": "Implemented By:\nroXMLElement\n"
     }
 }
