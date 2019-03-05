@@ -204,5 +204,10 @@
         "prefix": "ifSocketAsync",
         "body": "ifSocketAsync",
         "description": "Implemented By:\nroDataGramSocket\nroStreamSocket\n"
+    },
+    "ifSocketCastOption": {
+        "prefix": "ifSocketCastOption",
+        "body": "ifSocketCastOption",
+        "description": "Implemented By:\nroDataGramSocket\n"
     }
 }

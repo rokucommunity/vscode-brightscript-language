@@ -47,6 +47,7 @@ import { ifRSACompletionItems } from './BrightScriptCompletionItems/ifRSAComplet
 import { ifScreenCompletionItems } from './BrightScriptCompletionItems/ifScreenCompletionItems';
 import { ifSocketAddressCompletionItems } from './BrightScriptCompletionItems/ifSocketAddressCompletionItems';
 import { ifSocketAsyncCompletionItems } from './BrightScriptCompletionItems/ifSocketAsyncCompletionItems';
+import { ifSocketCastOptionCompletionItems } from './BrightScriptCompletionItems/ifSocketCastOptionCompletionItems';
 import { ifSocketCompletionItems } from './BrightScriptCompletionItems/ifSocketCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
@@ -90,6 +91,7 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifScreen: ifScreenCompletionItems,
         ifSocketAddress: ifSocketAddressCompletionItems,
         ifSocketAsync: ifSocketAsyncCompletionItems,
+        ifSocketCastOption: ifSocketCastOptionCompletionItems,
         ifSocket: ifSocketCompletionItems
     };
 
