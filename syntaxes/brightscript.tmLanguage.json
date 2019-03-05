@@ -184,7 +184,7 @@
                     "name": "keyword.control.brs"
                 }
             },
-            "match": "[^\\.\\w\\\"](then|stop|run)(?!(\\s*:)|[\\d\\w_])"
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
             "match": "(?i:\\b(if|else if|else|print|while|for each|for|((end|exit) (while|for))|end if|to|step|in|sub|function|end (sub|function)|goto|rem|as)\\b)",
