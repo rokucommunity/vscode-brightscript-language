@@ -37,6 +37,7 @@ import { ifImageMetadataCompletionItems } from './BrightScriptCompletionItems/if
 import { ifListCompletionItems } from './BrightScriptCompletionItems/ifListCompletionItems';
 import { ifLocalizationCompletionItems } from './BrightScriptCompletionItems/ifLocalizationCompletionItems';
 import { ifMessagePortCompletionItems } from './BrightScriptCompletionItems/ifMessagePortCompletionItems';
+import { ifMicrophoneCompletionItems } from './BrightScriptCompletionItems/ifMicrophoneCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -68,7 +69,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifImageMetadata: ifImageMetadataCompletionItems,
         ifList: ifListCompletionItems,
         ifLocalization: ifLocalizationCompletionItems,
-        ifMessagePort: ifMessagePortCompletionItems
+        ifMessagePort: ifMessagePortCompletionItems,
+        ifMicrophone: ifMicrophoneCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

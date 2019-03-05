@@ -149,5 +149,10 @@
         "prefix": "ifMessagePort",
         "body": "ifMessagePort",
         "description": "Implemented By:\nroMessagePort\n"
+    },
+    "ifMicrophone": {
+        "prefix": "ifMicrophone",
+        "body": "ifMicrophone",
+        "description": "Implemented By:\nroMicrophone\n"
     }
 }
