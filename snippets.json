@@ -239,5 +239,10 @@
         "prefix": "ifSourceIdentity",
         "body": "ifSourceIdentity",
         "description": "Implemented By:\nroChannelStoreEvent\nroUrlEvent\n"
+    },
+    "ifSprite": {
+        "prefix": "ifSprite",
+        "body": "ifSprite",
+        "description": "Implemented By:\nroSprite\n"
     }
 }
