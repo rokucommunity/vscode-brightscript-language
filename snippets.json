@@ -279,5 +279,10 @@
         "prefix": "ifUrlTransfer",
         "body": "ifUrlTransfer",
         "description": "Implemented By:\nroUrlTransfer\n"
+    },
+    "ifVideoPlayer": {
+        "prefix": "ifVideoPlayer",
+        "body": "ifVideoPlayer",
+        "description": "Implemented By:\nroVideoPlayer\n"
     }
 }

@@ -63,6 +63,7 @@ import { ifTextureManagerCompletionItems } from './BrightScriptCompletionItems/i
 import { ifTextureRequestCompletionItems } from './BrightScriptCompletionItems/ifTextureRequestCompletionItems';
 import { ifTimespanCompletionItems } from './BrightScriptCompletionItems/ifTimespanCompletionItems';
 import { ifUrlTransferCompletionItems } from './BrightScriptCompletionItems/ifUrlTransferCompletionItems';
+import { ifVideoPlayerCompletionItems } from './BrightScriptCompletionItems/ifVideoPlayerCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -120,7 +121,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifTextureManager: ifTextureManagerCompletionItems,
         ifTextureRequest: ifTextureRequestCompletionItems,
         ifTimespan: ifTimespanCompletionItems,
-        ifUrlTransfer: ifUrlTransferCompletionItems
+        ifUrlTransfer: ifUrlTransferCompletionItems,
+        ifVideoPlayer: ifVideoPlayerCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
