@@ -234,5 +234,10 @@
         "prefix": "ifSocketStatus",
         "body": "ifSocketStatus",
         "description": "Implemented By:\nroDataGramSocket\nroStreamSocket\n"
+    },
+    "ifSourceIdentity": {
+        "prefix": "ifSourceIdentity",
+        "body": "ifSourceIdentity",
+        "description": "Implemented By:\nroChannelStoreEvent\nroUrlEvent\n"
     }
 }
