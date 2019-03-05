@@ -159,5 +159,10 @@
         "prefix": "ifPath",
         "body": "ifPath",
         "description": "Implemented By:\nroPath\n"
+    },
+    "ifRegex": {
+        "prefix": "ifRegex",
+        "body": "ifRegex",
+        "description": "Implemented By:\nroRegex\n"
     }
 }

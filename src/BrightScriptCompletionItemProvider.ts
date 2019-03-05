@@ -39,6 +39,7 @@ import { ifLocalizationCompletionItems } from './BrightScriptCompletionItems/ifL
 import { ifMessagePortCompletionItems } from './BrightScriptCompletionItems/ifMessagePortCompletionItems';
 import { ifMicrophoneCompletionItems } from './BrightScriptCompletionItems/ifMicrophoneCompletionItems';
 import { ifPathCompletionItems } from './BrightScriptCompletionItems/ifPathCompletionItems';
+import { ifRegexCompletionItems } from './BrightScriptCompletionItems/ifRegexCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -72,7 +73,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifLocalization: ifLocalizationCompletionItems,
         ifMessagePort: ifMessagePortCompletionItems,
         ifMicrophone: ifMicrophoneCompletionItems,
-        ifPath: ifPathCompletionItems
+        ifPath: ifPathCompletionItems,
+        ifRegex: ifRegexCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
