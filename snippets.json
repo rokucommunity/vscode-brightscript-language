@@ -219,5 +219,10 @@
         "prefix": "ifSocketConnectionOption",
         "body": "ifSocketConnectionOption",
         "description": "Implemented By:\nroStreamSocket\n"
+    },
+    "ifSocketConnectionStatus": {
+        "prefix": "ifSocketConnectionStatus",
+        "body": "ifSocketConnectionStatus",
+        "description": "Implemented By:\nroStreamSocket\n"
     }
 }
