@@ -169,5 +169,10 @@
         "prefix": "ifRegion",
         "body": "ifRegion",
         "description": "Implemented By:\nroRegion\n"
+    },
+    "ifRegistry": {
+        "prefix": "ifRegistry",
+        "body": "ifRegistry",
+        "description": "Implemented By:\nroRegistry\n"
     }
 }
