@@ -1,11 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-<<<<<<< HEAD
     "version": "1.9.0-beta6",
-=======
-    "version": "1.8.4",
->>>>>>> master
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -43,8 +39,8 @@
         "publish": "vsce publish"
     },
     "dependencies": {
-        "brightscript-language": "github:twitchbronbron/brightscript-language#c6b9b59",
         "brightscript-formatter": "^1.5.0",
+        "brightscript-language": "^0.1.15",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.5.0",
