@@ -269,5 +269,10 @@
         "prefix": "ifTextureRequest",
         "body": "ifTextureRequest",
         "description": "Implemented By:\nroTextureRequest\n"
+    },
+    "ifTimespan": {
+        "prefix": "ifTimespan",
+        "body": "ifTimespan",
+        "description": "Implemented By:\nroTimespan\n"
     }
 }
