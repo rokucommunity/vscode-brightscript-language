@@ -9,10 +9,34 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#m_and_global"
+        },
+        {
+            "include": "#keyword_return"
+        },
+        {
+            "include": "#literal_invalid"
+        },
+        {
+            "include": "#function_declaration"
+        },
+        {
+            "include": "#inline_function_declaration"
+        },
+        {
+            "include": "#end_function"
+        },
+        {
+            "include": "#storage_types"
+        },
+        {
             "include": "#literal"
         },
         {
             "include": "#program_statements"
+        },
+        {
+            "include": "#non_identifier_keywords"
         },
         {
             "include": "#operators"
@@ -21,62 +45,156 @@
             "include": "#support_functions"
         },
         {
-            "include": "#storage_types"
-        },
-        {
             "include": "#constant_numeric"
         },
         {
-            "captures": {
-                "1": {
-                    "name": "punctuation.definition.comment.brightscript"
-                }
-            },
-            "match": "(').*$\\n?",
-            "name": "comment.line.apostrophe.brightscript"
+            "include": "#apostrophe_comment"
         },
         {
-            "captures":{
-                "1":{
-                    "name": "punctuation.definition.comment.brightscript"
-                }
-            },
-            "match": "^\\s*?(?i:rem\\s).*$\\n?",
-            "name": "comment.line.rem.brightscript"
+            "include": "#rem_comment"
         },
         {
+            "include": "#string_literal"
+        },
+        {
+            "include": "#function_call"
+        },
+        {
+            "include": "#variables_and_params"
+        }
+    ],
+    "repository": {
+        "string_literal": {
             "begin": "\"",
             "end": "\"",
-            "name": "string.quoted.double.brightscript",
+            "name": "string.quoted.double.brs",
             "patterns": [
                 {
-                    "match": "\\\\.",
-                    "name": "constant.character.escape.brightscript"
+                    "match": "\"\"",
+                    "name": "constant.character.escape.brs"
                 },
                 {
                     "include": "#class_roku_builtin"
                 }
             ]
-        }
-    ],
-    "repository":{
-        "literal":{
-            "patterns":[
+        },
+        "rem_comment": {
+            "captures": {
+                "1": {
+                    "name": "punctuation.definition.comment.brs"
+                }
+            },
+            "match": "^\\s*?(?i:rem\\s).*$\\n?",
+            "name": "comment.line.rem.brs"
+        },
+        "apostrophe_comment": {
+            "captures": {
+                "1": {
+                    "name": "punctuation.definition.comment.brs"
+                }
+            },
+            "match": "(').*$\\n?",
+            "name": "comment.line.apostrophe.brs"
+        },
+        "keyword_return": {
+            "comment": "The return statements in functions",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.flow.return.brs"
+                }
+            },
+            "match": "(?i:\\b(return)\\b)"
+        },
+        "literal_invalid": {
+            "captures": {
+                "1": {
+                    "name": "constant.language.null.brs"
+                }
+            },
+            "match": "(?i:\\b(invalid)\\b)"
+        },
+        "m_and_global": {
+            "captures": {
+                "1": {
+                    "name": "keyword.other.this.brs"
+                }
+            },
+            "match": "(?i:(?<!\\.)\\b(m|global)\\b)"
+        },
+        "variables_and_params": {
+            "captures": {
+                "1": {
+                    "name": "entity.name.variable.local.brs"
+                }
+            },
+            "match": "(?i:\\b([a-z_][a-z0-9_\\$%!#]*)\\b)"
+        },
+        "storage_types": {
+            "comment": "Included 'dim' because it didn't warrant its own matcher",
+            "match": "(?i:\\b(boolean|integer|longinteger|float|double|string|object|function|interface|dynamic|brsub|dim)\\b)",
+            "captures": {
+                "1": {
+                    "name": "storage.type.brs"
+                }
+            }
+        },
+        "function_call": {
+            "captures": {
+                "1": {
+                    "name": "entity.name.function.brs"
+                }
+            },
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\s*\\()"
+        },
+        "function_declaration": {
+            "captures": {
+                "1": {
+                    "name": "keyword.declaration.function"
+                },
+                "2": {
+                    "name": "entity.name.function.brs"
+                }
+            },
+            "match": "(?i:(sub|function)\\s+([a-z_][a-z0-9_]*))"
+        },
+        "end_function": {
+            "name": "keyword.declaration.function",
+            "match": "(?i)end (sub|function)"
+        },
+        "inline_function_declaration": {
+            "captures": {
+                "1": {
+                    "name": "keyword.declaration.function"
+                }
+            },
+            "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
+        },
+        "literal": {
+            "patterns": [
                 {
                     "name": "constant.language.brs",
                     "match": "(?i)\\b(true|false|invalid)\\b"
                 }
             ]
         },
-        "program_statements":{
-            "match": "(?i:\\b(if|else if|else|print|while|for each|for|((end|exit) (while|for))|end if|to|step|in|stop|then|sub|function|end (sub|function)|goto|return|rem|as)\\b)",
-            "name": "keyword.control.brightscript"
+        "non_identifier_keywords": {
+            "comment": "Several keywords can be used as an object property name, in which case it should NOT be colorized. This match captures the keywords where they are NOT used as object property names",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.brs"
+                }
+            },
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run)(?!(\\s*:)|[\\d\\w_]))"
         },
-        "operators":{
+        "program_statements": {
+            "match": "(?i:\\b(if|else if|else|print|while|for each|for|((end|exit) (while|for))|end if|to|step|in|sub|function|end (sub|function)|goto|rem|as)\\b)",
+            "name": "keyword.control.brs"
+        },
+        "operators": {
             "match": "=|>=|<zz|>|<|<>|\\+|-|\\*|\\/|\\^|&|\\b(?i:(And|Not|Or))\\b",
-            "name": "keyword.operator.brightscript"
+            "name": "keyword.operator.brs"
         },
-        "support_functions":{
+        "support_functions": {
             "patterns": [
                 {
                     "include": "#support_builtin_functions"
@@ -98,41 +216,37 @@
                 }
             ]
         },
-        "support_builtin_functions":{
-            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|R(nd|un)|Box|Type)\\b)",
-            "name": "support.function.brightscript"
+        "support_builtin_functions": {
+            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|Rnd|Box|Type)\\b)",
+            "name": "support.function.brs"
         },
-        "support_global_functions":{
+        "support_global_functions": {
             "match": "(?i:\\b(Re(adAsciiFile|bootSystem)|GetInterface|MatchFiles|Sleep|C(opyFile|reate(Directory|Object))|Delete(Directory|File)|UpTime|FormatDrive|ListDir|W(ait|riteAsciiFile))\\b)",
-            "name": "support.function.brightscript"
+            "name": "support.function.brs"
         },
-        "support_global_string_functions":{
+        "support_global_string_functions": {
             "match": "(?i:\\b(Right|Mid|Str(i(ng(i)?)?)?|Chr|Instr|UCase|Val|Asc|L(Case|e(n|ft)))\\b)",
-            "name": "support.function.brightscript"
+            "name": "support.function.brs"
         },
-        "support_global_math_functions":{
+        "support_global_math_functions": {
             "match": "(?i:\\b(S(in|qr|gn)|C(sng|dbl|os)|Tan|Int|Exp|Fix|Log|A(tn|bs))\\b)",
-            "name": "support.function.brightscript"
+            "name": "support.function.brs"
         },
-        "support_component_functions":{
-            "match": "(?i:\\b(R(ight|e(set(Index)?|ad(B(yte(IfAvailable)?|lock)|File|Line)?|move(Head|Tail|Index)))|Ge(nXML(Header)?|t(Res(ource|ponse(Headers|Code))|X|M(i(nute|llisecond)|o(nth|de(l)?)|essage)|B(yte(sPerBlock|Array)|o(o(tVersion(Number)?|lean)|dy))|S(t(orageCardInfo|a(ndards|tusByte)|ring(Count)?)|i(zeInMegabytes|gnedByte)|ource(Host|Identity|Port)|ub|ec(tionList|ond)|afe(X|Height|Y|Width))|H(o(stName|ur)|e(ight|ad))|Y(ear)?|N(extArticle|ame(dElements)?)|C(hildElements|ontrols|urrent(Standard|Con(trolValue|fig)|Input))|T(i(tle|me(Server|Zone))|o(String|File)|ext|ail)|I(n(t|dex|puts)|dentity)|ZoneDateTime|D(e(scription|vice(BootCount|Name|U(niqueId|ptime)))|a(y(OfWeek)?|ta))|U(se(dInMegabytes|rData)|tcDateTime)|Ent(ityEncode|ry)|V(ersion(Number)?|alue)|KeyList|F(ileSystemType|loat|a(ilureReason|mily)|reeInMegabytes)|W(holeState|idth)|LocalDateTime|Attributes))|M(id|D5|ap(StereoOutput(Aux)?|DigitalOutput))|Boolean|S(h(ift|ow)|canWiFi|t(op(Clear|Display)?|art|r(i(ng)?)?)|implify|ubtract(Milliseconds|Seconds)|e(nd(RawMessage|B(yte|lock)|Line)?|t(R(ollOverRegion|e(s(ize|olution)|c(tangle|eiveEol)))|X|M(i(n(imumTransferRate|ute)|llisecond)|o(nth|de(CaseSensitive)?)|ultiscreenBezel)|B(yteEventPort|o(olean|dy)|a(ckground(Bitmap|Color)|udRate))|S(t(andard|ring)|ub|e(ndEol|cond)|afeTextRegion)|H(o(stName|ur)|eight)|Y(ear)?|Name|C(hannelVolumes(Aux)?|ontrolValue|ursor(Bitmap|Pos(ition)?))|Time(Server|Zone)?|I(n(t|put)|P4(Gateway|Broadcast|Netmask|Address))|OutputState|D(HCP|omain|e(stination|fault(Mode|Transistion))|a(y(OfWeek)?|te(Time)?))|U(ser(Data|AndPassword)|tcDateTime|rl)|P(o(werSaveMode|rt)|assword|roxy)|E(ntry|cho|ol)|V(iewMode|olume(Aux)?)|F(o(nt|r(egroundColor|groundColor))|l(oat|ashRate))|W(holeState|i(dth|Fi(Passphrase|ESSID)))|L(ineEventPort|o(calDateTime|opMode)|auguage)|Audio(Mode(Aux)?|Stream(Aux)?|Output(Aux)?))|ek(Relative|ToEnd|Absolute)))|H(ide|ead|asAttribute)|N(ormalize|ext)|C(hr|ount|urrentPosition|l(s|ear(Region|Events)?))|T(o(Base64String|HexString|kenize|AsciiString)|estInter(netConnectivity|face)|rim)|I(s(MousePresent|N(ext|ame)|InputActive|Empty|Valid|LittleEndianCPU)|n(str|te(ger)|valid))|Object|D(ynamic|isplay(Preload|File(Ex)?)|o(uble|esExist)|elete)|U(n(shift|pack)|Case)|P(o(st(Message|From(String|File))|p(String(s)?)?)|ush(String)?|eek|lay(StaticImage|File)?|arse(String|File)?|reloadFile(Ex)?)|E(nable(R(ollover|egion)|Cursor|Input|Output)|xists)|Void|F(indIndex|unction|l(oat|ush)|rom(Base64String|HexString|AsciiString))|W(hile|aitMessage|rite(File)?)|L(ookup|e(n|ft))|A(s(ync(GetTo(String|File)|Head|PostFrom(String|File)|Flush)|c)?|tEof|dd(Re(ctangle(Region|_region)|place)|Milliseconds|BodyElement|Seconds|Head(er)?|CircleRegion|Tail|DNSServer|E(vent|lement(WithBody)?)|Attribute)|pp(end(String|File)?|ly))|ToStr)\\b)",
-            "name": "support.function.component.brightscript"
+        "support_component_functions": {
+            "match": "(?i:\\b(R(ight|e(set(Index)?|ad(B(yte(IfAvailable)?|lock)|File|Line)?|move(Head|Tail|Index)))|Ge(nXML(Header)?|t(Res(ource|ponse(Headers|Code))|X|M(i(nute|llisecond)|o(nth|de(l)?)|essage)|B(yte(sPerBlock|Array)|o(o(tVersion(Number)?|lean)|dy))|S(t(orageCardInfo|a(ndards|tusByte)|ring(Count)?)|i(zeInMegabytes|gnedByte)|ource(Host|Identity|Port)|ub|ec(tionList|ond)|afe(X|Height|Y|Width))|H(o(stName|ur)|e(ight|ad))|Y(ear)?|N(extArticle|ame(dElements)?)|C(hildElements|ontrols|urrent(Standard|Con(trolValue|fig)|Input))|T(i(tle|me(Server|Zone))|o(String|File)|ext|ail)|I(n(t|dex|puts)|dentity)|ZoneDateTime|D(e(scription|vice(BootCount|Name|U(niqueId|ptime)))|a(y(OfWeek)?|ta))|U(se(dInMegabytes|rData)|tcDateTime)|Ent(ityEncode|ry)|V(ersion(Number)?|alue)|KeyList|F(ileSystemType|loat|a(ilureReason|mily)|reeInMegabytes)|W(holeState|idth)|LocalDateTime|Attributes))|M(id|D5|ap(StereoOutput(Aux)?|DigitalOutput))|Boolean|S(h(ift|ow)|canWiFi|t((Clear|Display)?|art|r(i(ng)?)?)|implify|ubtract(Milliseconds|Seconds)|e(nd(RawMessage|B(yte|lock)|Line)?|t(R(ollOverRegion|e(s(ize|olution)|c(tangle|eiveEol)))|X|M(i(n(imumTransferRate|ute)|llisecond)|o(nth|de(CaseSensitive)?)|ultiscreenBezel)|B(yteEventPort|o(olean|dy)|a(ckground(Bitmap|Color)|udRate))|S(t(andard|ring)|ub|e(ndEol|cond)|afeTextRegion)|H(o(stName|ur)|eight)|Y(ear)?|Name|C(hannelVolumes(Aux)?|ontrolValue|ursor(Bitmap|Pos(ition)?))|Time(Server|Zone)?|I(n(t|put)|P4(Gateway|Broadcast|Netmask|Address))|OutputState|D(HCP|omain|e(stination|fault(Mode|Transistion))|a(y(OfWeek)?|te(Time)?))|U(ser(Data|AndPassword)|tcDateTime|rl)|P(o(werSaveMode|rt)|assword|roxy)|E(ntry|cho|ol)|V(iewMode|olume(Aux)?)|F(o(nt|r(egroundColor|groundColor))|l(oat|ashRate))|W(holeState|i(dth|Fi(Passphrase|ESSID)))|L(ineEventPort|o(calDateTime|opMode)|auguage)|Audio(Mode(Aux)?|Stream(Aux)?|Output(Aux)?))|ek(Relative|ToEnd|Absolute)))|H(ide|ead|asAttribute)|N(ormalize|ext)|C(hr|ount|urrentPosition|l(s|ear(Region|Events)?))|T(o(Base64String|HexString|kenize|AsciiString)|estInter(netConnectivity|face)|rim)|I(s(MousePresent|N(ext|ame)|InputActive|Empty|Valid|LittleEndianCPU)|n(str|te(ger)|valid))|Object|D(ynamic|isplay(Preload|File(Ex)?)|o(uble|esExist)|elete)|U(n(shift|pack)|Case)|P(o(st(Message|From(String|File))|p(String(s)?)?)|ush(String)?|eek|lay(StaticImage|File)?|arse(String|File)?|reloadFile(Ex)?)|E(nable(R(ollover|egion)|Cursor|Input|Output)|xists)|Void|F(indIndex|unction|l(oat|ush)|rom(Base64String|HexString|AsciiString))|W(hile|aitMessage|rite(File)?)|L(ookup|e(n|ft))|A(s(ync(GetTo(String|File)|Head|PostFrom(String|File)|Flush)|c)?|tEof|dd(Re(ctangle(Region|_region)|place)|Milliseconds|BodyElement|Seconds|Head(er)?|CircleRegion|Tail|DNSServer|E(vent|lement(WithBody)?)|Attribute)|pp(end(String|File)?|ly))|ToStr)\\b)",
+            "name": "support.function.component.brs"
         },
-        "scenegraph_functions":{
+        "scenegraph_functions": {
             "match": "(?i:\\b(top|findNode|ObserveField|visible|control|text)\\b)",
-            "name": "support.function.component.brightscript"
+            "name": "support.function.component.brs"
         },
-        "storage_types":{
-            "match": "(?i:\\b(string|in(te(ger)|valid)|object|double|float|b(oolean|rsub))\\b)",
-            "name": "storage.type.brightscript"
-        },
-        "constant_numeric":{
+        "constant_numeric": {
             "match": "\\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\\.?[0-9]*)|(\\.[0-9]+))((e|E)(\\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f)?\\b",
-            "name": "constant.numeric.brightscript"
+            "name": "constant.numeric.brs"
         },
-        "class_roku_builtin":{
+        "class_roku_builtin": {
             "match": "(?i:\\bro(R(ss(Parser|Article)|e(sourceManager|ctangle|ad(File|WriteFile)|gistry(Section)?))|G(pio(Button|ControlPort)|lobal)|XML(Element|List)|MessagePort|AppInfo|Array|AssociativeArray|AudioGuide|AudioMetadata|AudioPlayer|AudioResource|Bitmap|Boolean|ByteArray|CaptionRenderer|ChannelStore|CodeRegistrationScreen|Compositor|DataGramSocket|DateTime|DeviceInfo|Double|EVPCipher|EVPDigest|FileSystem|Float|Font|FontMetrics|FontRegistry|Function|GridScreen|HdmiStatus|HMAC|HttpAgent|ImageCanvas|ImageMetadata|Input|Int|Invalid|KeyboardScreen|List|ListScreen|Localization|LongInteger|MessageDialog|MessagePort|Microphone|OneLineDialog|ParagraphScreen|Path|PinEntryDialog|PosterScreen|ProgramGuide|Regex|Region|Registry|RegistrySection|RSA|Screen|SearchHistory|SearchScreen|SlideShow|SocketAddress|SpringboardScreen|Sprite|StreamSocket|String|SystemLog|TextScreen|TextToSpeech|TextureManager|TextureRequest|Timespan|Tuner|UrlTransfer|VideoPlayer|VideoScreen|XMLElement|XMLList|SGScreen|SGNode|SGNodeEvent|SGScreenEvent|AudioPlayerEvent|CaptionRendererEvent|CECStatusEvent|ChannelStoreEvent|CodeRegistrationScreenEvent|DeviceInfoEvent|FileSystemEvent|GridScreenEvent|HdmiHotPlugEvent|HdmiStatusEvent|ImageCanvasEvent|InputEvent|KeyboardScreenEvent|ListScreenEvent|MessageDialogEvent|MicrophoneEvent|OneLineDialogEvent|ParagraphScreenEvent|PinEntryDialogEvent|PosterScreenEvent|SearchScreenEvent|SlideShowEvent|SocketEvent|SpringboardScreenEvent|SystemLogEvent|TextScreenEvent|TextToSpeechEvent|TextureRequestEvent|TunerEvent|UniversalControlEvent|UrlEvent|VideoPlayerEvent|VideoScreenEvent|B(yteArray|oolean|r(Sub|ightPackage))|S(ystemTime|t(orageInfo|ring( )?)|erialPort( )?)|NetworkConfiguration|C(ontrol(Down( )?|Up|Port)|ecInterface|lockWidget|reateFile)|T(imer|ouchScreen( )?|ext(Field|Widget))|I(RRemote( )?|n(t|valid)|mage(Player|Widget))|D(eviceInfo( )?|at(eTime|agram(Receiver|Sender)))|Url(Transfer|Event)|Video(Mode|Input|Player|Event)|Keyboard(Press( )?| )?|Quadravox(Button( )?|SNS5( )?)|Float|List|A(ssociativeArray|udio(Player|Event)|ppendFile|rray))\\b)",
-            "name": "support.class.brightscript"
+            "name": "support.class.brs"
         }
     }
 }

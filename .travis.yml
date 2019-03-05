@@ -21,5 +21,8 @@ deploy:
     script: bash vscode-marketplace-publish.sh
     skip_cleanup: true
     on:
+      branch: master
       tags: true
+      #do not publish pre-release versions to the vscode extension marketplace
+      condition: $TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$
 
