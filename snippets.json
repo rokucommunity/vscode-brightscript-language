@@ -1,10 +1,4 @@
 {
-    "CreateObject": {
-        "prefix": "CreateObject",
-        "body": "CreateObject(\"$1\")",
-        "description": "Creates a new instance of the specified BrightScript component."
-    },
-
     "ifAppInfo": {
         "prefix": "ifAppInfo",
         "body": "ifAppInfo",
