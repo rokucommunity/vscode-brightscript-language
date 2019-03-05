@@ -259,5 +259,10 @@
         "prefix": "ifTextToSpeech",
         "body": "ifTextToSpeech",
         "description": "Implemented By:\nroTextToSpeech\n"
+    },
+    "ifTextureManager": {
+        "prefix": "ifTextureManager",
+        "body": "ifTextureManager",
+        "description": "Implemented By:\nroTextureManager\n"
     }
 }

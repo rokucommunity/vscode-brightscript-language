@@ -59,6 +59,7 @@ import { ifSpriteCompletionItems } from './BrightScriptCompletionItems/ifSpriteC
 import { ifStringOpsCompletionItems } from './BrightScriptCompletionItems/ifStringOpsCompletionItems';
 import { ifSystemLogCompletionItems } from './BrightScriptCompletionItems/ifSystemLogCompletionItems';
 import { ifTextToSpeechCompletionItems } from './BrightScriptCompletionItems/ifTextToSpeechCompletionItems';
+import { ifTextureManagerCompletionItems } from './BrightScriptCompletionItems/ifTextureManagerCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -112,7 +113,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifSprite: ifSpriteCompletionItems,
         ifStringOps: ifStringOpsCompletionItems,
         ifSystemLog: ifSystemLogCompletionItems,
-        ifTextToSpeech: ifTextToSpeechCompletionItems
+        ifTextToSpeech: ifTextToSpeechCompletionItems,
+        ifTextureManager: ifTextureManagerCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {
