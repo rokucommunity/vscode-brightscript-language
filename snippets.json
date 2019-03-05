@@ -289,5 +289,10 @@
         "prefix": "ifXMLElement",
         "body": "ifXMLElement",
         "description": "Implemented By:\nroXMLElement\n"
+    },
+    "ifXMLList": {
+        "prefix": "ifXMLList",
+        "body": "ifXMLList",
+        "description": "Implemented By:\nroXMLList\n"
     }
 }
