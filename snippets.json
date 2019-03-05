@@ -154,5 +154,10 @@
         "prefix": "ifMicrophone",
         "body": "ifMicrophone",
         "description": "Implemented By:\nroMicrophone\n"
+    },
+    "ifPath": {
+        "prefix": "ifPath",
+        "body": "ifPath",
+        "description": "Implemented By:\nroPath\n"
     }
 }
