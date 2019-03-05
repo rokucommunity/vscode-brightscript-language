@@ -254,5 +254,10 @@
         "prefix": "ifSystemLog",
         "body": "ifSystemLog",
         "description": "Implemented By:\nroSystemLog\n"
+    },
+    "ifTextToSpeech": {
+        "prefix": "ifTextToSpeech",
+        "body": "ifTextToSpeech",
+        "description": "Implemented By:\nroTextToSpeech\n"
     }
 }
