@@ -10,9 +10,10 @@ export const ifFileSystemCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'GetVolumeList',
         insertText: new vscode.SnippetString('GetVolumeList()'),
-        detail: 'GetVolumeList() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetVolumeList() as Object
+
 Returns an roList containing Strings representing the available volumes.
 
 Volumes may be internal or external storage devices, such as "tmp:", "pkg:", "ext1:", etc.
@@ -23,9 +24,10 @@ Volumes may be internal or external storage devices, such as "tmp:", "pkg:", "ex
         kind: CompletionItemKind.Method,
         label: 'GetDirectoryListing',
         insertText: new vscode.SnippetString('GetDirectoryListing(${1:dirPath as String})'),
-        detail: 'GetDirectoryListing(dirPath as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetDirectoryListing(dirPath as String) as Object
+
 Returns an roList of Strings representing the directory listing of names in dirPath.
 `
         )
@@ -34,9 +36,10 @@ Returns an roList of Strings representing the directory listing of names in dirP
         kind: CompletionItemKind.Method,
         label: 'Find',
         insertText: new vscode.SnippetString('Find(${1:dirPath as String}, ${2:regEx as String})'),
-        detail: 'Find(dirPath as String, regEx as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    Find(dirPath as String, regEx as String) as Object
+
 Returns an roList of Strings representing the directory listing of names in dirPath which match the regEx regular expression.
 The list is not recursive; it includes only files and directories that are directly in the directory dirPath. Each item in the list is the name of the file relative to dirPath.
 `
@@ -46,9 +49,10 @@ The list is not recursive; it includes only files and directories that are direc
         kind: CompletionItemKind.Method,
         label: 'FindRecurse',
         insertText: new vscode.SnippetString('FindRecurse(${1:dirPath as String}, ${2:regEx as String})'),
-        detail: 'FindRecurse(dirPath as String, regEx as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    FindRecurse(dirPath as String, regEx as String) as Object
+
 Returns an roList of Strings representing the recursive directory listing of names in dirPath which match the regEx regular expression.
 Each item in the list is the name of the file relative to dirPath.
 `
@@ -58,9 +62,10 @@ Each item in the list is the name of the file relative to dirPath.
         kind: CompletionItemKind.Method,
         label: 'Match',
         insertText: new vscode.SnippetString('Match(${1:path as String}, ${2:pattern as String})'),
-        detail: 'Match(path as String, pattern as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    Match(path as String, pattern as String) as Object
+
 Returns an roList of Strings representing the directory listing of names in dirPath which match the shell-like pattern.
 The pattern may contain wildcards like * and ?. This method is like Find() except that it uses shell-like pattern matching rather than regular expression matching.
 `
@@ -70,9 +75,10 @@ The pattern may contain wildcards like * and ?. This method is like Find() excep
         kind: CompletionItemKind.Method,
         label: 'Exists',
         insertText: new vscode.SnippetString('Exists(${1:path as String})'),
-        detail: 'Exists(path as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    Exists(path as String) as Boolean
+
 Returns true if the path exists.
 `
         )
@@ -81,9 +87,10 @@ Returns true if the path exists.
         kind: CompletionItemKind.Method,
         label: 'Stat',
         insertText: new vscode.SnippetString('Stat(${1:path as String})'),
-        detail: 'Stat(path as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    Stat(path as String) as Object
+
 Returns an roAssociativeArray containing the following keys for the passed in path:
 
 * type: (String) Either the value "file" or "directory"
@@ -96,9 +103,10 @@ Returns an roAssociativeArray containing the following keys for the passed in pa
         kind: CompletionItemKind.Method,
         label: 'GetVolumeInfo',
         insertText: new vscode.SnippetString('GetVolumeInfo(${1:path as String})'),
-        detail: 'GetVolumeInfo(path as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetVolumeInfo(path as String) as Object
+
 Returns an roAssociativeArray containing information about the volume specified in path.
 
 The path should be specified as the volume name plus a directory separator, e.g. "ext1:/".
@@ -119,9 +127,10 @@ Can only be called on external volumes. Internal volumes do not return meaningfu
         kind: CompletionItemKind.Method,
         label: 'CreateDirectory',
         insertText: new vscode.SnippetString('CreateDirectory(${1:path as String})'),
-        detail: 'CreateDirectory(path as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    CreateDirectory(path as String) as Boolean
+
 Creates the directory specified by the path parameter. All directories in path except the last one must already exist; that is, only one directory can be created.
 
 Returns true if successful.
@@ -132,9 +141,10 @@ Returns true if successful.
         kind: CompletionItemKind.Method,
         label: 'Delete',
         insertText: new vscode.SnippetString('Delete(${1:path as String})'),
-        detail: 'Delete(path as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    Delete(path as String) as Boolean
+
 Deletes the file or directory specified by the path parameter. If path is a directory, its contents are recursively removed.
 
 Returns true if successful.
@@ -145,9 +155,10 @@ Returns true if successful.
         kind: CompletionItemKind.Method,
         label: 'CopyFile',
         insertText: new vscode.SnippetString('CopyFile(${1:fromPath as String}, ${2:toPath as String})'),
-        detail: 'CopyFile(fromPath as String, toPath as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    CopyFile(fromPath as String, toPath as String) as Boolean
+
 Copies the file fromPath to toPath.
 
 Returns true if successful.
@@ -158,9 +169,10 @@ Returns true if successful.
         kind: CompletionItemKind.Method,
         label: 'Rename',
         insertText: new vscode.SnippetString('Rename(${1:fromPath as String}, ${2:toPath as String})'),
-        detail: 'Rename(fromPath as String, toPath as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    Rename(fromPath as String, toPath as String) as Boolean
+
 Renames or moves the file or directory fromPath to toPath.
 
 If toPath exists, it is not overwritten. Instead the operation fails and Rename returns false.

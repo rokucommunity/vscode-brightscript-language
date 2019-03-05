@@ -10,9 +10,10 @@ export const ifAudioGuideCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'Say',
         insertText: new vscode.SnippetString('Say(${1:text as String}, ${2:flushSpeech as Boolean}, ${3:dontRepeat as Boolean})'),
-        detail: 'Say(text as String, flushSpeech as Boolean, dontRepeat as Boolean) as Integer',
         documentation: new vscode.MarkdownString(
 `
+    Say(text as String, flushSpeech as Boolean, dontRepeat as Boolean) as Integer
+
 Speaks the specified text string. This method does nothing if Audio Guide is currently disabled.
 
 This method returns an ID for the spoken string to notify observer callbacks about a specific spoken string. This ID can be used with roTextToSpeechEvent.
@@ -32,9 +33,10 @@ For more control over what is said, use roTextToSpeech.Say() which does not pre-
         kind: CompletionItemKind.Method,
         label: 'Flush',
         insertText: new vscode.SnippetString('Flush()'),
-        detail: 'Flush() as Void',
         documentation: new vscode.MarkdownString(
 `
+    Flush() as Void
+
 Interrupts and stops any current text to speech spoken string, to be used when the application does not want the text to speech to continue.
 Note that this call is equivalent to roTextToSpeech.Flush(), and stops speech started using both roAudioGuide.Say() and roTextToSpeech.Say().
 `
@@ -44,9 +46,10 @@ Note that this call is equivalent to roTextToSpeech.Flush(), and stops speech st
         kind: CompletionItemKind.Method,
         label: 'Silence',
         insertText: new vscode.SnippetString('Silence(${1:duration as Integer})'),
-        detail: 'Silence(duration as Integer) as Integer',
         documentation: new vscode.MarkdownString(
 `
+    Silence(duration as Integer) as Integer
+
 If Audio Guide is enabled, causes text to speech to continue to suppress any application background sound for the amount of time specified by duration (in milliseconds).
 This can be used to add clarity for longer spoken text that may have pauses that might otherwise allow application background sound to be heard.
 This method does nothing if Audio Guide is currently disabled.

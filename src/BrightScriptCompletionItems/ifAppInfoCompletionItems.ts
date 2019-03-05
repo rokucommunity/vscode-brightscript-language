@@ -11,9 +11,10 @@ export const ifAppInfoCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'GetID',
         insertText: 'GetID()',
-        detail: 'GetID() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetID() as String
+
 Returns the app's channel ID, e.g. "12345" or "dev".
 `
         )
@@ -22,9 +23,10 @@ Returns the app's channel ID, e.g. "12345" or "dev".
         kind: CompletionItemKind.Method,
         label: 'IsDev',
         insertText: 'IsDev()',
-        detail: 'IsDev() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    IsDev() as Boolean
+
 Returns true if the application is side-loaded, i.e. the channel ID is "dev"
 `
         )
@@ -33,9 +35,10 @@ Returns true if the application is side-loaded, i.e. the channel ID is "dev"
         kind: CompletionItemKind.Method,
         label: 'GetVersion',
         insertText: 'GetVersion()',
-        detail: 'GetVersion() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetVersion() as String
+
 Returns the conglomerate version number from the manifest, e.g. "1.2.3", as formatted major_version + minor_version + build_version.
 `
         )
@@ -44,9 +47,10 @@ Returns the conglomerate version number from the manifest, e.g. "1.2.3", as form
         kind: CompletionItemKind.Method,
         label: 'GetTitle',
         insertText: 'GetTitle()',
-        detail: 'GetTitle() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetTitle() as String
+
 Returns the title value from the manifest.
 `
         )
@@ -55,9 +59,10 @@ Returns the title value from the manifest.
         kind: CompletionItemKind.Method,
         label: 'GetSubtitle',
         insertText: 'GetSubtitle()',
-        detail: 'GetSubtitle() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetSubtitle() as String
+
 Returns the subtitle value from the manifest.
 `
         )
@@ -66,9 +71,10 @@ Returns the subtitle value from the manifest.
         kind: CompletionItemKind.Method,
         label: 'GetDevID',
         insertText: 'GetDevID()',
-        detail: 'GetDevID() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetDevID() as String
+
 Returns the app's developer ID, or the keyed developer ID, if the application is side-loaded.
 `
         )
@@ -77,9 +83,10 @@ Returns the app's developer ID, or the keyed developer ID, if the application is
         kind: CompletionItemKind.Method,
         label: 'GetValue',
         insertText: new vscode.SnippetString('GetValue(${1:key as String})'),
-        detail: 'GetValue(key as String) as String',
         documentation: new vscode.MarkdownString(
 `
+    GetValue(key as String) as String
+
 Returns the named manifest value, or an empty string if the entry is does not exist.
 `
         )

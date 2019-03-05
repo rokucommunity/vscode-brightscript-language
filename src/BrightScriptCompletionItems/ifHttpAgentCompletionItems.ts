@@ -10,9 +10,10 @@ export const ifHttpAgentCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'AddHeader',
         insertText: new vscode.SnippetString('AddHeader(${1:name as String}, ${2:value as String})'),
-        detail: 'AddHeader(name as String, value as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    AddHeader(name as String, value as String) as Boolean
+
 Add the specified HTTP header to the list of headers that will be sent in the HTTP request.
 
 Certain well known headers such as User-Agent, Content-Length, etc. will automatically be sent.
@@ -29,9 +30,10 @@ This allows the developer's server to know which client app is talking to it. An
         kind: CompletionItemKind.Method,
         label: 'SetHeaders',
         insertText: new vscode.SnippetString('SetHeaders(${1:nameValueMap as Object})'),
-        detail: 'SetHeaders(nameValueMap as Object) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    SetHeaders(nameValueMap as Object) as Boolean
+
 nameValueMap should be an roAssociativeArray. Each name/value in the AA is added as an HTTP header.
 
 Header limitations specified in AddHeader() still apply.
@@ -42,9 +44,10 @@ Header limitations specified in AddHeader() still apply.
         kind: CompletionItemKind.Method,
         label: 'InitClientCertificates',
         insertText: new vscode.SnippetString('InitClientCertificates()'),
-        detail: 'InitClientCertificates() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    InitClientCertificates() as Boolean
+
 Initialize the object to send the Roku client certificate.
 `
         )
@@ -53,9 +56,10 @@ Initialize the object to send the Roku client certificate.
         kind: CompletionItemKind.Method,
         label: 'SetCertificatesFile',
         insertText: new vscode.SnippetString('SetCertificatesFile(${1:path as String})'),
-        detail: 'SetCertificatesFile(path as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    SetCertificatesFile(path as String) as Boolean
+
 Set the certificates file used for SSL to the .pem file specified.
 
 The .pem file should include the CA (certificate authority) certificate that signed the certificate installed on your web server.
@@ -74,9 +78,10 @@ The appropriate certificates file should be placed at the location specified in 
         kind: CompletionItemKind.Method,
         label: 'SetCertificatesDepth',
         insertText: new vscode.SnippetString('SetCertificatesDepth(${1:depth as Integer})'),
-        detail: 'SetCertificatesDepth(depth as Integer) as Void',
         documentation: new vscode.MarkdownString(
 `
+    SetCertificatesDepth(depth as Integer) as Void
+
 Set the maximum depth of the certificate chain that will be accepted.
 `
         )
@@ -85,9 +90,10 @@ Set the maximum depth of the certificate chain that will be accepted.
         kind: CompletionItemKind.Method,
         label: 'EnableCookies',
         insertText: new vscode.SnippetString('EnableCookies()'),
-        detail: 'EnableCookies() as Void',
         documentation: new vscode.MarkdownString(
 `
+    EnableCookies() as Void
+
 Causes any Set-Cookie headers returned from the request to be interpreted and the resulting cookies to be added to the cookie cache.
 `
         )
@@ -96,9 +102,10 @@ Causes any Set-Cookie headers returned from the request to be interpreted and th
         kind: CompletionItemKind.Method,
         label: 'GetCookies',
         insertText: new vscode.SnippetString('GetCookies(${1:domain as String}, ${2:path as String})'),
-        detail: 'GetCookies(domain as String, path as String) as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetCookies(domain as String, path as String) as Object
+
 Returns any cookies from the cookie cache that match the specified domain and path.
 
 If domain is an empty string, all domains are matched.
@@ -122,9 +129,10 @@ Expires | roDateTime | Cookie expiration date, if any
         kind: CompletionItemKind.Method,
         label: 'AddCookies',
         insertText: new vscode.SnippetString('AddCookies(${1:cookies as Object})'),
-        detail: 'AddCookies(cookies as Object) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    AddCookies(cookies as Object) as Boolean
+
 cookies should be an roArray of roAssociativeArrays.
 
 Each AA should be in the same format as the AAs returned by GetCookie().
@@ -137,9 +145,10 @@ The specified cookies are added to the cookie cache.
         kind: CompletionItemKind.Method,
         label: 'ClearCookies',
         insertText: new vscode.SnippetString('ClearCookies()'),
-        detail: 'ClearCookies() as Void',
         documentation: new vscode.MarkdownString(
 `
+    ClearCookies() as Void
+
 Removes all cookies from the cookie cache.
 `
         )

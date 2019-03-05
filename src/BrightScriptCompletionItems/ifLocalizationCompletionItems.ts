@@ -10,9 +10,10 @@ export const ifLocalizationCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'GetPluralString',
         insertText: new vscode.SnippetString('GetPluralString(${1:count as Integer}, ${2:zeroString as String}, ${3:oneString as String}, ${4:pluralString as String})'),
-        detail: 'GetPluralString(count as Integer, zeroString as String, oneString as String, pluralString as String) as String',
         documentation: new vscode.MarkdownString(
 `
+    GetPluralString(count as Integer, zeroString as String, oneString as String, pluralString as String) as String
+
 If count is 0, this returns zeroString. If count is 1, it returns oneString.
 Otherwise, it replaces "^n" in pluralString with count and returns the result. For example, you might call it as follows:
 
@@ -24,9 +25,10 @@ Otherwise, it replaces "^n" in pluralString with count and returns the result. F
         kind: CompletionItemKind.Method,
         label: 'GetLocalizedAsset',
         insertText: new vscode.SnippetString('GetLocalizedAsset(${1:dirName as String}, ${2:fileName as String})'),
-        detail: 'GetLocalizedAsset(dirName as String, fileName as String) as String',
         documentation: new vscode.MarkdownString(
 `
+    GetLocalizedAsset(dirName as String, fileName as String) as String
+
 Returns an appropriate asset path based on the user's currently selected language.
 dirName is the name of a subdirectory in the directory pkg:/locale/XX_YY/ where XX_YY is the current language setting. fileName is the name of the file.  Example usage:
 

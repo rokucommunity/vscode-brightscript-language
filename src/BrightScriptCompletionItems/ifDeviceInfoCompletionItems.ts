@@ -11,9 +11,10 @@ export const ifDeviceInfoCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'GetModel',
         insertText: new vscode.SnippetString('GetModel()'),
-        detail: 'GetModel() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetModel() as String
+
 Returns the model name for the Roku Streaming Player device running the script.
 This is a five-character alphanumeric string; for example, "3050X". Please see Roku Models and Features of the Developer Guide for a list of the current and classic models.
 `
@@ -23,9 +24,10 @@ This is a five-character alphanumeric string; for example, "3050X". Please see R
         kind: CompletionItemKind.Method,
         label: 'GetModelDisplayName',
         insertText: new vscode.SnippetString('GetModelDisplayName()'),
-        detail: 'GetModelDisplayName() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetModelDisplayName() as String
+
 Returns the model display name for the Roku Streaming Player device running the script (for example, "Roku 2 XD").
 `
         )
@@ -34,9 +36,10 @@ Returns the model display name for the Roku Streaming Player device running the 
         kind: CompletionItemKind.Method,
         label: 'GetModelType',
         insertText: new vscode.SnippetString('GetModelType()'),
-        detail: 'GetModelType() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetModelType() as String
+
 Returns a string describing what type of device it is. For future compatibility,
 the caller should by default assume "STB" when anything other than described value is returned. Current possible values are:
 
@@ -49,9 +52,10 @@ the caller should by default assume "STB" when anything other than described val
         kind: CompletionItemKind.Method,
         label: 'GetModelDetails',
         insertText: new vscode.SnippetString('GetModelDetails()'),
-        detail: 'GetModelDetails() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetModelDetails() as Object
+
 Returns an associative array containing more information about the device model. The following keys are defined:
 
 VendorName  - string describing model vendor
@@ -63,9 +67,10 @@ ModelNumber - string describing model number
         kind: CompletionItemKind.Method,
         label: 'GetFriendlyName',
         insertText: new vscode.SnippetString('GetFriendlyName()'),
-        detail: 'GetFriendlyName() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetFriendlyName() as String
+
 Returns a string describing the device that may be used for network device selection.
 The string may be a user-assigned device name or a description of the device such as model name and/or serial number. The string is subject to change and should not be used as a persistent key or ID.
 `
@@ -75,9 +80,10 @@ The string may be a user-assigned device name or a description of the device suc
         kind: CompletionItemKind.Method,
         label: 'GetVersion',
         insertText: new vscode.SnippetString('GetVersion()'),
-        detail: 'GetVersion() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetVersion() as String
+
 Returns the version number of the Roku Streaming Player firmware running on the device. This is a 13 character string; for example "034.08E01185A".
 The third through sixth characters are the major/minor version number ("4.08") and the ninth through twelfth are the build number ("1185").
 `
@@ -87,9 +93,10 @@ The third through sixth characters are the major/minor version number ("4.08") a
         kind: CompletionItemKind.Method,
         label: 'GetRIDA',
         insertText: new vscode.SnippetString('GetRIDA()'),
-        detail: 'GetRIDA() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetRIDA() as String
+
 _Available since firmware 8.1_
 
 GetRIDA() returns a unique identifier of the unit running the script.
@@ -106,9 +113,10 @@ IsRIDADisabled() should be called to check if the user has disabled RIDA trackin
         kind: CompletionItemKind.Method,
         label: 'IsRIDADisabled',
         insertText: new vscode.SnippetString('IsRIDADisabled()'),
-        detail: 'IsRIDADisabled() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    IsRIDADisabled() as Boolean
+
 _Available since firmware 8.1_
 
 IsRIDADisabled() returns True if the user has disabled RIDA tracking by selecting "Limit tracking" from the Roku Settings menu.
@@ -119,9 +127,10 @@ IsRIDADisabled() returns True if the user has disabled RIDA tracking by selectin
         kind: CompletionItemKind.Method,
         label: 'GetChannelClientId',
         insertText: new vscode.SnippetString('GetChannelClientId()'),
-        detail: 'GetChannelClientId() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetChannelClientId() as String
+
 _Available since firmware 8.1_
 
 GetChannelClientId() returns a unique identifier of the unit running the script.
@@ -137,9 +146,10 @@ This value can be used to manage or identify devices linked to the channel’s c
         kind: CompletionItemKind.Method,
         label: 'GetUserCountryCode',
         insertText: new vscode.SnippetString('GetUserCountryCode()'),
-        detail: 'GetUserCountryCode() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetUserCountryCode() as String
+
 _Available since firmware 8.1_
 
 To determine the country associated with a user’s Roku account, a new method GetUserCountryCode() as String was added to roDeviceInfo.
@@ -157,9 +167,10 @@ We, therefore, recommend that channels utilize both to avoid having to update la
         kind: CompletionItemKind.Method,
         label: 'GetRandomUUID',
         insertText: new vscode.SnippetString('GetRandomUUID()'),
-        detail: 'GetRandomUUID() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetRandomUUID() as String
+
 Returns a randomly generated unique identifier.
 The string returned is a Universally Unique Identifier (UUID) version 4 as specified in IETF-RFC 4122 with 36 characters (32 alphanumeric characters and four hyphens).
 The characters are grouped in the form 8-4-4-4-12, for example "123e4567-e89b-12d3-a456-426655440000". Each time this function is called, a different identifier is returned.
@@ -170,9 +181,10 @@ The characters are grouped in the form 8-4-4-4-12, for example "123e4567-e89b-12
         kind: CompletionItemKind.Method,
         label: 'GetTimeZone',
         insertText: new vscode.SnippetString('GetTimeZone()'),
-        detail: 'GetTimeZone() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetTimeZone() as String
+
 Returns a string representing the user's current system time zone setting. Current possible values are:
 
 * "US/Puerto Rico-Virgin Islands"
@@ -208,9 +220,10 @@ Returns a string representing the user's current system time zone setting. Curre
         insertText: new vscode.SnippetString(
             'HasFeature(${1|"5.1_surround_sound","can_output_5.1_surround_sound","sd_only_hardware","usb_hardware","sdcard_hardware","ethernet_hardware","gaming_hardware","energy_star_compliant"|})'
             ),
-        detail: 'HasFeature() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    HasFeature() as Boolean
+
 Returns true if the current device/firmware supports the passed in feature string.
 
 Valid features to query for are:
@@ -232,9 +245,10 @@ Valid features to query for are:
         kind: CompletionItemKind.Method,
         label: 'GetCurrentLocale',
         insertText: new vscode.SnippetString('GetCurrentLocale()'),
-        detail: 'GetCurrentLocale() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetCurrentLocale() as String
+
 Returns a string representing the current locale based on the user's language setting.
 The string is an ISO 639-1 (2-letter) language code followed by an underscore and a ISO 3166-1 (2-letter) country code. Current possible values are:
 
@@ -253,9 +267,10 @@ Value | Language
         kind: CompletionItemKind.Method,
         label: 'GetCountryCode',
         insertText: new vscode.SnippetString('GetCountryCode()'),
-        detail: 'GetCountryCode() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetCountryCode() as String
+
 Returns a value that designates the Roku Channel Store associated with a user’s Roku account.
 Typically, the value returned will be an ISO 3166-1 (2-letter) country code representing the country.
 Alternatively, if the channel owner entered into an additional agreement to have the channel published to a curated Roku Powered Channel Store instead of the user country,
@@ -290,9 +305,10 @@ This does not necessarily match the physical location of the device, nor does it
         kind: CompletionItemKind.Method,
         label: 'TimeSinceLastKeypress',
         insertText: new vscode.SnippetString('TimeSinceLastKeypress()'),
-        detail: 'TimeSinceLastKeypress() as Integer',
         documentation: new vscode.MarkdownString(
 `
+    TimeSinceLastKeypress() as Integer
+
 Returns the number of seconds since the last remote keypress was received.
 `
         )
@@ -301,9 +317,10 @@ Returns the number of seconds since the last remote keypress was received.
         kind: CompletionItemKind.Method,
         label: 'GetDrmInfoEx',
         insertText: new vscode.SnippetString('GetDrmInfoEx()'),
-        detail: 'GetDrmInfoEx() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetDrmInfoEx() as Object
+
 _Available since firmware version 8.1_
 
 A new API, GetDrmInfoEx(), returns an associative array with the supported DRM system and features.
@@ -314,9 +331,10 @@ A new API, GetDrmInfoEx(), returns an associative array with the supported DRM s
         kind: CompletionItemKind.Method,
         label: 'GetCaptionsMode',
         insertText: new vscode.SnippetString('GetCaptionsMode()'),
-        detail: 'GetCaptionsMode() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetCaptionsMode() as String
+
 This function returns the current global setting for the Mode property. In other words, this function is used to determine whether global captions are turned on or off, or are in instant replay mode.
 
 Possible Values:
@@ -333,9 +351,10 @@ Note: On a Roku TV, when the user selects On Mute this function will return On w
         kind: CompletionItemKind.Method,
         label: 'SetCaptionsMode',
         insertText: new vscode.SnippetString('SetCaptionsMode(${1:mode as String})'),
-        detail: 'SetCaptionsMode(mode as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    SetCaptionsMode(mode as String) as Boolean
+
 This function sets the current global setting for the Mode property.
 In other words, this function is used to determine whether global captions are turned on or off, or are in instant replay mode or enabled onMute.
 The possible parameter values are those listed for the Mode property. The function returns true if the mode was successfully set.
@@ -353,9 +372,10 @@ Possible Values:
         kind: CompletionItemKind.Method,
         label: 'GetCaptionsOption',
         insertText: new vscode.SnippetString('GetCaptionsOption(${1:option as String})'),
-        detail: 'GetCaptionsOption(option as String) as String',
         documentation: new vscode.MarkdownString(
 `
+    GetCaptionsOption(option as String) as String
+
 This function returns the current value of the specified global setting property. The value returned is one of the possible values for the specified property.
 
 See online documentation for more info on possible properties and values
@@ -367,9 +387,10 @@ https://sdkdocs.roku.com/display/sdkdoc/ifDeviceInfo
         kind: CompletionItemKind.Method,
         label: 'GetClockFormat',
         insertText: new vscode.SnippetString('GetClockFormat()'),
-        detail: 'GetClockFormat() as Integer',
         documentation: new vscode.MarkdownString(
 `
+    GetClockFormat() as Integer
+
 GetClockFormat lets the channel query whether the system settings for
 Time (Setting --> System --> Time) is set to a 12 or 24-hour format. The API returns 0 for the 12-hour format and 1 for the 24-hour format.
 
@@ -381,9 +402,10 @@ _This function is available in firmware 8.0 and above._
         kind: CompletionItemKind.Method,
         label: 'EnableAppFocusEvent',
         insertText: new vscode.SnippetString('EnableAppFocusEvent(${1:enable as Boolean})'),
-        detail: 'EnableAppFocusEvent() as Void',
         documentation: new vscode.MarkdownString(
 `
+    EnableAppFocusEvent() as Void
+
 Channels can get notified when a system overlay event (such as the confirm partner button HUD or the caption control overlay) is displayed.
 This notification gives the channel the opportunity to do any processing they may want to when the channel loses or regains focus. The default is the overlay event display is disabled (false).
 
@@ -395,9 +417,10 @@ _This function is available in firmware 8.0 and above._
         kind: CompletionItemKind.Method,
         label: 'EnableScreensaverExitedEvent',
         insertText: new vscode.SnippetString('EnableScreensaverExitedEvent(${1:enable as Boolean})'),
-        detail: 'EnableScreensaverExitedEvent() as Void',
         documentation: new vscode.MarkdownString(
 `
+    EnableScreensaverExitedEvent() as Void
+
 Enables (true) or disables (false) sending an roDeviceInfoEvent when a user has exited the screensaver. The default is disabled (false).
 
 To receive events, you must have first called SetMessagePort on the roDeviceInfo object specifying the message port that is to receive the events.
@@ -410,9 +433,10 @@ _This function is available in firmware 7.5 and above._
         kind: CompletionItemKind.Method,
         label: 'EnableLowGeneralMemoryEvent',
         insertText: new vscode.SnippetString('EnableLowGeneralMemoryEvent(${1:enable as Boolean})'),
-        detail: 'EnableLowGeneralMemoryEvent() as Void',
         documentation: new vscode.MarkdownString(
 `
+    EnableLowGeneralMemoryEvent() as Void
+
 _Available since firmware version 8.1_
 
 If enabled, requests the OS to send a roDeviceInfoEvent with generalMemoryLevel field set.
@@ -423,9 +447,10 @@ If enabled, requests the OS to send a roDeviceInfoEvent with generalMemoryLevel 
         kind: CompletionItemKind.Method,
         label: 'GetGeneralMemoryLevel',
         insertText: new vscode.SnippetString('GetGeneralMemoryLevel()'),
-        detail: 'GetGeneralMemoryLevel() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetGeneralMemoryLevel() as String
+
 _Available since firmware version 8.1_
 
 Returns "normal", "low", or "critical" depending on the general memory levels for the application.
@@ -437,9 +462,10 @@ Returns "normal", "low", or "critical" depending on the general memory levels fo
         kind: CompletionItemKind.Method,
         label: 'GetLinkStatus',
         insertText: new vscode.SnippetString('GetLinkStatus()'),
-        detail: 'GetLinkStatus() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    GetLinkStatus() as Boolean
+
 Returns true if the player seems to have an active network connection.
 `
         )
@@ -448,9 +474,10 @@ Returns true if the player seems to have an active network connection.
         kind: CompletionItemKind.Method,
         label: 'EnableLinkStatusEvent',
         insertText: new vscode.SnippetString('EnableLinkStatusEvent(${1:enable as Boolean})'),
-        detail: 'EnableLinkStatusEvent() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    EnableLinkStatusEvent() as Boolean
+
 Enables or disables sending an roDeviceInfoEvent when the network connection status changes. The default is disabled.
 
 To receive events, you must have first called SetMessagePort on the roDeviceInfo object specifying the message port that is to receive the events.
@@ -461,9 +488,10 @@ To receive events, you must have first called SetMessagePort on the roDeviceInfo
         kind: CompletionItemKind.Method,
         label: 'GetConnectionType',
         insertText: new vscode.SnippetString('GetConnectionType()'),
-        detail: 'GetConnectionType() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetConnectionType() as String
+
 If the unit is connected via WiFi, returns the string "WiFiConnection".
 If the unit is connected via a wired connection, returns "WiredConnection". If the unit is not connected, returns an empty string.
 `
@@ -473,9 +501,10 @@ If the unit is connected via a wired connection, returns "WiredConnection". If t
         kind: CompletionItemKind.Method,
         label: 'GetExternalIp',
         insertText: new vscode.SnippetString('GetExternalIp()'),
-        detail: 'GetExternalIp() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetExternalIp() as String
+
 Returns the external IP address of the Roku player. This is the address seen by the Internet and all other computers outside your local network.
 `
         )
@@ -484,9 +513,10 @@ Returns the external IP address of the Roku player. This is the address seen by 
         kind: CompletionItemKind.Method,
         label: 'GetIPAddrs',
         insertText: new vscode.SnippetString('GetIPAddrs()'),
-        detail: 'GetIPAddrs() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetIPAddrs() as Object
+
 Returns roAssociativeArray. Each key in the AA is the name of a network interface and the value is the IP-address of the interface. Normally there will be only one interface in the AA.
 
 Provides a way for your application to get the local IP address of the Roku box.
@@ -498,9 +528,10 @@ This can be used in conjunction with the ECP (see the External Control Protocol 
         kind: CompletionItemKind.Method,
         label: 'GetConnectionInfo',
         insertText: new vscode.SnippetString('GetConnectionInfo()'),
-        detail: 'GetConnectionInfo() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetConnectionInfo() as Object
+
 Returns an Associative Array with these entries:
 
 Name | Value
@@ -523,9 +554,10 @@ _This function is available in firmware 6.1 and above._
         kind: CompletionItemKind.Method,
         label: 'GetDisplayType',
         insertText: new vscode.SnippetString('GetDisplayType()'),
-        detail: 'GetDisplayType() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetDisplayType() as String
+
 Returns the text corresponding to the button selection in the Player Info Settings/Display Type page. Either "HDTV", "4:3 standard", or "16:9 anamorphic".
 `
         )
@@ -534,9 +566,10 @@ Returns the text corresponding to the button selection in the Player Info Settin
         kind: CompletionItemKind.Method,
         label: 'GetDisplayMode',
         insertText: new vscode.SnippetString('GetDisplayMode()'),
-        detail: 'GetDisplayMode() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetDisplayMode() as String
+
 Returns the configured graphics layer resolution: "480i" or "480p" (if the ui_resolutions manifest entry includes sd as a supported resolution, otherwise "720p" is returned),
 "720p", or "1080p" (if the ui_resolutions manifest file entry includes fhd as a supported resolution, otherwise "720p" is returned).
 `
@@ -546,9 +579,10 @@ Returns the configured graphics layer resolution: "480i" or "480p" (if the ui_re
         kind: CompletionItemKind.Method,
         label: 'GetDisplayAspectRatio',
         insertText: new vscode.SnippetString('GetDisplayAspectRatio()'),
-        detail: 'GetDisplayAspectRatio() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetDisplayAspectRatio() as String
+
 Returns "4x3" or "16x9"
 `
         )
@@ -557,9 +591,10 @@ Returns "4x3" or "16x9"
         kind: CompletionItemKind.Method,
         label: 'GetDisplaySize',
         insertText: new vscode.SnippetString('GetDisplaySize()'),
-        detail: 'GetDisplaySize() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetDisplaySize() as Object
+
 Returns an roAssociativeArray with keys "w" and "h" that contain the values for the screen width and height respectively, either 720 and 480, or 1280 and 720. Example: { w:1280, h:720 }.
 `
         )
@@ -568,9 +603,10 @@ Returns an roAssociativeArray with keys "w" and "h" that contain the values for 
         kind: CompletionItemKind.Method,
         label: 'GetVideoMode',
         insertText: new vscode.SnippetString('GetVideoMode()'),
-        detail: 'GetVideoMode() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetVideoMode() as String
+
 Returns a string representing the video playback resolution. The possible strings are:
 
 String | Resolution | Ratio | Rate | Bit Depth
@@ -606,9 +642,10 @@ String | Resolution | Ratio | Rate | Bit Depth
         kind: CompletionItemKind.Method,
         label: 'GetDisplayProperties',
         insertText: new vscode.SnippetString('GetDisplayProperties()'),
-        detail: 'GetDisplayProperties() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetDisplayProperties() as Object
+
 Returns an roAssociativeArray with the following key/value pairs:
 
 Key | Type
@@ -627,9 +664,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'GetSupportedGraphicsResolutions',
         insertText: new vscode.SnippetString('GetSupportedGraphicsResolutions()'),
-        detail: 'GetSupportedGraphicsResolutions() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetSupportedGraphicsResolutions() as Object
+
 Return the list of supported graphics resolutions as a list of roAssociative arrays. Each array has the following keys:
 
 Key | Type
@@ -648,9 +686,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'CanDecodeVideo',
         insertText: new vscode.SnippetString('CanDecodeVideo(${1:video_format as Object})'),
-        detail: 'CanDecodeVideo(video_format as Object) as Object',
         documentation: new vscode.MarkdownString(
 `
+    CanDecodeVideo(video_format as Object) as Object
+
 Checks if the Roku Player can decode and play a video format specified as an associative array,
 and returns an associative array that includes a Boolean value indicating if the video format can be played, and the closest video format supported by the Roku Player.
 
@@ -694,9 +733,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'GetUIResolution',
         insertText: new vscode.SnippetString('GetUIResolution()'),
-        detail: 'GetUIResolution() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetUIResolution() as Object
+
 Returns an associative array describing the current UI resolution. The associative array contains the following possible key-value pairs:
 
 Key | Values
@@ -713,9 +753,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'GetGraphicsPlatform',
         insertText: new vscode.SnippetString('GetGraphicsPlatform()'),
-        detail: 'GetGraphicsPlatform() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetGraphicsPlatform() as String
+
 Returns a string specifying the device's graphics platform, either opengl or directfb.
 
 _This function is available in firmware 7.6 and above._
@@ -727,9 +768,10 @@ _This function is available in firmware 7.6 and above._
         kind: CompletionItemKind.Method,
         label: 'GetAudioOutputChannel',
         insertText: new vscode.SnippetString('GetAudioOutputChannel()'),
-        detail: 'GetAudioOutputChannel() as String',
         documentation: new vscode.MarkdownString(
 `
+    GetAudioOutputChannel() as String
+
 Returns a string representing the selected audio output ("Stereo" or "5.1 surround").
 `
         )
@@ -738,9 +780,10 @@ Returns a string representing the selected audio output ("Stereo" or "5.1 surrou
         kind: CompletionItemKind.Method,
         label: 'GetAudioDecodeInfo',
         insertText: new vscode.SnippetString('GetAudioDecodeInfo()'),
-        detail: 'GetAudioDecodeInfo() as Object',
         documentation: new vscode.MarkdownString(
 `
+    GetAudioDecodeInfo() as Object
+
 Returns an roAssociativeArray with the EDID (EIA.2FCEA-861) audio decoder information for the device connected to the HDMI port(or the device itself for a Roku TV).
 Each audio decoder supported by the device is listed, with up to four numbers describing the decoder from the EDID SAD (Short Audio Descriptor).
 Each value is of the form "<number of channels>:<SAD1>:<SAD2>:<PassThru>:".
@@ -755,9 +798,10 @@ more information about their values can be found here: http://en.wikipedia.org/w
         kind: CompletionItemKind.Method,
         label: 'CanDecodeAudio',
         insertText: new vscode.SnippetString('CanDecodeAudio(${1:audio_format as Object})'),
-        detail: 'CanDecodeAudio(audio_format as Object) as Object',
         documentation: new vscode.MarkdownString(
 `
+    CanDecodeAudio(audio_format as Object) as Object
+
 Checks if the Roku Player can decode and play an audio format specified as an associative array,
 and returns an associative array that includes a Boolean value indicating if the audio format can be played, and the closest audio format supported by the Roku Player.
 The general format of the associative arrays for CanDecodeAudio() is similar to the parameter and return associative arrays used in CanDecodeVideo().
@@ -781,9 +825,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'GetSoundEffectsVolume',
         insertText: new vscode.SnippetString('GetSoundEffectsVolume()'),
-        detail: 'GetSoundEffectsVolume() as Integer',
         documentation: new vscode.MarkdownString(
 `
+    GetSoundEffectsVolume() as Integer
+
 Returns the user interface sounds effects volume as a percentage.
 A return value of 0 indicates that UI sound effects are muted, and a value of 100 indicates that they are set to the maximum volume level.
 
@@ -795,9 +840,10 @@ _This function is available in firmware 7.0 and above._
         kind: CompletionItemKind.Method,
         label: 'IsAudioGuideEnabled',
         insertText: new vscode.SnippetString('IsAudioGuideEnabled()'),
-        detail: 'IsAudioGuideEnabled() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    IsAudioGuideEnabled() as Boolean
+
 Returns true if Audio Guide is enabled (on supported devices), otherwise false.
 
 _This function is available in firmware 7.5 and above._
@@ -808,9 +854,10 @@ _This function is available in firmware 7.5 and above._
         kind: CompletionItemKind.Method,
         label: 'EnableAudioGuideChangedEvent',
         insertText: new vscode.SnippetString('EnableAudioGuideChangedEvent(${1:enable as Boolean})'),
-        detail: 'EnableAudioGuideChangedEvent() as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    EnableAudioGuideChangedEvent() as Boolean
+
 Enables (true) or disables (false) sending an roDeviceInfoEvent when Audio Guide is enabled. The default is disabled (false).
 
 To receive events, you must have first called SetMessagePort on the roDeviceInfo object specifying the message port that is to receive the events.

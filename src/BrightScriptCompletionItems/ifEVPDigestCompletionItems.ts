@@ -10,9 +10,10 @@ export const ifEVPDigestCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'Setup',
         insertText: new vscode.SnippetString('Setup(${1:digestType as String})'),
-        detail: 'Setup(digestType as String) as Integer',
         documentation: new vscode.MarkdownString(
 `
+    Setup(digestType as String) as Integer
+
 Initialize a new message digest context.  digestType identifies one of the supported digest algorithms from openssl,
 
 List of Supported Digest Algorithms:
@@ -32,9 +33,10 @@ sha512 | SHA-2, 512 bit variant
         kind: CompletionItemKind.Method,
         label: 'Reint',
         insertText: new vscode.SnippetString('Reint()'),
-        detail: 'Reint() as Integer',
         documentation: new vscode.MarkdownString(
 `
+    Reint() as Integer
+
 Re-initialize an existing message digest context. This can be called to reuse an existing roEVPDigest object to digest new data. Returns 0 on success or non-zero on failure.
 `
         )
@@ -43,9 +45,10 @@ Re-initialize an existing message digest context. This can be called to reuse an
         kind: CompletionItemKind.Method,
         label: 'Process',
         insertText: new vscode.SnippetString('Process(${1:bytes as Object})'),
-        detail: 'Process(bytes as Object) as Object',
         documentation: new vscode.MarkdownString(
 `
+    Process(bytes as Object) as Object
+
 The parameter should be an roByteArray. The data in the array is digested and the digest is returned as a hex string.
 
     x = evp.Process(bytes)
@@ -62,9 +65,10 @@ is equivalent to
         kind: CompletionItemKind.Method,
         label: 'Update',
         insertText: new vscode.SnippetString('Update(${1:bytes as Object})'),
-        detail: 'Update(bytes as Object) as Object',
         documentation: new vscode.MarkdownString(
 `
+    Update(bytes as Object) as Object
+
 Add more data to be digested. The parameter should be an roByteArray. The data in the array is added to the current digest.
 `
         )
@@ -73,9 +77,10 @@ Add more data to be digested. The parameter should be an roByteArray. The data i
         kind: CompletionItemKind.Method,
         label: 'Final',
         insertText: new vscode.SnippetString('Final()'),
-        detail: 'Final() as Object',
         documentation: new vscode.MarkdownString(
 `
+    Final() as Object
+
 Returns the digest of data passed in by previous calls to Update() as a hex string.
 `
         )

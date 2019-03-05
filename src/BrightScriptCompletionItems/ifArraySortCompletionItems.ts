@@ -10,9 +10,10 @@ export const ifArraySortCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'Sort',
         insertText: new vscode.SnippetString('Sort(${1|"","i","r","ir"|})'),
-        detail: 'Sort(flags = "" as String) as Void',
         documentation: new vscode.MarkdownString(
 `
+    Sort(flags = "" as String) as Void
+
 Performs a stable sort.
 
 Items are arbitrarily grouped by comparable type of number or string, and are sorted within the group with a logical comparison.
@@ -53,9 +54,10 @@ Examples
         kind: CompletionItemKind.Method,
         label: 'SortBy',
         insertText: new vscode.SnippetString('SortBy(${1:fieldName as String}, ${2|"","i","r","ir"|})'),
-        detail: 'SortBy(fieldName as String, flags = "" as String) as Void',
         documentation: new vscode.MarkdownString(
 `
+    SortBy(fieldName as String, flags = "" as String) as Void
+
 Performs a stable sort of an array of associative arrays by value of a common field.
 
 Items are arbitrarily grouped by comparable value type of number or string, and are sorted within the group with a logical comparison.
@@ -81,9 +83,10 @@ Examples
         kind: CompletionItemKind.Method,
         label: 'Reverse',
         insertText: new vscode.SnippetString('Reverse()'),
-        detail: 'Reverse() as Void',
         documentation: new vscode.MarkdownString(
 `
+    Reverse() as Void
+
 Reverses the order of elements in an array.\\
 _This function is available in firmware 7.1 or later._
 

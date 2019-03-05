@@ -10,9 +10,10 @@ export const ifAssociativeArrayCompletionItems: CompletionItem[] = [
         kind: CompletionItemKind.Method,
         label: 'AddReplace',
         insertText: new vscode.SnippetString('AddReplace(${1:key as String}, ${2:value as Dynamic})'),
-        detail: 'AddReplace(key as String, value as Dynamic) as Void',
         documentation: new vscode.MarkdownString(
 `
+    AddReplace(key as String, value as Dynamic) as Void
+
 Add a new entry to the array associating the supplied value with the supplied key string. Only one value may be associated with a key.
 If the key is already associated with a value, the existing value is discarded.
 `
@@ -22,9 +23,10 @@ If the key is already associated with a value, the existing value is discarded.
         kind: CompletionItemKind.Method,
         label: 'Lookup',
         insertText: new vscode.SnippetString('Lookup(${1:key as String})'),
-        detail: 'Lookup(key as String) as Dynamic',
         documentation: new vscode.MarkdownString(
 `
+    Lookup(key as String) as Dynamic
+
 Return the value in the array associated with the specified key. If there is no value associated with the key then type "invalid" is returned.
 Key comparison is case-insensitive, unless SetModeCaseSensitive() has been called.
 `
@@ -34,9 +36,10 @@ Key comparison is case-insensitive, unless SetModeCaseSensitive() has been calle
         kind: CompletionItemKind.Method,
         label: 'DoesExist',
         insertText: new vscode.SnippetString('DoesExist(${1:key as String})'),
-        detail: 'DoesExist(key as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    DoesExist(key as String) as Boolean
+
 Look for an entry in the array associated with the specified key. If there is no associated object then false is returned. If there is such an object then true is returned.
 `
         )
@@ -45,9 +48,10 @@ Look for an entry in the array associated with the specified key. If there is no
         kind: CompletionItemKind.Method,
         label: 'Delete',
         insertText: new vscode.SnippetString('Delete(${1:key as String})'),
-        detail: 'Delete(key as String) as Boolean',
         documentation: new vscode.MarkdownString(
 `
+    Delete(key as String) as Boolean
+
 Look for an entry in the array associated with the specified key. If there is such an value then it is deleted and true is returned. If not then false is returned.
 `
         )
@@ -56,9 +60,10 @@ Look for an entry in the array associated with the specified key. If there is su
         kind: CompletionItemKind.Method,
         label: 'Clear',
         insertText: new vscode.SnippetString('Clear()'),
-        detail: 'Clear() as Void',
         documentation: new vscode.MarkdownString(
 `
+    Clear() as Void
+
 Remove all key/values from the associative array.
 `
         )
@@ -67,9 +72,10 @@ Remove all key/values from the associative array.
         kind: CompletionItemKind.Method,
         label: 'Keys',
         insertText: new vscode.SnippetString('Keys()'),
-        detail: 'Keys() as Object',
         documentation: new vscode.MarkdownString(
 `
+    Keys() as Object
+
 Returns an array containing the associative array keys in lexicographical order.\\
 _This function is available in firmware 7.0 or later._
 `
@@ -79,9 +85,10 @@ _This function is available in firmware 7.0 or later._
         kind: CompletionItemKind.Method,
         label: 'Items',
         insertText: new vscode.SnippetString('Items()'),
-        detail: 'Items() as Object',
         documentation: new vscode.MarkdownString(
 `
+    Items() as Object
+
 Returns an array containing the associative array key/value pairs in lexicographical order of key.
 Each item is in the returned array is an associative array with 'key' and 'value' fields.\\
 _This function is available in firmware 7.5 or later._
@@ -100,9 +107,10 @@ Examples
         kind: CompletionItemKind.Method,
         label: 'SetModeCaseSensitive',
         insertText: new vscode.SnippetString('SetModeCaseSensitive()'),
-        detail: 'SetModeCaseSensitive() as Void',
         documentation: new vscode.MarkdownString(
 `
+    SetModeCaseSensitive() as Void
+
 Associative Array lookups are case insensitive by default. This call makes all subsequent actions case sensitive.
 `
         )
@@ -111,9 +119,10 @@ Associative Array lookups are case insensitive by default. This call makes all s
         kind: CompletionItemKind.Method,
         label: 'LookupCI',
         insertText: new vscode.SnippetString('LookupCI(${1:key as String})'),
-        detail: 'LookupCI(key as String) as Dynamic',
         documentation: new vscode.MarkdownString(
 `
+    LookupCI(key as String) as Dynamic
+
 Same as "Lookup" except key comparison is always case insensitive, regardless of case mode.
 `
         )
@@ -122,9 +131,10 @@ Same as "Lookup" except key comparison is always case insensitive, regardless of
         kind: CompletionItemKind.Method,
         label: 'Append',
         insertText: new vscode.SnippetString('Append(${1:aa as Object})'),
-        detail: 'Append(aa as Object) as Void',
         documentation: new vscode.MarkdownString(
 `
+    Append(aa as Object) as Void
+
 Append an AssociativeArray to this one.  If any key in aa is already associated with a value in this AssociativeArray, the current value is discarded and is replaced with the value in aa.
 `
         )
@@ -133,9 +143,10 @@ Append an AssociativeArray to this one.  If any key in aa is already associated 
         kind: CompletionItemKind.Method,
         label: 'Count',
         insertText: new vscode.SnippetString('Count()'),
-        detail: 'Count() as Integer',
         documentation: new vscode.MarkdownString(
 `
+    Count() as Integer
+
 Returns the number of keys in the associative array.
 `
         )
