@@ -36,6 +36,7 @@ import { ifHttpAgentCompletionItems } from './BrightScriptCompletionItems/ifHttp
 import { ifImageMetadataCompletionItems } from './BrightScriptCompletionItems/ifImageMetadataCompletionItems';
 import { ifListCompletionItems } from './BrightScriptCompletionItems/ifListCompletionItems';
 import { ifLocalizationCompletionItems } from './BrightScriptCompletionItems/ifLocalizationCompletionItems';
+import { ifMessagePortCompletionItems } from './BrightScriptCompletionItems/ifMessagePortCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
@@ -66,7 +67,8 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         ifHttpAgent: ifHttpAgentCompletionItems,
         ifImageMetadata: ifImageMetadataCompletionItems,
         ifList: ifListCompletionItems,
-        ifLocalization: ifLocalizationCompletionItems
+        ifLocalization: ifLocalizationCompletionItems,
+        ifMessagePort: ifMessagePortCompletionItems
     };
 
     public provideCompletionItems(document: TextDocument, position: Position, token: CancellationToken, context: vscode.CompletionContext): CompletionItem[] {

@@ -144,5 +144,10 @@
         "prefix": "ifLocalization",
         "body": "ifLocalization",
         "description": "Implemented By:\nroLocalization\n"
+    },
+    "ifMessagePort": {
+        "prefix": "ifMessagePort",
+        "body": "ifMessagePort",
+        "description": "Implemented By:\nroMessagePort\n"
     }
 }
