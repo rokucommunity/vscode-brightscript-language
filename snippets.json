@@ -189,5 +189,10 @@
         "prefix": "ifScreen",
         "body": "ifScreen",
         "description": "Implemented By:\nroScreen\n"
+    },
+    "ifSocket": {
+        "prefix": "ifSocket",
+        "body": "ifSocket",
+        "description": "Implemented By:\nroDataGramSocket\nroStreamSocket\n"
     }
 }
