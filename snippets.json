@@ -264,5 +264,10 @@
         "prefix": "ifTextureManager",
         "body": "ifTextureManager",
         "description": "Implemented By:\nroTextureManager\n"
+    },
+    "ifTextureRequest": {
+        "prefix": "ifTextureRequest",
+        "body": "ifTextureRequest",
+        "description": "Implemented By:\nroTextureRequest\n"
     }
 }
