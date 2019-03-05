@@ -209,5 +209,10 @@
         "prefix": "ifSocketCastOption",
         "body": "ifSocketCastOption",
         "description": "Implemented By:\nroDataGramSocket\n"
+    },
+    "ifSocketConnection": {
+        "prefix": "ifSocketConnection",
+        "body": "ifSocketConnection",
+        "description": "Implemented By:\nroStreamSocket\n"
     }
 }
