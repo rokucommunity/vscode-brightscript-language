@@ -199,5 +199,10 @@
         "prefix": "ifSocketAddress",
         "body": "ifSocketAddress",
         "description": "Implemented By:\nroSocketAddress\n"
+    },
+    "ifSocketAsync": {
+        "prefix": "ifSocketAsync",
+        "body": "ifSocketAsync",
+        "description": "Implemented By:\nroDataGramSocket\nroStreamSocket\n"
     }
 }
