@@ -265,5 +265,5 @@ Returns the date/time value's day of week as an Integer (Sunday=0, Monday=1, ...
 _This function is available in firmware 6.2 or later._
 `
         )
-    },
+    }
 ];

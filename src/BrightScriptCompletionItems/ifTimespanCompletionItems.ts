@@ -60,5 +60,5 @@ This function parses the ISO8601 date (e.g. 2008-11-29T14:54:02.171) and returns
 The date provided and the current time calculations are all done assuming UTC. The "Z" timezone part of the ISO8601 string is ignored.
 `
         )
-    },
+    }
 ];

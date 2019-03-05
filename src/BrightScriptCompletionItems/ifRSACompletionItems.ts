@@ -91,5 +91,5 @@ If the digest algorithm is not set (using SetDigestAlgorithm) before calling Ver
 This would be equivalent to simply calling the openssl function RSA_public_decrypt(signature) and then comparing the result with the digest.
 `
         )
-    },
+    }
 ];

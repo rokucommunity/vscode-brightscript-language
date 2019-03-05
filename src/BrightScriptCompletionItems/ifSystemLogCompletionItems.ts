@@ -27,5 +27,5 @@ See online documentation for more info on valid logtypes.
 https://sdkdocs.roku.com/display/sdkdoc/ifSystemLog
 `
         )
-    },
+    }
 ];

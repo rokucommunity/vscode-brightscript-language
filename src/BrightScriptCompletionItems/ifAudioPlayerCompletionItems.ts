@@ -145,5 +145,5 @@ If the keys array is invalid, then do not return any keys to the BrightScript ch
 Any keys not specified with this method are deleted by the firmware and never returned to the BrightScript application.
 `
         )
-    },
+    }
 ];

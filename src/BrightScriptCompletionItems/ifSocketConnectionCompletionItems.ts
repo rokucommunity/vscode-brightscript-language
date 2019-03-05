@@ -69,5 +69,5 @@ Use status to distinguish among success (eSuccess() or isConnected()), not ready
 Returns true if a connect or accept has successfully completed on this socket
 `
         )
-    },
+    }
 ];

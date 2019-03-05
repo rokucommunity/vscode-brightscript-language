@@ -42,5 +42,5 @@ If it exists there, it will return it; otherwise, it will check the directory lo
 We are adding new locales with each release. A list of currently supported locales can be found at ifDeviceInfo.GetCurrentLocale.
 `
         )
-    },
+    }
 ];

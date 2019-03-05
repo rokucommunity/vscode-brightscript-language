@@ -187,5 +187,5 @@ Set the current receive timeout, in seconds.
 Returns true if successfully set.
 `
         )
-    },
+    }
 ];

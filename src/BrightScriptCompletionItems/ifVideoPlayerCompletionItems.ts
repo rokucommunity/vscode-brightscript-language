@@ -312,5 +312,5 @@ This method returns the roCaptionRenderer instance associated with this roVideoP
 Channels that render their own captions need to call this method to get the caption renderer for their video player in order to do capture rendering. See roCaptionRenderer for details.
 `
         )
-    },
+    }
 ];

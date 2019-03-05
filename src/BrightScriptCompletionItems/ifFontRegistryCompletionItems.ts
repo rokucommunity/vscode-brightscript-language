@@ -84,5 +84,5 @@ Returns a valid font string that can be used as the value of the Font content me
 family, size, bold, italic are interpreted as in GetFont().
 `
         )
-    },
+    }
 ];

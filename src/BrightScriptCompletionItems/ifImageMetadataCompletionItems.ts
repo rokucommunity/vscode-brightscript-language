@@ -75,5 +75,5 @@ Returns an associative array with all of the raw EXIF metadata. See the EXIF sec
 Returns the raw data for one Exif tag. Returns invalid if that tag does not exist. This is useful for direct access to a raw EXIF tag if you know exactly what tag you want.
 `
         )
-    },
+    }
 ];

@@ -67,5 +67,5 @@ Returns the font descent in pixels.
 Returns the font maximum advance width in pixels.
 `
         )
-    },
+    }
 ];

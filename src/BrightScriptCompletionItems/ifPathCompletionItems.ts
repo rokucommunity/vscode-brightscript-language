@@ -49,5 +49,5 @@ Returns an roAssociativeArray containing the following keys:
 * phy: The PHY volume
 `
         )
-    },
+    }
 ];

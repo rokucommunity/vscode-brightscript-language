@@ -216,5 +216,5 @@ _Available since firmware version 7.5_
 pitch sets the pitch at which text is spoken. The possible values range from -60 to +60.
 `
         )
-    },
+    }
 ];

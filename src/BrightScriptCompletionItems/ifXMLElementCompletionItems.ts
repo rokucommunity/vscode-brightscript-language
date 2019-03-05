@@ -274,5 +274,5 @@ Serializes the element to XML document text. The specified header is used to beg
 Removes all attributes and children from the element, as well as setting the name to empty.
 `
         )
-    },
+    }
 ];

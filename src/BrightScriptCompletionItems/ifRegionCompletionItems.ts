@@ -270,5 +270,5 @@ The upper left corner of the rectangle is the (x,y) position of the sprite plus 
 Sets the collision circle used for type 2 collision tests. The center of the circle is the (x,y) position of the sprite plus the specified offsets. radius specifies the size of the circle.
 `
         )
-    },
+    }
 ];

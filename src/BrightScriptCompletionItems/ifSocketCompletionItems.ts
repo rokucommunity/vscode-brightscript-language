@@ -185,5 +185,5 @@ Returns the number of bytes in the send buffer
 Returns the errno of the last operation attempted or zero if the last operation was a success.
 `
         )
-    },
+    }
 ];

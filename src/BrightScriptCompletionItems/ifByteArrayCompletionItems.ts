@@ -259,5 +259,5 @@ _This function is available in firmware 7.5 or later._
 Returns true if the CPU architecture is little-endian.
 `
         )
-    },
+    }
 ];

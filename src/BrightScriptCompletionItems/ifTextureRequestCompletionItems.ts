@@ -79,5 +79,5 @@ Value | Mode
 1 | Bilinear (smooth)
 `
         )
-    },
+    }
 ];

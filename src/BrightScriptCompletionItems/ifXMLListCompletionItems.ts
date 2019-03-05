@@ -79,5 +79,5 @@ If the list contains exactly one item, GetChildElements() returns the child elem
 Note that GetChildElements does NOT return the items contained in the roXMLList. Use ifList functions to access those items.
 `
         )
-    },
+    }
 ];

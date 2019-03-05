@@ -364,5 +364,5 @@ errorMessage | String | An error message explaining why the transaction failed
 status | String | Failure
 `
         )
-    },
+    }
 ];

@@ -75,6 +75,5 @@ Returns the cover art if available. Returns an associative array with two entrie
 Looks for the picture designated as the cover art if there is more than one picture in the file. If there is no FrontCover picture then the first picture is used.
 `
         )
-    },
-
+    }
 ];

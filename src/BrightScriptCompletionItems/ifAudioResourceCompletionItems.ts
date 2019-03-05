@@ -72,5 +72,5 @@ Returns an roAssociativeArray array containing the following meta data parameter
 * BitsPerSample
 `
         )
-    },
+    }
 ];

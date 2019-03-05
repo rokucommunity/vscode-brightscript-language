@@ -252,5 +252,5 @@ Like CheckCollision but returns an array of all colliding sprites. If there are 
 Remove the sprite from the managing roComposite object and delete the sprite.
 `
         )
-    },
+    }
 ];

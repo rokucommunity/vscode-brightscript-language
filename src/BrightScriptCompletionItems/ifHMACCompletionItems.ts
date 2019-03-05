@@ -74,5 +74,5 @@ Add more data to be digested. The parameter should be an roByteArray. The data i
 Return an roByteArray containing the final MAC.
 `
         )
-    },
+    }
 ];

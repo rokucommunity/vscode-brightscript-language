@@ -42,5 +42,5 @@ Deletes the specified section and returns an indication of success.
 Flushes the registry out to persistent storage.
 `
         )
-    },
+    }
 ];

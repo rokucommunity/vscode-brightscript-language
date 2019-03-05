@@ -231,5 +231,5 @@ Note that Finish() is synchronous, i.e. it does not return until all graphic ope
 _Note: when working with an roScreen object, ifScreen.SwapBuffers() should be used instead of Finish()._
 `
         )
-    },
+    }
 ];

@@ -382,5 +382,5 @@ This must be set on a roUrlTransfer instance prior to any data transfer. This ca
 Note: For the HTTP/2 connection sharing feature, all roUrlTransfers should be made from the same thread.
 `
         )
-    },
+    }
 ];

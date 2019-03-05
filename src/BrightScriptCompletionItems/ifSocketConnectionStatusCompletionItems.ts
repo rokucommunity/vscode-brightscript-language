@@ -65,5 +65,5 @@ Return true if errno is EISCONN.
 Return true if errno is ENOTCONN.
 `
         )
-    },
+    }
 ];

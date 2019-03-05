@@ -407,5 +407,5 @@ Examples:
     ' "http://roku.com/my test.asp?first=jane&last=doe"
 `
         )
-    },
+    }
 ];

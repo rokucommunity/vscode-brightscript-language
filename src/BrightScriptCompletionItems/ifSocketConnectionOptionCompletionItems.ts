@@ -115,5 +115,5 @@ If No Delay is set, data is sent as soon as it is available rather than waiting 
 Returns true if successfully set.
 `
         )
-    },
+    }
 ];

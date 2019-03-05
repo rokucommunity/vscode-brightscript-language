@@ -84,5 +84,5 @@ Returns an roByteArray containing a subset of the result. Some or all of the res
 Signals that all data has been submitted by previous calls to Update(). Returns the last remaining encrypted or decrypted bytes.
 `
         )
-    },
+    }
 ];

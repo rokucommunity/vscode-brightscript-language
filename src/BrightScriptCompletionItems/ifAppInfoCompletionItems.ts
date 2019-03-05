@@ -90,5 +90,5 @@ Returns the app's developer ID, or the keyed developer ID, if the application is
 Returns the named manifest value, or an empty string if the entry is does not exist.
 `
         )
-    },
+    }
 ];

@@ -109,5 +109,5 @@ Global search and replace of Sprite roRegions.
 Replaces regions that match oldRegion with newRegion.
 `
         )
-    },
+    }
 ];

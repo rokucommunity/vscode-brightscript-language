@@ -108,5 +108,5 @@ Flush is transactional and all writes between calls to Flush are atomic.
 Returns an roList containing one entry per registry key in this section.  Each entry is an roString containing the name of the key.
 `
         )
-    },
+    }
 ];

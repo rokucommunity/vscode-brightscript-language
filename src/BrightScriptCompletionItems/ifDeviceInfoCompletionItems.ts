@@ -865,5 +865,5 @@ To receive events, you must have first called SetMessagePort on the roDeviceInfo
 _This function is available in firmware 7.5 and above._
 `
         )
-    },
+    }
 ];

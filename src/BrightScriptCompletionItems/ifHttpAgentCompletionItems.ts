@@ -152,5 +152,5 @@ The specified cookies are added to the cookie cache.
 Removes all cookies from the cookie cache.
 `
         )
-    },
+    }
 ];

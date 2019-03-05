@@ -75,5 +75,5 @@ If the microphone was previously opened via StartRecording() and the application
 Returns true if the microphone was open and successfully closed by the call.
 `
         )
-    },
+    }
 ];

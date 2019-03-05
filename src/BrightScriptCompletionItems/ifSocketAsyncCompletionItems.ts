@@ -89,5 +89,5 @@ Enable roSocketEvent events to be sent via the message port when the underlying 
 Returns a unique identifier that can be compared to the value returned by roSocketEvent.getSocketID() to match the underlying socket that the event is for.
 `
         )
-    },
+    }
 ];

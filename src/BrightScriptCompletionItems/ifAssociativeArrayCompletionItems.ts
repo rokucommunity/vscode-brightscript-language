@@ -150,5 +150,5 @@ Append an AssociativeArray to this one.  If any key in aa is already associated 
 Returns the number of keys in the associative array.
 `
         )
-    },
+    }
 ];

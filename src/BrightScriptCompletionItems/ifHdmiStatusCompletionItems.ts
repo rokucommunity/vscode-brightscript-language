@@ -41,5 +41,5 @@ Returns the version number of the currently established HDCP link.
 Returns true if the current established HDCP link is the specified version (such as "1.4" or "2.2") or higher, otherwise returns false.
 `
         )
-    },
+    }
 ];

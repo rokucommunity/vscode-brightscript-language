@@ -101,5 +101,5 @@ Returns the port number.
 Returns true if the component contains a valid IP address.
 `
         )
-    },
+    }
 ];

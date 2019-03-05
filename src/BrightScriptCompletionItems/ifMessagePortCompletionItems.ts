@@ -47,5 +47,5 @@ If an event object is available, it is returned. Otherwise invalid is returned. 
 Similar to GetMessage() but the returned object (if not invalid) remains in the message queue. A later call to WaitMessage(), GetMessage() or PeekMessage() will return the same message.
 `
         )
-    },
+    }
 ];

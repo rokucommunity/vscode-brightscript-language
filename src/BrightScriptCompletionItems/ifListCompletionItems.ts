@@ -141,5 +141,5 @@ Return the number of elements in list.
 Remove all elements from list.
 `
         )
-    },
+    }
 ];

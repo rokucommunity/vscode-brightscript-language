@@ -121,5 +121,5 @@ TTL is the number of hops a packet is allowed before a router drops the packet.
 Returns true if successfully set.
 `
         )
-    },
+    }
 ];

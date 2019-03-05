@@ -84,5 +84,5 @@ Add more data to be digested. The parameter should be an roByteArray. The data i
 Returns the digest of data passed in by previous calls to Update() as a hex string.
 `
         )
-    },
+    }
 ];

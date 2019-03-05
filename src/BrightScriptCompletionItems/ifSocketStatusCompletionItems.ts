@@ -125,5 +125,5 @@ Return true if errno is 0 (no errors).
 Return true if errno is has no hard error, but there could be async conditions: EAGAIN, EALREADY, EINPROGRESS, EWOULDBLOCK
 `
         )
-    },
+    }
 ];

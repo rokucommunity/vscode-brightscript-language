@@ -54,5 +54,5 @@ Removes a bitmap from the roTextureManager with the specified URL.
 Removes all bitmaps from the roTextureManager.
 `
         )
-    },
+    }
 ];

@@ -129,5 +129,5 @@ For example, if a developer writes a game A and an app B, in game A they would w
 know whether to advertise app B in game A to promote the app. If it is already installed, the developer would not need to advertise app B.
 `
         )
-    },
+    }
 ];

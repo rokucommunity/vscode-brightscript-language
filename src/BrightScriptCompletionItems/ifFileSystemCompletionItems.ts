@@ -180,5 +180,5 @@ If toPath exists, it is not overwritten. Instead the operation fails and Rename 
 Returns true if successful.
 `
         )
-    },
+    }
 ];
