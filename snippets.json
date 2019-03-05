@@ -194,5 +194,10 @@
         "prefix": "ifSocket",
         "body": "ifSocket",
         "description": "Implemented By:\nroDataGramSocket\nroStreamSocket\n"
+    },
+    "ifSocketAddress": {
+        "prefix": "ifSocketAddress",
+        "body": "ifSocketAddress",
+        "description": "Implemented By:\nroSocketAddress\n"
     }
 }
