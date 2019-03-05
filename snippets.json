@@ -164,5 +164,10 @@
         "prefix": "ifRegex",
         "body": "ifRegex",
         "description": "Implemented By:\nroRegex\n"
+    },
+    "ifRegion": {
+        "prefix": "ifRegion",
+        "body": "ifRegion",
+        "description": "Implemented By:\nroRegion\n"
     }
 }
