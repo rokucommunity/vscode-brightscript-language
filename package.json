@@ -357,6 +357,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear the brighscript log output",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressBackButton",
                 "title": "Press the Back button on the Roku remote",
                 "category": "Brightscript"
