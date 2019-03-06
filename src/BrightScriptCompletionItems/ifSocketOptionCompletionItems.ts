@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSocketOptionCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetTTL',
-        insertText: new vscode.SnippetString('GetTTL()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetTTL()'),
+        documentation: new MarkdownString(
 `
     GetTTL() as Integer
 
@@ -21,8 +21,8 @@ Return the integer TTL (Time To Live) value for all IP packets on the socket.
     {
         kind: CompletionItemKind.Method,
         label: 'SetTTL',
-        insertText: new vscode.SnippetString('SetTTL(${1:ttl as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetTTL(${1:ttl as Integer})'),
+        documentation: new MarkdownString(
 `
     SetTTL(ttl as Integer) as Boolean
 
@@ -35,8 +35,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetReuseAddr',
-        insertText: new vscode.SnippetString('GetReuseAddr()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetReuseAddr()'),
+        documentation: new MarkdownString(
 `
     GetReuseAddr() as Boolean
 
@@ -47,8 +47,8 @@ Return true if an address that has been previously assigned can be immediately r
     {
         kind: CompletionItemKind.Method,
         label: 'SetReuseAddr',
-        insertText: new vscode.SnippetString('SetReuseAddr(${1:reuse as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetReuseAddr(${1:reuse as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetReuseAddr(reuse as Boolean)
 
@@ -61,8 +61,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetOOBInline',
-        insertText: new vscode.SnippetString('GetOOBInline()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetOOBInline()'),
+        documentation: new MarkdownString(
 `
     GetOOBInline() as Boolean
 
@@ -73,8 +73,8 @@ Return true if Out Of Bounds data is read inline with regular data.
     {
         kind: CompletionItemKind.Method,
         label: 'SetOOBInline',
-        insertText: new vscode.SnippetString('SetOOBInline(${1:inline as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetOOBInline(${1:inline as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetOOBInline(inline as Boolean) as Boolean
 
@@ -87,8 +87,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetSendBuf',
-        insertText: new vscode.SnippetString('GetSendBuf()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSendBuf()'),
+        documentation: new MarkdownString(
 `
     GetSendBuf() as Integer
 
@@ -99,8 +99,8 @@ Return the current send buffer size.
     {
         kind: CompletionItemKind.Method,
         label: 'SetSendBuf',
-        insertText: new vscode.SnippetString('SetSendBuf(${1:size as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetSendBuf(${1:size as Integer})'),
+        documentation: new MarkdownString(
 `
     SetSendBuf(size as Integer) as Boolean
 
@@ -113,8 +113,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetRcvBuf',
-        insertText: new vscode.SnippetString('GetRcvBuf()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRcvBuf()'),
+        documentation: new MarkdownString(
 `
     GetRcvBuf() as Integer
 
@@ -125,8 +125,8 @@ Return the current receive buffer size.
     {
         kind: CompletionItemKind.Method,
         label: 'SetRcvBuf',
-        insertText: new vscode.SnippetString('SetRcvBuf(${1:size as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetRcvBuf(${1:size as Integer})'),
+        documentation: new MarkdownString(
 `
     SetRcvBuf(size as Integer) as Boolean
 
@@ -139,8 +139,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetSendTimeout',
-        insertText: new vscode.SnippetString('GetSendTimeout()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSendTimeout()'),
+        documentation: new MarkdownString(
 `
     GetSendTimeout() as Integer
 
@@ -151,8 +151,8 @@ Return the current send timeout, in seconds.
     {
         kind: CompletionItemKind.Method,
         label: 'SetSendTimeout',
-        insertText: new vscode.SnippetString('SetSendTimeout(${1:timeout as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetSendTimeout(${1:timeout as Integer})'),
+        documentation: new MarkdownString(
 `
     SetSendTimeout(timeout as Integer) as Boolean
 
@@ -165,8 +165,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetReceiveTimeout',
-        insertText: new vscode.SnippetString('GetReceiveTimeout()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetReceiveTimeout()'),
+        documentation: new MarkdownString(
 `
     GetReceiveTimeout() as Integer
 
@@ -177,8 +177,8 @@ Return the current receive timeout, in seconds.
     {
         kind: CompletionItemKind.Method,
         label: 'SetReceiveTimeout',
-        insertText: new vscode.SnippetString('SetReceiveTimeout(${1:timeout as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetReceiveTimeout(${1:timeout as Integer})'),
+        documentation: new MarkdownString(
 `
     SetReceiveTimeout(timeout as Integer) as Boolean
 

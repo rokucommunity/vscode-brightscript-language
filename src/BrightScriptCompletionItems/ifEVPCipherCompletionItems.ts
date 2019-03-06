@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifEVPCipherCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Setup',
-        insertText: new vscode.SnippetString('Setup(${1:encrypt as Boolean}, ${2:format as String}, ${3:key as String}, ${4:iv as String}, ${5:padding as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Setup(${1:encrypt as Boolean}, ${2:format as String}, ${3:key as String}, ${4:iv as String}, ${5:padding as Integer})'),
+        documentation: new MarkdownString(
 `
     Setup(encrypt as Boolean, format as String, key as String, iv as String, padding as Integer) as Integer
 
@@ -31,8 +31,8 @@ Returns 0 on success or non-zero on failure.
     {
         kind: CompletionItemKind.Method,
         label: 'Reinit',
-        insertText: new vscode.SnippetString('Reinit()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Reinit()'),
+        documentation: new MarkdownString(
 `
     Reinit() as Integer
 
@@ -43,8 +43,8 @@ Reinitialize an existing cipher context. This can be called to reuse an existing
     {
         kind: CompletionItemKind.Method,
         label: 'Process',
-        insertText: new vscode.SnippetString('Process(${1:bytes as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Process(${1:bytes as Object})'),
+        documentation: new MarkdownString(
 `
     Process(bytes as Object) as Object
 
@@ -63,8 +63,8 @@ is equivalent to
     {
         kind: CompletionItemKind.Method,
         label: 'Update',
-        insertText: new vscode.SnippetString('Update(${1:bytes as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Update(${1:bytes as Object})'),
+        documentation: new MarkdownString(
 `
     Update(bytes as Object) as Object
 
@@ -76,8 +76,8 @@ Returns an roByteArray containing a subset of the result. Some or all of the res
     {
         kind: CompletionItemKind.Method,
         label: 'Final',
-        insertText: new vscode.SnippetString('Final()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Final()'),
+        documentation: new MarkdownString(
 `
     Final() as Object
 

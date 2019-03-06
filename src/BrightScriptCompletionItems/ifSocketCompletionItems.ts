@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSocketCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Send',
-        insertText: new vscode.SnippetString('Send(${1:data as Object}, ${2:startIndex as Integer}, ${3:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Send(${1:data as Object}, ${2:startIndex as Integer}, ${3:length as Integer})'),
+        documentation: new MarkdownString(
 `
     Send(data as Object, startIndex as Integer, length as Integer) as Integer
 
@@ -23,8 +23,8 @@ Returns the number of bytes actually sent.
     {
         kind: CompletionItemKind.Method,
         label: 'SendStr',
-        insertText: new vscode.SnippetString('SendStr(${1:data as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SendStr(${1:data as String})'),
+        documentation: new MarkdownString(
 `
     SendStr(data as String) as Integer
 
@@ -37,8 +37,8 @@ Returns the number of bytes actually sent.
     {
         kind: CompletionItemKind.Method,
         label: 'Receive',
-        insertText: new vscode.SnippetString('Receive(${1:data as Object}, ${2:startIndex as Integer}, ${3:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Receive(${1:data as Object}, ${2:startIndex as Integer}, ${3:length as Integer})'),
+        documentation: new MarkdownString(
 `
     Receive(data as Object, startIndex as Integer, length as Integer) as Integer
 
@@ -51,8 +51,8 @@ Returns the number of bytes actually read.
     {
         kind: CompletionItemKind.Method,
         label: 'ReceiveStr',
-        insertText: new vscode.SnippetString('ReceiveStr(${1:length as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ReceiveStr(${1:length as String})'),
+        documentation: new MarkdownString(
 `
     ReceiveStr(length as Integer) as String
 
@@ -65,8 +65,8 @@ Returns the received string. If no bytes were received, the string will be empty
     {
         kind: CompletionItemKind.Method,
         label: 'Close',
-        insertText: new vscode.SnippetString('Close()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Close()'),
+        documentation: new MarkdownString(
 `
     Close() as Void
 
@@ -83,8 +83,8 @@ On non-blocking sockets, both the send and the receive buffer may be read but no
     {
         kind: CompletionItemKind.Method,
         label: 'SetAddress',
-        insertText: new vscode.SnippetString('SetAddress(${1:sockAddr as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetAddress(${1:sockAddr as Object})'),
+        documentation: new MarkdownString(
 `
     SetAddress(sockAddr as Object) as Boolean
 
@@ -97,8 +97,8 @@ Returns true if successfully set address using a BSD bind() call.
     {
         kind: CompletionItemKind.Method,
         label: 'GetAddress',
-        insertText: new vscode.SnippetString('GetAddress()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAddress()'),
+        documentation: new MarkdownString(
 `
     GetAddress() as Object
 
@@ -109,8 +109,8 @@ Returns the roSocketAddress object bound to this socket.
     {
         kind: CompletionItemKind.Method,
         label: 'SetSendToAddress',
-        insertText: new vscode.SnippetString('SetSendToAddress(${1:sockAddr as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetSendToAddress(${1:sockAddr as Object})'),
+        documentation: new MarkdownString(
 `
     SetSendToAddress(sockAddr as Object) as Boolean
 
@@ -125,8 +125,8 @@ Returns true if successfully stored address as first half of underlying BSD send
     {
         kind: CompletionItemKind.Method,
         label: 'GetSendToAddress',
-        insertText: new vscode.SnippetString('GetSendToAddress()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSendToAddress()'),
+        documentation: new MarkdownString(
 `
     GetSendToAddress() as Object
 
@@ -139,8 +139,8 @@ Can also be used to return the remote address on newly accepted sockets
     {
         kind: CompletionItemKind.Method,
         label: 'GetReceivedFromAddress',
-        insertText: new vscode.SnippetString('GetReceivedFromAddress()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetReceivedFromAddress()'),
+        documentation: new MarkdownString(
 `
     GetReceivedFromAddress() as Object
 
@@ -153,8 +153,8 @@ Can also be used to return the remote address on newly accepted sockets
     {
         kind: CompletionItemKind.Method,
         label: 'GetCountRcvBuf',
-        insertText: new vscode.SnippetString('GetCountRcvBuf()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCountRcvBuf()'),
+        documentation: new MarkdownString(
 `
     GetCountRcvBuf() as Integer
 
@@ -165,8 +165,8 @@ Returns the number of bytes in the receive buffer
     {
         kind: CompletionItemKind.Method,
         label: 'GetCountSendBuf',
-        insertText: new vscode.SnippetString('GetCountSendBuf()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCountSendBuf()'),
+        documentation: new MarkdownString(
 `
     GetCountSendBuf() as Integer
 
@@ -177,8 +177,8 @@ Returns the number of bytes in the send buffer
     {
         kind: CompletionItemKind.Method,
         label: 'Status',
-        insertText: new vscode.SnippetString('Status()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Status()'),
+        documentation: new MarkdownString(
 `
     Status() as Integer
 

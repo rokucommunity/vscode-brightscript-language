@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifTextureRequestCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetId',
-        insertText: new vscode.SnippetString('GetId()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetId()'),
+        documentation: new MarkdownString(
 `
     GetId() as Integer
 
@@ -21,8 +21,8 @@ Returns a unique id for the request.
     {
         kind: CompletionItemKind.Method,
         label: 'GetState',
-        insertText: new vscode.SnippetString('GetState()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetState()'),
+        documentation: new MarkdownString(
 `
     GetState() as Integer
 
@@ -42,8 +42,8 @@ Value | State
     {
         kind: CompletionItemKind.Method,
         label: 'SetAsync',
-        insertText: new vscode.SnippetString('SetAsync(${1:async as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetAsync(${1:async as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetAsync(async as Boolean) as Integer
 
@@ -54,8 +54,8 @@ Sets the request to be either asynchronous (true) or synchronous (false).  The d
     {
         kind: CompletionItemKind.Method,
         label: 'SetSize',
-        insertText: new vscode.SnippetString('SetSize(${1:width as Integer}, ${2:height as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetSize(${1:width as Integer}, ${2:height as Integer})'),
+        documentation: new MarkdownString(
 `
     SetSize(width as Integer, height as Integer) as Void
 
@@ -66,8 +66,8 @@ Set the desired size of the roBitmap.  The default is to return a bitmap in its 
     {
         kind: CompletionItemKind.Method,
         label: 'SetScaleMode',
-        insertText: new vscode.SnippetString('SetScaleMode(${1:mode as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetScaleMode(${1:mode as Integer})'),
+        documentation: new MarkdownString(
 `
     SetScaleMode(mode as Integer)
 

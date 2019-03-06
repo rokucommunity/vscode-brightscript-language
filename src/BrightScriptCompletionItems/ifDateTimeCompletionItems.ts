@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifDateTimeCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Mark',
-        insertText: new vscode.SnippetString('Mark()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Mark()'),
+        documentation: new MarkdownString(
 `
     Mark() as Void
 
@@ -23,8 +23,8 @@ _Note: roDateTime objects are automatically Marked on creation._
     {
         kind: CompletionItemKind.Method,
         label: 'ToLocalTime',
-        insertText: new vscode.SnippetString('ToLocalTime()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToLocalTime()'),
+        documentation: new MarkdownString(
 `
     ToLocalTime() as Void
 
@@ -37,8 +37,8 @@ This function is not idempotent, and multiple calls will do multiple timezone ad
     {
         kind: CompletionItemKind.Method,
         label: 'GetTimeZoneOffset',
-        insertText: new vscode.SnippetString('GetTimeZoneOffset()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetTimeZoneOffset()'),
+        documentation: new MarkdownString(
 `
     GetTimeZoneOffset() as Integer
 
@@ -54,8 +54,8 @@ _This function is available in firmware 6.2 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'AsSeconds',
-        insertText: new vscode.SnippetString('AsSeconds()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsSeconds()'),
+        documentation: new MarkdownString(
 `
     AsSeconds() as Integer
 
@@ -66,8 +66,8 @@ Returns the date/time as the number of seconds from the Unix epoch (00:00:00 1/1
     {
         kind: CompletionItemKind.Method,
         label: 'FromSeconds',
-        insertText: new vscode.SnippetString('FromSeconds(${1:numSeconds as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FromSeconds(${1:numSeconds as Integer})'),
+        documentation: new MarkdownString(
 `
     FromSeconds(numSeconds as Integer) as Void
 
@@ -78,8 +78,8 @@ Set the date/time value using the number of seconds from the Unix epoch.
     {
         kind: CompletionItemKind.Method,
         label: 'ToISOString',
-        insertText: new vscode.SnippetString('ToISOString()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToISOString()'),
+        documentation: new MarkdownString(
 `
     ToISOString() as String
 
@@ -92,8 +92,8 @@ _This function is available in firmware 6.2 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'FromISO8601String',
-        insertText: new vscode.SnippetString('FromISO8601String(${1:dateString as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FromISO8601String(${1:dateString as String})'),
+        documentation: new MarkdownString(
 `
     FromISO8601String(dateString as String) as Void
 
@@ -106,10 +106,10 @@ The above formats are also the only formats recognized by this function, even th
     {
         kind: CompletionItemKind.Method,
         label: 'AsDateString',
-        insertText: new vscode.SnippetString(
+        insertText: new SnippetString(
             'AsDateString(${1|"long-date","short-weekday","no-weekday","short-month","short-month-short-weekday","short-month-no-weekday","short-date","short-date-dashes"|})'
             ),
-        documentation: new vscode.MarkdownString(
+        documentation: new MarkdownString(
 `
     AsDateString(format as String) as String
 
@@ -133,8 +133,8 @@ Note that day names, month names, separators, and order of fields may vary depen
     {
         kind: CompletionItemKind.Method,
         label: 'AsDateStringNoParam',
-        insertText: new vscode.SnippetString('AsDateStringNoParam()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsDateStringNoParam()'),
+        documentation: new MarkdownString(
 `
     AsDateStringNoParam() as String
 
@@ -145,8 +145,8 @@ Same as AsDateString("long-date").
     {
         kind: CompletionItemKind.Method,
         label: 'GetWeekday',
-        insertText: new vscode.SnippetString('GetWeekday()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetWeekday()'),
+        documentation: new MarkdownString(
 `
     GetWeekday() as String
 
@@ -159,8 +159,8 @@ Note: this function always returns the canonical English day of week names, rega
     {
         kind: CompletionItemKind.Method,
         label: 'GetYear',
-        insertText: new vscode.SnippetString('GetYear()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetYear()'),
+        documentation: new MarkdownString(
 `
     GetYear() as Integer
 
@@ -171,8 +171,8 @@ Returns the date/time value's year as an Integer, e.g. 2015.
     {
         kind: CompletionItemKind.Method,
         label: 'GetMonth',
-        insertText: new vscode.SnippetString('GetMonth()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMonth()'),
+        documentation: new MarkdownString(
 `
     GetMonth() as Integer
 
@@ -183,8 +183,8 @@ Returns the date/time value's month as an Integer (1=Jan, 12=Dec).
     {
         kind: CompletionItemKind.Method,
         label: 'GetDayOfMonth',
-        insertText: new vscode.SnippetString('GetDayOfMonth()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDayOfMonth()'),
+        documentation: new MarkdownString(
 `
     GetDayOfMonth() as Integer
 
@@ -195,8 +195,8 @@ Returns the date/time value's day of the month as an Integer (1-31).
     {
         kind: CompletionItemKind.Method,
         label: 'GetHours',
-        insertText: new vscode.SnippetString('GetHours()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetHours()'),
+        documentation: new MarkdownString(
 `
     GetHours() as Integer
 
@@ -207,8 +207,8 @@ Returns the date/time value's hour within the day as an Integer (0-23).
     {
         kind: CompletionItemKind.Method,
         label: 'GetMinutes',
-        insertText: new vscode.SnippetString('GetMinutes()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMinutes()'),
+        documentation: new MarkdownString(
 `
     GetMinutes() as Integer
 
@@ -219,8 +219,8 @@ Returns the date/time value's minute within the hour as an Integer (0-59).
     {
         kind: CompletionItemKind.Method,
         label: 'GetSeconds',
-        insertText: new vscode.SnippetString('GetSeconds()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSeconds()'),
+        documentation: new MarkdownString(
 `
     GetSeconds() as Integer
 
@@ -231,8 +231,8 @@ Returns the date/time value's second within the minute as an Integer (0-59).
     {
         kind: CompletionItemKind.Method,
         label: 'GetMilliseconds',
-        insertText: new vscode.SnippetString('GetMilliseconds()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMilliseconds()'),
+        documentation: new MarkdownString(
 `
     GetMilliseconds() as Integer
 
@@ -243,8 +243,8 @@ Returns the date/time value's millisecond within the second as an Integer (0-999
     {
         kind: CompletionItemKind.Method,
         label: 'GetLastDayOfMonth',
-        insertText: new vscode.SnippetString('GetLastDayOfMonth()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetLastDayOfMonth()'),
+        documentation: new MarkdownString(
 `
     GetLastDayOfMonth() as Integer
 
@@ -255,8 +255,8 @@ Returns the date/time value's last day of the month as an Integer (28-31).
     {
         kind: CompletionItemKind.Method,
         label: 'GetDayOfWeek',
-        insertText: new vscode.SnippetString('GetDayOfWeek()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDayOfWeek()'),
+        documentation: new MarkdownString(
 `
     GetDayOfWeek() as Integer
 

@@ -1,17 +1,17 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifDeviceInfoCompletionItems: CompletionItem[] = [
     // ############### Device Properties ###############
     {
         kind: CompletionItemKind.Method,
         label: 'GetModel',
-        insertText: new vscode.SnippetString('GetModel()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetModel()'),
+        documentation: new MarkdownString(
 `
     GetModel() as String
 
@@ -23,8 +23,8 @@ This is a five-character alphanumeric string; for example, "3050X". Please see R
     {
         kind: CompletionItemKind.Method,
         label: 'GetModelDisplayName',
-        insertText: new vscode.SnippetString('GetModelDisplayName()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetModelDisplayName()'),
+        documentation: new MarkdownString(
 `
     GetModelDisplayName() as String
 
@@ -35,8 +35,8 @@ Returns the model display name for the Roku Streaming Player device running the 
     {
         kind: CompletionItemKind.Method,
         label: 'GetModelType',
-        insertText: new vscode.SnippetString('GetModelType()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetModelType()'),
+        documentation: new MarkdownString(
 `
     GetModelType() as String
 
@@ -51,8 +51,8 @@ the caller should by default assume "STB" when anything other than described val
     {
         kind: CompletionItemKind.Method,
         label: 'GetModelDetails',
-        insertText: new vscode.SnippetString('GetModelDetails()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetModelDetails()'),
+        documentation: new MarkdownString(
 `
     GetModelDetails() as Object
 
@@ -66,8 +66,8 @@ ModelNumber - string describing model number
     {
         kind: CompletionItemKind.Method,
         label: 'GetFriendlyName',
-        insertText: new vscode.SnippetString('GetFriendlyName()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetFriendlyName()'),
+        documentation: new MarkdownString(
 `
     GetFriendlyName() as String
 
@@ -79,8 +79,8 @@ The string may be a user-assigned device name or a description of the device suc
     {
         kind: CompletionItemKind.Method,
         label: 'GetVersion',
-        insertText: new vscode.SnippetString('GetVersion()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVersion()'),
+        documentation: new MarkdownString(
 `
     GetVersion() as String
 
@@ -92,8 +92,8 @@ The third through sixth characters are the major/minor version number ("4.08") a
     {
         kind: CompletionItemKind.Method,
         label: 'GetRIDA',
-        insertText: new vscode.SnippetString('GetRIDA()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRIDA()'),
+        documentation: new MarkdownString(
 `
     GetRIDA() as String
 
@@ -112,8 +112,8 @@ IsRIDADisabled() should be called to check if the user has disabled RIDA trackin
     {
         kind: CompletionItemKind.Method,
         label: 'IsRIDADisabled',
-        insertText: new vscode.SnippetString('IsRIDADisabled()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsRIDADisabled()'),
+        documentation: new MarkdownString(
 `
     IsRIDADisabled() as Boolean
 
@@ -126,8 +126,8 @@ IsRIDADisabled() returns True if the user has disabled RIDA tracking by selectin
     {
         kind: CompletionItemKind.Method,
         label: 'GetChannelClientId',
-        insertText: new vscode.SnippetString('GetChannelClientId()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetChannelClientId()'),
+        documentation: new MarkdownString(
 `
     GetChannelClientId() as String
 
@@ -145,8 +145,8 @@ This value can be used to manage or identify devices linked to the channel’s c
     {
         kind: CompletionItemKind.Method,
         label: 'GetUserCountryCode',
-        insertText: new vscode.SnippetString('GetUserCountryCode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetUserCountryCode()'),
+        documentation: new MarkdownString(
 `
     GetUserCountryCode() as String
 
@@ -166,8 +166,8 @@ We, therefore, recommend that channels utilize both to avoid having to update la
     {
         kind: CompletionItemKind.Method,
         label: 'GetRandomUUID',
-        insertText: new vscode.SnippetString('GetRandomUUID()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRandomUUID()'),
+        documentation: new MarkdownString(
 `
     GetRandomUUID() as String
 
@@ -180,8 +180,8 @@ The characters are grouped in the form 8-4-4-4-12, for example "123e4567-e89b-12
     {
         kind: CompletionItemKind.Method,
         label: 'GetTimeZone',
-        insertText: new vscode.SnippetString('GetTimeZone()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetTimeZone()'),
+        documentation: new MarkdownString(
 `
     GetTimeZone() as String
 
@@ -217,10 +217,10 @@ Returns a string representing the user's current system time zone setting. Curre
     {
         kind: CompletionItemKind.Method,
         label: 'HasFeature',
-        insertText: new vscode.SnippetString(
+        insertText: new SnippetString(
             'HasFeature(${1|"5.1_surround_sound","can_output_5.1_surround_sound","sd_only_hardware","usb_hardware","sdcard_hardware","ethernet_hardware","gaming_hardware","energy_star_compliant"|})'
             ),
-        documentation: new vscode.MarkdownString(
+        documentation: new MarkdownString(
 `
     HasFeature() as Boolean
 
@@ -244,8 +244,8 @@ Valid features to query for are:
     {
         kind: CompletionItemKind.Method,
         label: 'GetCurrentLocale',
-        insertText: new vscode.SnippetString('GetCurrentLocale()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCurrentLocale()'),
+        documentation: new MarkdownString(
 `
     GetCurrentLocale() as String
 
@@ -266,8 +266,8 @@ Value | Language
     {
         kind: CompletionItemKind.Method,
         label: 'GetCountryCode',
-        insertText: new vscode.SnippetString('GetCountryCode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCountryCode()'),
+        documentation: new MarkdownString(
 `
     GetCountryCode() as String
 
@@ -304,8 +304,8 @@ This does not necessarily match the physical location of the device, nor does it
     {
         kind: CompletionItemKind.Method,
         label: 'TimeSinceLastKeypress',
-        insertText: new vscode.SnippetString('TimeSinceLastKeypress()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('TimeSinceLastKeypress()'),
+        documentation: new MarkdownString(
 `
     TimeSinceLastKeypress() as Integer
 
@@ -316,8 +316,8 @@ Returns the number of seconds since the last remote keypress was received.
     {
         kind: CompletionItemKind.Method,
         label: 'GetDrmInfoEx',
-        insertText: new vscode.SnippetString('GetDrmInfoEx()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDrmInfoEx()'),
+        documentation: new MarkdownString(
 `
     GetDrmInfoEx() as Object
 
@@ -330,8 +330,8 @@ A new API, GetDrmInfoEx(), returns an associative array with the supported DRM s
     {
         kind: CompletionItemKind.Method,
         label: 'GetCaptionsMode',
-        insertText: new vscode.SnippetString('GetCaptionsMode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCaptionsMode()'),
+        documentation: new MarkdownString(
 `
     GetCaptionsMode() as String
 
@@ -350,8 +350,8 @@ Note: On a Roku TV, when the user selects On Mute this function will return On w
     {
         kind: CompletionItemKind.Method,
         label: 'SetCaptionsMode',
-        insertText: new vscode.SnippetString('SetCaptionsMode(${1:mode as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetCaptionsMode(${1:mode as String})'),
+        documentation: new MarkdownString(
 `
     SetCaptionsMode(mode as String) as Boolean
 
@@ -371,8 +371,8 @@ Possible Values:
     {
         kind: CompletionItemKind.Method,
         label: 'GetCaptionsOption',
-        insertText: new vscode.SnippetString('GetCaptionsOption(${1:option as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCaptionsOption(${1:option as String})'),
+        documentation: new MarkdownString(
 `
     GetCaptionsOption(option as String) as String
 
@@ -386,8 +386,8 @@ https://sdkdocs.roku.com/display/sdkdoc/ifDeviceInfo
     {
         kind: CompletionItemKind.Method,
         label: 'GetClockFormat',
-        insertText: new vscode.SnippetString('GetClockFormat()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetClockFormat()'),
+        documentation: new MarkdownString(
 `
     GetClockFormat() as Integer
 
@@ -401,8 +401,8 @@ _This function is available in firmware 8.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'EnableAppFocusEvent',
-        insertText: new vscode.SnippetString('EnableAppFocusEvent(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableAppFocusEvent(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableAppFocusEvent() as Void
 
@@ -416,8 +416,8 @@ _This function is available in firmware 8.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'EnableScreensaverExitedEvent',
-        insertText: new vscode.SnippetString('EnableScreensaverExitedEvent(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableScreensaverExitedEvent(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableScreensaverExitedEvent() as Void
 
@@ -432,8 +432,8 @@ _This function is available in firmware 7.5 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'EnableLowGeneralMemoryEvent',
-        insertText: new vscode.SnippetString('EnableLowGeneralMemoryEvent(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableLowGeneralMemoryEvent(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableLowGeneralMemoryEvent() as Void
 
@@ -446,8 +446,8 @@ If enabled, requests the OS to send a roDeviceInfoEvent with generalMemoryLevel 
     {
         kind: CompletionItemKind.Method,
         label: 'GetGeneralMemoryLevel',
-        insertText: new vscode.SnippetString('GetGeneralMemoryLevel()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetGeneralMemoryLevel()'),
+        documentation: new MarkdownString(
 `
     GetGeneralMemoryLevel() as String
 
@@ -461,8 +461,8 @@ Returns "normal", "low", or "critical" depending on the general memory levels fo
     {
         kind: CompletionItemKind.Method,
         label: 'GetLinkStatus',
-        insertText: new vscode.SnippetString('GetLinkStatus()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetLinkStatus()'),
+        documentation: new MarkdownString(
 `
     GetLinkStatus() as Boolean
 
@@ -473,8 +473,8 @@ Returns true if the player seems to have an active network connection.
     {
         kind: CompletionItemKind.Method,
         label: 'EnableLinkStatusEvent',
-        insertText: new vscode.SnippetString('EnableLinkStatusEvent(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableLinkStatusEvent(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableLinkStatusEvent() as Boolean
 
@@ -487,8 +487,8 @@ To receive events, you must have first called SetMessagePort on the roDeviceInfo
     {
         kind: CompletionItemKind.Method,
         label: 'GetConnectionType',
-        insertText: new vscode.SnippetString('GetConnectionType()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetConnectionType()'),
+        documentation: new MarkdownString(
 `
     GetConnectionType() as String
 
@@ -500,8 +500,8 @@ If the unit is connected via a wired connection, returns "WiredConnection". If t
     {
         kind: CompletionItemKind.Method,
         label: 'GetExternalIp',
-        insertText: new vscode.SnippetString('GetExternalIp()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetExternalIp()'),
+        documentation: new MarkdownString(
 `
     GetExternalIp() as String
 
@@ -512,8 +512,8 @@ Returns the external IP address of the Roku player. This is the address seen by 
     {
         kind: CompletionItemKind.Method,
         label: 'GetIPAddrs',
-        insertText: new vscode.SnippetString('GetIPAddrs()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetIPAddrs()'),
+        documentation: new MarkdownString(
 `
     GetIPAddrs() as Object
 
@@ -527,8 +527,8 @@ This can be used in conjunction with the ECP (see the External Control Protocol 
     {
         kind: CompletionItemKind.Method,
         label: 'GetConnectionInfo',
-        insertText: new vscode.SnippetString('GetConnectionInfo()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetConnectionInfo()'),
+        documentation: new MarkdownString(
 `
     GetConnectionInfo() as Object
 
@@ -553,8 +553,8 @@ _This function is available in firmware 6.1 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetDisplayType',
-        insertText: new vscode.SnippetString('GetDisplayType()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDisplayType()'),
+        documentation: new MarkdownString(
 `
     GetDisplayType() as String
 
@@ -565,8 +565,8 @@ Returns the text corresponding to the button selection in the Player Info Settin
     {
         kind: CompletionItemKind.Method,
         label: 'GetDisplayMode',
-        insertText: new vscode.SnippetString('GetDisplayMode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDisplayMode()'),
+        documentation: new MarkdownString(
 `
     GetDisplayMode() as String
 
@@ -578,8 +578,8 @@ Returns the configured graphics layer resolution: "480i" or "480p" (if the ui_re
     {
         kind: CompletionItemKind.Method,
         label: 'GetDisplayAspectRatio',
-        insertText: new vscode.SnippetString('GetDisplayAspectRatio()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDisplayAspectRatio()'),
+        documentation: new MarkdownString(
 `
     GetDisplayAspectRatio() as String
 
@@ -590,8 +590,8 @@ Returns "4x3" or "16x9"
     {
         kind: CompletionItemKind.Method,
         label: 'GetDisplaySize',
-        insertText: new vscode.SnippetString('GetDisplaySize()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDisplaySize()'),
+        documentation: new MarkdownString(
 `
     GetDisplaySize() as Object
 
@@ -602,8 +602,8 @@ Returns an roAssociativeArray with keys "w" and "h" that contain the values for 
     {
         kind: CompletionItemKind.Method,
         label: 'GetVideoMode',
-        insertText: new vscode.SnippetString('GetVideoMode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVideoMode()'),
+        documentation: new MarkdownString(
 `
     GetVideoMode() as String
 
@@ -641,8 +641,8 @@ String | Resolution | Ratio | Rate | Bit Depth
     {
         kind: CompletionItemKind.Method,
         label: 'GetDisplayProperties',
-        insertText: new vscode.SnippetString('GetDisplayProperties()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDisplayProperties()'),
+        documentation: new MarkdownString(
 `
     GetDisplayProperties() as Object
 
@@ -663,8 +663,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetSupportedGraphicsResolutions',
-        insertText: new vscode.SnippetString('GetSupportedGraphicsResolutions()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSupportedGraphicsResolutions()'),
+        documentation: new MarkdownString(
 `
     GetSupportedGraphicsResolutions() as Object
 
@@ -685,8 +685,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'CanDecodeVideo',
-        insertText: new vscode.SnippetString('CanDecodeVideo(${1:video_format as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('CanDecodeVideo(${1:video_format as Object})'),
+        documentation: new MarkdownString(
 `
     CanDecodeVideo(video_format as Object) as Object
 
@@ -732,8 +732,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetUIResolution',
-        insertText: new vscode.SnippetString('GetUIResolution()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetUIResolution()'),
+        documentation: new MarkdownString(
 `
     GetUIResolution() as Object
 
@@ -752,8 +752,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetGraphicsPlatform',
-        insertText: new vscode.SnippetString('GetGraphicsPlatform()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetGraphicsPlatform()'),
+        documentation: new MarkdownString(
 `
     GetGraphicsPlatform() as String
 
@@ -767,8 +767,8 @@ _This function is available in firmware 7.6 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetAudioOutputChannel',
-        insertText: new vscode.SnippetString('GetAudioOutputChannel()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAudioOutputChannel()'),
+        documentation: new MarkdownString(
 `
     GetAudioOutputChannel() as String
 
@@ -779,8 +779,8 @@ Returns a string representing the selected audio output ("Stereo" or "5.1 surrou
     {
         kind: CompletionItemKind.Method,
         label: 'GetAudioDecodeInfo',
-        insertText: new vscode.SnippetString('GetAudioDecodeInfo()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAudioDecodeInfo()'),
+        documentation: new MarkdownString(
 `
     GetAudioDecodeInfo() as Object
 
@@ -797,8 +797,8 @@ more information about their values can be found here: http://en.wikipedia.org/w
     {
         kind: CompletionItemKind.Method,
         label: 'CanDecodeAudio',
-        insertText: new vscode.SnippetString('CanDecodeAudio(${1:audio_format as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('CanDecodeAudio(${1:audio_format as Object})'),
+        documentation: new MarkdownString(
 `
     CanDecodeAudio(audio_format as Object) as Object
 
@@ -824,8 +824,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'GetSoundEffectsVolume',
-        insertText: new vscode.SnippetString('GetSoundEffectsVolume()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSoundEffectsVolume()'),
+        documentation: new MarkdownString(
 `
     GetSoundEffectsVolume() as Integer
 
@@ -839,8 +839,8 @@ _This function is available in firmware 7.0 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'IsAudioGuideEnabled',
-        insertText: new vscode.SnippetString('IsAudioGuideEnabled()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsAudioGuideEnabled()'),
+        documentation: new MarkdownString(
 `
     IsAudioGuideEnabled() as Boolean
 
@@ -853,8 +853,8 @@ _This function is available in firmware 7.5 and above._
     {
         kind: CompletionItemKind.Method,
         label: 'EnableAudioGuideChangedEvent',
-        insertText: new vscode.SnippetString('EnableAudioGuideChangedEvent(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableAudioGuideChangedEvent(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableAudioGuideChangedEvent() as Boolean
 

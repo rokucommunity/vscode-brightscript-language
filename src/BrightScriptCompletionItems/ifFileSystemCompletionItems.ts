@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifFileSystemCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetVolumeList',
-        insertText: new vscode.SnippetString('GetVolumeList()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVolumeList()'),
+        documentation: new MarkdownString(
 `
     GetVolumeList() as Object
 
@@ -23,8 +23,8 @@ Volumes may be internal or external storage devices, such as "tmp:", "pkg:", "ex
     {
         kind: CompletionItemKind.Method,
         label: 'GetDirectoryListing',
-        insertText: new vscode.SnippetString('GetDirectoryListing(${1:dirPath as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDirectoryListing(${1:dirPath as String})'),
+        documentation: new MarkdownString(
 `
     GetDirectoryListing(dirPath as String) as Object
 
@@ -35,8 +35,8 @@ Returns an roList of Strings representing the directory listing of names in dirP
     {
         kind: CompletionItemKind.Method,
         label: 'Find',
-        insertText: new vscode.SnippetString('Find(${1:dirPath as String}, ${2:regEx as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Find(${1:dirPath as String}, ${2:regEx as String})'),
+        documentation: new MarkdownString(
 `
     Find(dirPath as String, regEx as String) as Object
 
@@ -48,8 +48,8 @@ The list is not recursive; it includes only files and directories that are direc
     {
         kind: CompletionItemKind.Method,
         label: 'FindRecurse',
-        insertText: new vscode.SnippetString('FindRecurse(${1:dirPath as String}, ${2:regEx as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FindRecurse(${1:dirPath as String}, ${2:regEx as String})'),
+        documentation: new MarkdownString(
 `
     FindRecurse(dirPath as String, regEx as String) as Object
 
@@ -61,8 +61,8 @@ Each item in the list is the name of the file relative to dirPath.
     {
         kind: CompletionItemKind.Method,
         label: 'Match',
-        insertText: new vscode.SnippetString('Match(${1:path as String}, ${2:pattern as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Match(${1:path as String}, ${2:pattern as String})'),
+        documentation: new MarkdownString(
 `
     Match(path as String, pattern as String) as Object
 
@@ -74,8 +74,8 @@ The pattern may contain wildcards like * and ?. This method is like Find() excep
     {
         kind: CompletionItemKind.Method,
         label: 'Exists',
-        insertText: new vscode.SnippetString('Exists(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Exists(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     Exists(path as String) as Boolean
 
@@ -86,8 +86,8 @@ Returns true if the path exists.
     {
         kind: CompletionItemKind.Method,
         label: 'Stat',
-        insertText: new vscode.SnippetString('Stat(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Stat(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     Stat(path as String) as Object
 
@@ -102,8 +102,8 @@ Returns an roAssociativeArray containing the following keys for the passed in pa
     {
         kind: CompletionItemKind.Method,
         label: 'GetVolumeInfo',
-        insertText: new vscode.SnippetString('GetVolumeInfo(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVolumeInfo(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     GetVolumeInfo(path as String) as Object
 
@@ -126,8 +126,8 @@ Can only be called on external volumes. Internal volumes do not return meaningfu
     {
         kind: CompletionItemKind.Method,
         label: 'CreateDirectory',
-        insertText: new vscode.SnippetString('CreateDirectory(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('CreateDirectory(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     CreateDirectory(path as String) as Boolean
 
@@ -140,8 +140,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'Delete',
-        insertText: new vscode.SnippetString('Delete(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Delete(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     Delete(path as String) as Boolean
 
@@ -154,8 +154,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'CopyFile',
-        insertText: new vscode.SnippetString('CopyFile(${1:fromPath as String}, ${2:toPath as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('CopyFile(${1:fromPath as String}, ${2:toPath as String})'),
+        documentation: new MarkdownString(
 `
     CopyFile(fromPath as String, toPath as String) as Boolean
 
@@ -168,8 +168,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'Rename',
-        insertText: new vscode.SnippetString('Rename(${1:fromPath as String}, ${2:toPath as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Rename(${1:fromPath as String}, ${2:toPath as String})'),
+        documentation: new MarkdownString(
 `
     Rename(fromPath as String, toPath as String) as Boolean
 

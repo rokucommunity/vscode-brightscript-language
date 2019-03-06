@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAssociativeArrayCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'AddReplace',
-        insertText: new vscode.SnippetString('AddReplace(${1:key as String}, ${2:value as Dynamic})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddReplace(${1:key as String}, ${2:value as Dynamic})'),
+        documentation: new MarkdownString(
 `
     AddReplace(key as String, value as Dynamic) as Void
 
@@ -22,8 +22,8 @@ If the key is already associated with a value, the existing value is discarded.
     {
         kind: CompletionItemKind.Method,
         label: 'Lookup',
-        insertText: new vscode.SnippetString('Lookup(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Lookup(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     Lookup(key as String) as Dynamic
 
@@ -35,8 +35,8 @@ Key comparison is case-insensitive, unless SetModeCaseSensitive() has been calle
     {
         kind: CompletionItemKind.Method,
         label: 'DoesExist',
-        insertText: new vscode.SnippetString('DoesExist(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DoesExist(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     DoesExist(key as String) as Boolean
 
@@ -47,8 +47,8 @@ Look for an entry in the array associated with the specified key. If there is no
     {
         kind: CompletionItemKind.Method,
         label: 'Delete',
-        insertText: new vscode.SnippetString('Delete(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Delete(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     Delete(key as String) as Boolean
 
@@ -59,8 +59,8 @@ Look for an entry in the array associated with the specified key. If there is su
     {
         kind: CompletionItemKind.Method,
         label: 'Clear',
-        insertText: new vscode.SnippetString('Clear()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Clear()'),
+        documentation: new MarkdownString(
 `
     Clear() as Void
 
@@ -71,8 +71,8 @@ Remove all key/values from the associative array.
     {
         kind: CompletionItemKind.Method,
         label: 'Keys',
-        insertText: new vscode.SnippetString('Keys()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Keys()'),
+        documentation: new MarkdownString(
 `
     Keys() as Object
 
@@ -84,8 +84,8 @@ _This function is available in firmware 7.0 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'Items',
-        insertText: new vscode.SnippetString('Items()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Items()'),
+        documentation: new MarkdownString(
 `
     Items() as Object
 
@@ -106,8 +106,8 @@ Examples
     {
         kind: CompletionItemKind.Method,
         label: 'SetModeCaseSensitive',
-        insertText: new vscode.SnippetString('SetModeCaseSensitive()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetModeCaseSensitive()'),
+        documentation: new MarkdownString(
 `
     SetModeCaseSensitive() as Void
 
@@ -118,8 +118,8 @@ Associative Array lookups are case insensitive by default. This call makes all s
     {
         kind: CompletionItemKind.Method,
         label: 'LookupCI',
-        insertText: new vscode.SnippetString('LookupCI(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('LookupCI(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     LookupCI(key as String) as Dynamic
 
@@ -130,8 +130,8 @@ Same as "Lookup" except key comparison is always case insensitive, regardless of
     {
         kind: CompletionItemKind.Method,
         label: 'Append',
-        insertText: new vscode.SnippetString('Append(${1:aa as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Append(${1:aa as Object})'),
+        documentation: new MarkdownString(
 `
     Append(aa as Object) as Void
 
@@ -142,8 +142,8 @@ Append an AssociativeArray to this one.  If any key in aa is already associated 
     {
         kind: CompletionItemKind.Method,
         label: 'Count',
-        insertText: new vscode.SnippetString('Count()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Count()'),
+        documentation: new MarkdownString(
 `
     Count() as Integer
 

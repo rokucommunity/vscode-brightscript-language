@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifRSACompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetPrivateKey',
-        insertText: new vscode.SnippetString('SetPrivateKey(${1:keyFileName as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetPrivateKey(${1:keyFileName as String})'),
+        documentation: new MarkdownString(
 `
     SetPrivateKey(keyFileName as String) as Integer
 
@@ -23,8 +23,8 @@ Returns 1 if the key is valid, or 0 if the file does not contain a valid key, or
     {
         kind: CompletionItemKind.Method,
         label: 'SetPublicKey',
-        insertText: new vscode.SnippetString('SetPublicKey(${1:keyFileName as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetPublicKey(${1:keyFileName as String})'),
+        documentation: new MarkdownString(
 `
     SetPublicKey(keyFileName as String) as Integer
 
@@ -37,8 +37,8 @@ Returns 1 if the key is valid, or 0 if the file does not contain a valid key, or
     {
         kind: CompletionItemKind.Method,
         label: 'SetDigestAlgorithm',
-        insertText: new vscode.SnippetString('SetDigestAlgorithm(${1:digestAlgorithm as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetDigestAlgorithm(${1:digestAlgorithm as String})'),
+        documentation: new MarkdownString(
 `
     SetDigestAlgorithm(digestAlgorithm as String) as Boolean
 
@@ -51,8 +51,8 @@ Returns true if the algorithm was set, false if the string was not recognized.
     {
         kind: CompletionItemKind.Method,
         label: 'Sign',
-        insertText: new vscode.SnippetString('Sign(${1:digest as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Sign(${1:digest as Object})'),
+        documentation: new MarkdownString(
 `
     Sign(digest as Object) as Object
 
@@ -73,8 +73,8 @@ This would be equivalent to simply calling the openssl function RSA_private_encr
     {
         kind: CompletionItemKind.Method,
         label: 'Verify',
-        insertText: new vscode.SnippetString('Verify(${1:digest as Object}, ${2:signature as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Verify(${1:digest as Object}, ${2:signature as Object})'),
+        documentation: new MarkdownString(
 `
     Verify(digest as Object, signature as Object) as Integer
 

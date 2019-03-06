@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifXMLElementCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Parse',
-        insertText: new vscode.SnippetString('Parse(${1:xml as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Parse(${1:xml as String})'),
+        documentation: new MarkdownString(
 `
     Parse(xml as String) as Boolean
 
@@ -21,8 +21,8 @@ Parse a string of XML. Returns true if successful. In that case, other methods b
     {
         kind: CompletionItemKind.Method,
         label: 'GetBody',
-        insertText: new vscode.SnippetString('GetBody()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetBody()'),
+        documentation: new MarkdownString(
 `
     GetBody() as Object
 
@@ -34,8 +34,8 @@ If there are no children but the element contains text, GetBody() returns an roS
     {
         kind: CompletionItemKind.Method,
         label: 'GetAttributes',
-        insertText: new vscode.SnippetString('GetAttributes()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAttributes()'),
+        documentation: new MarkdownString(
 `
     GetAttributes() as Object
 
@@ -46,8 +46,8 @@ Returns an Associative Array representing the XML attributes of the element.
     {
         kind: CompletionItemKind.Method,
         label: 'GetName',
-        insertText: new vscode.SnippetString('GetName()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetName()'),
+        documentation: new MarkdownString(
 `
     GetName() as String
 
@@ -58,8 +58,8 @@ Returns the name of the element.
     {
         kind: CompletionItemKind.Method,
         label: 'GetText',
-        insertText: new vscode.SnippetString('GetText()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetText()'),
+        documentation: new MarkdownString(
 `
     GetText() as String
 
@@ -70,8 +70,8 @@ Returns any text contained in the element. This returns immediate body text only
     {
         kind: CompletionItemKind.Method,
         label: 'GetChildElements',
-        insertText: new vscode.SnippetString('GetChildElements()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetChildElements()'),
+        documentation: new MarkdownString(
 `
     GetChildElements() as Object
 
@@ -88,8 +88,8 @@ The body text "More Text" would be lost. To handle mixed content cases, use GetC
     {
         kind: CompletionItemKind.Method,
         label: 'GetChildNodes',
-        insertText: new vscode.SnippetString('GetChildNodes()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetChildNodes()'),
+        documentation: new MarkdownString(
 `
     GetChildNodes() as Object
 
@@ -107,8 +107,8 @@ The first element would be an roXMLElement containing the information about <chi
     {
         kind: CompletionItemKind.Method,
         label: 'GetNamedElements',
-        insertText: new vscode.SnippetString('GetNamedElements(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetNamedElements(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     GetNamedElements(name as String) as Object
 
@@ -120,8 +120,8 @@ If only one element matches the name, an roXMLList containing one element is ret
     {
         kind: CompletionItemKind.Method,
         label: 'GetNamedElementsCi',
-        insertText: new vscode.SnippetString('GetNamedElementsCi(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetNamedElementsCi(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     GetNamedElementsCi(name as String) as Object
 
@@ -132,8 +132,8 @@ Same as GetNamedElements except the name matching is case-insensitive.
     {
         kind: CompletionItemKind.Method,
         label: 'IsName',
-        insertText: new vscode.SnippetString('IsName(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsName(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     IsName(name as String) as Boolean
 
@@ -144,8 +144,8 @@ Returns true if the element has the specified name.
     {
         kind: CompletionItemKind.Method,
         label: 'HasAttribute',
-        insertText: new vscode.SnippetString('HasAttribute(${1:attr as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('HasAttribute(${1:attr as String})'),
+        documentation: new MarkdownString(
 `
     HasAttribute(attr as String) as Boolean
 
@@ -156,8 +156,8 @@ Returns true if the element has the specified attribute.
     {
         kind: CompletionItemKind.Method,
         label: 'SetBody',
-        insertText: new vscode.SnippetString('SetBody(${1:body as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetBody(${1:body as Object})'),
+        documentation: new MarkdownString(
 `
     SetBody(body as Object) as Void
 
@@ -168,8 +168,8 @@ Sets the element text from the specified string.
     {
         kind: CompletionItemKind.Method,
         label: 'AddBodyElement',
-        insertText: new vscode.SnippetString('AddBodyElement()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddBodyElement()'),
+        documentation: new MarkdownString(
 `
     AddBodyElement() as Object
 
@@ -182,8 +182,8 @@ Alternatively AddElement() or AddElementWidthBody() can be used to combine this 
     {
         kind: CompletionItemKind.Method,
         label: 'AddElement',
-        insertText: new vscode.SnippetString('AddElement(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddElement(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     AddElement(name as String) as Object
 
@@ -194,8 +194,8 @@ Adds a new child element with the specified name and returns the new element.
     {
         kind: CompletionItemKind.Method,
         label: 'AddElementWithBody',
-        insertText: new vscode.SnippetString('AddElementWithBody(${1:name as String}, ${2:body as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddElementWithBody(${1:name as String}, ${2:body as Object})'),
+        documentation: new MarkdownString(
 `
     AddElementWithBody(name as String, body as Object) as Object
 
@@ -206,8 +206,8 @@ Adds a new child element with the specified name and text from the specified bod
     {
         kind: CompletionItemKind.Method,
         label: 'AddText',
-        insertText: new vscode.SnippetString('AddText(${1:text as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddText(${1:text as String})'),
+        documentation: new MarkdownString(
 `
     AddText(text as String) as Void
 
@@ -218,8 +218,8 @@ Adds text to the element.
     {
         kind: CompletionItemKind.Method,
         label: 'AddAttribute',
-        insertText: new vscode.SnippetString('AddAttribute(${1:attr as String}, ${2:value as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddAttribute(${1:attr as String}, ${2:value as String})'),
+        documentation: new MarkdownString(
 `
     AddAttribute(attr as String, value as String) as Void
 
@@ -230,8 +230,8 @@ Adds an attribute value to the element. If an attribute of the same name already
     {
         kind: CompletionItemKind.Method,
         label: 'SetName',
-        insertText: new vscode.SnippetString('SetName(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetName(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     SetName(name as String) as Void
 
@@ -242,8 +242,8 @@ Sets the name of the element.
     {
         kind: CompletionItemKind.Method,
         label: 'GenXML',
-        insertText: new vscode.SnippetString('GenXML(${1:gen_header as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GenXML(${1:gen_header as Boolean})'),
+        documentation: new MarkdownString(
 `
     GenXML(gen_header as Boolean) as String
 
@@ -254,8 +254,8 @@ Serializes the element to XML document text. If gen_header is true then the outp
     {
         kind: CompletionItemKind.Method,
         label: 'GenXMLHdr',
-        insertText: new vscode.SnippetString('GenXMLHdr(${1:hdr as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GenXMLHdr(${1:hdr as String})'),
+        documentation: new MarkdownString(
 `
     GenXMLHdr(hdr as String)
 
@@ -266,8 +266,8 @@ Serializes the element to XML document text. The specified header is used to beg
     {
         kind: CompletionItemKind.Method,
         label: 'Clear',
-        insertText: new vscode.SnippetString('Clear()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Clear()'),
+        documentation: new MarkdownString(
 `
     Clear() as Void
 

@@ -1,17 +1,16 @@
 import {
     CompletionItem,
     CompletionItemKind,
-    TextEdit,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifChannelStoreCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetIdentity',
-        insertText: new vscode.SnippetString('GetIdentity()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetIdentity()'),
+        documentation: new MarkdownString(
 `
     GetIdentity() as Integer
 
@@ -29,8 +28,8 @@ _This function is available in firmware 7.5 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'GetCatalog',
-        insertText: new vscode.SnippetString('GetCatalog()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCatalog()'),
+        documentation: new MarkdownString(
 `
     GetCatalog() as Void
 
@@ -50,8 +49,8 @@ If successful, a later roChannelStoreEvent will be received which contains an ro
     {
         kind: CompletionItemKind.Method,
         label: 'GetStoreCatalog',
-        insertText: new vscode.SnippetString('GetStoreCatalog()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetStoreCatalog()'),
+        documentation: new MarkdownString(
 `
     GetStoreCatalog() as Void
 
@@ -71,8 +70,8 @@ If successful, a later roChannelStoreEvent will be received which contains an ro
     {
         kind: CompletionItemKind.Method,
         label: 'GetPurchases',
-        insertText: new vscode.SnippetString('GetPurchases()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPurchases()'),
+        documentation: new MarkdownString(
 `
     GetPurchases() as Void
 
@@ -99,8 +98,8 @@ renewalDate | String | The subscription renewal date (ISO 8601 format)
     {
         kind: CompletionItemKind.Method,
         label: 'SetOrder',
-        insertText: new vscode.SnippetString('SetOrder(${1:order as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetOrder(${1:order as Object})'),
+        documentation: new MarkdownString(
 `
     SetOrder(order as Object) as Void
 
@@ -117,8 +116,8 @@ Passing an empty roList clears the Order, like calling ClearOrder().
     {
         kind: CompletionItemKind.Method,
         label: 'ClearOrder',
-        insertText: new vscode.SnippetString('ClearOrder()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ClearOrder()'),
+        documentation: new MarkdownString(
 `
     ClearOrder() as Void
 
@@ -129,8 +128,8 @@ Clears the current Order (shopping cart). After this call, the Order is empty.
     {
         kind: CompletionItemKind.Method,
         label: 'DeltaOrder',
-        insertText: new vscode.SnippetString('DeltaOrder(${1:code as Object}, ${2:qty as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DeltaOrder(${1:code as Object}, ${2:qty as Integer})'),
+        documentation: new MarkdownString(
 `
     DeltaOrder(code as Object, qty as Integer) as Integer
 
@@ -143,8 +142,8 @@ The returned value is the quantity of the item remaining in the Order after appl
     {
         kind: CompletionItemKind.Method,
         label: 'GetOrder',
-        insertText: new vscode.SnippetString('GetOrder()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetOrder()'),
+        documentation: new MarkdownString(
 `
     GetOrder() as Object
 
@@ -158,8 +157,8 @@ Retrieves the current Order. The returned object is an roList of roAssociativeAr
     {
         kind: CompletionItemKind.Method,
         label: 'DoOrder',
-        insertText: new vscode.SnippetString('DoOrder()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DoOrder()'),
+        documentation: new MarkdownString(
 `
     DoOrder() as Boolean
 
@@ -173,8 +172,8 @@ the channel should wait for and respond to the roChannelStoreEvent.isRequestSucc
     {
         kind: CompletionItemKind.Method,
         label: 'FakeServer',
-        insertText: new vscode.SnippetString('FakeServer(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FakeServer(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     FakeServer(enable as Boolean) as Void
 
@@ -189,8 +188,8 @@ This should never be called in a production channel.
     {
         kind: CompletionItemKind.Method,
         label: 'GetUserData',
-        insertText: new vscode.SnippetString('GetUserData()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetUserData()'),
+        documentation: new MarkdownString(
 `
     GetUserData() as Dynamic
 
@@ -214,8 +213,8 @@ GetUserData() returns an roAssociativeArray containing the following Roku accoun
     {
         kind: CompletionItemKind.Method,
         label: 'GetPartialUserData',
-        insertText: new vscode.SnippetString('GetPartialUserData(${1:properties as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPartialUserData(${1:properties as String})'),
+        documentation: new MarkdownString(
 `
     GetPartialUserData(properties as String) as Dynamic
 
@@ -239,8 +238,8 @@ The full set of user account properties that can be queried with the function is
     {
         kind: CompletionItemKind.Method,
         label: 'StoreChannelCredData',
-        insertText: new vscode.SnippetString('StoreChannelCredData(${1:data as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('StoreChannelCredData(${1:data as String})'),
+        documentation: new MarkdownString(
 `
     StoreChannelCredData(data as String) as Object
 
@@ -268,8 +267,8 @@ errorCode | String | An error code representing why the transaction failed.
     {
         kind: CompletionItemKind.Method,
         label: 'GetChannelCred',
-        insertText: new vscode.SnippetString('GetChannelCred()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetChannelCred()'),
+        documentation: new MarkdownString(
 `
     GetChannelCred() as Object
 
@@ -292,8 +291,8 @@ status | Integer | An integer representing the request status. A successful requ
     {
         kind: CompletionItemKind.Method,
         label: 'RequestPartnerOrder',
-        insertText: new vscode.SnippetString('RequestPartnerOrder(${1:orderInfo as Object}, ${2:productID as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('RequestPartnerOrder(${1:orderInfo as Object}, ${2:productID as String})'),
+        documentation: new MarkdownString(
 `
     RequestPartnerOrder(orderInfo as Object, productID as String) as Object
 
@@ -328,8 +327,8 @@ status | String | Failure
     {
         kind: CompletionItemKind.Method,
         label: 'ConfirmPartnerOrder',
-        insertText: new vscode.SnippetString('ConfirmPartnerOrder(${1:confirmOrderInfo as Object}, ${2:productID as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ConfirmPartnerOrder(${1:confirmOrderInfo as Object}, ${2:productID as String})'),
+        documentation: new MarkdownString(
 `
     ConfirmPartnerOrder(confirmOrderInfo as Object, productID as String) as Object
 

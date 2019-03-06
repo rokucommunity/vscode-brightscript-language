@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifTextToSpeechCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Say',
-        insertText: new vscode.SnippetString('Say(${1:text as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Say(${1:text as String})'),
+        documentation: new MarkdownString(
 `
     Say(text as String) as Integer
 
@@ -23,8 +23,8 @@ Causes the string specified by text to be spoken. Returns an ID for the spoken s
     {
         kind: CompletionItemKind.Method,
         label: 'Silence',
-        insertText: new vscode.SnippetString('Silence(${1:duration as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Silence(${1:duration as Integer})'),
+        documentation: new MarkdownString(
 `
     Silence(duration as Integer) as Integer
 
@@ -38,8 +38,8 @@ This can be used to add clarity for longer spoken text that may have pauses that
     {
         kind: CompletionItemKind.Method,
         label: 'Flush',
-        insertText: new vscode.SnippetString('Flush()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Flush()'),
+        documentation: new MarkdownString(
 `
     Flush() as Void
 
@@ -50,8 +50,8 @@ Interrupts and stops any current text to speech spoken string, to be used when t
     {
         kind: CompletionItemKind.Method,
         label: 'IsEnabled',
-        insertText: new vscode.SnippetString('IsEnabled()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsEnabled()'),
+        documentation: new MarkdownString(
 `
     IsEnabled() as Boolean
 
@@ -64,8 +64,8 @@ This is not affected by the state of any of its clients. In particular, it does 
     {
         kind: CompletionItemKind.Method,
         label: 'GetAvailableLanguages',
-        insertText: new vscode.SnippetString('GetAvailableLanguages()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAvailableLanguages()'),
+        documentation: new MarkdownString(
 `
     GetAvailableLanguages() as Object
 
@@ -76,8 +76,8 @@ Returns an array containing the current list of languages available for text to 
     {
         kind: CompletionItemKind.Method,
         label: 'SetLanguage',
-        insertText: new vscode.SnippetString('SetLanguage(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetLanguage(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     SetLanguage(name as String) as Void
 
@@ -90,8 +90,8 @@ Sets the language specified by name for text to speech, from one of the availabl
     {
         kind: CompletionItemKind.Method,
         label: 'GetLanguage',
-        insertText: new vscode.SnippetString('GetLanguage()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetLanguage()'),
+        documentation: new MarkdownString(
 `
     GetLanguage() as String
 
@@ -102,8 +102,8 @@ Returns the name of the currently-selected text to speech language.
     {
         kind: CompletionItemKind.Method,
         label: 'GetAvailableVoices',
-        insertText: new vscode.SnippetString('GetAvailableVoices()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAvailableVoices()'),
+        documentation: new MarkdownString(
 `
     GetAvailableVoices() as Object
 
@@ -114,8 +114,8 @@ Returns an array containing the current list of voices available for text to spe
     {
         kind: CompletionItemKind.Method,
         label: 'SetVoice',
-        insertText: new vscode.SnippetString('SetVoice(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetVoice(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     SetVoice(name as String) as Void
 
@@ -128,8 +128,8 @@ Sets the voice specified by name for text to speech, from one of the available v
     {
         kind: CompletionItemKind.Method,
         label: 'GetVoice',
-        insertText: new vscode.SnippetString('GetVoice()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVoice()'),
+        documentation: new MarkdownString(
 `
     GetVoice() as String
 
@@ -140,8 +140,8 @@ Returns the currently-selected voice.
     {
         kind: CompletionItemKind.Method,
         label: 'GetVolume',
-        insertText: new vscode.SnippetString('GetVolume()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetVolume()'),
+        documentation: new MarkdownString(
 `
     GetVolume() as Integer
 
@@ -152,8 +152,8 @@ Returns the volume at which text is spoken. The value ranges from 0 for muted to
     {
         kind: CompletionItemKind.Method,
         label: 'SetVolume',
-        insertText: new vscode.SnippetString('SetVolume(${1:volume as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetVolume(${1:volume as Integer})'),
+        documentation: new MarkdownString(
 `
     SetVolume(volume as Integer) as Void
 
@@ -164,8 +164,8 @@ volume is the volume at which text is spoken. The value ranges from 0 for muted 
     {
         kind: CompletionItemKind.Method,
         label: 'GetRate',
-        insertText: new vscode.SnippetString('GetRate()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRate()'),
+        documentation: new MarkdownString(
 `
     GetRate() as Integer
 
@@ -178,8 +178,8 @@ Returns the rate at which text is spoken. The value ranges from -40 to 200 with 
     {
         kind: CompletionItemKind.Method,
         label: 'SetRate',
-        insertText: new vscode.SnippetString('SetRate(${1:rate as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetRate(${1:rate as Integer})'),
+        documentation: new MarkdownString(
 `
     SetRate(rate as Integer) as Void
 
@@ -192,8 +192,8 @@ rate sets the rate at which text is spoken. The possible values range from -40 t
     {
         kind: CompletionItemKind.Method,
         label: 'GetPitch',
-        insertText: new vscode.SnippetString('GetPitch()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPitch()'),
+        documentation: new MarkdownString(
 `
     GetPitch() as Integer
 
@@ -206,8 +206,8 @@ Returns the pitch at which text is spoken. The possible values range from -60 to
     {
         kind: CompletionItemKind.Method,
         label: 'SetPitch',
-        insertText: new vscode.SnippetString('SetPitch(${1:pitch as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetPitch(${1:pitch as Integer})'),
+        documentation: new MarkdownString(
 `
     SetPitch(pitch as Integer) as Void
 

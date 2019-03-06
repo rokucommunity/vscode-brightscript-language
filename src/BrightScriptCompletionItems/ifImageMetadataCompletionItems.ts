@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifImageMetadataCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetUrl',
-        insertText: new vscode.SnippetString('SetUrl(${1:url as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetUrl(${1:url as String})'),
+        documentation: new MarkdownString(
 `
     SetUrl(url as String) as Void
 
@@ -21,8 +21,8 @@ Set the URL to the image. Only file urls are supported.
     {
         kind: CompletionItemKind.Method,
         label: 'GetMetaData',
-        insertText: new vscode.SnippetString('GetMetaData()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMetaData()'),
+        documentation: new MarkdownString(
 `
     GetMetaData() as Object
 
@@ -41,8 +41,8 @@ comment | String | User specified comment string. This is often referred to as a
     {
         kind: CompletionItemKind.Method,
         label: 'GetThumbnail',
-        insertText: new vscode.SnippetString('GetThumbnail()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetThumbnail()'),
+        documentation: new MarkdownString(
 `
     GetThumbnail() as Object
 
@@ -55,8 +55,8 @@ Returns an AssociateArray with two entries: "bytes" and "type". "bytes" is an ro
     {
         kind: CompletionItemKind.Method,
         label: 'GetRawExif',
-        insertText: new vscode.SnippetString('GetRawExif()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRawExif()'),
+        documentation: new MarkdownString(
 `
     GetRawExif() as Object
 
@@ -67,8 +67,8 @@ Returns an associative array with all of the raw EXIF metadata. See the EXIF sec
     {
         kind: CompletionItemKind.Method,
         label: 'GetRawExifTag',
-        insertText: new vscode.SnippetString('GetRawExifTag(${1:ifd as Integer}, ${2:tag as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRawExifTag(${1:ifd as Integer}, ${2:tag as Integer})'),
+        documentation: new MarkdownString(
 `
     GetRawExifTag(ifd as Integer, tag as Integer) as Dynamic
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAudioGuideCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Say',
-        insertText: new vscode.SnippetString('Say(${1:text as String}, ${2:flushSpeech as Boolean}, ${3:dontRepeat as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Say(${1:text as String}, ${2:flushSpeech as Boolean}, ${3:dontRepeat as Boolean})'),
+        documentation: new MarkdownString(
 `
     Say(text as String, flushSpeech as Boolean, dontRepeat as Boolean) as Integer
 
@@ -32,8 +32,8 @@ For more control over what is said, use roTextToSpeech.Say() which does not pre-
     {
         kind: CompletionItemKind.Method,
         label: 'Flush',
-        insertText: new vscode.SnippetString('Flush()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Flush()'),
+        documentation: new MarkdownString(
 `
     Flush() as Void
 
@@ -45,8 +45,8 @@ Note that this call is equivalent to roTextToSpeech.Flush(), and stops speech st
     {
         kind: CompletionItemKind.Method,
         label: 'Silence',
-        insertText: new vscode.SnippetString('Silence(${1:duration as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Silence(${1:duration as Integer})'),
+        documentation: new MarkdownString(
 `
     Silence(duration as Integer) as Integer
 

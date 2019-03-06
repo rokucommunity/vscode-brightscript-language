@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSystemLogCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'EnableType',
-        insertText: new vscode.SnippetString('EnableType(${1:logType as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableType(${1:logType as String})'),
+        documentation: new MarkdownString(
 `
     EnableType(logType as String) as Void
 

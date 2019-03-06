@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifArraySortCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Sort',
-        insertText: new vscode.SnippetString('Sort(${1|"","i","r","ir"|})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Sort(${1|"","i","r","ir"|})'),
+        documentation: new MarkdownString(
 `
     Sort(flags = "" as String) as Void
 
@@ -53,8 +53,8 @@ Examples
     {
         kind: CompletionItemKind.Method,
         label: 'SortBy',
-        insertText: new vscode.SnippetString('SortBy(${1:fieldName as String}, ${2|"","i","r","ir"|})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SortBy(${1:fieldName as String}, ${2|"","i","r","ir"|})'),
+        documentation: new MarkdownString(
 `
     SortBy(fieldName as String, flags = "" as String) as Void
 
@@ -82,8 +82,8 @@ Examples
     {
         kind: CompletionItemKind.Method,
         label: 'Reverse',
-        insertText: new vscode.SnippetString('Reverse()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Reverse()'),
+        documentation: new MarkdownString(
 `
     Reverse() as Void
 

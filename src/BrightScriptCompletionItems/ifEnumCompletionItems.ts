@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifEnumCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Reset',
-        insertText: new vscode.SnippetString('Reset()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Reset()'),
+        documentation: new MarkdownString(
 `
     Reset() as Void
 
@@ -21,8 +21,8 @@ Resets the current position to the first element of the enumeration.
     {
         kind: CompletionItemKind.Method,
         label: 'Next',
-        insertText: new vscode.SnippetString('Next()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Next()'),
+        documentation: new MarkdownString(
 `
     Next() as Dynamic
 
@@ -34,8 +34,8 @@ If the current position is already past the end (that is, the last element has a
     {
         kind: CompletionItemKind.Method,
         label: 'IsNext',
-        insertText: new vscode.SnippetString('IsNext()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsNext()'),
+        documentation: new MarkdownString(
 `
     IsNext() as Boolean
 
@@ -46,8 +46,8 @@ Returns true if the current position is not past the end of the enumeration.
     {
         kind: CompletionItemKind.Method,
         label: 'IsEmpty',
-        insertText: new vscode.SnippetString('IsEmpty()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsEmpty()'),
+        documentation: new MarkdownString(
 `
     IsEmpty() as Boolean
 

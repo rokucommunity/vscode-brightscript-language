@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifArrayJoinCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Join',
-        insertText: new vscode.SnippetString('Join(${1:separator as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Join(${1:separator as String})'),
+        documentation: new MarkdownString(
 `
     Join(separator as String) as String
 

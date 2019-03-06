@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifHdmiStatusCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'IsConnected',
-        insertText: new vscode.SnippetString('IsConnected()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsConnected()'),
+        documentation: new MarkdownString(
 `
     IsConnected() as Boolean
 
@@ -21,8 +21,8 @@ Returns true if the HDMI or MHL output is connected to an HDMI device.
     {
         kind: CompletionItemKind.Method,
         label: 'GetHdcpVersion',
-        insertText: new vscode.SnippetString('GetHdcpVersion()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetHdcpVersion()'),
+        documentation: new MarkdownString(
 `
     GetHdcpVersion() as String
 
@@ -33,8 +33,8 @@ Returns the version number of the currently established HDCP link.
     {
         kind: CompletionItemKind.Method,
         label: 'IsHdcpActive',
-        insertText: new vscode.SnippetString('IsHdcpActive(${1:version as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsHdcpActive(${1:version as String})'),
+        documentation: new MarkdownString(
 `
     IsHdcpActive(version as String) as Boolean
 

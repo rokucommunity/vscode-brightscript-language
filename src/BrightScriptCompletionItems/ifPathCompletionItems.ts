@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifPathCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Change',
-        insertText: new vscode.SnippetString('Change(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Change(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     Change(path as String) as Boolean
 
@@ -23,8 +23,8 @@ Returns true if the resulting path is valid.
     {
         kind: CompletionItemKind.Method,
         label: 'IsValid',
-        insertText: new vscode.SnippetString('IsValid()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsValid()'),
+        documentation: new MarkdownString(
 `
     IsValid() as Boolean
 
@@ -35,8 +35,8 @@ Returns true if the current path is valid; that is, if the path is correctly for
     {
         kind: CompletionItemKind.Method,
         label: 'Split',
-        insertText: new vscode.SnippetString('Split()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Split()'),
+        documentation: new MarkdownString(
 `
     Split() as Object
 

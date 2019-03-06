@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSourceIdentityCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetSourceIdentity',
-        insertText: new vscode.SnippetString('GetSourceIdentity()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSourceIdentity()'),
+        documentation: new MarkdownString(
 `
     GetSourceIdentity() as Integer
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifByteArrayCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'WriteFile',
-        insertText: new vscode.SnippetString('WriteFile(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('WriteFile(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     WriteFile(path as String) as Boolean
 
@@ -23,8 +23,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'WriteFile',
-        insertText: new vscode.SnippetString('WriteFile(${1:path as String}, ${2:start_index as Integer}, ${3:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('WriteFile(${1:path as String}, ${2:start_index as Integer}, ${3:length as Integer})'),
+        documentation: new MarkdownString(
 `
     WriteFile(path as String, start_index as Integer, length as Integer) as Boolean
 
@@ -38,8 +38,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'ReadFile',
-        insertText: new vscode.SnippetString('ReadFile(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ReadFile(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     ReadFile(path as String) as Boolean
 
@@ -54,8 +54,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'ReadFile',
-        insertText: new vscode.SnippetString('ReadFile(${1:path as String}, ${2:start_pos as Integer}, ${3:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ReadFile(${1:path as String}, ${2:start_pos as Integer}, ${3:length as Integer})'),
+        documentation: new MarkdownString(
 `
     ReadFile(path as String, start_pos as Integer, length as Integer) as Boolean
 
@@ -73,8 +73,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'AppendFile',
-        insertText: new vscode.SnippetString('AppendFile(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AppendFile(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     AppendFile(path as String) as Boolean
 
@@ -87,8 +87,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'AppendFile',
-        insertText: new vscode.SnippetString('AppendFile(${1:path as String}, ${2:start_pos as Integer}, ${3:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AppendFile(${1:path as String}, ${2:start_pos as Integer}, ${3:length as Integer})'),
+        documentation: new MarkdownString(
 `
     AppendFile(path as String, start_pos as Integer, length as Integer) as Boolean
 
@@ -104,8 +104,8 @@ _This function is available in firmware 7.5 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'SetResize',
-        insertText: new vscode.SnippetString('SetResize(${1:min_size as Integer}, ${2:auto_resize as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetResize(${1:min_size as Integer}, ${2:auto_resize as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetResize(min_size as Integer, auto_resize as Boolean) as Boolean
 
@@ -117,8 +117,8 @@ Also sets the auto-resize attribute of the Byte Array to the specified value.
     {
         kind: CompletionItemKind.Method,
         label: 'ToHexString',
-        insertText: new vscode.SnippetString('ToHexString()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToHexString()'),
+        documentation: new MarkdownString(
 `
     ToHexString() as String
 
@@ -129,8 +129,8 @@ Returns a hexadecimal string representing the contents of the Byte Array, two di
     {
         kind: CompletionItemKind.Method,
         label: 'FromHexString',
-        insertText: new vscode.SnippetString('FromHexString(${1:hexstring as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FromHexString(${1:hexstring as String})'),
+        documentation: new MarkdownString(
 `
     FromHexString(hexstring as String) as Void
 
@@ -145,8 +145,8 @@ Any data currently in the Byte Array is discarded.
     {
         kind: CompletionItemKind.Method,
         label: 'ToBase64String',
-        insertText: new vscode.SnippetString('ToBase64String()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToBase64String()'),
+        documentation: new MarkdownString(
 `
     ToBase64String() as String
 
@@ -157,8 +157,8 @@ Returns a base-64 string representing the contents of the Byte Array.
     {
         kind: CompletionItemKind.Method,
         label: 'FromBase64String',
-        insertText: new vscode.SnippetString('FromBase64String(${1:s as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FromBase64String(${1:s as String})'),
+        documentation: new MarkdownString(
 `
     FromBase64String(s as String) as Void
 
@@ -172,8 +172,8 @@ Any data currently in the Byte Array is discarded.
     {
         kind: CompletionItemKind.Method,
         label: 'ToAsciiString',
-        insertText: new vscode.SnippetString('ToAsciiString()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToAsciiString()'),
+        documentation: new MarkdownString(
 `
     ToAsciiString() as String
 
@@ -185,8 +185,8 @@ The contents must be valid UTF-8 (or ASCII subset), or the result is undefined.
     {
         kind: CompletionItemKind.Method,
         label: 'FromAsciiString',
-        insertText: new vscode.SnippetString('FromAsciiString(${1:s as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('FromAsciiString(${1:s as String})'),
+        documentation: new MarkdownString(
 `
     FromAsciiString(s as String) as Void
 
@@ -198,8 +198,8 @@ Any data currently in the Byte Array is discarded.
     {
         kind: CompletionItemKind.Method,
         label: 'GetSignedByte',
-        insertText: new vscode.SnippetString('GetSignedByte(${1:index as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSignedByte(${1:index as Integer})'),
+        documentation: new MarkdownString(
 `
     GetSignedByte(index as Integer) as Integer
 
@@ -211,8 +211,8 @@ Use ifArrayGet.GetEntry() or the [] array operator to read an unsigned byte in t
     {
         kind: CompletionItemKind.Method,
         label: 'GetSignedLong',
-        insertText: new vscode.SnippetString('GetSignedLong(${1:index as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSignedLong(${1:index as Integer})'),
+        documentation: new MarkdownString(
 `
     GetSignedLong(index as Integer) as Integer
 
@@ -223,8 +223,8 @@ Returns the signed long (four bytes) starting at the specified zero-based index 
     {
         kind: CompletionItemKind.Method,
         label: 'GetCRC32',
-        insertText: new vscode.SnippetString('GetCRC32()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCRC32()'),
+        documentation: new MarkdownString(
 `
     GetCRC32() as Integer
 
@@ -237,8 +237,8 @@ _This function is available in firmware 7.5 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'GetCRC32',
-        insertText: new vscode.SnippetString('GetCRC32(${1:start as Integer}, ${2:length as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCRC32(${1:start as Integer}, ${2:length as Integer})'),
+        documentation: new MarkdownString(
 `
     GetCRC32(start as Integer, length as Integer) as Integer
 
@@ -251,8 +251,8 @@ _This function is available in firmware 7.5 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'IsLittleEndianCPU',
-        insertText: new vscode.SnippetString('IsLittleEndianCPU()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsLittleEndianCPU()'),
+        documentation: new MarkdownString(
 `
     IsLittleEndianCPU() as Boolean
 

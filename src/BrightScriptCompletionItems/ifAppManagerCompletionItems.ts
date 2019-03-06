@@ -1,16 +1,16 @@
 import {
     CompletionItem,
     CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAppManagerCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetTheme',
-        insertText: new vscode.SnippetString('SetTheme(${1:attributeArray as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetTheme(${1:attributeArray as Object})'),
+        documentation: new MarkdownString(
 `
     SetTheme(attributeArray as Object) as Void
 
@@ -24,8 +24,8 @@ but not included in the array currently provided by with the subsequent call wil
     {
         kind: CompletionItemKind.Method,
         label: 'SetThemeAttribute',
-        insertText: new vscode.SnippetString('SetThemeAttribute(${1:attributeName as String}, ${2:attributeValue as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetThemeAttribute(${1:attributeName as String}, ${2:attributeValue as String})'),
+        documentation: new MarkdownString(
 `
     SetThemeAttribute(attributeName as String, attributeValue as String) as Void
 
@@ -38,8 +38,8 @@ If the attributeName is not valid, no action is performed.
     {
         kind: CompletionItemKind.Method,
         label: 'ClearThemeAttribute',
-        insertText: new vscode.SnippetString('ClearThemeAttribute(${1:attributeName as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ClearThemeAttribute(${1:attributeName as String})'),
+        documentation: new MarkdownString(
 `
     ClearThemeAttribute(attributeName as String) as Void
 
@@ -50,8 +50,8 @@ Clears a previously set attribute and reverts to its default value.
     {
         kind: CompletionItemKind.Method,
         label: 'GetUptime',
-        insertText: new vscode.SnippetString('GetUptime()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetUptime()'),
+        documentation: new MarkdownString(
 `
     GetUptime() as Object
 
@@ -63,8 +63,8 @@ Calling TotalMilliseconds() on the returned roTimespan object returns the total 
     {
         kind: CompletionItemKind.Method,
         label: 'GetScreensaverTimeout',
-        insertText: new vscode.SnippetString('GetScreensaverTimeout()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetScreensaverTimeout()'),
+        documentation: new MarkdownString(
 `
     GetScreensaverTimeout() as Integer
 
@@ -75,8 +75,8 @@ Returns the user's screensaver wait time setting in number of minutes, or zero i
     {
         kind: CompletionItemKind.Method,
         label: 'UpdateLastKeyPressTime',
-        insertText: new vscode.SnippetString('UpdateLastKeyPressTime()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('UpdateLastKeyPressTime()'),
+        documentation: new MarkdownString(
 `
     UpdateLastKeyPressTime() as Void
 
@@ -90,8 +90,8 @@ in which case you can call UpdateLastKeyPressTime periodically, such as when adv
     {
         kind: CompletionItemKind.Method,
         label: 'SetUserSignedIn',
-        insertText: new vscode.SnippetString('SetUserSignedIn(${1:signedIn as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetUserSignedIn(${1:signedIn as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetUserSignedIn(signedIn as Boolean) as Void
 
@@ -104,8 +104,8 @@ This method accepts the signedIn parameter, which if set to true indicates the u
     {
         kind: CompletionItemKind.Method,
         label: 'SetAutomaticAudioGuideEnabled',
-        insertText: new vscode.SnippetString('SetAutomaticAudioGuideEnabled(${1:enabled as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetAutomaticAudioGuideEnabled(${1:enabled as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetAutomaticAudioGuideEnabled(enabled as Boolean) as Void
 
@@ -117,8 +117,8 @@ Enables or disables automatic Audio Guide and override any manifest setting. Thi
     {
         kind: CompletionItemKind.Method,
         label: 'IsAppInstalled',
-        insertText: new vscode.SnippetString('IsAppInstalled(${1:channelID as String}, ${2:version as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsAppInstalled(${1:channelID as String}, ${2:version as String})'),
+        documentation: new MarkdownString(
 `
     IsAppInstalled(channelID as String, version as String) as Boolean
 

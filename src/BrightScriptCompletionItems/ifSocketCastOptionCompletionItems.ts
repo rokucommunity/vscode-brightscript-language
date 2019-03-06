@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSocketCastOptionCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetBroadcast',
-        insertText: new vscode.SnippetString('GetBroadcast()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetBroadcast()'),
+        documentation: new MarkdownString(
 `
     GetBroadcast() as Boolean
 
@@ -21,8 +21,8 @@ Return true if broadcast messages are enabled to be sent or received.
     {
         kind: CompletionItemKind.Method,
         label: 'SetBroadcast',
-        insertText: new vscode.SnippetString('SetBroadcast(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetBroadcast(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetBroadcast(enable as Boolean) as Boolean
 
@@ -35,8 +35,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'JoinGroup',
-        insertText: new vscode.SnippetString('JoinGroup(${1:ipAddress as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('JoinGroup(${1:ipAddress as Object})'),
+        documentation: new MarkdownString(
 `
     JoinGroup(ipAddress as Object) as Boolean
 
@@ -51,8 +51,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'DropGroup',
-        insertText: new vscode.SnippetString('DropGroup(${1:ipAddress as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DropGroup(${1:ipAddress as Object})'),
+        documentation: new MarkdownString(
 `
     DropGroup(ipAddress as Object) as Boolean
 
@@ -67,8 +67,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetMulticastLoop',
-        insertText: new vscode.SnippetString('GetMulticastLoop()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMulticastLoop()'),
+        documentation: new MarkdownString(
 `
     GetMulticastLoop() as Boolean
 
@@ -81,8 +81,8 @@ If enabled, multicast message sent locally are to be received locally.
     {
         kind: CompletionItemKind.Method,
         label: 'SetMulticastLoop',
-        insertText: new vscode.SnippetString('SetMulticastLoop(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetMulticastLoop(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetMulticastLoop(enable as Boolean) as Boolean
 
@@ -95,8 +95,8 @@ Returns true if successfully set.
     {
         kind: CompletionItemKind.Method,
         label: 'GetMulticastTTL',
-        insertText: new vscode.SnippetString('GetMulticastTTL()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMulticastTTL()'),
+        documentation: new MarkdownString(
 `
     GetMulticastTTL() as Integer
 
@@ -109,8 +109,8 @@ TTL is the number of hops a packet is allowed before a router drops the packet.
     {
         kind: CompletionItemKind.Method,
         label: 'SetMulticastTTL',
-        insertText: new vscode.SnippetString('SetMulticastTTL(${1:ttl as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetMulticastTTL(${1:ttl as Integer})'),
+        documentation: new MarkdownString(
 `
     SetMulticastTTL(ttl as Integer) as Boolean
 

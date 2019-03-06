@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifRegistrySectionCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Read',
-        insertText: new vscode.SnippetString('Read(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Read(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     Read(key as String) as String
 
@@ -21,8 +21,8 @@ Reads and returns the value of the specified key
     {
         kind: CompletionItemKind.Method,
         label: 'ReadMulti',
-        insertText: new vscode.SnippetString('ReadMulti(${1:keysArray as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ReadMulti(${1:keysArray as Object})'),
+        documentation: new MarkdownString(
 `
     ReadMulti(keysArray as Object) as Object
 
@@ -35,8 +35,8 @@ Reads multiple values from the registry. Takes an array of strings, the key name
     {
         kind: CompletionItemKind.Method,
         label: 'Write',
-        insertText: new vscode.SnippetString('Write(${1:key as String}, ${2:value as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Write(${1:key as String}, ${2:value as String})'),
+        documentation: new MarkdownString(
 `
     Write(key as String, value as String) as Boolean
 
@@ -49,8 +49,8 @@ Does not guarantee a commit to non-volatile storage until an explicit Flush() is
     {
         kind: CompletionItemKind.Method,
         label: 'WriteMulti',
-        insertText: new vscode.SnippetString('WriteMulti(${1:roAA as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('WriteMulti(${1:roAA as Object})'),
+        documentation: new MarkdownString(
 `
     WriteMulti(roAA as Object) as Boolean
 
@@ -63,8 +63,8 @@ Writes multiple values to the registry. Takes an associative array with key/valu
     {
         kind: CompletionItemKind.Method,
         label: 'Delete',
-        insertText: new vscode.SnippetString('Delete(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Delete(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     Delete(key as String) as Boolean
 
@@ -75,8 +75,8 @@ Deletes the specified key.
     {
         kind: CompletionItemKind.Method,
         label: 'Exists',
-        insertText: new vscode.SnippetString('Exists(${1:key as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Exists(${1:key as String})'),
+        documentation: new MarkdownString(
 `
     Exists(key as String) as Boolean
 
@@ -87,8 +87,8 @@ Returns true if the specified key exists.
     {
         kind: CompletionItemKind.Method,
         label: 'Flush',
-        insertText: new vscode.SnippetString('Flush()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Flush()'),
+        documentation: new MarkdownString(
 `
     Flush() as Boolean
 
@@ -100,8 +100,8 @@ Flush is transactional and all writes between calls to Flush are atomic.
     {
         kind: CompletionItemKind.Method,
         label: 'GetKeyList',
-        insertText: new vscode.SnippetString('GetKeyList()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetKeyList()'),
+        documentation: new MarkdownString(
 `
     GetKeyList() as Object
 

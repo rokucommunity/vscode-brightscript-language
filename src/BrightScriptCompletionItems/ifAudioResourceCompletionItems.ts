@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAudioResourceCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Trigger',
-        insertText: new vscode.SnippetString('Trigger(${1:volume as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Trigger(${1:volume as Integer})'),
+        documentation: new MarkdownString(
 `
     Trigger(volume as Integer) as Void
 
@@ -22,8 +22,8 @@ The volume is a number between 0 and 100 (percentage of full volume).  50 should
     {
         kind: CompletionItemKind.Method,
         label: 'IsPlaying',
-        insertText: new vscode.SnippetString('IsPlaying()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsPlaying()'),
+        documentation: new MarkdownString(
 `
     IsPlaying() as Boolean
 
@@ -34,8 +34,8 @@ Returns true if this audio resource is currently playing.
     {
         kind: CompletionItemKind.Method,
         label: 'Stop',
-        insertText: new vscode.SnippetString('Stop()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Stop()'),
+        documentation: new MarkdownString(
 `
     Stop() as Void
 
@@ -46,8 +46,8 @@ Stops playing the audio resource. If the resource is not currently playing, has 
     {
         kind: CompletionItemKind.Method,
         label: 'MaxSimulStreams',
-        insertText: new vscode.SnippetString('MaxSimulStreams()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('MaxSimulStreams()'),
+        documentation: new MarkdownString(
 `
     MaxSimulStreams() as Integer
 
@@ -59,8 +59,8 @@ Some Roku models support playing multiple resources and mix the output, others s
     {
         kind: CompletionItemKind.Method,
         label: 'GetMetaData',
-        insertText: new vscode.SnippetString('GetMetaData()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMetaData()'),
+        documentation: new MarkdownString(
 `
     GetMetaData() as Object
 

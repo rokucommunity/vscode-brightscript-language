@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifCompositorCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetDrawTo',
-        insertText: new vscode.SnippetString('SetDrawTo(${1:destBitmap as Object}, ${2:rgbaBackground as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetDrawTo(${1:destBitmap as Object}, ${2:rgbaBackground as Integer})'),
+        documentation: new MarkdownString(
 `
     SetDrawTo(destBitmap as Object, rgbaBackground as Integer) as Void
 
@@ -21,8 +21,8 @@ Set the destBitmap (roBitmap or roScreen) and the background color.
     {
         kind: CompletionItemKind.Method,
         label: 'Draw',
-        insertText: new vscode.SnippetString('Draw()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Draw()'),
+        documentation: new MarkdownString(
 `
     Draw() as Void
 
@@ -35,8 +35,8 @@ After calling Draw(), you must call Finish() (if single buffered) or SwapBuffers
     {
         kind: CompletionItemKind.Method,
         label: 'DrawAll',
-        insertText: new vscode.SnippetString('DrawAll()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawAll()'),
+        documentation: new MarkdownString(
 `
     DrawAll() as Void
 
@@ -49,8 +49,8 @@ After calling Draw(), you must call Finish() (if single buffered) or SwapBuffers
     {
         kind: CompletionItemKind.Method,
         label: 'NewSprite',
-        insertText: new vscode.SnippetString('NewSprite(${1:x as Integer}, ${2:y as Integer}, ${3:region as Object}, ${4:z as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('NewSprite(${1:x as Integer}, ${2:y as Integer}, ${3:region as Object}, ${4:z as Integer})'),
+        documentation: new MarkdownString(
 `
     NewSprite(x as Integer, y as Integer, region as Object, z as Integer) as Object
 
@@ -65,8 +65,8 @@ If z is provided, position the sprite in front of all other sprites with equal o
     {
         kind: CompletionItemKind.Method,
         label: 'NewAnimatedSprite',
-        insertText: new vscode.SnippetString('NewAnimatedSprite(${1:x as Integer}, ${2:y as Integer}, ${3:regionArray as Object}, ${4:z as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('NewAnimatedSprite(${1:x as Integer}, ${2:y as Integer}, ${3:regionArray as Object}, ${4:z as Integer})'),
+        documentation: new MarkdownString(
 `
     NewAnimatedSprite(x as Integer, y as Integer, regionArray as Object, z as Integer) as Object
 
@@ -83,8 +83,8 @@ If z is provided, position the sprite in front of all other sprites with equal o
     {
         kind: CompletionItemKind.Method,
         label: 'AnimationTick',
-        insertText: new vscode.SnippetString('AnimationTick(${1:duration as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AnimationTick(${1:duration as Integer})'),
+        documentation: new MarkdownString(
 `
     AnimationTick(duration as Integer) as Void
 
@@ -99,8 +99,8 @@ Sprites will not animate unless you call this function regularly.
     {
         kind: CompletionItemKind.Method,
         label: 'ChangeMatchingRegions',
-        insertText: new vscode.SnippetString('ChangeMatchingRegions(${1:oldRegion as Object}, ${2:newRegion as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ChangeMatchingRegions(${1:oldRegion as Object}, ${2:newRegion as Object})'),
+        documentation: new MarkdownString(
 `
     ChangeMatchingRegions(oldRegion as Object, newRegion as Object) as Void
 

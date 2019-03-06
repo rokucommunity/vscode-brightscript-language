@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifSocketAsyncCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'IsReadable',
-        insertText: new vscode.SnippetString('IsReadable()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsReadable()'),
+        documentation: new MarkdownString(
 `
     IsReadable() as Boolean
 
@@ -21,8 +21,8 @@ Returns true if underlying select determines non-blocking read is possible.
     {
         kind: CompletionItemKind.Method,
         label: 'IsWritable',
-        insertText: new vscode.SnippetString('IsWritable()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsWritable()'),
+        documentation: new MarkdownString(
 `
     IsWritable() as Boolean
 
@@ -33,8 +33,8 @@ Returns true if underlying select determines non-blocking write is possible.
     {
         kind: CompletionItemKind.Method,
         label: 'IsException',
-        insertText: new vscode.SnippetString('IsException()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsException()'),
+        documentation: new MarkdownString(
 `
     IsException() as Boolean
 
@@ -45,8 +45,8 @@ Returns true if underlying select determines non-blocking read of OOB data is po
     {
         kind: CompletionItemKind.Method,
         label: 'NotifyReadable',
-        insertText: new vscode.SnippetString('NotifyReadable(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('NotifyReadable(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     NotifyReadable(enable as Boolean) as Void
 
@@ -57,8 +57,8 @@ Enable roSocketEvent events to be sent via the message port when the underlying 
     {
         kind: CompletionItemKind.Method,
         label: 'NotifyWritable',
-        insertText: new vscode.SnippetString('NotifyWritable(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('NotifyWritable(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     NotifyWritable(enable as Boolean) as Void
 
@@ -69,8 +69,8 @@ Enable roSocketEvent events to be sent via the message port when the underlying 
     {
         kind: CompletionItemKind.Method,
         label: 'NotifyException',
-        insertText: new vscode.SnippetString('NotifyException(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('NotifyException(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     NotifyException(enable as Boolean) as Void
 
@@ -81,8 +81,8 @@ Enable roSocketEvent events to be sent via the message port when the underlying 
     {
         kind: CompletionItemKind.Method,
         label: 'GetID',
-        insertText: new vscode.SnippetString('GetID()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetID()'),
+        documentation: new MarkdownString(
 `
     GetID() as Integer
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifDraw2DCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Clear',
-        insertText: new vscode.SnippetString('Clear(${1:rgba as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Clear(${1:rgba as Integer})'),
+        documentation: new MarkdownString(
 `
     Clear(rgba as Integer) as Void
 
@@ -26,8 +26,8 @@ Note that Clear() is not the same as a DrawRect() for the entire bitmap. Clear()
     {
         kind: CompletionItemKind.Method,
         label: 'GetWidth',
-        insertText: new vscode.SnippetString('GetWidth()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetWidth()'),
+        documentation: new MarkdownString(
 `
     GetWidth() as Integer
 
@@ -38,8 +38,8 @@ Returns the width of the bitmap in pixels.
     {
         kind: CompletionItemKind.Method,
         label: 'GetHeight',
-        insertText: new vscode.SnippetString('GetHeight()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetHeight()'),
+        documentation: new MarkdownString(
 `
     GetHeight() as Integer
 
@@ -50,8 +50,8 @@ Returns the height of the bitmap in pixels.
     {
         kind: CompletionItemKind.Method,
         label: 'GetByteArray',
-        insertText: new vscode.SnippetString('GetByteArray(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetByteArray(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer})'),
+        documentation: new MarkdownString(
 `
     GetByteArray(x as Integer, y as Integer, width as Integer, height as Integer) as Object
 
@@ -62,8 +62,8 @@ Returns an roByteArray representing the RGBA pixel values for the rectangle desc
     {
         kind: CompletionItemKind.Method,
         label: 'GetPng',
-        insertText: new vscode.SnippetString('GetPng(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPng(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer})'),
+        documentation: new MarkdownString(
 `
     GetPng(x as Integer, y as Integer, width as Integer, height as Integer) as Object
 
@@ -80,8 +80,8 @@ _This function is available in firmware 7.0 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'GetAlphaEnable',
-        insertText: new vscode.SnippetString('GetAlphaEnable()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAlphaEnable()'),
+        documentation: new MarkdownString(
 `
     GetAlphaEnable() as Boolean
 
@@ -92,8 +92,8 @@ Returns true if alpha blending is enabled.
     {
         kind: CompletionItemKind.Method,
         label: 'SetAlphaEnable',
-        insertText: new vscode.SnippetString('SetAlphaEnable(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetAlphaEnable(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetAlphaEnable(enable as Boolean) as Void
 
@@ -111,8 +111,8 @@ Even when alpha blending is off, the alpha value is still present in the bitmap,
     {
         kind: CompletionItemKind.Method,
         label: 'DrawRect',
-        insertText: new vscode.SnippetString('DrawRect(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer}, ${5:rgba as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawRect(${1:x as Integer}, ${2:y as Integer}, ${3:width as Integer}, ${4:height as Integer}, ${5:rgba as Integer})'),
+        documentation: new MarkdownString(
 `
     DrawRect(x as Integer, y as Integer, width as Integer, height as Integer, rgba as Integer) as Void
 
@@ -123,8 +123,8 @@ Fill the specified rectangle from left (x), top (y) to right (x + width), bottom
     {
         kind: CompletionItemKind.Method,
         label: 'DrawPoint',
-        insertText: new vscode.SnippetString('DrawPoint(${1:x as Integer}, ${2:y as Integer}, ${3:size as Float}, ${4:rgba as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawPoint(${1:x as Integer}, ${2:y as Integer}, ${3:size as Float}, ${4:rgba as Integer})'),
+        documentation: new MarkdownString(
 `
     DrawPoint(x as Integer, y as Integer, size as Float, rgba as Integer) as Void
 
@@ -137,8 +137,8 @@ _This function is available in firmware 6.2 or later._
     {
         kind: CompletionItemKind.Method,
         label: 'DrawLine',
-        insertText: new vscode.SnippetString('DrawLine(${1:xStart as Integer}, ${2:yStart as Integer}, ${3:xEnd as Integer}, ${4:yEnd as Integer}, ${5:rgba as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawLine(${1:xStart as Integer}, ${2:yStart as Integer}, ${3:xEnd as Integer}, ${4:yEnd as Integer}, ${5:rgba as Integer})'),
+        documentation: new MarkdownString(
 `
     DrawLine(xStart as Integer, yStart as Integer, xEnd as Integer, yEnd as Integer, rgba as Integer) as Void
 
@@ -149,8 +149,8 @@ Draw a line from (xStart, yStart) to (xEnd, yEnd) with RGBA color.
     {
         kind: CompletionItemKind.Method,
         label: 'DrawObject',
-        insertText: new vscode.SnippetString('DrawObject(${1:x as Integer}, ${2:y as Integer}, ${3:src as Object}, ${4:rgba = &hFFFFFFFF})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawObject(${1:x as Integer}, ${2:y as Integer}, ${3:src as Object}, ${4:rgba = &hFFFFFFFF})'),
+        documentation: new MarkdownString(
 `
     DrawObject(x as Integer, y as Integer, src as Object, rgba = &hFFFFFFFF as Integer) as Boolean
 
@@ -163,10 +163,10 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'DrawScaledObject',
-        insertText: new vscode.SnippetString(
+        insertText: new SnippetString(
             'DrawScaledObject(${1:x as Integer}, ${2:y as Integer}, ${3:scaleX as Float}, ${4:scaleY as Float}, ${5:src as Object}, ${6:rgba = &hFFFFFFFF as Integer})'
             ),
-        documentation: new vscode.MarkdownString(
+        documentation: new MarkdownString(
 `
     DrawScaledObject(x as Integer, y as Integer, scaleX as Float, scaleY as Float, src as Object, rgba = &hFFFFFFFF as Integer) as Boolean
 
@@ -181,8 +181,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'DrawRotatedObject',
-        insertText: new vscode.SnippetString('DrawRotatedObject(${1:x as Integer}, ${2:y as Integer}, ${3:theta as Float}, ${4:src as Object}, ${6:rgba = &hFFFFFFFF as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawRotatedObject(${1:x as Integer}, ${2:y as Integer}, ${3:theta as Float}, ${4:src as Object}, ${6:rgba = &hFFFFFFFF as Integer})'),
+        documentation: new MarkdownString(
 `
     DrawRotatedObject(x as Integer, y as Integer, theta as Float, src as Object, rgba = &hFFFFFFFF as Integer) as Boolean
 
@@ -197,8 +197,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'DrawText',
-        insertText: new vscode.SnippetString('DrawText(${1:text as String}, ${2:x as Integer}, ${3:y as Integer}, ${4:rgba as Integer}, ${5:font as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DrawText(${1:text as String}, ${2:x as Integer}, ${3:y as Integer}, ${4:rgba as Integer}, ${5:font as Object})'),
+        documentation: new MarkdownString(
 `
     DrawText(text as String, x as Integer, y as Integer, rgba as Integer, font as Object) as Boolean
 
@@ -217,8 +217,8 @@ Returns true if successful.
     {
         kind: CompletionItemKind.Method,
         label: 'Finish',
-        insertText: new vscode.SnippetString('Finish()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Finish()'),
+        documentation: new MarkdownString(
 `
     Finish() as Void
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifXMLListCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetNamedElements',
-        insertText: new vscode.SnippetString('GetNamedElements(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetNamedElements(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     GetNamedElements(name As String) As Object
 
@@ -21,8 +21,8 @@ Returns a new XMLList that contains all roXMLElements that matched the passed in
     {
         kind: CompletionItemKind.Method,
         label: 'GetNamedElementsCi',
-        insertText: new vscode.SnippetString('GetNamedElementsCi(${1:name as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetNamedElementsCi(${1:name as String})'),
+        documentation: new MarkdownString(
 `
     GetNamedElementsCi(name As String) As Object
 
@@ -33,8 +33,8 @@ Similar to GetNamedElements(), but uses case-insensitive matching.
     {
         kind: CompletionItemKind.Method,
         label: 'Simplify',
-        insertText: new vscode.SnippetString('Simplify()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Simplify()'),
+        documentation: new MarkdownString(
 `
     Simplify() As Object
 
@@ -45,8 +45,8 @@ If the list contains exactly one item, Simplify() returns that item. Otherwise, 
     {
         kind: CompletionItemKind.Method,
         label: 'GetAttributes',
-        insertText: new vscode.SnippetString('GetAttributes()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAttributes()'),
+        documentation: new MarkdownString(
 `
     GetAttributes() As Object
 
@@ -57,8 +57,8 @@ If the list contains exactly one item, GetAttributes() returns the attributes of
     {
         kind: CompletionItemKind.Method,
         label: 'GetText',
-        insertText: new vscode.SnippetString('GetText()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetText()'),
+        documentation: new MarkdownString(
 `
     GetText() As String
 
@@ -69,8 +69,8 @@ If the list contains exactly one item, GetText() returns the text of that item. 
     {
         kind: CompletionItemKind.Method,
         label: 'GetChildElements',
-        insertText: new vscode.SnippetString('GetChildElements()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetChildElements()'),
+        documentation: new MarkdownString(
 `
     GetChildElements() As Dynamic
 

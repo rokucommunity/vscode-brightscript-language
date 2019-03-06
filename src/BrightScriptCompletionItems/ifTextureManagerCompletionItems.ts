@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifTextureManagerCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'RequestTexture',
-        insertText: new vscode.SnippetString('RequestTexture(${1:req as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('RequestTexture(${1:req as Object})'),
+        documentation: new MarkdownString(
 `
     RequestTexture(req as Object) as Void
 
@@ -22,8 +22,8 @@ The roTextureManager will pass an roTextureRequestEvent to the message port when
     {
         kind: CompletionItemKind.Method,
         label: 'CancelRequest',
-        insertText: new vscode.SnippetString('CancelRequest(${1:req as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('CancelRequest(${1:req as Object})'),
+        documentation: new MarkdownString(
 `
     CancelRequest(req as Object) as Void
 
@@ -34,8 +34,8 @@ Cancels the request specified by req, which should be an roTextureRequest previo
     {
         kind: CompletionItemKind.Method,
         label: 'UnloadBitmap',
-        insertText: new vscode.SnippetString('UnloadBitmap(${1:url as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('UnloadBitmap(${1:url as String})'),
+        documentation: new MarkdownString(
 `
     UnloadBitmap(url as String) as Void
 
@@ -46,8 +46,8 @@ Removes a bitmap from the roTextureManager with the specified URL.
     {
         kind: CompletionItemKind.Method,
         label: 'Cleanup',
-        insertText: new vscode.SnippetString('Cleanup()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Cleanup()'),
+        documentation: new MarkdownString(
 `
     Cleanup() as Void
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifHttpAgentCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'AddHeader',
-        insertText: new vscode.SnippetString('AddHeader(${1:name as String}, ${2:value as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddHeader(${1:name as String}, ${2:value as String})'),
+        documentation: new MarkdownString(
 `
     AddHeader(name as String, value as String) as Boolean
 
@@ -29,8 +29,8 @@ This allows the developer's server to know which client app is talking to it. An
     {
         kind: CompletionItemKind.Method,
         label: 'SetHeaders',
-        insertText: new vscode.SnippetString('SetHeaders(${1:nameValueMap as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetHeaders(${1:nameValueMap as Object})'),
+        documentation: new MarkdownString(
 `
     SetHeaders(nameValueMap as Object) as Boolean
 
@@ -43,8 +43,8 @@ Header limitations specified in AddHeader() still apply.
     {
         kind: CompletionItemKind.Method,
         label: 'InitClientCertificates',
-        insertText: new vscode.SnippetString('InitClientCertificates()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('InitClientCertificates()'),
+        documentation: new MarkdownString(
 `
     InitClientCertificates() as Boolean
 
@@ -55,8 +55,8 @@ Initialize the object to send the Roku client certificate.
     {
         kind: CompletionItemKind.Method,
         label: 'SetCertificatesFile',
-        insertText: new vscode.SnippetString('SetCertificatesFile(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetCertificatesFile(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     SetCertificatesFile(path as String) as Boolean
 
@@ -77,8 +77,8 @@ The appropriate certificates file should be placed at the location specified in 
     {
         kind: CompletionItemKind.Method,
         label: 'SetCertificatesDepth',
-        insertText: new vscode.SnippetString('SetCertificatesDepth(${1:depth as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetCertificatesDepth(${1:depth as Integer})'),
+        documentation: new MarkdownString(
 `
     SetCertificatesDepth(depth as Integer) as Void
 
@@ -89,8 +89,8 @@ Set the maximum depth of the certificate chain that will be accepted.
     {
         kind: CompletionItemKind.Method,
         label: 'EnableCookies',
-        insertText: new vscode.SnippetString('EnableCookies()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableCookies()'),
+        documentation: new MarkdownString(
 `
     EnableCookies() as Void
 
@@ -101,8 +101,8 @@ Causes any Set-Cookie headers returned from the request to be interpreted and th
     {
         kind: CompletionItemKind.Method,
         label: 'GetCookies',
-        insertText: new vscode.SnippetString('GetCookies(${1:domain as String}, ${2:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCookies(${1:domain as String}, ${2:path as String})'),
+        documentation: new MarkdownString(
 `
     GetCookies(domain as String, path as String) as Object
 
@@ -128,8 +128,8 @@ Expires | roDateTime | Cookie expiration date, if any
     {
         kind: CompletionItemKind.Method,
         label: 'AddCookies',
-        insertText: new vscode.SnippetString('AddCookies(${1:cookies as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddCookies(${1:cookies as Object})'),
+        documentation: new MarkdownString(
 `
     AddCookies(cookies as Object) as Boolean
 
@@ -144,8 +144,8 @@ The specified cookies are added to the cookie cache.
     {
         kind: CompletionItemKind.Method,
         label: 'ClearCookies',
-        insertText: new vscode.SnippetString('ClearCookies()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ClearCookies()'),
+        documentation: new MarkdownString(
 `
     ClearCookies() as Void
 

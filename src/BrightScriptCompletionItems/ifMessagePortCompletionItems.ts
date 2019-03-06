@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifMessagePortCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'WaitMessage',
-        insertText: new vscode.SnippetString('WaitMessage(${1:timeout as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('WaitMessage(${1:timeout as Integer})'),
+        documentation: new MarkdownString(
 `
     WaitMessage(timeout as Integer) as Dynamic
 
@@ -27,8 +27,8 @@ The Brightscript wait() native function can also be used to get the event object
     {
         kind: CompletionItemKind.Method,
         label: 'GetMessage',
-        insertText: new vscode.SnippetString('GetMessage()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetMessage()'),
+        documentation: new MarkdownString(
 `
     GetMessage() as Dynamic
 
@@ -39,8 +39,8 @@ If an event object is available, it is returned. Otherwise invalid is returned. 
     {
         kind: CompletionItemKind.Method,
         label: 'PeekMessage',
-        insertText: new vscode.SnippetString('PeekMessage()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('PeekMessage()'),
+        documentation: new MarkdownString(
 `
     PeekMessage() as Dynamic
 

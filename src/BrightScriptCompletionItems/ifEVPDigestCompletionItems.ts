@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifEVPDigestCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Setup',
-        insertText: new vscode.SnippetString('Setup(${1:digestType as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Setup(${1:digestType as String})'),
+        documentation: new MarkdownString(
 `
     Setup(digestType as String) as Integer
 
@@ -32,8 +32,8 @@ sha512 | SHA-2, 512 bit variant
     {
         kind: CompletionItemKind.Method,
         label: 'Reint',
-        insertText: new vscode.SnippetString('Reint()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Reint()'),
+        documentation: new MarkdownString(
 `
     Reint() as Integer
 
@@ -44,8 +44,8 @@ Re-initialize an existing message digest context. This can be called to reuse an
     {
         kind: CompletionItemKind.Method,
         label: 'Process',
-        insertText: new vscode.SnippetString('Process(${1:bytes as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Process(${1:bytes as Object})'),
+        documentation: new MarkdownString(
 `
     Process(bytes as Object) as Object
 
@@ -64,8 +64,8 @@ is equivalent to
     {
         kind: CompletionItemKind.Method,
         label: 'Update',
-        insertText: new vscode.SnippetString('Update(${1:bytes as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Update(${1:bytes as Object})'),
+        documentation: new MarkdownString(
 `
     Update(bytes as Object) as Object
 
@@ -76,8 +76,8 @@ Add more data to be digested. The parameter should be an roByteArray. The data i
     {
         kind: CompletionItemKind.Method,
         label: 'Final',
-        insertText: new vscode.SnippetString('Final()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Final()'),
+        documentation: new MarkdownString(
 `
     Final() as Object
 

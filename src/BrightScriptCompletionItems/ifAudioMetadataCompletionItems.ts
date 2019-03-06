@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAudioMetadataCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetUrl',
-        insertText: new vscode.SnippetString('SetUrl(${1:url as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetUrl(${1:url as String})'),
+        documentation: new MarkdownString(
 `
     SetUrl(url as String) as Void
 
@@ -21,8 +21,8 @@ Sets the URL to the audio file. Only file URLs are initially supported.
     {
         kind: CompletionItemKind.Method,
         label: 'GetTags',
-        insertText: new vscode.SnippetString('GetTags()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetTags()'),
+        documentation: new MarkdownString(
 `
     GetTags() as Object
 
@@ -44,8 +44,8 @@ year | Integer
     {
         kind: CompletionItemKind.Method,
         label: 'GetAudioProperties',
-        insertText: new vscode.SnippetString('GetAudioProperties()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAudioProperties()'),
+        documentation: new MarkdownString(
 `
     GetAudioProperties() as Object
 
@@ -65,8 +65,8 @@ channels | Integer | Number of channels
     {
         kind: CompletionItemKind.Method,
         label: 'GetCoverArt',
-        insertText: new vscode.SnippetString('GetCoverArt()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCoverArt()'),
+        documentation: new MarkdownString(
 `
     GetCoverArt() as Object
 

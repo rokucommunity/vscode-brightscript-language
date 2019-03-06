@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifTimespanCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Mark',
-        insertText: new vscode.SnippetString('Mark()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Mark()'),
+        documentation: new MarkdownString(
 `
     Mark() as Void
 
@@ -21,8 +21,8 @@ Sets the "Mark" point to the current time. The Mark point is also automatically 
     {
         kind: CompletionItemKind.Method,
         label: 'TotalMilliseconds',
-        insertText: new vscode.SnippetString('TotalMilliseconds()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('TotalMilliseconds()'),
+        documentation: new MarkdownString(
 `
     TotalMilliseconds() as Integer
 
@@ -33,8 +33,8 @@ Returns the total number of milliseconds from the "Mark" point to the current ti
     {
         kind: CompletionItemKind.Method,
         label: 'TotalSeconds',
-        insertText: new vscode.SnippetString('TotalSeconds()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('TotalSeconds()'),
+        documentation: new MarkdownString(
 `
     TotalSeconds() as Integer
 
@@ -51,8 +51,8 @@ is equivalent to
     {
         kind: CompletionItemKind.Method,
         label: 'GetSecondsToISO8601Date',
-        insertText: new vscode.SnippetString('GetSecondsToISO8601Date(${1:date as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetSecondsToISO8601Date(${1:date as String})'),
+        documentation: new MarkdownString(
 `
     GetSecondsToISO8601Date(date as String) as Integer
 

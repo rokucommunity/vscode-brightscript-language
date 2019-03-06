@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifScreenCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SwapBuffers',
-        insertText: new vscode.SnippetString('SwapBuffers()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SwapBuffers()'),
+        documentation: new MarkdownString(
 `
     SwapBuffers() as Void
 

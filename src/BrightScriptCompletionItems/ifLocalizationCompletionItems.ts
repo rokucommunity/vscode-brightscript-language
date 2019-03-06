@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifLocalizationCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetPluralString',
-        insertText: new vscode.SnippetString('GetPluralString(${1:count as Integer}, ${2:zeroString as String}, ${3:oneString as String}, ${4:pluralString as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPluralString(${1:count as Integer}, ${2:zeroString as String}, ${3:oneString as String}, ${4:pluralString as String})'),
+        documentation: new MarkdownString(
 `
     GetPluralString(count as Integer, zeroString as String, oneString as String, pluralString as String) as String
 
@@ -24,8 +24,8 @@ Otherwise, it replaces "^n" in pluralString with count and returns the result. F
     {
         kind: CompletionItemKind.Method,
         label: 'GetLocalizedAsset',
-        insertText: new vscode.SnippetString('GetLocalizedAsset(${1:dirName as String}, ${2:fileName as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetLocalizedAsset(${1:dirName as String}, ${2:fileName as String})'),
+        documentation: new MarkdownString(
 `
     GetLocalizedAsset(dirName as String, fileName as String) as String
 

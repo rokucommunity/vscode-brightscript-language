@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifUrlTransferCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'GetIdentity',
-        insertText: new vscode.SnippetString('GetIdentity()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetIdentity()'),
+        documentation: new MarkdownString(
 `
     GetIdentity() as Integer
 
@@ -24,8 +24,8 @@ For example, the value should not be used as an array index.  For use as a look-
     {
         kind: CompletionItemKind.Method,
         label: 'SetUrl',
-        insertText: new vscode.SnippetString('SetUrl(${1:url as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetUrl(${1:url as String})'),
+        documentation: new MarkdownString(
 `
     SetUrl(url as String) as Void
 
@@ -36,8 +36,8 @@ Sets the URL to use for the transfer request.
     {
         kind: CompletionItemKind.Method,
         label: 'GetUrl',
-        insertText: new vscode.SnippetString('GetUrl()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetUrl()'),
+        documentation: new MarkdownString(
 `
     GetUrl() as String
 
@@ -48,8 +48,8 @@ Returns the current URL.
     {
         kind: CompletionItemKind.Method,
         label: 'SetRequest',
-        insertText: new vscode.SnippetString('SetRequest(${1:req as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetRequest(${1:req as String})'),
+        documentation: new MarkdownString(
 `
     SetRequest(req as String)
 
@@ -60,8 +60,8 @@ Changes the request method from the normal GET, HEAD or POST to the value passed
     {
         kind: CompletionItemKind.Method,
         label: 'GetRequest',
-        insertText: new vscode.SnippetString('GetRequest()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetRequest()'),
+        documentation: new MarkdownString(
 `
     GetRequest() as String
 
@@ -72,8 +72,8 @@ Returns the current request method.
     {
         kind: CompletionItemKind.Method,
         label: 'GetToString',
-        insertText: new vscode.SnippetString('GetToString()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetToString()'),
+        documentation: new MarkdownString(
 `
     GetToString() as String
 
@@ -86,8 +86,8 @@ This calls discards the headers and response codes. If that information is requi
     {
         kind: CompletionItemKind.Method,
         label: 'GetToFile',
-        insertText: new vscode.SnippetString('GetToFile(${1:filename as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetToFile(${1:filename as String})'),
+        documentation: new MarkdownString(
 `
     GetToFile(filename as String) as Integer
 
@@ -102,8 +102,8 @@ The HTTP response code from the server is returned. It is not possible to access
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncGetToString',
-        insertText: new vscode.SnippetString('AsyncGetToString()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncGetToString()'),
+        documentation: new MarkdownString(
 `
     AsyncGetToString() as Boolean
 
@@ -115,8 +115,8 @@ The event will contain a roString with the body of the response. If false is ret
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncGetToFile',
-        insertText: new vscode.SnippetString('AsyncGetToFile(${1:filename as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncGetToFile(${1:filename as String})'),
+        documentation: new MarkdownString(
 `
     AsyncGetToFile(filename as String) as Boolean
 
@@ -129,8 +129,8 @@ When the GET completes, an roUrlEvent will be sent to the message port associate
     {
         kind: CompletionItemKind.Method,
         label: 'Head',
-        insertText: new vscode.SnippetString('Head()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Head()'),
+        documentation: new MarkdownString(
 `
     Head() as Dynamic
 
@@ -141,8 +141,8 @@ Synchronously perform an HTTP HEAD request and return an roUrlEvent object. In t
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncHead',
-        insertText: new vscode.SnippetString('AsyncHead()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncHead()'),
+        documentation: new MarkdownString(
 `
     AsyncHead() as Boolean
 
@@ -155,8 +155,8 @@ If false is returned then the request could not be issued and no events will be 
     {
         kind: CompletionItemKind.Method,
         label: 'PostFromString',
-        insertText: new vscode.SnippetString('PostFromString(${1:request as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('PostFromString(${1:request as String})'),
+        documentation: new MarkdownString(
 `
     PostFromString(request as String) as Integer
 
@@ -167,8 +167,8 @@ Use the HTTP POST method to send the supplied string to the current URL. The HTT
     {
         kind: CompletionItemKind.Method,
         label: 'PostFromFile',
-        insertText: new vscode.SnippetString('PostFromFile(${1:filename as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('PostFromFile(${1:filename as String})'),
+        documentation: new MarkdownString(
 `
     PostFromFile(filename as String) as Integer
 
@@ -179,8 +179,8 @@ Use the HTTP POST method to send the contents of the specified file to the curre
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncPostFromString',
-        insertText: new vscode.SnippetString('AsyncPostFromString(${1:request as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncPostFromString(${1:request as String})'),
+        documentation: new MarkdownString(
 `
     AsyncPostFromString(request as String) as Boolean
 
@@ -193,8 +193,8 @@ If false is returned then the request could not be issued and no events will be 
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncPostFromFile',
-        insertText: new vscode.SnippetString('AsyncPostFromFile(${1:filename as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncPostFromFile(${1:filename as String})'),
+        documentation: new MarkdownString(
 `
     AsyncPostFromFile(filename as String) as Boolean
 
@@ -207,8 +207,8 @@ If false is returned then the request could not be issued and no events will be 
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncPostFromFileToFile',
-        insertText: new vscode.SnippetString('AsyncPostFromFileToFile(${1:fromFile as String}, ${2:toFile as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncPostFromFileToFile(${1:fromFile as String}, ${2:toFile as String})'),
+        documentation: new MarkdownString(
 `
     AsyncPostFromFileToFile(fromFile as String, toFile as String) as Boolean
 
@@ -222,8 +222,8 @@ This function is the same as AsyncPostFromFile, except that the HTTP response is
     {
         kind: CompletionItemKind.Method,
         label: 'AsyncCancel',
-        insertText: new vscode.SnippetString('AsyncCancel()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AsyncCancel()'),
+        documentation: new MarkdownString(
 `
     AsyncCancel() as Boolean
 
@@ -234,8 +234,8 @@ Cancel any outstanding async requests on the roUrlTransfer object.
     {
         kind: CompletionItemKind.Method,
         label: 'RetainBodyOnError',
-        insertText: new vscode.SnippetString('RetainBodyOnError(${1:retain as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('RetainBodyOnError(${1:retain as Boolean})'),
+        documentation: new MarkdownString(
 `
     RetainBodyOnError(retain as Boolean) as Boolean
 
@@ -246,8 +246,8 @@ If retain is true, return the body of the response even if the HTTP status code 
     {
         kind: CompletionItemKind.Method,
         label: 'SetUserAndPassword',
-        insertText: new vscode.SnippetString('SetUserAndPassword(${1:user as String}, ${2:password as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetUserAndPassword(${1:user as String}, ${2:password as String})'),
+        documentation: new MarkdownString(
 `
     SetUserAndPassword(user as String, password as String) as Boolean
 
@@ -259,8 +259,8 @@ Note that HTTP basic authentication is deliberately disabled due to it being inh
     {
         kind: CompletionItemKind.Method,
         label: 'SetMinimumTransferRate',
-        insertText: new vscode.SnippetString('SetMinimumTransferRate(${1:bytes_per_second as Integer}, ${2:period_in_seconds as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetMinimumTransferRate(${1:bytes_per_second as Integer}, ${2:period_in_seconds as Integer})'),
+        documentation: new MarkdownString(
 `
     SetMinimumTransferRate(bytes_per_second as Integer, period_in_seconds as Integer) as Boolean
 
@@ -273,8 +273,8 @@ For large file transfers and a small bytes_per_second, averaging over fifteen mi
     {
         kind: CompletionItemKind.Method,
         label: 'GetFailureReason',
-        insertText: new vscode.SnippetString('GetFailureReason()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetFailureReason()'),
+        documentation: new MarkdownString(
 `
     GetFailureReason() as String
 
@@ -285,8 +285,8 @@ If any of the roUrlTransfer functions indicate failure then this function may pr
     {
         kind: CompletionItemKind.Method,
         label: 'EnableEncodings',
-        insertText: new vscode.SnippetString('EnableEncodings(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableEncodings(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableEncodings(enable as Boolean) as Boolean
 
@@ -297,8 +297,8 @@ Enable gzip encoding of transfers.
     {
         kind: CompletionItemKind.Method,
         label: 'Escape',
-        insertText: new vscode.SnippetString('Escape(${1:text as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Escape(${1:text as String})'),
+        documentation: new MarkdownString(
 `
     Escape(text as String) as String
 
@@ -309,8 +309,8 @@ URL encode the specified string per RFC 3986 and return the encoded string.
     {
         kind: CompletionItemKind.Method,
         label: 'Unescape',
-        insertText: new vscode.SnippetString('Unescape(${1:text as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Unescape(${1:text as String})'),
+        documentation: new MarkdownString(
 `
     Unescape(text as String) as String
 
@@ -321,8 +321,8 @@ Decode the specified string per RFC 3986 and return the unencoded string.
     {
         kind: CompletionItemKind.Method,
         label: 'EnableResume',
-        insertText: new vscode.SnippetString('EnableResume(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableResume(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableResume(enable as Boolean) as Boolean
 
@@ -333,8 +333,8 @@ Enable automatic resumption of AsyncGetToFile and GetToFile requests.
     {
         kind: CompletionItemKind.Method,
         label: 'EnablePeerVerification',
-        insertText: new vscode.SnippetString('EnablePeerVerification(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnablePeerVerification(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnablePeerVerification(enable as Boolean) as Boolean
 
@@ -345,8 +345,8 @@ Verify the certificate has a chain of trust up to a valid root certificate using
     {
         kind: CompletionItemKind.Method,
         label: 'EnableHostVerification',
-        insertText: new vscode.SnippetString('EnableHostVerification(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableHostVerification(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableHostVerification(enable as Boolean) as Boolean
 
@@ -357,8 +357,8 @@ Verify that the certificate belongs to the host we're talking to using CURLOPT_S
     {
         kind: CompletionItemKind.Method,
         label: 'EnableFreshConnection',
-        insertText: new vscode.SnippetString('EnableFreshConnection(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EnableFreshConnection(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     EnableFreshConnection(enable as Boolean) as Boolean
 
@@ -369,8 +369,8 @@ Enable fresh connection using CURLOPT_FRESH_CONNECT.
     {
         kind: CompletionItemKind.Method,
         label: 'SetHttpVersion',
-        insertText: new vscode.SnippetString('SetHttpVersion(${1:version as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetHttpVersion(${1:version as String})'),
+        documentation: new MarkdownString(
 `
     SetHttpVersion(version as String) as Void
 

@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifRegexCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'IsMatch',
-        insertText: new vscode.SnippetString('IsMatch(${1:str as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('IsMatch(${1:str as String})'),
+        documentation: new MarkdownString(
 `
     IsMatch(str as String) as Boolean
 
@@ -27,8 +27,8 @@ Example from Brightscript Debugger Interactive Shell:
     {
         kind: CompletionItemKind.Method,
         label: 'Match',
-        insertText: new vscode.SnippetString('Match(${1:str as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Match(${1:str as String})'),
+        documentation: new MarkdownString(
 `
     Match(str as String) as Object
 
@@ -57,8 +57,8 @@ Note that entry 2 of the array is an empty string, corresponding to the parenthe
     {
         kind: CompletionItemKind.Method,
         label: 'Replace',
-        insertText: new vscode.SnippetString('Replace(${1:str as String}, ${2:replacement as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Replace(${1:str as String}, ${2:replacement as String})'),
+        documentation: new MarkdownString(
 `
     Replace(str as String, replacement as String) as String
 
@@ -77,8 +77,8 @@ Example from Brightscript Debugger Interactive Shell:
     {
         kind: CompletionItemKind.Method,
         label: 'ReplaceAll',
-        insertText: new vscode.SnippetString('ReplaceAll(${1:str as String}, ${2:replacement as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ReplaceAll(${1:str as String}, ${2:replacement as String})'),
+        documentation: new MarkdownString(
 `
     ReplaceAll(str as String, replacement as String) as String
 
@@ -99,8 +99,8 @@ Examples from Brightscript Debugger Interactive Shell:
     {
         kind: CompletionItemKind.Method,
         label: 'Split',
-        insertText: new vscode.SnippetString('Split(${1:str as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Split(${1:str as String})'),
+        documentation: new MarkdownString(
 `
     Split(str as String) as Object
 
@@ -132,8 +132,8 @@ Note that in the first example, the last two strings begin with a space, since e
     {
         kind: CompletionItemKind.Method,
         label: 'MatchAll',
-        insertText: new vscode.SnippetString('MatchAll(${1:str as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('MatchAll(${1:str as String})'),
+        documentation: new MarkdownString(
 `
     MatchAll(str as String) as Object
 

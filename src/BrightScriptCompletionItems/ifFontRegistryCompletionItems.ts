@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifFontRegistryCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'Register',
-        insertText: new vscode.SnippetString('Register(${1:path as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Register(${1:path as String})'),
+        documentation: new MarkdownString(
 `
     Register(path as String) as Boolean
 
@@ -25,8 +25,8 @@ Returns true if the font(s) in the file were successfully installed.
     {
         kind: CompletionItemKind.Method,
         label: 'GetFamilies',
-        insertText: new vscode.SnippetString('GetFamilies()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetFamilies()'),
+        documentation: new MarkdownString(
 `
     GetFamilies() as Object
 
@@ -37,8 +37,8 @@ Returns an roArray of strings that represent the names of the font families whic
     {
         kind: CompletionItemKind.Method,
         label: 'GetFont',
-        insertText: new vscode.SnippetString('GetFont(${1:family as String}, ${2:size as Integer}, ${3:bold as Boolean}, ${4:italic as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetFont(${1:family as String}, ${2:size as Integer}, ${3:bold as Boolean}, ${4:italic as Boolean})'),
+        documentation: new MarkdownString(
 `
     GetFont(family as String, size as Integer, bold as Boolean, italic as Boolean) as Object
 
@@ -50,8 +50,8 @@ size is the requested font size, in pixels, not points. bold and italic specify 
     {
         kind: CompletionItemKind.Method,
         label: 'GetDefaultFont',
-        insertText: new vscode.SnippetString('GetDefaultFont(${1:size as Integer}, ${2:bold as Boolean}, ${3:italic as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDefaultFont(${1:size as Integer}, ${2:bold as Boolean}, ${3:italic as Boolean})'),
+        documentation: new MarkdownString(
 `
     GetDefaultFont(size as Integer, bold as Boolean, italic as Boolean) as Object
 
@@ -62,8 +62,8 @@ Returns an roFont object representing the system font. The system font is always
     {
         kind: CompletionItemKind.Method,
         label: 'GetDefaultFontSize',
-        insertText: new vscode.SnippetString('GetDefaultFontSize()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetDefaultFontSize()'),
+        documentation: new MarkdownString(
 `
     GetDefaultFontSize() as Integer
 
@@ -74,8 +74,8 @@ Returns the default font size.
     {
         kind: CompletionItemKind.Method,
         label: 'Get',
-        insertText: new vscode.SnippetString('Get(${1:family as String}, ${2:size as Integer}, ${3:bold as Boolean}, ${4:italic as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Get(${1:family as String}, ${2:size as Integer}, ${3:bold as Boolean}, ${4:italic as Boolean})'),
+        documentation: new MarkdownString(
 `
     Get(family as String, size as Integer, bold as Boolean, italic as Boolean) as String
 

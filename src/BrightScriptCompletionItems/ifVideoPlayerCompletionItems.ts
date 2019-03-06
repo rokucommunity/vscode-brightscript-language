@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifVideoPlayerCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetContentList',
-        insertText: new vscode.SnippetString('SetContentList(${1:contentList as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetContentList(${1:contentList as Object})'),
+        documentation: new MarkdownString(
 `
     SetContentList(contentList as Object) as Void
 
@@ -28,8 +28,8 @@ To signal the content transition, the player sends an isRequestSucceeded notific
     {
         kind: CompletionItemKind.Method,
         label: 'AddContent',
-        insertText: new vscode.SnippetString('AddContent(${1:contentItem as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddContent(${1:contentItem as Object})'),
+        documentation: new MarkdownString(
 `
     AddContent(contentItem as Object) as Void
 
@@ -42,8 +42,8 @@ roVideoPlayer playback buffers on each Content item transition.
     {
         kind: CompletionItemKind.Method,
         label: 'ClearContent',
-        insertText: new vscode.SnippetString('ClearContent()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ClearContent()'),
+        documentation: new MarkdownString(
 `
     ClearContent() as Void
 
@@ -55,8 +55,8 @@ Next, the current player position is reset so the next time Play() is called, pl
     {
         kind: CompletionItemKind.Method,
         label: 'PreBuffer',
-        insertText: new vscode.SnippetString('PreBuffer()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('PreBuffer()'),
+        documentation: new MarkdownString(
 `
     PreBuffer() as Boolean
 
@@ -70,8 +70,8 @@ A typical use would be to call PreBuffer() when the user is in the roSpringboard
     {
         kind: CompletionItemKind.Method,
         label: 'Play',
-        insertText: new vscode.SnippetString('Play()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Play()'),
+        documentation: new MarkdownString(
 `
     Play() as Boolean
 
@@ -85,8 +85,8 @@ If Seek() was not called, the player advances its current position to the next i
     {
         kind: CompletionItemKind.Method,
         label: 'Stop',
-        insertText: new vscode.SnippetString('Stop()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Stop()'),
+        documentation: new MarkdownString(
 `
     Stop() as Boolean
 
@@ -97,8 +97,8 @@ Stops playback and resets the seek position, keeps the player’s current positi
     {
         kind: CompletionItemKind.Method,
         label: 'Pause',
-        insertText: new vscode.SnippetString('Pause()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Pause()'),
+        documentation: new MarkdownString(
 `
     Pause() as Boolean
 
@@ -111,8 +111,8 @@ It is an error to Pause if player is not in _play_ mode.
     {
         kind: CompletionItemKind.Method,
         label: 'Resume',
-        insertText: new vscode.SnippetString('Resume()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Resume()'),
+        documentation: new MarkdownString(
 `
     Resume() as Boolean
 
@@ -125,8 +125,8 @@ It is an error to Resume from any other mode than _pause_.
     {
         kind: CompletionItemKind.Method,
         label: 'SetLoop',
-        insertText: new vscode.SnippetString('SetLoop(${1:loop as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetLoop(${1:loop as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetLoop(loop as Boolean) as Void
 
@@ -139,8 +139,8 @@ Buffers on every loop to the beginning of the content list.
     {
         kind: CompletionItemKind.Method,
         label: 'SetNext',
-        insertText: new vscode.SnippetString('SetNext(${1:item as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetNext(${1:item as Integer})'),
+        documentation: new MarkdownString(
 `
     SetNext(item as Integer) as Void
 
@@ -151,8 +151,8 @@ Set what the next item to be played within the Content List should be.
     {
         kind: CompletionItemKind.Method,
         label: 'Seek',
-        insertText: new vscode.SnippetString('Seek(${1:offsetMs as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Seek(${1:offsetMs as Integer})'),
+        documentation: new MarkdownString(
 `
     Seek(offsetMs as Integer) as Boolean
 
@@ -163,8 +163,8 @@ Set the start point of playback for the current video to offsetMs milliseconds.
     {
         kind: CompletionItemKind.Method,
         label: 'SetPositionNotificationPeriod',
-        insertText: new vscode.SnippetString('SetPositionNotificationPeriod(${1:period as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetPositionNotificationPeriod(${1:period as Integer})'),
+        documentation: new MarkdownString(
 `
     SetPositionNotificationPeriod(period as Integer) as Void
 
@@ -176,8 +176,8 @@ Notification events sent to the script specify the position in seconds relative 
     {
         kind: CompletionItemKind.Method,
         label: 'SetCGMS',
-        insertText: new vscode.SnippetString('SetCGMS(${1:level as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetCGMS(${1:level as Integer})'),
+        documentation: new MarkdownString(
 `
     SetCGMS(level as Integer) as Void
 
@@ -193,8 +193,8 @@ Set CGMS (Copy Guard Management System) on analog outputs to the desired level.
     {
         kind: CompletionItemKind.Method,
         label: 'SetDestinationRect',
-        insertText: new vscode.SnippetString('SetDestinationRect(${1:rect as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetDestinationRect(${1:rect as Object})'),
+        documentation: new MarkdownString(
 `
     SetDestinationRect(rect as Object) as Void
 
@@ -209,8 +209,8 @@ Default value is: {x:0, y:0, w:0, h:0}, which is full screen
     {
         kind: CompletionItemKind.Method,
         label: 'SetDestinationRect',
-        insertText: new vscode.SnippetString('SetDestinationRect(${1:x as Integer}, ${2:y as Integer}, ${3:w as Integer}, ${4:h as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetDestinationRect(${1:x as Integer}, ${2:y as Integer}, ${3:w as Integer}, ${4:h as Integer})'),
+        documentation: new MarkdownString(
 `
     SetDestinationRect(x as Integer, y as Integer, w as Integer, h as Integer) as Void
 
@@ -221,8 +221,8 @@ Set the target display window for the video.
     {
         kind: CompletionItemKind.Method,
         label: 'SetMaxVideoDecodeResolution',
-        insertText: new vscode.SnippetString('SetMaxVideoDecodeResolution(${1:width as Integer}, ${2:height as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetMaxVideoDecodeResolution(${1:width as Integer}, ${2:height as Integer})'),
+        documentation: new MarkdownString(
 `
     SetMaxVideoDecodeResolution(width as Integer, height as Integer) as Void
 
@@ -244,8 +244,8 @@ Without this call, these applications are likely to not have enough memory for e
     {
         kind: CompletionItemKind.Method,
         label: 'GetPlaybackDuration',
-        insertText: new vscode.SnippetString('GetPlaybackDuration()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetPlaybackDuration()'),
+        documentation: new MarkdownString(
 `
     GetPlaybackDuration() as Integer
 
@@ -257,8 +257,8 @@ This information may not be available until after the video starts playing. A va
     {
         kind: CompletionItemKind.Method,
         label: 'GetAudioTracks',
-        insertText: new vscode.SnippetString('GetAudioTracks()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetAudioTracks()'),
+        documentation: new MarkdownString(
 `
     GetAudioTracks() as Object
 
@@ -275,8 +275,8 @@ Name | Track name
     {
         kind: CompletionItemKind.Method,
         label: 'ChangeAudioTrack',
-        insertText: new vscode.SnippetString('ChangeAudioTrack(${1:trackID as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ChangeAudioTrack(${1:trackID as String})'),
+        documentation: new MarkdownString(
 `
     ChangeAudioTrack(trackID as String) as Void
 
@@ -288,8 +288,8 @@ The function is passed a track ID value, as found in the Track attribute of the 
     {
         kind: CompletionItemKind.Method,
         label: 'SetTimedMetaDataForKeys',
-        insertText: new vscode.SnippetString('SetTimedMetaDataForKeys(${1:keys as Dynamic})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetTimedMetaDataForKeys(${1:keys as Dynamic})'),
+        documentation: new MarkdownString(
 `
     SetTimedMetaDataForKeys(keys[] as Dynamic) as Void
 
@@ -303,8 +303,8 @@ Any keys not specified with this method are deleted by the firmware and never re
     {
         kind: CompletionItemKind.Method,
         label: 'GetCaptionRenderer',
-        insertText: new vscode.SnippetString('GetCaptionRenderer()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetCaptionRenderer()'),
+        documentation: new MarkdownString(
 `
     GetCaptionRenderer() as Object
 

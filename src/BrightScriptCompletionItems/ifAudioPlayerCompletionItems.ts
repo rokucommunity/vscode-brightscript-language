@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifAudioPlayerCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetContentList',
-        insertText: new vscode.SnippetString('SetContentList(${1:contentList as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetContentList(${1:contentList as Object})'),
+        documentation: new MarkdownString(
 `
     SetContentList(contentList as Object) as Void
 
@@ -22,8 +22,8 @@ representing the information for each stream to be played. See Content Meta-Data
     {
         kind: CompletionItemKind.Method,
         label: 'AddContent',
-        insertText: new vscode.SnippetString('AddContent(${1:contentItem as Object})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AddContent(${1:contentItem as Object})'),
+        documentation: new MarkdownString(
 `
     AddContent(contentItem as Object) as Void
 
@@ -34,8 +34,8 @@ Add a new ContentMetaData item to the content list for the Audio Player. The new
     {
         kind: CompletionItemKind.Method,
         label: 'ClearContent',
-        insertText: new vscode.SnippetString('ClearContent()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ClearContent()'),
+        documentation: new MarkdownString(
 `
     ClearContent() as Void
 
@@ -46,8 +46,8 @@ Clear the content list.
     {
         kind: CompletionItemKind.Method,
         label: 'Play',
-        insertText: new vscode.SnippetString('Play()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Play()'),
+        documentation: new MarkdownString(
 `
     Play() as Boolean
 
@@ -58,8 +58,8 @@ Put the Audio Player into _play_ mode starting at the current item in the Conten
     {
         kind: CompletionItemKind.Method,
         label: 'Stop',
-        insertText: new vscode.SnippetString('Stop()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Stop()'),
+        documentation: new MarkdownString(
 `
     Stop() as Boolean
 
@@ -70,8 +70,8 @@ Stop Audio Player from playing or pausing and cleanup.
     {
         kind: CompletionItemKind.Method,
         label: 'Pause',
-        insertText: new vscode.SnippetString('Pause()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Pause()'),
+        documentation: new MarkdownString(
 `
     Pause() as Boolean
 
@@ -82,8 +82,8 @@ Put Audio Player into _pause_ mode. It is an error to Pause if player is not in 
     {
         kind: CompletionItemKind.Method,
         label: 'Resume',
-        insertText: new vscode.SnippetString('Resume()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Resume()'),
+        documentation: new MarkdownString(
 `
     Resume() as Boolean
 
@@ -94,8 +94,8 @@ Put Audio Player into _play_ mode starting from the pause point. It is an error 
     {
         kind: CompletionItemKind.Method,
         label: 'SetLoop',
-        insertText: new vscode.SnippetString('SetLoop(${1:enable as Boolean})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetLoop(${1:enable as Boolean})'),
+        documentation: new MarkdownString(
 `
     SetLoop(enable as Boolean) as Void
 
@@ -107,8 +107,8 @@ When disabled, after playing the last item in the content list, the player stops
     {
         kind: CompletionItemKind.Method,
         label: 'SetNext',
-        insertText: new vscode.SnippetString('SetNext(${1:item as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetNext(${1:item as Integer})'),
+        documentation: new MarkdownString(
 `
     SetNext(item as Integer) as Void
 
@@ -120,8 +120,8 @@ item is the zero-based index of the item in the content list. This item will be 
     {
         kind: CompletionItemKind.Method,
         label: 'Seek',
-        insertText: new vscode.SnippetString('Seek(${1:offsetMs as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Seek(${1:offsetMs as Integer})'),
+        documentation: new MarkdownString(
 `
     Seek(offsetMs as Integer) as Boolean
 
@@ -134,8 +134,8 @@ If the item is not currently playing, playback will begin at the specified offse
     {
         kind: CompletionItemKind.Method,
         label: 'SetTimeMetaDataForKeys',
-        insertText: new vscode.SnippetString('SetTimeMetaDataForKeys(${1:keys as Dynamic})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetTimeMetaDataForKeys(${1:keys as Dynamic})'),
+        documentation: new MarkdownString(
 `
     SetTimeMetaDataForKeys(keys[] as Dynamic) as Void
 

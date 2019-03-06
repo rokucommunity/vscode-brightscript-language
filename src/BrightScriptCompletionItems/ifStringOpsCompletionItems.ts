@@ -1,16 +1,16 @@
 import {
     CompletionItem,
-    CompletionItemKind
+    CompletionItemKind,
+    MarkdownString,
+    SnippetString
 } from 'vscode';
-
-import * as vscode from 'vscode';
 
 export const ifStringOpsCompletionItems: CompletionItem[] = [
     {
         kind: CompletionItemKind.Method,
         label: 'SetString',
-        insertText: new vscode.SnippetString('SetString(${1:s as String}, ${2:len as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('SetString(${1:s as String}, ${2:len as Integer})'),
+        documentation: new MarkdownString(
 `
     SetString(s as String, len as Integer) as Void
 
@@ -21,8 +21,8 @@ Sets the string to the first len characters of s.  Note that there is a similar 
     {
         kind: CompletionItemKind.Method,
         label: 'AppendString',
-        insertText: new vscode.SnippetString('AppendString(${1:s as String}, ${2:len as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('AppendString(${1:s as String}, ${2:len as Integer})'),
+        documentation: new MarkdownString(
 `
     AppendString(s as String, len as Integer) as Void
 
@@ -48,8 +48,8 @@ x="string" sets x to the intrinsic type, vs. y=box("string"), which works as you
     {
         kind: CompletionItemKind.Method,
         label: 'Len',
-        insertText: new vscode.SnippetString('Len()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Len()'),
+        documentation: new MarkdownString(
 `
     Len() as Integer
 
@@ -60,8 +60,8 @@ Returns the number of characters in the string.
     {
         kind: CompletionItemKind.Method,
         label: 'Left',
-        insertText: new vscode.SnippetString('Left(${1:len as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Left(${1:len as Integer})'),
+        documentation: new MarkdownString(
 `
     Left(len as Integer) as String
 
@@ -72,8 +72,8 @@ Returns a string consisting of the first len characters of the string.
     {
         kind: CompletionItemKind.Method,
         label: 'Right',
-        insertText: new vscode.SnippetString('Right(${1:len as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Right(${1:len as Integer})'),
+        documentation: new MarkdownString(
 `
     Right(len as Integer) as String
 
@@ -84,8 +84,8 @@ Returns a string consisting of the last len characters of the string.
     {
         kind: CompletionItemKind.Method,
         label: 'Mid',
-        insertText: new vscode.SnippetString('Mid(${1:start_index as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Mid(${1:start_index as Integer})'),
+        documentation: new MarkdownString(
 `
     Mid(start_index as Integer) as String
 
@@ -96,8 +96,8 @@ Returns a string consisting of the last characters of the string, starting at th
     {
         kind: CompletionItemKind.Method,
         label: 'Mid',
-        insertText: new vscode.SnippetString('Mid(${1:start_index as Integer}, ${2:num_chars as Integer})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Mid(${1:start_index as Integer}, ${2:num_chars as Integer})'),
+        documentation: new MarkdownString(
 `
     Mid(start_index as Integer, num_chars as Integer) as String
 
@@ -109,8 +109,8 @@ If there are fewer than num_chars in the string after start_index, returns the r
     {
         kind: CompletionItemKind.Method,
         label: 'Instr',
-        insertText: new vscode.SnippetString('Instr(${1:substring as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Instr(${1:substring as String})'),
+        documentation: new MarkdownString(
 `
     Instr(substring as String) as Integer
 
@@ -121,8 +121,8 @@ Returns the zero-based index of the first occurrence of substring in the string.
     {
         kind: CompletionItemKind.Method,
         label: 'Replace',
-        insertText: new vscode.SnippetString('Replace(${1:from as String}, ${2:to as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Replace(${1:from as String}, ${2:to as String})'),
+        documentation: new MarkdownString(
 `
     Replace(from As String, to As String) As String
 
@@ -138,8 +138,8 @@ Example:
     {
         kind: CompletionItemKind.Method,
         label: 'Instr',
-        insertText: new vscode.SnippetString('Instr(${1:start_index as Integer}, ${2:substring as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Instr(${1:start_index as Integer}, ${2:substring as String})'),
+        documentation: new MarkdownString(
 `
     Instr(start_index as Integer, substring as String) as Integer
 
@@ -151,8 +151,8 @@ If the substring does not occur in the string after start_index, returns -1.
     {
         kind: CompletionItemKind.Method,
         label: 'Trim',
-        insertText: new vscode.SnippetString('Trim()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Trim()'),
+        documentation: new MarkdownString(
 `
     Trim() as String
 
@@ -165,8 +165,8 @@ Whitespace characters include space, TAB, LF, CR, VT, FF, NO-BREAK SPACE, et al.
     {
         kind: CompletionItemKind.Method,
         label: 'ToInt',
-        insertText: new vscode.SnippetString('ToInt()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToInt()'),
+        documentation: new MarkdownString(
 `
     ToInt() as Integer
 
@@ -177,8 +177,8 @@ Returns the value of the string interpreted as a decimal number.
     {
         kind: CompletionItemKind.Method,
         label: 'ToFloat',
-        insertText: new vscode.SnippetString('ToFloat()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('ToFloat()'),
+        documentation: new MarkdownString(
 `
     ToFloat() as Float
 
@@ -189,8 +189,8 @@ Returns the value of the string interpreted as a floating point number.
     {
         kind: CompletionItemKind.Method,
         label: 'Tokenize',
-        insertText: new vscode.SnippetString('Tokenize(${1:delim as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Tokenize(${1:delim as String})'),
+        documentation: new MarkdownString(
 `
     Tokenize(delim as String) as Object
 
@@ -202,8 +202,8 @@ A sequence of two or more contiguous delimiters in the string is treated as a si
     {
         kind: CompletionItemKind.Method,
         label: 'Split',
-        insertText: new vscode.SnippetString('Split(${1:separator as String})'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Split(${1:separator as String})'),
+        documentation: new MarkdownString(
 `
     Split(separator as String) as Object
 
@@ -239,8 +239,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'GetEntityEncode',
-        insertText: new vscode.SnippetString('GetEntityEncode()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('GetEntityEncode()'),
+        documentation: new MarkdownString(
 `
     GetEntityEncode() as String
 
@@ -259,8 +259,8 @@ Character | Replaced With
     {
         kind: CompletionItemKind.Method,
         label: 'Escape',
-        insertText: new vscode.SnippetString('Escape()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Escape()'),
+        documentation: new MarkdownString(
 `
     Escape() as String
 
@@ -292,8 +292,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'Unescape',
-        insertText: new vscode.SnippetString('Unescape()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('Unescape()'),
+        documentation: new MarkdownString(
 `
     Unescape() as String
 
@@ -319,8 +319,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'EncodeUri',
-        insertText: new vscode.SnippetString('EncodeUri()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EncodeUri()'),
+        documentation: new MarkdownString(
 `
     EncodeUri() as String
 
@@ -342,8 +342,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'DecodeUri',
-        insertText: new vscode.SnippetString('DecodeUri()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DecodeUri()'),
+        documentation: new MarkdownString(
 `
     DecodeUri() as String
 
@@ -365,8 +365,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'EncodeUriComponent',
-        insertText: new vscode.SnippetString('EncodeUriComponent()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('EncodeUriComponent()'),
+        documentation: new MarkdownString(
 `
     EncodeUriComponent() as String
 
@@ -388,8 +388,8 @@ Examples:
     {
         kind: CompletionItemKind.Method,
         label: 'DecodeUriComponent',
-        insertText: new vscode.SnippetString('DecodeUriComponent()'),
-        documentation: new vscode.MarkdownString(
+        insertText: new SnippetString('DecodeUriComponent()'),
+        documentation: new MarkdownString(
 `
     DecodeUriComponent() as String
 
