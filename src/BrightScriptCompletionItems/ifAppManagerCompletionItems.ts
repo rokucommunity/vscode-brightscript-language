@@ -1,7 +1,6 @@
 import {
     CompletionItem,
     CompletionItemKind,
-    TextEdit,
 } from 'vscode';
 
 import * as vscode from 'vscode';
