@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0-beta7]
+### Fixed
+ - Regression issue where mixed case `then` statements showed up as parse errors (fixed by upgrading to [brightscript-language@0.1.16](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.16))
+
+
+
 ## [1.9.0-beta6]
 ### Added
  - All changes from [1.8.3](#183---2019-03-04)
@@ -203,6 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[1.9.0-beta7]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta6...v1.9.0-beta7
 [1.9.0-beta6]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta5...v1.9.0-beta6
 [1.9.0-beta5]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta4...v1.9.0-beta5
 [1.9.0-beta4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta3...v1.9.0-beta4
