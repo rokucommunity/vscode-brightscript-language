@@ -2,10 +2,10 @@
 import { assert, expect } from 'chai';
 import * as sinonImport from 'sinon';
 
-import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 
 let sinon: sinonImport.SinonSandbox;
-let configProvider: BrightScriptConfigurationProvider;
+let configProvider: BrightScriptDebugConfigurationProvider;
 let c: any;
 beforeEach(() => {
     let context = {
@@ -13,7 +13,7 @@ beforeEach(() => {
             update: () => { return Promise.resolve(); }
         }
     };
-    configProvider = new BrightScriptConfigurationProvider(<any>context);
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context);
     c = configProvider;
     sinon = sinonImport.createSandbox();
 });

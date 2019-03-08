@@ -229,6 +229,7 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
+                        "stopOnEntry": true,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}"
@@ -245,8 +246,7 @@
                             "stopOnEntry": true,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
-                            "rootDir": "^\"\\${workspaceFolder}\"",
-                            "consoleOutput": "normal"
+                            "rootDir": "^\"\\${workspaceFolder}\""
                         }
                     }
                 ]
