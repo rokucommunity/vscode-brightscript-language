@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
  - All changes from 1.8.4 and 1.8.5
 ### Fixed
- - Upgraded to to [brightscript-language@0.1.16](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
+ - Upgraded to to [brightscript-language@0.1.18](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
    - Regression issue where mixed case `then` statements showed up as parse errors (fixed by
    - Parse errors related to assignment operators (i.e. `+=`, `-=`, `*=`, etc.)
+   - issue where only top-level variables were being found. Now all variables are found throughout the entire function scope.
+   - runtime error when getting hover result.
+   - issue with hover that would not find top-level function parameter types.
 
 
 
