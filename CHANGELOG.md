@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.8.6] - 2019-03-09
+### Fixed
+ - launching debug session without a `launch.json` works again.
+
+
+
 ## [1.8.5] - 2019-03-07
 ### Fixed
  - Re-added the log commands that somehow got dropped in a previous release
@@ -229,6 +235,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta2...v1.9.0-beta3
 [1.9.0-beta2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
+[1.8.6]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
 [1.8.5]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
