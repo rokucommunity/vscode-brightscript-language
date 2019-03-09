@@ -5,8 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.9.0-beta7]
+## Added
+ - All changes from 1.8.4 and 1.8.5
 ### Fixed
- - Regression issue where mixed case `then` statements showed up as parse errors (fixed by upgrading to [brightscript-language@0.1.16](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.16))
+ - Upgraded to to [brightscript-language@0.1.16](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
+   - Regression issue where mixed case `then` statements showed up as parse errors (fixed by
+   - Parse errors related to assignment operators (i.e. `+=`, `-=`, `*=`, etc.)
 
 
 
@@ -48,6 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+
+
+
+## [1.8.5] - 2019-03-07
+### Fixed
+ - Re-added the log commands that somehow got dropped in a previous release
 
 
 
@@ -216,6 +226,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta2...v1.9.0-beta3
 [1.9.0-beta2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
+[1.8.5]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
 [1.8.3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
 [1.8.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2

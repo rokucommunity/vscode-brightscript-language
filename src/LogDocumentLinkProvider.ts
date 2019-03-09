@@ -3,7 +3,7 @@ import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration } from './BrightScriptConfigurationProvider';
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 
 /**
  * Provides file links in any output window that has the pkg:/ format.
