@@ -3,7 +3,7 @@ import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration } from './BrightScriptConfigurationProvider';
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string) {
