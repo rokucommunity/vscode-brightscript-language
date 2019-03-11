@@ -93,8 +93,6 @@ export async function activate(context: vscode.ExtensionContext) {
         logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
     });
 
-    outputChannel.show();
-
     //xml support
     const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
