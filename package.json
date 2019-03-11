@@ -355,6 +355,12 @@
                     "default": "${promptForHost}",
                     "description": "IP address of the roku to remotely control",
                     "scope": "resource"
+                },
+                "brightscript.configFile": {
+                    "type": "string",
+                    "default": "brsconfig.json",
+                    "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
+                    "scope": "resource"
                 }
             }
         },
