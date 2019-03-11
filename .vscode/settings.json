@@ -13,5 +13,6 @@
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
     "files.eol": "\r\n",
-    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
+    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
+    "tslint.autoFixOnSave": true
 }
