@@ -32,6 +32,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //make sure we have an object
         config = config ? config : {} as any;
 
+        //load the brsconfig settings (if available)
+        let brsconfig = await util.getBrsConfig(folder.uri);
+        if (brsconfig) {
+            config = Object.assign({}, brsconfig, config);
+        }
+
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
