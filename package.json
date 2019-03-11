@@ -32,7 +32,7 @@
         "tslint": "tslint ./src/**/*.ts",
         "watch": "npm run copy-schema && tsc -w -p ./src",
         "build-and-test": "npm run compile && npm run test",
-        "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
+        "test": "nyc mocha src/**/*.spec.ts --full-trace",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
