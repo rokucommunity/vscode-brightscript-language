@@ -156,8 +156,18 @@ export async function configureLanguageServer(context: vscode.ExtensionContext) 
     client.onNotification('build-status', (message) => {
         if (message === 'building') {
             buildStatusStatusBar.text = '$(flame)...';
+            buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
+            buildStatusStatusBar.color = '#673293';
+
         } else if (message === 'success') {
             buildStatusStatusBar.text = '$(flame)';
+            buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
+            buildStatusStatusBar.color = '#673293';
+
+        } else if (message === 'critical-error') {
+            buildStatusStatusBar.text = '$(flame)';
+            buildStatusStatusBar.tooltip = 'BrightScript Language server encountered a critical runtime error';
+            buildStatusStatusBar.color = '#FF0000';
         }
     });
 }
