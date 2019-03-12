@@ -4,25 +4,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.9]
+### Fixed
+ - Upgraded to [brightscript-language@0.1.20](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.20) which fixed an npm issue that was loading the wrong version of `brs`.
+
+
+
 ## [2.0.0-beta.8]
-## Added
+### Added
  - support specifying `brsconfig.json` path as a vscode setting under the `brightscript.configFile` setting.
  - reload workspace if brsconfig.json has changed
  - When launching debug session, read values from brsconfig.json when available
-## Changed
+### Changed
  - Don't show brightscript log on workspace open (still support option to show on debug-start)
-## Fixed
-  - Upgraded to [brightscript-language@0.1.18](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
+### Fixed
+  - Upgraded to [brightscript-language@0.1.19](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.19)) which fixes:
  - RHS boolean assignment parse errors (see [this issue](https://github.com/sjbarag/brs/issues/156))
  - hover bug in multi-root workspace that was only showing hovers for the first workspace
 
 
 
 ## [2.0.0-beta.7]
-## Added
+### Added
  - All changes from 1.8.4 and 1.8.5
 ### Fixed
- - Upgraded to [brightscript-language@0.1.18](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
+ - Upgraded to [brightscript-language@0.1.17](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
    - Regression issue where mixed case `then` statements showed up as parse errors (fixed by
    - Parse errors related to assignment operators (i.e. `+=`, `-=`, `*=`, etc.)
    - issue where only top-level variables were being found. Now all variables are found throughout the entire function scope.
