@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - Upgraded to [brightscript-language@0.1.21](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
 ### Fixed
- - regression issue preveing the use of launch configs stored `settings.json` (see #111)
+ - regression issue preventing the use of launch configs stored `settings.json` (see #111)
 
 
 
