@@ -49,8 +49,35 @@ If your project lives in a subdirectory, you will need to create a `brsconfig.js
 }
 ```
 
+This project relies heavily on the [brightscript-language](https://github.com/twitchbronbron/brightscript-language) project for language server support. See [this link](https://github.com/twitchbronbron/brightscript-language#brsconfigjson-options) to view the `brsconfig.json` options.
 
-This project relies heavily on the [brightscript](https://github.com/twitchbronbron/brightscript) project for language server support. See [this link](asdf) for all all of the supported options in the `brsconfig.json` file.
+## Language Features
+## Ignore errors and warnings on a per-line basis
+In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `brsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
+ - `brs:disable-next-line`
+ - `brs:disable-next-line: code1 code2 code3`
+ - `brs:disable-line`
+ - `brs:disable-line: code1 code2 code3`
+
+Here are some examples:
+
+```brightscript
+sub Main()
+    'disable errors about invalid syntax here
+    'brs:disable-next-line
+    DoSomething(
+
+    DoSomething( 'brs:disable-line
+
+    'disable errors about wrong parameter count
+    DoSomething(1,2,3) 'brs:disable-next-line
+
+    DoSomething(1,2,3) 'brs:disable-next-line:1002
+end sub
+
+sub DoSomething()
+end sub
+```
 
 
 ## Debugging
@@ -250,13 +277,13 @@ This process will REPLACE any existing version of the extension you have install
 
 ## Contributing
 
-Much of this extension depends on the [brightscript](https://github.com/twitchbronbron/brightscript) project, which contributes the language server. To get up and running, do the following:
+Much of this extension depends on the [brightscript-language](https://github.com/twitchbronbron/brightscript-language) project, which contributes the language server. To get up and running, do the following:
 
  1. Clone this project
- 1. Clone [brightscript](https://github.com/twitchbronbron/brightscript)
- 1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript`):
+ 1. Clone [brightscript-language](https://github.com/twitchbronbron/brightscript-language)
+ 1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript-language`):
 
-    `"brightscript": "file:C:/projects/brightscript"`
+    `"brightscript-language": "file:C:/projects/brightscript-language"`
  1. run `npm install` in both directories
  1. Open vscode in each directory, build, and run as usual
 
