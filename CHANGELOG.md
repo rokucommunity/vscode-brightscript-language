@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.11]
+### Added
+ - Support for `go to definition` to open parent component xml file when the cursor is on a component's `extends="ParentName"` section (fixes #114).
+### Fixed
+ - Syntax colorization for multi-word keywords like endfor, endif, elseif, etc. that were not supporting zero spaces between or more than 1 space between.
+
+
+
 ## [2.0.0-beta.10]
 ### Added
  - Upgraded to [brightscript-language@0.1.21](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
@@ -258,7 +266,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-[2.0.0-beta.10]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.0...v2.0.0-beta.10
+[2.0.0-beta.11]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.10...v2.0.0-beta.11
+[2.0.0-beta.10]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.9...v2.0.0-beta.10
 [2.0.0-beta.9]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.8...v2.0.0-beta.9
 [2.0.0-beta.8]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.7...v2.0.0-beta.8
 [2.0.0-beta.7]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.6...v2.0.0-beta.7
