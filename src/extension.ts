@@ -72,13 +72,10 @@ export async function activate(context: vscode.ExtensionContext) {
     const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
     const definitionRepo = new DefinitionRepository(declarationProvider);
-    const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
     const brightScriptCommands = getBrightScriptCommandsInstance();
     brightScriptCommands.registerCommands(context);
 
-    // experimental placeholder
-    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
     context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));

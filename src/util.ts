@@ -32,7 +32,7 @@ export async function getBrsConfig(workspaceFolder: vscode.Uri) {
     let configFilePath = settings.get<string>('configFile');
 
     //if the path is relative, resolve it relative to the workspace folder. If it's absolute, use as is (path.resolve handles this logic for us)
-    configFilePath = path.resolve(bslangUtil.getPathFromUri(workspaceFolder.toString()), configFilePath);
+    configFilePath = path.resolve(bslangUtil.uriToPath(workspaceFolder.toString()), configFilePath);
     try {
         let brsconfig = await bslangUtil.loadConfigFile(configFilePath);
         return brsconfig;
