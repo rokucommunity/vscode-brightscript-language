@@ -17,7 +17,6 @@ import {
 
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
-import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
