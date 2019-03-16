@@ -431,12 +431,16 @@ export class BrightScriptDebugSession extends DebugSession {
         if (this.rokuAdapter.isAtDebuggerPrompt) {
             const reference = this.variableHandles.get(args.variablesReference);
             if (reference) {
-                const vars = await this.rokuAdapter.getScopeVariables(reference);
+                if (this.launchArgs.enableVariablesPanel) {
+                    const vars = await this.rokuAdapter.getScopeVariables(reference);
 
-                for (const varName of vars) {
-                    let result = await this.rokuAdapter.getVariable(varName);
-                    let tempVar = this.getVariableFromResult(result);
-                    childVariables.push(tempVar);
+                    for (const varName of vars) {
+                        let result = await this.rokuAdapter.getVariable(varName);
+                        let tempVar = this.getVariableFromResult(result);
+                        childVariables.push(tempVar);
+                    }
+                } else {
+                    childVariables.push(new Variable('variables disabled by launch.json setting', 'enableVariablesPanel: false'));
                 }
             } else {
                 //find the variable with this reference
@@ -833,6 +837,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
      */
     consoleOutput: 'full' | 'normal';
+    /**
+     * Enables automatic population of the debug variable panel on a breakpoint or runtime errors.
+     */
+    enableVariablesPanel: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
