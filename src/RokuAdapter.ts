@@ -596,6 +596,7 @@ export class RokuAdapter {
     }
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
+    private isObjectCheckRegex = /<.*:\s*(\w+\s*\:*\s*\w*)>/gi;
 
     /**
      * Given an expression, evaluate that statement ON the roku
@@ -671,7 +672,7 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+            if (match = this.isObjectCheckRegex.exec(line)) {
                 let type = match[1];
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
@@ -728,7 +729,7 @@ export class RokuAdapter {
                 };
 
                 //if the line is an object, array or function
-                if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                if (match = this.isObjectCheckRegex.exec(line)) {
                     let type = match[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
