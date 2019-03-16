@@ -163,7 +163,7 @@ export class RokuAdapter {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
                 if (hasRuntimeError) {
-                    this.debugLog('hasRuntimeError!!');
+                    console.debug('hasRuntimeError!!');
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
@@ -245,23 +245,19 @@ export class RokuAdapter {
         }
     }
 
-    private debugLog(message: string) {
-        console.log(message);
-    }
-
     private processUnhandledLines(responseText: string) {
         if (this.status === RokuAdapterStatus.running) {
             return;
         }
 
         let newLines = eol.split(responseText);
-        this.debugLog('processUnhandledLines: this.status ' + this.status);
+        console.debug('processUnhandledLines: this.status ' + this.status);
         switch (this.status) {
             case RokuAdapterStatus.compiling:
             case RokuAdapterStatus.compileError:
                 this.endCompilingLine = this.getEndCompilingLine(newLines);
                 if (this.endCompilingLine !== -1) {
-                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.running');
+                    console.debug('processUnhandledLines: entering state RokuAdapterStatus.running');
                     this.status = RokuAdapterStatus.running;
                     this.resetCompileErrorTimer(false);
                 } else {
@@ -282,7 +278,7 @@ export class RokuAdapter {
             case RokuAdapterStatus.none:
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
                 if (this.startCompilingLine !== -1) {
-                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                    console.debug('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
                     this.status = RokuAdapterStatus.compiling;
                     this.resetCompileErrorTimer(true);
@@ -292,7 +288,7 @@ export class RokuAdapter {
     }
 
     public resetCompileErrorTimer(isRunning): any {
-        this.debugLog('resetCompileErrorTimer isRunning' + isRunning);
+        console.debug('resetCompileErrorTimer isRunning' + isRunning);
 
         if (this.compileErrorTimer) {
             clearInterval(this.compileErrorTimer);
@@ -302,14 +298,14 @@ export class RokuAdapter {
         if (isRunning) {
             if (this.status === RokuAdapterStatus.compileError) {
                 let that = this;
-                this.debugLog('resetting resetCompileErrorTimer');
+                console.debug('resetting resetCompileErrorTimer');
                 this.compileErrorTimer = setTimeout(() => that.onCompileErrorTimer(), 1000);
             }
         }
     }
 
     public onCompileErrorTimer() {
-        this.debugLog('onCompileErrorTimer: timer complete. should\'ve caught all errors ');
+        console.debug('onCompileErrorTimer: timer complete. should\'ve caught all errors ');
 
         this.status = RokuAdapterStatus.compileError;
         this.resetCompileErrorTimer(false);
@@ -354,14 +350,14 @@ export class RokuAdapter {
      * @param responseText
      */
     private reportErrors() {
-        this.debugLog('reportErrors');
+        console.debug('reportErrors');
         //throw out any lines before the last found compiling line
 
         let errors = this.getErrors();
 
         errors = errors.filter((e) => e.path.toLowerCase().endsWith('.brs') || e.path.toLowerCase().endsWith('.xml'));
 
-        this.debugLog('errors.length ' + errors.length);
+        console.debug('errors.length ' + errors.length);
         if (errors.length > 0) {
             this.emit('compile-errors', errors);
         }
@@ -972,6 +968,7 @@ export class RequestPipeline {
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
      */
     public executeCommand(command: string, waitForPrompt: boolean) {
+        console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
                 let commandText = `${command}\r\n`;
@@ -980,7 +977,11 @@ export class RequestPipeline {
             };
             this.requests.push({
                 executeCommand: executeCommand,
-                onComplete: resolve,
+                onComplete: (data) => {
+                    console.debug(`Command finished (${waitForPrompt ? 'after waiting for prompt' : 'did not wait for prompt'}`, command);
+                    console.debug('Data:', data);
+                    resolve(data);
+                },
                 waitForPrompt: waitForPrompt
             });
             //start processing (safe to call multiple times)

@@ -12,7 +12,7 @@ import * as vscode from 'vscode';
 
 import * as util from './util';
 
-export class BrightScriptConfigurationProvider implements DebugConfigurationProvider {
+export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
     public constructor(context: ExtensionContext) {
         this.context = context;
@@ -29,21 +29,25 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
-        //fill in default configuration values
-        if (config.type.toLowerCase() === 'brightscript') {
-            config.name = config.name ? config.name : 'BrightScript Debug: Launch';
-            config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
-            config.request = config.request ? config.request : 'launch';
-            config.stopOnEntry = config.stopOnEntry === false ? false : true;
-            config.rootDir = config.rootDir ? config.rootDir : '${workspaceFolder}';
-            config.outDir = config.outDir ? config.outDir : '${workspaceFolder}/out';
-            config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
-            config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
-            config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
-            config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
-        }
+        //make sure we have an object
+        config = config ? config : {} as any;
+
+        config.type = config.type ? config.type : 'brightscript';
+        config.name = config.name ? config.name : 'BrightScript Debug: Launch';
+        config.host = config.host ? config.host : '${promptForHost}';
+        config.password = config.password ? config.password : '${promptForPassword}';
+        config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
+        config.request = config.request ? config.request : 'launch';
+        config.stopOnEntry = config.stopOnEntry === false ? false : true;
+        config.rootDir = config.rootDir ? config.rootDir : '${workspaceFolder}';
+        config.outDir = config.outDir ? config.outDir : '${workspaceFolder}/out';
+        config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
+        config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
+        config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
+        config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
+
         //prompt for host if not hardcoded
-        if (config.host === '${promptForHost}') {
+        if (config.host.trim() === '${promptForHost}') {
             config.host = await vscode.window.showInputBox({
                 placeHolder: 'The IP address of your Roku device',
                 value: ''
@@ -51,7 +55,7 @@ export class BrightScriptConfigurationProvider implements DebugConfigurationProv
         }
 
         //prompt for password if not hardcoded
-        if (config.password === '${promptForPassword}') {
+        if (config.password.trim() === '${promptForPassword}') {
             config.password = await vscode.window.showInputBox({
                 placeHolder: 'The developer account password for your Roku device.',
                 value: ''

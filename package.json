@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.8.4",
+    "version": "1.8.6",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -229,6 +229,7 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
+                        "stopOnEntry": true,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}"
@@ -245,8 +246,7 @@
                             "stopOnEntry": true,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
-                            "rootDir": "^\"\\${workspaceFolder}\"",
-                            "consoleOutput": "normal"
+                            "rootDir": "^\"\\${workspaceFolder}\""
                         }
                     }
                 ]
@@ -425,6 +425,31 @@
             {
                 "command": "extension.brightscript.sendRemoteText",
                 "title": "Send text characters to the Roku Device",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.markLogOutput",
+                "title": "Mark Log Output",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear Log Output",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputIncludeFilter",
+                "title": "Set Log Output Include Filter",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputLogLevelFilter",
+                "title": "Set Log Output Level Filter",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputExcludeFilter",
+                "title": "Set Log Output Exclude Filter",
                 "category": "Brightscript"
             }
         ],
