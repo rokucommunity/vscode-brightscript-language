@@ -9,6 +9,9 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#identifiers_with_type_designators"
+        },
+        {
             "include": "#m_and_global"
         },
         {
@@ -64,6 +67,10 @@
         }
     ],
     "repository": {
+        "identifiers_with_type_designators": {
+            "name": "entity.name.variable.local.brs",
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#])"
+        },
         "string_literal": {
             "begin": "\"",
             "end": "\"",
