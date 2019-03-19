@@ -160,6 +160,11 @@
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
                                 "default": true
                             },
+                            "enableVariablesPanel": {
+                                "type": "boolean",
+                                "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                                "default": true
+                            },
                             "envFile": {
                                 "type": "string",
                                 "description": "A path to an environment variables file.",
