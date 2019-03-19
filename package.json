@@ -78,7 +78,7 @@
         "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.2.1",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.21",
+        "vscode": "^1.1.30",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
