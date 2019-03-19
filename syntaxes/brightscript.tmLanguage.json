@@ -9,6 +9,9 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#identifiers_with_type_designators"
+        },
+        {
             "include": "#m_and_global"
         },
         {
@@ -64,6 +67,10 @@
         }
     ],
     "repository": {
+        "identifiers_with_type_designators": {
+            "name": "entity.name.variable.local.brs",
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#])"
+        },
         "string_literal": {
             "begin": "\"",
             "end": "\"",
@@ -159,7 +166,7 @@
         },
         "end_function": {
             "name": "keyword.declaration.function",
-            "match": "(?i)end (sub|function)"
+            "match": "(?i)end\\s*(sub|function)"
         },
         "inline_function_declaration": {
             "captures": {
@@ -184,10 +191,10 @@
                     "name": "keyword.control.brs"
                 }
             },
-            "match": "(?i:[^\\.\\w\\\"](then|stop|run)(?!(\\s*:)|[\\d\\w_]))"
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:\\b(if|else if|else|print|while|for each|for|((end|exit) (while|for))|end if|to|step|in|sub|function|end (sub|function)|goto|rem|as)\\b)",
+            "match": "(?i:\\b(if|else\\s*if|else|print|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
             "name": "keyword.control.brs"
         },
         "operators": {
