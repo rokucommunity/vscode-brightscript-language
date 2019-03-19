@@ -596,6 +596,37 @@ export class RokuAdapter {
     }
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
+    private isObjectCheckRegex = /<.*:\s*(\w+\s*\:*\s*\w*)>/gi;
+    private getFirstWordRegex = /^([\w.\-=]*)\s/;
+
+    /**
+     * Gets a string array of all the local variables using the var command
+     * @param scope
+     */
+    public async getScopeVariables(scope?: string) {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot resolve variable: debugger is not paused');
+        }
+        return await this.resolve(`Scope Variables`, async () => {
+            let data: string;
+            let vars = [];
+
+            data = await this.requestPipeline.executeCommand(`var`, true);
+            let splitData = data.split('\n');
+
+            splitData.forEach((line) =>  {
+                let match;
+                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWordRegex.exec(line))) {
+                    // There seems to be a local ifGlobal interface variable under the name of 'global' but it
+                    // is not accessible by the channel. Stript it our.
+                    if ((match[1] !== 'global') && match[1].length > 0) {
+                        vars.push(match[1]);
+                    }
+                }
+            });
+            return vars;
+        });
+    }
 
     /**
      * Given an expression, evaluate that statement ON the roku
@@ -671,7 +702,7 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+            if (match = this.isObjectCheckRegex.exec(line)) {
                 let type = match[1];
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
@@ -728,7 +759,7 @@ export class RokuAdapter {
                 };
 
                 //if the line is an object, array or function
-                if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                if (match = this.isObjectCheckRegex.exec(line)) {
                     let type = match[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
