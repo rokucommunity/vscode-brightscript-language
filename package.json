@@ -83,7 +83,7 @@
         "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.2.1",
         "vsce": "^1.58.0",
-        "vscode": "^1.1.21",
+        "vscode": "^1.1.30",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
@@ -165,6 +165,11 @@
                             "retainDeploymentArchive": {
                                 "type": "boolean",
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
+                                "default": true
+                            },
+                            "enableVariablesPanel": {
+                                "type": "boolean",
+                                "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
                                 "default": true
                             },
                             "envFile": {
