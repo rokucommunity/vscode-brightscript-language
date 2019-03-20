@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - all changes from v1.9.0
 ### Changed
- - The name of the beta program to `languageserver-beta[whatever]` instead of a full version in the front. This releases is the successor to `2.0.0-beta.11`.
- - Upgrade to [brightscript-language@0.2.1](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.1)
- - exclude method completions from xml files
+ - The name of the beta program to `languageserver-beta[whatever]` instead of a full version in the front, which removes some confusion around the naming scheme. This release is the successor to `2.0.0-beta.11`.
+ - Upgrade to [brightscript-language@0.2.2](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.2)
+ - exclude method completions from xml files (will be added back once CDATA support arrives)
  - empty script reference errors will show a more usefull error message `"Script import cannot be empty or whitespace"`
 ### Fixed
  - parse errors for type designators (i.e. `$` `%` `!` `#` at end of variable name)
- - parse errors for multiple spaces between two-word keywords (`else     if`, etc)
+ - parse errors for multiple spaces between two-word keywords (like `else     if` or `end    if`)
  - issue with missing `brsconfig.json` schema file.
 
 
