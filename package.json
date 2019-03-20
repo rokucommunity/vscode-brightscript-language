@@ -27,7 +27,7 @@
     "scripts": {
         "prepare": "npm run compile",
         "vscode:prepublish": "npm run compile",
-        "copy-schema": "cpx ./node_modules/brightscript/brsconfig.schema.json ./ -L",
+        "copy-schema": "cpx ./node_modules/brightscript-language/brsconfig.schema.json ./out -L",
         "compile": "npm run copy-schema && tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "npm run copy-schema && tsc -w -p ./src",
@@ -292,7 +292,7 @@
         "jsonValidation": [
             {
                 "fileMatch": "brsconfig.json",
-                "url": "./brsconfig.schema.json"
+                "url": "./out/brsconfig.schema.json"
             }
         ],
         "grammars": [
