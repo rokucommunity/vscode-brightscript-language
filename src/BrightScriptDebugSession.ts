@@ -161,6 +161,8 @@ export class BrightScriptDebugSession extends DebugSession {
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
 
+            await this.rokuAdapter.exitActiveBrightscriptDebugger();
+
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {
                 this.rokuAdapter.on('console-output', (data) => {
