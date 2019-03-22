@@ -879,8 +879,9 @@ export class RokuAdapter {
     /**
      * Disconnect from the telnet session and unset all objects
      */
-    public destroy() {
+    public async destroy() {
         if (this.requestPipeline) {
+            await this.exitActiveBrightscriptDebugger();
             this.requestPipeline.destroy();
         }
 
@@ -890,6 +891,21 @@ export class RokuAdapter {
             this.emitter.removeAllListeners();
         }
         this.emitter = undefined;
+    }
+
+    /**
+     * Make sure any active Brightscript Debugger threads are exited
+     */
+    public async exitActiveBrightscriptDebugger() {
+        if (this.requestPipeline) {
+            let commandsExecuted = 0;
+            do {
+                let data = await this.requestPipeline.executeCommand(`exit`, false);
+                // This seems to work without the delay but I wonder about slower devices
+                // await setTimeout[Object.getOwnPropertySymbols(setTimeout)[0]](100);
+                commandsExecuted ++;
+            } while (commandsExecuted < 10);
+        }
     }
 }
 
