@@ -25,6 +25,7 @@
         "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
     },
     "scripts": {
+        "preversion": "npm run compile && npm run tslint && npm run test",
         "prepare": "npm run compile",
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./src",
