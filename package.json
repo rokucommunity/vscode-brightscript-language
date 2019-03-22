@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.9.0-beta11",
+    "version": "999.0.0-languageserver-beta12",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,6 +25,7 @@
         "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
     },
     "scripts": {
+        "preversion": "npm run compile && npm run tslint && npm run test",
         "prepare": "npm run compile",
         "vscode:prepublish": "npm run compile",
         "copy-schema": "cpx ./node_modules/brightscript-language/brsconfig.schema.json ./out -L",
