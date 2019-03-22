@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2019-03-19
+### Added
+ - Support for the `vars` panel during a debug session. This can be disabled by setting `enableVariablesPanel: false` in the `launch.json` configuration.
+###Fixed
+ - Syntax highlighting issues
+   - variable names with type designators are colored properly
+   - `endsub` and `endfunction` are colored properly
+   - `end` is colored properly as a standalone command
+   - various two word keywords now support no space or multiple spaces between (previously needed exactly 1 space between then)
+
+
+
 ## [1.8.6] - 2019-03-09
 ### Fixed
  - launching debug session without a `launch.json` works again.
@@ -174,6 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[1.9.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
 [1.8.6]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
 [1.8.5]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
 [1.8.4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4

@@ -45,6 +45,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
         config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
+        config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
 
         //prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}') {
@@ -119,5 +120,6 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
+    enableVariablesPanel: boolean;
     envFile?: string;
 }
