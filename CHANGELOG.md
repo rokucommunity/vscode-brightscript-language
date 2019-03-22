@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [languageserver-beta12] - 2019-03-21
 ### Added
- - all changes from v1.9.0
+ - all changes from v1.9.0 and v1.10.0
 ### Changed
  - The name of the beta program caused some confusion in the past, because it seemed like it was a beta version of 1.9.0, when in reality it was just a beta version of new features, and we needed a higher number than the current version (which was 1.8.* at that time). So now, for clarity, the new versions of the languageserver beta versions will be `languageserver-beta[the_beta_number}`. This release is the successor to `2.0.0-beta.11`.
  - Upgrade to [brightscript-language@0.2.3](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.3)
@@ -111,10 +111,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.10.0] - 2019-03-21
+### Added
+ - Completion items for all BrightScript interface methods except for a few more obscure ones (#68). These can be activated by typing the full interface name after the variable (i.e. )
+### Fixed
+ - problems launching a debug session when the Roku has an app already running that is stuck in the debug state. This extension now issues several `exit` commands in a row (in addition to the home press it was already doing) which seems to resolve the majority of those issues. (#125)
+
+
+
 ## [1.9.0] - 2019-03-19
 ### Added
  - Support for the `vars` panel during a debug session. This can be disabled by setting `enableVariablesPanel: false` in the `launch.json` configuration.
-###Fixed
+### Fixed
  - Syntax highlighting issues
    - variable names with type designators are colored properly
    - `endsub` and `endfunction` are colored properly
@@ -304,6 +312,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.3]:           https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]:           https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:           https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
+[1.10.0]:                https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
 [1.9.0]:                 https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
 [1.8.6]:                 https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
 [1.8.5]:                 https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5

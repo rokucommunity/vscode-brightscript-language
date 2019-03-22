@@ -19,6 +19,7 @@ export let vscode = {
         registerSignatureHelpProvider: () => { },
         registerReferenceProvider: () => { },
         registerDocumentLinkProvider: () => { },
+        registerCompletionItemProvider: () => { },
         createDiagnosticCollection: () => {
             return {
                 clear: () => { }
@@ -197,6 +198,20 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
+    },
+    MarkdownString: class {
+        constructor(value: string = null) {
+            this.value = value;
+        }
+
+        private value: string;
+    },
+    SnippetString: class {
+        constructor(value: string = null) {
+            this.value = value;
+        }
+
+        private value: string;
     }
 };
 
