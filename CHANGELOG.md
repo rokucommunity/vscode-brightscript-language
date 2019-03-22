@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - all changes from v1.9.0 and v1.10.0
 ### Changed
- - The name of the beta program caused some confusion in the past, because it seemed like it was a beta version of 1.9.0, when in reality it was just a beta version of new features, and we needed a higher number than the current version (which was 1.8.* at that time). So now, for clarity, the new versions of the languageserver beta versions will be `languageserver-beta[the_beta_number}`. This release is the successor to `1.9.0-beta11`.
+ - This release is the successor to `1.9.0-beta11`. The name of the beta program caused some confusion in the past, because it seemed like it was a beta version of 1.9.0, when in reality it was just a beta version of new features, and we needed a higher number than the current version (which was 1.8.* at that time). So now, for clarity, the new versions of the languageserver beta versions will be `languageserver-beta[the_beta_number}`.
  - Upgrade to [brightscript-language@0.2.3](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.3)
  - exclude method completions from xml files (will be added back once CDATA support arrives)
  - empty script reference errors will show a more usefull error message `"Script import cannot be empty or whitespace"`
