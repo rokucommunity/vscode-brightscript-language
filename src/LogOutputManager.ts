@@ -94,6 +94,8 @@ export class LogOutputManager {
         console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
+        } else if (e.event === 'BSLaunchStartEvent') {
+            vscode.commands.executeCommand('workbench.action.focusPanel');
         } else {
             this.clearOutput();
             let errorsByPath = {};
