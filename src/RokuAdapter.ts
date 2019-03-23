@@ -1,9 +1,9 @@
 import * as eol from 'eol';
-
 import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
+import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 
@@ -32,10 +32,9 @@ export class RokuAdapter {
     private lastUnhandledDataTime: number;
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
-    private isContinuedOnce: boolean;
     private isNextBreakpointSkipped: boolean = false;
+    private skipBogusBreakpoints: boolean;
     private isInMicroDebugger: boolean;
-    private currentMicroDebuggerText: string;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
 
@@ -138,24 +137,15 @@ export class RokuAdapter {
             if (line.match(this.debugStartRegex)) {
                 console.log('start MicroDebugger block');
                 this.isInMicroDebugger = true;
-                this.currentMicroDebuggerText = '';
                 this.isNextBreakpointSkipped = false;
-                text = 'Pausing for a breakpoint...';
             } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
                 console.log('ended MicroDebugger block');
                 this.isInMicroDebugger = false;
-                if (this.isNextBreakpointSkipped) {
-                    text += '\n**Was a bogus breakpoint** Skipping!\n';
-                } else {
-                    text = null; //this.currentMicroDebuggerText;
-                }
             } else if (this.isInMicroDebugger) {
-                this.currentMicroDebuggerText += line + '\n';
-                if (line.startsWith('Break in ')) {
+                if (this.skipBogusBreakpoints && line.startsWith('Break in ')) {
                     console.log('this block is a break: skipping it');
                     this.isNextBreakpointSkipped = true;
                 }
-                text = null;
             }
         });
         return text;
@@ -164,13 +154,14 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect() {
+    public async connect(skipBogusBreakpoints: boolean = false) {
         let deferred = defer();
-
+        this.skipBogusBreakpoints = skipBogusBreakpoints;
+        this.isInMicroDebugger = false;
+        this.isNextBreakpointSkipped = false;
         try {
             //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
-
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
@@ -195,9 +186,9 @@ export class RokuAdapter {
 
             //forward all raw counsole output
             this.requestPipeline.on('console-output', (output) => {
-                const text = this.processBreakpoints(output);
-                if (text) {
-                    this.emit('console-output', text);
+                this.processBreakpoints(output);
+                if (output) {
+                    this.emit('console-output', output);
                 }
             });
 
@@ -212,9 +203,9 @@ export class RokuAdapter {
                 }
 
                 //forward all unhandled console output
-                const text = this.processBreakpoints(responseText);
-                if (text) {
-                    this.emit('unhandled-console-output', text);
+                this.processBreakpoints(responseText);
+                if (responseText) {
+                    this.emit('unhandled-console-output', responseText);
                 }
 
                 this.processUnhandledLines(responseText);
@@ -578,7 +569,6 @@ export class RokuAdapter {
      */
     public continue() {
         this.clearCache();
-        this.isContinuedOnce = true;
         return this.requestPipeline.executeCommand('c', false);
     }
 
