@@ -32,10 +32,8 @@ export class RokuAdapter {
     private lastUnhandledDataTime: number;
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
-    private isContinuedOnce: boolean;
     private isNextBreakpointSkipped: boolean = false;
     private isInMicroDebugger: boolean;
-    private currentMicroDebuggerText: string;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
 
@@ -138,24 +136,15 @@ export class RokuAdapter {
             if (line.match(this.debugStartRegex)) {
                 console.log('start MicroDebugger block');
                 this.isInMicroDebugger = true;
-                this.currentMicroDebuggerText = '';
                 this.isNextBreakpointSkipped = false;
-                text = 'Pausing for a breakpoint...';
             } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
                 console.log('ended MicroDebugger block');
                 this.isInMicroDebugger = false;
-                if (this.isNextBreakpointSkipped) {
-                    text += '\n**Was a bogus breakpoint** Skipping!\n';
-                } else {
-                    text = null; //this.currentMicroDebuggerText;
-                }
             } else if (this.isInMicroDebugger) {
-                this.currentMicroDebuggerText += line + '\n';
                 if (line.startsWith('Break in ')) {
                     console.log('this block is a break: skipping it');
                     this.isNextBreakpointSkipped = true;
                 }
-                text = null;
             }
         });
         return text;
@@ -195,9 +184,9 @@ export class RokuAdapter {
 
             //forward all raw counsole output
             this.requestPipeline.on('console-output', (output) => {
-                const text = this.processBreakpoints(output);
-                if (text) {
-                    this.emit('console-output', text);
+                this.processBreakpoints(output);
+                if (output) {
+                    this.emit('console-output', output);
                 }
             });
 
@@ -212,9 +201,9 @@ export class RokuAdapter {
                 }
 
                 //forward all unhandled console output
-                const text = this.processBreakpoints(responseText);
-                if (text) {
-                    this.emit('unhandled-console-output', text);
+                this.processBreakpoints(responseText);
+                if (responseText) {
+                    this.emit('unhandled-console-output', responseText);
                 }
 
                 this.processUnhandledLines(responseText);
@@ -578,7 +567,6 @@ export class RokuAdapter {
      */
     public continue() {
         this.clearCache();
-        this.isContinuedOnce = true;
         return this.requestPipeline.executeCommand('c', false);
     }
 
