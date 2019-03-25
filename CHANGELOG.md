@@ -6,7 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [2.0.0-beta.12] - 2019-03-21
+## [2.0.0-beta.13] - 2019-03-21
+### Changed
+ - upgraded to [brightscript-language@0.2.4](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.4)
+### Fixed
+ - greatly improved single-line recovery. Previously, certain syntax errors would prevent the rest of the block or file from parsing. The parser will now skip erraneous lines and attempt to recover. This _usually_ provides much better error recovery, but in certain cases can produce additional errors in the file.
+ - bitshift assignment operators (`>>=` `<<=`) no longer cause parse errors
+ - using colons as separators for associate arrays no longer cause parse errors (e.g `obj = {x:0 : y: 1}`)
+
+
+
+## [2.0.0-beta.12] - 2019-03-21
 ### Added
  - all changes from v1.9.0 and v1.10.0
 ### Changed
@@ -300,6 +310,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Issues with language colorization
 
+[2.0.0-beta.13]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.12...v2.0.0-beta.13
 [2.0.0-beta.12]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.11...v2.0.0-beta.12
 [2.0.0-beta.11]:                  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.10...v2.0.0-beta.11
 [2.0.0-beta.10]:                  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.9...v2.0.0-beta.10
