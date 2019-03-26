@@ -1,9 +1,9 @@
 import * as eol from 'eol';
-
 import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
+import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 
@@ -33,6 +33,7 @@ export class RokuAdapter {
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
+    private skipBogusBreakpoints: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -141,7 +142,7 @@ export class RokuAdapter {
                 console.log('ended MicroDebugger block');
                 this.isInMicroDebugger = false;
             } else if (this.isInMicroDebugger) {
-                if (line.startsWith('Break in ')) {
+                if (this.skipBogusBreakpoints && line.startsWith('Break in ')) {
                     console.log('this block is a break: skipping it');
                     this.isNextBreakpointSkipped = true;
                 }
@@ -153,13 +154,14 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect() {
+    public async connect(skipBogusBreakpoints: boolean = false) {
         let deferred = defer();
-
+        this.skipBogusBreakpoints = skipBogusBreakpoints;
+        this.isInMicroDebugger = false;
+        this.isNextBreakpointSkipped = false;
         try {
             //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
-
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
@@ -638,6 +640,37 @@ export class RokuAdapter {
     }
 
     private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
+    private isObjectCheckRegex = /<.*:\s*(\w+\s*\:*\s*\w*)>/gi;
+    private getFirstWordRegex = /^([\w.\-=]*)\s/;
+
+    /**
+     * Gets a string array of all the local variables using the var command
+     * @param scope
+     */
+    public async getScopeVariables(scope?: string) {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot resolve variable: debugger is not paused');
+        }
+        return await this.resolve(`Scope Variables`, async () => {
+            let data: string;
+            let vars = [];
+
+            data = await this.requestPipeline.executeCommand(`var`, true);
+            let splitData = data.split('\n');
+
+            splitData.forEach((line) =>  {
+                let match;
+                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWordRegex.exec(line))) {
+                    // There seems to be a local ifGlobal interface variable under the name of 'global' but it
+                    // is not accessible by the channel. Stript it our.
+                    if ((match[1] !== 'global') && match[1].length > 0) {
+                        vars.push(match[1]);
+                    }
+                }
+            });
+            return vars;
+        });
+    }
 
     /**
      * Given an expression, evaluate that statement ON the roku
@@ -713,7 +746,7 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+            if (match = this.isObjectCheckRegex.exec(line)) {
                 let type = match[1];
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
@@ -770,7 +803,7 @@ export class RokuAdapter {
                 };
 
                 //if the line is an object, array or function
-                if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+                if (match = this.isObjectCheckRegex.exec(line)) {
                     let type = match[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
@@ -890,8 +923,9 @@ export class RokuAdapter {
     /**
      * Disconnect from the telnet session and unset all objects
      */
-    public destroy() {
+    public async destroy() {
         if (this.requestPipeline) {
+            await this.exitActiveBrightscriptDebugger();
             this.requestPipeline.destroy();
         }
 
@@ -901,6 +935,21 @@ export class RokuAdapter {
             this.emitter.removeAllListeners();
         }
         this.emitter = undefined;
+    }
+
+    /**
+     * Make sure any active Brightscript Debugger threads are exited
+     */
+    public async exitActiveBrightscriptDebugger() {
+        if (this.requestPipeline) {
+            let commandsExecuted = 0;
+            do {
+                let data = await this.requestPipeline.executeCommand(`exit`, false);
+                // This seems to work without the delay but I wonder about slower devices
+                // await setTimeout[Object.getOwnPropertySymbols(setTimeout)[0]](100);
+                commandsExecuted ++;
+            } while (commandsExecuted < 10);
+        }
     }
 }
 

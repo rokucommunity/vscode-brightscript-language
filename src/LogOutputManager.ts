@@ -20,6 +20,7 @@ export class LogOutputManager {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
+        this.config = vscode.workspace.getConfiguration('brightscript') || {};
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
@@ -84,6 +85,9 @@ export class LogOutputManager {
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
+    private debugStartRegex: RegExp;
+    private debugEndRegex: RegExp;
+    private config: any;
 
     public onDidStartDebugSession() {
         //TODO make this a config setting
@@ -163,31 +167,36 @@ export class LogOutputManager {
         let lines = lineText.split('\n');
         lines.forEach((line) => {
             if (line !== '') {
-                // filter out debugger noise
-                if (line.match(this.debugStartRegex)) {
-                    console.log('start MicroDebugger block');
-                    this.isInMicroDebugger = true;
-                    this.currentMicroDebuggerText = '';
-                    this.isNextBreakpointSkipped = false;
-                    line = 'Pausing for a breakpoint...';
-                } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
-                    console.log('ended MicroDebugger block');
-                    this.isInMicroDebugger = false;
-                    if (this.isNextBreakpointSkipped) {
-                        line = '\n**Was a bogus breakpoint** Skipping!\n';
-                    } else {
+                if (!(this.config.output || {}).includeStackTracesInLogOutput) {
+                        // filter out debugger noise
+                    if (line.match(this.debugStartRegex)) {
+                        console.log('start MicroDebugger block');
+                        this.isInMicroDebugger = true;
+                        this.currentMicroDebuggerText = '';
+                        this.isNextBreakpointSkipped = false;
+                        line = 'Pausing for a breakpoint...';
+                    } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                        console.log('ended MicroDebugger block');
+                        this.isInMicroDebugger = false;
+                        if (this.isNextBreakpointSkipped) {
+                            line = '\n**Was a bogus breakpoint** Skipping!\n';
+                        } else {
+                            line = null;
+                        }
+                    } else if (this.isInMicroDebugger) {
+                        this.currentMicroDebuggerText += line + '\n';
+                        if ((this.config.debug || {}).skipBogusBreakpoints && line.startsWith('Break in ')) {
+                            console.log('this block is a break: skipping it');
+                            this.isNextBreakpointSkipped = true;
+                        }
                         line = null;
                     }
-                } else if (this.isInMicroDebugger) {
-                    this.currentMicroDebuggerText += line + '\n';
-                    if (line.startsWith('Break in ')) {
-                        console.log('this block is a break: skipping it');
-                        this.isNextBreakpointSkipped = true;
-                    }
-                    line = null;
                 }
-                if (line) {
-                    const logLine = new LogLine(line, mustInclude);
+            }
+            if (line) {
+                const logLine = new LogLine(line, mustInclude);
+                this.allLogLines.push(logLine);
+                if (this.matchesFilter(logLine)) {
                     this.allLogLines.push(logLine);
                     this.addLogLineToOutput(logLine);
                 }

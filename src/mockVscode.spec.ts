@@ -14,6 +14,7 @@ export let vscode = {
         registerSignatureHelpProvider: () => { },
         registerReferenceProvider: () => { },
         registerDocumentLinkProvider: () => { },
+        registerCompletionItemProvider: () => { },
         createDiagnosticCollection: () => {
             return {
                 clear: () => { }
@@ -190,10 +191,14 @@ export let vscode = {
         constructor(range: Range, uri: string) {
             this.range = range;
             this.uri = uri;
+    MarkdownString: class {
+        constructor(value: string = null) {
+            this.value = value;
         }
 
         private range: any;
         private uri: string;
+        private value: string;
     },
     Uri: {
         file: (src: string) => {
@@ -202,6 +207,13 @@ export let vscode = {
                     return {};
                 }
             };
+    SnippetString: class {
+        constructor(value: string = null) {
+            this.value = value;
         }
+    }
     },
+
+        private value: string;
+    }
 };

@@ -6,8 +6,10 @@ import * as path from 'path';
 import {
     Breakpoint,
     DebugSession,
+    Handles,
     InitializedEvent,
     OutputEvent,
+    Scope,
     Source,
     StackFrame,
     StoppedEvent,
@@ -77,6 +79,8 @@ export class BrightScriptDebugSession extends DebugSession {
     private evaluateRefIdCounter = 1;
 
     private variables: { [refId: number]: AugmentedVariable } = {};
+
+    private variableHandles = new Handles<string>();
 
     private rokuAdapter: RokuAdapter;
 
@@ -156,6 +160,8 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Connecting to Roku via telnet');
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
+
+            await this.rokuAdapter.exitActiveBrightscriptDebugger();
 
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {
@@ -365,7 +371,12 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
+    protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
+        const scopes = new Array<Scope>();
+        scopes.push(new Scope('Local', this.variableHandles.create('local'), true));
+        response.body = {
+            scopes: scopes
+        };
         this.sendResponse(response);
     }
 
@@ -420,21 +431,36 @@ export class BrightScriptDebugSession extends DebugSession {
 
         let childVariables: AugmentedVariable[] = [];
         if (this.rokuAdapter.isAtDebuggerPrompt) {
-            //find the variable with this reference
-            let v = this.variables[args.variablesReference];
-            //query for child vars if we haven't done it yet.
-            if (v.childVariables.length === 0) {
-                let result = await this.rokuAdapter.getVariable(v.evaluateName);
-                let tempVar = this.getVariableFromResult(result);
-                v.childVariables = tempVar.childVariables;
+            const reference = this.variableHandles.get(args.variablesReference);
+            if (reference) {
+                if (this.launchArgs.enableVariablesPanel) {
+                    const vars = await this.rokuAdapter.getScopeVariables(reference);
+
+                    for (const varName of vars) {
+                        let result = await this.rokuAdapter.getVariable(varName);
+                        let tempVar = this.getVariableFromResult(result);
+                        childVariables.push(tempVar);
+                    }
+                } else {
+                    childVariables.push(new Variable('variables disabled by launch.json setting', 'enableVariablesPanel: false'));
+                }
+            } else {
+                //find the variable with this reference
+                let v = this.variables[args.variablesReference];
+                //query for child vars if we haven't done it yet.
+                if (v.childVariables.length === 0) {
+                    let result = await this.rokuAdapter.getVariable(v.evaluateName);
+                    let tempVar = this.getVariableFromResult(result);
+                    v.childVariables = tempVar.childVariables;
+                }
+                childVariables = v.childVariables;
             }
-            childVariables = v.childVariables;
+            response.body = {
+                variables: childVariables
+            };
         } else {
             console.log('Skipped getting variables because the RokuAdapter is not accepting input at this time');
         }
-        response.body = {
-            variables: childVariables
-        };
         this.sendResponse(response);
     }
 
@@ -576,7 +602,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendEvent(new TerminatedEvent());
         });
         //make the connection
-        await this.rokuAdapter.connect();
+        await this.rokuAdapter.connect(this.launchArgs.skipBogusBreakpoints);
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
@@ -813,6 +839,14 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
      */
     consoleOutput: 'full' | 'normal';
+    /**
+     * Enables automatic population of the debug variable panel on a breakpoint or runtime errors.
+     */
+    enableVariablesPanel: boolean;
+    /**
+     * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
+     */
+    skipBogusBreakpoints: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
