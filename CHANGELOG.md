@@ -4,10 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [1.10.0] - 2019-03-21
+### Added
+ - Completion items for all BrightScript interface methods except for a few more obscure ones (#68). These can be activated by typing the full interface name after the variable (i.e. )
+### Fixed
+ - problems launching a debug session when the Roku has an app already running that is stuck in the debug state. This extension now issues several `exit` commands in a row (in addition to the home press it was already doing) which seems to resolve the majority of those issues. (#125)
+
+
+
 ## [1.9.0] - 2019-03-19
 ### Added
  - Support for the `vars` panel during a debug session. This can be disabled by setting `enableVariablesPanel: false` in the `launch.json` configuration.
-###Fixed
+### Fixed
  - Syntax highlighting issues
    - variable names with type designators are colored properly
    - `endsub` and `endfunction` are colored properly
@@ -186,26 +196,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-[1.9.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
-[1.8.6]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
-[1.8.5]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
-[1.8.4]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
-[1.8.3]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
-[1.8.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
-[1.8.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
-[1.8.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
-[1.7.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
-[1.6.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.0...v1.6.1
-[1.6.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.5.0...v1.6.0
-[1.5.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.2...v1.5.0
-[1.4.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.1...v1.4.2
-[1.4.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.0...v1.4.1
-[1.4.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.2...v1.4.0
-[1.3.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.1...v1.3.2
-[1.3.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.0...v1.3.1
-[1.3.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.2...v1.3.0
-[1.2.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.1...v1.2.2
-[1.2.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.1...v1.1.0
-[1.0.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.0...v1.0.1
+[1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
+[1.9.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
+[1.8.6]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
+[1.8.5]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
+[1.8.4]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
+[1.8.3]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
+[1.8.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
+[1.8.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
+[1.8.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
+[1.7.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
+[1.6.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.0...v1.6.1
+[1.6.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.5.0...v1.6.0
+[1.5.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.2...v1.5.0
+[1.4.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.1...v1.4.2
+[1.4.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.0...v1.4.1
+[1.4.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.2...v1.4.0
+[1.3.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.1...v1.3.2
+[1.3.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.0...v1.3.1
+[1.3.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.2...v1.3.0
+[1.2.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.1...v1.2.2
+[1.2.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.0...v1.2.1
+[1.2.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.1.0...v1.2.0
+[1.1.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.1...v1.1.0
+[1.0.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.0...v1.0.1

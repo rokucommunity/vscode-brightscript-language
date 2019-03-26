@@ -25,9 +25,8 @@ describe('Debugger', () => {
             return () => {
             };
         },
-        activate: () => {
-            return Promise.resolve();
-        }
+        activate: () => Promise.resolve(),
+        exitActiveBrightscriptDebugger: () => Promise.resolve()
     };
     beforeEach(() => {
         try {
