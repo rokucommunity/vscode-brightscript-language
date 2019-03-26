@@ -31,6 +31,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         //make sure we have an object
         config = config ? config : {} as any;
+        
+        //Check for depreciated Items
+        if (config.debugRootDir){
+            throw new Error('Depreciated config value debugRootDir, use sourceDirs');
+        }
+
 
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
