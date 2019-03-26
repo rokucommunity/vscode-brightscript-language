@@ -85,8 +85,6 @@ export class LogOutputManager {
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
-    private debugStartRegex: RegExp;
-    private debugEndRegex: RegExp;
     private config: any;
 
     public onDidStartDebugSession() {
@@ -167,7 +165,7 @@ export class LogOutputManager {
         let lines = lineText.split('\n');
         lines.forEach((line) => {
             if (line !== '') {
-                if (!(this.config.output || {}).includeStackTracesInLogOutput) {
+                if (!(this.config.output || {}).includeStackTraces) {
                         // filter out debugger noise
                     if (line.match(this.debugStartRegex)) {
                         console.log('start MicroDebugger block');

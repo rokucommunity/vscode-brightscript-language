@@ -191,13 +191,14 @@ export let vscode = {
         constructor(range: Range, uri: string) {
             this.range = range;
             this.uri = uri;
+        }
+        private range: any;
+        private uri: string;
+    },
     MarkdownString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-
-        private range: any;
-        private uri: string;
         private value: string;
     },
     Uri: {
@@ -207,13 +208,12 @@ export let vscode = {
                     return {};
                 }
             };
+        }
+    },
     SnippetString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-    }
-    },
-
         private value: string;
     }
 };

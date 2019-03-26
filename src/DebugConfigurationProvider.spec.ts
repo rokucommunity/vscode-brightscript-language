@@ -25,7 +25,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 let configProvider: BrightScriptDebugConfigurationProvider;
 
