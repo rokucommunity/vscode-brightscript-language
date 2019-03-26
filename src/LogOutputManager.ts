@@ -158,7 +158,7 @@ export class LogOutputManager {
         let lines = lineText.split('\n');
         lines.forEach((line) => {
             if (line !== '') {
-                if ((this.config.output || {}).doNotIncludeStackTracesInLogOutput) {
+                if (!(this.config.output || {}).includeStackTracesInLogOutput) {
                         // filter out debugger noise
                     if (line.match(this.debugStartRegex)) {
                         console.log('start MicroDebugger block');
