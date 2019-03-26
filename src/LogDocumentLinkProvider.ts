@@ -6,17 +6,21 @@ import * as vscode from 'vscode';
 import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
-    constructor(outputLine: number, startChar: number, length: number, pkgPath: string) {
+    constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
         this.outputLine = outputLine;
         this.startChar = startChar;
         this.length = length;
         this.pkgPath = pkgPath;
+        this.lineNumber = lineNumber;
+        this.filename = filename;
     }
 
     public outputLine: number;
     public startChar: number;
     public length: number;
     public pkgPath: string;
+    public filename: string;
+    public lineNumber: number;
 }
 /**
  * Provides file links in any output window that has the pkg:/ format.
@@ -25,12 +29,10 @@ export class CustomDocumentLink {
 export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
         this.customLinks = [];
-        this.pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/g;
     }
 
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
-    private pkgRegex: RegExp;
 
     public async setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
         this.launchConfig = launchConfig;
@@ -65,31 +67,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     private launchConfig: BrightScriptDebugConfiguration;
 
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
-        let k = doc;
-        let links = <DocumentLink[]>[];
-        let outputText = doc.getText();
-        let match: RegExpExecArray;
-
-        //find all pkg matches in the output
-        while (match = this.pkgRegex.exec(outputText)) {
-            let pkgPath = match[1];
-            let fileNumber = match[2];
-            let lineNumber = match[3];
-            //we don't do anything with column number right now...but maybe we can someday
-            let columnNumber = match[4];
-            let fileMap = this.getFileMap(pkgPath);
-            if (fileMap) {
-                let uri = vscode.Uri.file(fileMap.src);
-                if (fileNumber) {
-                    uri = uri.with({ fragment: fileNumber });
-                }
-                let range = new Range(doc.positionAt(match.index), doc.positionAt(match.index + match[0].length));
-                links.push(new DocumentLink(range, uri));
-            }
-
-        }
-        links = links.concat(this.customLinks);
-        return links;
+        return this.customLinks;
     }
 
     public getFileMap(pkgPath) {
@@ -99,23 +77,32 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     public addCustomLink(customLink: CustomDocumentLink) {
         let match: RegExpExecArray;
 
-        //find all pkg matches in the output
-        while (match = this.pkgRegex.exec(customLink.pkgPath)) {
-            let pkgPath = match[1];
-            let fileNumber = match[2];
-            let fileMap = this.getFileMap(pkgPath);
-            if (fileMap) {
-                let uri = vscode.Uri.file(fileMap.src);
-                if (fileNumber) {
-                    uri = uri.with({ fragment: fileNumber });
-                }
-                let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-                this.customLinks.push(new DocumentLink(range, uri));
+        let fileMap = this.getFileMap(customLink.pkgPath);
+        if (fileMap) {
+            let uri = vscode.Uri.file(fileMap.src);
+            if (customLink.lineNumber) {
+                uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
             }
+            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+            this.customLinks.push(new DocumentLink(range, uri));
+        } else {
+            console.log ('could not find matching file for link with path ' + customLink.pkgPath)
         }
     }
 
     public resetCustomLinks() {
         this.customLinks = [];
+    }
+
+    public convertPkgPathToFsPath(pkgPath: string) {
+        //remove preceeding pkg:
+        if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
+            pkgPath = pkgPath.substring(4);
+        } 
+        //use debugRootDir if provided, or rootDir if not provided.
+        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
+
+        let clientPath = path.normalize(path.join(rootDir, pkgPath));
+        return clientPath;
     }
 }

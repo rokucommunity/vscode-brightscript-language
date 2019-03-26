@@ -34,7 +34,7 @@
         "build-and-test": "npm run compile && npm run test",
         "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
-        "postinstall": "node ./node_modules/vscode/bin/install",
+        "postinstall": "node .\node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"
     },
@@ -61,7 +61,7 @@
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/mocha": "^5.2.5",
-        "@types/node": "11.9.1",
+        "@types\node": "11.9.1",
         "@types/q": "^1.5.1",
         "@types/sinon": "7.0.6",
         "chai": "^4.2.0",
@@ -182,7 +182,7 @@
                             },
                             "files": {
                                 "type": "array",
-                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https:/\npmjs.com/roku-deploy for examples.",
                                 "default": [
                                     "manifest",
                                     "source/**/*.*",
@@ -367,6 +367,21 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
+                    "scope": "resource"
+                },
+                "brightscript.output.hyperlinkFormat": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "full",
+                        "filename",
+                        "short",
+                        "hidden"
+                    ],
+                    "default": "filename",
+                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retriving videos for category id 23 \n Filename KeyLogtester.brs(24) [INFO] retriving videos for category id 23 \n Short #1 [INFO] retriving videos for category id 23 \n  Hidden [INFO] retriving videos for category id 23",
                     "scope": "resource"
                 }
             }

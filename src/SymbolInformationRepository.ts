@@ -1,21 +1,21 @@
 import * as vscode from 'vscode';
 
 import {
-    CancellationToken,
-    Location,
-    SymbolInformation,
-    TextDocument,
-    Uri,
-    WorkspaceSymbolProvider
+  CancellationToken,
+  Location,
+  SymbolInformation, SymbolKind,
+  TextDocument,
+  Uri,
+  WorkspaceSymbolProvider
 } from 'vscode';
 
 import { DeclarationProvider } from './DeclarationProvider';
 
 export class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
 
-    constructor(provider: DeclarationProvider) {
+    constructor(provider: DeclarationProvider, symbolInformationRepository: SymbolInformationRepository) {
         this.declarationProvider = provider;
-        this.repo = new SymbolInformationRepository(provider);
+        this.repo = symbolInformationRepository;
     }
 
     private declarationProvider: DeclarationProvider;
@@ -71,6 +71,16 @@ export class SymbolInformationRepository {
             }
             yield* symbols.filter((s) => pattern.test(s.name));
         }
+    }
+
+    public getFunctionBeforeLine(filePath: string, lineNumber: number): SymbolInformation | null {
+        const symbols = this.cache[filePath];
+        if (symbols) {
+            const matchingMethod = symbols.sort( (symbolA, symbolB) => symbolA.lineNumber > symbolB.lineNumber ? 1 : -1)
+              .filter( (symbol) => symbol.kind === SymbolKind.Function && symbol.lineNumber > lineNumber);
+            return matchingMethod;
+        }
+        return null;
     }
 
     private compileQuery(query: string): RegExp | undefined {

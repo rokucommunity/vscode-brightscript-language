@@ -17,8 +17,10 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
+import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
+import { SymbolInformationRepository } from './SymbolInformationRepository';
 const itParam = require('mocha-param');
 
 describe('LogOutputManager ', () => {
@@ -28,18 +30,22 @@ describe('LogOutputManager ', () => {
     let outputChannelMock;
     let logDocumentLinkProviderMock;
     let collectionMock;
+    let symbolRepository;
+    let symbolRepositoryMock;
 
     beforeEach(() => {
         const outputChannel = new vscode.OutputChannel();
         const debugCollection = new vscode.DebugCollection();
         const logDocumentLinkProvider = new LogDocumentLinkProvider();
+        const symbolRepository = new SymbolInformationRepository(new DeclarationProvider());
         outputChannelMock = sinon.mock(outputChannel);
         logDocumentLinkProviderMock = sinon.mock(logDocumentLinkProvider);
         collectionMock = sinon.mock(debugCollection);
+        symbolRepositoryMock = sinon.mock(symbolRepository);
         languagesMock = sinon.mock(vscode.languages);
         languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
         collectionMock.expects('clear');
-        logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider);
+        logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider, symbolRepository);
         logOutputManagerMock = sinon.mock(logOutputManager);
     });
 
@@ -196,6 +202,94 @@ describe('LogOutputManager ', () => {
             logOutputManagerMock.expects('reFilterOutput').once();
             logOutputManager.setIncludeFilter('test1');
             logOutputManagerMock.verify();
+        });
+    });
+
+    describe('tests getFilename', () => {
+        describe('mustInclude items', () => {
+            let params = [
+              { text: 'pkg:/file.xml', expected: 'file.xml' },
+              { text: 'pkg:/path/file.xml', expected: 'file.xml' },
+              { text: 'pkg:/path/path2/file.xml', expected: 'file.xml' },
+              { text: 'pkg:/file.brs', expected: 'file.brs' },
+              { text: 'pkg:/path/file.brs', expected: 'file.brs' },
+              { text: 'pkg:/path/path2/file.brs', expected: 'file.brs' },
+              { text: 'path/file.brs', expected: 'file.brs' },
+              { text: 'path/path2/file.brs', expected: 'file.brs' },
+              { text: 'file.brs', expected: 'file.brs' },
+              { text: 'pkg:/file.other', expected: 'file.other' },
+            ];
+            itParam('lf ${value.text} if {$value.expected}', params, (param) => {
+                assert.equal(logOutputManager.getFilename(param.text), param.expected);
+            });
+        });
+    });
+
+    describe('tests getCustomLogText', () => {
+        it('tests full', () => {
+            logOutputManager.config = { output: { hyperlinkFormat: 'full' } };
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+            '.brs', 20, 2);
+            assert.equal(logText, 'pkg:/path/file.brs(20)');
+        });
+
+        it('tests short', () => {
+            logOutputManager.config = { output: { hyperlinkFormat: 'short' } };
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+            '.brs', 20, 2);
+            assert.equal(logText, '#2');
+        });
+
+        it('tests hidden', () => {
+            logOutputManager.config = { output: { hyperlinkFormat: 'hidden' } };
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+              '.brs', 20, 2);
+            assert.equal(logText, '');
+        });
+
+        describe('tests filename', () => {
+            let params = [
+          { configSetting: null, text: 'pkg:/file.brs(20)' },
+          { configSetting: null, text: 'pkg:/path/file.brs(20)' },
+          { configSetting: null, text: 'pkg:/path/path2/file.brs(20)' },
+          { configSetting: '', text: 'pkg:/file.brs(20)' },
+          { configSetting: '', text: 'pkg:/path/file.brs(20)' },
+          { configSetting: '', text: 'pkg:/path/path2/file.brs(20)' },
+          { configSetting: 'filename', text: 'pkg:/file.brs(20)' },
+          { configSetting: 'filename', text: 'pkg:/path/file.brs(20)' },
+          { configSetting: 'filename', text: 'pkg:/path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.config = { output: { hyperlinkFormat: param.configSetting } };
+                symbolRepositoryMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                let logText = logOutputManager.getCustomLogText(param.text, 'file',
+                  '.brs', 20, 2);
+                assert.equal(logText, 'file.methodName(20)');
+            });
+        });
+
+        describe('tests filename with addline to log', () => {
+            let params = [
+              { configSetting: null, text: 'pkg:/file.brs(20)' },
+              { configSetting: null, text: 'pkg:/path/file.brs(20)' },
+              { configSetting: null, text: 'pkg:/path/path2/file.brs(20)' },
+              { configSetting: '', text: 'pkg:/file.brs(20)' },
+              { configSetting: '', text: 'pkg:/path/file.brs(20)' },
+              { configSetting: '', text: 'pkg:/path/path2/file.brs(20)' },
+              { configSetting: 'filename', text: 'pkg:/file.brs(20)' },
+              { configSetting: 'filename', text: 'pkg:/path/file.brs(20)' },
+              { configSetting: 'filename', text: 'pkg:/path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.config = { output: { hyperlinkFormat: param.configSetting } };
+                symbolRepositoryMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                logDocumentLinkProviderMock.expects('addCustomLink');
+                const logLine = new LogLine(param.text + ' sometext', true);
+                logOutputManager.addLogLineToOutput(logLine);
+                // assert.equal(logText, 'file.methodName(20)');
+            });
         });
     });
 

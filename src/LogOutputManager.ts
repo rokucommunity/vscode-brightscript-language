@@ -5,6 +5,7 @@ import { DiagnosticCollection } from 'vscode';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
+import { SymbolInformationRepository } from "./SymbolInformationRepository";
 
 export class LogLine {
     constructor(text, mustInclude) {
@@ -16,7 +17,8 @@ export class LogLine {
 }
 
 export class LogOutputManager {
-    constructor(outputChannel, context, docLinkProvider) {
+    constructor(outputChannel, context, docLinkProvider,
+                private symbolInfomationRepostiory: SymbolInformationRepository) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
@@ -26,7 +28,7 @@ export class LogOutputManager {
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
-        this.customLogMatcher = /(\[#pkg:\/)#(.*)#(.*)#]/;
+        this.pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/g;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
@@ -76,7 +78,7 @@ export class LogOutputManager {
     private includeRegex?: RegExp;
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
-    private customLogMatcher: RegExp;
+    private pkgRegex: RegExp;
     private isNextBreakpointSkipped: boolean = false;
     private isInMicroDebugger: boolean;
     private currentMicroDebuggerText: string;
@@ -85,7 +87,7 @@ export class LogOutputManager {
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
-    private config: any;
+    public config: any;
 
     public onDidStartDebugSession() {
         //TODO make this a config setting
@@ -202,15 +204,18 @@ export class LogOutputManager {
         });
     }
 
-    public addLogLineToOutput(logLine) {
-        const lineNumber = this.displayedLogLines.length;
+    public addLogLineToOutput(logLine: LogLine) {
+        const logLineNumber = this.displayedLogLines.length;
         if (this.matchesFilter(logLine)) {
             this.displayedLogLines.push(logLine);
-            let match = this.customLogMatcher.exec(logLine.text);
+            let match = this.pkgRegex.exec(logLine.text);
             if (match) {
-                const customText = match[2];
-                const pkgPath = match[3];
-                const customLink = new CustomDocumentLink(lineNumber, match.index, customText.length, pkgPath);
+                const pkgPath = match[1];
+                const lineNumber = Number(match[2]);
+                const filename = this.getFilename(pkgPath);
+                const extension = filename.substring(filename.length - 4);
+                let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
+                const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
                 console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
@@ -221,6 +226,41 @@ export class LogOutputManager {
                 this.outputChannel.appendLine(logLine.text);
             }
         }
+    }
+
+    public getFilename(pkgPath: string): string {
+        const parts = pkgPath.split('/');
+        return parts.length > 0 ? parts[parts.length - 1] : pkgPath;
+    }
+
+    public getCustomLogText(pkgPath: string, filename: string, extension: string, lineNumber: number, logLineNumber: number): string {
+        switch ((this.config.output || {}).hyperlinkFormat) {
+            case 'full':
+                return pkgPath;
+                break;
+            case 'short':
+                return `#${logLineNumber}`;
+                break;
+            case 'hidden':
+                return '';
+                break;
+            default:
+                const isBrs = extension.toLowerCase() === '.brs';
+                if (isBrs) {
+                    const methodName = this.getMethodName(pkgPath, lineNumber);
+                    if (methodName) {
+                        return `${filename}.${methodName}(${lineNumber})`;
+                    }
+                }
+                return `${filename}${extension}(${lineNumber})`;
+                break;
+        }
+    }
+
+    public getMethodName(pkgPath: string, lineNumber: number): string | null {
+        let fsPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
+        const method = this.symbolInfomationRepostiory.getFunctionBeforeLine(fsPath, lineNumber);
+        return method ? method.name : null;
     }
 
     public matchesFilter(logLine: LogLine): boolean {
