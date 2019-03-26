@@ -30,22 +30,22 @@ describe('LogOutputManager ', () => {
     let outputChannelMock;
     let logDocumentLinkProviderMock;
     let collectionMock;
-    let symbolRepository;
-    let symbolRepositoryMock;
+    let declarationProvider;
+    let declarationProviderMock;
 
     beforeEach(() => {
         const outputChannel = new vscode.OutputChannel();
         const debugCollection = new vscode.DebugCollection();
         const logDocumentLinkProvider = new LogDocumentLinkProvider();
-        const symbolRepository = new SymbolInformationRepository(new DeclarationProvider());
+        const declarationProvider = new DeclarationProvider();
         outputChannelMock = sinon.mock(outputChannel);
         logDocumentLinkProviderMock = sinon.mock(logDocumentLinkProvider);
         collectionMock = sinon.mock(debugCollection);
-        symbolRepositoryMock = sinon.mock(symbolRepository);
+        declarationProviderMock = sinon.mock(declarationProvider);
         languagesMock = sinon.mock(vscode.languages);
         languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
         collectionMock.expects('clear');
-        logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider, symbolRepository);
+        logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider, declarationProvider);
         logOutputManagerMock = sinon.mock(logOutputManager);
     });
 
@@ -261,7 +261,7 @@ describe('LogOutputManager ', () => {
             ];
             itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
                 logOutputManager.config = { output: { hyperlinkFormat: param.configSetting } };
-                symbolRepositoryMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 let logText = logOutputManager.getCustomLogText(param.text, 'file',
                   '.brs', 20, 2);
@@ -283,7 +283,7 @@ describe('LogOutputManager ', () => {
             ];
             itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
                 logOutputManager.config = { output: { hyperlinkFormat: param.configSetting } };
-                symbolRepositoryMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 logDocumentLinkProviderMock.expects('addCustomLink');
                 const logLine = new LogLine(param.text + ' sometext', true);

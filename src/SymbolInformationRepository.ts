@@ -73,16 +73,6 @@ export class SymbolInformationRepository {
         }
     }
 
-    public getFunctionBeforeLine(filePath: string, lineNumber: number): SymbolInformation | null {
-        const symbols = this.cache[filePath];
-        if (symbols) {
-            const matchingMethod = symbols.sort( (symbolA, symbolB) => symbolA.lineNumber > symbolB.lineNumber ? 1 : -1)
-              .filter( (symbol) => symbol.kind === SymbolKind.Function && symbol.lineNumber > lineNumber);
-            return matchingMethod;
-        }
-        return null;
-    }
-
     private compileQuery(query: string): RegExp | undefined {
         if (query.length === 0) {
             return;

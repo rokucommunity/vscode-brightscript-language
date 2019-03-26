@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
+import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
-import { SymbolInformationRepository } from "./SymbolInformationRepository";
 
 export class LogLine {
     constructor(text, mustInclude) {
@@ -18,7 +18,7 @@ export class LogLine {
 
 export class LogOutputManager {
     constructor(outputChannel, context, docLinkProvider,
-                private symbolInfomationRepostiory: SymbolInformationRepository) {
+                private declarationProvider: DeclarationProvider) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
@@ -213,16 +213,14 @@ export class LogOutputManager {
                 const pkgPath = match[1];
                 const lineNumber = Number(match[2]);
                 const filename = this.getFilename(pkgPath);
-                const extension = filename.substring(filename.length - 4);
+                const extension = pkgPath.substring(pkgPath.length - 4);
                 let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
                 const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
                 console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
-                // this.outputChannel.appendLine(lineNumber.toString() + ': ' + logText);
                 this.outputChannel.appendLine(logText);
             } else {
-                // this.outputChannel.appendLine(lineNumber.toString() + ': ' + logLine.text);
                 this.outputChannel.appendLine(logLine.text);
             }
         }
@@ -230,13 +228,17 @@ export class LogOutputManager {
 
     public getFilename(pkgPath: string): string {
         const parts = pkgPath.split('/');
-        return parts.length > 0 ? parts[parts.length - 1] : pkgPath;
+        let name = parts.length > 0 ? parts[parts.length - 1] : pkgPath;
+        if (name.toLowerCase().endsWith('.xml') || name.toLowerCase().endsWith('.brs')) {
+            name = name.substring(0, name.length  - 4);
+        }
+        return name;
     }
 
     public getCustomLogText(pkgPath: string, filename: string, extension: string, lineNumber: number, logLineNumber: number): string {
         switch ((this.config.output || {}).hyperlinkFormat) {
             case 'full':
-                return pkgPath;
+                return pkgPath + `(${lineNumber})`;
                 break;
             case 'short':
                 return `#${logLineNumber}`;
@@ -252,14 +254,14 @@ export class LogOutputManager {
                         return `${filename}.${methodName}(${lineNumber})`;
                     }
                 }
-                return `${filename}${extension}(${lineNumber})`;
+                return pkgPath + `(${lineNumber})`;
                 break;
         }
     }
 
     public getMethodName(pkgPath: string, lineNumber: number): string | null {
         let fsPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
-        const method = this.symbolInfomationRepostiory.getFunctionBeforeLine(fsPath, lineNumber);
+        const method = this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
         return method ? method.name : null;
     }
 

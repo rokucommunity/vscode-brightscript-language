@@ -57,8 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
     });
     //register the definition provider
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
-    const symbolInformationRepository = new SymbolInformationRepository(declarationProvider)
-    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, symbolInformationRepository);
+    const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
+    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, declarationProvider);
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };

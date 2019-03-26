@@ -86,7 +86,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
             let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
             this.customLinks.push(new DocumentLink(range, uri));
         } else {
-            console.log ('could not find matching file for link with path ' + customLink.pkgPath)
+            console.log ('could not find matching file for link with path ' + customLink.pkgPath);
         }
     }
 
@@ -98,7 +98,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         //remove preceeding pkg:
         if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
             pkgPath = pkgPath.substring(4);
-        } 
+        }
         //use debugRootDir if provided, or rootDir if not provided.
         let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
 

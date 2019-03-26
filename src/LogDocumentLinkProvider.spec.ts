@@ -72,7 +72,7 @@ describe('LogDocumentLinkProvider', () => {
                 src: path.normalize('C:/project/source/main.brs'),
                 dest: path.normalize('C:/project/out/source/main.brs')
             });
-            let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, "full");
+            let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full');
             linkProvider.addCustomLink(link);
             expect(linkProvider.customLinks.length).to.equal(1);
             linkProvider.resetCustomLinks();
@@ -87,7 +87,7 @@ describe('LogDocumentLinkProvider', () => {
                 src: path.normalize('C:/project/source/main.brs'),
                 dest: path.normalize('C:/project/out/source/main.brs')
             });
-            let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, "full.brs");
+            let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full.brs');
             linkProvider.addCustomLink(link);
             expect(linkProvider.customLinks.length).to.equal(1);
         });

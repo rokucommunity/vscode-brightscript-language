@@ -84,7 +84,7 @@ export class DeclarationProvider implements Disposable {
 
         this.disposable = Disposable.from(...subscriptions);
     }
-
+    public cache: Map<string, BrightScriptDeclaration[]> = new Map();
     private fullscan: boolean = true;
 
     private dirty: Map<string, Uri> = new Map();
@@ -251,6 +251,7 @@ export class DeclarationProvider implements Disposable {
                 continue;
             }
         }
+        this.cache.set(uri.fsPath, symbols);
         return symbols;
     }
 
@@ -262,6 +263,27 @@ export class DeclarationProvider implements Disposable {
             new Location(uri, decl.bodyRange),
         );
     }
+
+    public getFunctionBeforeLine(filePath: string, lineNumber: number): BrightScriptDeclaration | null {
+        let symbols = this.cache.get(filePath);
+        if (!symbols) {
+            for (const doc of vscode.workspace.textDocuments) {
+                if (doc.uri.fsPath === filePath) {
+                    let decls = this.readDeclarations(doc.uri, doc.getText());
+                    this.cache.set(filePath, decls);
+                }
+            }
+            symbols = this.cache.get(filePath);
+        }
+        //try to load it now
+        if (symbols) {
+            const matchingMethods = symbols
+              .filter( (symbol) => symbol.kind === SymbolKind.Function && symbol.nameRange.start.line < lineNumber);
+            return matchingMethods.length > 0 ? matchingMethods[matchingMethods.length - 1] : null;
+        }
+        return null;
+    }
+
 }
 
 export function getExcludeGlob(): string {
