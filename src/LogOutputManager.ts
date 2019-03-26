@@ -23,12 +23,15 @@ export class LogOutputManager {
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
         this.config = vscode.workspace.getConfiguration('brightscript') || {};
+        vscode.workspace.onDidChangeConfiguration( (e) => {
+            this.config = vscode.workspace.getConfiguration('brightscript') || {};
+        });
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
-        this.pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/g;
+        this.pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
@@ -244,7 +247,7 @@ export class LogOutputManager {
                 return `#${logLineNumber}`;
                 break;
             case 'hidden':
-                return '';
+                return ' ';
                 break;
             default:
                 const isBrs = extension.toLowerCase() === '.brs';

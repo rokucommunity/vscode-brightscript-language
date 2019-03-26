@@ -83,6 +83,7 @@ export class DeclarationProvider implements Disposable {
         vscode.workspace.onDidChangeWorkspaceFolders(this.onDidChangeWorkspace, this, subscriptions);
 
         this.disposable = Disposable.from(...subscriptions);
+        this.flush();
     }
     public cache: Map<string, BrightScriptDeclaration[]> = new Map();
     private fullscan: boolean = true;
