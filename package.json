@@ -363,7 +363,7 @@
                     "description": "Multi run-loop SG apps (i.e with tasks) can cause the breakpoint debugger to crash when they stop on bogus 'in break' breakpoints. If set to true, the extension will automatically continiue on detecting these kinds of breakpoints.",
                     "scope": "resource"
                 },
-                "brightscript.output.includeStackTracesInLogOutput": {
+                "brightscript.output.includeStackTraces": {
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
