@@ -25,7 +25,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 let configProvider: BrightScriptDebugConfigurationProvider;
 
@@ -57,7 +56,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
                 password: '${env:ROKU_PASSWORD}',
-                skipBogusBreakpoints: false
+                enableDebuggerAutoRecovery: false
             });
             expect(config.password).to.equal('pass1234');
             expect(stub.called).to.be.true;

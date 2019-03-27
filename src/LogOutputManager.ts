@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
 export class LogLine {
@@ -18,7 +19,12 @@ export class LogOutputManager {
     constructor(outputChannel, context) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
-        this.config = vscode.workspace.getConfiguration('brightscript') || {};
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.includeStackTraces = ( config.output || {}).includeStackTraces;
+        vscode.workspace.onDidChangeConfiguration( (e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.includeStackTraces = ( config.output || {}).includeStackTraces;
+        });
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
@@ -74,8 +80,9 @@ export class LogOutputManager {
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
     private isNextBreakpointSkipped: boolean = false;
+    private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
-    private currentMicroDebuggerText: string;
+    private enableDebuggerAutoRecovery: boolean;
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
     private debugStartRegex: RegExp;
@@ -85,6 +92,10 @@ export class LogOutputManager {
     public onDidStartDebugSession() {
         //TODO make this a config setting
         this.clearOutput();
+    }
+
+    public setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
+        this.enableDebuggerAutoRecovery = launchConfig.enableDebuggerAutoRecovery;
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
@@ -158,12 +169,11 @@ export class LogOutputManager {
         let lines = lineText.split('\n');
         lines.forEach((line) => {
             if (line !== '') {
-                if (!(this.config.output || {}).includeStackTraces) {
+                if (!this.includeStackTraces) {
                         // filter out debugger noise
                     if (line.match(this.debugStartRegex)) {
                         console.log('start MicroDebugger block');
                         this.isInMicroDebugger = true;
-                        this.currentMicroDebuggerText = '';
                         this.isNextBreakpointSkipped = false;
                         line = 'Pausing for a breakpoint...';
                     } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
@@ -175,8 +185,7 @@ export class LogOutputManager {
                             line = null;
                         }
                     } else if (this.isInMicroDebugger) {
-                        this.currentMicroDebuggerText += line + '\n';
-                        if ((this.config.debug || {}).skipBogusBreakpoints && line.startsWith('Break in ')) {
+                        if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
                             console.log('this block is a break: skipping it');
                             this.isNextBreakpointSkipped = true;
                         }

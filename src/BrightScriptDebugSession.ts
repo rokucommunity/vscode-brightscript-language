@@ -602,7 +602,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendEvent(new TerminatedEvent());
         });
         //make the connection
-        await this.rokuAdapter.connect(this.launchArgs.skipBogusBreakpoints);
+        await this.rokuAdapter.connect(this.launchArgs.enableDebuggerAutoRecovery);
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
@@ -846,7 +846,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
      */
-    skipBogusBreakpoints: boolean;
+    enableDebuggerAutoRecovery: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {

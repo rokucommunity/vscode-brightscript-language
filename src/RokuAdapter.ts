@@ -33,7 +33,7 @@ export class RokuAdapter {
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
-    private skipBogusBreakpoints: boolean;
+    private enableDebuggerAutoRecovery: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -142,7 +142,7 @@ export class RokuAdapter {
                 console.log('ended MicroDebugger block');
                 this.isInMicroDebugger = false;
             } else if (this.isInMicroDebugger) {
-                if (this.skipBogusBreakpoints && line.startsWith('Break in ')) {
+                if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
                     console.log('this block is a break: skipping it');
                     this.isNextBreakpointSkipped = true;
                 }
@@ -154,9 +154,9 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect(skipBogusBreakpoints: boolean = false) {
+    public async connect(enableDebuggerAutoRecovery: boolean = false) {
         let deferred = defer();
-        this.skipBogusBreakpoints = skipBogusBreakpoints;
+        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
         try {

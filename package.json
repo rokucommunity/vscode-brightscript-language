@@ -239,7 +239,7 @@
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
-                        "skipBogusBreakpoints": false
+                        "enableDebuggerAutoRecovery": false
                     }
                 ],
                 "configurationSnippets": [
@@ -254,7 +254,7 @@
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
-                            "skipBogusBreakpoints": false
+                            "enableDebuggerAutoRecovery": false
                         }
                     }
                 ]
@@ -355,12 +355,6 @@
                     "type": "string",
                     "default": "${promptForHost}",
                     "description": "IP address of the roku to remotely control",
-                    "scope": "resource"
-                },
-                "brightscript.debug.skipBogusBreakpoints": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Multi run-loop SG apps (i.e with tasks) can cause the breakpoint debugger to crash when they stop on bogus 'in break' breakpoints. If set to true, the extension will automatically continiue on detecting these kinds of breakpoints.",
                     "scope": "resource"
                 },
                 "brightscript.output.includeStackTraces": {
