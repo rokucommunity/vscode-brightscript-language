@@ -226,6 +226,11 @@
                                         }
                                     ]
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
                             }
                         }
                     }
