@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
-import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
 export class LogLine {
@@ -24,10 +24,16 @@ export class LogOutputManager {
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.includeStackTraces = ( config.output || {}).includeStackTraces;
-        vscode.workspace.onDidChangeConfiguration( (e) => {
+        this.includeStackTraces = (config.output || {}).includeStackTraces;
+        this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
+        this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
+        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+        vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.includeStackTraces = ( config.output || {}).includeStackTraces;
+            this.includeStackTraces = (config.output || {}).includeStackTraces;
+            this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
+            this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
+            this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
         });
         this.context = context;
         let subscriptions = context.subscriptions;
@@ -53,7 +59,7 @@ export class LogOutputManager {
             if (entryText || entryText === '') {
                 this.setIncludeFilter(entryText);
             }
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputLogLevelFilter', async () => {
             let entryText: string = await vscode.window.showInputBox({
@@ -63,7 +69,7 @@ export class LogOutputManager {
             if (entryText || entryText === '') {
                 this.setLevelFilter(entryText);
             }
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputExcludeFilter', async () => {
             let entryText: string = await vscode.window.showInputBox({
@@ -73,7 +79,7 @@ export class LogOutputManager {
             if (entryText || entryText === '') {
                 this.setExcludeFilter(entryText);
             }
-        } ));
+        }));
         this.clearOutput();
 
     }
@@ -88,17 +94,20 @@ export class LogOutputManager {
     private isNextBreakpointSkipped: boolean = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
-    private enableDebuggerAutoRecovery: boolean;
+    public enableDebuggerAutoRecovery: boolean;
+    public isFocusingOutputOnLaunch: boolean;
+    public isClearingOutputOnLaunch: boolean;
+    public hyperlinkFormat: string;
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
-    public config: any;
 
     public onDidStartDebugSession() {
-        //TODO make this a config setting
-        this.clearOutput();
+        if (this.isClearingOutputOnLaunch) {
+            this.clearOutput();
+        }
     }
 
     public setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
@@ -110,7 +119,12 @@ export class LogOutputManager {
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
         } else if (e.event === 'BSLaunchStartEvent') {
-            vscode.commands.executeCommand('workbench.action.focusPanel');
+            if (this.isFocusingOutputOnLaunch) {
+                vscode.commands.executeCommand('workbench.action.focusPanel');
+            }
+            if (this.isClearingOutputOnLaunch) {
+                this.clearOutput();
+            }
         } else {
             this.clearOutput();
             let errorsByPath = {};
@@ -179,7 +193,7 @@ export class LogOutputManager {
         lines.forEach((line) => {
             if (line !== '') {
                 if (!this.includeStackTraces) {
-                        // filter out debugger noise
+                    // filter out debugger noise
                     if (line.match(this.debugStartRegex)) {
                         console.log('start MicroDebugger block');
                         this.isInMicroDebugger = true;
@@ -239,21 +253,24 @@ export class LogOutputManager {
         const parts = pkgPath.split('/');
         let name = parts.length > 0 ? parts[parts.length - 1] : pkgPath;
         if (name.toLowerCase().endsWith('.xml') || name.toLowerCase().endsWith('.brs')) {
-            name = name.substring(0, name.length  - 4);
+            name = name.substring(0, name.length - 4);
         }
         return name;
     }
 
     public getCustomLogText(pkgPath: string, filename: string, extension: string, lineNumber: number, logLineNumber: number): string {
-        switch ((this.config.output || {}).hyperlinkFormat) {
-            case 'full':
+        switch (this.hyperlinkFormat) {
+            case 'Full':
                 return pkgPath + `(${lineNumber})`;
                 break;
-            case 'short':
+            case 'Short':
                 return `#${logLineNumber}`;
                 break;
-            case 'hidden':
+            case 'Hidden':
                 return ' ';
+                break;
+            case 'Filename':
+                return `${filename}${extension}(${lineNumber})`;
                 break;
             default:
                 const isBrs = extension.toLowerCase() === '.brs';
@@ -279,7 +296,7 @@ export class LogOutputManager {
             (!this.logLevelRegex || this.logLevelRegex.test(logLine.text)))
             && (!this.includeRegex || this.includeRegex.test(logLine.text)))
             && (!this.excludeRegex || !this.excludeRegex.test(logLine.text)
-        );
+            );
     }
 
     public clearOutput(): any {
