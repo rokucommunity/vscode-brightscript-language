@@ -208,15 +208,15 @@ describe('LogOutputManager ', () => {
     describe('tests getFilename', () => {
         describe('mustInclude items', () => {
             let params = [
-              { text: 'pkg:/file.xml', expected: 'file.xml' },
-              { text: 'pkg:/path/file.xml', expected: 'file.xml' },
-              { text: 'pkg:/path/path2/file.xml', expected: 'file.xml' },
-              { text: 'pkg:/file.brs', expected: 'file.brs' },
-              { text: 'pkg:/path/file.brs', expected: 'file.brs' },
-              { text: 'pkg:/path/path2/file.brs', expected: 'file.brs' },
-              { text: 'path/file.brs', expected: 'file.brs' },
-              { text: 'path/path2/file.brs', expected: 'file.brs' },
-              { text: 'file.brs', expected: 'file.brs' },
+              { text: 'pkg:/file.xml', expected: 'file' },
+              { text: 'pkg:/path/file.xml', expected: 'file' },
+              { text: 'pkg:/path/path2/file.xml', expected: 'file' },
+              { text: 'pkg:/file.brs', expected: 'file' },
+              { text: 'pkg:/path/file.brs', expected: 'file' },
+              { text: 'pkg:/path/path2/file.brs', expected: 'file' },
+              { text: 'path/file.brs', expected: 'file' },
+              { text: 'path/path2/file.brs', expected: 'file' },
+              { text: 'file.brs', expected: 'file' },
               { text: 'pkg:/file.other', expected: 'file.other' },
             ];
             itParam('lf ${value.text} if {$value.expected}', params, (param) => {
@@ -228,23 +228,23 @@ describe('LogOutputManager ', () => {
     describe('tests getCustomLogText', () => {
         it('tests full', () => {
             logOutputManager.config = { output: { hyperlinkFormat: 'full' } };
-            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
             '.brs', 20, 2);
             assert.equal(logText, 'pkg:/path/file.brs(20)');
         });
 
         it('tests short', () => {
             logOutputManager.config = { output: { hyperlinkFormat: 'short' } };
-            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
             '.brs', 20, 2);
             assert.equal(logText, '#2');
         });
 
         it('tests hidden', () => {
             logOutputManager.config = { output: { hyperlinkFormat: 'hidden' } };
-            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs(20)', 'file',
+            let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
               '.brs', 20, 2);
-            assert.equal(logText, '');
+            assert.equal(logText, ' ');
         });
 
         describe('tests filename', () => {

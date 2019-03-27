@@ -55,6 +55,9 @@ export let vscode = {
         },
         onDidChangeWorkspaceFolders: () => {
 
+        },
+        findFiles: (include, exclude) => {
+            return [];
         }
     },
     window: {
