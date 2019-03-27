@@ -34,7 +34,7 @@
         "build-and-test": "npm run compile && npm run test",
         "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
-        "postinstall": "node .\node_modules/vscode/bin/install",
+        "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"
     },
@@ -61,7 +61,7 @@
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/mocha": "^5.2.5",
-        "@types\node": "11.9.1",
+        "@types/node": "11.9.1",
         "@types/q": "^1.5.1",
         "@types/sinon": "7.0.6",
         "chai": "^4.2.0",
@@ -182,7 +182,7 @@
                             },
                             "files": {
                                 "type": "array",
-                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https:/\npmjs.com/roku-deploy for examples.",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
                                 "default": [
                                     "manifest",
                                     "source/**/*.*",
@@ -226,6 +226,11 @@
                                         }
                                     ]
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
                             }
                         }
                     }
@@ -239,7 +244,7 @@
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
-                        "skipBogusBreakpoints": false
+                        "enableDebuggerAutoRecovery": false
                     }
                 ],
                 "configurationSnippets": [
@@ -254,7 +259,7 @@
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
-                            "skipBogusBreakpoints": false
+                            "enableDebuggerAutoRecovery": false
                         }
                     }
                 ]
@@ -355,12 +360,6 @@
                     "type": "string",
                     "default": "${promptForHost}",
                     "description": "IP address of the roku to remotely control",
-                    "scope": "resource"
-                },
-                "brightscript.debug.skipBogusBreakpoints": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Multi run-loop SG apps (i.e with tasks) can cause the breakpoint debugger to crash when they stop on bogus 'in break' breakpoints. If set to true, the extension will automatically continiue on detecting these kinds of breakpoints.",
                     "scope": "resource"
                 },
                 "brightscript.output.includeStackTraces": {
