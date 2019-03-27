@@ -141,11 +141,12 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
+                //clear any breakpoints that are out of scope
+                this.removeOutOfScopeBreakpointPaths(this.launchArgs.sourceDirs, this.launchArgs.rootDir)
                 for (const sourceDir of this.launchArgs.sourceDirs) {
                     this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
                 }
             }
-
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
             await this.addBreakpointStatements(stagingFolder);
@@ -244,6 +245,23 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendResponse = old;
         };
         super.sourceRequest(response, args);
+    }
+
+    protected removeOutOfScopeBreakpointPaths(sourcePaths: string[], toRootPath: string) {
+        //convert paths to sourceDirs paths for any breakpoints set before this launch call
+        if (sourcePaths) {
+            for (let clientPath in this.breakpointsByClientPath) {
+                let included = false;
+                for (const fromRootPath of sourcePaths) {
+                    if (clientPath.includes(fromRootPath)){
+                        included = true
+                    }
+                }
+                if (!included){
+                    delete this.breakpointsByClientPath[clientPath];
+                }
+            }
+        }
     }
 
     protected convertBreakpointPaths(fromRootPath: string, toRootPath: string) {
