@@ -134,7 +134,13 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
 
         for (let key in this.interfaceDictionary) {
             if (linePrefix.endsWith('.' + key.toLowerCase() + '.')) {
-                return this.interfaceDictionary[key];
+                let completionItems = this.interfaceDictionary[key];
+                completionItems.forEach((item) => {
+                    item.additionalTextEdits = [
+                        new vscode.TextEdit(new vscode.Range(new vscode.Position(position.line, position.character - (key + '.').length), position), '')
+                    ];
+                });
+                return completionItems;
             }
         }
 
