@@ -367,6 +367,34 @@
                     "default": true,
                     "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
                     "scope": "resource"
+                },
+                "brightscript.output.focusOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                    "scope": "resource"
+                },
+                "brightscript.output.clearOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the brigthscript log when launching.",
+                    "scope": "resource"
+                },
+                "brightscript.output.hyperlinkFormat": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "Full",
+                        "Filename",
+                        "FilenameAndFunction",
+                        "Short",
+                        "Hidden"
+                    ],
+                    "default": "FilenameAndFunction",
+                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retriving videos for category id 23 \n Filename KeyLogtester.brs(24) [INFO] retriving videos for category id 23 \n FilenameAndFunction KeyLogtester.getVideos(24) [INFO] retriving videos for category id 23 \n Short #1 [INFO] retriving videos for category id 23 \n  Hidden [INFO] retriving videos for category id 23",
+                    "scope": "resource"
                 }
             }
         },
@@ -379,6 +407,11 @@
             {
                 "command": "extension.brightscript.sendRemoteCommand",
                 "title": "Send 'arg' button key press to Roku as a remote control",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear the brighscript log output",
                 "category": "Brightscript"
             },
             {
