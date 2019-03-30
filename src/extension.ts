@@ -56,10 +56,10 @@ export function activate(context: vscode.ExtensionContext) {
             logOutputManager.setLaunchConfig(e.body);
         }
     });
-
     //register the definition provider
-    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
+    const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
+    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, declarationProvider);
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
@@ -68,9 +68,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     // experimental placeholder
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
-    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
-    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));
+    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));
     context.subscriptions.push(declarationProvider);
     vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
     vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
