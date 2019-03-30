@@ -1,9 +1,9 @@
 import * as eol from 'eol';
-
 import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
+import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 
@@ -19,6 +19,8 @@ export class RokuAdapter {
         this.compilingLines = [];
         this.lastUnhandledDataTime = 0;
         this.maxDataMsWhenCompiling = 500;
+        this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
+        this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
     }
 
     private status: RokuAdapterStatus;
@@ -30,6 +32,11 @@ export class RokuAdapter {
     private lastUnhandledDataTime: number;
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
+    private isNextBreakpointSkipped: boolean = false;
+    private enableDebuggerAutoRecovery: boolean;
+    private isInMicroDebugger: boolean;
+    private debugStartRegex: RegExp;
+    private debugEndRegex: RegExp;
 
     private cache = {};
 
@@ -122,15 +129,39 @@ export class RokuAdapter {
         });
     }
 
+    public processBreakpoints(text): string | null {
+        // console.log(lines);
+        let newLines = eol.split(text);
+        newLines.forEach((line) => {
+            console.log('Running processing line; ', line);
+            if (line.match(this.debugStartRegex)) {
+                console.log('start MicroDebugger block');
+                this.isInMicroDebugger = true;
+                this.isNextBreakpointSkipped = false;
+            } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                console.log('ended MicroDebugger block');
+                this.isInMicroDebugger = false;
+            } else if (this.isInMicroDebugger) {
+                if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
+                    console.log('this block is a break: skipping it');
+                    this.isNextBreakpointSkipped = true;
+                }
+            }
+        });
+        return text;
+    }
+
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect() {
+    public async connect(enableDebuggerAutoRecovery: boolean = false) {
         let deferred = defer();
+        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
+        this.isInMicroDebugger = false;
+        this.isNextBreakpointSkipped = false;
         try {
             //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
-
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
@@ -155,7 +186,10 @@ export class RokuAdapter {
 
             //forward all raw counsole output
             this.requestPipeline.on('console-output', (output) => {
-                this.emit('console-output', output);
+                this.processBreakpoints(output);
+                if (output) {
+                    this.emit('console-output', output);
+                }
             });
 
             //listen for any console output that was not handled by other methods in the adapter
@@ -169,7 +203,10 @@ export class RokuAdapter {
                 }
 
                 //forward all unhandled console output
-                this.emit('unhandled-console-output', responseText);
+                this.processBreakpoints(responseText);
+                if (responseText) {
+                    this.emit('unhandled-console-output', responseText);
+                }
 
                 this.processUnhandledLines(responseText);
                 let match;
@@ -189,11 +226,18 @@ export class RokuAdapter {
                     //watch for debugger prompt output
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
-                        if (this.isActivated && this.isAtDebuggerPrompt === false) {
-                            this.isAtDebuggerPrompt = true;
-                            this.emit('suspend');
+                        if (this.isNextBreakpointSkipped) {
+                            console.log('this breakpoint is flagged to be skipped');
+                            this.isInMicroDebugger = false;
+                            this.isNextBreakpointSkipped = false;
+                            this.requestPipeline.executeCommand('c', false, false);
                         } else {
-                            this.isAtDebuggerPrompt = true;
+                            if (this.isActivated && this.isAtDebuggerPrompt === false) {
+                                this.isAtDebuggerPrompt = true;
+                                this.emit('suspend');
+                            } else {
+                                this.isAtDebuggerPrompt = true;
+                            }
                         }
                     } else {
                         this.isAtDebuggerPrompt = false;
@@ -957,10 +1001,12 @@ export class RequestPipeline {
     constructor(
         private client: Socket
     ) {
+        this.debuggerLineRegex = /Brightscript\s+Debugger>\s*$/i;
         this.connect();
     }
 
     private requests: RequestPipelineRequest[] = [];
+    private debuggerLineRegex: RegExp;
 
     private get isProcessing() {
         return this.currentRequest !== undefined;
@@ -996,7 +1042,7 @@ export class RequestPipeline {
             } else {
                 let match;
                 //if responseText produced a prompt, return the responseText
-                if (match = /Brightscript\s+Debugger>\s*$/i.exec(allResponseText.trim())) {
+                if (match = this.debuggerLineRegex.exec(allResponseText.trim())) {
                     //resolve the command's promise (if it cares)
                     this.currentRequest.onComplete(allResponseText);
                     allResponseText = '';
@@ -1014,12 +1060,14 @@ export class RequestPipeline {
      * @param commandFunction
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
      */
-    public executeCommand(command: string, waitForPrompt: boolean) {
+    public executeCommand(command: string, waitForPrompt: boolean, silent: boolean = false) {
         console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
                 let commandText = `${command}\r\n`;
-                this.emit('console-output', command);
+                if (!silent) {
+                    this.emit('console-output', command);
+                }
                 this.client.write(commandText);
             };
             this.requests.push({

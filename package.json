@@ -226,6 +226,11 @@
                                         }
                                     ]
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
                             }
                         }
                     }
@@ -238,7 +243,8 @@
                         "stopOnEntry": true,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
-                        "rootDir": "${workspaceFolder}"
+                        "rootDir": "${workspaceFolder}",
+                        "enableDebuggerAutoRecovery": false
                     }
                 ],
                 "configurationSnippets": [
@@ -252,7 +258,8 @@
                             "stopOnEntry": true,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
-                            "rootDir": "^\"\\${workspaceFolder}\""
+                            "rootDir": "^\"\\${workspaceFolder}\"",
+                            "enableDebuggerAutoRecovery": false
                         }
                     }
                 ]
@@ -353,6 +360,12 @@
                     "type": "string",
                     "default": "${promptForHost}",
                     "description": "IP address of the roku to remotely control",
+                    "scope": "resource"
+                },
+                "brightscript.output.includeStackTraces": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
                     "scope": "resource"
                 }
             }

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
 
 export class LogLine {
@@ -14,14 +15,23 @@ export class LogLine {
 }
 
 export class LogOutputManager {
+
     constructor(outputChannel, context) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.includeStackTraces = ( config.output || {}).includeStackTraces;
+        vscode.workspace.onDidChangeConfiguration( (e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.includeStackTraces = ( config.output || {}).includeStackTraces;
+        });
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
+        this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
+        this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -69,13 +79,23 @@ export class LogOutputManager {
     private includeRegex?: RegExp;
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
-
+    private isNextBreakpointSkipped: boolean = false;
+    private includeStackTraces: boolean;
+    private isInMicroDebugger: boolean;
+    private enableDebuggerAutoRecovery: boolean;
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
+    private debugStartRegex: RegExp;
+    private debugEndRegex: RegExp;
+    private config: any;
 
     public onDidStartDebugSession() {
         //TODO make this a config setting
         this.clearOutput();
+    }
+
+    public setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
+        this.enableDebuggerAutoRecovery = launchConfig.enableDebuggerAutoRecovery;
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
@@ -145,11 +165,35 @@ export class LogOutputManager {
     /**
      * Log output methods
      */
-
     public appendLine(lineText: string, mustInclude: boolean = false): void {
         let lines = lineText.split('\n');
         lines.forEach((line) => {
             if (line !== '') {
+                if (!this.includeStackTraces) {
+                        // filter out debugger noise
+                    if (line.match(this.debugStartRegex)) {
+                        console.log('start MicroDebugger block');
+                        this.isInMicroDebugger = true;
+                        this.isNextBreakpointSkipped = false;
+                        line = 'Pausing for a breakpoint...';
+                    } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                        console.log('ended MicroDebugger block');
+                        this.isInMicroDebugger = false;
+                        if (this.isNextBreakpointSkipped) {
+                            line = '\n**Was a bogus breakpoint** Skipping!\n';
+                        } else {
+                            line = null;
+                        }
+                    } else if (this.isInMicroDebugger) {
+                        if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
+                            console.log('this block is a break: skipping it');
+                            this.isNextBreakpointSkipped = true;
+                        }
+                        line = null;
+                    }
+                }
+            }
+            if (line) {
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
                 if (this.matchesFilter(logLine)) {
@@ -197,7 +241,6 @@ export class LogOutputManager {
         for (let i = 0; i < this.allLogLines.length - 1; i++) {
             let logLine = this.allLogLines[i];
             if (this.matchesFilter(logLine)) {
-                console.log(`IS MATCHED !!! ${logLine.text}`);
                 this.outputChannel.appendLine(logLine.text);
             }
         }
