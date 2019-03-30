@@ -53,6 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
+            logOutputManager.setLaunchConfig(e.body);
         }
     });
 
