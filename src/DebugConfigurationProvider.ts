@@ -30,6 +30,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
+        let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
         //make sure we have an object
         config = config ? config : {} as any;
         let folderUri: vscode.Uri;
@@ -73,6 +74,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
+        config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
         if (config.rootDir.indexOf('${workspaceFolder}') > -1) {
@@ -138,6 +140,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             } else {
                 await this.context.workspaceState.update('remoteHost', config.host);
             }
+            await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
         }
         return config;
@@ -158,5 +161,6 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
     enableVariablesPanel: boolean;
+    enableDebuggerAutoRecovery: boolean;
     envFile?: string;
 }
