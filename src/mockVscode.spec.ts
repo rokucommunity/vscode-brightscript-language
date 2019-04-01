@@ -1,7 +1,8 @@
+import { Range } from 'vscode';
+
 export let vscode = {
     CompletionItem: class { },
     CodeLens: class { },
-    DocumentLink: class { },
     StatusBarAlignment: {
         Left: 1,
         Right: 2
@@ -61,6 +62,9 @@ export let vscode = {
         },
         onDidChangeWorkspaceFolders: () => {
 
+        },
+        findFiles: (include, exclude) => {
+            return [];
         }
     },
     window: {
@@ -199,18 +203,33 @@ export let vscode = {
         private fileName: string;
         public getText() { return this.text; }
     },
+    DocumentLink: class {
+        constructor(range: Range, uri: string) {
+            this.range = range;
+            this.uri = uri;
+        }
+        private range: any;
+        private uri: string;
+    },
     MarkdownString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-
         private value: string;
+    },
+    Uri: {
+        file: (src: string) => {
+            return {
+                with: ({}) => {
+                    return {};
+                }
+            };
+        }
     },
     SnippetString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-
         private value: string;
     }
 };
