@@ -73,7 +73,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
 
-    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
+    private breakpointsByClientPath: { [clientPath: string]: (DebugProtocol.Breakpoint | DebugProtocol.SourceBreakpoint)[] } = {};
     private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
@@ -113,6 +113,9 @@ export class BrightScriptDebugSession extends DebugSession {
 
         // make VS Code to show a 'step back' button
         response.body.supportsStepBack = false;
+
+        // This debug adapter supports conditional breakpoints
+        response.body.supportsConditionalBreakpoints = true;
 
         this.sendResponse(response);
     }
@@ -627,8 +630,14 @@ export class BrightScriptDebugSession extends DebugSession {
                 //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
                 let lineIndex = breakpoint.line - 1;
                 let line = lines[lineIndex];
-                //add a STOP statement right before this line
+
+                if ((breakpoint as any).condition) {
+                    // add a conditional STOP statement right before this line
+                    lines[lineIndex] = `if ${(breakpoint as any).condition} then : STOP : end if\n${line} `;
+                } else {
+                    // add a STOP statement right before this line
                 lines[lineIndex] = `STOP\n${line} `;
+            }
             }
             fileContents = lines.join('\n');
             await fsExtra.writeFile(stagingFilePath, fileContents);
