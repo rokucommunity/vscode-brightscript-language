@@ -658,13 +658,15 @@ export class BrightScriptDebugSession extends DebugSession {
                         let increment = `${prefix}.${bpName} ++`;
 
                         // Create the BrightScript code required to track the number of executions
-                        let trackingExpression = `if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then ` +
-                                                    `if Invalid = ${prefix} then ` +
-                                                        `${prefix} = {${bpName}: 0} ` +
+                        let trackingExpression =    `if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then ` +
+                                                        `if Invalid = ${prefix} then ` +
+                                                            `${prefix} = {${bpName}: 0} ` +
+                                                        `else ` +
+                                                            `${prefix}.${bpName} = 0 ` +
+                                                        // end if would be here
                                                     `else ` +
-                                                        `${prefix}.${bpName} = 0 ` +
-                                                `else ` +
-                                                    `${increment} : ${checkHits}`;
+                                                        `${increment} : ${checkHits}`;
+                                                    // end if would be here
 
                         // Add the tracking expression right before this line
                         lines[lineIndex] = `${trackingExpression}\n${line} `;
