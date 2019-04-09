@@ -120,6 +120,9 @@ export class BrightScriptDebugSession extends DebugSession {
         // This debug adapter supports breakpoints that break execution after a specified number of hits
         response.body.supportsHitConditionalBreakpoints = true;
 
+        // This debug adapter supports log points by interpreting the 'logMessage' attribute of the SourceBreakpoint
+        response.body.supportsLogPoints = true;
+
         this.sendResponse(response);
     }
 
@@ -666,6 +669,24 @@ export class BrightScriptDebugSession extends DebugSession {
                         // Add the tracking expression right before this line
                         lines[lineIndex] = `${trackingExpression}\n${line} `;
                     }
+                } else  if ((breakpoint as any).logMessage) {
+                    let logMessage = (breakpoint as any).logMessage;
+                    let expressionsCheck = new RegExp(/{([^}]*)}/, 'g');
+                    let match;
+                    let expressions = [];
+
+                    // Get all the value to evaluate as expressions
+                    while (match = expressionsCheck.exec(logMessage)) {
+                        expressions.push(match);
+                    }
+
+                    // Format the log message
+                    expressions.forEach((expression) => {
+                        logMessage = logMessage.replace(expression[0], `"; ${expression[1]};"`);
+                    });
+
+                    // add a PRINT statement right before this line with the formated log message
+                    lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
                 } else {
                     // add a STOP statement right before this line
                     lines[lineIndex] = `STOP\n${line} `;
