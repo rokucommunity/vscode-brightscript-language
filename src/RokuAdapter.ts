@@ -3,7 +3,6 @@ import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
-import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 
