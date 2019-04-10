@@ -73,7 +73,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
 
-    private breakpointsByClientPath: { [clientPath: string]: (DebugProtocol.Breakpoint | DebugProtocol.SourceBreakpoint)[] } = {};
+    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
@@ -278,7 +278,7 @@ export class BrightScriptDebugSession extends DebugSession {
         if (extension === '.brs') {
             if (!this.launchRequestWasCalled) {
                 //store the breakpoints indexed by clientPath
-                this.breakpointsByClientPath[clientPath] = <any>args.breakpoints;
+                this.breakpointsByClientPath[clientPath] = args.breakpoints;
                 for (let b of args.breakpoints) {
                     (b as any).verified = true;
                 }
@@ -635,17 +635,17 @@ export class BrightScriptDebugSession extends DebugSession {
 
             let bpIndex = 0;
             for (let breakpoint of breakpoints) {
-                bpIndex ++;
+                bpIndex++;
 
                 //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
                 let lineIndex = breakpoint.line - 1;
                 let line = lines[lineIndex];
 
-                if ((breakpoint as any).condition) {
+                if (breakpoint.condition) {
                     // add a conditional STOP statement right before this line
-                    lines[lineIndex] = `if ${(breakpoint as any).condition} then : STOP : end if\n${line} `;
-                } else  if ((breakpoint as any).hitCondition) {
-                    let hitCondition = Number((breakpoint as any).hitCondition);
+                    lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
+                } else if (breakpoint.hitCondition) {
+                    let hitCondition = parseInt(breakpoint.hitCondition);
 
                     if (isNaN(hitCondition) || hitCondition === 0) {
                         // add a STOP statement right before this line
@@ -658,34 +658,32 @@ export class BrightScriptDebugSession extends DebugSession {
                         let increment = `${prefix}.${bpName} ++`;
 
                         // Create the BrightScript code required to track the number of executions
-                        let trackingExpression =    `if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then ` +
-                                                        `if Invalid = ${prefix} then ` +
-                                                            `${prefix} = {${bpName}: 0} ` +
-                                                        `else ` +
-                                                            `${prefix}.${bpName} = 0 ` +
-                                                        // end if would be here
-                                                    `else ` +
-                                                        `${increment} : ${checkHits}`;
-                                                    // end if would be here
+                        let trackingExpression = `
+                            if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
+                                if Invalid = ${prefix} then
+                                    ${prefix} = {${bpName}: 0}
+                                else
+                                    ${prefix}.${bpName} = 0
+                            else
+                                ${increment} : ${checkHits}
+                        `;
+                        //coerce the expression into single-line
+                        trackingExpression = trackingExpression.replace(/\n/gi, '').replace('/\s+', ' ');
 
                         // Add the tracking expression right before this line
                         lines[lineIndex] = `${trackingExpression}\n${line} `;
                     }
-                } else  if ((breakpoint as any).logMessage) {
-                    let logMessage = (breakpoint as any).logMessage;
-                    let expressionsCheck = new RegExp(/{([^}]*)}/, 'g');
+                } else if (breakpoint.logMessage) {
+                    let logMessage = breakpoint.logMessage;
+                    //wrap the log message in quotes
+                    logMessage = `"${logMessage}"`;
+                    let expressionsCheck = /\{(.*?)\}/g;
                     let match;
-                    let expressions = [];
 
                     // Get all the value to evaluate as expressions
                     while (match = expressionsCheck.exec(logMessage)) {
-                        expressions.push(match);
+                        logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
                     }
-
-                    // Format the log message
-                    expressions.forEach((expression) => {
-                        logMessage = logMessage.replace(expression[0], `"; ${expression[1]};"`);
-                    });
 
                     // add a PRINT statement right before this line with the formated log message
                     lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
@@ -745,17 +743,22 @@ export class BrightScriptDebugSession extends DebugSession {
         };
     }
 
-    private entryBreakpoint: DebugProtocol.Breakpoint;
+    private entryBreakpoint: DebugProtocol.SourceBreakpoint;
     private async addEntryBreakpoint() {
         let entryPoint = await this.findEntryPoint(this.baseProjectPath);
 
-        //create a breakpoint on the line BELOW this location, which is the first line of the program
-        this.entryBreakpoint = new Breakpoint(true, entryPoint.lineNumber + 1);
-        this.entryBreakpoint.id = this.breakpointIdCounter++;
-        (this.entryBreakpoint as any).isEntryBreakpoint = true;
+        let entryBreakpoint = {
+            verified: true,
+            //create a breakpoint on the line BELOW this location, which is the first line of the program
+            line: entryPoint.lineNumber + 1,
+            id: this.breakpointIdCounter++,
+            isEntryBreakpoint: true
+        };
+        this.entryBreakpoint = <any>entryBreakpoint;
+
         //put this breakpoint into the list of breakpoints, in order
         let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
-        breakpoints.push(this.entryBreakpoint);
+        breakpoints.push(entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
             if (a.line > b.line) {
@@ -778,6 +781,8 @@ export class BrightScriptDebugSession extends DebugSession {
             breakpoints.splice(index, 1);
             this.entryBreakpoint = undefined;
         }
+
+        //set the list of breakpoints for the entry point's file
         this.breakpointsByClientPath[entryPoint.path] = breakpoints;
     }
 
