@@ -15,6 +15,10 @@ async function readDir(dirPath: string) {
     });
 }
 
+export function checkForTrailingSlash(dirPath: string) {
+    return dirPath.substr(dirPath.length - 1) !== '/' ? dirPath + '/' : dirPath;
+}
+
 async function stat(filePath: string) {
     return await new Promise((resolve, reject) => {
         fs.stat(filePath, (err, result) => {

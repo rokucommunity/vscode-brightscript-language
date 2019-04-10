@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [999.0.0-languageserver-beta15] - 2019-03-21
+### Added
+ - all changes from [v1.12.0](#1120---2019-04-09)
+
+
+
 ## [999.0.0-languageserver-beta14] - 2019-03-21
 ### Added
  - all changes from [v1.11.0](#1110---2019-04-01)
@@ -123,6 +130,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.12.0] - 2019-04-09
+## Added
+ - conditional breakpoint support
+ - logpoint support
+ - hit count breakpoint support
 
 
 
@@ -323,6 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[999.0.0-languageserver-beta15]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta14...v999.0.0-languageserver-beta15
 [999.0.0-languageserver-beta14]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta13...v999.0.0-languageserver-beta14
 [999.0.0-languageserver-beta13]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta12...v999.0.0-languageserver-beta13
 [999.0.0-languageserver-beta12]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta11...v999.0.0-languageserver-beta12
@@ -337,6 +350,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta3]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta2...v1.9.0-beta3
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
+[1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
 [1.9.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
