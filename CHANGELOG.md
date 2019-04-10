@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [2.0.0-beta.15] - 2019-03-21
+### Added
+ - all changes from [v1.12.0](#1120---2019-04-09)
+
+
+
 ## [2.0.0-beta.14] - 2019-03-21
 ### Added
  - all changes from [v1.11.0](#1110---2019-04-01)
@@ -328,6 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.15]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.14...v2.0.0-beta.15
 [2.0.0-beta.14]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.13...v2.0.0-beta.14
 [2.0.0-beta.13]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.12...v2.0.0-beta.13
 [2.0.0-beta.12]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.11...v2.0.0-beta.12
