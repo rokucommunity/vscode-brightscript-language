@@ -17,7 +17,6 @@ import {
     Thread,
     Variable
 } from 'vscode-debugadapter';
-
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import {
@@ -626,7 +625,7 @@ export class BrightScriptDebugSession extends DebugSession {
             let stagingFilePath: string;
             //find the manifest file for the file
             clientPath = path.normalize(clientPath);
-            let relativeClientPath = clientPath.toString().replace(this.baseProjectPath, '');
+            let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), this.baseProjectPath, '');
             stagingFilePath = path.join(stagingPath, relativeClientPath);
             //load the file as a string
             let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
@@ -942,4 +941,14 @@ export function defer<T>() {
         resolve: resolve,
         reject: reject
     };
+}
+
+export function replaceCaseInsensitive(subject: string, search: string, replacement: string) {
+    let idx = subject.toLowerCase().indexOf(search.toLowerCase());
+    if (idx > -1) {
+        let result = subject.substring(0, idx) + replacement + subject.substring(idx + search.length);
+        return result;
+    } else {
+        return subject;
+    }
 }
