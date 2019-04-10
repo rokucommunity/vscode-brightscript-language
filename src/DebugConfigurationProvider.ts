@@ -67,8 +67,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
         config.stopOnEntry = config.stopOnEntry === false ? false : true;
-        config.rootDir = config.rootDir ? config.rootDir : '${workspaceFolder}';
-        config.outDir = config.outDir ? config.outDir : '${workspaceFolder}/out';
+        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
         config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
@@ -84,6 +84,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //for outDir, replace workspaceFolder now
         if (config.outDir.indexOf('${workspaceFolder}') > -1) {
             config.outDir = path.normalize(config.outDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
+        // Make sure that directory paths end in a trailing slash
+        if (config.debugRootDir) {
+            config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
         }
 
         //prompt for host if not hardcoded
