@@ -73,7 +73,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
 
-    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
+    private breakpointsByClientPath: { [clientPath: string]: (DebugProtocol.Breakpoint | DebugProtocol.SourceBreakpoint)[] } = {};
     private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
@@ -113,6 +113,15 @@ export class BrightScriptDebugSession extends DebugSession {
 
         // make VS Code to show a 'step back' button
         response.body.supportsStepBack = false;
+
+        // This debug adapter supports conditional breakpoints
+        response.body.supportsConditionalBreakpoints = true;
+
+        // This debug adapter supports breakpoints that break execution after a specified number of hits
+        response.body.supportsHitConditionalBreakpoints = true;
+
+        // This debug adapter supports log points by interpreting the 'logMessage' attribute of the SourceBreakpoint
+        response.body.supportsLogPoints = true;
 
         this.sendResponse(response);
     }
@@ -623,12 +632,67 @@ export class BrightScriptDebugSession extends DebugSession {
             let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
             //split the file by newline
             let lines = eol.split(fileContents);
+
+            let bpIndex = 0;
             for (let breakpoint of breakpoints) {
+                bpIndex ++;
+
                 //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
                 let lineIndex = breakpoint.line - 1;
                 let line = lines[lineIndex];
-                //add a STOP statement right before this line
-                lines[lineIndex] = `STOP\n${line} `;
+
+                if ((breakpoint as any).condition) {
+                    // add a conditional STOP statement right before this line
+                    lines[lineIndex] = `if ${(breakpoint as any).condition} then : STOP : end if\n${line} `;
+                } else  if ((breakpoint as any).hitCondition) {
+                    let hitCondition = Number((breakpoint as any).hitCondition);
+
+                    if (isNaN(hitCondition) || hitCondition === 0) {
+                        // add a STOP statement right before this line
+                        lines[lineIndex] = `STOP\n${line} `;
+                    } else {
+
+                        let prefix = `m.vscode_bp`;
+                        let bpName = `bp${bpIndex}`;
+                        let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
+                        let increment = `${prefix}.${bpName} ++`;
+
+                        // Create the BrightScript code required to track the number of executions
+                        let trackingExpression =    `if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then ` +
+                                                        `if Invalid = ${prefix} then ` +
+                                                            `${prefix} = {${bpName}: 0} ` +
+                                                        `else ` +
+                                                            `${prefix}.${bpName} = 0 ` +
+                                                        // end if would be here
+                                                    `else ` +
+                                                        `${increment} : ${checkHits}`;
+                                                    // end if would be here
+
+                        // Add the tracking expression right before this line
+                        lines[lineIndex] = `${trackingExpression}\n${line} `;
+                    }
+                } else  if ((breakpoint as any).logMessage) {
+                    let logMessage = (breakpoint as any).logMessage;
+                    let expressionsCheck = new RegExp(/{([^}]*)}/, 'g');
+                    let match;
+                    let expressions = [];
+
+                    // Get all the value to evaluate as expressions
+                    while (match = expressionsCheck.exec(logMessage)) {
+                        expressions.push(match);
+                    }
+
+                    // Format the log message
+                    expressions.forEach((expression) => {
+                        logMessage = logMessage.replace(expression[0], `"; ${expression[1]};"`);
+                    });
+
+                    // add a PRINT statement right before this line with the formated log message
+                    lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
+                } else {
+                    // add a STOP statement right before this line
+                    lines[lineIndex] = `STOP\n${line} `;
+                }
             }
             fileContents = lines.join('\n');
             await fsExtra.writeFile(stagingFilePath, fileContents);
