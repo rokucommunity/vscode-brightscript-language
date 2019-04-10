@@ -10,6 +10,9 @@ A VSCode extension to support Roku's BrightScript language.
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
+  - Conditional breakpoints
+  - logpoints
+  - hit count breakpoints
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
@@ -19,7 +22,7 @@ A VSCode extension to support Roku's BrightScript language.
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-- Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats. 
+- Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
 	- Configure `brightscript.output.hyperlinkFormat` as follows:
 	  - **Full**	`pkg:/components/KeyLogTester.brs(24:0)`
 	  - **FilenameAndFunction**	`KeyLogTester.DoSomething(24:0)`
@@ -145,10 +148,10 @@ This extension contributes the following settings:
 * `brightscript.format.keywordCase`: specify case of keywords when formatting
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
-* `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case 
+* `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
 * `brightscript.output.focusOnLaunch`: If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
 * `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
-* `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link 
+* `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 
 ## Roku Remote Control
 

@@ -4,10 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2019-04-09
+## Added
+ - conditional breakpoint support
+ - logpoint support
+ - hit count breakpoint support
+
+
+
 ## [1.11.0] - 2019-04-01
 ### Added
  - ability to recover from roku run loop break issues that would previously cause many debug sessions to completely bomb. Set `enableDebuggerAutoRecovery` to true to opt-in to this feature. See #129 for more information
  - ability to change the presentation of package path hyperlinks in the BrightScript output log. See #128 for more information.
+
 
 
 ## [1.10.0] - 2019-03-21
@@ -200,6 +209,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+
+[1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
 [1.9.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
