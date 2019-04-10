@@ -283,7 +283,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
             } else {
                 //mark the breakpoints as verified or not based on the original breakpoints
-                let verifiedBreakpoints = this.breakpointsByClientPath[clientPath];
+                let verifiedBreakpoints = this.getBreakpointsForClientPath(clientPath);
                 outer: for (let breakpoint of args.breakpoints) {
                     for (let verifiedBreakpoint of verifiedBreakpoints) {
                         if (breakpoint.line === verifiedBreakpoint.line) {
@@ -756,7 +756,7 @@ export class BrightScriptDebugSession extends DebugSession {
         this.entryBreakpoint = <any>entryBreakpoint;
 
         //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
+        let breakpoints = this.getBreakpointsForClientPath(entryPoint.path);
         breakpoints.push(entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
@@ -780,9 +780,16 @@ export class BrightScriptDebugSession extends DebugSession {
             breakpoints.splice(index, 1);
             this.entryBreakpoint = undefined;
         }
+    }
 
-        //set the list of breakpoints for the entry point's file
-        this.breakpointsByClientPath[entryPoint.path] = breakpoints;
+    public getBreakpointsForClientPath(clientPath: string) {
+        for (let key in this.breakpointsByClientPath) {
+            if (clientPath.toLowerCase() === key.toLowerCase()) {
+                return this.breakpointsByClientPath[key];
+            }
+        }
+        //create a new array and return it
+        return this.breakpointsByClientPath[clientPath] = [];
     }
 
     /**
@@ -811,7 +818,7 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
         let clientPath = this.convertDebuggerPathToClient(debuggerPath);
-        let breakpoints = this.breakpointsByClientPath[clientPath] || [];
+        let breakpoints = this.getBreakpointsForClientPath(clientPath);
 
         let resultLineNumber = debuggerLineNumber;
         for (let breakpoint of breakpoints) {
