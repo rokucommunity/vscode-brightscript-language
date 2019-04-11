@@ -812,7 +812,7 @@ export class RokuAdapter {
                     return children;
                 }
                 let match;
-                match = /(\w+):(.+)/i.exec(line);
+                match = /(\S+[^:]):(.+)/i.exec(line);
                 let name = match[1].trim();
                 let value = match[2].trim();
 
