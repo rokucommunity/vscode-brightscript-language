@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Remove excess spacing in logpoint output
 
 
+
 ## [1.12.0] - 2019-04-09
 ## Added
  - conditional breakpoint support
@@ -216,6 +217,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
