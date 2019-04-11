@@ -640,7 +640,7 @@ export class RokuAdapter {
     }
 
     /**
-     *
+     * Runs a regex to get the content between telnet commands
      * @param value
      */
     private getExpressionDetails(value: string) {
