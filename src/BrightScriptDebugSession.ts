@@ -667,8 +667,7 @@ export class BrightScriptDebugSession extends DebugSession {
                                 ${increment} : ${checkHits}
                         `;
                         //coerce the expression into single-line
-                        trackingExpression = trackingExpression.replace(/\n/gi, '').replace('/\s+', ' ');
-
+                        trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
                         // Add the tracking expression right before this line
                         lines[lineIndex] = `${trackingExpression}\n${line} `;
                     }
