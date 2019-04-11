@@ -644,7 +644,7 @@ export class RokuAdapter {
      * @param value
      */
     private getExpressionDetails(value: string) {
-        return new RegExp(/([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i).exec(value);
+        return /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i.exec(value);
     }
 
     /**
@@ -652,7 +652,7 @@ export class RokuAdapter {
      * @param value
      */
     private getHighLevelTypeDetails(value: string) {
-        return new RegExp(/<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi).exec(value);
+        return /<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
     }
 
     /**
@@ -660,7 +660,7 @@ export class RokuAdapter {
      * @param value
      */
     private getFirstWord(value: string) {
-        return new RegExp(/^([\w.\-=]*)\s/).exec(value);
+        return /^([\w.\-=]*)\s/.exec(value);
     }
 
     /**
