@@ -62,7 +62,7 @@ Here is a sample launch configuration
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}",
+            "rootDir": "${workspaceFolder}",
             "stopOnEntry": false
         }
     ]
@@ -92,7 +92,7 @@ then you would need change `rootDir` in your launch config to look like this:
     "configurations": [
         {
             ...
-            "rootDir": "${workspaceRoot}/Roku App",
+            "rootDir": "${workspaceFolder}/Roku App",
             ...
         }
     ]
@@ -207,7 +207,7 @@ If you change your `launch.json` settings regularly, or don't want to check cert
     "configurations": [
         {
             ...
-            "envFile": "${workspaceRoot}/.env",
+            "envFile": "${workspaceFolder}/.env",
             "username": "${env:ROKU_USERNAME}",
             "password": "${env:ROKU_PASSWORD}"
             ...
