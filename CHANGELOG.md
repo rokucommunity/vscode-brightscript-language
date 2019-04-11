@@ -6,9 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [999.0.0-languageserver-beta15] - 2019-03-21
+## [999.0.0-languageserver-beta15] - 2019-04-11
 ### Added
- - all changes from [v1.12.0](#1120---2019-04-09)
+ - all changes from [v1.12.0](#1120---2019-04-09) and [v1.12.1](#1121---2019-04-11)
 
 
 
@@ -130,6 +130,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.12.1] - 2019-04-11
+## Fixed
+ - issue where vscode would periodically provide different character casing for workspaceFolder than for full file paths, which would prevent launching a debug session
+ - Remove excess spacing in logpoint output
+
+
+
 ## [1.12.0] - 2019-04-09
 ## Added
  - conditional breakpoint support
@@ -350,6 +357,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta3]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta2...v1.9.0-beta3
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
+
+[1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
