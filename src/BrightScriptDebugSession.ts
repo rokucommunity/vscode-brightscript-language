@@ -253,8 +253,9 @@ export class BrightScriptDebugSession extends DebugSession {
             for (let clientPath in this.breakpointsByClientPath) {
                 let included = false;
                 for (const fromRootPath of sourcePaths) {
-                    if (clientPath.includes(fromRootPath)){
+                    if (clientPath.includes(path.normalize(fromRootPath + path.sep))){
                         included = true
+                        break;
                     }
                 }
                 if (!included){
@@ -582,7 +583,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
             }
         }
-        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : this.launchArgs.rootDir;
+        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
         //use sourceDirs if provided, or rootDir if not provided.
         let lastExistingPath = ""
@@ -862,6 +863,13 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     rootDir: string;
     /**
      * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder
+     * so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change
+     * line offsets between source files and built files, otherwise debugger lines will be out of sync.
+     * @deprecated Use sourceDirs instead
+     */
+    debugRootDir: string;
+    /**
+     * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folders
      * so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change
      * line offsets between source files and built files, otherwise debugger lines will be out of sync.
      */
