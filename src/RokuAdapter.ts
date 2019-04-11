@@ -639,9 +639,29 @@ export class RokuAdapter {
         });
     }
 
-    private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
-    private isObjectCheckRegex = /<.*:\s*(\w+\s*\:*\s*\w*)>/gi;
-    private getFirstWordRegex = /^([\w.\-=]*)\s/;
+    /**
+     *
+     * @param value
+     */
+    private getExpressionDetails(value: string) {
+        return new RegExp(/([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i).exec(value);
+    }
+
+    /**
+     * Runs a regex to check if the target is an object and get the type if it is
+     * @param value
+     */
+    private getHighLevelTypeDetails(value: string) {
+        return new RegExp(/<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi).exec(value);
+    }
+
+    /**
+     * Runs a regex to get the first work of a line
+     * @param value
+     */
+    private getFirstWord(value: string) {
+        return new RegExp(/^([\w.\-=]*)\s/).exec(value);
+    }
 
     /**
      * Gets a string array of all the local variables using the var command
@@ -660,7 +680,7 @@ export class RokuAdapter {
 
             splitData.forEach((line) =>  {
                 let match;
-                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWordRegex.exec(line))) {
+                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWord(line))) {
                     // There seems to be a local ifGlobal interface variable under the name of 'global' but it
                     // is not accessible by the channel. Stript it our.
                     if ((match[1] !== 'global') && match[1].length > 0) {
@@ -694,7 +714,7 @@ export class RokuAdapter {
             }
 
             let match;
-            if (match = this.expressionRegex.exec(data)) {
+            if (match = this.getExpressionDetails(data)) {
                 let value = match[1];
                 if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                     value = value.trim().replace(/--string-wrap--/g, '');
@@ -746,7 +766,7 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = this.isObjectCheckRegex.exec(line)) {
+            if (match = this.getHighLevelTypeDetails(line)) {
                 let type = match[1];
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
@@ -803,7 +823,7 @@ export class RokuAdapter {
                 };
 
                 //if the line is an object, array or function
-                if (match = this.isObjectCheckRegex.exec(line)) {
+                if (match = this.getHighLevelTypeDetails(line)) {
                     let type = match[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
@@ -858,7 +878,7 @@ export class RokuAdapter {
             let data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
 
             let match;
-            if (match = this.expressionRegex.exec(data)) {
+            if (match = this.getExpressionDetails(data)) {
                 let typeValue: string = match[1];
                 //remove whitespace
                 typeValue = typeValue.trim();
