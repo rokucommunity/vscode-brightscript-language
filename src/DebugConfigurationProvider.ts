@@ -33,6 +33,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //make sure we have an object
         config = config ? config : {} as any;
 
+        //Check for depreciated Items
+        if(config.debugRootDir){
+            if(config.sourceDirs){
+                throw new Error("Cannot set both debugRootDir AND sourceDirs");
+            } else{
+                config.sourceDirs = [config.debugRootDir];
+            }
+        }
+
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
@@ -119,7 +128,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     host: string;
     password: string;
     rootDir: string;
-    debugRootDir?: string;
+    sourceDirs?: string[];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];

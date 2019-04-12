@@ -138,8 +138,14 @@
                             },
                             "debugRootDir": {
                                 "type": "string",
+                                "deprecationMessage":"Deprecated. Use sourceDirs instead",
                                 "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
+                            },
+                            "sourceDirs": {
+                                "type": "array",
+                                "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
+                                "default": ["${workspaceFolder}"]
                             },
                             "outDir": {
                                 "type": "string",
