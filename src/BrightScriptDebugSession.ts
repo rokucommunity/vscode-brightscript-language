@@ -17,7 +17,6 @@ import {
     Thread,
     Variable
 } from 'vscode-debugadapter';
-
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import {
@@ -73,7 +72,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
 
-    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.Breakpoint[] } = {};
+    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
@@ -113,6 +112,15 @@ export class BrightScriptDebugSession extends DebugSession {
 
         // make VS Code to show a 'step back' button
         response.body.supportsStepBack = false;
+
+        // This debug adapter supports conditional breakpoints
+        response.body.supportsConditionalBreakpoints = true;
+
+        // This debug adapter supports breakpoints that break execution after a specified number of hits
+        response.body.supportsHitConditionalBreakpoints = true;
+
+        // This debug adapter supports log points by interpreting the 'logMessage' attribute of the SourceBreakpoint
+        response.body.supportsLogPoints = true;
 
         this.sendResponse(response);
     }
@@ -302,13 +310,13 @@ export class BrightScriptDebugSession extends DebugSession {
         if (extension === '.brs') {
             if (!this.launchRequestWasCalled) {
                 //store the breakpoints indexed by clientPath
-                this.breakpointsByClientPath[clientPath] = <any>args.breakpoints;
+                this.breakpointsByClientPath[clientPath] = args.breakpoints;
                 for (let b of args.breakpoints) {
                     (b as any).verified = true;
                 }
             } else {
                 //mark the breakpoints as verified or not based on the original breakpoints
-                let verifiedBreakpoints = this.breakpointsByClientPath[clientPath];
+                let verifiedBreakpoints = this.getBreakpointsForClientPath(clientPath);
                 outer: for (let breakpoint of args.breakpoints) {
                     for (let verifiedBreakpoint of verifiedBreakpoints) {
                         if (breakpoint.line === verifiedBreakpoint.line) {
@@ -642,7 +650,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendEvent(new TerminatedEvent());
         });
         //make the connection
-        await this.rokuAdapter.connect();
+        await this.rokuAdapter.connect(this.launchArgs.enableDebuggerAutoRecovery);
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
@@ -657,18 +665,70 @@ export class BrightScriptDebugSession extends DebugSession {
             let stagingFilePath: string;
             //find the manifest file for the file
             clientPath = path.normalize(clientPath);
-            let relativeClientPath = clientPath.toString().replace(this.baseProjectPath, '');
+            let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), this.baseProjectPath, '');
             stagingFilePath = path.join(stagingPath, relativeClientPath);
             //load the file as a string
             let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
             //split the file by newline
             let lines = eol.split(fileContents);
+
+            let bpIndex = 0;
             for (let breakpoint of breakpoints) {
+                bpIndex++;
+
                 //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
                 let lineIndex = breakpoint.line - 1;
                 let line = lines[lineIndex];
-                //add a STOP statement right before this line
-                lines[lineIndex] = `STOP\n${line} `;
+
+                if (breakpoint.condition) {
+                    // add a conditional STOP statement right before this line
+                    lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
+                } else if (breakpoint.hitCondition) {
+                    let hitCondition = parseInt(breakpoint.hitCondition);
+
+                    if (isNaN(hitCondition) || hitCondition === 0) {
+                        // add a STOP statement right before this line
+                        lines[lineIndex] = `STOP\n${line} `;
+                    } else {
+
+                        let prefix = `m.vscode_bp`;
+                        let bpName = `bp${bpIndex}`;
+                        let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
+                        let increment = `${prefix}.${bpName} ++`;
+
+                        // Create the BrightScript code required to track the number of executions
+                        let trackingExpression = `
+                            if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
+                                if Invalid = ${prefix} then
+                                    ${prefix} = {${bpName}: 0}
+                                else
+                                    ${prefix}.${bpName} = 0
+                            else
+                                ${increment} : ${checkHits}
+                        `;
+                        //coerce the expression into single-line
+                        trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
+                        // Add the tracking expression right before this line
+                        lines[lineIndex] = `${trackingExpression}\n${line} `;
+                    }
+                } else if (breakpoint.logMessage) {
+                    let logMessage = breakpoint.logMessage;
+                    //wrap the log message in quotes
+                    logMessage = `"${logMessage}"`;
+                    let expressionsCheck = /\{(.*?)\}/g;
+                    let match;
+
+                    // Get all the value to evaluate as expressions
+                    while (match = expressionsCheck.exec(logMessage)) {
+                        logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
+                    }
+
+                    // add a PRINT statement right before this line with the formated log message
+                    lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
+                } else {
+                    // add a STOP statement right before this line
+                    lines[lineIndex] = `STOP\n${line} `;
+                }
             }
             fileContents = lines.join('\n');
             await fsExtra.writeFile(stagingFilePath, fileContents);
@@ -721,17 +781,22 @@ export class BrightScriptDebugSession extends DebugSession {
         };
     }
 
-    private entryBreakpoint: DebugProtocol.Breakpoint;
+    private entryBreakpoint: DebugProtocol.SourceBreakpoint;
     private async addEntryBreakpoint() {
         let entryPoint = await this.findEntryPoint(this.baseProjectPath);
 
-        //create a breakpoint on the line BELOW this location, which is the first line of the program
-        this.entryBreakpoint = new Breakpoint(true, entryPoint.lineNumber + 1);
-        this.entryBreakpoint.id = this.breakpointIdCounter++;
-        (this.entryBreakpoint as any).isEntryBreakpoint = true;
+        let entryBreakpoint = {
+            verified: true,
+            //create a breakpoint on the line BELOW this location, which is the first line of the program
+            line: entryPoint.lineNumber + 1,
+            id: this.breakpointIdCounter++,
+            isEntryBreakpoint: true
+        };
+        this.entryBreakpoint = <any>entryBreakpoint;
+
         //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.breakpointsByClientPath[entryPoint.path] || [];
-        breakpoints.push(this.entryBreakpoint);
+        let breakpoints = this.getBreakpointsForClientPath(entryPoint.path);
+        breakpoints.push(entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
             if (a.line > b.line) {
@@ -754,7 +819,16 @@ export class BrightScriptDebugSession extends DebugSession {
             breakpoints.splice(index, 1);
             this.entryBreakpoint = undefined;
         }
-        this.breakpointsByClientPath[entryPoint.path] = breakpoints;
+    }
+
+    public getBreakpointsForClientPath(clientPath: string) {
+        for (let key in this.breakpointsByClientPath) {
+            if (clientPath.toLowerCase() === key.toLowerCase()) {
+                return this.breakpointsByClientPath[key];
+            }
+        }
+        //create a new array and return it
+        return this.breakpointsByClientPath[clientPath] = [];
     }
 
     /**
@@ -783,7 +857,7 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
         let clientPath = this.convertDebuggerPathToClient(debuggerPath);
-        let breakpoints = this.breakpointsByClientPath[clientPath] || [];
+        let breakpoints = this.getBreakpointsForClientPath(clientPath);
 
         let resultLineNumber = debuggerLineNumber;
         for (let breakpoint of breakpoints) {
@@ -890,6 +964,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * Enables automatic population of the debug variable panel on a breakpoint or runtime errors.
      */
     enableVariablesPanel: boolean;
+    /**
+     * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
+     */
+    enableDebuggerAutoRecovery: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
@@ -916,4 +994,14 @@ export function defer<T>() {
         resolve: resolve,
         reject: reject
     };
+}
+
+export function replaceCaseInsensitive(subject: string, search: string, replacement: string) {
+    let idx = subject.toLowerCase().indexOf(search.toLowerCase());
+    if (idx > -1) {
+        let result = subject.substring(0, idx) + replacement + subject.substring(idx + search.length);
+        return result;
+    } else {
+        return subject;
+    }
 }

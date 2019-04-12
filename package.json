@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.10.0",
+    "version": "1.12.1",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -232,6 +232,11 @@
                                         }
                                     ]
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
                             }
                         }
                     }
@@ -244,7 +249,8 @@
                         "stopOnEntry": true,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
-                        "rootDir": "${workspaceFolder}"
+                        "rootDir": "${workspaceFolder}",
+                        "enableDebuggerAutoRecovery": false
                     }
                 ],
                 "configurationSnippets": [
@@ -258,7 +264,8 @@
                             "stopOnEntry": true,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
-                            "rootDir": "^\"\\${workspaceFolder}\""
+                            "rootDir": "^\"\\${workspaceFolder}\"",
+                            "enableDebuggerAutoRecovery": false
                         }
                     }
                 ]
@@ -360,6 +367,40 @@
                     "default": "${promptForHost}",
                     "description": "IP address of the roku to remotely control",
                     "scope": "resource"
+                },
+                "brightscript.output.includeStackTraces": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
+                    "scope": "resource"
+                },
+                "brightscript.output.focusOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                    "scope": "resource"
+                },
+                "brightscript.output.clearOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the brigthscript log when launching.",
+                    "scope": "resource"
+                },
+                "brightscript.output.hyperlinkFormat": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "Full",
+                        "Filename",
+                        "FilenameAndFunction",
+                        "Short",
+                        "Hidden"
+                    ],
+                    "default": "FilenameAndFunction",
+                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retriving videos for category id 23 \n Filename KeyLogtester.brs(24) [INFO] retriving videos for category id 23 \n FilenameAndFunction KeyLogtester.getVideos(24) [INFO] retriving videos for category id 23 \n Short #1 [INFO] retriving videos for category id 23 \n  Hidden [INFO] retriving videos for category id 23",
+                    "scope": "resource"
                 }
             }
         },
@@ -372,6 +413,11 @@
             {
                 "command": "extension.brightscript.sendRemoteCommand",
                 "title": "Send 'arg' button key press to Roku as a remote control",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear the brighscript log output",
                 "category": "Brightscript"
             },
             {
