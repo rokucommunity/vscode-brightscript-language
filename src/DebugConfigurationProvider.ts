@@ -34,10 +34,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config = config ? config : {} as any;
 
         //Check for depreciated Items
-        if(config.debugRootDir){
-            if(config.sourceDirs){
-                throw new Error("Cannot set both debugRootDir AND sourceDirs");
-            } else{
+        if (config.debugRootDir) {
+            if (config.sourceDirs) {
+                throw new Error('Cannot set both debugRootDir AND sourceDirs');
+            } else {
                 config.sourceDirs = [config.debugRootDir];
             }
         }
