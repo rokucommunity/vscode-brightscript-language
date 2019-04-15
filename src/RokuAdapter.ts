@@ -6,6 +6,7 @@ import * as rokuDeploy from 'roku-deploy';
 import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
+import { PrintedObjectParser } from './PrintedObjectParser';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -678,7 +679,7 @@ export class RokuAdapter {
             data = await this.requestPipeline.executeCommand(`var`, true);
             let splitData = data.split('\n');
 
-            splitData.forEach((line) =>  {
+            splitData.forEach((line) => {
                 let match;
                 if (!line.includes('Brightscript Debugger') && (match = this.getFirstWord(line))) {
                     // There seems to be a local ifGlobal interface variable under the name of 'global' but it
@@ -807,30 +808,33 @@ export class RokuAdapter {
             //split by newline. the object contents start at index 2
             let lines = eol.split(data);
             for (let i = 2; i < lines.length; i++) {
-                let line = lines[i].trim();
-                if (line === '}') {
+                let line = lines[i];
+                let trimmedLine = line.trim();
+
+                //if this is the end of the object, we are finished collecting children. exit
+                if (trimmedLine === '}') {
                     return children;
                 }
-                let match;
-                match = /(\S+[^:]):(.+)/i.exec(line);
-                let name = match[1].trim();
-                let value = match[2].trim();
+
+                //parse the line (try and determine the key and value)
+                let lineParseResult = new PrintedObjectParser(line).result;
 
                 let child = <EvaluateContainer>{
-                    name: name,
-                    evaluateName: `${expression}.${name}`,
+                    name: lineParseResult.key,
+                    evaluateName: `${expression}.${lineParseResult.key}`,
                     children: []
                 };
 
+                const highLevelTypeMatch = this.getHighLevelTypeDetails(trimmedLine);
                 //if the line is an object, array or function
-                if (match = this.getHighLevelTypeDetails(line)) {
-                    let type = match[1];
+                if (highLevelTypeMatch) {
+                    let type = highLevelTypeMatch[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
                     child.value = type;
                 } else {
-                    child.type = this.getPrimativeTypeFromValue(line);
-                    child.value = value;
+                    child.type = this.getPrimativeTypeFromValue(trimmedLine);
+                    child.value = lineParseResult.value;
                     child.highLevelType = HighLevelType.primative;
                 }
                 children.push(child);
@@ -967,7 +971,7 @@ export class RokuAdapter {
                 let data = await this.requestPipeline.executeCommand(`exit`, false);
                 // This seems to work without the delay but I wonder about slower devices
                 // await setTimeout[Object.getOwnPropertySymbols(setTimeout)[0]](100);
-                commandsExecuted ++;
+                commandsExecuted++;
             } while (commandsExecuted < 10);
         }
     }
