@@ -150,7 +150,7 @@ export class BrightScriptDebugSession extends DebugSession {
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
                 //clear any breakpoints that are out of scope
-                this.removeOutOfScopeBreakpointPaths(this.launchArgs.sourceDirs, this.launchArgs.rootDir)
+                this.removeOutOfScopeBreakpointPaths(this.launchArgs.sourceDirs, this.launchArgs.rootDir);
                 for (const sourceDir of this.launchArgs.sourceDirs) {
                     this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
                 }
@@ -261,12 +261,12 @@ export class BrightScriptDebugSession extends DebugSession {
             for (let clientPath in this.breakpointsByClientPath) {
                 let included = false;
                 for (const fromRootPath of sourcePaths) {
-                    if (clientPath.includes(path.normalize(fromRootPath + path.sep))){
-                        included = true
+                    if (clientPath.includes(path.normalize(fromRootPath + path.sep))) {
+                        included = true;
                         break;
                     }
                 }
-                if (!included){
+                if (!included) {
                     delete this.breakpointsByClientPath[clientPath];
                 }
             }
@@ -277,7 +277,7 @@ export class BrightScriptDebugSession extends DebugSession {
         //convert paths to sourceDirs paths for any breakpoints set before this launch call
         if (fromRootPath) {
             for (let clientPath in this.breakpointsByClientPath) {
-                if (clientPath.includes(fromRootPath)){
+                if (clientPath.includes(fromRootPath)) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
                     this.breakpointsByClientPath[debugClientPath] = this.breakpointsByClientPath[clientPath];
                     delete this.breakpointsByClientPath[clientPath];
@@ -295,10 +295,10 @@ export class BrightScriptDebugSession extends DebugSession {
         let clientPath = path.normalize(args.source.path);
         //if we have a sourceDirs, convert the rootDir path to sourceDirs path
         if (this.launchArgs && this.launchArgs.sourceDirs) {
-            let lastWorkingPath = ""
+            let lastWorkingPath = '';
             for (const sourceDir of this.launchArgs.sourceDirs) {
                 clientPath = clientPath.replace(this.launchArgs.rootDir, sourceDir);
-                if (fsExtra.pathExistsSync(clientPath)){
+                if (fsExtra.pathExistsSync(clientPath)) {
                     lastWorkingPath = clientPath;
                 }
             }
@@ -594,15 +594,14 @@ export class BrightScriptDebugSession extends DebugSession {
         let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
         //use sourceDirs if provided, or rootDir if not provided.
-        let lastExistingPath = ""
+        let lastExistingPath = '';
         for (const sourceDir of rootDir) {
             let clientPath = path.normalize(path.join(sourceDir, debuggerPath));
-            if (fsExtra.pathExistsSync(clientPath))
+            if (fsExtra.pathExistsSync(clientPath)) {
                 lastExistingPath = clientPath;
+            }
         }
         return lastExistingPath;
-
-
     }
 
     /**
