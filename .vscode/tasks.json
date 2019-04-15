@@ -3,10 +3,9 @@
     "tasks": [
         {
             "command": "npm",
-            "identifier": "npm",
             "label": "npm",
             "type": "shell",
-            "presentation": { 
+            "presentation": {
                 "echo": true,
                 "reveal": "silent",
                 "focus": false,
@@ -39,12 +38,7 @@
         },
         {
             "type": "npm",
-            "script": "test-watch",
-            "problemMatcher": []
-        },
-        {
-            "type": "npm",
-            "identifier": "compile",
+            "label": "compile",
             "script": "compile",
             "problemMatcher": []
         }
