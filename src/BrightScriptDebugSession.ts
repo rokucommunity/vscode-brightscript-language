@@ -279,10 +279,9 @@ export class BrightScriptDebugSession extends DebugSession {
             for (let clientPath in this.breakpointsByClientPath) {
                 if (clientPath.includes(fromRootPath)) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
-                    this.breakpointsByClientPath[debugClientPath] = this.breakpointsByClientPath[clientPath];
-                    delete this.breakpointsByClientPath[clientPath];
+                    this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
+                    this.deleteBreakpointsForClientPath(clientPath);
                 }
-
             }
         }
     }
@@ -820,6 +819,10 @@ export class BrightScriptDebugSession extends DebugSession {
         }
     }
 
+    /**
+     * File paths can be different casing sometimes,
+     * so find the data from `breakpointsByClientPath` case insensitive
+     */
     public getBreakpointsForClientPath(clientPath: string) {
         for (let key in this.breakpointsByClientPath) {
             if (clientPath.toLowerCase() === key.toLowerCase()) {
@@ -828,6 +831,18 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         //create a new array and return it
         return this.breakpointsByClientPath[clientPath] = [];
+    }
+
+    /**
+     * File paths can be different casing sometimes,
+     * so delete from `breakpointsByClientPath` case-insensitive
+     */
+    public deleteBreakpointsForClientPath(clientPath: string) {
+        for (let key in this.breakpointsByClientPath) {
+            if (clientPath.toLowerCase() === key.toLowerCase()) {
+                delete this.breakpointsByClientPath[key];
+            }
+        }
     }
 
     /**
