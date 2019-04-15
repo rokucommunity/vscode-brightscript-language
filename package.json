@@ -32,7 +32,8 @@
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",
         "build-and-test": "npm run compile && npm run test",
-        "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
+        "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
+        "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
@@ -73,13 +74,14 @@
         "nyc": "^13.1.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
+        "ts-mocha": "^6.0.0",
         "ts-node": "^8.0.2",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
         "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.2.1",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.30",
+        "vscode": "^1.1.33",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
@@ -138,14 +140,16 @@
                             },
                             "debugRootDir": {
                                 "type": "string",
-                                "deprecationMessage":"Deprecated. Use sourceDirs instead",
+                                "deprecationMessage": "Deprecated. Use sourceDirs instead",
                                 "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
                             },
                             "sourceDirs": {
                                 "type": "array",
                                 "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
-                                "default": ["${workspaceFolder}"]
+                                "default": [
+                                    "${workspaceFolder}"
+                                ]
                             },
                             "outDir": {
                                 "type": "string",
