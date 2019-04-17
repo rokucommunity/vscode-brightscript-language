@@ -160,7 +160,7 @@ describe('Debugger', () => {
             });
         });
 
-        it.skip('returns the correct indexed variables count', async () => {
+        it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
@@ -183,7 +183,7 @@ describe('Debugger', () => {
             });
         });
 
-        it.skip('returns the correct named variables count', async () => {
+        it('returns the correct named variables count', async () => {
             let expression = 'someObject';
             getVariableValue = <EvaluateContainer>{
                 name: expression,
