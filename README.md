@@ -4,12 +4,15 @@ A VSCode extension to support Roku's BrightScript language.
 [![Build Status](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language)
 [![codecov](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
-<!--[![GitHub](https://img.shields.io/github/release/twitchbronbron/vscode-brightscript-language.svg?style=flat-square)](https://github.com/twitchbronbron/vscode-brightscript-language/releases)-->
+![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/celsoaf.brightscript.svg)
 ## Features
 
 - Syntax highlighting
 - Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
+  - Conditional breakpoints
+  - logpoints
+  - hit count breakpoints
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
@@ -19,9 +22,15 @@ A VSCode extension to support Roku's BrightScript language.
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
-- Navigate to source files referenced as `pkg:/` paths from output log
+- Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
+	- Configure `brightscript.output.hyperlinkFormat` as follows:
+	  - **Full**	`pkg:/components/KeyLogTester.brs(24:0)`
+	  - **FilenameAndFunction**	`KeyLogTester.DoSomething(24:0)`
+	  - **Filename**	`KeyLogtester.brs(24)`
+	  - **Short**	`#1`
+	  - **Hidden**	``
 - Marking the output log (CTRL+L)
-- Clearing the output log (CTRL+K), which also clears the mark indexes
+- Clearing the output log (CTRL+K), which also clears the mark indexes - **be sure to use the extension's command for clearing, or you may find that your hyperlinks and filters get out of sync**
 - Filtering the output log - 3 filters are available:
   - LogLevel (example `^\[(info|warn|debug\]`)
   - Include (example `NameOfSomeInterestingComponent`)
@@ -53,7 +62,7 @@ Here is a sample launch configuration
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}",
+            "rootDir": "${workspaceFolder}",
             "stopOnEntry": false
         }
     ]
@@ -83,7 +92,7 @@ then you would need change `rootDir` in your launch config to look like this:
     "configurations": [
         {
             ...
-            "rootDir": "${workspaceRoot}/Roku App",
+            "rootDir": "${workspaceFolder}/Roku App",
             ...
         }
     ]
@@ -124,7 +133,30 @@ Here's a sample launch.json for this scenario:
             "host": "192.168.1.100",
             "password": "password",
             "rootDir": "${workspaceFolder}/dist",
-            "debugRootDir": "${workspaceFolder}/src",
+            "sourceDirs": ["${workspaceFolder}/src"],
+            "preLaunchTask": "your-build-task-here"
+        }
+    ]
+}
+
+```
+
+### Multiple source dirs
+If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "brightscript",
+            ...
+            "rootDir": "${workspaceFolder}/dist",
+            "sourceDirs": [
+                "${workspaceFolder}/../../some-common-library-a",
+                "${workspaceFolder}/../../some-common-library-b",
+                "${workspaceFolder}/../../some-common-library-c",
+            ],
             "preLaunchTask": "your-build-task-here"
         }
     ]
@@ -139,14 +171,18 @@ This extension contributes the following settings:
 * `brightscript.format.keywordCase`: specify case of keywords when formatting
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
+* `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
+* `brightscript.output.focusOnLaunch`: If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
+* `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
+* `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 
 ## Roku Remote Control
 
-You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below. You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
+You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
 
 This extension sends keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
 
-Here are the commands included in this extension:
+### Keyboard Commands:
 
 |Keyboard Key | Roku Remote Key | Keybinding Command|
 |--|--|--|
@@ -194,7 +230,7 @@ If you change your `launch.json` settings regularly, or don't want to check cert
     "configurations": [
         {
             ...
-            "envFile": "${workspaceRoot}/.env",
+            "envFile": "${workspaceFolder}/.env",
             "username": "${env:ROKU_USERNAME}",
             "password": "${env:ROKU_PASSWORD}"
             ...
@@ -214,7 +250,17 @@ ROKU_PASSWORD=password123
 
 This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
 
+## Pre-release Versions
 
+You can often find pre-release versions of this extension under the [GitHub Releases](https://github.com/TwitchBronBron/vscode-brightscript-language/releases) page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the `.vsix` is the next-best option at this point. Here's how it works.
+
+1. Download `.vsix` file for version of the extension you want from [the releases page](https://github.com/TwitchBronBron/vscode-brightscript-language/releases);
+1. Open Visual Studio Code and click the "extensions" tab.
+1. Choose "Install from VSIX..." ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
+1. Select the file you downloaded from step 1.
+
+### Reinstalling store version of the extension
+This process will REPLACE any existing version of the extension you have installed from the store. So, if you want to go back to using the store version, you need to uninstall the extension completely, and then install the extension through the VSCode store.
 
 
 ## Contributing

@@ -1,19 +1,40 @@
 /* tslint:disable:no-unused-expression */
+/* tslint:disable:no-var-requires */
 import { assert, expect } from 'chai';
 import * as sinonImport from 'sinon';
 
-import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
-
 let sinon: sinonImport.SinonSandbox;
-let configProvider: BrightScriptConfigurationProvider;
 let c: any;
+let Module = require('module');
+
+import { vscode } from './mockVscode.spec';
+
+let commandsMock;
+
+//override the "require" call to mock certain items
+const { require: oldRequire } = Module.prototype;
+Module.prototype.require = function hijacked(file) {
+    if (file === 'vscode') {
+        return vscode;
+    } else if (file === './BrightScriptCommands') {
+        let command = { registerCommands: () => { } };
+        commandsMock = sinon.mock(command);
+        return { getBrightScriptCommandsInstance: () => command };
+    } else {
+        return oldRequire.apply(this, arguments);
+    }
+};
+
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
+let configProvider: BrightScriptDebugConfigurationProvider;
+
 beforeEach(() => {
     let context = {
         workspaceState: {
             update: () => { return Promise.resolve(); }
         }
     };
-    configProvider = new BrightScriptConfigurationProvider(<any>context);
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context);
     c = configProvider;
     sinon = sinonImport.createSandbox();
 });
@@ -23,7 +44,7 @@ afterEach(() => {
 
 describe('BrightScriptConfigurationProvider', () => {
     describe('resolveDebugConfiguration', () => {
-        it('handles loading declared values from .env files', async () => {
+        it('handles loading de  ared values from .env files', async () => {
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
@@ -34,7 +55,8 @@ describe('BrightScriptConfigurationProvider', () => {
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
-                password: '${env:ROKU_PASSWORD}'
+                password: '${env:ROKU_PASSWORD}',
+                enableDebuggerAutoRecovery: false
             });
             expect(config.password).to.equal('pass1234');
             expect(stub.called).to.be.true;

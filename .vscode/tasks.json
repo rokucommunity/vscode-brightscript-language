@@ -3,10 +3,9 @@
     "tasks": [
         {
             "command": "npm",
-            "identifier": "npm",
             "label": "npm",
             "type": "shell",
-            "presentation": { 
+            "presentation": {
                 "echo": true,
                 "reveal": "silent",
                 "focus": false,
@@ -35,16 +34,19 @@
                 "kind": "test",
                 "isDefault": true
             },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
             "problemMatcher": []
         },
         {
             "type": "npm",
-            "script": "test-watch",
-            "problemMatcher": []
-        },
-        {
-            "type": "npm",
-            "identifier": "compile",
+            "label": "compile",
             "script": "compile",
             "problemMatcher": []
         }

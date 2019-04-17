@@ -3,14 +3,32 @@ import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration } from './BrightScriptConfigurationProvider';
+import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 
+export class CustomDocumentLink {
+    constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
+        this.outputLine = outputLine;
+        this.startChar = startChar;
+        this.length = length;
+        this.pkgPath = pkgPath;
+        this.lineNumber = lineNumber;
+        this.filename = filename;
+    }
+
+    public outputLine: number;
+    public startChar: number;
+    public length: number;
+    public pkgPath: string;
+    public filename: string;
+    public lineNumber: number;
+}
 /**
  * Provides file links in any output window that has the pkg:/ format.
  * This only works after a debug session has started,  because the file mappings are provided in the debug launch arguments
  */
 export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
+        this.customLinks = [];
     }
 
     //add import as property so it can be mocked in tests
@@ -20,10 +38,13 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         this.launchConfig = launchConfig;
         this.fileMaps = {};
 
-        let sourceRootDir = launchConfig.debugRootDir ? launchConfig.debugRootDir : launchConfig.rootDir;
-
+        let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
+        let paths = [];
+        for (const rootDir of sourceRootDir) {
+            let pathsFromRoot = await this.rokuDeploy.getFilePaths(launchConfig.files, launchConfig.outDir, rootDir);
+            paths = paths.concat(pathsFromRoot);
+        }
         //get every file used in this project
-        let paths = await this.rokuDeploy.getFilePaths(launchConfig.files, launchConfig.outDir, sourceRootDir);
 
         let outDir = path.normalize(launchConfig.outDir);
 
@@ -44,34 +65,47 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public fileMaps: { [pkgPath: string]: { src: string; dest: string; pkgPath: string; } };
+    public customLinks: DocumentLink[];
 
     private launchConfig: BrightScriptDebugConfiguration;
 
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
-        let k = doc;
-        let links = <DocumentLink[]>[];
-        let pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/g;
-        let outputText = doc.getText();
+        return this.customLinks;
+    }
+
+    public getFileMap(pkgPath) {
+        return this.fileMaps[pkgPath];
+    }
+
+    public addCustomLink(customLink: CustomDocumentLink) {
         let match: RegExpExecArray;
 
-        //find all pkg matches in the output
-        while (match = pkgRegex.exec(outputText)) {
-            let pkgPath = match[1];
-            let fileNumber = match[2];
-            let lineNumber = match[3];
-            //we don't do anything with column number right now...but maybe we can someday
-            let columnNumber = match[4];
-            let fileMap = this.fileMaps[pkgPath];
-            if (fileMap) {
-                let uri = vscode.Uri.file(fileMap.src);
-                if (fileNumber) {
-                    uri = uri.with({ fragment: fileNumber });
-                }
-                let range = new Range(doc.positionAt(match.index), doc.positionAt(match.index + match[0].length));
-                links.push(new DocumentLink(range, uri));
+        let fileMap = this.getFileMap(customLink.pkgPath);
+        if (fileMap) {
+            let uri = vscode.Uri.file(fileMap.src);
+            if (customLink.lineNumber) {
+                uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
             }
-
+            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+            this.customLinks.push(new DocumentLink(range, uri));
+        } else {
+            console.log('could not find matching file for link with path ' + customLink.pkgPath);
         }
-        return links;
+    }
+
+    public resetCustomLinks() {
+        this.customLinks = [];
+    }
+
+    public convertPkgPathToFsPath(pkgPath: string) {
+        //remove preceeding pkg:
+        if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
+            pkgPath = pkgPath.substring(4);
+        }
+        //use debugRootDir if provided, or rootDir if not provided.
+        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
+
+        let clientPath = path.normalize(path.join(rootDir, pkgPath));
+        return clientPath;
     }
 }

@@ -25,9 +25,8 @@ describe('Debugger', () => {
             return () => {
             };
         },
-        activate: () => {
-            return Promise.resolve();
-        }
+        activate: () => Promise.resolve(),
+        exitActiveBrightscriptDebugger: () => Promise.resolve()
     };
     beforeEach(() => {
         try {
@@ -367,7 +366,7 @@ describe('Debugger', () => {
 
         it('remaps to debug folder when specified', () => {
             (session as any).launchArgs = {
-                debugRootDir: path.normalize('/src'),
+                sourceDirs: [path.normalize('/src')],
                 rootDir: path.normalize('/dest')
             };
             args.breakpoints = [{ line: 1 }];
@@ -375,7 +374,7 @@ describe('Debugger', () => {
             session.setBreakPointsRequest(<any>{}, args);
             expect((session as any).breakpointsByClientPath[path.normalize('/src/some/file.brs')]).not.to.be.undefined;
 
-            delete (session as any).launchArgs.debugRootDir;
+            delete (session as any).launchArgs.sourceDirs;
 
             session.setBreakPointsRequest(<any>{}, args);
             expect((session as any).breakpointsByClientPath[path.normalize('/dest/some/file.brs')]).not.to.be.undefined;

@@ -4,6 +4,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [1.13.0] - 2019-04-17
+## Added
+ - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged.
+## Depricated
+ - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead.
+## Fixed
+ - Issues in hover and locals that would not show the full variable name (#137).
+
+
+
+## [1.12.1] - 2019-04-11
+## Fixed
+ - issue where vscode would periodically provide different character casing for workspaceFolder than for full file paths, which would prevent launching a debug session
+ - Remove excess spacing in logpoint output
+
+
+
+## [1.12.0] - 2019-04-09
+## Added
+ - conditional breakpoint support
+ - logpoint support
+ - hit count breakpoint support
+
+
+
+## [1.11.0] - 2019-04-01
+### Added
+ - ability to recover from roku run loop break issues that would previously cause many debug sessions to completely bomb. Set `enableDebuggerAutoRecovery` to true to opt-in to this feature. See #129 for more information
+ - ability to change the presentation of package path hyperlinks in the BrightScript output log. See #128 for more information.
+
+
+
+## [1.10.0] - 2019-03-21
+### Added
+ - Completion items for all BrightScript interface methods except for a few more obscure ones (#68). These can be activated by typing the full interface name after the variable (i.e. )
+### Fixed
+ - problems launching a debug session when the Roku has an app already running that is stuck in the debug state. This extension now issues several `exit` commands in a row (in addition to the home press it was already doing) which seems to resolve the majority of those issues. (#125)
+
+
+
+## [1.9.0] - 2019-03-19
+### Added
+ - Support for the `vars` panel during a debug session. This can be disabled by setting `enableVariablesPanel: false` in the `launch.json` configuration.
+### Fixed
+ - Syntax highlighting issues
+   - variable names with type designators are colored properly
+   - `endsub` and `endfunction` are colored properly
+   - `end` is colored properly as a standalone command
+   - various two word keywords now support no space or multiple spaces between (previously needed exactly 1 space between then)
+
+
+
+## [1.8.6] - 2019-03-09
+### Fixed
+ - launching debug session without a `launch.json` works again.
+
+
+
+## [1.8.5] - 2019-03-07
+### Fixed
+ - Re-added the log commands that somehow got dropped in a previous release
+
+
+
+## [1.8.4] - 2019-03-04
+### Fixed
+ - Regression syntax highlighting issue that was not correctly colorizing `then` in conditional statements if it contains any uppercase letters.
+
+
+
+## [1.8.3] - 2019-03-04
+### Fixed
+ - Several textmate grammar issues and added more variety in the captured tokens to provide better colorization
+
+
+
+## [1.8.2] - 2019-01-27
+### Changed
+ - Upgraded to [roku-deploy](https://www.npmjs.com/package/roku-deploy)@2.0.0 which brings support for dereferencing symbolic links, and copying files located outside of rootDir.
+
+
+
 ## [1.8.1] - 2019-01-25
 ### Fixed
  - Issue in `Go to definition` that would not find functions/subs with a space between the name and the opening parenthesis ([#85](https://github.com/TwitchBronBron/vscode-brightscript-language/issues/85))
@@ -41,7 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Updated textmate grammar to include `step` as reserved word.
 
 ### Fixed
- - Upgraded to roku-deploy@2.0.0-beta2 which fixes some file path regression issues introduced in 1.0.0
+ - Upgraded to [roku-deploy](https://www.npmjs.com/package/roku-deploy)@2.0.0-beta2 which fixes some file path regression issues introduced in 1.0.0
 
 
 
@@ -53,7 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.4.2] - 2018-12-19
 ### Changed
- - Upgraded to roku-deploy version 1.0.0 which brings `glob-all` support for negating globs.
+ - Upgraded to [roku-deploy](https://www.npmjs.com/package/roku-deploy) version 1.0.0 which brings `glob-all` support for negating globs.
 
 
 
@@ -145,20 +229,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-[1.8.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
-[1.8.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
-[1.7.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
-[1.6.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.0...v1.6.1
-[1.6.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.5.0...v1.6.0
-[1.5.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.2...v1.5.0
-[1.4.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.1...v1.4.2
-[1.4.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.0...v1.4.1
-[1.4.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.2...v1.4.0
-[1.3.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.1...v1.3.2
-[1.3.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.0...v1.3.1
-[1.3.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.2...v1.3.0
-[1.2.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.1...v1.2.2
-[1.2.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.1...v1.1.0
-[1.0.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.0...v1.0.1
+[1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
+[1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
+[1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
+[1.9.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
+[1.8.6]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
+[1.8.5]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
+[1.8.4]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
+[1.8.3]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
+[1.8.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
+[1.8.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
+[1.8.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
+[1.7.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
+[1.6.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.0...v1.6.1
+[1.6.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.5.0...v1.6.0
+[1.5.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.2...v1.5.0
+[1.4.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.1...v1.4.2
+[1.4.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.0...v1.4.1
+[1.4.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.2...v1.4.0
+[1.3.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.1...v1.3.2
+[1.3.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.0...v1.3.1
+[1.3.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.2...v1.3.0
+[1.2.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.1...v1.2.2
+[1.2.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.0...v1.2.1
+[1.2.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.1.0...v1.2.0
+[1.1.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.1...v1.1.0
+[1.0.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.0...v1.0.1

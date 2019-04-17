@@ -1,3 +1,5 @@
+import { Range } from 'vscode';
+
 export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
@@ -12,6 +14,7 @@ export let vscode = {
         registerSignatureHelpProvider: () => { },
         registerReferenceProvider: () => { },
         registerDocumentLinkProvider: () => { },
+        registerCompletionItemProvider: () => { },
         createDiagnosticCollection: () => {
             return {
                 clear: () => { }
@@ -52,6 +55,9 @@ export let vscode = {
         },
         onDidChangeWorkspaceFolders: () => {
 
+        },
+        findFiles: (include, exclude) => {
+            return [];
         }
     },
     window: {
@@ -183,5 +189,34 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
+    },
+    DocumentLink: class {
+        constructor(range: Range, uri: string) {
+            this.range = range;
+            this.uri = uri;
+        }
+        private range: any;
+        private uri: string;
+    },
+    MarkdownString: class {
+        constructor(value: string = null) {
+            this.value = value;
+        }
+        private value: string;
+    },
+    Uri: {
+        file: (src: string) => {
+            return {
+                with: ({}) => {
+                    return {};
+                }
+            };
+        }
+    },
+    SnippetString: class {
+        constructor(value: string = null) {
+            this.value = value;
+        }
+        private value: string;
     }
 };

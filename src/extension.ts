@@ -16,12 +16,13 @@ import {
 } from 'vscode';
 
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
-import { BrightScriptConfigurationProvider } from './BrightScriptConfigurationProvider';
+import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
+import { BrightScriptDebugConfigurationProvider as BrsDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
@@ -42,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    let configProvider = new BrightScriptConfigurationProvider(context);
+    let configProvider = new BrsDebugConfigurationProvider(context);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();
@@ -52,12 +53,13 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
+            logOutputManager.setLaunchConfig(e.body);
         }
     });
-
     //register the definition provider
-    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context);
     const declarationProvider: DeclarationProvider = new DeclarationProvider();
+    const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
+    const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, declarationProvider);
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
     const selector = { scheme: 'file', pattern: '**/*.{brs}' };
@@ -65,16 +67,20 @@ export function activate(context: vscode.ExtensionContext) {
     brightScriptCommands.registerCommands(context);
 
     // experimental placeholder
-    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider()));
-    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, new BrightScriptDefinitionProvider(definitionRepo)));
+    context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
+    context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
-    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider)));
+    context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));
     context.subscriptions.push(declarationProvider);
     vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
     vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
 
-    vscode.debug.onDidStartDebugSession((e) => logOutputManager.onDidStartDebugSession());
-    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => logOutputManager.onDidReceiveDebugSessionCustomEvent(e));
+    vscode.debug.onDidStartDebugSession((e) => {
+        logOutputManager.onDidStartDebugSession();
+    });
+    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+        logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
+    });
 
     outputChannel.show();
 

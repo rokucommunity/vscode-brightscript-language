@@ -1,11 +1,12 @@
 import * as eol from 'eol';
-
 import * as EventEmitter from 'events';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
+import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
+import { PrintedObjectParser } from './PrintedObjectParser';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -19,6 +20,8 @@ export class RokuAdapter {
         this.compilingLines = [];
         this.lastUnhandledDataTime = 0;
         this.maxDataMsWhenCompiling = 500;
+        this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
+        this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
     }
 
     private status: RokuAdapterStatus;
@@ -30,6 +33,11 @@ export class RokuAdapter {
     private lastUnhandledDataTime: number;
     private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
+    private isNextBreakpointSkipped: boolean = false;
+    private enableDebuggerAutoRecovery: boolean;
+    private isInMicroDebugger: boolean;
+    private debugStartRegex: RegExp;
+    private debugEndRegex: RegExp;
 
     private cache = {};
 
@@ -122,15 +130,39 @@ export class RokuAdapter {
         });
     }
 
+    public processBreakpoints(text): string | null {
+        // console.log(lines);
+        let newLines = eol.split(text);
+        newLines.forEach((line) => {
+            console.log('Running processing line; ', line);
+            if (line.match(this.debugStartRegex)) {
+                console.log('start MicroDebugger block');
+                this.isInMicroDebugger = true;
+                this.isNextBreakpointSkipped = false;
+            } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                console.log('ended MicroDebugger block');
+                this.isInMicroDebugger = false;
+            } else if (this.isInMicroDebugger) {
+                if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
+                    console.log('this block is a break: skipping it');
+                    this.isNextBreakpointSkipped = true;
+                }
+            }
+        });
+        return text;
+    }
+
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect() {
+    public async connect(enableDebuggerAutoRecovery: boolean = false) {
         let deferred = defer();
+        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
+        this.isInMicroDebugger = false;
+        this.isNextBreakpointSkipped = false;
         try {
             //force roku to return to home screen. This gives the roku adapter some security in knowing new messages won't be appearing during initialization
             await rokuDeploy.pressHomeButton(this.host);
-
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
@@ -155,7 +187,10 @@ export class RokuAdapter {
 
             //forward all raw counsole output
             this.requestPipeline.on('console-output', (output) => {
-                this.emit('console-output', output);
+                this.processBreakpoints(output);
+                if (output) {
+                    this.emit('console-output', output);
+                }
             });
 
             //listen for any console output that was not handled by other methods in the adapter
@@ -163,13 +198,16 @@ export class RokuAdapter {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
                 if (hasRuntimeError) {
-                    this.debugLog('hasRuntimeError!!');
+                    console.debug('hasRuntimeError!!');
                     this.isAtDebuggerPrompt = true;
                     return;
                 }
 
                 //forward all unhandled console output
-                this.emit('unhandled-console-output', responseText);
+                this.processBreakpoints(responseText);
+                if (responseText) {
+                    this.emit('unhandled-console-output', responseText);
+                }
 
                 this.processUnhandledLines(responseText);
                 let match;
@@ -189,11 +227,18 @@ export class RokuAdapter {
                     //watch for debugger prompt output
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
-                        if (this.isActivated && this.isAtDebuggerPrompt === false) {
-                            this.isAtDebuggerPrompt = true;
-                            this.emit('suspend');
+                        if (this.isNextBreakpointSkipped) {
+                            console.log('this breakpoint is flagged to be skipped');
+                            this.isInMicroDebugger = false;
+                            this.isNextBreakpointSkipped = false;
+                            this.requestPipeline.executeCommand('c', false, false);
                         } else {
-                            this.isAtDebuggerPrompt = true;
+                            if (this.isActivated && this.isAtDebuggerPrompt === false) {
+                                this.isAtDebuggerPrompt = true;
+                                this.emit('suspend');
+                            } else {
+                                this.isAtDebuggerPrompt = true;
+                            }
                         }
                     } else {
                         this.isAtDebuggerPrompt = false;
@@ -245,23 +290,19 @@ export class RokuAdapter {
         }
     }
 
-    private debugLog(message: string) {
-        console.log(message);
-    }
-
     private processUnhandledLines(responseText: string) {
         if (this.status === RokuAdapterStatus.running) {
             return;
         }
 
         let newLines = eol.split(responseText);
-        this.debugLog('processUnhandledLines: this.status ' + this.status);
+        console.debug('processUnhandledLines: this.status ' + this.status);
         switch (this.status) {
             case RokuAdapterStatus.compiling:
             case RokuAdapterStatus.compileError:
                 this.endCompilingLine = this.getEndCompilingLine(newLines);
                 if (this.endCompilingLine !== -1) {
-                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.running');
+                    console.debug('processUnhandledLines: entering state RokuAdapterStatus.running');
                     this.status = RokuAdapterStatus.running;
                     this.resetCompileErrorTimer(false);
                 } else {
@@ -282,7 +323,7 @@ export class RokuAdapter {
             case RokuAdapterStatus.none:
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
                 if (this.startCompilingLine !== -1) {
-                    this.debugLog('processUnhandledLines: entering state RokuAdapterStatus.compiling');
+                    console.debug('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
                     this.status = RokuAdapterStatus.compiling;
                     this.resetCompileErrorTimer(true);
@@ -292,7 +333,7 @@ export class RokuAdapter {
     }
 
     public resetCompileErrorTimer(isRunning): any {
-        this.debugLog('resetCompileErrorTimer isRunning' + isRunning);
+        console.debug('resetCompileErrorTimer isRunning' + isRunning);
 
         if (this.compileErrorTimer) {
             clearInterval(this.compileErrorTimer);
@@ -302,14 +343,14 @@ export class RokuAdapter {
         if (isRunning) {
             if (this.status === RokuAdapterStatus.compileError) {
                 let that = this;
-                this.debugLog('resetting resetCompileErrorTimer');
+                console.debug('resetting resetCompileErrorTimer');
                 this.compileErrorTimer = setTimeout(() => that.onCompileErrorTimer(), 1000);
             }
         }
     }
 
     public onCompileErrorTimer() {
-        this.debugLog('onCompileErrorTimer: timer complete. should\'ve caught all errors ');
+        console.debug('onCompileErrorTimer: timer complete. should\'ve caught all errors ');
 
         this.status = RokuAdapterStatus.compileError;
         this.resetCompileErrorTimer(false);
@@ -354,14 +395,14 @@ export class RokuAdapter {
      * @param responseText
      */
     private reportErrors() {
-        this.debugLog('reportErrors');
+        console.debug('reportErrors');
         //throw out any lines before the last found compiling line
 
         let errors = this.getErrors();
 
         errors = errors.filter((e) => e.path.toLowerCase().endsWith('.brs') || e.path.toLowerCase().endsWith('.xml'));
 
-        this.debugLog('errors.length ' + errors.length);
+        console.debug('errors.length ' + errors.length);
         if (errors.length > 0) {
             this.emit('compile-errors', errors);
         }
@@ -599,7 +640,58 @@ export class RokuAdapter {
         });
     }
 
-    private expressionRegex = /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i;
+    /**
+     * Runs a regex to get the content between telnet commands
+     * @param value
+     */
+    private getExpressionDetails(value: string) {
+        return /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i.exec(value);
+    }
+
+    /**
+     * Runs a regex to check if the target is an object and get the type if it is
+     * @param value
+     */
+    private getHighLevelTypeDetails(value: string) {
+        return /<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
+    }
+
+    /**
+     * Runs a regex to get the first work of a line
+     * @param value
+     */
+    private getFirstWord(value: string) {
+        return /^([\w.\-=]*)\s/.exec(value);
+    }
+
+    /**
+     * Gets a string array of all the local variables using the var command
+     * @param scope
+     */
+    public async getScopeVariables(scope?: string) {
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot resolve variable: debugger is not paused');
+        }
+        return await this.resolve(`Scope Variables`, async () => {
+            let data: string;
+            let vars = [];
+
+            data = await this.requestPipeline.executeCommand(`var`, true);
+            let splitData = data.split('\n');
+
+            splitData.forEach((line) => {
+                let match;
+                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWord(line))) {
+                    // There seems to be a local ifGlobal interface variable under the name of 'global' but it
+                    // is not accessible by the channel. Stript it our.
+                    if ((match[1] !== 'global') && match[1].length > 0) {
+                        vars.push(match[1]);
+                    }
+                }
+            });
+            return vars;
+        });
+    }
 
     /**
      * Given an expression, evaluate that statement ON the roku
@@ -623,7 +715,7 @@ export class RokuAdapter {
             }
 
             let match;
-            if (match = this.expressionRegex.exec(data)) {
+            if (match = this.getExpressionDetails(data)) {
                 let value = match[1];
                 if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                     value = value.trim().replace(/--string-wrap--/g, '');
@@ -675,7 +767,7 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
+            if (match = this.getHighLevelTypeDetails(line)) {
                 let type = match[1];
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
@@ -716,30 +808,33 @@ export class RokuAdapter {
             //split by newline. the object contents start at index 2
             let lines = eol.split(data);
             for (let i = 2; i < lines.length; i++) {
-                let line = lines[i].trim();
-                if (line === '}') {
+                let line = lines[i];
+                let trimmedLine = line.trim();
+
+                //if this is the end of the object, we are finished collecting children. exit
+                if (trimmedLine === '}') {
                     return children;
                 }
-                let match;
-                match = /(\w+):(.+)/i.exec(line);
-                let name = match[1].trim();
-                let value = match[2].trim();
+
+                //parse the line (try and determine the key and value)
+                let lineParseResult = new PrintedObjectParser(line).result;
 
                 let child = <EvaluateContainer>{
-                    name: name,
-                    evaluateName: `${expression}.${name}`,
+                    name: lineParseResult.key,
+                    evaluateName: `${expression}.${lineParseResult.key}`,
                     children: []
                 };
 
+                const highLevelTypeMatch = this.getHighLevelTypeDetails(trimmedLine);
                 //if the line is an object, array or function
-                if (match = /<.*:\s+(\w*)>/gi.exec(line)) {
-                    let type = match[1];
+                if (highLevelTypeMatch) {
+                    let type = highLevelTypeMatch[1];
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
                     child.value = type;
                 } else {
-                    child.type = this.getPrimativeTypeFromValue(line);
-                    child.value = value;
+                    child.type = this.getPrimativeTypeFromValue(trimmedLine);
+                    child.value = lineParseResult.value;
                     child.highLevelType = HighLevelType.primative;
                 }
                 children.push(child);
@@ -787,7 +882,7 @@ export class RokuAdapter {
             let data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
 
             let match;
-            if (match = this.expressionRegex.exec(data)) {
+            if (match = this.getExpressionDetails(data)) {
                 let typeValue: string = match[1];
                 //remove whitespace
                 typeValue = typeValue.trim();
@@ -852,8 +947,9 @@ export class RokuAdapter {
     /**
      * Disconnect from the telnet session and unset all objects
      */
-    public destroy() {
+    public async destroy() {
         if (this.requestPipeline) {
+            await this.exitActiveBrightscriptDebugger();
             this.requestPipeline.destroy();
         }
 
@@ -863,6 +959,21 @@ export class RokuAdapter {
             this.emitter.removeAllListeners();
         }
         this.emitter = undefined;
+    }
+
+    /**
+     * Make sure any active Brightscript Debugger threads are exited
+     */
+    public async exitActiveBrightscriptDebugger() {
+        if (this.requestPipeline) {
+            let commandsExecuted = 0;
+            do {
+                let data = await this.requestPipeline.executeCommand(`exit`, false);
+                // This seems to work without the delay but I wonder about slower devices
+                // await setTimeout[Object.getOwnPropertySymbols(setTimeout)[0]](100);
+                commandsExecuted++;
+            } while (commandsExecuted < 10);
+        }
     }
 }
 
@@ -914,10 +1025,12 @@ export class RequestPipeline {
     constructor(
         private client: Socket
     ) {
+        this.debuggerLineRegex = /Brightscript\s+Debugger>\s*$/i;
         this.connect();
     }
 
     private requests: RequestPipelineRequest[] = [];
+    private debuggerLineRegex: RegExp;
 
     private get isProcessing() {
         return this.currentRequest !== undefined;
@@ -953,7 +1066,7 @@ export class RequestPipeline {
             } else {
                 let match;
                 //if responseText produced a prompt, return the responseText
-                if (match = /Brightscript\s+Debugger>\s*$/i.exec(allResponseText.trim())) {
+                if (match = this.debuggerLineRegex.exec(allResponseText.trim())) {
                     //resolve the command's promise (if it cares)
                     this.currentRequest.onComplete(allResponseText);
                     allResponseText = '';
@@ -971,16 +1084,23 @@ export class RequestPipeline {
      * @param commandFunction
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
      */
-    public executeCommand(command: string, waitForPrompt: boolean) {
+    public executeCommand(command: string, waitForPrompt: boolean, silent: boolean = false) {
+        console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
                 let commandText = `${command}\r\n`;
-                this.emit('console-output', command);
+                if (!silent) {
+                    this.emit('console-output', command);
+                }
                 this.client.write(commandText);
             };
             this.requests.push({
                 executeCommand: executeCommand,
-                onComplete: resolve,
+                onComplete: (data) => {
+                    console.debug(`Command finished (${waitForPrompt ? 'after waiting for prompt' : 'did not wait for prompt'}`, command);
+                    console.debug('Data:', data);
+                    resolve(data);
+                },
                 waitForPrompt: waitForPrompt
             });
             //start processing (safe to call multiple times)

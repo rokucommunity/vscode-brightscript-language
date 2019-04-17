@@ -1,21 +1,21 @@
 import * as vscode from 'vscode';
 
 import {
-    CancellationToken,
-    Location,
-    SymbolInformation,
-    TextDocument,
-    Uri,
-    WorkspaceSymbolProvider
+  CancellationToken,
+  Location,
+  SymbolInformation, SymbolKind,
+  TextDocument,
+  Uri,
+  WorkspaceSymbolProvider
 } from 'vscode';
 
 import { DeclarationProvider } from './DeclarationProvider';
 
 export class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
 
-    constructor(provider: DeclarationProvider) {
+    constructor(provider: DeclarationProvider, symbolInformationRepository: SymbolInformationRepository) {
         this.declarationProvider = provider;
-        this.repo = new SymbolInformationRepository(provider);
+        this.repo = symbolInformationRepository;
     }
 
     private declarationProvider: DeclarationProvider;
