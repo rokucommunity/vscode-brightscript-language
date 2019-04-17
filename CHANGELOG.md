@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Depricated
  - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead.
 ## Fixed
- - Bugs in hover and locals that would not show the full variable name (#137).
+ - Issues in hover and locals that would not show the full variable name (#137).
 
 
 
