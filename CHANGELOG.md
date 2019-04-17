@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [1.13.0] - 2019-04-17
+## Added
+ - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged.
+## Depricated
+ - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead.
+## Fixed
+ - Bugs in hover and locals that would not show the full variable name (#137).
+
+
+
 ## [1.12.1] - 2019-04-11
 ## Fixed
  - issue where vscode would periodically provide different character casing for workspaceFolder than for full file paths, which would prevent launching a debug session
@@ -217,6 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0

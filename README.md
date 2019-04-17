@@ -141,6 +141,29 @@ Here's a sample launch.json for this scenario:
 
 ```
 
+### Multiple source dirs
+If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "brightscript",
+            ...
+            "rootDir": "${workspaceFolder}/dist",
+            "sourceDirs": [
+                "${workspaceFolder}/../../some-common-library-a",
+                "${workspaceFolder}/../../some-common-library-b",
+                "${workspaceFolder}/../../some-common-library-c",
+            ],
+            "preLaunchTask": "your-build-task-here"
+        }
+    ]
+}
+
+```
+
 ## Extension Settings
 
 This extension contributes the following settings:
