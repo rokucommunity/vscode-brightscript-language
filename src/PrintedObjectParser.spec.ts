@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 
 import { PrintedObjectParser } from './PrintedObjectParser';
-describe.only('PrintedObjectParser', () => {
+describe('PrintedObjectParser', () => {
     it('works for simple cases', () => {
         parseEquals('name: "bob"', { key: 'name', value: '"bob"' });
         parseEquals('isAlive: true', { key: 'isAlive', value: 'true' });
