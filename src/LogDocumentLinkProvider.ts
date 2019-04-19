@@ -38,10 +38,13 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         this.launchConfig = launchConfig;
         this.fileMaps = {};
 
-        let sourceRootDir = launchConfig.debugRootDir ? launchConfig.debugRootDir : launchConfig.rootDir;
-
+        let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
+        let paths = [];
+        for (const rootDir of sourceRootDir) {
+            let pathsFromRoot = await this.rokuDeploy.getFilePaths(launchConfig.files, launchConfig.outDir, rootDir);
+            paths = paths.concat(pathsFromRoot);
+        }
         //get every file used in this project
-        let paths = await this.rokuDeploy.getFilePaths(launchConfig.files, launchConfig.outDir, sourceRootDir);
 
         let outDir = path.normalize(launchConfig.outDir);
 
@@ -86,7 +89,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
             let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
             this.customLinks.push(new DocumentLink(range, uri));
         } else {
-            console.log ('could not find matching file for link with path ' + customLink.pkgPath);
+            console.log('could not find matching file for link with path ' + customLink.pkgPath);
         }
     }
 

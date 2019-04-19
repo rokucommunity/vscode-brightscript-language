@@ -60,6 +60,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config = Object.assign({}, brsconfig, config);
         }
 
+        //Check for depreciated Items
+        if (config.debugRootDir) {
+            if (config.sourceDirs) {
+                throw new Error('Cannot set both debugRootDir AND sourceDirs');
+            } else {
+                config.sourceDirs = [config.debugRootDir];
+            }
+        }
+
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
@@ -92,7 +101,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         //prompt for host if not hardcoded
-        if (config.host.trim() === '${promptForHost}') {
+        if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
             config.host = await vscode.window.showInputBox({
                 placeHolder: 'The IP address of your Roku device',
                 value: ''
@@ -107,6 +116,23 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             });
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
+            }
+        }
+        if (config.deepLinkUrl) {
+            config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
+            config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
+            if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
+                let queryParams = await vscode.window.showInputBox({
+                    placeHolder: 'Querystring params for deep link',
+                    value: ''
+                });
+                config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
+            }
+            if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
+                config.deepLinkUrl = await vscode.window.showInputBox({
+                    placeHolder: 'Full deep link url',
+                    value: ''
+                });
             }
         }
 
@@ -156,7 +182,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     host: string;
     password: string;
     rootDir: string;
-    debugRootDir?: string;
+    sourceDirs?: string[];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];

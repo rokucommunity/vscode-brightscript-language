@@ -34,11 +34,19 @@
                 "kind": "test",
                 "isDefault": true
             },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
             "problemMatcher": []
         },
         {
             "type": "npm",
-            "label": "build",
+            "label": "compile",
             "script": "compile",
             "problemMatcher": []
         }
