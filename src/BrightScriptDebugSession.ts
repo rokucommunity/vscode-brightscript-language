@@ -3,6 +3,9 @@ import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
 import * as path from 'path';
+import * as request from 'request';
+import * as rokuDeploy from 'roku-deploy';
+
 import {
     Breakpoint,
     DebugSession,
@@ -71,6 +74,10 @@ export class BrightScriptDebugSession extends DebugSession {
     public rokuDeploy = require('roku-deploy');
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
+    /**
+     * A promise that is resolved whenever the app has started running for the first time
+     */
+    private firstRunDeferred = defer<void>();
 
     private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private breakpointIdCounter = 0;
@@ -242,6 +249,22 @@ export class BrightScriptDebugSession extends DebugSession {
         } finally {
             //disconnect the compile error watcher
             disconnect();
+        }
+
+        //at this point, the project has been deployed. If we need to use a deep link, launch it now.
+        if (args.deepLinkUrl) {
+            //wait until the first entry breakpoint has been hit
+            await this.firstRunDeferred.promise;
+            //if we are at a breakpoint, continue
+            await this.rokuAdapter.continue();
+            //kill the app on the roku
+            await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+            //send the deep link http request
+            await new Promise((resolve, reject) => {
+                request.post(this.launchArgs.deepLinkUrl, function(err, response) {
+                    return err ? reject(err) : resolve(response);
+                });
+            });
         }
     }
 
@@ -622,13 +645,16 @@ export class BrightScriptDebugSession extends DebugSession {
         this.rokuAdapter = new RokuAdapter(host);
 
         this.rokuAdapter.on('start', async () => {
-
+            if (!this.firstRunDeferred.isCompleted) {
+                this.firstRunDeferred.resolve();
+            }
         });
 
         //when the debugger suspends (pauses for debugger input)
         this.rokuAdapter.on('suspend', async () => {
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
+
             this.clearState();
             let exceptionText = '';
             const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
@@ -975,6 +1001,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     consoleOutput: 'full' | 'normal';
     /**
+     * If specified, the debug session will start the roku app using the deep link
+     */
+    deepLinkUrl?: string;
+    /*
      * Enables automatic population of the debug variable panel on a breakpoint or runtime errors.
      */
     enableVariablesPanel: boolean;
@@ -1005,8 +1035,29 @@ export function defer<T>() {
     });
     return {
         promise: promise,
-        resolve: resolve,
-        reject: reject
+        resolve: function(value?: T | PromiseLike<T>) {
+            if (!this.isResolved) {
+                this.isResolved = true;
+                resolve(value);
+                resolve = undefined;
+            } else {
+                throw new Error('Already completed');
+            }
+        },
+        reject: function(reason?: any) {
+            if (!this.isCompleted) {
+                this.isRejected = true;
+                reject(reason);
+                reject = undefined;
+            } else {
+                throw new Error('Already completed');
+            }
+        },
+        isResolved: false,
+        isRejected: false,
+        get isCompleted() {
+            return this.isResolved || this.isRejected;
+        }
     };
 }
 

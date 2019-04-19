@@ -6,13 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [1.13.0] - 2019-04-17
+## [1.13.0] - 2019-04-19
 ## Added
- - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged.
+ - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged. (#130)
+ - deep link / ECP support when launching a debug session. Use the `deepLinkUrl` property in your `launch.json` (#4)
 ## Depricated
- - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead.
+ - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead. (#130)
 ## Fixed
- - Issues in hover and locals that would not show the full variable name (#137).
+ - Bugs in hover and locals that would not show the full variable name (#137).
 
 
 
