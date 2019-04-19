@@ -2,9 +2,10 @@
 import { expect } from 'chai';
 
 import * as assert from 'assert';
-import * as fs from 'fs-extra';
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import * as sinon from 'sinon';
+import * as sinonActual from 'sinon';
+let sinon = sinonActual.createSandbox();
 
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
@@ -17,6 +18,12 @@ import {
     HighLevelType,
     PrimativeType
 } from './RokuAdapter';
+
+const rootDir = path.normalize(path.dirname(__dirname));
+
+beforeEach(() => {
+    sinon.restore();
+});
 
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
@@ -123,6 +130,7 @@ describe('Debugger', () => {
         beforeEach(() => {
             //clear out the responses before each test
             responses = [];
+            responseDeferreds = [];
 
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
@@ -160,6 +168,7 @@ describe('Debugger', () => {
             });
         });
 
+        //this fails on TravisCI for some reason. TODO - fix this
         it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
@@ -243,6 +252,11 @@ describe('Debugger', () => {
     });
     describe('convertDebuggerPathToClient', () => {
         it('handles truncated paths', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
+
             let s: any = session;
             s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
             s.launchArgs = {
@@ -257,6 +271,10 @@ describe('Debugger', () => {
         });
 
         it('handles pkg paths', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
             let s: any = session;
             s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
             s.launchArgs = {
@@ -274,17 +292,17 @@ describe('Debugger', () => {
     describe('findMainFunction', () => {
         let folder;
         afterEach(() => {
-            fs.emptyDirSync('./.tmp');
-            fs.rmdirSync('./.tmp');
+            fsExtra.emptyDirSync('./.tmp');
+            fsExtra.rmdirSync('./.tmp');
         });
 
         async function doTest(fileContents: string, lineContents: string, lineNumber: number) {
-            fs.emptyDirSync('./.tmp');
+            fsExtra.emptyDirSync('./.tmp');
             folder = path.resolve('./.tmp/findMainFunctionTests/');
-            fs.mkdirSync(folder);
+            fsExtra.mkdirSync(folder);
 
             let filePath = path.resolve(`${folder}/main.brs`);
-            fs.writeFileSync(filePath, fileContents);
+            fsExtra.writeFileSync(filePath, fileContents);
             let entryPoint = await session.findEntryPoint(folder);
             expect(entryPoint.path).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
@@ -329,7 +347,7 @@ describe('Debugger', () => {
 
             args = {
                 source: {
-                    path: '/dest/some/file.brs'
+                    path: path.normalize(`${rootDir}/dest/some/file.brs`)
                 },
                 breakpoints: []
             };
@@ -356,7 +374,7 @@ describe('Debugger', () => {
         });
 
         it('handles breakpoints for non-brightscript files', () => {
-            args.source.path = '/some/xml-file.xml';
+            args.source.path = `${rootDir}/some/xml-file.xml`;
             args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
             //breakpoint should be disabled
@@ -365,19 +383,25 @@ describe('Debugger', () => {
         });
 
         it('remaps to debug folder when specified', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
             (session as any).launchArgs = {
-                sourceDirs: [path.normalize('/src')],
-                rootDir: path.normalize('/dest')
+                sourceDirs: [
+                    path.normalize(`${rootDir}/src`)
+                ],
+                rootDir: path.normalize(`${rootDir}/dest`)
             };
             args.breakpoints = [{ line: 1 }];
 
             session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize('/src/some/file.brs')]).not.to.be.undefined;
+            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/src/some/file.brs`)]).not.to.be.undefined;
 
             delete (session as any).launchArgs.sourceDirs;
 
             session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize('/dest/some/file.brs')]).not.to.be.undefined;
+            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/dest/some/file.brs`)]).not.to.be.undefined;
 
         });
     });
