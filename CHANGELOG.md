@@ -130,6 +130,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-beta.1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+
+
+
+## [1.13.0] - 2019-04-19
+## Added
+ - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged. (#130)
+ - deep link / ECP support when launching a debug session. Use the `deepLinkUrl` property in your `launch.json` (#4)
+## Depricated
+ - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead. (#130)
+## Fixed
+ - Bugs in hover and locals that would not show the full variable name (#137).
+
+
+
 ## [1.12.1] - 2019-04-11
 ## Fixed
  - issue where vscode would periodically provide different character casing for workspaceFolder than for full file paths, which would prevent launching a debug session
@@ -358,6 +372,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0

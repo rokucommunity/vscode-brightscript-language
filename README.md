@@ -106,7 +106,7 @@ Here is a sample `launch.json` file where your roku project lives at the root of
             "name": "BrightScript Debug: Launch",
             "host": "192.168.1.17",
             "password": "password",
-            "rootDir": "${workspaceRoot}",
+            "rootDir": "${workspaceFolder}",
             "stopOnEntry": false
         }
     ]
@@ -136,7 +136,7 @@ then you would need change `rootDir` in your launch config to look like this:
     "configurations": [
         {
             ...
-            "rootDir": "${workspaceRoot}/Roku App",
+            "rootDir": "${workspaceFolder}/Roku App",
             ...
         }
     ]
@@ -181,13 +181,56 @@ Here's a sample launch.json for this scenario:
             "host": "192.168.1.100",
             "password": "password",
             "rootDir": "${workspaceFolder}/dist",
-            "debugRootDir": "${workspaceFolder}/src",
+            "sourceDirs": ["${workspaceFolder}/src"],
             "preLaunchTask": "your-build-task-here"
         }
     ]
 }
 
 ```
+
+### Multiple source dirs
+If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "brightscript",
+            ...
+            "rootDir": "${workspaceFolder}/dist",
+            "sourceDirs": [
+                "${workspaceFolder}/../../some-common-library-a",
+                "${workspaceFolder}/../../some-common-library-b",
+                "${workspaceFolder}/../../some-common-library-c",
+            ],
+            "preLaunchTask": "your-build-task-here"
+        }
+    ]
+}
+
+```
+
+## Deep Linking / ECP
+You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.
+
+```
+{
+    "type": "brightscript",
+    "rootDir": "${workspaceFolder}/dist",
+    "host": "192.168.1.2",
+    "deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}
+}
+```
+There are several string placeholders you can use when defining your deep link url, but none of them are required.
+
+ - `${host}` - the roku host. This is the `host` property set in your launch configuration. By using `${host}` in the deep link url, it prevents you from needing to update the host twice in your config when you want to change which Roku to debug.
+
+ - `${promptForQueryparams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link.
+
+ - `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url.
+
 
 ## Extension Settings
 
@@ -255,7 +298,7 @@ If you change your `launch.json` settings regularly, or don't want to check cert
     "configurations": [
         {
             ...
-            "envFile": "${workspaceRoot}/.env",
+            "envFile": "${workspaceFolder}/.env",
             "username": "${env:ROKU_USERNAME}",
             "password": "${env:ROKU_PASSWORD}"
             ...

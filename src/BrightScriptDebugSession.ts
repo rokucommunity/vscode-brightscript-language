@@ -3,6 +3,9 @@ import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
 import * as path from 'path';
+import * as request from 'request';
+import * as rokuDeploy from 'roku-deploy';
+
 import {
     Breakpoint,
     DebugSession,
@@ -71,6 +74,10 @@ export class BrightScriptDebugSession extends DebugSession {
     public rokuDeploy = require('roku-deploy');
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
+    /**
+     * A promise that is resolved whenever the app has started running for the first time
+     */
+    private firstRunDeferred = defer<void>();
 
     private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private breakpointIdCounter = 0;
@@ -148,17 +155,22 @@ export class BrightScriptDebugSession extends DebugSession {
             this.loadStagingDirPaths(stagingFolder);
 
             //convert source breakpoint paths to build paths
-            if (this.launchArgs.debugRootDir) {
-                this.convertBreakpointPaths(this.launchArgs.debugRootDir, this.launchArgs.rootDir);
+            if (this.launchArgs.sourceDirs) {
+                //clear any breakpoints that are out of scope
+                this.removeOutOfScopeBreakpointPaths(this.launchArgs.sourceDirs, this.launchArgs.rootDir);
+                for (const sourceDir of this.launchArgs.sourceDirs) {
+                    this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
+                }
             }
-
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
             await this.addBreakpointStatements(stagingFolder);
 
             //convert source breakpoint paths to build paths
-            if (this.launchArgs.debugRootDir) {
-                this.convertBreakpointPaths(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
+            if (this.launchArgs.sourceDirs) {
+                for (const sourceDir of this.launchArgs.sourceDirs) {
+                    this.convertBreakpointPaths(this.launchArgs.rootDir, sourceDir);
+                }
             }
 
             //create zip package from staging folder
@@ -238,6 +250,22 @@ export class BrightScriptDebugSession extends DebugSession {
             //disconnect the compile error watcher
             disconnect();
         }
+
+        //at this point, the project has been deployed. If we need to use a deep link, launch it now.
+        if (args.deepLinkUrl) {
+            //wait until the first entry breakpoint has been hit
+            await this.firstRunDeferred.promise;
+            //if we are at a breakpoint, continue
+            await this.rokuAdapter.continue();
+            //kill the app on the roku
+            await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+            //send the deep link http request
+            await new Promise((resolve, reject) => {
+                request.post(this.launchArgs.deepLinkUrl, function(err, response) {
+                    return err ? reject(err) : resolve(response);
+                });
+            });
+        }
     }
 
     protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
@@ -250,13 +278,33 @@ export class BrightScriptDebugSession extends DebugSession {
         super.sourceRequest(response, args);
     }
 
+    protected removeOutOfScopeBreakpointPaths(sourcePaths: string[], toRootPath: string) {
+        //convert paths to sourceDirs paths for any breakpoints set before this launch call
+        if (sourcePaths) {
+            for (let clientPath in this.breakpointsByClientPath) {
+                let included = false;
+                for (const fromRootPath of sourcePaths) {
+                    if (clientPath.includes(path.normalize(fromRootPath + path.sep))) {
+                        included = true;
+                        break;
+                    }
+                }
+                if (!included) {
+                    delete this.breakpointsByClientPath[clientPath];
+                }
+            }
+        }
+    }
+
     protected convertBreakpointPaths(fromRootPath: string, toRootPath: string) {
-        //convert paths to debugRootDir paths for any breakpoints set before this launch call
+        //convert paths to sourceDirs paths for any breakpoints set before this launch call
         if (fromRootPath) {
             for (let clientPath in this.breakpointsByClientPath) {
-                let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
-                this.breakpointsByClientPath[debugClientPath] = this.breakpointsByClientPath[clientPath];
-                delete this.breakpointsByClientPath[clientPath];
+                if (clientPath.includes(fromRootPath)) {
+                    let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
+                    this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
+                    this.deleteBreakpointsForClientPath(clientPath);
+                }
             }
         }
     }
@@ -267,9 +315,16 @@ export class BrightScriptDebugSession extends DebugSession {
 
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
         let clientPath = path.normalize(args.source.path);
-        //if we have a debugRootDir, convert the rootDir path to debugRootDir path
-        if (this.launchArgs && this.launchArgs.debugRootDir) {
-            clientPath = clientPath.replace(this.launchArgs.rootDir, this.launchArgs.debugRootDir);
+        //if we have a sourceDirs, convert the rootDir path to sourceDirs path
+        if (this.launchArgs && this.launchArgs.sourceDirs) {
+            let lastWorkingPath = '';
+            for (const sourceDir of this.launchArgs.sourceDirs) {
+                clientPath = clientPath.replace(this.launchArgs.rootDir, sourceDir);
+                if (fsExtra.pathExistsSync(clientPath)) {
+                    lastWorkingPath = clientPath;
+                }
+            }
+            clientPath = lastWorkingPath;
         }
         let extension = path.extname(clientPath).toLowerCase();
 
@@ -558,11 +613,17 @@ export class BrightScriptDebugSession extends DebugSession {
                 //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
             }
         }
-        //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchArgs.debugRootDir ? this.launchArgs.debugRootDir : this.launchArgs.rootDir;
+        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
-        let clientPath = path.normalize(path.join(rootDir, debuggerPath));
-        return clientPath;
+        //use sourceDirs if provided, or rootDir if not provided.
+        let lastExistingPath = '';
+        for (const sourceDir of rootDir) {
+            let clientPath = path.normalize(path.join(sourceDir, debuggerPath));
+            if (fsExtra.pathExistsSync(clientPath)) {
+                lastExistingPath = clientPath;
+            }
+        }
+        return lastExistingPath;
     }
 
     /**
@@ -584,13 +645,16 @@ export class BrightScriptDebugSession extends DebugSession {
         this.rokuAdapter = new RokuAdapter(host);
 
         this.rokuAdapter.on('start', async () => {
-
+            if (!this.firstRunDeferred.isCompleted) {
+                this.firstRunDeferred.resolve();
+            }
         });
 
         //when the debugger suspends (pauses for debugger input)
         this.rokuAdapter.on('suspend', async () => {
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
+
             this.clearState();
             let exceptionText = '';
             const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
@@ -781,6 +845,10 @@ export class BrightScriptDebugSession extends DebugSession {
         }
     }
 
+    /**
+     * File paths can be different casing sometimes,
+     * so find the data from `breakpointsByClientPath` case insensitive
+     */
     public getBreakpointsForClientPath(clientPath: string) {
         for (let key in this.breakpointsByClientPath) {
             if (clientPath.toLowerCase() === key.toLowerCase()) {
@@ -789,6 +857,18 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         //create a new array and return it
         return this.breakpointsByClientPath[clientPath] = [];
+    }
+
+    /**
+     * File paths can be different casing sometimes,
+     * so delete from `breakpointsByClientPath` case-insensitive
+     */
+    public deleteBreakpointsForClientPath(clientPath: string) {
+        for (let key in this.breakpointsByClientPath) {
+            if (clientPath.toLowerCase() === key.toLowerCase()) {
+                delete this.breakpointsByClientPath[key];
+            }
+        }
     }
 
     /**
@@ -899,8 +979,15 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder
      * so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change
      * line offsets between source files and built files, otherwise debugger lines will be out of sync.
+     * @deprecated Use sourceDirs instead
      */
     debugRootDir: string;
+    /**
+     * If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folders
+     * so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change
+     * line offsets between source files and built files, otherwise debugger lines will be out of sync.
+     */
+    sourceDirs: string[];
     /**
      * The folder where the output files are places during the packaging process
      */
@@ -914,6 +1001,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     consoleOutput: 'full' | 'normal';
     /**
+     * If specified, the debug session will start the roku app using the deep link
+     */
+    deepLinkUrl?: string;
+    /*
      * Enables automatic population of the debug variable panel on a breakpoint or runtime errors.
      */
     enableVariablesPanel: boolean;
@@ -944,8 +1035,29 @@ export function defer<T>() {
     });
     return {
         promise: promise,
-        resolve: resolve,
-        reject: reject
+        resolve: function(value?: T | PromiseLike<T>) {
+            if (!this.isResolved) {
+                this.isResolved = true;
+                resolve(value);
+                resolve = undefined;
+            } else {
+                throw new Error('Already completed');
+            }
+        },
+        reject: function(reason?: any) {
+            if (!this.isCompleted) {
+                this.isRejected = true;
+                reject(reason);
+                reject = undefined;
+            } else {
+                throw new Error('Already completed');
+            }
+        },
+        isResolved: false,
+        isRejected: false,
+        get isCompleted() {
+            return this.isResolved || this.isRejected;
+        }
     };
 }
 
