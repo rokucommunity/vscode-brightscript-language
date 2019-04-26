@@ -105,6 +105,8 @@ export class LogOutputManager {
     private debugEndRegex: RegExp;
 
     public onDidStartDebugSession() {
+        this.isInMicroDebugger = false;
+        this.isNextBreakpointSkipped = false;
         if (this.isClearingOutputOnLaunch) {
             this.clearOutput();
         }
@@ -119,6 +121,8 @@ export class LogOutputManager {
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
         } else if (e.event === 'BSLaunchStartEvent') {
+            this.isInMicroDebugger = false;
+            this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
                 vscode.commands.executeCommand('workbench.action.focusPanel');
             }
