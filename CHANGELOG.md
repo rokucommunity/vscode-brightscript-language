@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [999.0.0-languageserver-beta17] - 2019-04-30
+### Changed
+ - upgraded to brightscript-language@0.2.5 which brings syntax support for increment (++) and decrement (--) operators.
+
 
 
 ## [999.0.0-languageserver-beta16] - 2019-04-19
@@ -362,6 +366,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[999.0.0-languageserver-beta17]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta16...v999.0.0-languageserver-beta17
 [999.0.0-languageserver-beta16]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta15...v999.0.0-languageserver-beta16
 [999.0.0-languageserver-beta15]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta14...v999.0.0-languageserver-beta15
 [999.0.0-languageserver-beta14]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta13...v999.0.0-languageserver-beta14
