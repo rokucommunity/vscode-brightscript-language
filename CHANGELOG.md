@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta17] - 2019-04-26
+### Added
+ - all changes from [v1.13.1](#1131---2019-04-26)
+
+
+
 ## [999.0.0-languageserver-beta16] - 2019-04-19
 ### Added
  - all changes from [v1.13.0](#1130---2019-04-19)
@@ -143,26 +149,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### [1.13.1] - 2019-04-26
+### Fixed
+ - bug in the run loop break recovery section that was not resetting certain variables, which was requiring a vscode reboot to fix.
+
+
+
 ## [1.13.0] - 2019-04-19
-## Added
+### Added
  - `sourceDirs` launch config setting that enables the debugger to search through each entry in `sourceDirs` until it finds a relative file path that matches the file currently being debugged. (#130)
  - deep link / ECP support when launching a debug session. Use the `deepLinkUrl` property in your `launch.json` (#4)
-## Depricated
+### Depricated
  - `debugRootDir` launch config setting. Use the new `sourceDirs` setting instead. (#130)
-## Fixed
+### Fixed
  - Bugs in hover and locals that would not show the full variable name (#137).
 
 
 
 ## [1.12.1] - 2019-04-11
-## Fixed
+### Fixed
  - issue where vscode would periodically provide different character casing for workspaceFolder than for full file paths, which would prevent launching a debug session
  - Remove excess spacing in logpoint output
 
 
 
 ## [1.12.0] - 2019-04-09
-## Added
+### Added
  - conditional breakpoint support
  - logpoint support
  - hit count breakpoint support
@@ -365,7 +377,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Issues with language colorization
 
-
 [999.0.0-languageserver-beta17]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta16...v999.0.0-languageserver-beta17
 [999.0.0-languageserver-beta16]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta15...v999.0.0-languageserver-beta16
 [999.0.0-languageserver-beta15]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta14...v999.0.0-languageserver-beta15
@@ -384,6 +395,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
 
+[1.13.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
