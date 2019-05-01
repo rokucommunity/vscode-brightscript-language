@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta19] - 2019-05-01
+### Changed
+ - upgraded to [brightscript-language@0.2.6](https://www.npmjs.com/package/brightscript-language/v/0.2.6) which removes error for subs with return types ([brs#220](https://github.com/sjbarag/brs/issues/220))
+
+
+
 ## [999.0.0-languageserver-beta18] - 2019-04-30
 ### Changed
- - upgraded to brightscript-language@0.2.5 which brings syntax support for increment (++) and decrement (--) operators.
+ - upgraded to [brightscript-language@0.2.5](https://www.npmjs.com/package/brightscript-language/v/0.2.6) which brings syntax support for increment (++) and decrement (--) operators.
 
 
 
@@ -379,6 +385,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Issues with language colorization
 
+[999.0.0-languageserver-beta19]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta18...v999.0.0-languageserver-beta19
 [999.0.0-languageserver-beta18]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta17...v999.0.0-languageserver-beta18
 [999.0.0-languageserver-beta17]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta16...v999.0.0-languageserver-beta17
 [999.0.0-languageserver-beta16]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta15...v999.0.0-languageserver-beta16
