@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.20] - 2019-05-07
+### Changed
+ - upgraded to [brightscript-language@0.2.7](https://www.npmjs.com/package/brightscript-language/v/0.2.7) which:
+   - fixes many syntax errors related to using keywords as property names.
+   - adds support for hex literals
+### Fixed
+ - bug in syntax highlighting that was showing keyword colors for object properties with keyword names.
+
 
 
 ## [2.0.0-beta.19] - 2019-05-01
@@ -385,6 +393,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Issues with language colorization
 
+[2.0.0-beta.20]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.19...v2.0.0-beta.20
 [2.0.0-beta.19]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.18...v2.0.0-beta.19
 [2.0.0-beta.18]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.17...v2.0.0-beta.18
 [2.0.0-beta.17]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.16...v2.0.0-beta.17
