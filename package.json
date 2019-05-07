@@ -42,7 +42,7 @@
     },
     "dependencies": {
         "brightscript-formatter": "^1.5.0",
-        "brightscript-language": "^0.2.6",
+        "brightscript-language": "^0.2.7",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "find-in-files": "^0.5.0",
