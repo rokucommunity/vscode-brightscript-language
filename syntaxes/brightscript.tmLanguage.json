@@ -9,6 +9,15 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#global_constants"
+        },
+        {
+            "include": "#keyword_logical_operator"
+        },
+        {
+            "include": "#object_properties"
+        },
+        {
             "include": "#identifiers_with_type_designators"
         },
         {
@@ -67,6 +76,17 @@
         }
     ],
     "repository": {
+        "object_properties": {
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\.([a-z_][a-z0-9_]*))",
+            "captures": {
+                "1": {
+                    "name": "entity.name.variable.local.brs"
+                },
+                "2": {
+                    "name": "variable.other.object.property.brs"
+                }
+            }
+        },
         "identifiers_with_type_designators": {
             "name": "entity.name.variable.local.brs",
             "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#])"
@@ -102,6 +122,11 @@
             },
             "match": "(').*$\\n?",
             "name": "comment.line.apostrophe.brs"
+        },
+        "keyword_logical_operator": {
+            "comment": "Capture logical operators. ",
+            "match": "(?i:\\b(and|or|not)\\b)",
+            "name": "keyword.operator.logical.word"
         },
         "keyword_return": {
             "comment": "The return statements in functions",
@@ -191,10 +216,10 @@
                     "name": "keyword.control.brs"
                 }
             },
-            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end)(?!(\\s*:)|[\\d\\w_]))"
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next|not)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:\\b(if|else\\s*if|else|print|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
+            "match": "(?i:\\b(if|else\\s*if|else|print|while|for\\s*each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|exit\\s*for|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
             "name": "keyword.control.brs"
         },
         "operators": {
@@ -223,8 +248,12 @@
                 }
             ]
         },
+        "global_constants": {
+            "match": "(?i:\\b(line_num)\\b)",
+            "name": "variable.language"
+        },
         "support_builtin_functions": {
-            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|Rnd|Box|Type)\\b)",
+            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|Rnd|Box|Type|objfun|pos|eval)\\b)",
             "name": "support.function.brs"
         },
         "support_global_functions": {
