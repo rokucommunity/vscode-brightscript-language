@@ -774,8 +774,11 @@ export class BrightScriptDebugSession extends DebugSession {
         let results = Object.assign(
             {},
             await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
             await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
         );
         let keys = Object.keys(results);
         if (keys.length === 0) {
