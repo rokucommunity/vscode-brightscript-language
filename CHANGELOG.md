@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [1.13.1] - 2019-04-26
+## [1.14.0] - 2019-05-14
+### Changed
+ - default value of debug configuration setting `stopOnEntry` to false.
+### Fixed
+ - bug that wouldn't support launching screen savers due to not looking for `RunScreenSaver` entry point.
+
+
+
+## [1.13.1] - 2019-04-26
 ### Fixed
  - bug in the run loop break recovery section that was not resetting certain variables, which was requiring a vscode reboot to fix.
 
@@ -236,6 +244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
 [1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
