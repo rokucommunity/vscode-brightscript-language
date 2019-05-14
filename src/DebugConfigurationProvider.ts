@@ -75,7 +75,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.password = config.password ? config.password : '${promptForPassword}';
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
-        config.stopOnEntry = config.stopOnEntry === false ? false : true;
+        config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
