@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.13.1",
+    "version": "1.14.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -164,7 +164,7 @@
                             "stopOnEntry": {
                                 "type": "boolean",
                                 "description": "Have the debugger break on on the first line of the program after launch.",
-                                "default": true
+                                "default": false
                             },
                             "retainStagingFolder": {
                                 "type": "boolean",
@@ -260,7 +260,7 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
-                        "stopOnEntry": true,
+                        "stopOnEntry": false,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
@@ -275,7 +275,7 @@
                             "type": "brightscript",
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
-                            "stopOnEntry": true,
+                            "stopOnEntry": false,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
