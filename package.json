@@ -171,7 +171,7 @@
                             "stopOnEntry": {
                                 "type": "boolean",
                                 "description": "Have the debugger break on on the first line of the program after launch.",
-                                "default": true
+                                "default": false
                             },
                             "retainStagingFolder": {
                                 "type": "boolean",
@@ -262,7 +262,7 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
-                        "stopOnEntry": true,
+                        "stopOnEntry": false,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
@@ -277,7 +277,7 @@
                             "type": "brightscript",
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
-                            "stopOnEntry": true,
+                            "stopOnEntry": false,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
