@@ -44,7 +44,7 @@ afterEach(() => {
 
 describe('BrightScriptConfigurationProvider', () => {
     describe('resolveDebugConfiguration', () => {
-        it('handles loading de  ared values from .env files', async () => {
+        it('handles loading declared values from .env files', async () => {
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
@@ -56,7 +56,8 @@ describe('BrightScriptConfigurationProvider', () => {
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
                 password: '${env:ROKU_PASSWORD}',
-                enableDebuggerAutoRecovery: false
+                enableDebuggerAutoRecovery: false,
+                enableAutoTerminate: false
             });
             expect(config.password).to.equal('pass1234');
             expect(stub.called).to.be.true;

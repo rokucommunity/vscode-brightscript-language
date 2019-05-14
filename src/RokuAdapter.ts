@@ -48,6 +48,7 @@ export class RokuAdapter {
      */
     public on(eventName: 'cannot-continue', handler: () => void);
     public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
@@ -63,7 +64,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start', data?) {
+    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -224,6 +225,11 @@ export class RokuAdapter {
                         this.handleStartupIfReady();
                     }
 
+                    //watch for the end of the program
+                    if (match = /\[beacon.report\] \|AppExitComplete/i.exec(responseText.trim())) {
+                        this.beginAppExit();
+                    }
+
                     //watch for debugger prompt output
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
@@ -252,6 +258,14 @@ export class RokuAdapter {
             deferred.reject(e);
         }
         return await deferred.promise;
+    }
+
+    private beginAppExit() {
+        let that = this;
+        this.compileErrorTimer = setTimeout(() => {
+            that.isAppRunning = false;
+            that.emit('app-exit');
+        }, 200);
     }
 
     /**

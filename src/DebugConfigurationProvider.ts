@@ -57,6 +57,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
+        config.enableAutoTerminate = config.enableAutoTerminate === true ? true : false;
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
@@ -135,7 +136,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 await this.context.workspaceState.update('remoteHost', config.host);
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
-
         }
         return config;
     }
@@ -156,5 +156,6 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     selectOutputOnLogMessage: boolean;
     enableVariablesPanel: boolean;
     enableDebuggerAutoRecovery: boolean;
+    enableAutoTerminate: boolean;
     envFile?: string;
 }

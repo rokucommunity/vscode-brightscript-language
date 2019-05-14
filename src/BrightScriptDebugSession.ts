@@ -220,6 +220,25 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
+            this.rokuAdapter.on('app-exit', async () => {
+                if (this.launchArgs.enableAutoTerminate) {
+                    const message = 'App exit event detected and launchArgs.enableAutoTerminate is true - shutting down debug session';
+                    console.log(message);
+                    this.sendEvent(new LogOutputEvent(message));
+                    if (this.rokuAdapter) {
+                        this.rokuAdapter.destroy();
+                    }
+                    //return to the home screen
+                    await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+                    this.shutdown();
+                    disconnect();
+                    this.sendEvent(new TerminatedEvent());
+                } else {
+                    const message = 'App exit detected; but launchArgs.enableAutoTerminate is set to false, so keeping debug session running.';
+                    console.log(message);
+                    this.sendEvent(new LogOutputEvent(message));
+                }
+            });
 
             //ignore the compile error failure from within the publish
             (args as any).failOnCompileError = false;
@@ -1012,6 +1031,11 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
      */
     enableDebuggerAutoRecovery: boolean;
+
+    /**
+     * If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.
+     */
+    enableAutoTerminate: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
