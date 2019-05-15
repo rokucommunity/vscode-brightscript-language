@@ -58,6 +58,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
         config.enableAutoTerminate = config.enableAutoTerminate === true ? true : false;
+        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {

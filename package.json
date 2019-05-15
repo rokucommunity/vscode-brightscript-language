@@ -251,6 +251,11 @@
                                 "type": "boolean",
                                 "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
                                 "default": false
+                            },
+                            "enableLookupVariableNodeChildren": {
+                                "type": "boolean",
+                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field",
+                                "default": false
                             }
                         }
                     }
@@ -264,7 +269,9 @@
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
-                        "enableDebuggerAutoRecovery": false
+                        "enableDebuggerAutoRecovery": false,
+                        "enableAutoTerminate": false,
+                        "enableLookupVariableNodeChildren": false
                     }
                 ],
                 "configurationSnippets": [
@@ -279,7 +286,9 @@
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
-                            "enableDebuggerAutoRecovery": false
+                            "enableDebuggerAutoRecovery": false,
+                            "enableAutoTerminate": false,
+                            "enableLookupVariableNodeChildren": false
                         }
                     }
                 ]

@@ -18,8 +18,6 @@ export class RokuAdapter {
         this.startCompilingLine = -1;
         this.endCompilingLine = -1;
         this.compilingLines = [];
-        this.lastUnhandledDataTime = 0;
-        this.maxDataMsWhenCompiling = 500;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
     }
@@ -30,11 +28,10 @@ export class RokuAdapter {
     private startCompilingLine: number;
     private endCompilingLine: number;
     private compilingLines: string[];
-    private lastUnhandledDataTime: number;
-    private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
     private enableDebuggerAutoRecovery: boolean;
+    private enableLookupVariableNodeChildren: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -156,9 +153,10 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect(enableDebuggerAutoRecovery: boolean = false) {
+    public async connect(enableDebuggerAutoRecovery: boolean = false, enableLookupVariableNodeChildren: boolean = false) {
         let deferred = defer();
         this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
+        this.enableLookupVariableNodeChildren = enableLookupVariableNodeChildren;
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
         try {
@@ -748,6 +746,16 @@ export class RokuAdapter {
                     children = this.getObjectChildren(expression, value);
                 } else if (highLevelType === 'array') {
                     children = this.getArrayChildren(expression, value);
+                }
+                if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
+                    let nodeChildren = <EvaluateContainer>{
+                        name: '_children',
+                        type: 'roarray',
+                        highLevelType: 'array',
+                        evaluateName: `${expression}.getChildren(-1,0)`,
+                        children: []
+                    };
+                    children.push(nodeChildren);
                 }
 
                 let container = <EvaluateContainer>{
