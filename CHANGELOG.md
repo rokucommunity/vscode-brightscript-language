@@ -6,12 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta22] - 2019-05-22
+### Changed
+ - upgraded to [brightscript-language@0.2.9](https://www.npmjs.com/package/brightscript-language/v/0.2.9) which:
+   - added syntax support for numbers with leading or trailing period
+   - added `&` as supported type designator for identifiers
+
+
+
 ## [999.0.0-languageserver-beta21] - 2019-05-14
 ### Added
  - all changes from [v1.14.0](#1140---2019-05-14)
 ### Changed
  - upgraded to [brightscript-language@0.2.8](https://www.npmjs.com/package/brightscript-language/v/0.2.8) which:
    - adds syntax support for library statements
+
+
+
+## [999.0.0-languageserver-beta20] - 2019-05-07
+### Changed
+ - upgraded to [brightscript-language@0.2.7](https://www.npmjs.com/package/brightscript-language/v/0.2.7) which:
+   - fixes many syntax errors related to using keywords as property names.
+   - adds support for hex literals
+### Fixed
+ - bug in syntax highlighting that was showing keyword colors for object properties with keyword names.
+
 
 
 ## [999.0.0-languageserver-beta19] - 2019-05-01
@@ -403,6 +422,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[999.0.0-languageserver-beta22]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta21...v999.0.0-languageserver-beta22
 [999.0.0-languageserver-beta21]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta20...v999.0.0-languageserver-beta21
 [999.0.0-languageserver-beta20]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta19...v999.0.0-languageserver-beta20
 [999.0.0-languageserver-beta19]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta18...v999.0.0-languageserver-beta19
