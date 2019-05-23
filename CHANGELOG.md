@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta23] - 2019-05-23
+### Changed
+ - upgraded to [brightscript-language@0.2.10](https://www.npmjs.com/package/brightscript-language/v/0.2.10) which:
+   - adds syntax support for trailing colons in if statements
+
+
+
 ## [999.0.0-languageserver-beta22] - 2019-05-22
 ### Changed
  - upgraded to [brightscript-language@0.2.9](https://www.npmjs.com/package/brightscript-language/v/0.2.9) which:
@@ -422,6 +429,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[999.0.0-languageserver-beta23]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta22...v999.0.0-languageserver-beta23
 [999.0.0-languageserver-beta22]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta21...v999.0.0-languageserver-beta22
 [999.0.0-languageserver-beta21]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta20...v999.0.0-languageserver-beta21
 [999.0.0-languageserver-beta20]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta19...v999.0.0-languageserver-beta20
