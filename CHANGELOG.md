@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta24] - 2019-05-28
+### Added
+ - all changes from [v1.15.0](#1150---2019-05-28)
+### Changed
+ - upgraded to [brightscript-language@0.2.11](https://www.npmjs.com/package/brightscript-language/v/0.2.11) which:
+  - syntax support for LINE_NUM variable
+
+
+
 ## [999.0.0-languageserver-beta23] - 2019-05-23
 ### Changed
  - upgraded to [brightscript-language@0.2.10](https://www.npmjs.com/package/brightscript-language/v/0.2.10) which:
@@ -188,7 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
-## [1.15.0] - 2019-05-24
+## [1.15.0] - 2019-05-28
 ### Added
  - support for foldable regions by typing `'#region` and `'#endregion`
  - added syntax colorization for `#region` and `#endregion`
