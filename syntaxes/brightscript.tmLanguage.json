@@ -9,6 +9,12 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#region_comment"
+        },
+        {
+            "include": "#end_region_comment"
+        },
+        {
             "include": "#global_constants"
         },
         {
@@ -283,6 +289,21 @@
         "class_roku_builtin": {
             "match": "(?i:\\bro(R(ss(Parser|Article)|e(sourceManager|ctangle|ad(File|WriteFile)|gistry(Section)?))|G(pio(Button|ControlPort)|lobal)|XML(Element|List)|MessagePort|AppInfo|Array|AssociativeArray|AudioGuide|AudioMetadata|AudioPlayer|AudioResource|Bitmap|Boolean|ByteArray|CaptionRenderer|ChannelStore|CodeRegistrationScreen|Compositor|DataGramSocket|DateTime|DeviceInfo|Double|EVPCipher|EVPDigest|FileSystem|Float|Font|FontMetrics|FontRegistry|Function|GridScreen|HdmiStatus|HMAC|HttpAgent|ImageCanvas|ImageMetadata|Input|Int|Invalid|KeyboardScreen|List|ListScreen|Localization|LongInteger|MessageDialog|MessagePort|Microphone|OneLineDialog|ParagraphScreen|Path|PinEntryDialog|PosterScreen|ProgramGuide|Regex|Region|Registry|RegistrySection|RSA|Screen|SearchHistory|SearchScreen|SlideShow|SocketAddress|SpringboardScreen|Sprite|StreamSocket|String|SystemLog|TextScreen|TextToSpeech|TextureManager|TextureRequest|Timespan|Tuner|UrlTransfer|VideoPlayer|VideoScreen|XMLElement|XMLList|SGScreen|SGNode|SGNodeEvent|SGScreenEvent|AudioPlayerEvent|CaptionRendererEvent|CECStatusEvent|ChannelStoreEvent|CodeRegistrationScreenEvent|DeviceInfoEvent|FileSystemEvent|GridScreenEvent|HdmiHotPlugEvent|HdmiStatusEvent|ImageCanvasEvent|InputEvent|KeyboardScreenEvent|ListScreenEvent|MessageDialogEvent|MicrophoneEvent|OneLineDialogEvent|ParagraphScreenEvent|PinEntryDialogEvent|PosterScreenEvent|SearchScreenEvent|SlideShowEvent|SocketEvent|SpringboardScreenEvent|SystemLogEvent|TextScreenEvent|TextToSpeechEvent|TextureRequestEvent|TunerEvent|UniversalControlEvent|UrlEvent|VideoPlayerEvent|VideoScreenEvent|B(yteArray|oolean|r(Sub|ightPackage))|S(ystemTime|t(orageInfo|ring( )?)|erialPort( )?)|NetworkConfiguration|C(ontrol(Down( )?|Up|Port)|ecInterface|lockWidget|reateFile)|T(imer|ouchScreen( )?|ext(Field|Widget))|I(RRemote( )?|n(t|valid)|mage(Player|Widget))|D(eviceInfo( )?|at(eTime|agram(Receiver|Sender)))|Url(Transfer|Event)|Video(Mode|Input|Player|Event)|Keyboard(Press( )?| )?|Quadravox(Button( )?|SNS5( )?)|Float|List|A(ssociativeArray|udio(Player|Event)|ppendFile|rray))\\b)",
             "name": "support.class.brs"
+        },
+        "region_comment": {
+            "match": "(?i:^\\s*('\\s*#region)(?:(\\s+.*)?))$",
+            "captures": {
+                "1": {
+                    "name": "keyword.preprocessor.region.brs"
+                },
+                "2": {
+                    "name": "string.unquoted.preprocessor.message.brs"
+                }
+            }
+        },
+        "end_region_comment": {
+            "match": "^(i?\\s*'\\s*#endregion(\\s*.*)?$)",
+            "name": "keyword.preprocessor.region.brs"
         }
     }
 }
