@@ -48,7 +48,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.password = config.password ? config.password : '${promptForPassword}';
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
-        config.stopOnEntry = config.stopOnEntry === false ? false : true;
+        config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
@@ -57,7 +57,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
-        config.enableAutoTerminate = config.enableAutoTerminate === true ? true : false;
+        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
 
         // Make sure that directory paths end in a trailing slash
@@ -157,6 +157,6 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     selectOutputOnLogMessage: boolean;
     enableVariablesPanel: boolean;
     enableDebuggerAutoRecovery: boolean;
-    enableAutoTerminate: boolean;
+    stopDebuggerOnAppExit: boolean;
     envFile?: string;
 }

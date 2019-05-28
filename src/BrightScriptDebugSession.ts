@@ -223,8 +223,8 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
             this.rokuAdapter.on('app-exit', async () => {
-                if (this.launchArgs.enableAutoTerminate) {
-                    const message = 'App exit event detected and launchArgs.enableAutoTerminate is true - shutting down debug session';
+                if (this.launchArgs.stopDebuggerOnAppExit) {
+                    const message = 'App exit event detected and launchArgs.stopDebuggerOnAppExit is true - shutting down debug session';
                     console.log(message);
                     this.sendEvent(new LogOutputEvent(message));
                     if (this.rokuAdapter) {
@@ -236,7 +236,7 @@ export class BrightScriptDebugSession extends DebugSession {
                     disconnect();
                     this.sendEvent(new TerminatedEvent());
                 } else {
-                    const message = 'App exit detected; but launchArgs.enableAutoTerminate is set to false, so keeping debug session running.';
+                    const message = 'App exit detected; but launchArgs.stopDebuggerOnAppExit is set to false, so keeping debug session running.';
                     console.log(message);
                     this.sendEvent(new LogOutputEvent(message));
                 }
@@ -795,8 +795,11 @@ export class BrightScriptDebugSession extends DebugSession {
         let results = Object.assign(
             {},
             await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
             await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
         );
         let keys = Object.keys(results);
         if (keys.length === 0) {
@@ -1039,7 +1042,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.
      */
-    enableAutoTerminate: boolean;
+    stopDebuggerOnAppExit: boolean;
     /*
      * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
      */

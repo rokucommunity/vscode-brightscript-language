@@ -57,7 +57,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 envFile: '${workspaceFolder}/.env',
                 password: '${env:ROKU_PASSWORD}',
                 enableDebuggerAutoRecovery: false,
-                enableAutoTerminate: false
+                stopDebuggerOnAppExit: true
             });
             expect(config.password).to.equal('pass1234');
             expect(stub.called).to.be.true;
