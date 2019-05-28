@@ -188,6 +188,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.15.0] - 2019-05-24
+### Added
+ - support for foldable regions by typing `'#region` and `'#endregion`
+ - added syntax colorization for `#region` and `#endregion`
 
 
 
@@ -453,6 +457,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
 
+[1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0

@@ -54,7 +54,7 @@
         "net": "^1.0.2",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^2.0.0",
+        "roku-deploy": "^2.1.0",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
         "vscode-languageclient": "^4.1.4",
