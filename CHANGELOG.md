@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [1.15.0] - 2019-05-24
+## [1.15.0] - 2019-05-28
 ### Added
  - support for foldable regions by typing `'#region` and `'#endregion`
  - added syntax colorization for `#region` and `#endregion`
