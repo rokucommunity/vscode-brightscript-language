@@ -246,6 +246,11 @@
                                 "type": "boolean",
                                 "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
                                 "default": true
+                            },
+                            "stopDebuggerOnAppExit": {
+                                "type": "boolean",
+                                "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                                "default": true
                             }
                         }
                     }
