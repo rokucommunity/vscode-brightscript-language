@@ -1,10 +1,13 @@
 import * as eol from 'eol';
 import * as findInFiles from 'find-in-files';
+import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
+import * as http from 'http';
 import * as path from 'path';
 import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
+import * as url from 'url';
 
 import { inspect } from 'util';
 import {
@@ -73,6 +76,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
     //set imports as class properties so they can be spied upon during testing
     public rokuDeploy = require('roku-deploy');
+
+    private componentLibrariesOutDir: string;
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
     /**
@@ -179,6 +184,8 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Creating zip archive from project sources');
             await this.rokuDeploy.zipPackage(args);
 
+            this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibraryPort);
+
             this.sendDebugLogLine('Connecting to Roku via telnet');
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
@@ -284,6 +291,100 @@ export class BrightScriptDebugSession extends DebugSession {
             await new Promise((resolve, reject) => {
                 request.post(this.launchArgs.deepLinkUrl, function(err, response) {
                     return err ? reject(err) : resolve(response);
+                });
+            });
+        }
+    }
+
+    protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {
+        if (componentLibraries && componentLibrariesOutDir) {
+            this.componentLibrariesOutDir = componentLibrariesOutDir;
+
+            for (const componentLibrary of componentLibraries as any) {
+                componentLibrary.outDir = componentLibrariesOutDir;
+                await this.rokuDeploy.prepublishToStaging(componentLibrary);
+                await this.rokuDeploy.zipPackage(componentLibrary);
+            }
+
+            // maps file extension to MIME types
+            const mimeType = {
+                '.ico': 'image/x-icon',
+                '.html': 'text/html',
+                '.js': 'text/javascript',
+                '.json': 'application/json',
+                '.css': 'text/css',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.wav': 'audio/wav',
+                '.mp3': 'audio/mpeg',
+                '.svg': 'image/svg+xml',
+                '.pdf': 'application/pdf',
+                '.doc': 'application/msword',
+                '.eot': 'appliaction/vnd.ms-fontobject',
+                '.ttf': 'aplication/font-sfnt',
+                '.zip': 'application/zip'
+            };
+
+            http.createServer((req, res) => {
+                this.sendDebugLogLine(`${req.method} ${req.url}`);
+
+                // parse URL
+                const parsedUrl = url.parse(req.url);
+
+                // extract URL path
+                // Avoid https://en.wikipedia.org/wiki/Directory_traversal_attack
+                // e.g curl --path-as-is http://localhost:9000/../fileInDanger.txt
+                // by limiting the path to component libraries out directory only
+                const sanitizePath = path.normalize(parsedUrl.pathname).replace(/^(\.\.[\/\\])+/, '');
+                let pathname = path.join(this.componentLibrariesOutDir, sanitizePath);
+
+                fs.exists(pathname, function(exist) {
+                    if (!exist) {
+                        // if the file is not found, return 404
+                        res.statusCode = 404;
+                        res.end(`File ${pathname} not found!`);
+                        return;
+                    }
+
+                    // if is a directory
+                    // if (fs.statSync(pathname).isDirectory()) {
+                    // TODO: add support for directory listing
+                    // }
+
+                    // read file from file system
+                    fs.readFile(pathname, function(err, data) {
+                        if (err) {
+                            res.statusCode = 500;
+                            res.end(`Error getting the file: ${err}.`);
+                        } else {
+                            // based on the URL path, extract the file extension. e.g. .js, .doc, ...
+                            const ext = path.parse(pathname).ext;
+                            // if the file is found, set Content-type and send data
+                            res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
+                            res.end(data);
+                        }
+                    });
+                });
+
+            }).listen(port);
+
+            this.sendDebugLogLine(`Server listening on port ${port}`);
+
+            /**
+             * Get local IP, while ignoring vEthernet IPs (like from Docker, etc)
+             */
+            let os = require('os');
+            let ifaces = os.networkInterfaces();
+            Object.keys(ifaces).forEach((ifname) => {
+                let alias = 0;
+
+                ifaces[ifname].forEach((iface) => {
+                    if ('IPv4' !== iface.family || iface.internal !== false) {
+                        // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
+                        return;
+                    }
+
+                    this.sendDebugLogLine(`Potential target ip for component libraries: ${iface.address}`);
                 });
             });
         }
@@ -620,6 +721,7 @@ export class BrightScriptDebugSession extends DebugSession {
             //find any files from the outDir that end the same as this file
             let results: string[] = [];
 
+            // TODO handle multiple potential matches
             for (let stagingPath of this.stagingDirPaths) {
                 let idx = stagingPath.indexOf(debuggerPath);
                 //if the staging path looks like the debugger path, keep it for now
@@ -627,6 +729,7 @@ export class BrightScriptDebugSession extends DebugSession {
                     results.push(stagingPath);
                 }
             }
+
             if (results.length > 0) {
                 //a wrong file, which has output is more useful than nothing!
                 debuggerPath = results[0];
@@ -1015,6 +1118,20 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * line offsets between source files and built files, otherwise debugger lines will be out of sync.
      */
     sourceDirs: string[];
+    /**
+     * Port to access component libraries.
+     */
+    componentLibraryPort: number;
+    /**
+     * Output folder the component libraries will be hosted in.
+     */
+    componentLibrariesOutDir: string;
+    /**
+     * An array of file path sets. One for each component library.
+     * Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library.
+     * This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.
+     */
+    componentLibraries: [];
     /**
      * The folder where the output files are places during the packaging process
      */

@@ -156,6 +156,21 @@
                                     "${workspaceFolder}"
                                 ]
                             },
+                            "componentLibraryPort": {
+                                "type": "number",
+                                "description": "Port to access component libraries.",
+                                "default": 8080
+                            },
+                            "componentLibrariesOutDir": {
+                                "type": "string",
+                                "description": "Output folder the component libraries will be hosted in.",
+                                "default": ""
+                            },
+                            "componentLibraries": {
+                                "type": "array",
+                                "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
+                                "default": []
+                            },
                             "outDir": {
                                 "type": "string",
                                 "description": "The folder where the build artifacts and zip folder are placed",

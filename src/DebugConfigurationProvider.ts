@@ -42,12 +42,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
+        if (config.componentLibraries) {
+            if (!config.componentLibrariesOutDir) {
+                throw new Error('Cannot set componentLibraries without componentLibrariesOutDir');
+            } else {
+                for (let componentLibrary of config.componentLibraries as any) {
+                    // Update the outDir for all component libraries to be hosted in one folder.
+                    componentLibrary.ourDir = config.componentLibrariesOutDir;
+                }
+            }
+        } else {
+            config.componentLibraries = [];
+        }
+
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
         config.password = config.password ? config.password : '${promptForPassword}';
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
+        config.componentLibraryPort = config.componentLibraryPort ? config.componentLibraryPort : 8080;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
@@ -147,6 +161,9 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
+    componentLibraryPort?; number;
+    componentLibrariesOutDir: string;
+    componentLibraries: [];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];
