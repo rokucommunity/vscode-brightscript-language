@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999.0.0-languageserver-beta25] - 2019-05-31
+### Fixed
+ - upgraded to [brightscript-language@0.2.12](https://www.npmjs.com/package/brightscript-language/v/0.2.12) which:
+   - prevent compile errors for conditional compile statements
+   - syntax support for single-word `#elseif` and `#endif` [brs#249](https://github.com/sjbarag/brs/pull/249)
+   - syntax support for `stop` statements [brs#247](https://github.com/sjbarag/brs/pull/247)
+   - syntax support for empty `print` statements [brs#264](https://github.com/sjbarag/brs/pull/246)
+
+
+
 ## [999.0.0-languageserver-beta24] - 2019-05-28
 ### Added
  - all changes from [v1.15.0](#1150---2019-05-28)
@@ -441,7 +451,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-
+[999.0.0-languageserver-beta25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta24...v999.0.0-languageserver-beta25
+[999.0.0-languageserver-beta24]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta23...v999.0.0-languageserver-beta24
 [999.0.0-languageserver-beta23]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta22...v999.0.0-languageserver-beta23
 [999.0.0-languageserver-beta22]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta21...v999.0.0-languageserver-beta22
 [999.0.0-languageserver-beta21]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta20...v999.0.0-languageserver-beta21
