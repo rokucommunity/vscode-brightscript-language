@@ -184,7 +184,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Creating zip archive from project sources');
             await this.rokuDeploy.zipPackage(args);
 
-            this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibraryPort);
+            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibraryPort);
 
             this.sendDebugLogLine('Connecting to Roku via telnet');
             //connect to the roku debug via telnet
@@ -296,13 +296,58 @@ export class BrightScriptDebugSession extends DebugSession {
         }
     }
 
+    private componentLibraryPostfix: string = '__lib';
+
     protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {
         if (componentLibraries && componentLibrariesOutDir) {
             this.componentLibrariesOutDir = componentLibrariesOutDir;
+            this.componentLibrariesStagingDirPaths = [];
+            let replace = require('replace-in-file');
+            let libraryNumber: number = 0;
 
             for (const componentLibrary of componentLibraries as any) {
+                libraryNumber ++;
                 componentLibrary.outDir = componentLibrariesOutDir;
-                await this.rokuDeploy.prepublishToStaging(componentLibrary);
+                let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+
+                let paths = glob.sync(path.join(stagingFolder, '**/*'));
+                let pathDetails: object = {};
+
+                for (let filePath of paths) {
+                    //make the path relative (+1 for removing the slash)
+                    let relativePath = filePath.substring(stagingFolder.length + 1);
+                    let originalRelativePath = relativePath;
+                    let parsedPath = path.parse(relativePath);
+
+                    if (parsedPath.ext) {
+
+                        if (parsedPath.ext === '.brs') {
+                            let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryNumber}${parsedPath.ext}`;
+                            relativePath = path.join(parsedPath.dir, newFileName);
+
+                            // Update all the file name references in the library to the new file names
+                            replace.sync({
+                                files: [
+                                    path.join(stagingFolder, '**/*.xml'),
+                                    path.join(stagingFolder, '**/*.brs')
+                                ],
+                                from: (file) => new RegExp(parsedPath.base, 'gi'),
+                                to: newFileName
+                            });
+
+                            fs.rename(filePath, path.join(stagingFolder, relativePath), function(err) {
+                                if ( err ) {
+                                    console.log('ERROR: ' + err);
+                                }
+                            });
+                        }
+
+                        // Add to the map of original paths and the new paths
+                        pathDetails[relativePath] = originalRelativePath;
+                    }
+                }
+
+                this.componentLibrariesStagingDirPaths.push(pathDetails);
                 await this.rokuDeploy.zipPackage(componentLibrary);
             }
 
@@ -389,6 +434,8 @@ export class BrightScriptDebugSession extends DebugSession {
             });
         }
     }
+
+    private componentLibrariesStagingDirPaths: object[];
 
     protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
         this.log('sourceRequest');
@@ -710,25 +757,41 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param debuggerPath
      */
     protected convertDebuggerPathToClient(debuggerPath: string) {
-        //remove preceeding pkg:
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            debuggerPath = debuggerPath.substring(4);
+        let fullPath = false;
+        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
+
+        //remove preceding pkg:
+        if (debuggerPath.toLowerCase().indexOf('pkg:/') === 0) {
+            debuggerPath = debuggerPath.substring(5);
+            fullPath = true;
             //the debugger path was truncated, so try and map it to a file in the outdir
-        } else {
+        }
+
+        let isComponentLibraryFile: boolean = false;
+
+        if (debuggerPath.includes(this.componentLibraryPostfix)) {
+            isComponentLibraryFile = true;
             if (debuggerPath.indexOf('...') === 0) {
                 debuggerPath = debuggerPath.substring(3);
             }
+
+            let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
+            let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
+
             //find any files from the outDir that end the same as this file
             let results: string[] = [];
 
-            // TODO handle multiple potential matches
-            for (let stagingPath of this.stagingDirPaths) {
-                let idx = stagingPath.indexOf(debuggerPath);
+            let componentLibraryPaths = this.componentLibrariesStagingDirPaths[libIndex];
+            let componentLibrary: any = this.launchArgs.componentLibraries[libIndex];
+            rootDir = [componentLibrary.rootDir];
+
+            Object.keys(componentLibraryPaths).forEach((key, index) => {
+                let idx = key.indexOf(debuggerPath);
                 //if the staging path looks like the debugger path, keep it for now
-                if (idx > -1 && stagingPath.endsWith(debuggerPath)) {
-                    results.push(stagingPath);
+                if (idx > -1 && key.endsWith(debuggerPath)) {
+                    results.push(componentLibraryPaths[key]);
                 }
-            }
+            });
 
             if (results.length > 0) {
                 //a wrong file, which has output is more useful than nothing!
@@ -736,8 +799,31 @@ export class BrightScriptDebugSession extends DebugSession {
             } else {
                 //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
             }
+        } else {
+            if (!fullPath) {
+                if (debuggerPath.indexOf('...') === 0) {
+                    debuggerPath = debuggerPath.substring(3);
+                }
+                //find any files from the outDir that end the same as this file
+                let results: string[] = [];
+
+                // TODO handle multiple potential matches
+                for (let stagingPath of this.stagingDirPaths) {
+                    let idx = stagingPath.indexOf(debuggerPath);
+                    //if the staging path looks like the debugger path, keep it for now
+                    if (idx > -1 && stagingPath.endsWith(debuggerPath)) {
+                        results.push(stagingPath);
+                    }
+                }
+
+                if (results.length > 0) {
+                    //a wrong file, which has output is more useful than nothing!
+                    debuggerPath = results[0];
+                } else {
+                    //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
+                }
+            }
         }
-        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
         //use sourceDirs if provided, or rootDir if not provided.
         let lastExistingPath = '';
