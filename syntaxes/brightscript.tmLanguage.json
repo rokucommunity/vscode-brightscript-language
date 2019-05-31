@@ -9,6 +9,9 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#preprocessor_keywords"
+        },
+        {
             "include": "#region_comment"
         },
         {
@@ -82,6 +85,26 @@
         }
     ],
     "repository": {
+        "preprocessor_keywords": {
+            "patterns": [
+                {
+                    "match": "(?i:(#const))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#if))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#else\\s*if))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#end\\s*if))",
+                    "name": "keyword.preprocessor.endif.brs"
+                }
+            ]
+        },
         "object_properties": {
             "match": "(?i:\\b([a-z_][a-z0-9_]*)\\.([a-z_][a-z0-9_]*))",
             "captures": {
