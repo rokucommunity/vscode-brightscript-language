@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "999.0.0-languageserver-beta24",
+    "version": "999.0.0-languageserver-beta25",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
