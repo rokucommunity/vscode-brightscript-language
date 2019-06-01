@@ -44,12 +44,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         if (config.componentLibraries) {
             if (!config.componentLibrariesOutDir) {
-                throw new Error('Cannot set componentLibraries without componentLibrariesOutDir');
-            } else {
-                for (let componentLibrary of config.componentLibraries as any) {
-                    // Update the outDir for all component libraries to be hosted in one folder.
-                    componentLibrary.ourDir = config.componentLibrariesOutDir;
-                }
+                throw new Error('Cannot set componentLibraries in the launch.json without setting the componentLibrariesOutDir');
             }
         } else {
             config.componentLibraries = [];
@@ -163,7 +158,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     sourceDirs?: string[];
     componentLibraryPort?; number;
     componentLibrariesOutDir: string;
-    componentLibraries: [];
+    componentLibraries: FilesType[][];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];

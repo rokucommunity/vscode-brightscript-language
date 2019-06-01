@@ -305,23 +305,24 @@ export class BrightScriptDebugSession extends DebugSession {
             let replace = require('replace-in-file');
             let libraryNumber: number = 0;
 
+            // #region Prepare the component libraries and create some name spacing for debugging
             for (const componentLibrary of componentLibraries as any) {
                 libraryNumber ++;
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
-
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
                 let pathDetails: object = {};
 
                 for (let filePath of paths) {
                     //make the path relative (+1 for removing the slash)
                     let relativePath = filePath.substring(stagingFolder.length + 1);
-                    let originalRelativePath = relativePath;
                     let parsedPath = path.parse(relativePath);
 
                     if (parsedPath.ext) {
+                        let originalRelativePath = relativePath;
 
                         if (parsedPath.ext === '.brs') {
+                            // Create the new file name to be used
                             let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryNumber}${parsedPath.ext}`;
                             relativePath = path.join(parsedPath.dir, newFileName);
 
@@ -335,8 +336,9 @@ export class BrightScriptDebugSession extends DebugSession {
                                 to: newFileName
                             });
 
+                            // Rename the brs files to include the postfix name spacing tag
                             fs.rename(filePath, path.join(stagingFolder, relativePath), function(err) {
-                                if ( err ) {
+                                if (err) {
                                     console.log('ERROR: ' + err);
                                 }
                             });
@@ -347,10 +349,13 @@ export class BrightScriptDebugSession extends DebugSession {
                     }
                 }
 
+                // push one file map object for each library we prepare
                 this.componentLibrariesStagingDirPaths.push(pathDetails);
                 await this.rokuDeploy.zipPackage(componentLibrary);
             }
+            // #endregion
 
+            // #region prepare static file hosting
             // maps file extension to MIME types
             const mimeType = {
                 '.ico': 'image/x-icon',
@@ -414,10 +419,9 @@ export class BrightScriptDebugSession extends DebugSession {
             }).listen(port);
 
             this.sendDebugLogLine(`Server listening on port ${port}`);
+            // #endregion
 
-            /**
-             * Get local IP, while ignoring vEthernet IPs (like from Docker, etc)
-             */
+            // #region print possible IP addresses that may be the users local ip
             let os = require('os');
             let ifaces = os.networkInterfaces();
             Object.keys(ifaces).forEach((ifname) => {
@@ -432,6 +436,7 @@ export class BrightScriptDebugSession extends DebugSession {
                     this.sendDebugLogLine(`Potential target ip for component libraries: ${iface.address}`);
                 });
             });
+            // #endregion
         }
     }
 
@@ -767,28 +772,21 @@ export class BrightScriptDebugSession extends DebugSession {
             //the debugger path was truncated, so try and map it to a file in the outdir
         }
 
-        let isComponentLibraryFile: boolean = false;
-
         if (debuggerPath.includes(this.componentLibraryPostfix)) {
-            isComponentLibraryFile = true;
-            if (debuggerPath.indexOf('...') === 0) {
-                debuggerPath = debuggerPath.substring(3);
-            }
-
-            let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
-            let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
+            debuggerPath = this.removeFileTruncation(debuggerPath);
 
             //find any files from the outDir that end the same as this file
             let results: string[] = [];
-
+            let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
+            let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
             let componentLibraryPaths = this.componentLibrariesStagingDirPaths[libIndex];
             let componentLibrary: any = this.launchArgs.componentLibraries[libIndex];
+            // Update the root dir
             rootDir = [componentLibrary.rootDir];
 
             Object.keys(componentLibraryPaths).forEach((key, index) => {
-                let idx = key.indexOf(debuggerPath);
                 //if the staging path looks like the debugger path, keep it for now
-                if (idx > -1 && key.endsWith(debuggerPath)) {
+                if (this.isFileAPossibleMatch(key, debuggerPath)) {
                     results.push(componentLibraryPaths[key]);
                 }
             });
@@ -801,17 +799,14 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         } else {
             if (!fullPath) {
-                if (debuggerPath.indexOf('...') === 0) {
-                    debuggerPath = debuggerPath.substring(3);
-                }
+                debuggerPath = this.removeFileTruncation(debuggerPath);
+
                 //find any files from the outDir that end the same as this file
                 let results: string[] = [];
 
-                // TODO handle multiple potential matches
                 for (let stagingPath of this.stagingDirPaths) {
-                    let idx = stagingPath.indexOf(debuggerPath);
                     //if the staging path looks like the debugger path, keep it for now
-                    if (idx > -1 && stagingPath.endsWith(debuggerPath)) {
+                    if (this.isFileAPossibleMatch(stagingPath, debuggerPath)) {
                         results.push(stagingPath);
                     }
                 }
@@ -834,6 +829,16 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         }
         return lastExistingPath;
+    }
+
+    private removeFileTruncation(filePath) {
+        return (filePath.indexOf('...') === 0) ? filePath.substring(3) : filePath;
+    }
+
+    private isFileAPossibleMatch(stagingPath: string, testPath: string) {
+        let idx = stagingPath.indexOf(testPath);
+        //if the staging path looks like the debugger path, keep it for now
+        return (idx > -1 && stagingPath.endsWith(testPath));
     }
 
     /**
