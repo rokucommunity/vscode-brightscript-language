@@ -170,7 +170,16 @@
                             "componentLibraries": {
                                 "type": "array",
                                 "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
-                                "default": []
+                                "default": [{
+                                    "rootDir": "${workspaceFolder}/LibDir/",
+                                    "outFile": "LibName.zip",
+                                    "files": [
+                                        "manifest",
+                                        "source/**/*.*",
+                                        "components/**/*.*",
+                                        "images/**/*.*"
+                                    ]
+                                }]
                             },
                             "outDir": {
                                 "type": "string",
