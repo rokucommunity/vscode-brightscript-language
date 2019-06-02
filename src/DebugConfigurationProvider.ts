@@ -38,13 +38,27 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [config.debugRootDir];
+                config.sourceDirs = [this.util.checkForTrailingSlash(config.debugRootDir)];
             }
+        } else if (config.sourceDirs) {
+            let dirs: string[] = [];
+            for (let dir of config.sourceDirs) {
+                dirs.push(this.util.checkForTrailingSlash(dir));
+            }
+            config.sourceDirs = dirs;
         }
 
         if (config.componentLibraries) {
             if (!config.componentLibrariesOutDir) {
                 throw new Error('Cannot set componentLibraries in the launch.json without setting the componentLibrariesOutDir');
+            } else {
+                config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir);
+                let compLibs: FilesType[][] = [];
+                for (let library of config.componentLibraries as any) {
+                    library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                    compLibs.push(library);
+                }
+                config.componentLibraries = compLibs;
             }
         } else {
             config.componentLibraries = [];
