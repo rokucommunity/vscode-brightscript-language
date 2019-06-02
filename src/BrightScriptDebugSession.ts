@@ -163,8 +163,20 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
+                let combinedSourceDirs = [];
+                for (let dir of this.launchArgs.sourceDirs) {
+                    combinedSourceDirs.push(dir);
+                }
+
+                // If we have component libraries we need to make sure we don't remove breakpoints from them by mistake
+                if (this.launchArgs.componentLibraries) {
+                    for (let library of this.launchArgs.componentLibraries as any) {
+                        combinedSourceDirs.push(library.rootDir);
+                    }
+                }
+
                 //clear any breakpoints that are out of scope
-                this.removeOutOfScopeBreakpointPaths(this.launchArgs.sourceDirs, this.launchArgs.rootDir);
+                this.removeOutOfScopeBreakpointPaths(combinedSourceDirs, this.launchArgs.rootDir);
                 for (const sourceDir of this.launchArgs.sourceDirs) {
                     this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
                 }
@@ -312,6 +324,11 @@ export class BrightScriptDebugSession extends DebugSession {
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
                 let pathDetails: object = {};
+
+                // Add breakpoint lines to the staging files and before publishing
+                this.sendDebugLogLine('Adding stop statements for active breakpoints in Component Libraries');
+                this.convertBreakpointPaths(componentLibrary.rootDir, componentLibrary.rootDir);
+                await this.addBreakpointStatements(stagingFolder, componentLibrary.rootDir);
 
                 for (let filePath of paths) {
                     //make the path relative (+1 for removing the slash)
@@ -897,81 +914,88 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * Write "stop" lines into source code of each file for each breakpoint
      * @param stagingPath
+     * @param basePath Optional override to the project base path. Used for things like component libraries that may be parallel to the project
      */
-    public async addBreakpointStatements(stagingPath: string) {
+    public async addBreakpointStatements(stagingPath: string, basePath: string = this.baseProjectPath) {
         let promises = [];
-        let addBreakpointsToFile = async (clientPath) => {
+        let addBreakpointsToFile = async (clientPath, basePath) => {
             let breakpoints = this.breakpointsByClientPath[clientPath];
             let stagingFilePath: string;
             //find the manifest file for the file
             clientPath = path.normalize(clientPath);
-            let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), this.baseProjectPath, '');
-            stagingFilePath = path.join(stagingPath, relativeClientPath);
-            //load the file as a string
-            let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
-            //split the file by newline
-            let lines = eol.split(fileContents);
+            // normalize the base path to remove things like ..
+            basePath = path.normalize(basePath);
 
-            let bpIndex = 0;
-            for (let breakpoint of breakpoints) {
-                bpIndex++;
+            // Make sure the breakpoint to be added is for this base path
+            if (clientPath.includes(basePath)) {
+                let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
+                stagingFilePath = path.join(stagingPath, relativeClientPath);
+                //load the file as a string
+                let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
+                //split the file by newline
+                let lines = eol.split(fileContents);
 
-                //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
-                let lineIndex = breakpoint.line - 1;
-                let line = lines[lineIndex];
+                let bpIndex = 0;
+                for (let breakpoint of breakpoints) {
+                    bpIndex++;
 
-                if (breakpoint.condition) {
-                    // add a conditional STOP statement right before this line
-                    lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
-                } else if (breakpoint.hitCondition) {
-                    let hitCondition = parseInt(breakpoint.hitCondition);
+                    //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
+                    let lineIndex = breakpoint.line - 1;
+                    let line = lines[lineIndex];
 
-                    if (isNaN(hitCondition) || hitCondition === 0) {
+                    if (breakpoint.condition) {
+                        // add a conditional STOP statement right before this line
+                        lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
+                    } else if (breakpoint.hitCondition) {
+                        let hitCondition = parseInt(breakpoint.hitCondition);
+
+                        if (isNaN(hitCondition) || hitCondition === 0) {
+                            // add a STOP statement right before this line
+                            lines[lineIndex] = `STOP\n${line} `;
+                        } else {
+
+                            let prefix = `m.vscode_bp`;
+                            let bpName = `bp${bpIndex}`;
+                            let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
+                            let increment = `${prefix}.${bpName} ++`;
+
+                            // Create the BrightScript code required to track the number of executions
+                            let trackingExpression = `
+                                if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
+                                    if Invalid = ${prefix} then
+                                        ${prefix} = {${bpName}: 0}
+                                    else
+                                        ${prefix}.${bpName} = 0
+                                else
+                                    ${increment} : ${checkHits}
+                            `;
+                            //coerce the expression into single-line
+                            trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
+                            // Add the tracking expression right before this line
+                            lines[lineIndex] = `${trackingExpression}\n${line} `;
+                        }
+                    } else if (breakpoint.logMessage) {
+                        let logMessage = breakpoint.logMessage;
+                        //wrap the log message in quotes
+                        logMessage = `"${logMessage}"`;
+                        let expressionsCheck = /\{(.*?)\}/g;
+                        let match;
+
+                        // Get all the value to evaluate as expressions
+                        while (match = expressionsCheck.exec(logMessage)) {
+                            logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
+                        }
+
+                        // add a PRINT statement right before this line with the formated log message
+                        lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
+                    } else {
                         // add a STOP statement right before this line
                         lines[lineIndex] = `STOP\n${line} `;
-                    } else {
-
-                        let prefix = `m.vscode_bp`;
-                        let bpName = `bp${bpIndex}`;
-                        let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
-                        let increment = `${prefix}.${bpName} ++`;
-
-                        // Create the BrightScript code required to track the number of executions
-                        let trackingExpression = `
-                            if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
-                                if Invalid = ${prefix} then
-                                    ${prefix} = {${bpName}: 0}
-                                else
-                                    ${prefix}.${bpName} = 0
-                            else
-                                ${increment} : ${checkHits}
-                        `;
-                        //coerce the expression into single-line
-                        trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
-                        // Add the tracking expression right before this line
-                        lines[lineIndex] = `${trackingExpression}\n${line} `;
                     }
-                } else if (breakpoint.logMessage) {
-                    let logMessage = breakpoint.logMessage;
-                    //wrap the log message in quotes
-                    logMessage = `"${logMessage}"`;
-                    let expressionsCheck = /\{(.*?)\}/g;
-                    let match;
-
-                    // Get all the value to evaluate as expressions
-                    while (match = expressionsCheck.exec(logMessage)) {
-                        logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
-                    }
-
-                    // add a PRINT statement right before this line with the formated log message
-                    lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
-                } else {
-                    // add a STOP statement right before this line
-                    lines[lineIndex] = `STOP\n${line} `;
                 }
+                fileContents = lines.join('\n');
+                await fsExtra.writeFile(stagingFilePath, fileContents);
             }
-            fileContents = lines.join('\n');
-            await fsExtra.writeFile(stagingFilePath, fileContents);
         };
 
         //add the entry breakpoint if stopOnEntry is true
@@ -981,7 +1005,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
         //add breakpoints to each client file
         for (let clientPath in this.breakpointsByClientPath) {
-            promises.push(addBreakpointsToFile(clientPath));
+            promises.push(addBreakpointsToFile(clientPath, basePath));
         }
         await Promise.all(promises);
     }
