@@ -165,7 +165,7 @@
                             "componentLibrariesOutDir": {
                                 "type": "string",
                                 "description": "Output folder the component libraries will be hosted in.",
-                                "default": ""
+                                "default": "${workspaceFolder}/libs"
                             },
                             "componentLibraries": {
                                 "type": "array",
