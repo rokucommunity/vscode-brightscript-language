@@ -12,7 +12,9 @@ import { PrintedObjectParser } from './PrintedObjectParser';
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
 export class RokuAdapter {
-    constructor(private host: string) {
+    constructor(private host: string,
+                private enableDebuggerAutoRecovery: boolean = false,
+                private enableLookupVariableNodeChildren: boolean = false) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
         this.startCompilingLine = -1;
@@ -30,8 +32,6 @@ export class RokuAdapter {
     private compilingLines: string[];
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
-    private enableDebuggerAutoRecovery: boolean;
-    private enableLookupVariableNodeChildren: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -153,10 +153,8 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect(enableDebuggerAutoRecovery: boolean = false, enableLookupVariableNodeChildren: boolean = false) {
+    public async connect() {
         let deferred = defer();
-        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
-        this.enableLookupVariableNodeChildren = enableLookupVariableNodeChildren;
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
         try {

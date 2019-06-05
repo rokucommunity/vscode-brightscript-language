@@ -663,7 +663,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private async connectRokuAdapter(host: string) {
         //register events
-        this.rokuAdapter = new RokuAdapter(host);
+        this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
+            this.launchArgs.enableLookupVariableNodeChildren);
 
         this.rokuAdapter.on('start', async () => {
             if (!this.firstRunDeferred.isCompleted) {
@@ -695,7 +696,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendEvent(new TerminatedEvent());
         });
         //make the connection
-        await this.rokuAdapter.connect(this.launchArgs.enableDebuggerAutoRecovery, this.launchArgs.enableLookupVariableNodeChildren);
+        await this.rokuAdapter.connect();
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
