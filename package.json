@@ -270,7 +270,7 @@
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
                         "enableDebuggerAutoRecovery": false,
-                        "enableAutoTerminate": false,
+                        "stopDebuggerOnAppExit": false,
                         "enableLookupVariableNodeChildren": false
                     }
                 ],
@@ -287,7 +287,7 @@
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
                             "enableDebuggerAutoRecovery": false,
-                            "enableAutoTerminate": false,
+                            "stopDebuggerOnAppExit": false,
                             "enableLookupVariableNodeChildren": false
                         }
                     }
