@@ -330,7 +330,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.convertBreakpointPaths(componentLibrary.rootDir, componentLibrary.rootDir);
                 await this.addBreakpointStatements(stagingFolder, componentLibrary.rootDir);
 
-                for (let filePath of paths) {
+                await Promise.all(paths.map(async (filePath) => {
                     //make the path relative (+1 for removing the slash)
                     let relativePath = filePath.substring(stagingFolder.length + 1);
                     let parsedPath = path.parse(relativePath);
@@ -364,7 +364,7 @@ export class BrightScriptDebugSession extends DebugSession {
                         // Add to the map of original paths and the new paths
                         pathDetails[relativePath] = originalRelativePath;
                     }
-                }
+                }));
 
                 // push one file map object for each library we prepare
                 this.componentLibrariesStagingDirPaths.push(pathDetails);
