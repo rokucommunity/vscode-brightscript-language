@@ -26,6 +26,8 @@ import {
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+import { ComponentLibraryServer } from './ComponentLibraryServer';
+
 import {
     EvaluateContainer,
     RokuAdapter
@@ -78,6 +80,7 @@ export class BrightScriptDebugSession extends DebugSession {
     public rokuDeploy = require('roku-deploy');
 
     private componentLibrariesOutDir: string;
+    private componentLibraryServer = new ComponentLibraryServer();
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
     /**
@@ -368,88 +371,8 @@ export class BrightScriptDebugSession extends DebugSession {
             }
             // #endregion
 
-            // #region prepare static file hosting
-            // maps file extension to MIME types
-            const mimeType = {
-                '.ico': 'image/x-icon',
-                '.html': 'text/html',
-                '.js': 'text/javascript',
-                '.json': 'application/json',
-                '.css': 'text/css',
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.wav': 'audio/wav',
-                '.mp3': 'audio/mpeg',
-                '.svg': 'image/svg+xml',
-                '.pdf': 'application/pdf',
-                '.doc': 'application/msword',
-                '.eot': 'appliaction/vnd.ms-fontobject',
-                '.ttf': 'aplication/font-sfnt',
-                '.zip': 'application/zip'
-            };
-
-            http.createServer((req, res) => {
-                this.sendDebugLogLine(`${req.method} ${req.url}`);
-
-                // parse URL
-                const parsedUrl = url.parse(req.url);
-
-                // extract URL path
-                // Avoid https://en.wikipedia.org/wiki/Directory_traversal_attack
-                // e.g curl --path-as-is http://localhost:9000/../fileInDanger.txt
-                // by limiting the path to component libraries out directory only
-                const sanitizePath = path.normalize(parsedUrl.pathname).replace(/^(\.\.[\/\\])+/, '');
-                let pathname = path.join(this.componentLibrariesOutDir, sanitizePath);
-
-                fs.exists(pathname, function(exist) {
-                    if (!exist) {
-                        // if the file is not found, return 404
-                        res.statusCode = 404;
-                        res.end(`File ${pathname} not found!`);
-                        return;
-                    }
-
-                    // if is a directory
-                    // if (fs.statSync(pathname).isDirectory()) {
-                    // TODO: add support for directory listing
-                    // }
-
-                    // read file from file system
-                    fs.readFile(pathname, function(err, data) {
-                        if (err) {
-                            res.statusCode = 500;
-                            res.end(`Error getting the file: ${err}.`);
-                        } else {
-                            // based on the URL path, extract the file extension. e.g. .js, .doc, ...
-                            const ext = path.parse(pathname).ext;
-                            // if the file is found, set Content-type and send data
-                            res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
-                            res.end(data);
-                        }
-                    });
-                });
-
-            }).listen(port);
-
-            this.sendDebugLogLine(`Server listening on port ${port}`);
-            // #endregion
-
-            // #region print possible IP addresses that may be the users local ip
-            let os = require('os');
-            let ifaces = os.networkInterfaces();
-            Object.keys(ifaces).forEach((ifname) => {
-                let alias = 0;
-
-                ifaces[ifname].forEach((iface) => {
-                    if ('IPv4' !== iface.family || iface.internal !== false) {
-                        // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-                        return;
-                    }
-
-                    this.sendDebugLogLine(`Potential target ip for component libraries: ${iface.address}`);
-                });
-            });
-            // #endregion
+            // prepare static file hosting
+            this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
         }
     }
 
