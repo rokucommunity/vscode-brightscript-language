@@ -70,7 +70,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.password = config.password ? config.password : '${promptForPassword}';
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
-        config.componentLibraryPort = config.componentLibraryPort ? config.componentLibraryPort : 8080;
+        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
@@ -170,7 +170,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
-    componentLibraryPort?; number;
+    componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
     componentLibraries: FilesType[][];
     outDir: string;

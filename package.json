@@ -157,7 +157,7 @@
                                     "${workspaceFolder}"
                                 ]
                             },
-                            "componentLibraryPort": {
+                            "componentLibrariesPort": {
                                 "type": "number",
                                 "description": "Port to access component libraries.",
                                 "default": 8080

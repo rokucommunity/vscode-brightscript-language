@@ -196,7 +196,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Creating zip archive from project sources');
             await this.rokuDeploy.zipPackage(args);
 
-            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibraryPort);
+            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
             this.sendDebugLogLine('Connecting to Roku via telnet');
             //connect to the roku debug via telnet
@@ -1236,7 +1236,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * Port to access component libraries.
      */
-    componentLibraryPort: number;
+    componentLibrariesPort: number;
     /**
      * Output folder the component libraries will be hosted in.
      */
