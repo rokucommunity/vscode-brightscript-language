@@ -354,11 +354,7 @@ export class BrightScriptDebugSession extends DebugSession {
                             });
 
                             // Rename the brs files to include the postfix name spacing tag
-                            fs.rename(filePath, path.join(stagingFolder, relativePath), function(err) {
-                                if (err) {
-                                    console.log('ERROR: ' + err);
-                                }
-                            });
+                            await fsExtra.move(filePath, path.join(stagingFolder, relativePath));
                         }
 
                         // Add to the map of original paths and the new paths
