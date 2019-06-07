@@ -12,14 +12,14 @@ import { PrintedObjectParser } from './PrintedObjectParser';
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
 export class RokuAdapter {
-    constructor(private host: string) {
+    constructor(private host: string,
+                private enableDebuggerAutoRecovery: boolean = false,
+                private enableLookupVariableNodeChildren: boolean = false) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
         this.startCompilingLine = -1;
         this.endCompilingLine = -1;
         this.compilingLines = [];
-        this.lastUnhandledDataTime = 0;
-        this.maxDataMsWhenCompiling = 500;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
     }
@@ -30,11 +30,8 @@ export class RokuAdapter {
     private startCompilingLine: number;
     private endCompilingLine: number;
     private compilingLines: string[];
-    private lastUnhandledDataTime: number;
-    private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
-    private enableDebuggerAutoRecovery: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -156,9 +153,8 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect(enableDebuggerAutoRecovery: boolean = false) {
+    public async connect() {
         let deferred = defer();
-        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
         try {
@@ -748,6 +744,16 @@ export class RokuAdapter {
                     children = this.getObjectChildren(expression, value);
                 } else if (highLevelType === 'array') {
                     children = this.getArrayChildren(expression, value);
+                }
+                if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
+                    let nodeChildren = <EvaluateContainer>{
+                        name: '_children',
+                        type: 'roarray',
+                        highLevelType: 'array',
+                        evaluateName: `${expression}.getChildren(-1,0)`,
+                        children: []
+                    };
+                    children.push(nodeChildren);
                 }
 
                 let container = <EvaluateContainer>{
