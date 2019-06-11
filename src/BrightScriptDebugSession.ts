@@ -408,12 +408,17 @@ export class BrightScriptDebugSession extends DebugSession {
 
     protected convertBreakpointPaths(fromRootPath: string, toRootPath: string) {
         //convert paths to sourceDirs paths for any breakpoints set before this launch call
-        if (fromRootPath) {
+
+        if (fromRootPath && toRootPath) {
             for (let clientPath in this.breakpointsByClientPath) {
                 if (clientPath.includes(fromRootPath)) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
                     this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
-                    this.deleteBreakpointsForClientPath(clientPath);
+
+                    // Make sure the debugClientPath is not the same as the clientPath.
+                    if (debugClientPath !== clientPath) {
+                        this.deleteBreakpointsForClientPath(clientPath);
+                    }
                 }
             }
         }

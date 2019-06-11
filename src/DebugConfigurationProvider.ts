@@ -33,6 +33,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //make sure we have an object
         config = config ? config : {} as any;
 
+        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
@@ -42,10 +44,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         } else if (config.sourceDirs) {
             let dirs: string[] = [];
+
             for (let dir of config.sourceDirs) {
                 dirs.push(this.util.checkForTrailingSlash(dir));
             }
             config.sourceDirs = dirs;
+        } else if (!config.sourceDirs) {
+            config.sourceDirs = [config.rootDir];
         }
 
         if (config.componentLibraries) {
@@ -72,7 +77,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.request = config.request ? config.request : 'launch';
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
-        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
