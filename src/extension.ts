@@ -28,6 +28,8 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
+// import { SSDPController } from './SSDPController';
+import { discover, discoverAll } from './SSDPController';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -42,6 +44,12 @@ export function activate(context: vscode.ExtensionContext) {
         scheme: 'file'
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+
+    discover(10000).then((ip) => {
+        ip = ip;
+    });
+    // const ssdpController: SSDPController = new SSDPController();
+    // ssdpController.start(10);
 
     let configProvider = new BrsDebugConfigurationProvider(context);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
