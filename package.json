@@ -253,6 +253,16 @@
                                 "type": "boolean",
                                 "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
                                 "default": true
+                            },
+                            "stopDebuggerOnAppExit": {
+                                "type": "boolean",
+                                "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                                "default": true
+                            },
+                            "enableLookupVariableNodeChildren": {
+                                "type": "boolean",
+                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field",
+                                "default": false
                             }
                         }
                     }
@@ -266,7 +276,9 @@
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
-                        "enableDebuggerAutoRecovery": false
+                        "enableDebuggerAutoRecovery": false,
+                        "stopDebuggerOnAppExit": false,
+                        "enableLookupVariableNodeChildren": false
                     }
                 ],
                 "configurationSnippets": [
@@ -281,7 +293,9 @@
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
-                            "enableDebuggerAutoRecovery": false
+                            "enableDebuggerAutoRecovery": false,
+                            "stopDebuggerOnAppExit": false,
+                            "enableLookupVariableNodeChildren": false
                         }
                     }
                 ]
@@ -412,6 +426,12 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true, will clear the brigthscript log when launching.",
+                    "scope": "resource"
+                },
+                "brightscript.output.clearConsoleOnChannelStart": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching.",
                     "scope": "resource"
                 },
                 "brightscript.output.hyperlinkFormat": {

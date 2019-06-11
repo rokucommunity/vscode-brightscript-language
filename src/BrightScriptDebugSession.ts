@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
 
+import { inspect } from 'util';
 import {
     Breakpoint,
     DebugSession,
@@ -140,7 +141,8 @@ export class BrightScriptDebugSession extends DebugSession {
         this.launchRequestWasCalled = true;
         let disconnect = () => {
         };
-
+        // tslint:disable-next-line:no-debugger
+        // debugger;
         this.sendEvent(new LaunchStartEvent(args));
 
         let error: Error;
@@ -219,6 +221,25 @@ export class BrightScriptDebugSession extends DebugSession {
                 //TODO - shot gracefull
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+            });
+            this.rokuAdapter.on('app-exit', async () => {
+                if (this.launchArgs.stopDebuggerOnAppExit) {
+                    const message = 'App exit event detected and launchArgs.stopDebuggerOnAppExit is true - shutting down debug session';
+                    console.log(message);
+                    this.sendEvent(new LogOutputEvent(message));
+                    if (this.rokuAdapter) {
+                        this.rokuAdapter.destroy();
+                    }
+                    //return to the home screen
+                    await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
+                    this.shutdown();
+                    disconnect();
+                    this.sendEvent(new TerminatedEvent());
+                } else {
+                    const message = 'App exit detected; but launchArgs.stopDebuggerOnAppExit is set to false, so keeping debug session running.';
+                    console.log(message);
+                    this.sendEvent(new LogOutputEvent(message));
+                }
             });
 
             //ignore the compile error failure from within the publish
@@ -642,7 +663,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private async connectRokuAdapter(host: string) {
         //register events
-        this.rokuAdapter = new RokuAdapter(host);
+        this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
+            this.launchArgs.enableLookupVariableNodeChildren);
 
         this.rokuAdapter.on('start', async () => {
             if (!this.firstRunDeferred.isCompleted) {
@@ -674,7 +696,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendEvent(new TerminatedEvent());
         });
         //make the connection
-        await this.rokuAdapter.connect(this.launchArgs.enableDebuggerAutoRecovery);
+        await this.rokuAdapter.connect();
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
@@ -936,6 +958,8 @@ export class BrightScriptDebugSession extends DebugSession {
         } else if (result.highLevelType === 'function') {
             v = new Variable(result.name, result.value);
         }
+        console.log('RESULT ' + inspect(result));
+        console.log('HLT ' + result.highLevelType);
         v.evaluateName = result.evaluateName;
         if (result.children) {
             let childVariables = [];
@@ -1015,6 +1039,15 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
      */
     enableDebuggerAutoRecovery: boolean;
+
+    /**
+     * If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.
+     */
+    stopDebuggerOnAppExit: boolean;
+    /*
+     * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
+     */
+    enableLookupVariableNodeChildren: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
