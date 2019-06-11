@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.26] - 2019-06-11
+### Added
+ - all changes from [v1.16.0](#1160---2019-06-11)
+
+
+
 ## [2.0.0-beta.25] - 2019-05-31
 ### Fixed
  - upgraded to [brightscript-language@0.2.12](https://www.npmjs.com/package/brightscript-language/v/0.2.12) which:
@@ -462,6 +468,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.26]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
 [2.0.0-beta.25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
 [2.0.0-beta.24]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.23...v2.0.0-beta.24
 [2.0.0-beta.23]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.22...v2.0.0-beta.23
