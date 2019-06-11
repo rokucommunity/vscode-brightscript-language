@@ -11,14 +11,14 @@ import { PrintedObjectParser } from './PrintedObjectParser';
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
 export class RokuAdapter {
-    constructor(private host: string) {
+    constructor(private host: string,
+                private enableDebuggerAutoRecovery: boolean = false,
+                private enableLookupVariableNodeChildren: boolean = false) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
         this.startCompilingLine = -1;
         this.endCompilingLine = -1;
         this.compilingLines = [];
-        this.lastUnhandledDataTime = 0;
-        this.maxDataMsWhenCompiling = 500;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
     }
@@ -29,11 +29,8 @@ export class RokuAdapter {
     private startCompilingLine: number;
     private endCompilingLine: number;
     private compilingLines: string[];
-    private lastUnhandledDataTime: number;
-    private maxDataMsWhenCompiling: number;
     private compileErrorTimer: any;
     private isNextBreakpointSkipped: boolean = false;
-    private enableDebuggerAutoRecovery: boolean;
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -47,6 +44,7 @@ export class RokuAdapter {
      */
     public on(eventName: 'cannot-continue', handler: () => void);
     public on(eventName: 'close', handler: () => void);
+    public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
@@ -62,7 +60,7 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start', data?) {
+    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?) {
         this.emitter.emit(eventName, data);
     }
 
@@ -154,9 +152,8 @@ export class RokuAdapter {
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
-    public async connect(enableDebuggerAutoRecovery: boolean = false) {
+    public async connect() {
         let deferred = defer();
-        this.enableDebuggerAutoRecovery = enableDebuggerAutoRecovery;
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
         try {
@@ -223,6 +220,11 @@ export class RokuAdapter {
                         this.handleStartupIfReady();
                     }
 
+                    //watch for the end of the program
+                    if (match = /\[beacon.report\] \|AppExitComplete/i.exec(responseText.trim())) {
+                        this.beginAppExit();
+                    }
+
                     //watch for debugger prompt output
                     if (match = /Brightscript\s*Debugger>\s*$/i.exec(responseText.trim())) {
                         //if we are activated AND this is the first time seeing the debugger prompt since a continue/step action
@@ -251,6 +253,14 @@ export class RokuAdapter {
             deferred.reject(e);
         }
         return await deferred.promise;
+    }
+
+    private beginAppExit() {
+        let that = this;
+        this.compileErrorTimer = setTimeout(() => {
+            that.isAppRunning = false;
+            that.emit('app-exit');
+        }, 200);
     }
 
     /**
@@ -732,7 +742,17 @@ export class RokuAdapter {
                 if (highLevelType === 'object') {
                     children = this.getObjectChildren(expression, value);
                 } else if (highLevelType === 'array') {
-                    children = this.getArrayChildren(expression, value);
+                    children = this.getArrayOrListChildren(expression, value);
+                }
+                if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
+                    let nodeChildren = <EvaluateContainer>{
+                        name: '_children',
+                        type: 'roarray',
+                        highLevelType: 'array',
+                        evaluateName: `${expression}.getChildren(-1,0)`,
+                        children: []
+                    };
+                    children.push(nodeChildren);
                 }
 
                 let container = <EvaluateContainer>{
@@ -748,14 +768,27 @@ export class RokuAdapter {
         });
     }
 
-    private getArrayChildren(expression: string, data: string): EvaluateContainer[] {
+    /**
+     * Get all of the children of an array or list
+     */
+    private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
+        let collectionEnd: string;
+
+        //this function can handle roArray and roList objects, but we need to which it is
+        if (data.indexOf('<Component: roList>') === 0) {
+            collectionEnd = ')';
+
+            //array
+        } else {
+            collectionEnd = ']';
+        }
         let children: EvaluateContainer[] = [];
         //split by newline. the array contents start at index 2
         let lines = eol.split(data);
         let arrayIndex = 0;
         for (let i = 2; i < lines.length; i++) {
             let line = lines[i].trim();
-            if (line === ']') {
+            if (line === collectionEnd) {
                 return children;
             }
             let child = <EvaluateContainer>{
@@ -857,7 +890,7 @@ export class RokuAdapter {
         let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'rostring', 'invalid'];
         if (primativeTypes.indexOf(expressionType) > -1) {
             return HighLevelType.primative;
-        } else if (expressionType === 'roarray') {
+        } else if (expressionType === 'roarray' || expressionType === 'rolist') {
             return HighLevelType.array;
         } else if (expressionType === 'function') {
             return HighLevelType.function;

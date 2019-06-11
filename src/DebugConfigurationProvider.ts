@@ -84,6 +84,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
+        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
+        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
         if (config.rootDir.indexOf('${workspaceFolder}') > -1) {
@@ -172,7 +174,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 await this.context.workspaceState.update('remoteHost', config.host);
             }
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
-
         }
         return config;
     }
@@ -193,5 +194,6 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     selectOutputOnLogMessage: boolean;
     enableVariablesPanel: boolean;
     enableDebuggerAutoRecovery: boolean;
+    stopDebuggerOnAppExit: boolean;
     envFile?: string;
 }

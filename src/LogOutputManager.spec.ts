@@ -58,7 +58,7 @@ describe('LogOutputManager ', () => {
 
     it('tests onDidStartDebugSession clear flag', () => {
         collectionMock.expects('clear').once();
-        logOutputManager.isClearingOutputOnLaunch = true;
+        logOutputManager.isClearingConsoleOnChannelStart = true;
         logOutputManager.onDidStartDebugSession();
         outputChannelMock.verify();
         collectionMock.verify();
@@ -67,8 +67,26 @@ describe('LogOutputManager ', () => {
 
     it('tests onDidStartDebugSession no clear flag', () => {
         collectionMock.expects('clear').never();
-        logOutputManager.isClearingOutputOnLaunch = false;
+        logOutputManager.isClearingConsoleOnChannelStart = false;
         logOutputManager.onDidStartDebugSession();
+        outputChannelMock.verify();
+        collectionMock.verify();
+        logOutputManagerMock.verify();
+    });
+
+    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - clear flag', () => {
+        collectionMock.expects('clear').once();
+        logOutputManager.isClearingOutputOnLaunch = true;
+        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
+        outputChannelMock.verify();
+        collectionMock.verify();
+        logOutputManagerMock.verify();
+    });
+
+    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - no clear flag', () => {
+        collectionMock.expects('clear').never();
+        logOutputManager.isClearingOutputOnLaunch = false;
+        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();

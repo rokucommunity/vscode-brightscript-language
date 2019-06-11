@@ -207,6 +207,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-beta.1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.16.0] - 2019-06-11
+### Added
+ - added launch config setting `stopDebuggerOnAppExit` which monitors the console output, and automatically ends the debug session when detected.
+ - added launch config setting `enableLookupVariableNodeChildren` that, if true, will get all children of a node, when the value is displayed in a debug session, and display it in the virtual `_children` field
+ - added extension setting `brightscript.output.clearConsoleOnChannelStart` that allows you to clear/not clear the initial roku compile console output.
+ -  resolving children of nodes variables
+### Fixed
+ - bug that would cause debug session crashes when inspecting a `roList` variable ([#155](https://github.com/TwitchBronBron/vscode-brightscript-language/issues/155))
+
+
+
 ## [1.15.0] - 2019-05-28
 ### Added
  - support for foldable regions by typing `'#region` and `'#endregion`
@@ -477,6 +488,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.0...v1.13.1
