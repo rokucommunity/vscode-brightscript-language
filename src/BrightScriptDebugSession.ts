@@ -707,13 +707,17 @@ export class BrightScriptDebugSession extends DebugSession {
         let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
         //remove preceding pkg:
-        if (debuggerPath.toLowerCase().indexOf('pkg:/') === 0) {
-            debuggerPath = debuggerPath.substring(5);
+        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
+            debuggerPath = debuggerPath.substring(4);
             fullPath = true;
-            //the debugger path was truncated, so try and map it to a file in the outdir
         }
 
         if (debuggerPath.includes(this.componentLibraryPostfix)) {
+            //remove preceding slash
+            if (debuggerPath.toLowerCase().indexOf('/') === 0) {
+                debuggerPath = debuggerPath.substring(1);
+            }
+
             debuggerPath = this.removeFileTruncation(debuggerPath);
 
             //find any files from the outDir that end the same as this file
@@ -740,6 +744,7 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         } else {
             if (!fullPath) {
+                //the debugger path was truncated, so try and map it to a file in the outdir
                 debuggerPath = this.removeFileTruncation(debuggerPath);
 
                 //find any files from the outDir that end the same as this file
