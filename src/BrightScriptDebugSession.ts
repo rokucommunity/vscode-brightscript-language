@@ -33,6 +33,9 @@ import {
     RokuAdapter
 } from './RokuAdapter';
 
+// tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
+let replaceInFile = require('replace-in-file');
+
 class CompileFailureEvent implements DebugProtocol.Event {
     constructor(compileError: any) {
         this.body = compileError;
@@ -317,7 +320,6 @@ export class BrightScriptDebugSession extends DebugSession {
         if (componentLibraries && componentLibrariesOutDir) {
             this.componentLibrariesOutDir = componentLibrariesOutDir;
             this.componentLibrariesStagingDirPaths = [];
-            let replace = require('replace-in-file');
             let libraryNumber: number = 0;
 
             // #region Prepare the component libraries and create some name spacing for debugging
@@ -347,7 +349,7 @@ export class BrightScriptDebugSession extends DebugSession {
                             relativePath = path.join(parsedPath.dir, newFileName);
 
                             // Update all the file name references in the library to the new file names
-                            replace.sync({
+                            replaceInFile.sync({
                                 files: [
                                     path.join(stagingFolder, '**/*.xml'),
                                     path.join(stagingFolder, '**/*.brs')
