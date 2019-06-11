@@ -409,6 +409,12 @@
                     "description": "If set to true, will clear the brigthscript log when launching.",
                     "scope": "resource"
                 },
+                "brightscript.output.clearConsoleOnChannelStart": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching.",
+                    "scope": "resource"
+                },
                 "brightscript.output.hyperlinkFormat": {
                     "type": [
                         "string",
