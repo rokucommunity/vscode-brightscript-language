@@ -743,7 +743,7 @@ export class RokuAdapter {
                 if (highLevelType === 'object') {
                     children = this.getObjectChildren(expression, value);
                 } else if (highLevelType === 'array') {
-                    children = this.getArrayChildren(expression, value);
+                    children = this.getArrayOrListChildren(expression, value);
                 }
                 if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
                     let nodeChildren = <EvaluateContainer>{
@@ -769,14 +769,27 @@ export class RokuAdapter {
         });
     }
 
-    private getArrayChildren(expression: string, data: string): EvaluateContainer[] {
+    /**
+     * Get all of the children of an array or list
+     */
+    private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
+        let collectionEnd: string;
+
+        //this function can handle roArray and roList objects, but we need to which it is
+        if (data.indexOf('<Component: roList>') === 0) {
+            collectionEnd = ')';
+
+            //array
+        } else {
+            collectionEnd = ']';
+        }
         let children: EvaluateContainer[] = [];
         //split by newline. the array contents start at index 2
         let lines = eol.split(data);
         let arrayIndex = 0;
         for (let i = 2; i < lines.length; i++) {
             let line = lines[i].trim();
-            if (line === ']') {
+            if (line === collectionEnd) {
                 return children;
             }
             let child = <EvaluateContainer>{
@@ -878,7 +891,7 @@ export class RokuAdapter {
         let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'rostring', 'invalid'];
         if (primativeTypes.indexOf(expressionType) > -1) {
             return HighLevelType.primative;
-        } else if (expressionType === 'roarray') {
+        } else if (expressionType === 'roarray' || expressionType === 'rolist') {
             return HighLevelType.array;
         } else if (expressionType === 'function') {
             return HighLevelType.function;
