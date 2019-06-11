@@ -27,12 +27,14 @@ export class LogOutputManager {
         this.includeStackTraces = (config.output || {}).includeStackTraces;
         this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
         this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
+        this.isClearingConsoleOnChannelStart = (config.output || {}).clearConsoleOnChannelStart;
         this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
             this.includeStackTraces = (config.output || {}).includeStackTraces;
             this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
             this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
+            this.isClearingConsoleOnChannelStart = (config.output || {}).clearConsoleOnChannelStart;
             this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
         });
         this.context = context;
@@ -97,6 +99,7 @@ export class LogOutputManager {
     public enableDebuggerAutoRecovery: boolean;
     public isFocusingOutputOnLaunch: boolean;
     public isClearingOutputOnLaunch: boolean;
+    public isClearingConsoleOnChannelStart: boolean;
     public hyperlinkFormat: string;
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
@@ -107,7 +110,7 @@ export class LogOutputManager {
     public onDidStartDebugSession() {
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
-        if (this.isClearingOutputOnLaunch) {
+        if (this.isClearingConsoleOnChannelStart) {
             this.clearOutput();
         }
     }

@@ -194,6 +194,7 @@ This extension contributes the following settings:
 * `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
 * `brightscript.output.focusOnLaunch`: If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
 * `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
+* `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 
 ## Roku Remote Control
