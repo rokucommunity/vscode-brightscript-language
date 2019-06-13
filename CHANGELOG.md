@@ -8,10 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0-beta.27] - 2019-06-13
 ### Added
- - upgraded to [brightscript-language@0.2.13](https://www.npmjs.com/package/brightscript-language/v/0.2.12) which:
+ - upgraded to [brightscript-language@0.2.13](https://www.npmjs.com/package/brightscript-language/v/0.2.13) which:
    - syntax support for `GOTO` and labels [brs#248](https://github.com/sjbarag/brs/pull/248)
-
-
 
 
 
