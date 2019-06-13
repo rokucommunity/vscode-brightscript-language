@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.27] - 2019-06-13
+### Added
+ - upgraded to [brightscript-language@0.2.13](https://www.npmjs.com/package/brightscript-language/v/0.2.12) which:
+   - syntax support for `GOTO` and labels [brs#248](https://github.com/sjbarag/brs/pull/248)
+
+
+
+
+
 ## [2.0.0-beta.26] - 2019-06-11
 ### Added
  - all changes from [v1.16.0](#1160---2019-06-11)
@@ -468,6 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.26...v2.0.0-beta.27
 [2.0.0-beta.26]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
 [2.0.0-beta.25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
 [2.0.0-beta.24]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.23...v2.0.0-beta.24
