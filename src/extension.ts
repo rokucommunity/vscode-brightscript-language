@@ -28,14 +28,18 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-// import { SSDPController } from './SSDPController';
-import { discover, discoverAll } from './SSDPController';
+import { SSDPFinder } from './SSDPController';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
 } from './SymbolInformationRepository';
 
 let outputChannel: vscode.OutputChannel;
+let ssdpFinder = new SSDPFinder();
+
+ssdpFinder.discoverAll(10000).then((ip) => {
+    ip = ip;
+});
 
 export function activate(context: vscode.ExtensionContext) {
     //register the code formatter
@@ -45,13 +49,11 @@ export function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    discover(10000).then((ip) => {
-        ip = ip;
-    });
+    console.log(ssdpFinder.activeDevices);
     // const ssdpController: SSDPController = new SSDPController();
     // ssdpController.start(10);
 
-    let configProvider = new BrsDebugConfigurationProvider(context);
+    let configProvider = new BrsDebugConfigurationProvider(context, ssdpFinder);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();

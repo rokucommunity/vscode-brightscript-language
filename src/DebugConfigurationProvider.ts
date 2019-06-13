@@ -14,11 +14,13 @@ import * as util from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
-    public constructor(context: ExtensionContext) {
+    public constructor(context: ExtensionContext, ssdpFinder: any) {
         this.context = context;
+        this.ssdpFinder = ssdpFinder;
     }
 
     public context: ExtensionContext;
+    public ssdpFinder: any;
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
@@ -69,6 +71,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         // #endregion
 
+        let devices = this.ssdpFinder.activeDevices;
+
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
@@ -93,10 +97,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         //prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
-            config.host = await vscode.window.showInputBox({
-                placeHolder: 'The IP address of your Roku device',
-                value: ''
-            });
+            if (this.ssdpFinder.activeDevices) {
+                let items = [];
+
+                this.ssdpFinder.activeDevices.forEach((device) => {
+                    items.push(device.ip);
+                });
+
+                config.host = await vscode.window.showQuickPick(items, { placeHolder: 'The IP address of your Roku device' });
+
+                console.log(config.host);
+                // config.host = await vscode.window.showQuickPick({
+                //     placeHolder: 'The IP address of your Roku device',
+                //     value: ''
+                // });
+            } else {
+                config.host = await vscode.window.showInputBox({
+                    placeHolder: 'The IP address of your Roku device',
+                    value: ''
+                });
+            }
         }
 
         //prompt for password if not hardcoded

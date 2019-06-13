@@ -34,7 +34,9 @@ beforeEach(() => {
             update: () => { return Promise.resolve(); }
         }
     };
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context);
+
+    let ssdpFinder = {};
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, ssdpFinder);
     c = configProvider;
     sinon = sinonImport.createSandbox();
 });
