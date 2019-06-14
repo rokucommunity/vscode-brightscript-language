@@ -102,8 +102,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (activeDevices) {
                 let items = [];
 
-                // activeDevices.map((activeDevice) => { return activeDevice.deviceInfo['device-id']; }).indexOf(address.deviceInfo['device-id']) === -1) {
-
+                // Create the Quick Picker option items
                 Object.keys(activeDevices).map((key) => {
                     let device = activeDevices[key];
                     let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
@@ -116,10 +115,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 });
 
                 // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
-                items.push('other');
-                let host = await vscode.window.showQuickPick(items, { placeHolder: 'Please Select a Roku or use the "other" option to enter a IP' });
+                let manualIpOption = 'Other';
+                items.push(manualIpOption);
 
-                if (host === 'other') {
+                let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
+
+                if (host === manualIpOption) {
                     showInputBox = true;
                 } else {
                     let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));

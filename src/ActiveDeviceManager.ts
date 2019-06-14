@@ -26,12 +26,9 @@ export class ActiveDeviceManager extends EventEmitter {
         });
 
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
-        this.activeDevices = [];
-
         this.processEnabledState();
     }
 
-    public activeDevices: any[] = [];
     public lastUsedDevice: string;
     private enabled: boolean;
     private showInfoMessages: boolean;
@@ -39,10 +36,12 @@ export class ActiveDeviceManager extends EventEmitter {
     private exponentialBackoff: any;
     private isRunning: boolean;
 
+    // Returns an object will all the active devices by device id
     public getActiveDevices() {
         return this.deviceCache.mget(this.deviceCache.keys());
     }
 
+    // Will ether stop or start the watching process based on the running state and user settings
     private processEnabledState() {
         if (this.enabled && !this.isRunning) {
             this.findDevices();
@@ -50,6 +49,7 @@ export class ActiveDeviceManager extends EventEmitter {
             this.stop();
         }
     }
+
     private stop() {
         if (this.exponentialBackoff) {
             this.exponentialBackoff.reset();
@@ -59,6 +59,7 @@ export class ActiveDeviceManager extends EventEmitter {
         this.isRunning = false;
     }
 
+    // Begin searching and watching for devices
     private findDevices() {
         this.exponentialBackoff = backoff.exponential({
             randomisationFactor: 0,
@@ -77,13 +78,7 @@ export class ActiveDeviceManager extends EventEmitter {
         this.isRunning = true;
     }
 
-    /**
-     * Discover all Roku devices on the network. This method always waits the full
-     * timeout, resolving to a list of all Roku device addresses that responded
-     * within `timeout` ms.
-     * @param timeout The time to wait in ms before giving up.
-     * @return A promise resolving to a list of Roku device addresses.
-     */
+    // Discover all Roku devices on the network and watch for new ones that connect
     private discoverAll( timeout: number = DEFAULT_TIMEOUT ): Promise<string[]> {
         return new Promise((resolve, reject) => {
             const finder = new RokuFinder();
@@ -91,7 +86,7 @@ export class ActiveDeviceManager extends EventEmitter {
 
             finder.on('found', (device) => {
                 if (devices.indexOf(device) === -1) {
-                    if (this.deviceCache.get(device.deviceInfo['device-id']) === undefined) {
+                    if (this.showInfoMessages && this.deviceCache.get(device.deviceInfo['device-id']) === undefined) {
                         // New device found
                         vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
                     }
@@ -157,13 +152,6 @@ class RokuFinder extends EventEmitter {
     private timeoutId: NodeJS.Timer | null = null;
     private running: boolean = false;
 
-    private parseAddress(location: string): any {
-        const parts = url.parse(location);
-        parts.path = undefined;
-        parts.pathname = undefined;
-        return { location: url.format(parts), ip: parts.hostname, deviceInfo: {} };
-    }
-
     public start(timeout: number) {
         this.running = true;
 
@@ -186,5 +174,12 @@ class RokuFinder extends EventEmitter {
         clearTimeout(this.timeoutId!);
         this.running = false;
         this.client.stop();
+    }
+
+    private parseAddress(location: string): any {
+        const parts = url.parse(location);
+        parts.path = undefined;
+        parts.pathname = undefined;
+        return { location: url.format(parts), ip: parts.hostname, deviceInfo: {} };
     }
 }
