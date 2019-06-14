@@ -15,6 +15,7 @@ import {
     WorkspaceSymbolProvider,
 } from 'vscode';
 
+import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -28,20 +29,17 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-import { SSDPFinder } from './SSDPController';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
 } from './SymbolInformationRepository';
 
 let outputChannel: vscode.OutputChannel;
-let ssdpFinder = new SSDPFinder();
-
-ssdpFinder.discoverAll(10000).then((ip) => {
-    ip = ip;
-});
+let activeDeviceManager = new ActiveDeviceManager();
 
 export function activate(context: vscode.ExtensionContext) {
+    activeDeviceManager.findDevices();
+
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
         language: 'brightscript',
@@ -49,11 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    console.log(ssdpFinder.activeDevices);
-    // const ssdpController: SSDPController = new SSDPController();
-    // ssdpController.start(10);
-
-    let configProvider = new BrsDebugConfigurationProvider(context, ssdpFinder);
+    let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();

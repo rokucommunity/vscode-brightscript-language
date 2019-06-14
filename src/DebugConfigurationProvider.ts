@@ -14,13 +14,13 @@ import * as util from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
-    public constructor(context: ExtensionContext, ssdpFinder: any) {
+    public constructor(context: ExtensionContext, activeDeviceManager: any) {
         this.context = context;
-        this.ssdpFinder = ssdpFinder;
+        this.activeDeviceManager = activeDeviceManager;
     }
 
     public context: ExtensionContext;
-    public ssdpFinder: any;
+    public activeDeviceManager: any;
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
@@ -71,8 +71,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         // #endregion
 
-        let devices = this.ssdpFinder.activeDevices;
-
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
@@ -95,55 +93,70 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
         }
 
-        //prompt for host if not hardcoded
+        let showInputBox = false;
+
+        // #region prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
-            if (this.ssdpFinder.activeDevices) {
+            let activeDevices = this.activeDeviceManager.getActiveDevices();
+
+            if (activeDevices) {
                 let items = [];
 
-                this.ssdpFinder.activeDevices.forEach((device) => {
-                    items.push(device.ip);
+                // activeDevices.map((activeDevice) => { return activeDevice.deviceInfo['device-id']; }).indexOf(address.deviceInfo['device-id']) === -1) {
+
+                Object.keys(activeDevices).map((key) => {
+                    let device = activeDevices[key];
+                    let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
+
+                    if (this.activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === this.activeDeviceManager.lastUsedDevice) {
+                        items.unshift(itemText);
+                    } else {
+                        items.push(itemText);
+                    }
                 });
 
-                config.host = await vscode.window.showQuickPick(items, { placeHolder: 'The IP address of your Roku device' });
+                // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
+                items.push('other');
+                let host = await vscode.window.showQuickPick(items, { placeHolder: 'Please Select a Roku or use the "other" option to enter a IP' });
 
-                console.log(config.host);
-                // config.host = await vscode.window.showQuickPick({
-                //     placeHolder: 'The IP address of your Roku device',
-                //     value: ''
-                // });
+                if (host === 'other') {
+                    showInputBox = true;
+                } else {
+                    let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
+                    let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
+                    if (defaultDeviceName) {
+                        this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
+                    }
+                    config.host = deviceIP;
+                }
             } else {
-                config.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
+                showInputBox = true;
             }
         }
 
+        if (showInputBox) {
+            config.host = await this.openInputBox('The IP address of your Roku device');
+        }
+        console.log(config.host);
+        // #endregion
+
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
-            config.password = await vscode.window.showInputBox({
-                placeHolder: 'The developer account password for your Roku device.',
-                value: ''
-            });
+            config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
             }
         }
+
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
             if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
-                let queryParams = await vscode.window.showInputBox({
-                    placeHolder: 'Querystring params for deep link',
-                    value: ''
-                });
+                let queryParams = await this.openInputBox('Querystring params for deep link');
                 config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
             }
             if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
-                config.deepLinkUrl = await vscode.window.showInputBox({
-                    placeHolder: 'Full deep link url',
-                    value: ''
-                });
+                config.deepLinkUrl = await this.openInputBox('Full deep link url');
             }
         }
 
@@ -185,6 +198,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
         }
         return config;
+    }
+
+    private async openInputBox(placeHolder: string, value: string = '') {
+        return await vscode.window.showInputBox({
+            placeHolder: placeHolder,
+            value: value
+        });
     }
 }
 

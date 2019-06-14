@@ -1,57 +1,57 @@
+import * as backoff from 'backoff';
 import { EventEmitter } from 'events';
+import * as xmlParser from 'fast-xml-parser';
 import * as http from 'http';
+import * as NodeCache from 'node-cache';
 import { Client as Client, SsdpHeaders } from 'node-ssdp';
 import * as url from 'url';
-// import _debug = require('debug');
-
-// const debug = _debug('roku-client:discover');
+import * as vscode from 'vscode';
 
 const DEFAULT_TIMEOUT = 10000;
 
-function parseAddress(location: string): object {
-    const parts = url.parse(location);
-    parts.path = undefined;
-    parts.pathname = undefined;
-    return { location: url.format(parts), ip: parts.hostname };
-}
-export class SSDPFinder extends EventEmitter {
+export class ActiveDeviceManager extends EventEmitter {
 
     constructor() {
         super();
 
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.showDeviceDetectionMessages = (config.info || {}).showDeviceDetectionMessages;
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.showDeviceDetectionMessages = (config.info || {}).showDeviceDetectionMessages;
+        });
+
+        this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
         this.activeDevices = [];
     }
 
     public activeDevices: any[] = [];
+    public lastUsedDevice: string;
+    private showDeviceDetectionMessages: boolean;
+    private deviceCache: NodeCache;
+    private exponentialBackoff: any;
 
-    /**
-     * Discover one Roku device on the network. Resolves to the first Roku device
-     * that responds to the ssdp request.
-     * @param timeout The time to wait in ms before giving up.
-     * @return A promise resolving to a Roku device's address.
-     */
-    public discover(timeout: number = DEFAULT_TIMEOUT): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const finder = new RokuFinder();
-            const startTime = Date.now();
-
-            function elapsedTime() {
-                return Date.now() - startTime;
-            }
-
-            finder.on('found', (address) => {
-                finder.stop();
-                // this.accessDevice(address);
-                resolve(address);
-                // debug(`found Roku device at ${address} after ${elapsedTime()}ms`);
-            });
-
-            finder.on('timeout', () => {
-                reject(new Error(`Could not find any Roku devices after ${timeout / 1000} seconds`));
-            });
-
-            finder.start(timeout);
+    public findDevices() {
+        this.exponentialBackoff = backoff.exponential({
+            randomisationFactor: 0,
+            initialDelay: 1000,
+            maxDelay: 30000
         });
+
+        this.exponentialBackoff.on('ready', (eventNumber, delay) => {
+            this.discoverAll(delay).then((ip) => {
+                ip = ip;
+            });
+            this.exponentialBackoff.backoff();
+        });
+
+        this.exponentialBackoff.backoff();
+    }
+
+    public stop() {
+        if (this.exponentialBackoff) {
+            this.exponentialBackoff.reset();
+        }
     }
 
     /**
@@ -61,7 +61,7 @@ export class SSDPFinder extends EventEmitter {
      * @param timeout The time to wait in ms before giving up.
      * @return A promise resolving to a list of Roku device addresses.
      */
-    public discoverAll( timeout: number = DEFAULT_TIMEOUT ): Promise<string[]> {
+    private discoverAll( timeout: number = DEFAULT_TIMEOUT ): Promise<string[]> {
         return new Promise((resolve, reject) => {
             const finder = new RokuFinder();
             const addresses: string[] = [];
@@ -92,13 +92,19 @@ export class SSDPFinder extends EventEmitter {
         });
     }
 
-    private async accessDevice(address: string) {
-        let deviceExists = false;
+    public getActiveDevices() {
+        let keys = this.deviceCache.keys();
+        let cache = this.deviceCache.mget(this.deviceCache.keys());
+        return this.deviceCache.mget(this.deviceCache.keys());
+    }
 
-        this.activeDevices.push(address);
-        // this.activeDevices.map((device) => {
-        //     // if (device.)
-        // });
+    private async accessDevice(address: any) {
+        if (this.deviceCache.get(address.deviceInfo['device-id']) === undefined) {
+            // New device found
+            vscode.window.showInformationMessage(`Device found: ${address.deviceInfo['default-device-name']}`);
+        }
+
+        this.deviceCache.set(address.deviceInfo['device-id'], address);
     }
 }
 
@@ -113,11 +119,13 @@ class RokuFinder extends EventEmitter {
             if (!this.running) {
                 return;
             }
+            let localHeaders = headers;
             const { ST, LOCATION } = headers;
             if (ST && LOCATION && ST.indexOf('roku') !== -1) {
                 http.get(`${LOCATION}/query/device-info`, (resp) => {
                     let data = '';
-                    // let LOCATION = LOCATION;
+                    let header = localHeaders;
+                    let loc = header.LOCATION;
 
                     // A chunk of data has been received.
                     resp.on('data', (chunk) => {
@@ -126,12 +134,15 @@ class RokuFinder extends EventEmitter {
 
                     // The whole response has been received. Print out the result.
                     resp.on('end', () => {
-                        console.log(data);
+                        let head = header;
+                        let info = xmlParser.parse(data);
+                        // console.log(data);
+                        const address = this.parseAddress(LOCATION);
+                        address.deviceInfo = info['device-info'];
+                        // address.CacheControl = headers['CACHE-CONTROL'].substring(headers['CACHE-CONTROL'].lastIndexOf('=') + 1);
+                        this.emit('found', address);
                     });
                 });
-
-                const address = parseAddress(LOCATION);
-                this.emit('found', address);
             }
         });
     }
@@ -140,6 +151,13 @@ class RokuFinder extends EventEmitter {
     private intervalId: NodeJS.Timer | null = null;
     private timeoutId: NodeJS.Timer | null = null;
     private running: boolean = false;
+
+    private parseAddress(location: string): any {
+        const parts = url.parse(location);
+        parts.path = undefined;
+        parts.pathname = undefined;
+        return { location: url.format(parts), ip: parts.hostname, deviceInfo: {} };
+    }
 
     public start(timeout: number) {
         // debug('beginning search for roku devices');

@@ -35,8 +35,8 @@ beforeEach(() => {
         }
     };
 
-    let ssdpFinder = {};
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, ssdpFinder);
+    let activeDeviceManager = {};
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
     c = configProvider;
     sinon = sinonImport.createSandbox();
 });
