@@ -35,10 +35,9 @@ import {
 } from './SymbolInformationRepository';
 
 let outputChannel: vscode.OutputChannel;
-let activeDeviceManager = new ActiveDeviceManager();
 
 export function activate(context: vscode.ExtensionContext) {
-    activeDeviceManager.findDevices();
+    let activeDeviceManager = new ActiveDeviceManager();
 
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({

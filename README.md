@@ -259,6 +259,8 @@ This extension contributes the following settings:
 * `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
 * `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
+* `brightscript.deviceDiscovery.showInfoMessages`: If set to true, a info toast will be shown when a Roku device has been found on the network.
+* `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus removing the need to constantly change the host IP in your config files.
 
 ## Roku Remote Control
 

@@ -497,6 +497,18 @@
                     "default": "FilenameAndFunction",
                     "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retriving videos for category id 23 \n Filename KeyLogtester.brs(24) [INFO] retriving videos for category id 23 \n FilenameAndFunction KeyLogtester.getVideos(24) [INFO] retriving videos for category id 23 \n Short #1 [INFO] retriving videos for category id 23 \n  Hidden [INFO] retriving videos for category id 23",
                     "scope": "resource"
+                },
+                "brightscript.deviceDiscovery.showInfoMessages": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, a info toast will be shown when a Roku device has been found on the network.",
+                    "scope": "resource"
+                },
+                "brightscript.deviceDiscovery.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus removing the need to constantly change the host IP in your config files.",
+                    "scope": "resource"
                 }
             }
         },
