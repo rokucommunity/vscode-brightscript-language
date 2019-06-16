@@ -99,7 +99,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
             let activeDevices = this.activeDeviceManager.getActiveDevices();
 
-            if (activeDevices) {
+            if (activeDevices && Object.keys(activeDevices).length) {
                 let items = [];
 
                 // Create the Quick Picker option items
