@@ -92,7 +92,22 @@
     },
     "main": "./out/extension",
     "activationEvents": [
-        "*"
+        "onDebug",
+        "onLanguage:brightscript",
+        "onLanguage:xml",
+        "onCommand:extension.brightscript.sendRemoteCommand",
+        "onCommand:extension.brightscript.pressBackButton",
+        "onCommand:extension.brightscript.pressHomeButton",
+        "onCommand:extension.brightscript.pressUpButton",
+        "onCommand:extension.brightscript.pressDownButton",
+        "onCommand:extension.brightscript.pressRightButton",
+        "onCommand:extension.brightscript.pressLeftButton",
+        "onCommand:extension.brightscript.pressSelectButton",
+        "onCommand:extension.brightscript.pressPlayButton",
+        "onCommand:extension.brightscript.pressRevButton",
+        "onCommand:extension.brightscript.pressFwdButton",
+        "onCommand:extension.brightscript.pressStarButton",
+        "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
         "breakpoints": [
