@@ -14,6 +14,7 @@ export class ActiveDeviceManager extends EventEmitter {
     constructor() {
         super();
         this.isRunning = false;
+        this.firstRequestForDevices = true;
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.enabled = (config.deviceDiscovery || {}).enabled;
@@ -29,6 +30,7 @@ export class ActiveDeviceManager extends EventEmitter {
         this.processEnabledState();
     }
 
+    public firstRequestForDevices: boolean;
     public lastUsedDevice: string;
     private enabled: boolean;
     private showInfoMessages: boolean;
@@ -38,7 +40,13 @@ export class ActiveDeviceManager extends EventEmitter {
 
     // Returns an object will all the active devices by device id
     public getActiveDevices() {
+        this.firstRequestForDevices = false;
         return this.deviceCache.mget(this.deviceCache.keys());
+    }
+
+    // Returns the device cache statistics.
+    public getCacheStats() {
+        return this.deviceCache.getStats();
     }
 
     // Will ether stop or start the watching process based on the running state and user settings
@@ -68,9 +76,7 @@ export class ActiveDeviceManager extends EventEmitter {
         });
 
         this.exponentialBackoff.on('ready', (eventNumber, delay) => {
-            this.discoverAll(delay).then((ip) => {
-                ip = ip;
-            });
+            this.discoverAll(delay);
             this.exponentialBackoff.backoff();
         });
 

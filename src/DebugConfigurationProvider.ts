@@ -17,6 +17,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public constructor(context: ExtensionContext, activeDeviceManager: any) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        });
     }
 
     public context: ExtensionContext;
@@ -25,6 +31,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
     public util = util;
+
+    private showDeviceInfoMessages: boolean;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -97,6 +105,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // #region prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
+            if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
+                let deviceWaitTime = 5000;
+                if (this.showDeviceInfoMessages) {
+                    vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
+                }
+
+                await util.delay(deviceWaitTime);
+            }
+
             let activeDevices = this.activeDeviceManager.getActiveDevices();
 
             if (activeDevices && Object.keys(activeDevices).length) {
@@ -122,13 +139,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
                 if (host === manualIpOption) {
                     showInputBox = true;
-                } else {
+                } else if (host) {
                     let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
                     let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
                     if (defaultDeviceName) {
                         this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
                     }
                     config.host = deviceIP;
+                } else {
+                    // User canceled. Give them one more change to enter an ip
+                    showInputBox = true;
                 }
             } else {
                 showInputBox = true;
