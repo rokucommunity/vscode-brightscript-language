@@ -9,6 +9,7 @@ import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
 import * as url from 'url';
 
+import { FilesType, RokuDeploy } from 'roku-deploy';
 import { inspect } from 'util';
 import {
     Breakpoint,
@@ -27,7 +28,6 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { ComponentLibraryServer } from './ComponentLibraryServer';
-
 import {
     EvaluateContainer,
     RokuAdapter
@@ -80,7 +80,7 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     //set imports as class properties so they can be spied upon during testing
-    public rokuDeploy = require('roku-deploy');
+    public rokuDeploy = require('roku-deploy') as RokuDeploy;
 
     private componentLibrariesOutDir: string;
     private componentLibraryServer = new ComponentLibraryServer();
@@ -144,6 +144,11 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * The path to the staging folder
+     */
+    private stagingPath: string;
+
     public launchRequestWasCalled = false;
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
@@ -162,10 +167,10 @@ export class BrightScriptDebugSession extends DebugSession {
 
             this.sendDebugLogLine('Moving selected files to staging area');
             //copy all project files to the staging folder
-            let stagingFolder = await this.rokuDeploy.prepublishToStaging(args);
+            this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
 
             //build a list of all files in the staging folder
-            this.loadStagingDirPaths(stagingFolder);
+            this.loadStagingDirPaths(this.stagingPath);
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
@@ -189,7 +194,7 @@ export class BrightScriptDebugSession extends DebugSession {
             }
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
-            await this.addBreakpointStatements(stagingFolder);
+            await this.addBreakpointStatements(this.stagingPath);
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
@@ -200,7 +205,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //create zip package from staging folder
             this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.rokuDeploy.zipPackage(args);
+            await this.rokuDeploy.zipPackage(args as any);
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
@@ -270,7 +275,7 @@ export class BrightScriptDebugSession extends DebugSession {
             //ignore the compile error failure from within the publish
             (args as any).failOnCompileError = false;
             //publish the package to the target Roku
-            await this.rokuDeploy.publish(args);
+            await this.rokuDeploy.publish(args as any);
 
             //tell the adapter adapter that the channel has been launched.
             await this.rokuAdapter.activate();
@@ -324,7 +329,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // #region Prepare the component libraries and create some name spacing for debugging
             for (const componentLibrary of componentLibraries as any) {
-                libraryNumber ++;
+                libraryNumber++;
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
@@ -955,6 +960,12 @@ export class BrightScriptDebugSession extends DebugSession {
         if (keys.length === 0) {
             throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub/function declared in your BrightScript project');
         }
+
+        //throw out any entry points from files not included in this project's `files` array
+        let files = await rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
+        let paths = files.map((x) => x.src);
+        keys = keys.filter((x) => paths.indexOf(x) > -1);
+
         let entryPath = keys[0];
 
         let entryLineContents = results[entryPath].line[0];
@@ -1211,6 +1222,11 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
      */
     enableLookupVariableNodeChildren: boolean;
+
+    /**
+     * The list of files that should be bundled during a debug session
+     */
+    files?: FilesType[];
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
