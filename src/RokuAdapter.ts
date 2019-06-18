@@ -184,8 +184,13 @@ export class RokuAdapter {
             //hook up the pipeline to the socket
             this.requestPipeline = new RequestPipeline(client);
 
-            //forward all raw counsole output
+            //forward all raw console output
             this.requestPipeline.on('console-output', (output) => {
+                let match;
+                if (match = /(\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d)+\])/g.exec(output)) {
+                    let newMatch = match;
+                }
+
                 this.processBreakpoints(output);
                 if (output) {
                     this.emit('console-output', output);
