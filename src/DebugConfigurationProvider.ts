@@ -33,14 +33,41 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //make sure we have an object
         config = config ? config : {} as any;
 
+        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [config.debugRootDir];
+                config.sourceDirs = [this.util.checkForTrailingSlash(config.debugRootDir)];
             }
+        } else if (config.sourceDirs) {
+            let dirs: string[] = [];
+
+            for (let dir of config.sourceDirs) {
+                dirs.push(this.util.checkForTrailingSlash(dir));
+            }
+            config.sourceDirs = dirs;
+        } else if (!config.sourceDirs) {
+            config.sourceDirs = [config.rootDir];
         }
+
+        // #region Prepare Component Library config items
+        if (config.componentLibraries) {
+            config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+
+            let compLibs: FilesType[][] = [];
+            for (let library of config.componentLibraries as any) {
+                library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                compLibs.push(library);
+            }
+            config.componentLibraries = compLibs;
+        } else {
+            config.componentLibraries = [];
+        }
+        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
+        // #endregion
 
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
@@ -49,7 +76,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
-        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
@@ -147,6 +173,9 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
+    componentLibrariesPort?; number;
+    componentLibrariesOutDir: string;
+    componentLibraries: FilesType[][];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];
