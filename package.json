@@ -169,17 +169,69 @@
                             },
                             "componentLibraries": {
                                 "type": "array",
-                                "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
-                                "default": [{
-                                    "rootDir": "${workspaceFolder}/LibDir/",
-                                    "outFile": "LibName.zip",
-                                    "files": [
-                                        "manifest",
-                                        "source/**/*.*",
-                                        "components/**/*.*",
-                                        "images/**/*.*"
-                                    ]
-                                }]
+                                "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
+                                "default": [
+                                    {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    }
+                                ],
+                                "items": {
+                                    "type": "object",
+                                    "description": "Component Library Schema.",
+                                    "default": {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    },
+                                    "required": [
+                                        "rootDir",
+                                        "outFile",
+                                        "files"
+                                    ],
+                                    "properties": {
+                                        "rootDir": {
+                                            "type": "string",
+                                            "description": "Root directory of source files for this component library.",
+                                            "examples": [
+                                                "${workspaceFolder}/LibDir/"
+                                            ]
+                                        },
+                                        "outFile": {
+                                            "type": "string",
+                                            "description": "Output file name. Used as the static file name for the zip.",
+                                            "default": "",
+                                            "examples": [
+                                                "LibName.zip"
+                                            ],
+                                            "pattern": "^(.*)(\\.zip)$"
+                                        },
+                                        "files": {
+                                            "type": "array",
+                                            "description": "A file path or file glob that should be copied to the deployment package.",
+                                            "default": [
+                                                "manifest",
+                                                "source/**/*.*",
+                                                "components/**/*.*",
+                                                "assets/**/*.*"
+                                            ],
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
                             },
                             "outDir": {
                                 "type": "string",
