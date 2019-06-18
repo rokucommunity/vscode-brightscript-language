@@ -14,21 +14,22 @@ A VSCode extension to support Roku's BrightScript language.
   - logpoints
   - hit count breakpoints
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
+  - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
 - Find usages (Shift+F12)
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
-- Roku remote control from keyboard ([click here](#Roku-Remote-Control) for for more information)
+- Roku remote control from keyboard ([click here](#Roku-Remote-Control) for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
 - Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
-	- Configure `brightscript.output.hyperlinkFormat` as follows:
-	  - **Full**	`pkg:/components/KeyLogTester.brs(24:0)`
-	  - **FilenameAndFunction**	`KeyLogTester.DoSomething(24:0)`
-	  - **Filename**	`KeyLogtester.brs(24)`
-	  - **Short**	`#1`
-	  - **Hidden**	``
+    - Configure `brightscript.output.hyperlinkFormat` as follows:
+      - **Full** `pkg:/components/KeyLogTester.brs(24:0)`
+      - **FilenameAndFunction** `KeyLogTester.DoSomething(24:0)`
+      - **Filename** `KeyLogtester.brs(24)`
+      - **Short** `#1`
+      - **Hidden** ``
 - Marking the output log (CTRL+L)
 - Clearing the output log (CTRL+K), which also clears the mark indexes - **be sure to use the extension's command for clearing, or you may find that your hyperlinks and filters get out of sync**
 - Filtering the output log - 3 filters are available:
@@ -161,8 +162,70 @@ If you have a custom build process that pulls in files from multiple source dire
         }
     ]
 }
+```
+
+## Component Libraries
+If you are working on custom component libraries you can define them in the launch.json file. The extension will automatically zip and statically host your component libraries. The library folder(s) can ether be in your project or in another workspace on your machine.
+
+`launch.json` configuration options:
+
+
+- `componentLibraries`: This field takes an array of library configuration objects allowing you to work on more than one library at a time. For the examples, there will only be one library configured but you can simply add more if you need to. Each object in the `componentLibraries` field requires three values.
+  - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
+  - `outFile`: The name of the zip file that your channel code will download as a component library.
+  - `files`: A file path or file glob that should be copied to the deployment package.
+- `componentLibrariesPort`: Port to access component libraries. Default: `8080`
+- `componentLibrariesOutDir`: Output folder the component libraries will be hosted in. Default: `"${workspaceFolder}/libs"`
+
+
+**Example:**
+- .vscode
+    - launch.json
+- manifest
+- components/
+    - HomeScene.brs
+    - HomeScene.xml
+- source/
+    - main.brs
+- customLibrary
+    - manifest
+    - components/
+        - CustomButton.brs
+        - CustomButton.xml
+        - CustomTextInput.brs
+        - CustomTextInput.xml
+
+Here's a sample launch.json for this scenario:
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "brightscript",
+            ...
+            "rootDir": "${workspaceFolder}",
+            "files": [
+                "manifest",
+                "source/**/*.*",
+                "components/**/*.*"
+            ],
+            "componentLibraries": [
+                {
+                    "rootDir": "${workspaceFolder}/customLibrary/",
+                    "outFile": "customLibrary.zip",
+                    "files": [
+                        "manifest",
+                        "components/**/*.*"
+                    ]
+                }
+            ]
+        }
+    ]
+}
 
 ```
+
 
 ## Deep Linking / ECP
 You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.
@@ -223,10 +286,10 @@ This extension sends keypresses to the Roku device through Roku's [External Cont
 You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
 ```json
 {
-	"key": "Space",
-	"command": "extension.brightscript.sendRemoteCommand",
-	"args": "Lit_%20",
-	"when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+    "key": "Space",
+    "command": "extension.brightscript.sendRemoteCommand",
+    "args": "Lit_%20",
+    "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
 }
 ```
 
@@ -276,9 +339,9 @@ This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm modul
 You can often find pre-release versions of this extension under the [GitHub Releases](https://github.com/TwitchBronBron/vscode-brightscript-language/releases) page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the `.vsix` is the next-best option at this point. Here's how it works.
 
 1. Download `.vsix` file for version of the extension you want from [the releases page](https://github.com/TwitchBronBron/vscode-brightscript-language/releases);
-1. Open Visual Studio Code and click the "extensions" tab.
-1. Choose "Install from VSIX..." ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
-1. Select the file you downloaded from step 1.
+2. Open Visual Studio Code and click the "extensions" tab.
+3. Choose "Install from VSIX..." ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
+4. Select the file you downloaded from step 1.
 
 ### Reinstalling store version of the extension
 This process will REPLACE any existing version of the extension you have installed from the store. So, if you want to go back to using the store version, you need to uninstall the extension completely, and then install the extension through the VSCode store.
