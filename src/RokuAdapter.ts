@@ -939,27 +939,39 @@ export class RokuAdapter {
                 if (trimmedLine === '}') {
                     return children;
                 }
-
+                let child: EvaluateContainer;
                 //parse the line (try and determine the key and value)
                 let lineParseResult = new PrintedObjectParser(line).result;
-
-                let child = <EvaluateContainer>{
-                    name: lineParseResult.key,
-                    evaluateName: `${expression}.${lineParseResult.key}`,
-                    children: []
-                };
-
-                const type = this.getHighLevelTypeDetails(trimmedLine);
-                //if the line is an object, array or function
-                if (type) {
-                    child.type = type;
-                    child.highLevelType = this.getHighLevelType(type);
-                    child.value = type;
+                if (!lineParseResult) {
+                    //skip this line because something strange happened, or we encountered the `...`
+                    child = {
+                        name: line,
+                        type: '<ERROR>',
+                        highLevelType: HighLevelType.uninitialized,
+                        evaluateName: undefined,
+                        value: '<ERROR>',
+                        children: []
+                    };
                 } else {
-                    child.type = this.getPrimativeTypeFromValue(trimmedLine);
-                    child.value = lineParseResult.value;
-                    child.highLevelType = HighLevelType.primative;
+                    child = <EvaluateContainer>{
+                        name: lineParseResult.key,
+                        evaluateName: `${expression}.${lineParseResult.key}`,
+                        children: []
+                    };
+
+                    const type = this.getHighLevelTypeDetails(trimmedLine);
+                    //if the line is an object, array or function
+                    if (type) {
+                        child.type = type;
+                        child.highLevelType = this.getHighLevelType(type);
+                        child.value = type;
+                    } else {
+                        child.type = this.getPrimativeTypeFromValue(trimmedLine);
+                        child.value = lineParseResult.value;
+                        child.highLevelType = HighLevelType.primative;
+                    }
                 }
+
                 children.push(child);
             }
             return children;
