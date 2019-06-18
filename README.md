@@ -122,7 +122,7 @@ If you have a build process that moves files from a source directory to an outpu
 
 Here's a sample launch.json for this scenario:
 
-```
+```json
 {
     "version": "0.2.0",
     "configurations": [
@@ -144,7 +144,7 @@ Here's a sample launch.json for this scenario:
 ### Multiple source dirs
 If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
 
-```
+```json
 {
     "version": "0.2.0",
     "configurations": [
@@ -167,12 +167,12 @@ If you have a custom build process that pulls in files from multiple source dire
 ## Deep Linking / ECP
 You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.
 
-```
+```json
 {
     "type": "brightscript",
     "rootDir": "${workspaceFolder}/dist",
     "host": "192.168.1.2",
-    "deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}
+    "deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}"
 }
 ```
 There are several string placeholders you can use when defining your deep link url, but none of them are required.
@@ -221,7 +221,7 @@ This extension sends keypresses to the Roku device through Roku's [External Cont
 |`win+8` (or `cmd+8` on mac) | Info Button | `extension.brightscript.pressStarButton` |
 
 You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
-```
+```json
 {
 	"key": "Space",
 	"command": "extension.brightscript.sendRemoteCommand",
@@ -243,7 +243,7 @@ You also have the ability to create keybindings for any other Roku supported key
 ## Config file for user-specific launch settings
 If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${end:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
 
-```javascript
+```json
 //launch.json
 
 {
