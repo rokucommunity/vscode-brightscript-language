@@ -53,21 +53,21 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.sourceDirs = [config.rootDir];
         }
 
+        // #region Prepare Component Library config items
         if (config.componentLibraries) {
-            if (!config.componentLibrariesOutDir) {
-                throw new Error('Cannot set componentLibraries in the launch.json without setting the componentLibrariesOutDir');
-            } else {
-                config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir);
-                let compLibs: FilesType[][] = [];
-                for (let library of config.componentLibraries as any) {
-                    library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
-                    compLibs.push(library);
-                }
-                config.componentLibraries = compLibs;
+            config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+
+            let compLibs: FilesType[][] = [];
+            for (let library of config.componentLibraries as any) {
+                library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                compLibs.push(library);
             }
+            config.componentLibraries = compLibs;
         } else {
             config.componentLibraries = [];
         }
+        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
+        // #endregion
 
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
@@ -75,7 +75,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.password = config.password ? config.password : '${promptForPassword}';
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
-        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
