@@ -34,7 +34,9 @@ beforeEach(() => {
             update: () => { return Promise.resolve(); }
         }
     };
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context);
+
+    let activeDeviceManager = {};
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
     c = configProvider;
     sinon = sinonImport.createSandbox();
 });

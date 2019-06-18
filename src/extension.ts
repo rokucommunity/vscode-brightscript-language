@@ -15,6 +15,7 @@ import {
     WorkspaceSymbolProvider,
 } from 'vscode';
 
+import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -36,6 +37,8 @@ import {
 let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
+    let activeDeviceManager = new ActiveDeviceManager();
+
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
         language: 'brightscript',
@@ -43,7 +46,7 @@ export function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    let configProvider = new BrsDebugConfigurationProvider(context);
+    let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();
