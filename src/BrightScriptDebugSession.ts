@@ -539,6 +539,12 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
                 childVariables = v.childVariables;
             }
+
+            //if the variable is an array, send only the requested range
+            if (Array.isArray(childVariables) && args.filter === 'indexed') {
+                //only send the variable range requested by the debugger
+                childVariables = childVariables.slice(args.start, args.start + args.count);
+            }
             response.body = {
                 variables: childVariables
             };
