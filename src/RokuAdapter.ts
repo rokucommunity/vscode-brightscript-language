@@ -12,9 +12,10 @@ import { PrintedObjectParser } from './PrintedObjectParser';
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
 export class RokuAdapter {
-    constructor(private host: string,
-                private enableDebuggerAutoRecovery: boolean = false,
-                private enableLookupVariableNodeChildren: boolean = false) {
+    constructor(
+        private host: string,
+        private enableDebuggerAutoRecovery: boolean = false,
+        private enableLookupVariableNodeChildren: boolean = false) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
         this.startCompilingLine = -1;
@@ -663,7 +664,12 @@ export class RokuAdapter {
      * @param value
      */
     private getHighLevelTypeDetails(value: string) {
-        return /<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
+        const match = /<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -720,6 +726,24 @@ export class RokuAdapter {
             //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
             if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                 data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
+
+                //write a for loop to print every value from the array. This gets around the `...` after the 100th item issue in the roku print call
+            } else if (lowerExpressionType === 'roarray' || lowerExpressionType === 'rolist') {
+                // //get the data type of each array item
+                // let dataTypes = await this.requestPipeline.executeCommand(`for each item in ${expression} : print Type(item) : end for`, true);
+
+                // //we can't do a conditional statement inside a for loop for some reason...so we need to build a large one-line print statement
+                // //for every item in the array, wrapping the string items in quotes
+                // let dataTypeLines = eol.split(dataTypes);
+                // let command = '';
+                // for (let dataType of dataTypes) {
+                //     dataType = dataType.trim();
+
+                // }
+
+                data = await this.requestPipeline.executeCommand(
+                    `for each item in ${expression} : print "vscode_isString_"; (invalid <> GetInterface(item, "ifString")); item : end for`
+                    , true);
             } else {
                 data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
             }
@@ -743,7 +767,8 @@ export class RokuAdapter {
                 if (highLevelType === 'object') {
                     children = this.getObjectChildren(expression, value);
                 } else if (highLevelType === 'array') {
-                    children = this.getArrayOrListChildren(expression, value);
+                    //the array print is a loop of every value, so handle that
+                    children = this.getForLoopPrintedArrayChildren(expression, value);
                 }
                 if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
                     let nodeChildren = <EvaluateContainer>{
@@ -770,6 +795,72 @@ export class RokuAdapter {
     }
 
     /**
+     * In order to get around the `...` issue in printed arrays, `getVariable` now prints every value from an array in a for loop.
+     * As such, we need to iterate over every printed result to produce the children array
+     */
+    private getForLoopPrintedArrayChildren(expression: string, data: string) {
+        let children = [] as EvaluateContainer[];
+        let lines = eol.split(data);
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            let line = lines[lineIndex];
+
+            let child = <EvaluateContainer>{
+                name: children.length.toString(),
+                evaluateName: `${expression}[${children.length}]`,
+                children: []
+            };
+
+            if (line.indexOf('vscode_isString_true') > -1) {
+                line = line.replace('vscode_isString_true', '"') + '"';
+            } else {
+                line = line.replace('vscode_isString_false', '');
+            }
+
+            //handle collections
+            if (line.indexOf('<Component: roList>') > -1 || line.indexOf('<Component: roArray>') > -1) {
+                let collectionEnd: ')' | ']';
+                if (line.indexOf('<Component: roList>') > -1) {
+                    collectionEnd = ')';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = this.getHighLevelTypeDetails(line);
+                } else if (line.indexOf('<Component: roArray>') > -1) {
+                    collectionEnd = ']';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = this.getHighLevelTypeDetails(line);
+                }
+
+                let collectionLines = line;
+                inner: for (lineIndex = lineIndex + 1; lineIndex < lines.length; lineIndex++) {
+                    let innerLine = lines[lineIndex];
+
+                    collectionLines += '\n' + lines[lineIndex];
+
+                    //stop collecting lines
+                    if (innerLine.trim() === collectionEnd) {
+                        break inner;
+                    }
+                }
+                //if the next-to-last line of collection is `...`, then scrap the values
+                //because we will need to run a full evaluation (later) to get around the `...` issue
+                if (lines[lineIndex - 1].trim() === '...') {
+                    child.children = [];
+
+                    //get all of the array children right now since we have them
+                } else {
+                    child.children = this.getArrayOrListChildren(child.evaluateName, collectionLines);
+                }
+            } else {
+                //is some primative type
+                child.type = this.getPrimativeTypeFromValue(line);
+                child.value = line;
+                child.highLevelType = HighLevelType.primative;
+            }
+            children.push(child);
+        }
+        return children;
+    }
+
+    /**
      * Get all of the children of an array or list
      */
     private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
@@ -783,7 +874,7 @@ export class RokuAdapter {
         } else {
             collectionEnd = ']';
         }
-        let children: EvaluateContainer[] = [];
+        let children = [] as EvaluateContainer[];
         //split by newline. the array contents start at index 2
         let lines = eol.split(data);
         let arrayIndex = 0;
@@ -858,10 +949,9 @@ export class RokuAdapter {
                     children: []
                 };
 
-                const highLevelTypeMatch = this.getHighLevelTypeDetails(trimmedLine);
+                const type = this.getHighLevelTypeDetails(trimmedLine);
                 //if the line is an object, array or function
-                if (highLevelTypeMatch) {
-                    let type = highLevelTypeMatch[1];
+                if (type) {
                     child.type = type;
                     child.highLevelType = this.getHighLevelType(type);
                     child.value = type;
