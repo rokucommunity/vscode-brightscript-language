@@ -75,3 +75,11 @@ export async function fileExists(filePath: string) {
         fsExtra.exists(filePath, resolve);
     });
 }
+
+/**
+ * Creates a delay in execution
+ * @param ms time to delay in milliseconds
+ */
+export async function delay(ms: number) {
+    return new Promise( (resolve) => setTimeout(resolve, ms) );
+}
