@@ -220,6 +220,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.17.0] - 2019-06-18
+### Added
+ - support for hosting and debugging component libraries. ([#161](https://github.com/TwitchBronBron/vscode-brightscript-language/pull/161))
+ - Dropdown during launch allowing you to pick from a list of Rokus found on local network. ([#156](https://github.com/TwitchBronBron/vscode-brightscript-language/pull/156))
+ - Upgraded to brightscript-formatter@1.6.0, and added new extension settings:
+   - brightscript.format.formatInteriorWhitespace
+   - brightscript.format.insertSpaceBeforeFunctionParenthesis
+   - brightscript.format.insertSpaceBetweenEmptyCurlyBraces
+
+
+
 ## [1.16.0] - 2019-06-11
 ### Added
  - added launch config setting `stopDebuggerOnAppExit` which monitors the console output, and automatically ends the debug session when detected.
@@ -503,6 +514,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
 
+[1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0

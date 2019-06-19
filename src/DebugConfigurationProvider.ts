@@ -15,15 +15,25 @@ import * as util from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
-    public constructor(context: ExtensionContext) {
+    public constructor(context: ExtensionContext, activeDeviceManager: any) {
         this.context = context;
+        this.activeDeviceManager = activeDeviceManager;
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        });
     }
 
     public context: ExtensionContext;
+    public activeDeviceManager: any;
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
     public util = util;
+
+    private showDeviceInfoMessages: boolean;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -60,14 +70,41 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config = Object.assign({}, brsconfig, config);
         }
 
+        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [config.debugRootDir];
+                config.sourceDirs = [this.util.checkForTrailingSlash(config.debugRootDir)];
             }
+        } else if (config.sourceDirs) {
+            let dirs: string[] = [];
+
+            for (let dir of config.sourceDirs) {
+                dirs.push(this.util.checkForTrailingSlash(dir));
+            }
+            config.sourceDirs = dirs;
+        } else if (!config.sourceDirs) {
+            config.sourceDirs = [config.rootDir];
         }
+
+        // #region Prepare Component Library config items
+        if (config.componentLibraries) {
+            config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+
+            let compLibs: FilesType[][] = [];
+            for (let library of config.componentLibraries as any) {
+                library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                compLibs.push(library);
+            }
+            config.componentLibraries = compLibs;
+        } else {
+            config.componentLibraries = [];
+        }
+        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
+        // #endregion
 
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
@@ -76,7 +113,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
-        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
@@ -102,39 +138,83 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
         }
 
-        //prompt for host if not hardcoded
+        let showInputBox = false;
+
+        // #region prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
-            config.host = await vscode.window.showInputBox({
-                placeHolder: 'The IP address of your Roku device',
-                value: ''
-            });
+            if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
+                let deviceWaitTime = 5000;
+                if (this.showDeviceInfoMessages) {
+                    vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
+                }
+
+                await util.delay(deviceWaitTime);
+            }
+
+            let activeDevices = this.activeDeviceManager.getActiveDevices();
+
+            if (activeDevices && Object.keys(activeDevices).length) {
+                let items = [];
+
+                // Create the Quick Picker option items
+                Object.keys(activeDevices).map((key) => {
+                    let device = activeDevices[key];
+                    let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
+
+                    if (this.activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === this.activeDeviceManager.lastUsedDevice) {
+                        items.unshift(itemText);
+                    } else {
+                        items.push(itemText);
+                    }
+                });
+
+                // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
+                let manualIpOption = 'Other';
+                items.push(manualIpOption);
+
+                let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
+
+                if (host === manualIpOption) {
+                    showInputBox = true;
+                } else if (host) {
+                    let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
+                    let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
+                    if (defaultDeviceName) {
+                        this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
+                    }
+                    config.host = deviceIP;
+                } else {
+                    // User canceled. Give them one more change to enter an ip
+                    showInputBox = true;
+                }
+            } else {
+                showInputBox = true;
+            }
         }
+
+        if (showInputBox) {
+            config.host = await this.openInputBox('The IP address of your Roku device');
+        }
+        console.log(config.host);
+        // #endregion
 
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
-            config.password = await vscode.window.showInputBox({
-                placeHolder: 'The developer account password for your Roku device.',
-                value: ''
-            });
+            config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
             }
         }
+
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
             if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
-                let queryParams = await vscode.window.showInputBox({
-                    placeHolder: 'Querystring params for deep link',
-                    value: ''
-                });
+                let queryParams = await this.openInputBox('Querystring params for deep link');
                 config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
             }
             if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
-                config.deepLinkUrl = await vscode.window.showInputBox({
-                    placeHolder: 'Full deep link url',
-                    value: ''
-                });
+                config.deepLinkUrl = await this.openInputBox('Full deep link url');
             }
         }
 
@@ -177,6 +257,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
         return config;
     }
+
+    private async openInputBox(placeHolder: string, value: string = '') {
+        return await vscode.window.showInputBox({
+            placeHolder: placeHolder,
+            value: value
+        });
+    }
 }
 
 export interface BrightScriptDebugConfiguration extends DebugConfiguration {
@@ -184,6 +271,9 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
+    componentLibrariesPort?; number;
+    componentLibrariesOutDir: string;
+    componentLibraries: FilesType[][];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];

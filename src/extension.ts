@@ -26,6 +26,7 @@ import {
     TransportKind
 } from 'vscode-languageclient';
 
+import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -48,7 +49,9 @@ let outputChannel: vscode.OutputChannel;
 let client: LanguageClient;
 
 export async function activate(context: vscode.ExtensionContext) {
+    let activeDeviceManager = new ActiveDeviceManager();
     await configureLanguageServer(context);
+
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
         language: 'brightscript',
@@ -56,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
-    let configProvider = new BrsDebugConfigurationProvider(context);
+    let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();
