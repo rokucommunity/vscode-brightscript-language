@@ -401,7 +401,8 @@ export class BrightScriptDebugSession extends DebugSession {
             for (let clientPath in this.breakpointsByClientPath) {
                 let included = false;
                 for (const fromRootPath of sourcePaths) {
-                    if (clientPath.includes(path.normalize(fromRootPath + path.sep))) {
+                    // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
+                    if (clientPath.toLowerCase().includes(path.normalize((fromRootPath + path.sep).toLowerCase()))) {
                         included = true;
                         break;
                     }
@@ -418,7 +419,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
         if (fromRootPath && toRootPath) {
             for (let clientPath in this.breakpointsByClientPath) {
-                if (clientPath.includes(fromRootPath)) {
+                // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
+                if (clientPath.toLowerCase().includes(fromRootPath.toLowerCase())) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
                     this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
 
