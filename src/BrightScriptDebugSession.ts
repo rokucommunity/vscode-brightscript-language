@@ -402,7 +402,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 let included = false;
                 for (const fromRootPath of sourcePaths) {
                     // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
-                    if (clientPath.toLowerCase().includes(path.normalize((fromRootPath + path.sep).toLowerCase()))) {
+                    if (pathIncludesCaseInsensitive(clientPath, fromRootPath + path.sep)) {
                         included = true;
                         break;
                     }
@@ -420,12 +420,12 @@ export class BrightScriptDebugSession extends DebugSession {
         if (fromRootPath && toRootPath) {
             for (let clientPath in this.breakpointsByClientPath) {
                 // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
-                if (clientPath.toLowerCase().includes(fromRootPath.toLowerCase())) {
+                if (pathIncludesCaseInsensitive(clientPath, fromRootPath)) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
                     this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
 
                     // Make sure the debugClientPath is not the same as the clientPath.
-                    if (debugClientPath !== clientPath) {
+                    if (path.normalize(debugClientPath).toLowerCase() !== path.normalize(clientPath).toLowerCase()) {
                         this.deleteBreakpointsForClientPath(clientPath);
                     }
                 }
@@ -857,7 +857,7 @@ export class BrightScriptDebugSession extends DebugSession {
     public async addBreakpointStatements(stagingPath: string, basePath: string = this.baseProjectPath) {
         let promises = [];
         let addBreakpointsToFile = async (clientPath, basePath) => {
-            let breakpoints = this.breakpointsByClientPath[clientPath];
+            let breakpoints = this.getBreakpointsForClientPath(clientPath);
             let stagingFilePath: string;
             //find the manifest file for the file
             clientPath = path.normalize(clientPath);
@@ -865,7 +865,7 @@ export class BrightScriptDebugSession extends DebugSession {
             basePath = path.normalize(basePath);
 
             // Make sure the breakpoint to be added is for this base path
-            if (clientPath.includes(basePath)) {
+            if (pathIncludesCaseInsensitive(clientPath, basePath)) {
                 let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
                 //load the file as a string
@@ -1276,6 +1276,18 @@ export function defer<T>() {
             return this.isResolved || this.isRejected;
         }
     };
+}
+
+/**
+ * Determines if the `subject` path includes `search` path, with case sensitive compariosn
+ * @param subject
+ * @param search
+ */
+export function pathIncludesCaseInsensitive(subject: string, search: string) {
+    if (!subject || !search) {
+        return false;
+    }
+    return path.normalize(subject.toLowerCase()).indexOf(path.normalize(search.toLowerCase())) > -1;
 }
 
 export function replaceCaseInsensitive(subject: string, search: string, replacement: string) {
