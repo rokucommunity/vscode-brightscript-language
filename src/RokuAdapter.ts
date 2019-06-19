@@ -25,6 +25,7 @@ export class RokuAdapter {
         this.compilingLines = [];
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.rendezvousTracker = new RendezvousTracker();
     }
 
     private status: RokuAdapterStatus;
@@ -87,7 +88,6 @@ export class RokuAdapter {
 
     public async activate() {
         this.isActivated = true;
-        this.rendezvousTracker = new RendezvousTracker();
         this.handleStartupIfReady();
     }
 
@@ -189,9 +189,6 @@ export class RokuAdapter {
 
             //forward all raw console output
             this.requestPipeline.on('console-output', (output) => {
-                if (!this.rendezvousTracker.processLogLine(output)) {
-                }
-
                 this.processBreakpoints(output);
                 if (output) {
                     this.emit('console-output', output);
@@ -208,10 +205,12 @@ export class RokuAdapter {
                     return;
                 }
 
-                //forward all unhandled console output
-                this.processBreakpoints(responseText);
-                if (responseText) {
-                    this.emit('unhandled-console-output', responseText);
+                if (!this.rendezvousTracker.processLogLine(responseText)) {
+                    //forward all unhandled console output
+                    this.processBreakpoints(responseText);
+                    if (responseText) {
+                        this.emit('unhandled-console-output', responseText);
+                    }
                 }
 
                 this.processUnhandledLines(responseText);
