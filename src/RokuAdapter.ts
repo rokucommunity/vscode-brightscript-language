@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
+import { RendezvousTracker } from './RendezvousTracker';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -37,6 +38,7 @@ export class RokuAdapter {
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
+    private rendezvousTracker: RendezvousTracker;
 
     private cache = {};
 
@@ -85,6 +87,7 @@ export class RokuAdapter {
 
     public async activate() {
         this.isActivated = true;
+        this.rendezvousTracker = new RendezvousTracker();
         this.handleStartupIfReady();
     }
 
@@ -186,9 +189,7 @@ export class RokuAdapter {
 
             //forward all raw console output
             this.requestPipeline.on('console-output', (output) => {
-                let match;
-                if (match = /(\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d)+\])/g.exec(output)) {
-                    let newMatch = match;
+                if (!this.rendezvousTracker.processLogLine(output)) {
                 }
 
                 this.processBreakpoints(output);
