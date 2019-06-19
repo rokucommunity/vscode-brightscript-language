@@ -254,6 +254,9 @@ This extension contributes the following settings:
 * `brightscript.format.keywordCase`: specify case of keywords when formatting
 * `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
 * `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
+* `brightscript.format.formatInteriorWhitespace`: If true (the default), all whitespace between items is reduced to exactly 1 space character, and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)
+* `brightscript.format.insertSpaceBeforeFunctionParenthesis`:  If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).
+* `brightscript.format.insertSpaceBetweenEmptyCurlyBraces`:  if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)
 * `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
 * `brightscript.output.focusOnLaunch`: If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
 * `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
