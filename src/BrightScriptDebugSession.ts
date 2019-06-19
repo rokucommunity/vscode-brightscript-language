@@ -964,7 +964,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
 
         //throw out any entry points from files not included in this project's `files` array
-        let files = await rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
+        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
         let paths = files.map((x) => x.src);
         keys = keys.filter((x) => paths.indexOf(x) > -1);
 
