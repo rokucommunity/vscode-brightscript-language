@@ -67,6 +67,8 @@ describe('Debugger', () => {
                 return Promise.resolve();
             },
             getOptions: () => {
+            },
+            getFilePaths: () => {
             }
         };
         (session as any).rokuAdapter = rokuAdapter;
@@ -302,7 +304,21 @@ describe('Debugger', () => {
             fsExtra.mkdirSync(folder);
 
             let filePath = path.resolve(`${folder}/main.brs`);
+
+            //prevent actually talking to the file system...just hardcode the list to exactly our main file
+            (session.rokuDeploy as any).getFilePaths = function() {
+                return [{
+                    src: filePath,
+                    dest: filePath
+                }];
+            };
+
             fsExtra.writeFileSync(filePath, fileContents);
+            (session as any).launchArgs = {
+                files: [
+                    folder + '/**/*'
+                ]
+            };
             let entryPoint = await session.findEntryPoint(folder);
             expect(entryPoint.path).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
