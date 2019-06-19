@@ -205,12 +205,11 @@ export class RokuAdapter {
                     return;
                 }
 
-                if (!this.rendezvousTracker.processLogLine(responseText)) {
-                    //forward all unhandled console output
-                    this.processBreakpoints(responseText);
-                    if (responseText) {
-                        this.emit('unhandled-console-output', responseText);
-                    }
+                responseText = this.rendezvousTracker.processLogLine(responseText);
+                //forward all unhandled console output
+                this.processBreakpoints(responseText);
+                if (responseText) {
+                    this.emit('unhandled-console-output', responseText);
                 }
 
                 this.processUnhandledLines(responseText);

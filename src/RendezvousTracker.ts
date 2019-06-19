@@ -6,12 +6,20 @@ export class RendezvousTracker {
 
     private rendezvousHistory: object;
 
-    public processLogLine(logLine: string): boolean {
-        let match;
-        if (match = /(\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d+)\])[\s\w]+(?:[?<=\s](\w+:\/[\w\/]+\.brs)\((\d+)\)|(\d+\.\d+)|\n)/g.exec(logLine)) {
-            let newMatch = match;
-            return true;
-        }
-        return false;
+    public processLogLine(logLine: string): string {
+        let lines = logLine.split('\n');
+
+        let normalOutput = '';
+
+        lines.map((line) => {
+            let match;
+            if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*brs)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
+                let newMatch = match;
+            } else if (line) {
+                normalOutput += line + '\n';
+            }
+        });
+
+        return normalOutput;
     }
 }
