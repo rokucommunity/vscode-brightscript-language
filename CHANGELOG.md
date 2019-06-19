@@ -273,6 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0
