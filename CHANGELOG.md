@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [999-0.0-languageserver-beta29] - 2019-06-21
+### Added
+ - all changes from [v1.17.1](#1171---2019-06-21)
+
+
+
 ## [999.0.0-languageserver-beta28] - 2019-06-18
 ### Added
  - all changes from [v1.17.0](#1170---2019-06-18)
@@ -226,6 +232,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.0-beta1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.17.1] - 2019-06-21
+### Fixed
+ - regression issue with `formatIndent`
+
+
+
 ## [1.17.0] - 2019-06-18
 ### Added
  - support for hosting and debugging component libraries. ([#161](https://github.com/TwitchBronBron/vscode-brightscript-language/pull/161))
@@ -492,7 +504,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-[999.0.0-languageserver-beta27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta27...v999.0.0-languageserver-beta28
+[999.0.0-languageserver-beta29]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta28...v999.0.0-languageserver-beta29
+[999.0.0-languageserver-beta28]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta27...v999.0.0-languageserver-beta28
 [999.0.0-languageserver-beta27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta26...v999.0.0-languageserver-beta27
 [999.0.0-languageserver-beta26]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta25...v999.0.0-languageserver-beta26
 [999.0.0-languageserver-beta25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta24...v999.0.0-languageserver-beta25
@@ -521,6 +534,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.9.0-beta2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0-beta1...v1.9.0-beta2
 [1.9.0-beta1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.9.0-beta1
 
+[1.17.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
