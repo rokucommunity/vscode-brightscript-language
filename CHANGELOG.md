@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.29] - 2019-06-21
+### Added
+ - all changes from [v1.17.1](#1171---2019-06-21)
+
+
+
 ## [2.0.0-beta.28] - 2019-06-18
 ### Added
  - all changes from [v1.17.0](#1170---2019-06-18)
@@ -226,6 +232,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-beta.1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.17.1] - 2019-06-21
+### Fixed
+ - regression issue with `formatIndent`
+
+
+
 ## [1.17.0] - 2019-06-18
 ### Added
  - support for hosting and debugging component libraries. ([#161](https://github.com/TwitchBronBron/vscode-brightscript-language/pull/161))
@@ -492,7 +504,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-[2.0.0-beta.27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
+[2.0.0-beta.29]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.28...v2.0.0-beta.29
+[2.0.0-beta.28]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
 [2.0.0-beta.27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.26...v2.0.0-beta.27
 [2.0.0-beta.26]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
 [2.0.0-beta.25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
@@ -521,6 +534,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.17.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
