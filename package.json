@@ -423,6 +423,12 @@
             "type": "object",
             "title": "BrightScript configuration",
             "properties": {
+                "brightscript.format.formatIndent": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true, lines are indented based on what they are nested inside of. If false, all leading whitespace is left alone.",
+                    "scope": "resource"
+                },
                 "brightscript.format.formatInteriorWhitespace": {
                     "type": "boolean",
                     "default": true,
