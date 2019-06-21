@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
-import { RendezvousTracker } from './RendezvousTracker';
+import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -26,6 +26,10 @@ export class RokuAdapter {
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
         this.rendezvousTracker = new RendezvousTracker();
+
+        this.rendezvousTracker.on('rendezvous-event', (output) => {
+            this.emit('rendezvous-event', output);
+        });
     }
 
     private status: RokuAdapterStatus;
@@ -53,6 +57,7 @@ export class RokuAdapter {
     public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);
     public on(eventName: 'start', handler: () => void);
@@ -66,7 +71,9 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?) {
+    private emit(
+        eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'rendezvous-event' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?
+        ) {
         this.emitter.emit(eventName, data);
     }
 

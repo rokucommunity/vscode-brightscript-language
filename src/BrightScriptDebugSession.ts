@@ -28,6 +28,7 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
@@ -54,6 +55,18 @@ class LogOutputEvent implements DebugProtocol.Event {
     }
 
     public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class RendezvousEvent implements DebugProtocol.Event {
+    constructor(output: RendezvousHistory) {
+        this.body = output;
+        this.event = 'BSRendezvousEvent';
+    }
+
+    public body: RendezvousHistory;
     public event: string;
     public seq: number;
     public type: string;
@@ -229,6 +242,11 @@ export class BrightScriptDebugSession extends DebugSession {
                     this.sendEvent(new LogOutputEvent(data));
                 });
             }
+
+            // Send rendezvous events to the extension
+            this.rokuAdapter.on('rendezvous-event', (output) => {
+                this.sendEvent(new RendezvousEvent(output));
+            });
 
             //listen for a closed connection (shut down when received)
             this.rokuAdapter.on('close', (reason = '') => {

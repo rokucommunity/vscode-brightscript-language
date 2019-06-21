@@ -57,6 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
             logOutputManager.setLaunchConfig(e.body);
+        } else if (e.event === 'BSRendezvousEvent') {
+            let data = e.body;
         }
     });
     //register the definition provider

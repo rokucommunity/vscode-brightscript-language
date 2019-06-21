@@ -1,12 +1,29 @@
+import { EventEmitter } from 'events';
 
 export class RendezvousTracker {
     constructor() {
         this.rendezvousHistory = {};
         this.rendezvousBlocks = {};
+        this.emitter = new EventEmitter();
     }
 
     private rendezvousHistory: RendezvousHistory;
     private rendezvousBlocks: RendezvousBlocks;
+    private emitter: EventEmitter;
+
+    public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
+    public on(eventName: string, handler: (payload: any) => void) {
+        this.emitter.on(eventName, handler);
+        return () => {
+            if (this.emitter !== undefined) {
+                this.emitter.removeListener(eventName, handler);
+            }
+        };
+    }
+
+    private emit(eventName: 'rendezvous-event', data?) {
+        this.emitter.emit(eventName, data);
+    }
 
     public processLogLine(logLine: string): string {
         let lines = logLine.split('\n');
@@ -45,6 +62,7 @@ export class RendezvousTracker {
                     }
 
                     delete this.rendezvousBlocks[id];
+                    this.emit('rendezvous-event', this.rendezvousHistory);
                 }
             } else if (line) {
                 normalOutput += line + '\n';
@@ -74,3 +92,40 @@ interface RendezvousBlocks {
         lineNumber: string;
     };
 }
+
+// {
+//     "VHLVideoTrackingTask.brs": {
+//       "(126)": {
+//         "totalTime": 0.0011,
+//         "hitCount": 1
+//       }
+//     },
+//     "UriFetcher.brs": {
+//       "(57)": {
+//         "totalTime": 0.0009,
+//         "hitCount": 1
+//       },
+//       "(168)": {
+//         "totalTime": 0.0008,
+//         "hitCount": 1
+//       }
+//     },
+//     "AnalyticsUtils.brs": {
+//       "(414)": {
+//         "totalTime": 0.0000,
+//         "hitCount": 1
+//       },
+//       "(278)": {
+//         "totalTime": 0.0000,
+//         "hitCount": 1
+//       },
+//       "(221)": {
+//         "totalTime": 0.0000,
+//         "hitCount": 2
+//       },
+//       "(184)": {
+//         "totalTime": 0.0000,
+//         "hitCount": 1
+//       }
+//     }
+//   }
