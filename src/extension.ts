@@ -29,6 +29,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
+import { RendezvousViewProvider } from './RendezvousViewProvider';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -38,6 +39,9 @@ let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
+
+    const rendezvousViewProvider = new RendezvousViewProvider(context);
+    vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
@@ -58,7 +62,7 @@ export function activate(context: vscode.ExtensionContext) {
             docLinkProvider.setLaunchConfig(e.body);
             logOutputManager.setLaunchConfig(e.body);
         } else if (e.event === 'BSRendezvousEvent') {
-            let data = e.body;
+            rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
         }
     });
     //register the definition provider

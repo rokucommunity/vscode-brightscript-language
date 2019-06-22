@@ -110,6 +110,15 @@
         "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
+        "views": {
+            "debug": [
+                {
+                    "id": "rendezvousView",
+                    "name": "Rendezvous",
+                    "when": "debugType == 'brightscript'"
+                }
+            ]
+        },
         "breakpoints": [
             {
                 "language": "brightscript"
