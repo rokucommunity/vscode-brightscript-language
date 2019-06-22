@@ -120,6 +120,10 @@ export class LogOutputManager {
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
+        if (e.event !== 'BSRendezvousEvent') {
+            return;
+        }
+
         console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
