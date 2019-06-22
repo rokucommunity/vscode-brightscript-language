@@ -120,7 +120,7 @@ export class LogOutputManager {
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
-        if (e.event !== 'BSRendezvousEvent') {
+        if (e.event === 'BSRendezvousEvent') {
             return;
         }
 
