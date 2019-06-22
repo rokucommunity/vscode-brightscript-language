@@ -29,6 +29,7 @@ export class RendezvousTracker {
         let lines = logLine.split('\n');
 
         let normalOutput = '';
+        let dataChanged = false;
 
         lines.map((line) => {
             let match;
@@ -40,6 +41,7 @@ export class RendezvousTracker {
                         lineNumber: lineNumber
                     };
                 } else if (type === 'UNBLOCK' && this.rendezvousBlocks[id]) {
+                    dataChanged = true;
                     let blockInfo = this.rendezvousBlocks[id];
 
                     if (this.rendezvousHistory[blockInfo.fileName]) {
@@ -62,12 +64,15 @@ export class RendezvousTracker {
                     }
 
                     delete this.rendezvousBlocks[id];
-                    this.emit('rendezvous-event', this.rendezvousHistory);
                 }
             } else if (line) {
                 normalOutput += line + '\n';
             }
         });
+
+        if (dataChanged) {
+            this.emit('rendezvous-event', this.rendezvousHistory);
+        }
 
         return normalOutput;
     }
