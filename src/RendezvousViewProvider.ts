@@ -31,19 +31,23 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     public getChildren(element: RendezvousTreeItem): RendezvousTreeItem[] {
         if (!element) {
             return Object.keys(this.tree).map((key) => {
+                if (key !== 'type') {
                 return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null);
+                }
             });
         } else {
             let treeElement = this.getTreeElement(element);
-            let isResults = treeElement.hasOwnProperty('hitCount');
 
-            let result = Object.keys(treeElement).map((key) => {
-                if (isResults) {
-                    return new RendezvousTreeItem(`${key}: ${treeElement[key]}`, vscode.TreeItemCollapsibleState.None, element);
-                } else {
-                    return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, element);
+            let result;
+            if (treeElement.type === 'fileInfo') {
+                result = Object.keys(treeElement).map((key) => {
+                    if (key !== 'type') {
+                        let { hitCount, totalTime } = treeElement[key];
+                        let label = `line: (${key}) | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
+                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element);
                 }
             });
+            }
             return result;
         }
     }
