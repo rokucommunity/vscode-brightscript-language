@@ -115,7 +115,22 @@
                 {
                     "id": "rendezvousView",
                     "name": "Rendezvous",
-                    "when": "debugType == 'brightscript'"
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "extension.brightscript.sortRendezvousByFileName",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.clearRendezvousSorting",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
                 }
             ]
         },
@@ -665,6 +680,16 @@
                 "command": "extension.brightscript.setOutputExcludeFilter",
                 "title": "Set Log Output Exclude Filter",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearRendezvousSorting",
+                "title": "Clear File Sorting",
+                "category": "Brightscript Rendezvous"
+            },
+            {
+                "command": "extension.brightscript.sortRendezvousByFileName",
+                "title": "Sort By File Name",
+                "category": "Brightscript Rendezvous"
             }
         ],
         "keybindings": [

@@ -8,6 +8,21 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
 
     constructor(context: vscode.ExtensionContext) {
         this.tree = {};
+
+        this.activeFileFilter = noSort;
+
+        // #region Register sorting commands
+        let subscriptions = context.subscriptions;
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sortRendezvousByFileName', () => {
+            this.activeFileFilter = rendezvousFileNameSort;
+            this._onDidChangeTreeData.fire();
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearRendezvousSorting', () => {
+            this.activeFileFilter = noSort;
+            this._onDidChangeTreeData.fire();
+        }));
+        // #endregion
     }
 
     // tslint:disable-next-line:variable-name
@@ -15,6 +30,8 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
     private tree: RendezvousHistory;
+    private activeFileFilter: IRendezvousItemSort;
+    private activeLineFilter: IRendezvousItemSort; // TODO: Add filters for line details
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
@@ -34,7 +51,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                 if (key !== 'type') {
                     return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null);
                 }
-            }).sort(rendezvousFileNameSort);
+            }).sort(this.activeFileFilter);
         } else {
             let treeElement = this.getTreeElement(element);
 
@@ -139,12 +156,15 @@ export class RendezvousTreeItem extends vscode.TreeItem {
     // public contextValue = 'dependency';
 }
 
-type IRendezvousTreeItemSort = (fileA: RendezvousTreeItem, fileB: RendezvousTreeItem) => number;
+type IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => number;
 
-const rendezvousFileNameSort: IRendezvousTreeItemSort = (fileA: RendezvousTreeItem, fileB: RendezvousTreeItem) => {
-    if (fileA.label < fileB.label) {
+const noSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
+    return 0;
+};
+const rendezvousFileNameSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
+    if (itemOne.label < itemTwo.label) {
         return -1;
-    } else if (fileA.label > fileB.label) {
+    } else if (itemOne.label > itemTwo.label) {
         return 1;
     } else {
         return 0;
