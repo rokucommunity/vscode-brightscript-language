@@ -49,17 +49,12 @@ export class RendezvousTracker {
                             this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber].totalTime += this.getTime(duration);
                             this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber].hitCount ++;
                         } else {
-                            this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] = {
-                                totalTime: this.getTime(duration),
-                                hitCount: 1
-                            };
+                            this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] = this.createLineObject(duration);
                         }
                     } else {
                         this.rendezvousHistory[blockInfo.fileName] = {
-                            [blockInfo.lineNumber]: {
-                                totalTime: this.getTime(duration),
-                                hitCount: 1
-                            }
+                            type: 'fileInfo',
+                            [blockInfo.lineNumber]: this.createLineObject(duration)
                         };
                     }
 
@@ -77,18 +72,32 @@ export class RendezvousTracker {
         return normalOutput;
     }
 
+    private createLineObject(duration?: string): RendezvousLineInfo {
+        return {
+            totalTime: this.getTime(duration),
+            hitCount: 1,
+            type: 'lineInfo'
+        };
+    }
+
     private getTime(duration?: string): number {
         return duration ? parseFloat(duration) : 0.000;
     }
 }
 
 export interface RendezvousHistory {
-    [key: string]: {
-        [key: string]: {
-            totalTime: number;
-            hitCount: number;
-        }
-    };
+    [key: string]: RendezvousFileInfo | ElementType;
+}
+
+interface RendezvousFileInfo {
+    [key: string]: RendezvousLineInfo | ElementType;
+    type: ElementType;
+}
+
+interface RendezvousLineInfo {
+    totalTime: number;
+    hitCount: number;
+    type: ElementType;
 }
 
 interface RendezvousBlocks {
@@ -97,6 +106,8 @@ interface RendezvousBlocks {
         lineNumber: string;
     };
 }
+
+type ElementType = 'fileInfo' | 'lineInfo';
 
 // {
 //     "VHLVideoTrackingTask.brs": {
