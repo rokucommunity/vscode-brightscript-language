@@ -32,9 +32,9 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         if (!element) {
             return Object.keys(this.tree).map((key) => {
                 if (key !== 'type') {
-                return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null);
+                    return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null);
                 }
-            });
+            }).sort(rendezvousFileNameSort);
         } else {
             let treeElement = this.getTreeElement(element);
 
@@ -45,8 +45,8 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                         let { hitCount, totalTime } = treeElement[key];
                         let label = `line: (${key}) | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
                         return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element);
-                }
-            });
+                    }
+                });
             }
             return result;
         }
@@ -138,3 +138,15 @@ export class RendezvousTreeItem extends vscode.TreeItem {
 
     // public contextValue = 'dependency';
 }
+
+type IRendezvousTreeItemSort = (fileA: RendezvousTreeItem, fileB: RendezvousTreeItem) => number;
+
+const rendezvousFileNameSort: IRendezvousTreeItemSort = (fileA: RendezvousTreeItem, fileB: RendezvousTreeItem) => {
+    if (fileA.label < fileB.label) {
+        return -1;
+    } else if (fileA.label > fileB.label) {
+        return 1;
+    } else {
+        return 0;
+    }
+};
