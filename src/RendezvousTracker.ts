@@ -46,8 +46,8 @@ export class RendezvousTracker {
 
                     if (this.rendezvousHistory[blockInfo.fileName]) {
                         if (this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber]) {
-                            this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber].totalTime += this.getTime(duration);
-                            this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber].hitCount ++;
+                            (this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] as RendezvousLineInfo).totalTime += this.getTime(duration);
+                            (this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] as RendezvousLineInfo).hitCount ++;
                         } else {
                             this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] = this.createLineObject(duration);
                         }
@@ -86,7 +86,7 @@ export class RendezvousTracker {
 }
 
 export interface RendezvousHistory {
-    [key: string]: RendezvousFileInfo | ElementType;
+    [key: string]: RendezvousFileInfo;
 }
 
 interface RendezvousFileInfo {
@@ -109,39 +109,49 @@ interface RendezvousBlocks {
 
 type ElementType = 'fileInfo' | 'lineInfo';
 
-// {
-//     "VHLVideoTrackingTask.brs": {
-//       "(126)": {
-//         "totalTime": 0.0011,
-//         "hitCount": 1
-//       }
+// let test: RendezvousHistory = {
+//     'VHLVideoTrackingTask.brs': {
+//         'type': 'fileInfo',
+//         '(126)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0011,
+//             hitCount: 1
+//         }
 //     },
-//     "UriFetcher.brs": {
-//       "(57)": {
-//         "totalTime": 0.0009,
-//         "hitCount": 1
-//       },
-//       "(168)": {
-//         "totalTime": 0.0008,
-//         "hitCount": 1
-//       }
+//     'UriFetcher.brs': {
+//         'type': 'fileInfo',
+//         '(57)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0009,
+//             hitCount: 1
+//         },
+//         '(168)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0008,
+//             hitCount: 1
+//         }
 //     },
-//     "AnalyticsUtils.brs": {
-//       "(414)": {
-//         "totalTime": 0.0000,
-//         "hitCount": 1
-//       },
-//       "(278)": {
-//         "totalTime": 0.0000,
-//         "hitCount": 1
-//       },
-//       "(221)": {
-//         "totalTime": 0.0000,
-//         "hitCount": 2
-//       },
-//       "(184)": {
-//         "totalTime": 0.0000,
-//         "hitCount": 1
-//       }
+//     'AnalyticsUtils.brs': {
+//         'type': 'fileInfo',
+//         '(414)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0000,
+//             hitCount: 1
+//         },
+//         '(278)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0000,
+//             hitCount: 1
+//         },
+//         '(221)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0000,
+//             hitCount: 2
+//         },
+//         '(184)': {
+//             type: 'lineInfo',
+//             totalTime: 0.0000,
+//             hitCount: 1
+//         }
 //     }
-//   }
+// };
