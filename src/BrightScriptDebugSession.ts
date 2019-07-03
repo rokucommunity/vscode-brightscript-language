@@ -28,7 +28,7 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { ComponentLibraryServer } from './ComponentLibraryServer';
-import { RendezvousHistory } from './RendezvousTracker';
+import { RendezvousHistory, RendezvousLineInfo } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
@@ -245,6 +245,21 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // Send rendezvous events to the extension
             this.rokuAdapter.on('rendezvous-event', (output) => {
+                Object.keys(output).map((fileKey) => {
+                    if (fileKey !== 'type') {
+                        // Find file paths and convert them to client paths
+                        let clientPath = this.convertDebuggerPathToClient(fileKey);
+                        Object.keys(output[fileKey]).map((lineKey) => {
+                            if (lineKey !== 'type') {
+                                // convert the line number to the client line number
+                                let clientLineNumber = this.convertDebuggerLineToClientLine(fileKey, parseInt(lineKey));
+                                (output[fileKey][lineKey] as RendezvousLineInfo).clientPath = clientPath;
+                                (output[fileKey][lineKey] as RendezvousLineInfo).clientLineNumber = clientLineNumber;
+                            }
+                        });
+                    }
+                });
+
                 this.sendEvent(new RendezvousEvent(output));
             });
 
@@ -266,7 +281,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
-                //TODO - shot gracefull
+                //TODO - shot graceful
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });

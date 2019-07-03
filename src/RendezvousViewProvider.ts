@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
 import { RendezvousHistory } from './RendezvousTracker';
@@ -22,6 +23,8 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             this.activeFileFilter = noSort;
             this._onDidChangeTreeData.fire();
         }));
+
+        vscode.commands.registerCommand('RendezvousViewProvider.openFile', (resource) => this.openResource(resource));
         // #endregion
     }
 
@@ -58,10 +61,12 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             let result;
             if (treeElement.type === 'fileInfo') {
                 result = Object.keys(treeElement).map((key) => {
-                    if (key !== 'type') {
-                        let { hitCount, totalTime } = treeElement[key];
+                    if (key !== 'type' && treeElement[key].totalTime > 0) {
+                        let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement[key];
                         let label = `line: (${key}) | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
-                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element);
+                        let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber }], };
+
+                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, command);
                     }
                 });
             }
@@ -92,6 +97,13 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
 
         // return the contents of the current item
         return currentObject[element.label];
+    }
+
+    private async openResource(fileArgs: any) {
+        let uri = vscode.Uri.file(fileArgs.path);
+        let doc = await vscode.workspace.openTextDocument(uri);
+        let range = new Range(new Position(fileArgs.lineNumber - 1, 0), new Position(fileArgs.lineNumber - 1, 0));
+        await vscode.window.showTextDocument(doc, { preview: false, selection: range });
     }
 
     private objectDiff(obj1, obj2, exclude?) {
@@ -135,7 +147,8 @@ export class RendezvousTreeItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly parent: RendezvousTreeItem | null
+        public readonly parent: RendezvousTreeItem | null,
+        public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
     }

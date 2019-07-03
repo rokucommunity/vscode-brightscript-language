@@ -94,9 +94,11 @@ interface RendezvousFileInfo {
     type: ElementType;
 }
 
-interface RendezvousLineInfo {
+export interface RendezvousLineInfo {
     totalTime: number;
     hitCount: number;
+    clientPath?: string;
+    clientLineNumber?: number;
     type: ElementType;
 }
 
