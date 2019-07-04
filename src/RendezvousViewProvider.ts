@@ -92,7 +92,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                     if (!isRendezvousDetailsField(key) && treeElement[key].totalTime > 0) {
                         let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement[key];
                         let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
-                        let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber }], };
+                        let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber, devicePath: element.key }], };
 
                         return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement[key], command);
                     }
@@ -128,10 +128,14 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     }
 
     private async openResource(fileArgs: any) {
-        let uri = vscode.Uri.file(fileArgs.path);
-        let doc = await vscode.workspace.openTextDocument(uri);
-        let range = new Range(new Position(fileArgs.lineNumber - 1, 0), new Position(fileArgs.lineNumber - 1, 0));
-        await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+        if (fileArgs.path && fileArgs.lineNumber) {
+            let uri = vscode.Uri.file(fileArgs.path);
+            let doc = await vscode.workspace.openTextDocument(uri);
+            let range = new Range(new Position(fileArgs.lineNumber - 1, 0), new Position(fileArgs.lineNumber - 1, 0));
+            await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+        } else {
+            vscode.window.showErrorMessage(`Unable to open file for: ${fileArgs.devicePath}`);
+        }
     }
 
     private rendezvousTotalTimeSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
