@@ -54,8 +54,20 @@ export class RendezvousTracker {
                     } else {
                         this.rendezvousHistory[blockInfo.fileName] = {
                             type: 'fileInfo',
-                            [blockInfo.lineNumber]: this.createLineObject(duration)
+                            [blockInfo.lineNumber]: this.createLineObject(duration),
+                            hitCount: 0,
+                            totalTime: 0,
+                            zeroCostHitCount: 0
                         };
+                    }
+
+                    let timeToAdd = (this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] as RendezvousLineInfo).totalTime;
+
+                    this.rendezvousHistory[blockInfo.fileName].hitCount ++;
+                    this.rendezvousHistory[blockInfo.fileName].totalTime += timeToAdd;
+
+                    if (0 === timeToAdd) {
+                        this.rendezvousHistory[blockInfo.fileName].zeroCostHitCount ++;
                     }
 
                     delete this.rendezvousBlocks[id];
@@ -85,12 +97,19 @@ export class RendezvousTracker {
     }
 }
 
+export function isRendezvousDetailsField(fieldName: string): boolean {
+    return (fieldName === 'type' || fieldName === 'hitCount' || fieldName === 'totalTime' || fieldName === 'zeroCostHitCount');
+}
+
 export interface RendezvousHistory {
     [key: string]: RendezvousFileInfo;
 }
 
 interface RendezvousFileInfo {
-    [key: string]: RendezvousLineInfo | ElementType;
+    [key: string]: RendezvousLineInfo | ElementType | number;
+    hitCount: number;
+    zeroCostHitCount: number;
+    totalTime: number;
     type: ElementType;
 }
 

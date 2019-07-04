@@ -41,6 +41,7 @@
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
+        "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brightscript-formatter": "^1.6.0",
         "dotenv": "^6.2.0",

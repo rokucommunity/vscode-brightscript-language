@@ -1,21 +1,28 @@
+import * as arraySort from 'array-sort';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { RendezvousHistory } from './RendezvousTracker';
+import { isRendezvousDetailsField, RendezvousHistory } from './RendezvousTracker';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     constructor(context: vscode.ExtensionContext) {
         this.tree = {};
 
-        this.activeFileFilter = noSort;
+        this.sortReverse = true;
+        this.activeFilter = [
+            'details.totalTime',
+            rendezvousAverageTimeSort,
+            rendezvousHitCountSort,
+            compare('label'),
+            { reverse: this.shouldSortBeReverse }
+        ];
 
         // #region Register sorting commands
         let subscriptions = context.subscriptions;
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sortRendezvousByFileName', () => {
-            this.activeFileFilter = rendezvousFileNameSort;
             this._onDidChangeTreeData.fire();
         }));
 
@@ -33,8 +40,12 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
     private tree: RendezvousHistory;
-    private activeFileFilter: IRendezvousItemSort;
-    private activeLineFilter: IRendezvousItemSort; // TODO: Add filters for line details
+    private activeFilter: any;
+    private sortReverse: boolean;
+
+    get shouldSortBeReverse(): boolean {
+        return this.sortReverse;
+    }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
@@ -50,25 +61,24 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
 
     public getChildren(element: RendezvousTreeItem): RendezvousTreeItem[] {
         if (!element) {
-            return Object.keys(this.tree).map((key) => {
-                if (key !== 'type') {
-                    return new RendezvousTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null);
+            return arraySort(Object.keys(this.tree).map((key) => {
+                if (!isRendezvousDetailsField(key)) {
                 }
-            }).sort(this.activeFileFilter);
+            }), this.activeFilter);
         } else {
             let treeElement = this.getTreeElement(element);
 
             let result;
             if (treeElement.type === 'fileInfo') {
-                result = Object.keys(treeElement).map((key) => {
-                    if (key !== 'type' && treeElement[key].totalTime > 0) {
+                result = arraySort(Object.keys(treeElement).map((key) => {
+                    if (!isRendezvousDetailsField(key) && treeElement[key].totalTime > 0) {
                         let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement[key];
                         let label = `line: (${key}) | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
                         let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber }], };
 
                         return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, command);
                     }
-                });
+                }), this.activeFilter);
             }
             return result;
         }
@@ -148,6 +158,7 @@ export class RendezvousTreeItem extends vscode.TreeItem {
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly parent: RendezvousTreeItem | null,
+        public readonly details: any,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
@@ -174,12 +185,36 @@ type IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTree
 const noSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
     return 0;
 };
-const rendezvousFileNameSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
-    if (itemOne.label < itemTwo.label) {
+
+const rendezvousAverageTimeSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
+    let zeroCostOffsetOne = itemOne.details.zeroCostHitCount ? itemOne.details.zeroCostHitCount : 0;
+    let zeroCostOffsetTwo = itemTwo.details.zeroCostHitCount ? itemTwo.details.zeroCostHitCount : 0;
+
+    if (itemOne.details.totalTime / (itemOne.details.hitCount - zeroCostOffsetOne)  > itemTwo.details.totalTime / (itemTwo.details.hitCount - zeroCostOffsetTwo)) {
         return -1;
-    } else if (itemOne.label > itemTwo.label) {
+    } else if (itemOne.details.totalTime / (itemOne.details.hitCount - zeroCostOffsetOne) < itemTwo.details.totalTime / (itemTwo.details.hitCount - zeroCostOffsetTwo)) {
         return 1;
     } else {
         return 0;
     }
 };
+
+const rendezvousHitCountSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
+    let zeroCostOffsetOne = itemOne.details.zeroCostHitCount ? itemOne.details.zeroCostHitCount : 0;
+    let zeroCostOffsetTwo = itemTwo.details.zeroCostHitCount ? itemTwo.details.zeroCostHitCount : 0;
+
+    if ((itemOne.details.hitCount - zeroCostOffsetOne) > (itemTwo.details.hitCount - zeroCostOffsetTwo)) {
+        return -1;
+    } else if ((itemOne.details.hitCount - zeroCostOffsetOne) < (itemTwo.details.hitCount - zeroCostOffsetTwo)) {
+        return 1;
+    } else {
+        return 0;
+    }
+};
+
+// reusable compare function
+function compare(prop) {
+    return function(a, b) {
+        return a[prop].localeCompare(b[prop]);
+    };
+}
