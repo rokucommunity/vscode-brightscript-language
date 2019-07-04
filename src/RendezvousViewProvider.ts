@@ -195,6 +195,10 @@ export class RendezvousFileTreeItem extends vscode.TreeItem {
     get tooltip(): string {
         return `${this.key}`;
     }
+
+    get description(): string {
+        return `hitCount: ${this.details.hitCount - this.details.zeroCostHitCount} | totalTime: ${this.details.totalTime.toFixed(3)} s`;
+    }
 }
 
 type IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => number;
