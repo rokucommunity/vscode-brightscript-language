@@ -1,6 +1,4 @@
 import * as arraySort from 'array-sort';
-import * as fs from 'fs';
-import * as path from 'path';
 import { Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
@@ -222,7 +220,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     }
 }
 
-export class RendezvousTreeItem extends vscode.TreeItem {
+class RendezvousTreeItem extends vscode.TreeItem {
 
     constructor(
         public readonly label: string,
@@ -240,7 +238,7 @@ export class RendezvousTreeItem extends vscode.TreeItem {
     }
 }
 
-export class RendezvousFileTreeItem extends vscode.TreeItem {
+class RendezvousFileTreeItem extends vscode.TreeItem {
     constructor(
         public readonly key: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
