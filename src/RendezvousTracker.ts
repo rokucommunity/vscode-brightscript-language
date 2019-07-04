@@ -61,7 +61,7 @@ export class RendezvousTracker {
                         };
                     }
 
-                    let timeToAdd = (this.rendezvousHistory[blockInfo.fileName][blockInfo.lineNumber] as RendezvousLineInfo).totalTime;
+                    let timeToAdd = this.getTime(duration);
 
                     this.rendezvousHistory[blockInfo.fileName].hitCount ++;
                     this.rendezvousHistory[blockInfo.fileName].totalTime += timeToAdd;
