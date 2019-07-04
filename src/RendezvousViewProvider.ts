@@ -63,6 +63,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         if (!element) {
             return arraySort(Object.keys(this.tree).map((key) => {
                 if (!isRendezvousDetailsField(key)) {
+                    return new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.tree[key]);
                 }
             }), this.activeFilter);
         } else {
@@ -76,7 +77,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                         let label = `line: (${key}) | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
                         let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber }], };
 
-                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, command);
+                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement[key], command);
                     }
                 }), this.activeFilter);
             }
@@ -106,7 +107,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         }
 
         // return the contents of the current item
-        return currentObject[element.label];
+        return currentObject[element.key];
     }
 
     private async openResource(fileArgs: any) {
@@ -158,6 +159,7 @@ export class RendezvousTreeItem extends vscode.TreeItem {
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly parent: RendezvousTreeItem | null,
+        public readonly key: string,
         public readonly details: any,
         public readonly command?: vscode.Command
     ) {
@@ -178,6 +180,21 @@ export class RendezvousTreeItem extends vscode.TreeItem {
     // };
 
     // public contextValue = 'dependency';
+}
+
+export class RendezvousFileTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly key: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly parent: RendezvousTreeItem | null,
+        public readonly details: any
+    ) {
+        super(key.split('/').pop(), collapsibleState);
+    }
+
+    get tooltip(): string {
+        return `${this.key}`;
+    }
 }
 
 type IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => number;
