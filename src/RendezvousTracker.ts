@@ -33,7 +33,7 @@ export class RendezvousTracker {
 
         lines.map((line) => {
             let match;
-            if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*brs)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
+            if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*brs|.*xml)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
                 let [fullMatch, type, id, fileName, lineNumber, duration] = match;
                 if (type === 'BLOCK') {
                     this.rendezvousBlocks[id] = {
