@@ -33,6 +33,7 @@ export class RendezvousTracker {
 
         lines.map((line) => {
             let match;
+            // see the following for an explanation for this regex: https://regex101.com/r/In0t7d/4
             if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*brs|.*xml)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
                 let [fullMatch, type, id, fileName, lineNumber, duration] = match;
                 if (type === 'BLOCK') {
