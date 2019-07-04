@@ -124,12 +124,12 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "extension.brightscript.sortRendezvousByFileName",
+                    "command": "extension.brightscript.toggleSortingMethod",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
                 },
                 {
-                    "command": "extension.brightscript.clearRendezvousSorting",
+                    "command": "extension.brightscript.toggleSortingAscDesc",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
                 }
@@ -683,13 +683,13 @@
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.clearRendezvousSorting",
-                "title": "Clear File Sorting",
+                "command": "extension.brightscript.toggleSortingMethod",
+                "title": "Toggle Sorting Method (smart > alphabetic)",
                 "category": "Brightscript Rendezvous"
             },
             {
-                "command": "extension.brightscript.sortRendezvousByFileName",
-                "title": "Sort By File Name",
+                "command": "extension.brightscript.toggleSortingAscDesc",
+                "title": "Toggle Asc - Desc Sorting ",
                 "category": "Brightscript Rendezvous"
             }
         ],
