@@ -16,7 +16,8 @@ export class RokuAdapter {
     constructor(
         private host: string,
         private enableDebuggerAutoRecovery: boolean = false,
-        private enableLookupVariableNodeChildren: boolean = false) {
+        private enableLookupVariableNodeChildren: boolean = false
+    ) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
         this.startCompilingLine = -1;
