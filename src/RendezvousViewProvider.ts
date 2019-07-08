@@ -32,11 +32,14 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private tree: RendezvousHistory;
     private activeFilter: any;
-    private sortAscending: boolean = false;
     private isUsingSmartSorting: boolean;
+    private sortAscending: boolean = false;
+    private tree: RendezvousHistory;
 
+    /**
+     * Updated the sorting logic to be totalTime > averageTime > hitCount > label text
+     */
     private enableSmartSorting(): boolean {
         if (!this.isUsingSmartSorting) {
             this.isUsingSmartSorting = true;
@@ -51,6 +54,9 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return false;
     }
 
+    /**
+     * Sorting is simply based on the label text
+     */
     private disableSmartSorting() {
         if (this.isUsingSmartSorting) {
             this.isUsingSmartSorting = false;
@@ -60,10 +66,12 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return false;
     }
 
+    /**
+     * Handles the custom events
+     */
     public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
         if (e.event === 'BSRendezvousEvent') {
-
             // What changed?
             // let diff = this.objectDiff(e.body, this.viewedData);
 
@@ -72,6 +80,10 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         }
     }
 
+    /**
+     * Called by VS Code to get the children tree items for a give tree view item
+     * @param element whose children are needed
+     */
     public getChildren(element: RendezvousTreeItem): RendezvousTreeItem[] {
         if (!element) {
             // There are no tree view items so we should be creating file tree items
@@ -82,7 +94,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             }), this.activeFilter);
         } else {
             // VS code is asking for the children of the supplied tree item
-            let treeElement = this.getTreeElement(element);
+            let treeElement = this.getTreeElementHistoryData(element);
 
             let result;
             if (treeElement.type === 'fileInfo') {
@@ -90,7 +102,17 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                     if (!isRendezvousDetailsField(key) && treeElement[key].totalTime > 0) {
                         let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement[key];
                         let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
-                        let command = { command: 'RendezvousViewProvider.openFile', title: 'Open File', arguments: [{ path: clientPath, lineNumber: clientLineNumber, devicePath: element.key }], };
+
+                        // create the command used to open the file
+                        let command = {
+                            command: 'RendezvousViewProvider.openFile',
+                            title: 'Open File',
+                            arguments: [({
+                                path: clientPath,
+                                lineNumber: clientLineNumber,
+                                devicePath: element.key
+                            } as FileArgs)]
+                        };
 
                         return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement[key], command);
                     }
@@ -100,11 +122,20 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         }
     }
 
+    /**
+     * Called by VS Code to get a give element.
+     * Currently we don't modify this element so it is just returned back.
+     * @param element the requested element
+     */
     public getTreeItem(element: RendezvousTreeItem): RendezvousTreeItem {
         return element;
     }
 
-    private getTreeElement(element: RendezvousTreeItem): {[key: string]: any} {
+    /**
+     * Used to get the data for a give TreeItem from the tree of RendezvousHistory
+     * @param element for which the data was requested
+     */
+    private getTreeElementHistoryData(element: RendezvousTreeItem): {[key: string]: any} {
         let objectPath = [];
         let currentObject: {[key: string]: any} = this.tree;
 
@@ -125,7 +156,10 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return currentObject[element.key];
     }
 
-    private async openResource(fileArgs: any) {
+    /**
+     * attempts to open the file at the given line
+     */
+    private async openResource(fileArgs: FileArgs) {
         if (fileArgs.path && fileArgs.lineNumber) {
             let uri = vscode.Uri.file(fileArgs.path);
             let doc = await vscode.workspace.openTextDocument(uri);
@@ -136,6 +170,9 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         }
     }
 
+    /**
+     * Handled sorting the TreeItems by totalTime
+     */
     private rendezvousTotalTimeSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
         if (itemOne.details.totalTime > itemTwo.details.totalTime) {
             return this.handleReverseSort(-1);
@@ -145,6 +182,9 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return 0;
     }
 
+    /**
+     * Handled sorting the TreeItems by averageTime. Does not use zero cost rendezvous' in the average calculation
+     */
     private rendezvousAverageTimeSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
         let zeroCostOffsetOne = itemOne.details.zeroCostHitCount ? itemOne.details.zeroCostHitCount : 0;
         let zeroCostOffsetTwo = itemTwo.details.zeroCostHitCount ? itemTwo.details.zeroCostHitCount : 0;
@@ -157,6 +197,9 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return 0;
     }
 
+    /**
+     * Handled sorting the TreeItems by hitCount. Does not count zero cost rendezvous' in the hitCount calculation
+     */
     private rendezvousHitCountSort: IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => {
         let zeroCostOffsetOne = itemOne.details.zeroCostHitCount ? itemOne.details.zeroCostHitCount : 0;
         let zeroCostOffsetTwo = itemTwo.details.zeroCostHitCount ? itemTwo.details.zeroCostHitCount : 0;
@@ -169,7 +212,11 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         return 0;
     }
 
-    private compare = (propertyName): IRendezvousItemSort => {
+    /**
+     * Prepares a generic simple sort
+     * @param propertyName The field name to compare
+     */
+    private compare = (propertyName: string): IRendezvousItemSort => {
         return (itemOne, itemTwo): number => {
             if (itemOne[propertyName] > itemTwo[propertyName]) {
                 return this.handleReverseSort(-1);
@@ -180,11 +227,21 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         };
     }
 
+    /**
+     * Will invert the sortResult based on wether we are doing ascending or descending sorting
+     * @param sortResult the integer value from a sort function
+     */
     private handleReverseSort(sortResult: number): number {
         return (!this.sortAscending) ? sortResult : (sortResult === 1) ? -1 : (sortResult === -1) ? 1 : sortResult;
     }
 
-    private objectDiff(obj1, obj2, exclude?) {
+    /**
+     * With return the differences in two objects
+     * @param obj1 base target
+     * @param obj2 comparison target
+     * @param exclude fields to exclude in the comparison
+     */
+    private objectDiff(obj1: object, obj2: object, exclude?: string[]) {
         let r = {};
 
         if (!exclude) {	exclude = []; }
@@ -234,7 +291,7 @@ class RendezvousTreeItem extends vscode.TreeItem {
     }
 
     get tooltip(): string {
-        return `${this.label}`;
+        return `Click To Open File`;
     }
 }
 
@@ -258,3 +315,9 @@ class RendezvousFileTreeItem extends vscode.TreeItem {
 }
 
 type IRendezvousItemSort = (itemOne: RendezvousTreeItem, itemTwo: RendezvousTreeItem) => number;
+
+interface FileArgs {
+    path: string;
+    lineNumber: number;
+    devicePath: string;
+}
