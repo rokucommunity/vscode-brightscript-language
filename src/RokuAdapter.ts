@@ -888,7 +888,7 @@ export class RokuAdapter {
     private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
         let collectionEnd: string;
 
-        //this function can handle roArray and roList objects, but we need to which it is
+        //this function can handle roArray and roList objects, but we need to know which it is
         if (data.indexOf('<Component: roList>') === 0) {
             collectionEnd = ')';
 
