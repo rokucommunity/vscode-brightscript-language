@@ -1021,6 +1021,10 @@ export class RokuAdapter {
             } while (commandsExecuted < 10);
         }
     }
+
+    public setRendezvousDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine) {
+        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine);
+    }
 }
 
 export interface StackFrame {

@@ -227,6 +227,14 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.connectRokuAdapter(args.host);
 
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
+            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
+                (debuggerPath: string) => {
+                    return this.convertDebuggerPathToClient(debuggerPath);
+                },
+                (debuggerPath: string, lineNumber: number) => {
+                    return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
+                }
+            );
 
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {
@@ -245,21 +253,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // Send rendezvous events to the extension
             this.rokuAdapter.on('rendezvous-event', (output) => {
-                Object.keys(output).map((fileKey) => {
-                    if (!isRendezvousDetailsField(fileKey)) {
-                        // Find file paths and convert them to client paths
-                        let clientPath = this.convertDebuggerPathToClient(fileKey);
-                        Object.keys(output[fileKey]).map((lineKey) => {
-                            if (!isRendezvousDetailsField(lineKey)) {
-                                // convert the line number to the client line number
-                                let clientLineNumber = this.convertDebuggerLineToClientLine(fileKey, parseInt(lineKey));
-                                (output[fileKey][lineKey] as RendezvousLineInfo).clientPath = clientPath;
-                                (output[fileKey][lineKey] as RendezvousLineInfo).clientLineNumber = clientLineNumber;
-                            }
-                        });
-                    }
-                });
-
                 this.sendEvent(new RendezvousEvent(output));
             });
 

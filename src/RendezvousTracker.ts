@@ -11,6 +11,9 @@ export class RendezvousTracker {
     private rendezvousBlocks: RendezvousBlocks;
     private emitter: EventEmitter;
 
+    private convertDebuggerPathToClient: any;
+    private convertDebuggerLineToClientLine: any;
+
     public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: string, handler: (payload: any) => void) {
         this.emitter.on(eventName, handler);
@@ -23,6 +26,11 @@ export class RendezvousTracker {
 
     private emit(eventName: 'rendezvous-event', data?) {
         this.emitter.emit(eventName, data);
+    }
+
+    public setDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine) {
+        this.convertDebuggerPathToClient = convertDebuggerPathToClient;
+        this.convertDebuggerLineToClientLine = convertDebuggerLineToClientLine;
     }
 
     public processLogLine(logLine: string): string {
