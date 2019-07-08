@@ -838,8 +838,8 @@ export class RokuAdapter {
             }
 
             //handle collections
-            if (line.indexOf('<Component: roList>') > -1 || line.indexOf('<Component: roArray>') > -1) {
-                let collectionEnd: ')' | ']';
+            if (line.indexOf('<Component: roList>') > -1 || line.indexOf('<Component: roArray>') > -1 || line.indexOf('<Component: roAssociativeArray>') > -1) {
+                let collectionEnd: ')' | ']' | '}';
                 if (line.indexOf('<Component: roList>') > -1) {
                     collectionEnd = ')';
                     child.highLevelType = HighLevelType.array;
@@ -847,6 +847,10 @@ export class RokuAdapter {
                 } else if (line.indexOf('<Component: roArray>') > -1) {
                     collectionEnd = ']';
                     child.highLevelType = HighLevelType.array;
+                    child.type = this.getHighLevelTypeDetails(line);
+                } else if (line.indexOf('<Component: roAssociativeArray>') > -1) {
+                    collectionEnd = '}';
+                    child.highLevelType = HighLevelType.object;
                     child.type = this.getHighLevelTypeDetails(line);
                 }
 
@@ -865,6 +869,10 @@ export class RokuAdapter {
                 //because we will need to run a full evaluation (later) to get around the `...` issue
                 if (lines[lineIndex - 1].trim() === '...') {
                     child.children = [];
+
+                    //get the object children
+                } else if (child.highLevelType === HighLevelType.object) {
+                    child.children = this.getObjectChildren(child.evaluateName, collectionLines);
 
                     //get all of the array children right now since we have them
                 } else {
