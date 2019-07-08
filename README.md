@@ -14,7 +14,7 @@ A VSCode extension to support Roku's BrightScript language.
   - logpoints
   - hit count breakpoints
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
-  - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
+  - Also supports zipping and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
