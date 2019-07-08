@@ -40,7 +40,8 @@ let outputChannel: vscode.OutputChannel;
 export function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
 
-    const rendezvousViewProvider = new RendezvousViewProvider(context);
+    //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
+    let rendezvousViewProvider = new RendezvousViewProvider(context);
     vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
     //register the code formatter
@@ -56,7 +57,7 @@ export function activate(context: vscode.ExtensionContext) {
     let docLinkProvider = new LogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
     vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
-    //give the launch config to the link provder any time we launch the app
+    //give the launch config to the link provider any time we launch the app
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);

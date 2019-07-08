@@ -27,6 +27,7 @@ export class RokuAdapter {
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
         this.rendezvousTracker = new RendezvousTracker();
 
+        // watch for rendezvous events
         this.rendezvousTracker.on('rendezvous-event', (output) => {
             this.emit('rendezvous-event', output);
         });
