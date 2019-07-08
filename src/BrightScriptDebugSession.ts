@@ -8,7 +8,6 @@ import * as path from 'path';
 import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
 import * as url from 'url';
-
 import { FilesType, RokuDeploy } from 'roku-deploy';
 import { inspect } from 'util';
 import {
@@ -23,7 +22,8 @@ import {
     StoppedEvent,
     TerminatedEvent,
     Thread,
-    Variable
+    Variable,
+    ContinuedEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
@@ -32,6 +32,7 @@ import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
+import { delay } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -617,6 +618,8 @@ export class BrightScriptDebugSession extends DebugSession {
         this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
         let childVariables: AugmentedVariable[] = [];
+        //wait for any `evaluate` commands to finish so we have a higher likelyhood of being at a debugger prompt
+        await this.evaluateRequestPromise;
         if (this.rokuAdapter.isAtDebuggerPrompt) {
             const reference = this.variableHandles.get(args.variablesReference);
             if (reference) {
@@ -642,6 +645,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
                 childVariables = v.childVariables;
             }
+            var v = this.variables[1];
 
             //if the variable is an array, send only the requested range
             if (Array.isArray(childVariables) && args.filter === 'indexed') {
@@ -657,44 +661,56 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-        if (this.rokuAdapter.isAtDebuggerPrompt) {
-            if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
-                //if this command has the word print in front of it, remove that word
-                let expression = args.expression.replace(/^print/i, '').trim();
-                let refId = this.getEvaluateRefId(expression);
-                let v: DebugProtocol.Variable;
-                //if we already looked this item up, return it
-                if (this.variables[refId]) {
-                    v = this.variables[refId];
-                } else {
-                    let result = await this.rokuAdapter.getVariable(expression);
-                    v = this.getVariableFromResult(result);
-                }
-                response.body = {
-                    result: v.value,
-                    variablesReference: v.variablesReference,
-                    namedVariables: v.namedVariables || 0,
-                    indexedVariables: v.indexedVariables || 0
-                };
-            } else if (args.context === 'repl') {
-                //exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
-                let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
-                if (excludedExpressions.indexOf(args.expression.toLowerCase().trim()) > -1) {
-                    this.sendEvent(new OutputEvent(`Expression '${args.expression}' not permitted when debugging in VSCode`, 'stdout'));
-                } else {
-                    let result = await this.rokuAdapter.evaluate(args.expression);
-                    response.body = <any>{
-                        result: result
-                    };
-                    // //print the output to the screen
-                    // this.sendEvent(new OutputEvent(result, 'stdout'));
-                }
-            }
-        } else {
-            console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
-        }
+    private evaluateRequestPromise = Promise.resolve();
 
+    public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
+        var deferred = defer<any>();
+
+        this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
+            return deferred.promise;
+        });
+        try {
+            if (this.rokuAdapter.isAtDebuggerPrompt) {
+                if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
+                    //if this command has the word print in front of it, remove that word
+                    let expression = args.expression.replace(/^print/i, '').trim();
+                    let refId = this.getEvaluateRefId(expression);
+                    let v: DebugProtocol.Variable;
+                    //if we already looked this item up, return it
+                    if (this.variables[refId]) {
+                        v = this.variables[refId];
+                    } else {
+                        let result = await this.rokuAdapter.getVariable(expression);
+                        v = this.getVariableFromResult(result);
+                        //TODO - testing something, remove later
+                        (v as any).request_seq = response.request_seq;
+                    }
+                    response.body = {
+                        result: v.value,
+                        variablesReference: v.variablesReference,
+                        namedVariables: v.namedVariables || 0,
+                        indexedVariables: v.indexedVariables || 0
+                    };
+                } else if (args.context === 'repl') {
+                    //exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
+                    let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
+                    if (excludedExpressions.indexOf(args.expression.toLowerCase().trim()) > -1) {
+                        this.sendEvent(new OutputEvent(`Expression '${args.expression}' not permitted when debugging in VSCode`, 'stdout'));
+                    } else {
+                        let result = await this.rokuAdapter.evaluate(args.expression);
+                        response.body = <any>{
+                            result: result
+                        };
+                        // //print the output to the screen
+                        // this.sendEvent(new OutputEvent(result, 'stdout'));
+                    }
+                }
+            } else {
+                console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
+            }
+        } finally {
+            deferred.resolve();
+        }
         this.sendResponse(response);
     }
 
