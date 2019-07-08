@@ -1231,7 +1231,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     stopOnEntry: boolean;
     /**
-     * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
+     * Determines which console output event to listen for.
+     * 'full' is every console message (including the ones from the adapter).
+     * 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.
      */
     consoleOutput: 'full' | 'normal';
     /**

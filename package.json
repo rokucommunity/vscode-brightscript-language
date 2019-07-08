@@ -295,7 +295,7 @@
                             },
                             "consoleOutput": {
                                 "type": "string",
-                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",
                                 "default": "normal",
                                 "enum": [
                                     "full",

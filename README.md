@@ -13,6 +13,7 @@ A VSCode extension to support Roku's BrightScript language.
   - Conditional breakpoints
   - logpoints
   - hit count breakpoints
+- Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. See [here](https://developer.roku.com/docs/developer-program/debugging/debugging-channels.md#scenegraph-debug-server-port-8080-commands) for information on how to enable rendezvous logging your Roku.
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
   - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
