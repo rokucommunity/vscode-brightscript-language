@@ -5,20 +5,19 @@ import { EventEmitter } from 'events';
 export class RendezvousTracker {
     constructor() {
         this.clientPathsMap = {};
-        this.rendezvousHistory = {};
-        this.rendezvousBlocks = {};
         this.emitter = new EventEmitter();
         this.filterOutLogs = true;
+        this.rendezvousBlocks = {};
+        this.rendezvousHistory = {};
     }
 
     private clientPathsMap: RendezvousClientPathMap;
-    private rendezvousHistory: RendezvousHistory;
-    private rendezvousBlocks: RendezvousBlocks;
+    private convertDebuggerLineToClientLine: any;
+    private convertDebuggerPathToClient: any;
     private emitter: EventEmitter;
     private filterOutLogs: boolean;
-
-    private convertDebuggerPathToClient: any;
-    private convertDebuggerLineToClientLine: any;
+    private rendezvousBlocks: RendezvousBlocks;
+    private rendezvousHistory: RendezvousHistory;
 
     public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: string, handler: (payload: any) => void) {
@@ -34,6 +33,9 @@ export class RendezvousTracker {
         this.emitter.emit(eventName, data);
     }
 
+    /**
+     * Sets up the debug functions used to locate the client files and lines
+     */
     public setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient) {
         this.convertDebuggerLineToClientLine = convertDebuggerLineToClientLine;
         this.convertDebuggerPathToClient = convertDebuggerPathToClient;
@@ -47,11 +49,16 @@ export class RendezvousTracker {
         this.filterOutLogs = !(outputLevel === 'full');
     }
 
+    /**
+     * Takes the debug output from the device and parses it for any rendezvous information.
+     * Also if consoleOutput was not set to 'full' then any rendezvous output will be filtered from the output.
+     * @param logLine
+     * @returns The debug output after parsing
+     */
     public processLogLine(logLine: string): string {
-        let lines = logLine.split('\n');
-
-        let normalOutput = '';
         let dataChanged = false;
+        let lines = logLine.split('\n');
+        let normalOutput = '';
 
         lines.map((line) => {
             let match;
@@ -59,34 +66,42 @@ export class RendezvousTracker {
             if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\s{0,}\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
                 let [fullMatch, type, id, fileName, lineNumber, duration] = match;
                 if (type === 'BLOCK') {
+                    // detected the start of a rendezvous event
                     this.rendezvousBlocks[id] = {
                         fileName: this.updateClientPathMap(fileName, lineNumber),
                         lineNumber: lineNumber
                     };
                 } else if (type === 'UNBLOCK' && this.rendezvousBlocks[id]) {
+                    // detected the completion of a rendezvous event
                     dataChanged = true;
                     let blockInfo = this.rendezvousBlocks[id];
                     let clientLineNumber: string = this.clientPathsMap[blockInfo.fileName].clientLines[blockInfo.lineNumber].toString();
 
                     if (this.rendezvousHistory[blockInfo.fileName]) {
+                        // file is in history
                         if (this.rendezvousHistory[blockInfo.fileName][clientLineNumber]) {
+                            // line is in history, just update it
                             (this.rendezvousHistory[blockInfo.fileName][clientLineNumber] as RendezvousLineInfo).totalTime += this.getTime(duration);
                             (this.rendezvousHistory[blockInfo.fileName][clientLineNumber] as RendezvousLineInfo).hitCount ++;
                         } else {
+                            // new line to be added to a file in history
                             this.rendezvousHistory[blockInfo.fileName][clientLineNumber] = this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration);
                         }
                     } else {
+                        // new file to be added to the history
                         this.rendezvousHistory[blockInfo.fileName] = {
-                            type: 'fileInfo',
                             [clientLineNumber]: this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration),
                             hitCount: 0,
                             totalTime: 0,
+                            type: 'fileInfo',
                             zeroCostHitCount: 0
                         };
                     }
 
+                    // how much time to add to the files total time
                     let timeToAdd = this.getTime(duration);
 
+                    // increment hit count and add to the total time for this file
                     this.rendezvousHistory[blockInfo.fileName].hitCount ++;
                     this.rendezvousHistory[blockInfo.fileName].totalTime += timeToAdd;
 
@@ -94,6 +109,7 @@ export class RendezvousTracker {
                         this.rendezvousHistory[blockInfo.fileName].zeroCostHitCount ++;
                     }
 
+                    // remove this event from pre history tracking
                     delete this.rendezvousBlocks[id];
                 }
 
@@ -112,6 +128,12 @@ export class RendezvousTracker {
         return normalOutput;
     }
 
+    /**
+     * Checks the client path map for existing path data and adds new data to the map if not found
+     * @param fileName The filename parsed from the rendezvous output
+     * @param lineNumber The line number parsed from the rendezvous output
+     * @returns The file name that best matches the source files if we where able to map it to the source
+     */
     private updateClientPathMap(fileName: string, lineNumber: string): string {
         let parsedPath = path.parse(fileName);
         let fileNameAsBrs: string;
@@ -120,8 +142,8 @@ export class RendezvousTracker {
         // Does the file end in a valid extension or a function name?
         if (parsedPath.ext.toLowerCase() !== '.brs' && parsedPath.ext.toLowerCase() !== '.xml') {
             // file name contained a function name rather then a valid extension
-            fileNameAsBrs = this.replaceLastStringInstance(fileName, parsedPath.ext, '.brs');
-            fileNameAsXml = this.replaceLastStringInstance(fileName, parsedPath.ext, '.xml');
+            fileNameAsBrs = this.replaceLastStringOccurrence(fileName, parsedPath.ext, '.brs');
+            fileNameAsXml = this.replaceLastStringOccurrence(fileName, parsedPath.ext, '.xml');
 
             // Check the clint path map for the corrected file name
             if (this.clientPathsMap[fileNameAsBrs]) {
@@ -161,25 +183,45 @@ export class RendezvousTracker {
         return fileName;
     }
 
+    /**
+     * Helper function to assist in the creation of a RendezvousLineInfo
+     * @param fileName processed file name
+     * @param lineNumber occurrence line number
+     * @param duration how long the rendezvous took to complete, if not supplied it is assumed to be zero
+     */
     private createLineObject(fileName: string, lineNumber: number, duration?: string): RendezvousLineInfo {
         return {
-            clientPath: this.clientPathsMap[fileName].clientPath,
             clientLineNumber: lineNumber,
-            totalTime: this.getTime(duration),
+            clientPath: this.clientPathsMap[fileName].clientPath,
             hitCount: 1,
+            totalTime: this.getTime(duration),
             type: 'lineInfo'
         };
     }
 
+    /**
+     * Helper function to convert the duration to a float or return 0.00
+     * @param duration how long the rendezvous took to complete, if not supplied it is assumed to be zero
+     */
     private getTime(duration?: string): number {
         return duration ? parseFloat(duration) : 0.000;
     }
 
-    private replaceLastStringInstance(sourceString: string, targetString: string, replacementString: string): string {
-        return sourceString.substr(0, sourceString.lastIndexOf(targetString)) + replacementString;
+    /**
+     * Replaces the last occurrence of a string in a string
+     * @param base String to search within
+     * @param replace String to replace
+     * @param replacement What to replace the final occurrence with
+     */
+    private replaceLastStringOccurrence(base: string, replace: string, replacement: string): string {
+        return (base.includes(replace)) ? base.substr(0, base.lastIndexOf(replace)) + replacement : base;
     }
 }
 
+/**
+ * Used to see if a field on a object in RendezvousHistory object is a reserved field
+ * @param fieldName name of the field to check
+ */
 export function isRendezvousDetailsField(fieldName: string): boolean {
     return (fieldName === 'type' || fieldName === 'hitCount' || fieldName === 'totalTime' || fieldName === 'zeroCostHitCount');
 }
@@ -191,16 +233,16 @@ export interface RendezvousHistory {
 interface RendezvousFileInfo {
     [key: string]: RendezvousLineInfo | ElementType | number;
     hitCount: number;
-    zeroCostHitCount: number;
     totalTime: number;
     type: ElementType;
+    zeroCostHitCount: number;
 }
 
 export interface RendezvousLineInfo {
-    totalTime: number;
-    hitCount: number;
-    clientPath: string;
     clientLineNumber: number;
+    clientPath: string;
+    hitCount: number;
+    totalTime: number;
     type: ElementType;
 }
 
