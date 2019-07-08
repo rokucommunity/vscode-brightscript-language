@@ -1022,8 +1022,19 @@ export class RokuAdapter {
         }
     }
 
-    public setRendezvousDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine) {
-        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine);
+    /**
+     * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
+     */
+    public setRendezvousDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient) {
+        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
+    }
+
+    /**
+     * Passes the log level down to the RendezvousTracker
+     * @param outputLevel the consoleOutput from the launch config
+     */
+    public setConsoleOutput(outputLevel: string) {
+        this.rendezvousTracker.setConsoleOutput(outputLevel);
     }
 }
 

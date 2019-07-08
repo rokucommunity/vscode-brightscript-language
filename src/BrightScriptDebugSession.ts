@@ -28,7 +28,7 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { ComponentLibraryServer } from './ComponentLibraryServer';
-import { isRendezvousDetailsField, RendezvousHistory, RendezvousLineInfo } from './RendezvousTracker';
+import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
@@ -227,14 +227,19 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.connectRokuAdapter(args.host);
 
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
+
+            //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
             this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
-                (debuggerPath: string) => {
-                    return this.convertDebuggerPathToClient(debuggerPath);
-                },
                 (debuggerPath: string, lineNumber: number) => {
                     return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
+                },
+                (debuggerPath: string) => {
+                    return this.convertDebuggerPathToClient(debuggerPath);
                 }
             );
+
+            //pass the log level down thought the adapter to the RendezvousTracker
+            this.rokuAdapter.setConsoleOutput(this.launchArgs.consoleOutput);
 
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {

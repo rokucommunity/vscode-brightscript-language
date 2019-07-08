@@ -8,12 +8,14 @@ export class RendezvousTracker {
         this.rendezvousHistory = {};
         this.rendezvousBlocks = {};
         this.emitter = new EventEmitter();
+        this.filterOutLogs = true;
     }
 
     private clientPathsMap: RendezvousClientPathMap;
     private rendezvousHistory: RendezvousHistory;
     private rendezvousBlocks: RendezvousBlocks;
     private emitter: EventEmitter;
+    private filterOutLogs: boolean;
 
     private convertDebuggerPathToClient: any;
     private convertDebuggerLineToClientLine: any;
@@ -32,9 +34,17 @@ export class RendezvousTracker {
         this.emitter.emit(eventName, data);
     }
 
-    public setDebuggerFileConversionFunctions(convertDebuggerPathToClient, convertDebuggerLineToClientLine) {
-        this.convertDebuggerPathToClient = convertDebuggerPathToClient;
+    public setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient) {
         this.convertDebuggerLineToClientLine = convertDebuggerLineToClientLine;
+        this.convertDebuggerPathToClient = convertDebuggerPathToClient;
+    }
+
+    /**
+     * Used to set wether the rendezvous should be filtered from the console output
+     * @param outputLevel the consoleOutput from the launch config
+     */
+    public setConsoleOutput(outputLevel: string) {
+        this.filterOutLogs = !(outputLevel === 'full');
     }
 
     public processLogLine(logLine: string): string {
@@ -85,6 +95,10 @@ export class RendezvousTracker {
                     }
 
                     delete this.rendezvousBlocks[id];
+                }
+
+                if (!this.filterOutLogs) {
+                    normalOutput += line + '\n';
                 }
             } else if (line) {
                 normalOutput += line + '\n';
