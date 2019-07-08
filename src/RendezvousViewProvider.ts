@@ -1,5 +1,4 @@
 import * as arraySort from 'array-sort';
-import { Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
 import { isRendezvousDetailsField, RendezvousHistory } from './RendezvousTracker';
@@ -163,7 +162,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         if (fileArgs.path && fileArgs.lineNumber) {
             let uri = vscode.Uri.file(fileArgs.path);
             let doc = await vscode.workspace.openTextDocument(uri);
-            let range = new Range(new Position(fileArgs.lineNumber - 1, 0), new Position(fileArgs.lineNumber - 1, 0));
+            let range = new vscode.Range(new vscode.Position(fileArgs.lineNumber - 1, 0), new vscode.Position(fileArgs.lineNumber - 1, 0));
             await vscode.window.showTextDocument(doc, { preview: false, selection: range });
         } else {
             vscode.window.showErrorMessage(`Unable to open file for: ${fileArgs.devicePath}`);

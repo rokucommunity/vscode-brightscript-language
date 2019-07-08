@@ -33,7 +33,9 @@ describe('Debugger', () => {
             };
         },
         activate: () => Promise.resolve(),
-        exitActiveBrightscriptDebugger: () => Promise.resolve()
+        exitActiveBrightscriptDebugger: () => Promise.resolve(),
+        setRendezvousDebuggerFileConversionFunctions: function(a, b) { },
+        setConsoleOutput: function(a) { }
     };
     beforeEach(() => {
         try {
