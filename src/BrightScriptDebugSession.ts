@@ -1312,7 +1312,7 @@ export function defer<T>() {
 }
 
 /**
- * Determines if the `subject` path includes `search` path, with case sensitive compariosn
+ * Determines if the `subject` path includes `search` path, with case sensitive comparison
  * @param subject
  * @param search
  */
