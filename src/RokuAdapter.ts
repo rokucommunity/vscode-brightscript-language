@@ -737,7 +737,7 @@ export class RokuAdapter {
                 data = await this.requestPipeline.executeCommand(
                     `for each vscodeLoopItem in ${expression} : print "vscode_is_string:"; (invalid <> GetInterface(vscodeLoopItem, "ifString")); vscodeLoopItem : end for`
                     , true);
-            } else if (lowerExpressionType === 'roassociativearray') {
+            } else if (lowerExpressionType === 'roassociativearray' || lowerExpressionType === 'rosgnode') {
                 data = await this.requestPipeline.executeCommand(
                     `for each vscodeLoopKey in ${expression}.keys() : print "vscode_key_start:" + vscodeLoopKey + ":vscode_key_stop " + "vscode_is_string:"; (invalid <> GetInterface(${expression}[vscodeLoopKey], "ifString")); ${expression}[vscodeLoopKey] : end for`,
                     true);
@@ -761,7 +761,7 @@ export class RokuAdapter {
                 let highLevelType = this.getHighLevelType(expressionType);
 
                 let children: EvaluateContainer[];
-                if (highLevelType === HighLevelType.array || lowerExpressionType === 'roassociativearray') {
+                if (highLevelType === HighLevelType.array || lowerExpressionType === 'roassociativearray' || lowerExpressionType === 'rosgnode') {
                     //the array/associative array print is a loop of every value, so handle that
                     children = this.getForLoopPrintedChildren(expression, value);
                 } else if (highLevelType === HighLevelType.object) {
@@ -879,6 +879,11 @@ export class RokuAdapter {
                     child.children = this.getArrayOrListChildren(child.evaluateName, collectionLines);
                     child.type += `(${child.children.length})`;
                 }
+            } else if (line.indexOf('<Component: roInvalid>') > -1) {
+                child.highLevelType = HighLevelType.uninitialized;
+                child.type = 'roInvalid';
+                child.value = 'roInvalid';
+                child.children = undefined;
             } else {
                 //is some primative type
                 child.type = this.getPrimativeTypeFromValue(line);
