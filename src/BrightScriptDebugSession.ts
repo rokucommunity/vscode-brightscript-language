@@ -7,11 +7,12 @@ import * as http from 'http';
 import * as path from 'path';
 import * as request from 'request';
 import * as rokuDeploy from 'roku-deploy';
-import * as url from 'url';
 import { FilesType, RokuDeploy } from 'roku-deploy';
+import * as url from 'url';
 import { inspect } from 'util';
 import {
     Breakpoint,
+    ContinuedEvent,
     DebugSession,
     Handles,
     InitializedEvent,
@@ -22,8 +23,7 @@ import {
     StoppedEvent,
     TerminatedEvent,
     Thread,
-    Variable,
-    ContinuedEvent
+    Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
@@ -645,7 +645,6 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
                 childVariables = v.childVariables;
             }
-            var v = this.variables[1];
 
             //if the variable is an array, send only the requested range
             if (Array.isArray(childVariables) && args.filter === 'indexed') {
@@ -664,7 +663,7 @@ export class BrightScriptDebugSession extends DebugSession {
     private evaluateRequestPromise = Promise.resolve();
 
     public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-        var deferred = defer<any>();
+        let deferred = defer<any>();
 
         this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
             return deferred.promise;
