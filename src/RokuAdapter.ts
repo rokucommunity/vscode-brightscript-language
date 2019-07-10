@@ -879,6 +879,12 @@ export class RokuAdapter {
                     child.children = this.getArrayOrListChildren(child.evaluateName, collectionLines);
                     child.type += `(${child.children.length})`;
                 }
+
+            } else if (line.indexOf('<Component:') > -1) {
+                //handle things like nodes
+                child.highLevelType = HighLevelType.object;
+                child.type = this.getHighLevelTypeDetails(line);
+
             } else if (line.indexOf('<Component: roInvalid>') > -1) {
                 child.highLevelType = HighLevelType.uninitialized;
                 child.type = 'roInvalid';
@@ -889,6 +895,7 @@ export class RokuAdapter {
                 child.type = this.getPrimativeTypeFromValue(line);
                 child.value = line.trim();
                 child.highLevelType = HighLevelType.primative;
+                child.children = undefined;
             }
             children.push(child);
         }
