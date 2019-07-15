@@ -691,12 +691,14 @@
             {
                 "command": "extension.brightscript.rendezvous.toggleSortMethod",
                 "title": "Toggle Sorting Method (smart > alphabetic)",
-                "category": "Brightscript Rendezvous"
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
             },
             {
                 "command": "extension.brightscript.rendezvous.toggleSortDirection",
                 "title": "Toggle Asc - Desc Sorting ",
-                "category": "Brightscript Rendezvous"
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
             },
             {
                 "command": "extension.brightscript.rendezvous.clearHistory",
