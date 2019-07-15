@@ -9,7 +9,7 @@ export class RendezvousTracker {
         this.emitter = new EventEmitter();
         this.filterOutLogs = true;
         this.rendezvousBlocks = {};
-        this.rendezvousHistory = {};
+        this.rendezvousHistory = this.createNewRendezvousHistory();
     }
 
     private clientPathsMap: RendezvousClientPathMap;
@@ -57,7 +57,7 @@ export class RendezvousTracker {
      * Clears the current rendezvous history
      */
     public clearRendezvousHistory() {
-        this.rendezvousHistory = {};
+        this.rendezvousHistory = this.createNewRendezvousHistory();
         this.emit('rendezvous-event', this.rendezvousHistory);
     }
 
@@ -89,20 +89,22 @@ export class RendezvousTracker {
                     let blockInfo = this.rendezvousBlocks[id];
                     let clientLineNumber: string = this.clientPathsMap[blockInfo.fileName].clientLines[blockInfo.lineNumber].toString();
 
-                    if (this.rendezvousHistory[blockInfo.fileName]) {
+                    if (this.rendezvousHistory.occurrences[blockInfo.fileName]) {
                         // file is in history
-                        if (this.rendezvousHistory[blockInfo.fileName][clientLineNumber]) {
+                        if (this.rendezvousHistory.occurrences[blockInfo.fileName].occurrences[clientLineNumber]) {
                             // line is in history, just update it
-                            (this.rendezvousHistory[blockInfo.fileName][clientLineNumber] as RendezvousLineInfo).totalTime += this.getTime(duration);
-                            (this.rendezvousHistory[blockInfo.fileName][clientLineNumber] as RendezvousLineInfo).hitCount ++;
+                            this.rendezvousHistory.occurrences[blockInfo.fileName].occurrences[clientLineNumber].totalTime += this.getTime(duration);
+                            this.rendezvousHistory.occurrences[blockInfo.fileName].occurrences[clientLineNumber].hitCount ++;
                         } else {
                             // new line to be added to a file in history
-                            this.rendezvousHistory[blockInfo.fileName][clientLineNumber] = this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration);
+                            this.rendezvousHistory.occurrences[blockInfo.fileName].occurrences[clientLineNumber] = this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration);
                         }
                     } else {
                         // new file to be added to the history
-                        this.rendezvousHistory[blockInfo.fileName] = {
-                            [clientLineNumber]: this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration),
+                        this.rendezvousHistory.occurrences[blockInfo.fileName] = {
+                            occurrences: {
+                                [clientLineNumber]: this.createLineObject(blockInfo.fileName, parseInt(clientLineNumber), duration)
+                            },
                             hitCount: 0,
                             totalTime: 0,
                             type: 'fileInfo',
@@ -114,11 +116,16 @@ export class RendezvousTracker {
                     let timeToAdd = this.getTime(duration);
 
                     // increment hit count and add to the total time for this file
-                    this.rendezvousHistory[blockInfo.fileName].hitCount ++;
-                    this.rendezvousHistory[blockInfo.fileName].totalTime += timeToAdd;
+                    this.rendezvousHistory.occurrences[blockInfo.fileName].hitCount ++;
+                    this.rendezvousHistory.hitCount ++;
+
+                    // increment hit count and add to the total time for the history as a whole
+                    this.rendezvousHistory.occurrences[blockInfo.fileName].totalTime += timeToAdd;
+                    this.rendezvousHistory.totalTime += timeToAdd;
 
                     if (0 === timeToAdd) {
-                        this.rendezvousHistory[blockInfo.fileName].zeroCostHitCount ++;
+                        this.rendezvousHistory.occurrences[blockInfo.fileName].zeroCostHitCount ++;
+                        this.rendezvousHistory.zeroCostHitCount ++;
                     }
 
                     // remove this event from pre history tracking
@@ -196,6 +203,19 @@ export class RendezvousTracker {
     }
 
     /**
+     * Helper function used to create a new RendezvousHistory object with default values
+     */
+    private createNewRendezvousHistory(): RendezvousHistory {
+        return {
+            hitCount: 0,
+            occurrences: {},
+            totalTime: 0.00,
+            type: 'historyInfo',
+            zeroCostHitCount: 0
+        };
+    }
+
+    /**
      * Helper function to assist in the creation of a RendezvousLineInfo
      * @param fileName processed file name
      * @param lineNumber occurrence line number
@@ -220,27 +240,23 @@ export class RendezvousTracker {
     }
 }
 
-/**
- * Used to see if a field on a object in RendezvousHistory object is a reserved field
- * @param fieldName name of the field to check
- */
-export function isRendezvousDetailsField(fieldName: string): boolean {
-    return (fieldName === 'type' || fieldName === 'hitCount' || fieldName === 'totalTime' || fieldName === 'zeroCostHitCount');
-}
-
 export interface RendezvousHistory {
-    [key: string]: RendezvousFileInfo;
-}
-
-interface RendezvousFileInfo {
-    [key: string]: RendezvousLineInfo | ElementType | number;
     hitCount: number;
+    occurrences: {[key: string]: RendezvousFileInfo};
     totalTime: number;
     type: ElementType;
     zeroCostHitCount: number;
 }
 
-export interface RendezvousLineInfo {
+interface RendezvousFileInfo {
+    hitCount: number;
+    occurrences: {[key: string]: RendezvousLineInfo};
+    totalTime: number;
+    type: ElementType;
+    zeroCostHitCount: number;
+}
+
+interface RendezvousLineInfo {
     clientLineNumber: number;
     clientPath: string;
     hitCount: number;
@@ -255,7 +271,7 @@ interface RendezvousBlocks {
     };
 }
 
-type ElementType = 'fileInfo' | 'lineInfo';
+type ElementType = 'historyInfo' | 'fileInfo' | 'lineInfo';
 
 interface RendezvousClientPathMap {
     [key: string]: RendezvousClientFile;

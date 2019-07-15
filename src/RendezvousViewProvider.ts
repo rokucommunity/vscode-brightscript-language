@@ -1,12 +1,11 @@
 import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
 
-import { isRendezvousDetailsField, RendezvousHistory } from './RendezvousTracker';
+import { RendezvousHistory } from './RendezvousTracker';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     constructor(context: vscode.ExtensionContext) {
-        this.tree = {};
         this.enableSmartSorting();
 
         // #region Register sorting commands
@@ -33,8 +32,8 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
 
     private activeFilter: any;
     private isUsingSmartSorting: boolean;
+    private rendezvousHistory: RendezvousHistory;
     private sortAscending: boolean = false;
-    private tree: RendezvousHistory;
 
     /**
      * Updated the sorting logic to be totalTime > averageTime > hitCount > label text
@@ -74,7 +73,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             // What changed?
             // let diff = this.objectDiff(e.body, this.viewedData);
 
-            this.tree = e.body;
+            this.rendezvousHistory = e.body;
             this._onDidChangeTreeData.fire();
         }
     }
@@ -85,21 +84,23 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      */
     public getChildren(element: RendezvousTreeItem): RendezvousTreeItem[] {
         if (!element) {
-            // There are no tree view items so we should be creating file tree items
-            return arraySort(Object.keys(this.tree).map((key) => {
-                if (!isRendezvousDetailsField(key)) {
-                    return new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.tree[key]);
-                }
-            }), this.activeFilter);
+            if (this.rendezvousHistory) {
+                // There are no tree view items so we should be creating file tree items
+                return arraySort(Object.keys(this.rendezvousHistory.occurrences).map((key) => {
+                    return new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
+                }), this.activeFilter);
+            } else {
+                return [];
+            }
         } else {
             // VS code is asking for the children of the supplied tree item
             let treeElement = this.getTreeElementHistoryData(element);
 
             let result;
             if (treeElement.type === 'fileInfo') {
-                result = arraySort(Object.keys(treeElement).map((key) => {
-                    if (!isRendezvousDetailsField(key) && treeElement[key].totalTime > 0) {
-                        let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement[key];
+                result = arraySort(Object.keys(treeElement.occurrences).map((key) => {
+                    if (treeElement.occurrences[key].totalTime > 0) {
+                        let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement.occurrences[key];
                         let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
 
                         // create the command used to open the file
@@ -113,7 +114,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                             } as FileArgs)]
                         };
 
-                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement[key], command);
+                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement.occurrences[key], command);
                     }
                 }), this.activeFilter);
             }
@@ -135,24 +136,14 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      * @param element for which the data was requested
      */
     private getTreeElementHistoryData(element: RendezvousTreeItem): {[key: string]: any} {
-        let objectPath = [];
-        let currentObject: {[key: string]: any} = this.tree;
+        if (element.details.type === 'lineInfo') {
 
-        if (element.parent) {
-            // fine the correct object key path to this element
-            let currentParent = element;
-            while (currentParent.parent) {
-                currentParent = currentParent.parent;
-                objectPath.unshift(currentParent.label);
-            }
-
-            objectPath.forEach((key) => {
-                currentObject = currentObject[key];
-            });
+            // return the line item info
+            return this.rendezvousHistory.occurrences[element.parent.key].occurrences[element.key];
+        } else if (element.details.type === 'fileInfo') {
+            // return the file item info
+            return this.rendezvousHistory.occurrences[element.key];
         }
-
-        // return the contents of the current item
-        return currentObject[element.key];
     }
 
     /**
