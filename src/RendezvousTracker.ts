@@ -37,7 +37,10 @@ export class RendezvousTracker {
     /**
      * Sets up the debug functions used to locate the client files and lines
      */
-    public setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient) {
+    public setDebuggerFileConversionFunctions(
+        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
+        convertDebuggerPathToClient: (debuggerPath: string) => string
+    ) {
         this.convertDebuggerLineToClientLine = convertDebuggerLineToClientLine;
         this.convertDebuggerPathToClient = convertDebuggerPathToClient;
     }

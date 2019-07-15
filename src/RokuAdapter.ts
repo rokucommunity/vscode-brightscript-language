@@ -1027,7 +1027,10 @@ export class RokuAdapter {
     /**
      * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
      */
-    public setRendezvousDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient) {
+    public setRendezvousDebuggerFileConversionFunctions(
+        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
+        convertDebuggerPathToClient: (debuggerPath: string) => string
+        ) {
         this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
     }
 
