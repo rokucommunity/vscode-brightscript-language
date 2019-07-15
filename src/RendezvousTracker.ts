@@ -2,6 +2,8 @@ import * as path from 'path';
 
 import { EventEmitter } from 'events';
 
+import { replaceLastStringOccurrence } from './util';
+
 export class RendezvousTracker {
     constructor() {
         this.clientPathsMap = {};
@@ -142,8 +144,8 @@ export class RendezvousTracker {
         // Does the file end in a valid extension or a function name?
         if (parsedPath.ext.toLowerCase() !== '.brs' && parsedPath.ext.toLowerCase() !== '.xml') {
             // file name contained a function name rather then a valid extension
-            fileNameAsBrs = this.replaceLastStringOccurrence(fileName, parsedPath.ext, '.brs');
-            fileNameAsXml = this.replaceLastStringOccurrence(fileName, parsedPath.ext, '.xml');
+            fileNameAsBrs = replaceLastStringOccurrence(fileName, parsedPath.ext, '.brs');
+            fileNameAsXml = replaceLastStringOccurrence(fileName, parsedPath.ext, '.xml');
 
             // Check the clint path map for the corrected file name
             if (this.clientPathsMap[fileNameAsBrs]) {
@@ -205,16 +207,6 @@ export class RendezvousTracker {
      */
     private getTime(duration?: string): number {
         return duration ? parseFloat(duration) : 0.000;
-    }
-
-    /**
-     * Replaces the last occurrence of a string in a string
-     * @param base String to search within
-     * @param replace String to replace
-     * @param replacement What to replace the final occurrence with
-     */
-    private replaceLastStringOccurrence(base: string, replace: string, replacement: string): string {
-        return (base.includes(replace)) ? base.substr(0, base.lastIndexOf(replace)) + replacement : base;
     }
 }
 

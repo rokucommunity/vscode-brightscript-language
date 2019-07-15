@@ -83,3 +83,54 @@ export async function fileExists(filePath: string) {
 export async function delay(ms: number) {
     return new Promise( (resolve) => setTimeout(resolve, ms) );
 }
+
+/**
+ * Replaces the last occurrence of a string in a string
+ * @param base String to search within
+ * @param replace String to replace
+ * @param replacement What to replace the final occurrence with
+ */
+export function replaceLastStringOccurrence(base: string, replace: string, replacement: string): string {
+    return (base.includes(replace)) ? base.substr(0, base.lastIndexOf(replace)) + replacement : base;
+}
+
+/**
+ * With return the differences in two objects
+ * @param obj1 base target
+ * @param obj2 comparison target
+ * @param exclude fields to exclude in the comparison
+ */
+export function objectDiff(obj1: object, obj2: object, exclude?: string[]) {
+    let r = {};
+
+    if (!exclude) {	exclude = []; }
+
+    for (let prop in obj1) {
+        if (obj1.hasOwnProperty(prop) && prop !== '__proto__') {
+            if (exclude.indexOf(obj1[prop]) === -1) {
+
+                // check if obj2 has prop
+                if (!obj2.hasOwnProperty(prop)) { r[prop] = obj1[prop]; } else if (obj1[prop] === Object(obj1[prop])) {
+                    let difference = objectDiff(obj1[prop], obj2[prop]);
+                    if (Object.keys(difference).length > 0) { r[prop] = difference; }
+                } else if (obj1[prop] !== obj2[prop]) {
+                    if (obj1[prop] === undefined) {
+                        r[prop] = 'undefined';
+                    }
+
+                    if (obj1[prop] === null) {
+                        r[prop] = null;
+                    } else if (typeof obj1[prop] === 'function') {
+                        r[prop] = 'function';
+                    } else if (typeof obj1[prop] === 'object') {
+                        r[prop] = 'object';
+                    } else {
+                        r[prop] = obj1[prop];
+                    }
+                }
+            }
+        }
+    }
+
+    return r;
+}

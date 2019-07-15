@@ -233,47 +233,6 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     private handleReverseSort(sortResult: number): number {
         return (!this.sortAscending) ? sortResult : (sortResult === 1) ? -1 : (sortResult === -1) ? 1 : sortResult;
     }
-
-    /**
-     * With return the differences in two objects
-     * @param obj1 base target
-     * @param obj2 comparison target
-     * @param exclude fields to exclude in the comparison
-     */
-    private objectDiff(obj1: object, obj2: object, exclude?: string[]) {
-        let r = {};
-
-        if (!exclude) {	exclude = []; }
-
-        for (let prop in obj1) {
-            if (obj1.hasOwnProperty(prop) && prop !== '__proto__') {
-                if (exclude.indexOf(obj1[prop]) === -1) {
-
-                    // check if obj2 has prop
-                    if (!obj2.hasOwnProperty(prop)) { r[prop] = obj1[prop]; } else if (obj1[prop] === Object(obj1[prop])) {
-                        let difference = this.objectDiff(obj1[prop], obj2[prop]);
-                        if (Object.keys(difference).length > 0) { r[prop] = difference; }
-                    } else if (obj1[prop] !== obj2[prop]) {
-                        if (obj1[prop] === undefined) {
-                            r[prop] = 'undefined';
-                        }
-
-                        if (obj1[prop] === null) {
-                            r[prop] = null;
-                        } else if (typeof obj1[prop] === 'function') {
-                            r[prop] = 'function';
-                        } else if (typeof obj1[prop] === 'object') {
-                            r[prop] = 'object';
-                        } else {
-                            r[prop] = obj1[prop];
-                        }
-                    }
-                }
-            }
-        }
-
-        return r;
-    }
 }
 
 class RendezvousTreeItem extends vscode.TreeItem {
