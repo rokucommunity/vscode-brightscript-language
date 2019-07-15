@@ -350,6 +350,16 @@ export class BrightScriptDebugSession extends DebugSession {
         }
     }
 
+    /**
+     * Accepts custom events and requests from the extension
+     * @param command name of the command to execute
+     */
+    protected customRequest(command: string) {
+        if (command === 'rendezvous.clearHistory') {
+            this.rokuAdapter.clearRendezvousHistory();
+        }
+    }
+
     private componentLibraryPostfix: string = '__lib';
 
     protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {

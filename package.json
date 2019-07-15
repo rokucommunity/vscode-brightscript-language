@@ -124,12 +124,17 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "extension.brightscript.toggleSortingMethod",
+                    "command": "extension.brightscript.rendezvous.toggleSortMethod",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
                 },
                 {
-                    "command": "extension.brightscript.toggleSortingAscDesc",
+                    "command": "extension.brightscript.rendezvous.toggleSortDirection",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
                 }
@@ -683,14 +688,20 @@
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.toggleSortingMethod",
+                "command": "extension.brightscript.rendezvous.toggleSortMethod",
                 "title": "Toggle Sorting Method (smart > alphabetic)",
                 "category": "Brightscript Rendezvous"
             },
             {
-                "command": "extension.brightscript.toggleSortingAscDesc",
+                "command": "extension.brightscript.rendezvous.toggleSortDirection",
                 "title": "Toggle Asc - Desc Sorting ",
                 "category": "Brightscript Rendezvous"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.clearHistory",
+                "title": "Clear History",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
             }
         ],
         "keybindings": [

@@ -11,14 +11,14 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
 
         // #region Register sorting commands
         let subscriptions = context.subscriptions;
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleSortingMethod', () => {
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.toggleSortMethod', () => {
             if (!this.enableSmartSorting()) {
                 this.disableSmartSorting();
             }
             this._onDidChangeTreeData.fire();
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleSortingAscDesc', () => {
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.toggleSortDirection', () => {
             this.sortAscending = !this.sortAscending;
             this._onDidChangeTreeData.fire();
         }));

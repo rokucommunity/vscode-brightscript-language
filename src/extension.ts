@@ -39,10 +39,15 @@ let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
+    let subscriptions = context.subscriptions;
 
     //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
     let rendezvousViewProvider = new RendezvousViewProvider(context);
     vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+
+    subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
+        vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+    }));
 
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({

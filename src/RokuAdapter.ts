@@ -1023,6 +1023,7 @@ export class RokuAdapter {
         }
     }
 
+    // #region Rendezvous Tracker pass though functions
     /**
      * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
      */
@@ -1037,6 +1038,14 @@ export class RokuAdapter {
     public setConsoleOutput(outputLevel: string) {
         this.rendezvousTracker.setConsoleOutput(outputLevel);
     }
+
+    /**
+     * Sends a call you the RendezvousTracker to clear the current rendezvous history
+     */
+    public clearRendezvousHistory() {
+        this.rendezvousTracker.clearRendezvousHistory();
+    }
+    // #endregion
 }
 
 export interface StackFrame {

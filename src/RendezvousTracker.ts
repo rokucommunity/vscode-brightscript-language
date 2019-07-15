@@ -52,6 +52,14 @@ export class RendezvousTracker {
     }
 
     /**
+     * Clears the current rendezvous history
+     */
+    public clearRendezvousHistory() {
+        this.rendezvousHistory = {};
+        this.emit('rendezvous-event', this.rendezvousHistory);
+    }
+
+    /**
      * Takes the debug output from the device and parses it for any rendezvous information.
      * Also if consoleOutput was not set to 'full' then any rendezvous output will be filtered from the output.
      * @param logLine
