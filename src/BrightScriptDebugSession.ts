@@ -279,7 +279,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
-                //TODO - shot graceful
+                //stop the roku adapter and exit the channel
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
