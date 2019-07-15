@@ -59,6 +59,7 @@
         "path": "^0.12.7",
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
+        "replace-last": "^1.2.6",
         "roku-deploy": "^2.1.0",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",

@@ -85,16 +85,6 @@ export async function delay(ms: number) {
 }
 
 /**
- * Replaces the last occurrence of a string in a string
- * @param base String to search within
- * @param replace String to replace
- * @param replacement What to replace the final occurrence with
- */
-export function replaceLastStringOccurrence(base: string, replace: string, replacement: string): string {
-    return (base.includes(replace)) ? base.substr(0, base.lastIndexOf(replace)) + replacement : base;
-}
-
-/**
  * With return the differences in two objects
  * @param obj1 base target
  * @param obj2 comparison target

@@ -1,8 +1,7 @@
 import * as path from 'path';
+import * as replaceLast from 'replace-last';
 
 import { EventEmitter } from 'events';
-
-import { replaceLastStringOccurrence } from './util';
 
 export class RendezvousTracker {
     constructor() {
@@ -152,8 +151,8 @@ export class RendezvousTracker {
         // Does the file end in a valid extension or a function name?
         if (parsedPath.ext.toLowerCase() !== '.brs' && parsedPath.ext.toLowerCase() !== '.xml') {
             // file name contained a function name rather then a valid extension
-            fileNameAsBrs = replaceLastStringOccurrence(fileName, parsedPath.ext, '.brs');
-            fileNameAsXml = replaceLastStringOccurrence(fileName, parsedPath.ext, '.xml');
+            fileNameAsBrs = replaceLast(fileName, parsedPath.ext, '.brs');
+            fileNameAsXml = replaceLast(fileName, parsedPath.ext, '.xml');
 
             // Check the clint path map for the corrected file name
             if (this.clientPathsMap[fileNameAsBrs]) {
