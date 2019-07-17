@@ -15,6 +15,7 @@
             true,
             "array"
         ],
+        "arrow-parens": false,
         "arrow-return-shorthand": false,
         "class-name": true,
         "comment-format": false,
