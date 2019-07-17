@@ -337,8 +337,9 @@
                             },
                             "enableLookupVariableNodeChildren": {
                                 "type": "boolean",
-                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field",
-                                "default": false
+                                "deprecationMessage": "Deprecated. This is no longer necessary, as the setting is always enabled and cannot be disabled.",
+                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `[[children]]` field",
+                                "default": true
                             }
                         }
                     }
@@ -353,8 +354,7 @@
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
                         "enableDebuggerAutoRecovery": false,
-                        "stopDebuggerOnAppExit": false,
-                        "enableLookupVariableNodeChildren": false
+                        "stopDebuggerOnAppExit": false
                     }
                 ],
                 "configurationSnippets": [
@@ -370,8 +370,7 @@
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
                             "enableDebuggerAutoRecovery": false,
-                            "stopDebuggerOnAppExit": false,
-                            "enableLookupVariableNodeChildren": false
+                            "stopDebuggerOnAppExit": false
                         }
                     }
                 ]
