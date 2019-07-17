@@ -1065,10 +1065,16 @@ export class RequestPipeline {
     }
 
     private requests: RequestPipelineRequest[] = [];
+    private waitForPromptRequests: RequestPipelineRequest[] = [];
     private debuggerLineRegex: RegExp;
+    private isAtDebuggerPrompt: boolean = false;
 
     private get isProcessing() {
         return this.currentRequest !== undefined;
+    }
+
+    private get hasRequests() {
+        return this.waitForPromptRequests.length > 0;
     }
 
     private currentRequest: RequestPipelineRequest = undefined;
@@ -1089,28 +1095,51 @@ export class RequestPipeline {
 
     private connect() {
         let allResponseText = '';
+        let lastPartialLine = '';
+
         this.client.addListener('data', (data) => {
             let responseText = data.toString();
-            this.emit('console-output', responseText);
-            allResponseText += responseText;
-
-            //if we are not processing, immediately broadcast the latest data
-            if (!this.isProcessing) {
-                this.emit('unhandled-console-output', allResponseText);
-                allResponseText = '';
+            let match;
+            if (!responseText.endsWith('\n') && !(match = this.debuggerLineRegex.exec(responseText.trim()))) {
+                // buffer was split and was not the result of a prompt, save the partial line
+                lastPartialLine += responseText;
             } else {
-                let match;
-                //if responseText produced a prompt, return the responseText
-                if (match = this.debuggerLineRegex.exec(allResponseText.trim())) {
-                    //resolve the command's promise (if it cares)
-                    this.currentRequest.onComplete(allResponseText);
+                if (lastPartialLine) {
+                    // there was leftover lines, join the partial lines back together
+                    responseText = lastPartialLine + responseText;
+                    lastPartialLine = '';
+                }
+
+                //forward all raw console output
+                this.emit('console-output', responseText);
+                allResponseText += responseText;
+
+                let match = this.debuggerLineRegex.exec(allResponseText.trim());
+
+                //if we are not processing, immediately broadcast the latest data
+                if (!this.isProcessing) {
+                    this.emit('unhandled-console-output', allResponseText);
                     allResponseText = '';
-                    this.currentRequest = undefined;
-                    //try to run the next request
-                    this.process();
+
+                    if (match) {
+                        this.isAtDebuggerPrompt = true;
+                        if (this.hasRequests) {
+                            this.process(true);
+                        }
+                    }
+                } else {
+                    //if responseText produced a prompt, return the responseText
+                    if (match) {
+                        //resolve the command's promise (if it cares)
+                        this.isAtDebuggerPrompt = true;
+                        this.currentRequest.onComplete(allResponseText);
+                        allResponseText = '';
+                        this.currentRequest = undefined;
+                        //try to run the next request
+                        this.process(true);
+                    }
                 }
             }
-
         });
     }
 
@@ -1128,30 +1157,51 @@ export class RequestPipeline {
                     this.emit('console-output', command);
                 }
                 this.client.write(commandText);
+                if (waitForPrompt) {
+                    this.isAtDebuggerPrompt = false;
+                }
             };
-            this.requests.push({
+
+            let request = {
                 executeCommand: executeCommand,
                 onComplete: (data) => {
                     console.debug(`Command finished (${waitForPrompt ? 'after waiting for prompt' : 'did not wait for prompt'}`, command);
                     console.debug('Data:', data);
                     resolve(data);
                 },
-                waitForPrompt: waitForPrompt
-            });
+                waitForPrompt: waitForPrompt,
+            };
+
             //start processing (safe to call multiple times)
-            this.process();
+            if (!waitForPrompt) {
+                this.requests.push(request);
+                this.process();
+            } else {
+                this.waitForPromptRequests.push(request);
+                if (this.isAtDebuggerPrompt) {
+                    this.process(true);
+                }
+            }
         });
     }
 
     /**
-     * Internall request processing function
+     * Internally request processing function
      */
-    private async process() {
-        if (this.isProcessing || this.requests.length === 0) {
+    private async process(waitForPrompt: boolean = false) {
+        if (this.isProcessing || waitForPrompt ? this.waitForPromptRequests.length === 0 : this.requests.length === 0) {
             return;
         }
+
+        let nextRequest;
         //get the oldest command
-        let nextRequest = this.requests.shift();
+        if (waitForPrompt) {
+            nextRequest = this.waitForPromptRequests.shift();
+            console.log(nextRequest);
+        } else {
+            nextRequest = this.requests.shift();
+        }
+
         if (nextRequest.waitForPrompt) {
             this.currentRequest = nextRequest;
         } else {
