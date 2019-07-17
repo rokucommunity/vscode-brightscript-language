@@ -120,7 +120,6 @@ export class LogOutputManager {
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
-        console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
         } else if (e.event === 'BSLaunchStartEvent') {
@@ -246,7 +245,6 @@ export class LogOutputManager {
                 const extension = pkgPath.substring(pkgPath.length - 4);
                 let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
                 const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
-                console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
                 this.outputChannel.appendLine(logText);

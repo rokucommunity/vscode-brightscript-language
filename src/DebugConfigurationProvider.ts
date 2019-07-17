@@ -94,7 +94,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
-        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
@@ -158,7 +157,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (showInputBox) {
             config.host = await this.openInputBox('The IP address of your Roku device');
         }
-        console.log(config.host);
         // #endregion
 
         //prompt for password if not hardcoded
