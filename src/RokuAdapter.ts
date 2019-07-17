@@ -1065,7 +1065,6 @@ export class RequestPipeline {
     }
 
     private requests: RequestPipelineRequest[] = [];
-    private waitForPromptRequests: RequestPipelineRequest[] = [];
     private debuggerLineRegex: RegExp;
     private isAtDebuggerPrompt: boolean = false;
 
@@ -1074,7 +1073,7 @@ export class RequestPipeline {
     }
 
     private get hasRequests() {
-        return this.waitForPromptRequests.length > 0;
+        return this.requests.length > 0;
     }
 
     private currentRequest: RequestPipelineRequest = undefined;
@@ -1099,8 +1098,7 @@ export class RequestPipeline {
 
         this.client.addListener('data', (data) => {
             let responseText = data.toString();
-            let match;
-            if (!responseText.endsWith('\n') && !(match = this.debuggerLineRegex.exec(responseText.trim()))) {
+            if (!responseText.endsWith('\n') && !this.checkForDebuggerPrompt(responseText)) {
                 // buffer was split and was not the result of a prompt, save the partial line
                 lastPartialLine += responseText;
             } else {
@@ -1114,33 +1112,43 @@ export class RequestPipeline {
                 this.emit('console-output', responseText);
                 allResponseText += responseText;
 
-                let match = this.debuggerLineRegex.exec(allResponseText.trim());
+                let foundDebuggerPrompt = this.checkForDebuggerPrompt(allResponseText);
 
                 //if we are not processing, immediately broadcast the latest data
                 if (!this.isProcessing) {
                     this.emit('unhandled-console-output', allResponseText);
                     allResponseText = '';
 
-                    if (match) {
+                    if (foundDebuggerPrompt) {
                         this.isAtDebuggerPrompt = true;
                         if (this.hasRequests) {
-                            this.process(true);
+                            // There are requests waiting to be processed
+                            this.process();
                         }
                     }
                 } else {
                     //if responseText produced a prompt, return the responseText
-                    if (match) {
+                    if (foundDebuggerPrompt) {
                         //resolve the command's promise (if it cares)
                         this.isAtDebuggerPrompt = true;
                         this.currentRequest.onComplete(allResponseText);
                         allResponseText = '';
                         this.currentRequest = undefined;
                         //try to run the next request
-                        this.process(true);
+                        this.process();
                     }
                 }
             }
         });
+    }
+
+    /**
+     * Checks the supplied string for the debugger input prompt
+     * @param responseText
+     */
+    private checkForDebuggerPrompt(responseText: string) {
+        let match = this.debuggerLineRegex.exec(responseText.trim());
+        return (match);
     }
 
     /**
@@ -1172,14 +1180,18 @@ export class RequestPipeline {
                 waitForPrompt: waitForPrompt,
             };
 
-            //start processing (safe to call multiple times)
             if (!waitForPrompt) {
-                this.requests.push(request);
-                this.process();
+                if (!this.isProcessing) {
+                    //fire and forget the command
+                    request.executeCommand();
+                    //the command doesn't care about the output, resolve it immediately
+                    request.onComplete(undefined);
+                }
             } else {
-                this.waitForPromptRequests.push(request);
+                this.requests.push(request);
                 if (this.isAtDebuggerPrompt) {
-                    this.process(true);
+                    //start processing since we are already at a debug prompt (safe to call multiple times)
+                this.process();
                 }
             }
         });
@@ -1188,33 +1200,17 @@ export class RequestPipeline {
     /**
      * Internally request processing function
      */
-    private async process(waitForPrompt: boolean = false) {
-        if (this.isProcessing || waitForPrompt ? this.waitForPromptRequests.length === 0 : this.requests.length === 0) {
+    private async process() {
+        if (this.isProcessing || !this.hasRequests) {
             return;
         }
 
-        let nextRequest;
         //get the oldest command
-        if (waitForPrompt) {
-            nextRequest = this.waitForPromptRequests.shift();
-            console.log(nextRequest);
-        } else {
-            nextRequest = this.requests.shift();
-        }
-
-        if (nextRequest.waitForPrompt) {
+        let nextRequest = this.requests.shift();
             this.currentRequest = nextRequest;
-        } else {
-            //fire and forget the command
-        }
 
         //run the request. the data listener will handle launching the next request once this one has finished processing
         nextRequest.executeCommand();
-
-        //if the command doesn't care about the output, resolve it immediately
-        if (!nextRequest.waitForPrompt) {
-            nextRequest.onComplete(undefined);
-        }
     }
 
     public destroy() {
