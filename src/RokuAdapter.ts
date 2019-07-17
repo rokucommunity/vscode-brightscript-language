@@ -284,7 +284,7 @@ export class RokuAdapter {
      * @param responseText
      */
     private checkForRuntimeError(responseText: string) {
-        let match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
+        let match = /(.*)\s\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
         if (match) {
             let message = match[1].trim();
             let errorCode = match[2].trim().toLowerCase();
