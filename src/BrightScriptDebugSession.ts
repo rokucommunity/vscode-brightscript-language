@@ -25,7 +25,6 @@ import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
-import { delay } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');

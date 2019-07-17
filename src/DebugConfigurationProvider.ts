@@ -10,7 +10,7 @@ import {
 } from 'vscode';
 import * as vscode from 'vscode';
 
-import * as util from './util';
+import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 

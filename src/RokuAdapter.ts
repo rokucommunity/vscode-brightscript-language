@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
+import { util } from './util';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
