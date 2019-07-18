@@ -34,6 +34,10 @@ export class RendezvousTracker {
         this.emitter.emit(eventName, data);
     }
 
+    public get getRendezvousHistory(): RendezvousHistory {
+        return this.rendezvousHistory;
+    }
+
     /**
      * Sets up the debug functions used to locate the client files and lines
      */
@@ -74,7 +78,7 @@ export class RendezvousTracker {
 
         lines.map((line) => {
             let match;
-            // see the following for an explanation for this regex: https://regex101.com/r/In0t7d/5
+            // see the following for an explanation for this regex: https://regex101.com/r/In0t7d/6
             if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\s{0,}\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
                 let [fullMatch, type, id, fileName, lineNumber, duration] = match;
                 if (type === 'BLOCK') {
@@ -149,7 +153,7 @@ export class RendezvousTracker {
 
     /**
      * Checks the client path map for existing path data and adds new data to the map if not found
-     * @param fileName The filename parsed from the rendezvous output
+     * @param fileName The filename or path parsed from the rendezvous output
      * @param lineNumber The line number parsed from the rendezvous output
      * @returns The file name that best matches the source files if we where able to map it to the source
      */
