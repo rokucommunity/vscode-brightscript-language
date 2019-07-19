@@ -126,14 +126,14 @@ class RokuFinder extends EventEmitter {
             if (!this.running) {
                 return;
             }
-            let localHeaders = headers;
+
             const { ST, LOCATION } = headers;
             if (ST && LOCATION && ST.indexOf('roku') !== -1) {
-                http.get(`${LOCATION}/query/device-info`, (resp) => {
+                http.get(`${LOCATION}/query/device-info`, {
+                    headers: { 'User-Agent': 'github.com/TwitchBronBron/vscode-brightscript-language' }
+                }, (resp) => {
                     // Get the device info
                     let data = '';
-                    let header = localHeaders;
-                    let loc = header.LOCATION;
 
                     resp.on('data', (chunk) => {
                         // A chunk of data has been received.
@@ -142,7 +142,6 @@ class RokuFinder extends EventEmitter {
 
                     resp.on('end', () => {
                         // The whole response has been received.
-                        let head = header;
                         let info = xmlParser.parse(data);
                         const device = this.parseAddress(LOCATION);
                         device.deviceInfo = info['device-info'];
