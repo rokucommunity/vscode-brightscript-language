@@ -6,14 +6,12 @@ import { RendezvousHistory } from './RendezvousTracker';
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     constructor(context: vscode.ExtensionContext) {
-        this.enableSmartSorting();
+        this.toggleSmartSorting();
 
         // #region Register sorting commands
         let subscriptions = context.subscriptions;
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.toggleSortMethod', () => {
-            if (!this.enableSmartSorting()) {
-                this.disableSmartSorting();
-            }
+            this.toggleSmartSorting();
             this._onDidChangeTreeData.fire();
         }));
 
@@ -36,10 +34,11 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     private sortAscending: boolean = false;
 
     /**
-     * Updated the sorting logic to be totalTime > averageTime > hitCount > label text
+     * Toggles between smart and simple sorting
      */
-    private enableSmartSorting(): boolean {
+    private toggleSmartSorting() {
         if (!this.isUsingSmartSorting) {
+            // Update the sorting logic to be totalTime > averageTime > hitCount > label text
             this.isUsingSmartSorting = true;
             this.activeFilter = [
                 this.rendezvousTotalTimeSort,
@@ -47,21 +46,11 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                 this.rendezvousHitCountSort,
                 this.compare('label')
             ];
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Sorting is simply based on the label text
-     */
-    private disableSmartSorting() {
-        if (this.isUsingSmartSorting) {
+        } else {
+            // Sorting is simply based on the label text
             this.isUsingSmartSorting = false;
             this.activeFilter = [this.compare('label')];
-            return true;
         }
-        return false;
     }
 
     /**
