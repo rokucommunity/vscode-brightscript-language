@@ -96,7 +96,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             // VS code is asking for the children of the supplied tree item
             let treeElement = this.getTreeElementHistoryData(element);
 
-            let result;
+            let result: RendezvousTreeItem[];
             if (treeElement.type === 'fileInfo') {
                 result = arraySort(Object.keys(treeElement.occurrences).map((key) => {
                     if (treeElement.occurrences[key].totalTime > 0) {
