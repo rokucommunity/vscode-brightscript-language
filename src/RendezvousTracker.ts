@@ -278,13 +278,10 @@ interface RendezvousBlocks {
 type ElementType = 'historyInfo' | 'fileInfo' | 'lineInfo';
 
 interface RendezvousClientPathMap {
-    [key: string]: RendezvousClientFile;
-}
-
-interface RendezvousClientFile {
-    [key: string]: string | RendezvousClientLineMap;
-    clientPath: string;
-}
-interface RendezvousClientLineMap {
-    [key: string]: number;
+    [key: string]: {
+        clientLines: {
+            [key: string]: number
+        };
+        clientPath: string;
+    };
 }
