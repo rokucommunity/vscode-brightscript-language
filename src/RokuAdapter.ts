@@ -235,7 +235,7 @@ export class RokuAdapter {
                             console.log('this breakpoint is flagged to be skipped');
                             this.isInMicroDebugger = false;
                             this.isNextBreakpointSkipped = false;
-                            this.requestPipeline.executeCommand('c', false, false);
+                            this.requestPipeline.executeCommand('c', false, false, false);
                         } else {
                             if (this.isActivated && this.isAtDebuggerPrompt === false) {
                                 this.isAtDebuggerPrompt = true;
@@ -591,7 +591,7 @@ export class RokuAdapter {
     public pause() {
         this.clearCache();
         //send the kill signal, which breaks into debugger mode
-        return this.requestPipeline.executeCommand('\x03;', false);
+        return this.requestPipeline.executeCommand('\x03;', false, true);
     }
 
     /**
@@ -1155,8 +1155,10 @@ export class RequestPipeline {
      * Schedule a command to be run. Resolves with the result once the command finishes
      * @param commandFunction
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
+     * @param forceExecute - if true, it is assumed the command can be run at any time and will be executed immediately
+     * @param silent - if true, the command will be hidden from the output
      */
-    public executeCommand(command: string, waitForPrompt: boolean, silent: boolean = false) {
+    public executeCommand(command: string, waitForPrompt: boolean, forceExecute: boolean = false, silent: boolean = false) {
         console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
@@ -1166,6 +1168,7 @@ export class RequestPipeline {
                 }
                 this.client.write(commandText);
                 if (waitForPrompt) {
+                    // The act of executing this command means we are no longer at the debug prompt
                     this.isAtDebuggerPrompt = false;
                 }
             };
@@ -1181,17 +1184,22 @@ export class RequestPipeline {
             };
 
             if (!waitForPrompt) {
-                if (!this.isProcessing) {
+                if (!this.isProcessing || forceExecute) {
                     //fire and forget the command
                     request.executeCommand();
                     //the command doesn't care about the output, resolve it immediately
                     request.onComplete(undefined);
+                } else {
+                    // Skip this request as the device is not ready to accept the command or it can not be run at any time
                 }
             } else {
                 this.requests.push(request);
                 if (this.isAtDebuggerPrompt) {
                     //start processing since we are already at a debug prompt (safe to call multiple times)
-                this.process();
+                    this.process();
+                } else {
+                    // do not run the command until the device is at a debug prompt.
+                    // this will be detected in the data listener in the connect function
                 }
             }
         });
@@ -1207,7 +1215,7 @@ export class RequestPipeline {
 
         //get the oldest command
         let nextRequest = this.requests.shift();
-            this.currentRequest = nextRequest;
+        this.currentRequest = nextRequest;
 
         //run the request. the data listener will handle launching the next request once this one has finished processing
         nextRequest.executeCommand();
