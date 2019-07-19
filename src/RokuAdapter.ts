@@ -1245,7 +1245,7 @@ export class RequestPipeline {
     }
 
     /**
-     * Internally request processing function
+     * Internal request processing function
      */
     private async process() {
         if (this.isProcessing || !this.hasRequests) {
