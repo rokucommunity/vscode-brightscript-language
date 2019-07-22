@@ -330,7 +330,8 @@ export class BrightScriptDebugSession extends DebugSession {
         } catch (e) {
             console.log(e);
             //if the message is anything other than compile errors, we want to display the error
-            if (e.message !== 'compileErrors') {
+            //TODO: look into the reason why we are getting the 'Invalid response code: 400' on compile errors
+            if (e.message !== 'compileErrors' && e.message !== 'Invalid response code: 400') {
                 //TODO make the debugger stop!
                 this.sendDebugLogLine('Encountered an issue during the publish process');
                 this.sendDebugLogLine(e.message);
