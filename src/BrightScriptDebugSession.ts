@@ -222,7 +222,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
-            this.sendDebugLogLine('Connecting to Roku via telnet');
+            this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
+
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
 
@@ -312,8 +313,17 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.activate();
 
             if (!error) {
-                console.log(`deployed to Roku@${args.host}`);
-                this.sendResponse(response);
+                if (this.rokuAdapter.connected) {
+                    // Host connection was established befor the main public process was completed
+                    this.successfulDeployPreparations(response, args.host);
+                } else {
+                    // Main public process was completed but we are still waiting for a connection to the host
+                    this.rokuAdapter.on('connected', (status) => {
+                        if (status) {
+                            this.successfulDeployPreparations(response, args.host);
+                        }
+                    });
+                }
             } else {
                 throw error;
             }
@@ -358,6 +368,14 @@ export class BrightScriptDebugSession extends DebugSession {
         if (command === 'rendezvous.clearHistory') {
             this.rokuAdapter.clearRendezvousHistory();
         }
+    }
+
+    /**
+     * Reusable function just to keep things DRY
+     */
+    private successfulDeployPreparations(response: DebugProtocol.LaunchResponse, host: string) {
+        console.log(`deployed to Roku@${host}`);
+        this.sendResponse(response);
     }
 
     private componentLibraryPostfix: string = '__lib';
@@ -851,6 +869,10 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * Creates and registers the main events for the RokuAdapter
+     * @param {string} host ip address to connect to
+     */
     private async connectRokuAdapter(host: string) {
         //register events
         this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
