@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import { async } from 'q';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
