@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
+import { async } from 'q';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
@@ -73,6 +74,31 @@ export async function fixFilePathExtension(filePath: string) {
 export async function fileExists(filePath: string) {
     return new Promise((resolve) => {
         fsExtra.exists(filePath, resolve);
+    });
+}
+
+/**
+ * Reads the the manifest file and converts to a javascript object skipping empty lines and comments
+ * @param path location of the manifest file
+ */
+export async function convertManifestToObject(path: string): Promise<{ [key: string]: string } | undefined> {
+    return new Promise(async (resolve) => {
+        if (await fileExists(path) === false) {
+            resolve(undefined);
+        } else {
+            let fileContents = (await fsExtra.readFile(path)).toString();
+            let manifestLines = fileContents.split('\n');
+
+            let manifestValues = {};
+            manifestLines.map((line) => {
+                let match;
+                if (match = /(\w+)=(.+)/.exec(line)) {
+                    manifestValues[match[1]] = match[2];
+                }
+            });
+
+            resolve(manifestValues);
+        }
     });
 }
 
