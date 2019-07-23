@@ -195,6 +195,17 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
             }
 
+            // inject the tracker task into the staging files if we have everything we need
+            if (this.launchArgs.injectTrackerTask && this.launchArgs.trackerTaskFileLocation) {
+                try {
+                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
+                    console.log('TrackerTask successfully injected');
+                    await this.injectTrackerTaskCode(this.stagingPath);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
             //build a list of all files in the staging folder
             this.loadStagingDirPaths(this.stagingPath);
 
@@ -1101,6 +1112,59 @@ export class BrightScriptDebugSession extends DebugSession {
         await Promise.all(promises);
     }
 
+    /**
+     * Will search the project files for the comment "\' vs_code_tracker_entry" and replace it with the code needed to start the TrackerTask.
+     * @param stagingPath
+     */
+    public async injectTrackerTaskCode(stagingPath: string) {
+        // Search for the tracker task entry injection point
+        let trackerEntryTerm = `('\\s*vs_code_tracker_entry[^\\S\\r\\n]*)`;
+        let results = Object.assign(
+            {},
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.xml/)
+        );
+
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            // Do not throw an error as we don't want to prevent the user from launching the channel
+            // just because they don't have a local version of the TrackerTask.
+            this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
+            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vs_code_tracker_entry"');
+        } else {
+            // This code will start the tracker task in the project
+            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+
+            // process the entry points found in the files
+            // unlikely but we might have more then one
+            for (const key of keys) {
+                let fileResults = results[key];
+                let fileContents = (await fsExtra.readFile(key)).toString();
+
+                let index = 0;
+                for (const line of fileResults.line) {
+                    // Remove the comment part of the match from the line to use as a base for the new line
+                    let newLine = line.replace(fileResults.matches[index], '');
+                    let match;
+                    if (match = /[\S]/.exec(line)) {
+                        // There was some form of code before the comment the was removed
+                        // append and use single line syntax
+                        newLine += ` : ${trackerTaskSupportCode}`;
+                    } else {
+                        newLine += trackerTaskSupportCode;
+                    }
+
+                    // Replace the found line with the new line containing the tracker task code
+                    fileContents = fileContents.replace(line, newLine);
+                    index ++;
+                }
+
+                // safe the changes back to the staging file
+                await fsExtra.writeFile(key, fileContents);
+            }
+        }
+    }
+
     public async findEntryPoint(projectPath: string) {
         let results = Object.assign(
             {},
@@ -1383,6 +1447,15 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
      */
     enableLookupVariableNodeChildren: boolean;
+
+    /**
+     * Will inject the TrackerTask into your channel if one is defined in your user settings.
+     */
+    injectTrackerTask: boolean;
+    /**
+     * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
+     */
+    trackerTaskFileLocation: string;
 
     /**
      * The list of files that should be bundled during a debug session

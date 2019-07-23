@@ -319,6 +319,11 @@
                                     "normal"
                                 ]
                             },
+                            "injectTrackerTask": {
+                                "type": "boolean",
+                                "description": "Will inject the TrackerTask into your channel if one is defined in your user settings.",
+                                "default": false
+                            },
                             "files": {
                                 "type": "array",
                                 "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
@@ -589,6 +594,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
+                    "scope": "resource"
+                },
+                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
+                    "type": "string",
+                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
                 }
             }
