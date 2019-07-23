@@ -258,7 +258,7 @@
                                         },
                                         "outFile": {
                                             "type": "string",
-                                            "description": "Output file name. Used as the static file name for the zip.",
+                                            "description": "Output file name. Used as the static file name for the zip. You can use values in your outFile string such as ${title} to be inferred from the libraries manifest file.",
                                             "default": "",
                                             "examples": [
                                                 "LibName.zip"
