@@ -193,6 +193,17 @@
                                     "${workspaceFolder}"
                                 ]
                             },
+                            "bs_const": {
+                                "type": "object",
+                                "description": "An object of bs_const values to be added or updated in the manifest before side loading.",
+                                "patternProperties": {
+                                    "^[a-zA-Z0-9_]*$": {
+                                        "type": "boolean",
+                                        "required": true
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
                             "componentLibrariesPort": {
                                 "type": "number",
                                 "description": "Port to access component libraries.",

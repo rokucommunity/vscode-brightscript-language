@@ -27,6 +27,8 @@ import {
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+import { fileExists } from './util';
+
 import { ComponentLibraryServer } from './ComponentLibraryServer';
 import { RendezvousHistory } from './RendezvousTracker';
 import {
@@ -181,6 +183,11 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Moving selected files to staging area');
             //copy all project files to the staging folder
             this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
+
+            if (this.launchArgs.bs_const) {
+                // Update the bs_const values in the manifest before side loading the channel
+                await this.updateManifestBsConsts(this.launchArgs.bs_const, this.stagingPath);
+            }
 
             //build a list of all files in the staging folder
             this.loadStagingDirPaths(this.stagingPath);
@@ -357,6 +364,56 @@ export class BrightScriptDebugSession extends DebugSession {
     protected customRequest(command: string) {
         if (command === 'rendezvous.clearHistory') {
             this.rokuAdapter.clearRendezvousHistory();
+        }
+    }
+
+    /**
+     * updates the staging manifest with the supplied bs_consts from the launch config
+     * @param consts object of consts to be added or updated
+     * @param stagingPath
+     */
+    private async updateManifestBsConsts(consts: { [key: string]: boolean }, stagingPath: string) {
+        let manifestPath = path.join(stagingPath, '/manifest');
+        if (fileExists(manifestPath)) {
+            let bsConstLine;
+            let missingConsts: string[] = [];
+            let fileContents = (await fsExtra.readFile(manifestPath)).toString();
+            let lines = eol.split(fileContents);
+
+            let newLine;
+            //loop through the lines until we find the bs_const line if it exists
+            for (const line of lines) {
+                if (line.toLowerCase().startsWith('bs_const')) {
+                    bsConstLine = line;
+                    newLine = line;
+                    break;
+                }
+            }
+
+            if (bsConstLine) {
+                // update the consts in the manifest and check for missing consts
+                missingConsts = Object.keys(consts).reduce((results, key) => {
+                    let match;
+                    if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
+                        newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
+                    } else {
+                        results.push(key);
+                    }
+
+                    return results;
+                }, []);
+
+                // check for consts that where not in the manifest
+                if (missingConsts.length > 0) {
+                    throw new Error(`The following bs_const keys were not defined in the channels manifest:\n\n${missingConsts.join(',\n')}`);
+                } else {
+                    // update the manifest and write to the staging folder
+                    fileContents = fileContents.replace(bsConstLine, newLine);
+                    await fsExtra.writeFile(manifestPath, fileContents);
+                }
+            } else {
+                throw new Error('bs_const was defined in the launch.json but not in the channels manifest');
+            }
         }
     }
 
@@ -1218,6 +1275,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * line offsets between source files and built files, otherwise debugger lines will be out of sync.
      */
     sourceDirs: string[];
+    /**
+     * An object of bs_const values to be added or updated in the manifest before side loading.
+     */
+    bs_const?: { [key: string]: boolean };
     /**
      * Port to access component libraries.
      */
