@@ -369,7 +369,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     /**
      * updates the staging manifest with the supplied bs_consts from the launch config
-     * @param consts object of consts to be added or updated
+     * @param consts object of consts to be updated
      * @param stagingPath
      */
     private async updateManifestBsConsts(consts: { [key: string]: boolean }, stagingPath: string) {
@@ -1276,7 +1276,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     sourceDirs: string[];
     /**
-     * An object of bs_const values to be added or updated in the manifest before side loading.
+     * An object of bs_const values to be updated in the manifest before side loading.
      */
     bs_const?: { [key: string]: boolean };
     /**
