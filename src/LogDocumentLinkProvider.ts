@@ -103,7 +103,12 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
             pkgPath = pkgPath.substring(4);
         }
         //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
+        let rootDir = this.launchConfig.rootDir;
+        if (this.launchConfig.debugRootDir) {
+            rootDir = this.launchConfig.debugRootDir;
+        } else if (this.launchConfig.sourceDirs && this.launchConfig.sourceDirs.length > 0) {
+            rootDir = this.launchConfig.sourceDirs[0];
+        }
 
         let clientPath = path.normalize(path.join(rootDir, pkgPath));
         return clientPath;
