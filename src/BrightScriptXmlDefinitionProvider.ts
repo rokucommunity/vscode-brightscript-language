@@ -46,7 +46,7 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
                 break;
             case XmlWordType.AttributeValue:
                 //TODO - ascertain if this value is from an import tag!
-                if (word.endsWith('.brs')) {
+                if (word.endsWith('.brs') || word.endsWith('.bs')) {
                     //assume it's a document
                     definitions = await this.getSymbolForBrsFile(word);
                 } else {

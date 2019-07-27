@@ -26,7 +26,7 @@ export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
         const excludes = getExcludeGlob();
         const word = this.getWord(document, position).toLowerCase();
         let locations = [];
-        for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+        for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
             const input = await new Promise<string>((resolve, reject) => {
                 fs.readFile(uri.fsPath, (err, data) => {
                     if (err) {

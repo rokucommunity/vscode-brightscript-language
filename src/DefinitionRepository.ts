@@ -153,7 +153,7 @@ export class DefinitionRepository {
         const excludes = getExcludeGlob();
         //get usable bit of name
         let fileName = name.replace(/^.*[\\\/]/, '').toLowerCase();
-        for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+        for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
             if (uri.path.toLowerCase().indexOf(fileName) !== -1) {
                 declarations.push(BrightScriptDeclaration.fromUri(uri));
             }
