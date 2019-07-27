@@ -197,7 +197,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
+            let match = /^\s*(?:public|private)*\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
@@ -233,6 +233,27 @@ export class DeclarationProvider implements Disposable {
 
             // //VAR
             match = /^\s*(?:m\.)([a-zA-Z_0-9]*)/i.exec(text);
+            if (match !== null) {
+                // console.log("FOUND VAR " + match);
+                const name = match[1].trim();
+                if (mDefs[name] !== true) {
+                    mDefs[name] = true;
+                    let varSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Field,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[1].length, line, match[0].length),
+                        new Range(line, 0, line, text.length),
+                    );
+                    console.log('FOUND VAR ' + varSymbol.name);
+                    symbols.push(varSymbol);
+                }
+                continue;
+            }
+
+            // //FIELD
+            match = /^\s*(?:public|private)*\s*([a-zA-Z_0-9]*)/i.exec(text);
             if (match !== null) {
                 // console.log("FOUND VAR " + match);
                 const name = match[1].trim();
