@@ -206,7 +206,7 @@ export class DeclarationProvider implements Disposable {
                 }
                 currentFunction = new BrightScriptDeclaration(
                     match[1].trim(),
-                    SymbolKind.Function,
+                    match[1].trim().toLowerCase() === 'new' ? SymbolKind.Constructor : SymbolKind.Function,
                     container,
                     match[2].split(','),
                     new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
@@ -253,10 +253,10 @@ export class DeclarationProvider implements Disposable {
             }
 
             // //FIELD
-            match = /^\s*(?:public|private)*\s*([a-zA-Z_0-9]*)/i.exec(text);
+            match = /^(?!.*\()(?: |\t)*(public|private)(?: |\t)*(\w*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
             if (match !== null) {
                 // console.log("FOUND VAR " + match);
-                const name = match[1].trim();
+                const name = match[2].trim();
                 if (mDefs[name] !== true) {
                     mDefs[name] = true;
                     let varSymbol = new BrightScriptDeclaration(
