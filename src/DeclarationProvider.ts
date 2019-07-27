@@ -73,7 +73,7 @@ export class DeclarationProvider implements Disposable {
     constructor() {
         const subscriptions: Disposable[] = [];
 
-        const watcher = vscode.workspace.createFileSystemWatcher('**/*.brs');
+        const watcher = vscode.workspace.createFileSystemWatcher('**/*.{brs,bs}');
         watcher.onDidCreate(this.onDidChangeFile, this);
         watcher.onDidChange(this.onDidChangeFile, this);
         watcher.onDidDelete(this.onDidDeleteFile, this);
@@ -149,7 +149,7 @@ export class DeclarationProvider implements Disposable {
         if (this.fullscan) {
             this.fullscan = false;
 
-            for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+            for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
                 this.dirty.set(uri.fsPath, uri);
             }
         }

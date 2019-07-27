@@ -380,13 +380,22 @@
             {
                 "id": "brightscript",
                 "extensions": [
-                    ".brs",
-                    ".bs"
+                    ".brs"
                 ],
                 "aliases": [
                     "BrightScript"
                 ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "brighterscript",
+                "extensions": [
+                    ".bs"
+                ],
+                "aliases": [
+                    "BrighterScript"
+                ],
+                "configuration": "./brighterscript-language-configuration.json"
             },
             {
                 "id": "Log",
@@ -411,9 +420,18 @@
                 "language": "brightscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "brighterscript",
+                "scopeName": "source.bs",
+                "path": "./syntaxes/brighterscript.tmLanguage.json"
             }
         ],
         "snippets": [
+            {
+                "language": "brighterscript",
+                "path": "./snippets.json"
+            },
             {
                 "language": "brightscript",
                 "path": "./snippets.json"

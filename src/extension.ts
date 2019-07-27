@@ -44,10 +44,16 @@ export function activate(context: vscode.ExtensionContext) {
         language: 'brightscript',
         scheme: 'file'
     }, new Formatter());
+
+    vscode.languages.registerDocumentRangeFormattingEditProvider({
+        language: 'brighterscript',
+        scheme: 'file'
+    }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
     let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
+    context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brighterscript', configProvider));
 
     let docLinkProvider = new LogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
@@ -65,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
     const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, declarationProvider);
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
-    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
+    const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
     const brightScriptCommands = getBrightScriptCommandsInstance();
     brightScriptCommands.registerCommands(context);
 
