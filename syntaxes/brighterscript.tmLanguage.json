@@ -180,7 +180,7 @@
                     "name": "entity.name.function.bs"
                 }
             },
-            "match": "(?i:(sub|function)\\s+([a-z_][a-z0-9_]*))"
+            "match": "(?i:(private|public)\\s+(sub|function)\\s+([a-z_][a-z0-9_]*))"
         },
         "end_function": {
             "name": "keyword.declaration.function",
@@ -212,7 +212,7 @@
             "match": "(?i:[^\\.\\w\\\"](then|stop|run|end)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:\\b(if|else\\s*if|namespace|end\\s*namespace|class|end\\s*class|import|else|print|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
+            "match": "(?i:\\b(if|else\\s*if|namespace|end\\s*namespace|class|end\\s*class|import|else|print|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|private|new|public|exit\\s*while|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
             "name": "keyword.control.bs"
         },
         "operators": {
