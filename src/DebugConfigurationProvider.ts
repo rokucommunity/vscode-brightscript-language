@@ -40,6 +40,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
+
+        let defaultFilesArray: FilesType[] = [
+            'manifest',
+            'source/**/*.*',
+            'components/**/*.*',
+            'images/**/*.*'
+        ];
+
         //make sure we have an object
         config = config ? config : {} as any;
 
@@ -70,6 +78,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let compLibs: FilesType[][] = [];
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                library.files = library.files ? library.files : defaultFilesArray;
                 compLibs.push(library);
             }
             config.componentLibraries = compLibs;
@@ -95,6 +104,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
+        config.files = config.files ? config.files : defaultFilesArray;
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
