@@ -185,8 +185,13 @@ export class BrightScriptDebugSession extends DebugSession {
             this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
 
             if (this.launchArgs.bs_const) {
-                // Update the bs_const values in the manifest before side loading the channel
-                await this.updateManifestBsConsts(this.launchArgs.bs_const, this.stagingPath);
+                let manifestPath = path.join(this.stagingPath, '/manifest');
+                if (fileExists(manifestPath)) {
+                    // Update the bs_const values in the manifest in the staging folder before side loading the channel
+                    let fileContents = (await fsExtra.readFile(manifestPath)).toString();
+                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bs_const, fileContents);
+                    await fsExtra.writeFile(manifestPath, fileContents);
+                }
             }
 
             //build a list of all files in the staging folder
@@ -370,50 +375,45 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * updates the staging manifest with the supplied bs_consts from the launch config
      * @param consts object of consts to be updated
-     * @param stagingPath
+     * @param fileContents
      */
-    private async updateManifestBsConsts(consts: { [key: string]: boolean }, stagingPath: string) {
-        let manifestPath = path.join(stagingPath, '/manifest');
-        if (fileExists(manifestPath)) {
-            let bsConstLine;
-            let missingConsts: string[] = [];
-            let fileContents = (await fsExtra.readFile(manifestPath)).toString();
-            let lines = eol.split(fileContents);
+    public async updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): Promise<string> {
+        let bsConstLine;
+        let missingConsts: string[] = [];
+        let lines = eol.split(fileContents);
 
-            let newLine;
-            //loop through the lines until we find the bs_const line if it exists
-            for (const line of lines) {
-                if (line.toLowerCase().startsWith('bs_const')) {
-                    bsConstLine = line;
-                    newLine = line;
-                    break;
-                }
+        let newLine;
+        //loop through the lines until we find the bs_const line if it exists
+        for (const line of lines) {
+            if (line.toLowerCase().startsWith('bs_const')) {
+                bsConstLine = line;
+                newLine = line;
+                break;
             }
+        }
 
-            if (bsConstLine) {
-                // update the consts in the manifest and check for missing consts
-                missingConsts = Object.keys(consts).reduce((results, key) => {
-                    let match;
-                    if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
-                        newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
-                    } else {
-                        results.push(key);
-                    }
-
-                    return results;
-                }, []);
-
-                // check for consts that where not in the manifest
-                if (missingConsts.length > 0) {
-                    throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
+        if (bsConstLine) {
+            // update the consts in the manifest and check for missing consts
+            missingConsts = Object.keys(consts).reduce((results, key) => {
+                let match;
+                if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
+                    newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
                 } else {
-                    // update the manifest and write to the staging folder
-                    fileContents = fileContents.replace(bsConstLine, newLine);
-                    await fsExtra.writeFile(manifestPath, fileContents);
+                    results.push(key);
                 }
+
+                return results;
+            }, []);
+
+            // check for consts that where not in the manifest
+            if (missingConsts.length > 0) {
+                throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
             } else {
-                throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
+                // update the manifest contents
+                return fileContents.replace(bsConstLine, newLine);
             }
+        } else {
+            throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
         }
     }
 
