@@ -1146,10 +1146,10 @@ export class BrightScriptDebugSession extends DebugSession {
                     // Remove the comment part of the match from the line to use as a base for the new line
                     let newLine = line.replace(fileResults.matches[index], '');
                     let match;
-                    if (match = /[\S]/.exec(line)) {
+                    if (match = /[\S]/.exec(newLine)) {
                         // There was some form of code before the comment the was removed
                         // append and use single line syntax
-                        newLine += ` : ${trackerTaskSupportCode}`;
+                        newLine += `: ${trackerTaskSupportCode}`;
                     } else {
                         newLine += trackerTaskSupportCode;
                     }

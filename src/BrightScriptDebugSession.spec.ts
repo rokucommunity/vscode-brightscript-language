@@ -432,6 +432,115 @@ describe('Debugger', () => {
         });
     });
 
+    describe('injectTrackerTaskCode', () => {
+        let key: string;
+        let trackerTaskCode: string;
+        let folder;
+
+        beforeEach(() => {
+            key = 'vs_code_tracker_entry';
+            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+        });
+
+        afterEach(() => {
+            fsExtra.emptyDirSync('./.tmp');
+            fsExtra.rmdirSync('./.tmp');
+        });
+
+        async function doTest(fileContents: string, expectedContents: string, fileExt: string = 'brs') {
+            fsExtra.emptyDirSync('./.tmp');
+            folder = path.resolve('./.tmp/findMainFunctionTests/');
+            fsExtra.mkdirSync(folder);
+
+            let filePath = path.resolve(`${folder}/main.${fileExt}`);
+
+            //prevent actually talking to the file system...just hardcode the list to exactly our main file
+            (session.rokuDeploy as any).getFilePaths = function() {
+                return [{
+                    src: filePath,
+                    dest: filePath
+                }];
+            };
+
+            fsExtra.writeFileSync(filePath, fileContents);
+            (session as any).launchArgs = {
+                files: [
+                    folder + '/**/*'
+                ]
+            };
+            await session.injectTrackerTaskCode(folder);
+            let newFileContents = (await fsExtra.readFile(filePath)).toString();
+            expect(newFileContents).to.equal(expectedContents);
+        }
+
+        it('works for in line comments brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', `: ${trackerTaskCode}`);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for in line comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
+
+        it('works for stand alone comments in brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show\n  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', trackerTaskCode);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for stand alone comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
+    });
+
     describe('setBreakPointsRequest', () => {
         let response;
         let args;
