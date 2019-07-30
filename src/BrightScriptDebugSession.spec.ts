@@ -399,6 +399,7 @@ describe('Debugger', () => {
             await doTest('\n\nsub   RunUserInterface()\nend sub', 'sub   RunUserInterface()', 3);
             await doTest('\n\nsub RunUserInterface   ()\nend sub', 'sub RunUserInterface   ()', 3);
         });
+
         it('works for sub main', async () => {
             await doTest('\nsub Main()\nend sub', 'sub Main()', 2);
             //works with args
@@ -414,6 +415,20 @@ describe('Debugger', () => {
             //works with extra spacing
             await doTest('function   Main()\nend function', 'function   Main()', 1);
             await doTest('function Main   ()\nend function', 'function Main   ()', 1);
+        });
+
+        it('works for sub RunScreenSaver', async () => {
+            await doTest('sub RunScreenSaver()\nend sub', 'sub RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('sub   RunScreenSaver()\nend sub', 'sub   RunScreenSaver()', 1);
+            await doTest('sub RunScreenSaver   ()\nend sub', 'sub RunScreenSaver   ()', 1);
+        });
+
+        it('works for function RunScreenSaver', async () => {
+            await doTest('function RunScreenSaver()\nend function', 'function RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('function   RunScreenSaver()\nend function', 'function   RunScreenSaver()', 1);
+            await doTest('function RunScreenSaver   ()\nend function', 'function RunScreenSaver   ()', 1);
         });
     });
 
