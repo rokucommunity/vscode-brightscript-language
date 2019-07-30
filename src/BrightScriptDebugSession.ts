@@ -314,13 +314,15 @@ export class BrightScriptDebugSession extends DebugSession {
 
             if (!error) {
                 if (this.rokuAdapter.connected) {
-                    // Host connection was established befor the main public process was completed
-                    this.successfulDeployPreparations(response, args.host);
+                    // Host connection was established before the main public process was completed
+                    console.log(`deployed to Roku@${this.launchArgs.host}`);
+                    this.sendResponse(response);
                 } else {
                     // Main public process was completed but we are still waiting for a connection to the host
                     this.rokuAdapter.on('connected', (status) => {
                         if (status) {
-                            this.successfulDeployPreparations(response, args.host);
+                            console.log(`deployed to Roku@${this.launchArgs.host}`);
+                            this.sendResponse(response);
                         }
                     });
                 }
@@ -369,14 +371,6 @@ export class BrightScriptDebugSession extends DebugSession {
         if (command === 'rendezvous.clearHistory') {
             this.rokuAdapter.clearRendezvousHistory();
         }
-    }
-
-    /**
-     * Reusable function just to keep things DRY
-     */
-    private successfulDeployPreparations(response: DebugProtocol.LaunchResponse, host: string) {
-        console.log(`deployed to Roku@${host}`);
-        this.sendResponse(response);
     }
 
     private componentLibraryPostfix: string = '__lib';
@@ -872,7 +866,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     /**
      * Creates and registers the main events for the RokuAdapter
-     * @param {string} host ip address to connect to
+     * @param host ip address to connect to
      */
     private async connectRokuAdapter(host: string) {
         //register events
