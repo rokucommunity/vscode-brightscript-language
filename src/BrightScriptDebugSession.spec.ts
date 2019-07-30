@@ -454,20 +454,7 @@ describe('Debugger', () => {
 
             let filePath = path.resolve(`${folder}/main.${fileExt}`);
 
-            //prevent actually talking to the file system...just hardcode the list to exactly our main file
-            (session.rokuDeploy as any).getFilePaths = function() {
-                return [{
-                    src: filePath,
-                    dest: filePath
-                }];
-            };
-
             fsExtra.writeFileSync(filePath, fileContents);
-            (session as any).launchArgs = {
-                files: [
-                    folder + '/**/*'
-                ]
-            };
             await session.injectTrackerTaskCode(folder);
             let newFileContents = (await fsExtra.readFile(filePath)).toString();
             expect(newFileContents).to.equal(expectedContents);
