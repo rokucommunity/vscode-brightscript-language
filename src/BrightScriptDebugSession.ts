@@ -405,14 +405,14 @@ export class BrightScriptDebugSession extends DebugSession {
 
                 // check for consts that where not in the manifest
                 if (missingConsts.length > 0) {
-                    throw new Error(`The following bs_const keys were not defined in the channels manifest:\n\n${missingConsts.join(',\n')}`);
+                    throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
                 } else {
                     // update the manifest and write to the staging folder
                     fileContents = fileContents.replace(bsConstLine, newLine);
                     await fsExtra.writeFile(manifestPath, fileContents);
                 }
             } else {
-                throw new Error('bs_const was defined in the launch.json but not in the channels manifest');
+                throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
             }
         }
     }
