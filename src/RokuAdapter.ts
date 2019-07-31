@@ -235,7 +235,7 @@ export class RokuAdapter {
                             console.log('this breakpoint is flagged to be skipped');
                             this.isInMicroDebugger = false;
                             this.isNextBreakpointSkipped = false;
-                            this.requestPipeline.executeCommand('c', false, false);
+                            this.requestPipeline.executeCommand('c', false, false, false);
                         } else {
                             if (this.isActivated && this.isAtDebuggerPrompt === false) {
                                 this.isAtDebuggerPrompt = true;
@@ -284,7 +284,7 @@ export class RokuAdapter {
      * @param responseText
      */
     private checkForRuntimeError(responseText: string) {
-        let match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
+        let match = /(.*)\s\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
         if (match) {
             let message = match[1].trim();
             let errorCode = match[2].trim().toLowerCase();
@@ -591,7 +591,7 @@ export class RokuAdapter {
     public pause() {
         this.clearCache();
         //send the kill signal, which breaks into debugger mode
-        return this.requestPipeline.executeCommand('\x03;', false);
+        return this.requestPipeline.executeCommand('\x03;', false, true);
     }
 
     /**
@@ -1066,9 +1066,14 @@ export class RequestPipeline {
 
     private requests: RequestPipelineRequest[] = [];
     private debuggerLineRegex: RegExp;
+    private isAtDebuggerPrompt: boolean = false;
 
     private get isProcessing() {
         return this.currentRequest !== undefined;
+    }
+
+    private get hasRequests() {
+        return this.requests.length > 0;
     }
 
     private currentRequest: RequestPipelineRequest = undefined;
@@ -1089,37 +1094,71 @@ export class RequestPipeline {
 
     private connect() {
         let allResponseText = '';
+        let lastPartialLine = '';
+
         this.client.addListener('data', (data) => {
             let responseText = data.toString();
-            this.emit('console-output', responseText);
-            allResponseText += responseText;
-
-            //if we are not processing, immediately broadcast the latest data
-            if (!this.isProcessing) {
-                this.emit('unhandled-console-output', allResponseText);
-                allResponseText = '';
+            if (!responseText.endsWith('\n') && !this.checkForDebuggerPrompt(responseText)) {
+                // buffer was split and was not the result of a prompt, save the partial line
+                lastPartialLine += responseText;
             } else {
-                let match;
-                //if responseText produced a prompt, return the responseText
-                if (match = this.debuggerLineRegex.exec(allResponseText.trim())) {
-                    //resolve the command's promise (if it cares)
-                    this.currentRequest.onComplete(allResponseText);
+                if (lastPartialLine) {
+                    // there was leftover lines, join the partial lines back together
+                    responseText = lastPartialLine + responseText;
+                    lastPartialLine = '';
+                }
+
+                //forward all raw console output
+                this.emit('console-output', responseText);
+                allResponseText += responseText;
+
+                let foundDebuggerPrompt = this.checkForDebuggerPrompt(allResponseText);
+
+                //if we are not processing, immediately broadcast the latest data
+                if (!this.isProcessing) {
+                    this.emit('unhandled-console-output', allResponseText);
                     allResponseText = '';
-                    this.currentRequest = undefined;
-                    //try to run the next request
-                    this.process();
+
+                    if (foundDebuggerPrompt) {
+                        this.isAtDebuggerPrompt = true;
+                        if (this.hasRequests) {
+                            // There are requests waiting to be processed
+                            this.process();
+                        }
+                    }
+                } else {
+                    //if responseText produced a prompt, return the responseText
+                    if (foundDebuggerPrompt) {
+                        //resolve the command's promise (if it cares)
+                        this.isAtDebuggerPrompt = true;
+                        this.currentRequest.onComplete(allResponseText);
+                        allResponseText = '';
+                        this.currentRequest = undefined;
+                        //try to run the next request
+                        this.process();
+                    }
                 }
             }
-
         });
+    }
+
+    /**
+     * Checks the supplied string for the debugger input prompt
+     * @param responseText
+     */
+    private checkForDebuggerPrompt(responseText: string) {
+        let match = this.debuggerLineRegex.exec(responseText.trim());
+        return (match);
     }
 
     /**
      * Schedule a command to be run. Resolves with the result once the command finishes
      * @param commandFunction
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
+     * @param forceExecute - if true, it is assumed the command can be run at any time and will be executed immediately
+     * @param silent - if true, the command will be hidden from the output
      */
-    public executeCommand(command: string, waitForPrompt: boolean, silent: boolean = false) {
+    public executeCommand(command: string, waitForPrompt: boolean, forceExecute: boolean = false, silent: boolean = false) {
         console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
@@ -1128,43 +1167,58 @@ export class RequestPipeline {
                     this.emit('console-output', command);
                 }
                 this.client.write(commandText);
+                if (waitForPrompt) {
+                    // The act of executing this command means we are no longer at the debug prompt
+                    this.isAtDebuggerPrompt = false;
+                }
             };
-            this.requests.push({
+
+            let request = {
                 executeCommand: executeCommand,
                 onComplete: (data) => {
                     console.debug(`Command finished (${waitForPrompt ? 'after waiting for prompt' : 'did not wait for prompt'}`, command);
                     console.debug('Data:', data);
                     resolve(data);
                 },
-                waitForPrompt: waitForPrompt
-            });
-            //start processing (safe to call multiple times)
-            this.process();
+                waitForPrompt: waitForPrompt,
+            };
+
+            if (!waitForPrompt) {
+                if (!this.isProcessing || forceExecute) {
+                    //fire and forget the command
+                    request.executeCommand();
+                    //the command doesn't care about the output, resolve it immediately
+                    request.onComplete(undefined);
+                } else {
+                    // Skip this request as the device is not ready to accept the command or it can not be run at any time
+                }
+            } else {
+                this.requests.push(request);
+                if (this.isAtDebuggerPrompt) {
+                    //start processing since we are already at a debug prompt (safe to call multiple times)
+                    this.process();
+                } else {
+                    // do not run the command until the device is at a debug prompt.
+                    // this will be detected in the data listener in the connect function
+                }
+            }
         });
     }
 
     /**
-     * Internall request processing function
+     * Internally request processing function
      */
     private async process() {
-        if (this.isProcessing || this.requests.length === 0) {
+        if (this.isProcessing || !this.hasRequests) {
             return;
         }
+
         //get the oldest command
         let nextRequest = this.requests.shift();
-        if (nextRequest.waitForPrompt) {
-            this.currentRequest = nextRequest;
-        } else {
-            //fire and forget the command
-        }
+        this.currentRequest = nextRequest;
 
         //run the request. the data listener will handle launching the next request once this one has finished processing
         nextRequest.executeCommand();
-
-        //if the command doesn't care about the output, resolve it immediately
-        if (!nextRequest.waitForPrompt) {
-            nextRequest.onComplete(undefined);
-        }
     }
 
     public destroy() {
