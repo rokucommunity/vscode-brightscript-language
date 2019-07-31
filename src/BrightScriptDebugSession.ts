@@ -234,7 +234,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
-            this.sendDebugLogLine('Connecting to Roku via telnet');
+            this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
+
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
 
@@ -324,15 +325,27 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.activate();
 
             if (!error) {
-                console.log(`deployed to Roku@${args.host}`);
-                this.sendResponse(response);
+                if (this.rokuAdapter.connected) {
+                    // Host connection was established before the main public process was completed
+                    console.log(`deployed to Roku@${this.launchArgs.host}`);
+                    this.sendResponse(response);
+                } else {
+                    // Main public process was completed but we are still waiting for a connection to the host
+                    this.rokuAdapter.on('connected', (status) => {
+                        if (status) {
+                            console.log(`deployed to Roku@${this.launchArgs.host}`);
+                            this.sendResponse(response);
+                        }
+                    });
+                }
             } else {
                 throw error;
             }
         } catch (e) {
             console.log(e);
             //if the message is anything other than compile errors, we want to display the error
-            if (e.message !== 'compileErrors') {
+            //TODO: look into the reason why we are getting the 'Invalid response code: 400' on compile errors
+            if (e.message !== 'compileErrors' && e.message !== 'Invalid response code: 400') {
                 //TODO make the debugger stop!
                 this.sendDebugLogLine('Encountered an issue during the publish process');
                 this.sendDebugLogLine(e.message);
@@ -908,6 +921,10 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * Creates and registers the main events for the RokuAdapter
+     * @param host ip address to connect to
+     */
     private async connectRokuAdapter(host: string) {
         //register events
         this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
