@@ -13,6 +13,7 @@ A VSCode extension to support Roku's BrightScript language.
   - Conditional breakpoints
   - logpoints
   - hit count breakpoints
+- Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. See [here](https://developer.roku.com/docs/developer-program/debugging/debugging-channels.md#scenegraph-debug-server-port-8080-commands) for information on how to enable rendezvous logging your Roku.
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
   - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
@@ -27,7 +28,7 @@ A VSCode extension to support Roku's BrightScript language.
     - Configure `brightscript.output.hyperlinkFormat` as follows:
       - **Full** `pkg:/components/KeyLogTester.brs(24:0)`
       - **FilenameAndFunction** `KeyLogTester.DoSomething(24:0)`
-      - **Filename** `KeyLogtester.brs(24)`
+      - **Filename** `KeyLogTester.brs(24)`
       - **Short** `#1`
       - **Hidden** ``
 - Marking the output log (CTRL+L)
@@ -258,9 +259,9 @@ This extension contributes the following settings:
 * `brightscript.format.insertSpaceBeforeFunctionParenthesis`:  If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).
 * `brightscript.format.insertSpaceBetweenEmptyCurlyBraces`:  if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)
 * `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
-* `brightscript.output.focusOnLaunch`: If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
-* `brightscript.output.clearOnLaunch`: If set to true, will clear the brigthscript log when launching
-* `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching
+* `brightscript.output.focusOnLaunch`: If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
+* `brightscript.output.clearOnLaunch`: If set to true, will clear the brightscript log when launching
+* `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the brightscript log after connecting to the Roku channel after launching
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 * `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
 * `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
@@ -269,7 +270,7 @@ This extension contributes the following settings:
 
 You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
 
-This extension sends keypresses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
+This extension sends key presses to the Roku device through Roku's [External Control API](https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues). The 12 standard Roku remote buttons are already included. The keys are mapped using the `when` clause so it will only send remote commands if the Output or Debug Console Panel has focus (`panelFocus`) AND the Editor Find widget is NOT visible (`!findWidgetVisible`).
 
 ### Keyboard Commands:
 

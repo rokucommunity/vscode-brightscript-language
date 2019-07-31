@@ -41,6 +41,7 @@
     },
     "dependencies": {
         "@types/glob": "^7.1.1",
+        "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brightscript-formatter": "^1.6.0",
         "dotenv": "^6.2.0",
@@ -58,6 +59,7 @@
         "path": "^0.12.7",
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
+        "replace-last": "^1.2.6",
         "roku-deploy": "^2.1.0",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
@@ -110,6 +112,35 @@
         "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
+        "views": {
+            "debug": [
+                {
+                    "id": "rendezvousView",
+                    "name": "Rendezvous",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "extension.brightscript.rendezvous.toggleSortMethod",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.rendezvous.toggleSortDirection",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.rendezvous.clearHistory",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                }
+            ]
+        },
         "breakpoints": [
             {
                 "language": "brightscript"
@@ -136,7 +167,7 @@
                             },
                             "deepLinkUrl": {
                                 "type": "string",
-                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be sideloaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
                                 "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
                             },
                             "password": {
@@ -270,7 +301,7 @@
                             },
                             "consoleOutput": {
                                 "type": "string",
-                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",
                                 "default": "normal",
                                 "enum": [
                                     "full",
@@ -326,7 +357,7 @@
                             },
                             "enableDebuggerAutoRecovery": {
                                 "type": "boolean",
-                                "description": "Enables automatic continue when hitting an incorrect 'break in' breapoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breakpoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
                                 "default": true
                             },
                             "stopDebuggerOnAppExit": {
@@ -506,19 +537,19 @@
                 "brightscript.output.focusOnLaunch": {
                     "type": "boolean",
                     "default": true,
-                    "description": "If set to true, focus on the brighscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                    "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
                     "scope": "resource"
                 },
                 "brightscript.output.clearOnLaunch": {
                     "type": "boolean",
                     "default": true,
-                    "description": "If set to true, will clear the brigthscript log when launching.",
+                    "description": "If set to true, will clear the brightscript log when launching.",
                     "scope": "resource"
                 },
                 "brightscript.output.clearConsoleOnChannelStart": {
                     "type": "boolean",
                     "default": true,
-                    "description": "If set to true, will clear the  brigthscript log after connecting to the Roku channel after launching.",
+                    "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
                     "scope": "resource"
                 },
                 "brightscript.output.hyperlinkFormat": {
@@ -534,7 +565,7 @@
                         "Hidden"
                     ],
                     "default": "FilenameAndFunction",
-                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retriving videos for category id 23 \n Filename KeyLogtester.brs(24) [INFO] retriving videos for category id 23 \n FilenameAndFunction KeyLogtester.getVideos(24) [INFO] retriving videos for category id 23 \n Short #1 [INFO] retriving videos for category id 23 \n  Hidden [INFO] retriving videos for category id 23",
+                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n Filename KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n FilenameAndFunction KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n Short #1 [INFO] retrieving videos for category id 23 \n  Hidden [INFO] retrieving videos for category id 23",
                     "scope": "resource"
                 },
                 "brightscript.deviceDiscovery.showInfoMessages": {
@@ -564,7 +595,7 @@
             },
             {
                 "command": "extension.brightscript.clearLogOutput",
-                "title": "Clear the brighscript log output",
+                "title": "Clear the brightscript log output",
                 "category": "Brightscript"
             },
             {
@@ -656,6 +687,24 @@
                 "command": "extension.brightscript.setOutputExcludeFilter",
                 "title": "Set Log Output Exclude Filter",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.toggleSortMethod",
+                "title": "Toggle Sorting Method (smart > alphabetic)",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.toggleSortDirection",
+                "title": "Toggle Asc - Desc Sorting ",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.clearHistory",
+                "title": "Clear History",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
             }
         ],
         "keybindings": [

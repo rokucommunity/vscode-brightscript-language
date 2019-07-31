@@ -28,6 +28,7 @@ import {
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
@@ -54,6 +55,18 @@ class LogOutputEvent implements DebugProtocol.Event {
     }
 
     public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class RendezvousEvent implements DebugProtocol.Event {
+    constructor(output: RendezvousHistory) {
+        this.body = output;
+        this.event = 'BSRendezvousEvent';
+    }
+
+    public body: RendezvousHistory;
     public event: string;
     public seq: number;
     public type: string;
@@ -215,6 +228,19 @@ export class BrightScriptDebugSession extends DebugSession {
 
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
 
+            //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
+            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
+                (debuggerPath: string, lineNumber: number) => {
+                    return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
+                },
+                (debuggerPath: string) => {
+                    return this.convertDebuggerPathToClient(debuggerPath);
+                }
+            );
+
+            //pass the log level down thought the adapter to the RendezvousTracker
+            this.rokuAdapter.setConsoleOutput(this.launchArgs.consoleOutput);
+
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {
                 this.rokuAdapter.on('console-output', (data) => {
@@ -229,6 +255,11 @@ export class BrightScriptDebugSession extends DebugSession {
                     this.sendEvent(new LogOutputEvent(data));
                 });
             }
+
+            // Send rendezvous events to the extension
+            this.rokuAdapter.on('rendezvous-event', (output) => {
+                this.sendEvent(new RendezvousEvent(output));
+            });
 
             //listen for a closed connection (shut down when received)
             this.rokuAdapter.on('close', (reason = '') => {
@@ -248,7 +279,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
-                //TODO - shot gracefull
+                //stop the roku adapter and exit the channel
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
@@ -316,6 +347,16 @@ export class BrightScriptDebugSession extends DebugSession {
                     return err ? reject(err) : resolve(response);
                 });
             });
+        }
+    }
+
+    /**
+     * Accepts custom events and requests from the extension
+     * @param command name of the command to execute
+     */
+    protected customRequest(command: string) {
+        if (command === 'rendezvous.clearHistory') {
+            this.rokuAdapter.clearRendezvousHistory();
         }
     }
 
@@ -1200,7 +1241,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     stopOnEntry: boolean;
     /**
-     * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
+     * Determines which console output event to listen for.
+     * 'full' is every console message (including the ones from the adapter).
+     * 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.
      */
     consoleOutput: 'full' | 'normal';
     /**
@@ -1279,7 +1322,7 @@ export function defer<T>() {
 }
 
 /**
- * Determines if the `subject` path includes `search` path, with case sensitive compariosn
+ * Determines if the `subject` path includes `search` path, with case sensitive comparison
  * @param subject
  * @param search
  */
