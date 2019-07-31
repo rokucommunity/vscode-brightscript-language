@@ -138,7 +138,6 @@ export class LogOutputManager {
                 this.clearOutput();
             }
         } else {
-            this.clearOutput();
             let errorsByPath = {};
             if (e.body) {
                 e.body.forEach(async (compileError) => {
