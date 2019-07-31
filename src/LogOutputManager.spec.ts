@@ -101,7 +101,6 @@ describe('LogOutputManager ', () => {
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - empty', () => {
-        collectionMock.expects('clear').once();
         logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: [] });
         outputChannelMock.verify();
         collectionMock.verify();
@@ -109,7 +108,6 @@ describe('LogOutputManager ', () => {
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - undefined', () => {
-        collectionMock.expects('clear').once();
         logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '' });
         outputChannelMock.verify();
         collectionMock.verify();
@@ -117,7 +115,6 @@ describe('LogOutputManager ', () => {
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - errors', () => {
-        collectionMock.expects('clear').once();
         logOutputManagerMock.expects('addDiagnosticForError').once();
         let compileErrors = [{ path: 'path1', message: 'message1' }];
         logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: compileErrors });

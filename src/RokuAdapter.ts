@@ -33,6 +33,8 @@ export class RokuAdapter {
         });
     }
 
+    public connected: boolean;
+
     private status: RokuAdapterStatus;
     private requestPipeline: RequestPipeline;
     private emitter: EventEmitter;
@@ -57,6 +59,7 @@ export class RokuAdapter {
     public on(eventName: 'close', handler: () => void);
     public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
+    public on(eventName: 'connected', handler: (params: boolean) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
     public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
@@ -73,8 +76,20 @@ export class RokuAdapter {
     }
 
     private emit(
-        eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'rendezvous-event' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?
-        ) {
+        eventName:
+            'app-exit' |
+            'cannot-continue' |
+            'close' |
+            'compile-errors' |
+            'connected' |
+            'console-output' |
+            'rendezvous-event' |
+            'runtime-error' |
+            'start' |
+            'suspend' |
+            'unhandled-console-output',
+        data?
+    ) {
         this.emitter.emit(eventName, data);
     }
 
@@ -176,7 +191,9 @@ export class RokuAdapter {
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
-                let k = 2;
+                console.log(`+++++++++++ CONNECTED TO DEVICE ${this.host} +++++++++++`);
+                this.connected = true;
+                this.emit('connected', this.connected);
             });
 
             //listen for the close event
@@ -186,8 +203,7 @@ export class RokuAdapter {
 
             //if the connection fails, reject the connect promise
             client.addListener('error', (err) => {
-                //this.emit(EventName.error, err);
-                deferred.reject(err);
+                deferred.reject(new Error(`Error with connection to: ${this.host} \n\n ${err.message}`));
             });
 
             await this.settle(client, 'data');
