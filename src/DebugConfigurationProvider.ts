@@ -244,7 +244,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
-    bs_const?: { [key: string]: boolean };
+    bsConst?: { [key: string]: boolean };
     componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
     componentLibraries: FilesType[][];

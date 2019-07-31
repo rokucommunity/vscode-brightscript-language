@@ -184,12 +184,12 @@ export class BrightScriptDebugSession extends DebugSession {
             //copy all project files to the staging folder
             this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
 
-            if (this.launchArgs.bs_const) {
+            if (this.launchArgs.bsConst) {
                 let manifestPath = path.join(this.stagingPath, '/manifest');
                 if (fileExists(manifestPath)) {
                     // Update the bs_const values in the manifest in the staging folder before side loading the channel
                     let fileContents = (await fsExtra.readFile(manifestPath)).toString();
-                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bs_const, fileContents);
+                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
                     await fsExtra.writeFile(manifestPath, fileContents);
                 }
             }
@@ -373,7 +373,7 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * updates the staging manifest with the supplied bs_consts from the launch config
+     * updates the staging manifest with the supplied bsConsts from the launch config
      * @param consts object of consts to be updated
      * @param fileContents
      */
@@ -1278,7 +1278,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * An object of bs_const values to be updated in the manifest before side loading.
      */
-    bs_const?: { [key: string]: boolean };
+    bsConst?: { [key: string]: boolean };
     /**
      * Port to access component libraries.
      */

@@ -176,7 +176,7 @@ example config:
     "type": "brightscript",
     "rootDir": "${workspaceFolder}/dist",
     "host": "192.168.1.2",
-    "bs_const": {
+    "bsConst": {
         "debug": true,
         "logging": false
     }
