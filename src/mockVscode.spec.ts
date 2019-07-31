@@ -1,4 +1,4 @@
-import { Range } from 'vscode';
+import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri } from 'vscode';
 
 export let vscode = {
     debug: {
@@ -67,6 +67,7 @@ export let vscode = {
                 clear: () => { }
             };
         },
+        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
         activeTextEditor: {
             document: undefined
         }
@@ -189,6 +190,17 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
+    },
+    TreeItem: class {
+        constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
+            this.label = label;
+            this.collapsibleState = collapsibleState;
+        }
+        public readonly label: string;
+        public readonly iconPath?: string | Uri | { light: string | Uri; dark: string | Uri };
+        public readonly command?: Command;
+        public readonly collapsibleState?: TreeItemCollapsibleState;
+        public readonly contextValue?: string;
     },
     DocumentLink: class {
         constructor(range: Range, uri: string) {

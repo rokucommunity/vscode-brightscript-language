@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
+import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -24,6 +25,12 @@ export class RokuAdapter {
         this.compilingLines = [];
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.rendezvousTracker = new RendezvousTracker();
+
+        // watch for rendezvous events
+        this.rendezvousTracker.on('rendezvous-event', (output) => {
+            this.emit('rendezvous-event', output);
+        });
     }
 
     private status: RokuAdapterStatus;
@@ -37,6 +44,7 @@ export class RokuAdapter {
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
+    private rendezvousTracker: RendezvousTracker;
 
     private cache = {};
 
@@ -50,6 +58,7 @@ export class RokuAdapter {
     public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);
     public on(eventName: 'start', handler: () => void);
@@ -63,7 +72,9 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?) {
+    private emit(
+        eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'rendezvous-event' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?
+        ) {
         this.emitter.emit(eventName, data);
     }
 
@@ -184,7 +195,7 @@ export class RokuAdapter {
             //hook up the pipeline to the socket
             this.requestPipeline = new RequestPipeline(client);
 
-            //forward all raw counsole output
+            //forward all raw console output
             this.requestPipeline.on('console-output', (output) => {
                 this.processBreakpoints(output);
                 if (output) {
@@ -202,6 +213,7 @@ export class RokuAdapter {
                     return;
                 }
 
+                responseText = this.rendezvousTracker.processLogLine(responseText);
                 //forward all unhandled console output
                 this.processBreakpoints(responseText);
                 if (responseText) {
@@ -1010,6 +1022,33 @@ export class RokuAdapter {
             } while (commandsExecuted < 10);
         }
     }
+
+    // #region Rendezvous Tracker pass though functions
+    /**
+     * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
+     */
+    public setRendezvousDebuggerFileConversionFunctions(
+        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
+        convertDebuggerPathToClient: (debuggerPath: string) => string
+    ) {
+        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
+    }
+
+    /**
+     * Passes the log level down to the RendezvousTracker
+     * @param outputLevel the consoleOutput from the launch config
+     */
+    public setConsoleOutput(outputLevel: string) {
+        this.rendezvousTracker.setConsoleOutput(outputLevel);
+    }
+
+    /**
+     * Sends a call you the RendezvousTracker to clear the current rendezvous history
+     */
+    public clearRendezvousHistory() {
+        this.rendezvousTracker.clearRendezvousHistory();
+    }
+    // #endregion
 }
 
 export interface StackFrame {
@@ -1206,7 +1245,7 @@ export class RequestPipeline {
     }
 
     /**
-     * Internally request processing function
+     * Internal request processing function
      */
     private async process() {
         if (this.isProcessing || !this.hasRequests) {

@@ -29,6 +29,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
+import { RendezvousViewProvider } from './RendezvousViewProvider';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -38,6 +39,15 @@ let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
+    let subscriptions = context.subscriptions;
+
+    //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
+    let rendezvousViewProvider = new RendezvousViewProvider(context);
+    vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+
+    subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
+        vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+    }));
 
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
@@ -52,11 +62,13 @@ export function activate(context: vscode.ExtensionContext) {
     let docLinkProvider = new LogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
     vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
-    //give the launch config to the link provder any time we launch the app
+    //give the launch config to the link provider any time we launch the app
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
             logOutputManager.setLaunchConfig(e.body);
+        } else if (e.event === 'BSRendezvousEvent') {
+            rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
         }
     });
     //register the definition provider
