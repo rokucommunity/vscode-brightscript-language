@@ -77,6 +77,29 @@ export async function fileExists(filePath: string) {
 }
 
 /**
+ * Reads the the manifest file and converts to a javascript object skipping empty lines and comments
+ * @param path location of the manifest file
+ */
+export async function convertManifestToObject(path: string): Promise<{ [key: string]: string } | undefined> {
+    if (await fileExists(path) === false) {
+        return undefined;
+    } else {
+        let fileContents = (await fsExtra.readFile(path)).toString();
+        let manifestLines = fileContents.split('\n');
+
+        let manifestValues = {};
+        manifestLines.map((line) => {
+            let match;
+            if (match = /(\w+)=(.+)/.exec(line)) {
+                manifestValues[match[1]] = match[2];
+            }
+        });
+
+        return manifestValues;
+    }
+}
+
+/**
  * Creates a delay in execution
  * @param ms time to delay in milliseconds
  */
