@@ -81,24 +81,22 @@ export async function fileExists(filePath: string) {
  * @param path location of the manifest file
  */
 export async function convertManifestToObject(path: string): Promise<{ [key: string]: string } | undefined> {
-    return new Promise(async (resolve) => {
-        if (await fileExists(path) === false) {
-            resolve(undefined);
-        } else {
-            let fileContents = (await fsExtra.readFile(path)).toString();
-            let manifestLines = fileContents.split('\n');
+    if (await fileExists(path) === false) {
+        return undefined;
+    } else {
+        let fileContents = (await fsExtra.readFile(path)).toString();
+        let manifestLines = fileContents.split('\n');
 
-            let manifestValues = {};
-            manifestLines.map((line) => {
-                let match;
-                if (match = /(\w+)=(.+)/.exec(line)) {
-                    manifestValues[match[1]] = match[2];
-                }
-            });
+        let manifestValues = {};
+        manifestLines.map((line) => {
+            let match;
+            if (match = /(\w+)=(.+)/.exec(line)) {
+                manifestValues[match[1]] = match[2];
+            }
+        });
 
-            resolve(manifestValues);
-        }
-    });
+        return manifestValues;
+    }
 }
 
 /**
