@@ -84,6 +84,13 @@ class Util {
     public delay(ms: number) {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
+
+    /**
+     * Remove a single trailing newline from a string (\n or \r\n)
+     */
+    public removeTrailingNewline(value: string) {
+        return value.replace(/(.*?)\r?\n$/, '$1');
+    }
 }
 
 const util = new Util();

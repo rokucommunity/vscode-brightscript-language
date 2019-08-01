@@ -760,7 +760,7 @@ export class RokuAdapter {
                 let children: EvaluateContainer[];
                 if (highLevelType === HighLevelType.array || lowerExpressionType === 'roassociativearray' || lowerExpressionType === 'rosgnode') {
                     //the print statment will always have 1 trailing newline, so remove that.
-                    value = value.substring(0, value.length - 2);
+                    value = util.removeTrailingNewline(value);
                     //the array/associative array print is a loop of every value, so handle that
                     children = this.getForLoopPrintedChildren(expression, value);
                 } else if (highLevelType === HighLevelType.object) {
