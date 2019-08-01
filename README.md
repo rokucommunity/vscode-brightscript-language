@@ -270,20 +270,20 @@ There are several string placeholders you can use when defining your deep link u
 
 ## RALE Support
 You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
-Do do this you need a few simple things:
+To do this you need a few simple things:
 - In your VS Code user settings add the `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
-- Add the entry point comment `' vs_code_tracker_entry` to your code.
+- Add the entry point comment `' vscode_rale_tracker_entry` to your code.
   - This is optional as you can still include the the code to create the tracker task your self.
-  - I recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vs_code_tracker_entry`
+  - I recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
   - This can be added anywhere in the channel including source files but it must be on or after the your call to `screen.show()`
-- Set the `injectTrackerTask` value to true in your `launch.json`. For example:
+- Set the `injectRaleTrackerTask` value to true in your `launch.json`. For example:
 
 ```json
 {
     "type": "brightscript",
     "rootDir": "${workspaceFolder}/dist",
     "host": "192.168.1.2",
-    "injectTrackerTask": true
+    "injectRaleTrackerTask": true
 }
 ```
 

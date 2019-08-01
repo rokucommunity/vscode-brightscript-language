@@ -196,11 +196,11 @@ export class BrightScriptDebugSession extends DebugSession {
             }
 
             // inject the tracker task into the staging files if we have everything we need
-            if (this.launchArgs.injectTrackerTask && this.launchArgs.trackerTaskFileLocation) {
+            if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
                 try {
                     await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
                     console.log('TrackerTask successfully injected');
-                    await this.injectTrackerTaskCode(this.stagingPath);
+                    await this.injectRaleTrackerTaskCode(this.stagingPath);
                 } catch (err) {
                     console.error(err);
                 }
@@ -1113,12 +1113,12 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * Will search the project files for the comment "\' vs_code_tracker_entry" and replace it with the code needed to start the TrackerTask.
+     * Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
      * @param stagingPath
      */
-    public async injectTrackerTaskCode(stagingPath: string) {
+    public async injectRaleTrackerTaskCode(stagingPath: string) {
         // Search for the tracker task entry injection point
-        let trackerEntryTerm = `('\\s*vs_code_tracker_entry[^\\S\\r\\n]*)`;
+        let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
         let results = Object.assign(
             {},
             await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
@@ -1130,7 +1130,7 @@ export class BrightScriptDebugSession extends DebugSession {
             // Do not throw an error as we don't want to prevent the user from launching the channel
             // just because they don't have a local version of the TrackerTask.
             this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
-            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vs_code_tracker_entry"');
+            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
         } else {
             // This code will start the tracker task in the project
             let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
@@ -1449,9 +1449,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     enableLookupVariableNodeChildren: boolean;
 
     /**
-     * Will inject the TrackerTask into your channel if one is defined in your user settings.
+     * Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.
      */
-    injectTrackerTask: boolean;
+    injectRaleTrackerTask: boolean;
     /**
      * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
      */

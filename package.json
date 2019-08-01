@@ -319,9 +319,9 @@
                                     "normal"
                                 ]
                             },
-                            "injectTrackerTask": {
+                            "injectRaleTrackerTask": {
                                 "type": "boolean",
-                                "description": "Will inject the TrackerTask into your channel if one is defined in your user settings.",
+                                "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
                                 "default": false
                             },
                             "files": {

@@ -432,13 +432,13 @@ describe('Debugger', () => {
         });
     });
 
-    describe('injectTrackerTaskCode', () => {
+    describe('injectRaleTrackerTaskCode', () => {
         let key: string;
         let trackerTaskCode: string;
         let folder;
 
         beforeEach(() => {
-            key = 'vs_code_tracker_entry';
+            key = 'vscode_rale_tracker_entry';
             trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
         });
 
@@ -455,7 +455,7 @@ describe('Debugger', () => {
             let filePath = path.resolve(`${folder}/main.${fileExt}`);
 
             fsExtra.writeFileSync(filePath, fileContents);
-            await session.injectTrackerTaskCode(folder);
+            await session.injectRaleTrackerTaskCode(folder);
             let newFileContents = (await fsExtra.readFile(filePath)).toString();
             expect(newFileContents).to.equal(expectedContents);
         }
