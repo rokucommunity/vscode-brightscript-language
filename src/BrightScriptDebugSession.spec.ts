@@ -103,6 +103,70 @@ describe('Debugger', () => {
         assert.equal(path.normalize(session.baseProjectPath), path.normalize('1/2/3'));
     });
 
+    describe('updateManifestBsConsts', () => {
+        let constsLine: string;
+        let startingFileContents: string;
+        let bsConsts: { [key: string]: boolean };
+
+        beforeEach(() => {
+            constsLine = 'bs_const=const=false;const2=true;const3=false';
+            startingFileContents = `title=ComponentLibraryTestChannel
+                subtitle=Test Channel for Scene Graph Component Library
+                mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
+                mm_icon_side_hd=pkg:/images/MainMenu_Icon_Side_HD.png
+                mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
+                mm_icon_side_sd=pkg:/images/MainMenu_Icon_Side_SD43.png
+                splash_screen_fd=pkg:/images/splash_fhd.jpg
+                splash_screen_hd=pkg:/images/splash_hd.jpg
+                splash_screen_sd=pkg:/images/splash_sd.jpg
+                major_version=1
+                minor_version=1
+                build_version=00001
+                ${constsLine}
+            `.replace(/    /g, '');
+
+            bsConsts = { };
+        });
+
+        it('should update one bs_const in the bs_const line', async () => {
+            let fileContents: string;
+            bsConsts.const = true;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=true;const3=false'));
+
+            delete bsConsts.const;
+            bsConsts.const2 = false;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=false;const3=false'));
+
+            delete bsConsts.const2;
+            bsConsts.const3 = true;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=true;const3=true'));
+        });
+
+        it('should update all bs_consts in the bs_const line', async () => {
+            bsConsts.const = true;
+            bsConsts.const2 = false;
+            bsConsts.const3 = true;
+            let fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=false;const3=true'));
+        });
+
+        it('should throw error when there is no bs_const line', async () => {
+            await assert.rejects(async () => {
+                await session.updateManifestBsConsts(bsConsts, startingFileContents.replace(constsLine, ''));
+            });
+        });
+
+        it('should throw error if there is consts in the bsConsts that are not in the manifest', async () => {
+            bsConsts.const4 = true;
+            await assert.rejects(async () => {
+                await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            });
+        });
+    });
+
     describe('evaluating variable', () => {
         let getVariableValue;
         let responseDeferreds = [];
