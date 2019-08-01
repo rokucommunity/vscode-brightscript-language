@@ -191,7 +191,7 @@ If you are working on custom component libraries you can define them in the laun
 
 - `componentLibraries`: This field takes an array of library configuration objects allowing you to work on more than one library at a time. For the examples, there will only be one library configured but you can simply add more if you need to. Each object in the `componentLibraries` field requires three values.
   - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
-  - `outFile`: The name of the zip file that your channel code will download as a component library.
+  - `outFile`: The name of the zip file that your channel code will download as a component library. You can use values in your outFile string such as `${title}` to be inferred from the libraries manifest file.
   - `files`: A file path or file glob that should be copied to the deployment package.
 - `componentLibrariesPort`: Port to access component libraries. Default: `8080`
 - `componentLibrariesOutDir`: Output folder the component libraries will be hosted in. Default: `"${workspaceFolder}/libs"`

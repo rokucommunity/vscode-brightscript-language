@@ -35,6 +35,7 @@ import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
+import { convertManifestToObject } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -443,6 +444,10 @@ export class BrightScriptDebugSession extends DebugSession {
                 libraryNumber++;
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+
+                // check the component library for any replaceable values used for auto naming from manifest values
+                await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolder);
+
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
                 let pathDetails: object = {};
 
@@ -491,6 +496,39 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // prepare static file hosting
             this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
+        }
+    }
+
+    /**
+     * Takes a component Library and checks the outFile for replaceable values pulled from the libraries manifest
+     * @param componentLibrary The library to check
+     * @param stagingFolder staging folder of the component library to search for the manifest file
+     */
+    private async processComponentLibraryForAutoNaming(componentLibrary: {outFile: string}, stagingFolder: string) {
+        let regexp = /\$\{([\w\d_]*)\}/;
+        let renamingMatch;
+        let manifestValues;
+
+        // search the outFile for replaceable values such as ${title}
+        while (renamingMatch = regexp.exec(componentLibrary.outFile)) {
+            if (!manifestValues) {
+                // The first time a value is found we need to get the manifest values
+                let manifestPath = path.join(stagingFolder + '/', 'manifest');
+                manifestValues = await convertManifestToObject(manifestPath);
+
+                if (!manifestValues) {
+                    throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
+                }
+            }
+
+            // replace the replaceable key with the manifest value
+            let manifestVariableName = renamingMatch[1];
+            let manifestVariableValue = manifestValues[manifestVariableName];
+            if (manifestVariableValue) {
+                componentLibrary.outFile = componentLibrary.outFile.replace(renamingMatch[0], manifestVariableValue);
+            } else {
+                throw new Error(`Cannot find manifest value:\n"${manifestVariableName}"\n\nCould not complete automatic component library naming.`);
+            }
         }
     }
 
