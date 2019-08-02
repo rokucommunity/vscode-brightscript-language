@@ -68,6 +68,9 @@ export let vscode = {
             };
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
+        showErrorMessage: function(message: string) {
+
+        },
         activeTextEditor: {
             document: undefined
         }

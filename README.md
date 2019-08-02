@@ -14,6 +14,9 @@ A VSCode extension to support Roku's BrightScript language.
   - logpoints
   - hit count breakpoints
 - Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. See [here](https://developer.roku.com/docs/developer-program/debugging/debugging-channels.md#scenegraph-debug-server-port-8080-commands) for information on how to enable rendezvous logging your Roku.
+- Injection of the Roku Advanced Layout Editor(RALE) task from a single user managed version
+  - This helps avoid committing the tracker to you repo and also lets you manage what version you want installed rather then other users on the project
+  - See ([Extension Settings](#Extension-Settings) and [RALE Support](#RALE-Support) for more information)
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
   - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
@@ -191,7 +194,7 @@ If you are working on custom component libraries you can define them in the laun
 
 - `componentLibraries`: This field takes an array of library configuration objects allowing you to work on more than one library at a time. For the examples, there will only be one library configured but you can simply add more if you need to. Each object in the `componentLibraries` field requires three values.
   - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
-  - `outFile`: The name of the zip file that your channel code will download as a component library.
+  - `outFile`: The name of the zip file that your channel code will download as a component library. You can use values in your outFile string such as `${title}` to be inferred from the libraries manifest file.
   - `files`: A file path or file glob that should be copied to the deployment package.
 - `componentLibrariesPort`: Port to access component libraries. Default: `8080`
 - `componentLibrariesOutDir`: Output folder the component libraries will be hosted in. Default: `"${workspaceFolder}/libs"`
@@ -265,6 +268,24 @@ There are several string placeholders you can use when defining your deep link u
 
  - `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url.
 
+## RALE Support
+You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
+To do this you need a few simple things:
+- In your VS Code user settings add the `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
+- Add the entry point comment `' vscode_rale_tracker_entry` to your code.
+  - This is optional as you can still include the the code to create the tracker task your self.
+  - I recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
+  - This can be added anywhere in the channel including source files but it must be on or after the your call to `screen.show()`
+- Set the `injectRaleTrackerTask` value to true in your `launch.json`. For example:
+
+```json
+{
+    "type": "brightscript",
+    "rootDir": "${workspaceFolder}/dist",
+    "host": "192.168.1.2",
+    "injectRaleTrackerTask": true
+}
+```
 
 ## Extension Settings
 
@@ -283,6 +304,7 @@ This extension contributes the following settings:
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 * `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
 * `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
+* `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 
 ## Roku Remote Control
 
