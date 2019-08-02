@@ -399,6 +399,7 @@ describe('Debugger', () => {
             await doTest('\n\nsub   RunUserInterface()\nend sub', 'sub   RunUserInterface()', 3);
             await doTest('\n\nsub RunUserInterface   ()\nend sub', 'sub RunUserInterface   ()', 3);
         });
+
         it('works for sub main', async () => {
             await doTest('\nsub Main()\nend sub', 'sub Main()', 2);
             //works with args
@@ -414,6 +415,116 @@ describe('Debugger', () => {
             //works with extra spacing
             await doTest('function   Main()\nend function', 'function   Main()', 1);
             await doTest('function Main   ()\nend function', 'function Main   ()', 1);
+        });
+
+        it('works for sub RunScreenSaver', async () => {
+            await doTest('sub RunScreenSaver()\nend sub', 'sub RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('sub   RunScreenSaver()\nend sub', 'sub   RunScreenSaver()', 1);
+            await doTest('sub RunScreenSaver   ()\nend sub', 'sub RunScreenSaver   ()', 1);
+        });
+
+        it('works for function RunScreenSaver', async () => {
+            await doTest('function RunScreenSaver()\nend function', 'function RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('function   RunScreenSaver()\nend function', 'function   RunScreenSaver()', 1);
+            await doTest('function RunScreenSaver   ()\nend function', 'function RunScreenSaver   ()', 1);
+        });
+    });
+
+    describe('injectRaleTrackerTaskCode', () => {
+        let key: string;
+        let trackerTaskCode: string;
+        let folder;
+
+        beforeEach(() => {
+            key = 'vscode_rale_tracker_entry';
+            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+        });
+
+        afterEach(() => {
+            fsExtra.emptyDirSync('./.tmp');
+            fsExtra.rmdirSync('./.tmp');
+        });
+
+        async function doTest(fileContents: string, expectedContents: string, fileExt: string = 'brs') {
+            fsExtra.emptyDirSync('./.tmp');
+            folder = path.resolve('./.tmp/findMainFunctionTests/');
+            fsExtra.mkdirSync(folder);
+
+            let filePath = path.resolve(`${folder}/main.${fileExt}`);
+
+            fsExtra.writeFileSync(filePath, fileContents);
+            await session.injectRaleTrackerTaskCode(folder);
+            let newFileContents = (await fsExtra.readFile(filePath)).toString();
+            expect(newFileContents).to.equal(expectedContents);
+        }
+
+        it('works for in line comments brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', `: ${trackerTaskCode}`);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for in line comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
+
+        it('works for stand alone comments in brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show\n  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', trackerTaskCode);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for stand alone comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
         });
     });
 

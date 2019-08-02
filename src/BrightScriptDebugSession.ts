@@ -35,6 +35,7 @@ import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
+import { convertManifestToObject } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -191,6 +192,17 @@ export class BrightScriptDebugSession extends DebugSession {
                     let fileContents = (await fsExtra.readFile(manifestPath)).toString();
                     fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
                     await fsExtra.writeFile(manifestPath, fileContents);
+                }
+            }
+
+            // inject the tracker task into the staging files if we have everything we need
+            if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
+                try {
+                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
+                    console.log('TrackerTask successfully injected');
+                    await this.injectRaleTrackerTaskCode(this.stagingPath);
+                } catch (err) {
+                    console.error(err);
                 }
             }
 
@@ -443,6 +455,10 @@ export class BrightScriptDebugSession extends DebugSession {
                 libraryNumber++;
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+
+                // check the component library for any replaceable values used for auto naming from manifest values
+                await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolder);
+
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
                 let pathDetails: object = {};
 
@@ -491,6 +507,39 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // prepare static file hosting
             this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
+        }
+    }
+
+    /**
+     * Takes a component Library and checks the outFile for replaceable values pulled from the libraries manifest
+     * @param componentLibrary The library to check
+     * @param stagingFolder staging folder of the component library to search for the manifest file
+     */
+    private async processComponentLibraryForAutoNaming(componentLibrary: {outFile: string}, stagingFolder: string) {
+        let regexp = /\$\{([\w\d_]*)\}/;
+        let renamingMatch;
+        let manifestValues;
+
+        // search the outFile for replaceable values such as ${title}
+        while (renamingMatch = regexp.exec(componentLibrary.outFile)) {
+            if (!manifestValues) {
+                // The first time a value is found we need to get the manifest values
+                let manifestPath = path.join(stagingFolder + '/', 'manifest');
+                manifestValues = await convertManifestToObject(manifestPath);
+
+                if (!manifestValues) {
+                    throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
+                }
+            }
+
+            // replace the replaceable key with the manifest value
+            let manifestVariableName = renamingMatch[1];
+            let manifestVariableValue = manifestValues[manifestVariableName];
+            if (manifestVariableValue) {
+                componentLibrary.outFile = componentLibrary.outFile.replace(renamingMatch[0], manifestVariableValue);
+            } else {
+                throw new Error(`Cannot find manifest value:\n"${manifestVariableName}"\n\nCould not complete automatic component library naming.`);
+            }
         }
     }
 
@@ -1063,6 +1112,59 @@ export class BrightScriptDebugSession extends DebugSession {
         await Promise.all(promises);
     }
 
+    /**
+     * Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
+     * @param stagingPath
+     */
+    public async injectRaleTrackerTaskCode(stagingPath: string) {
+        // Search for the tracker task entry injection point
+        let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
+        let results = Object.assign(
+            {},
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.xml/)
+        );
+
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            // Do not throw an error as we don't want to prevent the user from launching the channel
+            // just because they don't have a local version of the TrackerTask.
+            this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
+            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
+        } else {
+            // This code will start the tracker task in the project
+            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+
+            // process the entry points found in the files
+            // unlikely but we might have more then one
+            for (const key of keys) {
+                let fileResults = results[key];
+                let fileContents = (await fsExtra.readFile(key)).toString();
+
+                let index = 0;
+                for (const line of fileResults.line) {
+                    // Remove the comment part of the match from the line to use as a base for the new line
+                    let newLine = line.replace(fileResults.matches[index], '');
+                    let match;
+                    if (match = /[\S]/.exec(newLine)) {
+                        // There was some form of code before the comment the was removed
+                        // append and use single line syntax
+                        newLine += `: ${trackerTaskSupportCode}`;
+                    } else {
+                        newLine += trackerTaskSupportCode;
+                    }
+
+                    // Replace the found line with the new line containing the tracker task code
+                    fileContents = fileContents.replace(line, newLine);
+                    index ++;
+                }
+
+                // safe the changes back to the staging file
+                await fsExtra.writeFile(key, fileContents);
+            }
+        }
+    }
+
     public async findEntryPoint(projectPath: string) {
         let results = Object.assign(
             {},
@@ -1345,6 +1447,15 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
      */
     enableLookupVariableNodeChildren: boolean;
+
+    /**
+     * Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.
+     */
+    injectRaleTrackerTask: boolean;
+    /**
+     * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
+     */
+    trackerTaskFileLocation: string;
 
     /**
      * The list of files that should be bundled during a debug session

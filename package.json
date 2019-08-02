@@ -257,7 +257,7 @@
                                         },
                                         "outFile": {
                                             "type": "string",
-                                            "description": "Output file name. Used as the static file name for the zip.",
+                                            "description": "Output file name. Used as the static file name for the zip. You can use values in your outFile string such as ${title} to be inferred from the libraries manifest file.",
                                             "default": "",
                                             "examples": [
                                                 "LibName.zip"
@@ -318,6 +318,11 @@
                                     "full",
                                     "normal"
                                 ]
+                            },
+                            "injectRaleTrackerTask": {
+                                "type": "boolean",
+                                "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
+                                "default": false
                             },
                             "files": {
                                 "type": "array",
@@ -589,6 +594,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
+                    "scope": "resource"
+                },
+                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
+                    "type": "string",
+                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
                 }
             }
