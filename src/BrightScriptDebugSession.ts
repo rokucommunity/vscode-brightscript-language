@@ -1133,7 +1133,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
         } else {
             // This code will start the tracker task in the project
-            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
 
             // process the entry points found in the files
             // unlikely but we might have more then one

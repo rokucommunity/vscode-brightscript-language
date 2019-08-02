@@ -439,7 +439,7 @@ describe('Debugger', () => {
 
         beforeEach(() => {
             key = 'vscode_rale_tracker_entry';
-            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vs_code_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
         });
 
         afterEach(() => {
