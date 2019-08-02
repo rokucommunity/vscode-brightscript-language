@@ -20,9 +20,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         this.activeDeviceManager = activeDeviceManager;
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
             this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+            this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
         });
     }
 
@@ -34,6 +36,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public util = util;
 
     private showDeviceInfoMessages: boolean;
+    private trackerTaskFileLocation: string;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -41,6 +44,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
+
+        let defaultFilesArray: FilesType[] = [
+            'manifest',
+            'source/**/*.*',
+            'components/**/*.*',
+            'images/**/*.*'
+        ];
+
         //make sure we have an object
         config = config ? config : {} as any;
         let folderUri: vscode.Uri;
@@ -97,6 +108,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let compLibs: FilesType[][] = [];
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                library.files = library.files ? library.files : defaultFilesArray;
                 compLibs.push(library);
             }
             config.componentLibraries = compLibs;
@@ -115,6 +127,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
+        config.injectRaleTrackerTask = config.injectRaleTrackerTask === false ? false : true;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
         config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
@@ -122,6 +135,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
+        config.files = config.files ? config.files : defaultFilesArray;
+
+        if (config.injectRaleTrackerTask) {
+            if (await this.util.fileExists(this.trackerTaskFileLocation) === false) {
+                vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${this.trackerTaskFileLocation}`);
+            } else {
+                config.trackerTaskFileLocation = this.trackerTaskFileLocation;
+            }
+        }
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
         if (config.rootDir.indexOf('${workspaceFolder}') > -1) {
@@ -271,6 +293,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     password: string;
     rootDir: string;
     sourceDirs?: string[];
+    bsConst?: { [key: string]: boolean };
     componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
     componentLibraries: FilesType[][];
@@ -279,6 +302,8 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     files?: FilesType[];
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
+    injectRaleTrackerTask: boolean;
+    trackerTaskFileLocation: string;
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
