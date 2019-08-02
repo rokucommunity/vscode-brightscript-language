@@ -6,11 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [1.18.0] - 2019-08-01
+## [1.18.0] - 2019-08-02
 ### Added
  - Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. The extension monitors all rendezvous console log entries and displays them in a new side panel in vscode.
- - bs_const support in the launch.config. See (the bs_const section)[https://github.com/TwitchBronBron/vscode-brightscript-language#bs_const] for more information.
+ - bs_const support in the launch.config. See [the bs_const section](https://github.com/TwitchBronBron/vscode-brightscript-language#bs_const) for more information.
  - User-Agent header to the ECP requests in the ActiveDeviceManager to make it easier to detect where those requests are coming from.
+ - Ability to auto-name component libraries based on values from the manifest (such as `title`)
+ - Ability to inject the Roku Advanced Layout Editor(RALE) task from a single user managed version. (See the [#RALE-Support](https://github.com/TwitchBronBron/vscode-brightscript-language#RALE-Support) for more information)
 
 ### Fixed
  - Set and use default `files` array when not specified in `launch.json` so users don't need to set it themselves.
