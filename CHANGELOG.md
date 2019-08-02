@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [999-0.0-languageserver-beta29] - 2019-06-21
+## [999.0.0-languageserver-beta30] - 2019-08-02
+### Added
+ - all changes from [v1.18.0](#1180---2019-08-02)
+
+
+
+## [999.0.0-languageserver-beta30] - 2019-06-21
 ### Added
  - all changes from [v1.17.1](#1171---2019-06-21)
 
@@ -521,6 +527,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[999.0.0-languageserver-beta30]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta29...v999.0.0-languageserver-beta30
 [999.0.0-languageserver-beta29]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta28...v999.0.0-languageserver-beta29
 [999.0.0-languageserver-beta28]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta27...v999.0.0-languageserver-beta28
 [999.0.0-languageserver-beta27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v999.0.0-languageserver-beta26...v999.0.0-languageserver-beta27
