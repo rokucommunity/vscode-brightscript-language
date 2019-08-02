@@ -232,6 +232,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-beta.1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
+## [1.18.0] - 2019-08-02
+### Added
+ - Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. The extension monitors all rendezvous console log entries and displays them in a new side panel in vscode.
+ - bs_const support in the launch.config. See [the bs_const section](https://github.com/TwitchBronBron/vscode-brightscript-language#bs_const) for more information.
+ - User-Agent header to the ECP requests in the ActiveDeviceManager to make it easier to detect where those requests are coming from.
+ - Ability to auto-name component libraries based on values from the manifest (such as `title`)
+ - Ability to inject the Roku Advanced Layout Editor(RALE) task from a single user managed version. (See the [#RALE-Support](https://github.com/TwitchBronBron/vscode-brightscript-language#RALE-Support) for more information)
+
+### Fixed
+ - Set and use default `files` array when not specified in `launch.json` so users don't need to set it themselves.
+ - Bug where some of the console output gets lost during `consoleOutput: "normal"`.
+ - Show better error messages during the publish process
+   - include the host ip address in most error messages
+   - open the first file that has a compile error
+
+
+
 ## [1.17.1] - 2019-06-21
 ### Fixed
  - regression issue with `formatIndent`
@@ -534,6 +551,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.18.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.1...v1.18.0
 [1.17.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0

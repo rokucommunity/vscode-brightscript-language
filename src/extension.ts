@@ -40,6 +40,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
+import { RendezvousViewProvider } from './RendezvousViewProvider';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -51,6 +52,15 @@ let client: LanguageClient;
 export async function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
     await configureLanguageServer(context);
+    let subscriptions = context.subscriptions;
+
+    //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
+    let rendezvousViewProvider = new RendezvousViewProvider(context);
+    vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+
+    subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
+        vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+    }));
 
     //register the code formatter
     vscode.languages.registerDocumentRangeFormattingEditProvider({
@@ -65,11 +75,22 @@ export async function activate(context: vscode.ExtensionContext) {
     let docLinkProvider = new LogDocumentLinkProvider();
     //register a link provider for this extension's "BrightScript Log" output
     vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
-    //give the launch config to the link provder any time we launch the app
-    vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+    //give the launch config to the link provider any time we launch the app
+    vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
             logOutputManager.setLaunchConfig(e.body);
+        } else if (e.event === 'BSRendezvousEvent') {
+            rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
+        } else if (!e.event) {
+            if (e.body[0]) {
+                // open the first file with a compile error
+                let uri = vscode.Uri.file(e.body[0].path);
+                let doc = await vscode.workspace.openTextDocument(uri);
+                let line = (e.body[0].lineNumber - 1 > -1) ? e.body[0].lineNumber - 1 : 0;
+                let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
+                await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+            }
         }
     });
     //register the definition provider
