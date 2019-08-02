@@ -100,7 +100,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
         config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
-        config.injectRaleTrackerTask = config.injectRaleTrackerTask === false ? false : true;
+        config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : false;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
         config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
         config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
