@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.31] - 2019-08-03
+### Added
+ - all changes from [v1.18.1](#1181---2019-08-03)
+
+
+
 ## [2.0.0-beta.30] - 2019-08-02
 ### Added
  - all changes from [v1.18.0](#1180---2019-08-02)
@@ -238,7 +244,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0-beta.1]
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
-# [1.18.1] - 2019-08-02
+
+
+
+# [1.18.1] - 2019-08-03
 ### Fixed
  - issue where the RALE Tracker Task injection logic was enabled by default.
 
@@ -533,6 +542,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.31]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
 [2.0.0-beta.30]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.29...v2.0.0-beta.30
 [2.0.0-beta.29]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.28...v2.0.0-beta.29
 [2.0.0-beta.28]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
