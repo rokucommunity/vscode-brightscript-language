@@ -42,8 +42,8 @@
         },
         {
             "type": "npm",
-            "label": "compile",
-            "script": "compile",
+            "label": "build",
+            "script": "build",
             "problemMatcher": []
         }
     ]
