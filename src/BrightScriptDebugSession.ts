@@ -27,11 +27,15 @@ import {
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+import { fileExists } from './util';
+
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
+import { convertManifestToObject } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -54,6 +58,18 @@ class LogOutputEvent implements DebugProtocol.Event {
     }
 
     public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class RendezvousEvent implements DebugProtocol.Event {
+    constructor(output: RendezvousHistory) {
+        this.body = output;
+        this.event = 'BSRendezvousEvent';
+    }
+
+    public body: RendezvousHistory;
     public event: string;
     public seq: number;
     public type: string;
@@ -169,6 +185,27 @@ export class BrightScriptDebugSession extends DebugSession {
             //copy all project files to the staging folder
             this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
 
+            if (this.launchArgs.bsConst) {
+                let manifestPath = path.join(this.stagingPath, '/manifest');
+                if (fileExists(manifestPath)) {
+                    // Update the bs_const values in the manifest in the staging folder before side loading the channel
+                    let fileContents = (await fsExtra.readFile(manifestPath)).toString();
+                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
+                    await fsExtra.writeFile(manifestPath, fileContents);
+                }
+            }
+
+            // inject the tracker task into the staging files if we have everything we need
+            if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
+                try {
+                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
+                    console.log('TrackerTask successfully injected');
+                    await this.injectRaleTrackerTaskCode(this.stagingPath);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+
             //build a list of all files in the staging folder
             this.loadStagingDirPaths(this.stagingPath);
 
@@ -209,11 +246,25 @@ export class BrightScriptDebugSession extends DebugSession {
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
-            this.sendDebugLogLine('Connecting to Roku via telnet');
+            this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
+
             //connect to the roku debug via telnet
             await this.connectRokuAdapter(args.host);
 
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
+
+            //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
+            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
+                (debuggerPath: string, lineNumber: number) => {
+                    return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
+                },
+                (debuggerPath: string) => {
+                    return this.convertDebuggerPathToClient(debuggerPath);
+                }
+            );
+
+            //pass the log level down thought the adapter to the RendezvousTracker
+            this.rokuAdapter.setConsoleOutput(this.launchArgs.consoleOutput);
 
             //pass along the console output
             if (this.launchArgs.consoleOutput === 'full') {
@@ -229,6 +280,11 @@ export class BrightScriptDebugSession extends DebugSession {
                     this.sendEvent(new LogOutputEvent(data));
                 });
             }
+
+            // Send rendezvous events to the extension
+            this.rokuAdapter.on('rendezvous-event', (output) => {
+                this.sendEvent(new RendezvousEvent(output));
+            });
 
             //listen for a closed connection (shut down when received)
             this.rokuAdapter.on('close', (reason = '') => {
@@ -248,7 +304,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
-                //TODO - shot gracefull
+                //stop the roku adapter and exit the channel
                 this.rokuAdapter.destroy();
                 this.rokuDeploy.pressHomeButton(this.launchArgs.host);
             });
@@ -281,15 +337,27 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.activate();
 
             if (!error) {
-                console.log(`deployed to Roku@${args.host}`);
-                this.sendResponse(response);
+                if (this.rokuAdapter.connected) {
+                    // Host connection was established before the main public process was completed
+                    console.log(`deployed to Roku@${this.launchArgs.host}`);
+                    this.sendResponse(response);
+                } else {
+                    // Main public process was completed but we are still waiting for a connection to the host
+                    this.rokuAdapter.on('connected', (status) => {
+                        if (status) {
+                            console.log(`deployed to Roku@${this.launchArgs.host}`);
+                            this.sendResponse(response);
+                        }
+                    });
+                }
             } else {
                 throw error;
             }
         } catch (e) {
             console.log(e);
             //if the message is anything other than compile errors, we want to display the error
-            if (e.message !== 'compileErrors') {
+            //TODO: look into the reason why we are getting the 'Invalid response code: 400' on compile errors
+            if (e.message !== 'compileErrors' && e.message !== 'Invalid response code: 400') {
                 //TODO make the debugger stop!
                 this.sendDebugLogLine('Encountered an issue during the publish process');
                 this.sendDebugLogLine(e.message);
@@ -319,6 +387,61 @@ export class BrightScriptDebugSession extends DebugSession {
         }
     }
 
+    /**
+     * Accepts custom events and requests from the extension
+     * @param command name of the command to execute
+     */
+    protected customRequest(command: string) {
+        if (command === 'rendezvous.clearHistory') {
+            this.rokuAdapter.clearRendezvousHistory();
+        }
+    }
+
+    /**
+     * updates the staging manifest with the supplied bsConsts from the launch config
+     * @param consts object of consts to be updated
+     * @param fileContents
+     */
+    public async updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): Promise<string> {
+        let bsConstLine;
+        let missingConsts: string[] = [];
+        let lines = eol.split(fileContents);
+
+        let newLine;
+        //loop through the lines until we find the bs_const line if it exists
+        for (const line of lines) {
+            if (line.toLowerCase().startsWith('bs_const')) {
+                bsConstLine = line;
+                newLine = line;
+                break;
+            }
+        }
+
+        if (bsConstLine) {
+            // update the consts in the manifest and check for missing consts
+            missingConsts = Object.keys(consts).reduce((results, key) => {
+                let match;
+                if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
+                    newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
+                } else {
+                    results.push(key);
+                }
+
+                return results;
+            }, []);
+
+            // check for consts that where not in the manifest
+            if (missingConsts.length > 0) {
+                throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
+            } else {
+                // update the manifest contents
+                return fileContents.replace(bsConstLine, newLine);
+            }
+        } else {
+            throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
+        }
+    }
+
     private componentLibraryPostfix: string = '__lib';
 
     protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {
@@ -332,6 +455,10 @@ export class BrightScriptDebugSession extends DebugSession {
                 libraryNumber++;
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+
+                // check the component library for any replaceable values used for auto naming from manifest values
+                await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolder);
+
                 let paths = glob.sync(path.join(stagingFolder, '**/*'));
                 let pathDetails: object = {};
 
@@ -381,6 +508,39 @@ export class BrightScriptDebugSession extends DebugSession {
 
             // prepare static file hosting
             this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
+        }
+    }
+
+    /**
+     * Takes a component Library and checks the outFile for replaceable values pulled from the libraries manifest
+     * @param componentLibrary The library to check
+     * @param stagingFolder staging folder of the component library to search for the manifest file
+     */
+    private async processComponentLibraryForAutoNaming(componentLibrary: {outFile: string}, stagingFolder: string) {
+        let regexp = /\$\{([\w\d_]*)\}/;
+        let renamingMatch;
+        let manifestValues;
+
+        // search the outFile for replaceable values such as ${title}
+        while (renamingMatch = regexp.exec(componentLibrary.outFile)) {
+            if (!manifestValues) {
+                // The first time a value is found we need to get the manifest values
+                let manifestPath = path.join(stagingFolder + '/', 'manifest');
+                manifestValues = await convertManifestToObject(manifestPath);
+
+                if (!manifestValues) {
+                    throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
+                }
+            }
+
+            // replace the replaceable key with the manifest value
+            let manifestVariableName = renamingMatch[1];
+            let manifestVariableValue = manifestValues[manifestVariableName];
+            if (manifestVariableValue) {
+                componentLibrary.outFile = componentLibrary.outFile.replace(renamingMatch[0], manifestVariableValue);
+            } else {
+                throw new Error(`Cannot find manifest value:\n"${manifestVariableName}"\n\nCould not complete automatic component library naming.`);
+            }
         }
     }
 
@@ -811,6 +971,10 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * Creates and registers the main events for the RokuAdapter
+     * @param host ip address to connect to
+     */
     private async connectRokuAdapter(host: string) {
         //register events
         this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
@@ -947,6 +1111,59 @@ export class BrightScriptDebugSession extends DebugSession {
             promises.push(addBreakpointsToFile(clientPath, basePath));
         }
         await Promise.all(promises);
+    }
+
+    /**
+     * Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
+     * @param stagingPath
+     */
+    public async injectRaleTrackerTaskCode(stagingPath: string) {
+        // Search for the tracker task entry injection point
+        let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
+        let results = Object.assign(
+            {},
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
+            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.xml/)
+        );
+
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            // Do not throw an error as we don't want to prevent the user from launching the channel
+            // just because they don't have a local version of the TrackerTask.
+            this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
+            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
+        } else {
+            // This code will start the tracker task in the project
+            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+
+            // process the entry points found in the files
+            // unlikely but we might have more then one
+            for (const key of keys) {
+                let fileResults = results[key];
+                let fileContents = (await fsExtra.readFile(key)).toString();
+
+                let index = 0;
+                for (const line of fileResults.line) {
+                    // Remove the comment part of the match from the line to use as a base for the new line
+                    let newLine = line.replace(fileResults.matches[index], '');
+                    let match;
+                    if (match = /[\S]/.exec(newLine)) {
+                        // There was some form of code before the comment the was removed
+                        // append and use single line syntax
+                        newLine += `: ${trackerTaskSupportCode}`;
+                    } else {
+                        newLine += trackerTaskSupportCode;
+                    }
+
+                    // Replace the found line with the new line containing the tracker task code
+                    fileContents = fileContents.replace(line, newLine);
+                    index ++;
+                }
+
+                // safe the changes back to the staging file
+                await fsExtra.writeFile(key, fileContents);
+            }
+        }
     }
 
     public async findEntryPoint(projectPath: string) {
@@ -1179,6 +1396,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     sourceDirs: string[];
     /**
+     * An object of bs_const values to be updated in the manifest before side loading.
+     */
+    bsConst?: { [key: string]: boolean };
+    /**
      * Port to access component libraries.
      */
     componentLibrariesPort: number;
@@ -1201,7 +1422,9 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      */
     stopOnEntry: boolean;
     /**
-     * Determines which console output event to listen for. Full is every console message (including the ones from the adapter). Normal excludes output initiated by the adapter
+     * Determines which console output event to listen for.
+     * 'full' is every console message (including the ones from the adapter).
+     * 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.
      */
     consoleOutput: 'full' | 'normal';
     /**
@@ -1225,6 +1448,15 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
      */
     enableLookupVariableNodeChildren: boolean;
+
+    /**
+     * Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.
+     */
+    injectRaleTrackerTask: boolean;
+    /**
+     * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
+     */
+    trackerTaskFileLocation: string;
 
     /**
      * The list of files that should be bundled during a debug session
@@ -1280,7 +1512,7 @@ export function defer<T>() {
 }
 
 /**
- * Determines if the `subject` path includes `search` path, with case sensitive compariosn
+ * Determines if the `subject` path includes `search` path, with case sensitive comparison
  * @param subject
  * @param search
  */

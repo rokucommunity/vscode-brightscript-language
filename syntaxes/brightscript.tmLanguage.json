@@ -15,6 +15,9 @@
             "include": "#end_region_comment"
         },
         {
+            "include": "#vscode_rale_tracker_entry_comment"
+        },
+        {
             "include": "#identifiers_with_type_designators"
         },
         {
@@ -275,6 +278,10 @@
         "end_region_comment": {
             "match": "^(i?\\s*'\\s*#endregion(\\s*.*)?$)",
             "name": "keyword.preprocessor.region.brs"
+        },
+        "vscode_rale_tracker_entry_comment": {
+            "match": "('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)",
+            "name": "keyword.preprocessor.brs"
         }
     }
 }

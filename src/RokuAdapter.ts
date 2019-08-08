@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
+import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -24,7 +25,15 @@ export class RokuAdapter {
         this.compilingLines = [];
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.rendezvousTracker = new RendezvousTracker();
+
+        // watch for rendezvous events
+        this.rendezvousTracker.on('rendezvous-event', (output) => {
+            this.emit('rendezvous-event', output);
+        });
     }
+
+    public connected: boolean;
 
     private status: RokuAdapterStatus;
     private requestPipeline: RequestPipeline;
@@ -37,6 +46,7 @@ export class RokuAdapter {
     private isInMicroDebugger: boolean;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
+    private rendezvousTracker: RendezvousTracker;
 
     private cache = {};
 
@@ -49,7 +59,9 @@ export class RokuAdapter {
     public on(eventName: 'close', handler: () => void);
     public on(eventName: 'app-exit', handler: () => void);
     public on(eventName: 'compile-errors', handler: (params: { path: string; lineNumber: number; }[]) => void);
+    public on(eventName: 'connected', handler: (params: boolean) => void);
     public on(eventname: 'console-output', handler: (output: string) => void);
+    public on(eventname: 'rendezvous-event', handler: (output: RendezvousHistory) => void);
     public on(eventName: 'runtime-error', handler: (error: BrightScriptRuntimeError) => void);
     public on(eventName: 'suspend', handler: () => void);
     public on(eventName: 'start', handler: () => void);
@@ -63,7 +75,21 @@ export class RokuAdapter {
         };
     }
 
-    private emit(eventName: 'suspend' | 'compile-errors' | 'close' | 'console-output' | 'unhandled-console-output' | 'runtime-error' | 'cannot-continue' | 'start' | 'app-exit', data?) {
+    private emit(
+        eventName:
+            'app-exit' |
+            'cannot-continue' |
+            'close' |
+            'compile-errors' |
+            'connected' |
+            'console-output' |
+            'rendezvous-event' |
+            'runtime-error' |
+            'start' |
+            'suspend' |
+            'unhandled-console-output',
+        data?
+    ) {
         this.emitter.emit(eventName, data);
     }
 
@@ -165,7 +191,9 @@ export class RokuAdapter {
             let client: Socket = new net.Socket();
 
             client.connect(8085, this.host, (err, data) => {
-                let k = 2;
+                console.log(`+++++++++++ CONNECTED TO DEVICE ${this.host} +++++++++++`);
+                this.connected = true;
+                this.emit('connected', this.connected);
             });
 
             //listen for the close event
@@ -175,8 +203,7 @@ export class RokuAdapter {
 
             //if the connection fails, reject the connect promise
             client.addListener('error', (err) => {
-                //this.emit(EventName.error, err);
-                deferred.reject(err);
+                deferred.reject(new Error(`Error with connection to: ${this.host} \n\n ${err.message}`));
             });
 
             await this.settle(client, 'data');
@@ -184,7 +211,7 @@ export class RokuAdapter {
             //hook up the pipeline to the socket
             this.requestPipeline = new RequestPipeline(client);
 
-            //forward all raw counsole output
+            //forward all raw console output
             this.requestPipeline.on('console-output', (output) => {
                 this.processBreakpoints(output);
                 if (output) {
@@ -202,6 +229,7 @@ export class RokuAdapter {
                     return;
                 }
 
+                responseText = this.rendezvousTracker.processLogLine(responseText);
                 //forward all unhandled console output
                 this.processBreakpoints(responseText);
                 if (responseText) {
@@ -235,7 +263,7 @@ export class RokuAdapter {
                             console.log('this breakpoint is flagged to be skipped');
                             this.isInMicroDebugger = false;
                             this.isNextBreakpointSkipped = false;
-                            this.requestPipeline.executeCommand('c', false, false);
+                            this.requestPipeline.executeCommand('c', false, false, false);
                         } else {
                             if (this.isActivated && this.isAtDebuggerPrompt === false) {
                                 this.isAtDebuggerPrompt = true;
@@ -284,7 +312,7 @@ export class RokuAdapter {
      * @param responseText
      */
     private checkForRuntimeError(responseText: string) {
-        let match = /[\r\n]+(.*)\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
+        let match = /(.*)\s\(runtime\s+error\s+(.*)\)\s+in/.exec(responseText);
         if (match) {
             let message = match[1].trim();
             let errorCode = match[2].trim().toLowerCase();
@@ -591,7 +619,7 @@ export class RokuAdapter {
     public pause() {
         this.clearCache();
         //send the kill signal, which breaks into debugger mode
-        return this.requestPipeline.executeCommand('\x03;', false);
+        return this.requestPipeline.executeCommand('\x03;', false, true);
     }
 
     /**
@@ -1010,6 +1038,33 @@ export class RokuAdapter {
             } while (commandsExecuted < 10);
         }
     }
+
+    // #region Rendezvous Tracker pass though functions
+    /**
+     * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
+     */
+    public setRendezvousDebuggerFileConversionFunctions(
+        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
+        convertDebuggerPathToClient: (debuggerPath: string) => string
+    ) {
+        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
+    }
+
+    /**
+     * Passes the log level down to the RendezvousTracker
+     * @param outputLevel the consoleOutput from the launch config
+     */
+    public setConsoleOutput(outputLevel: string) {
+        this.rendezvousTracker.setConsoleOutput(outputLevel);
+    }
+
+    /**
+     * Sends a call you the RendezvousTracker to clear the current rendezvous history
+     */
+    public clearRendezvousHistory() {
+        this.rendezvousTracker.clearRendezvousHistory();
+    }
+    // #endregion
 }
 
 export interface StackFrame {
@@ -1066,9 +1121,14 @@ export class RequestPipeline {
 
     private requests: RequestPipelineRequest[] = [];
     private debuggerLineRegex: RegExp;
+    private isAtDebuggerPrompt: boolean = false;
 
     private get isProcessing() {
         return this.currentRequest !== undefined;
+    }
+
+    private get hasRequests() {
+        return this.requests.length > 0;
     }
 
     private currentRequest: RequestPipelineRequest = undefined;
@@ -1089,37 +1149,71 @@ export class RequestPipeline {
 
     private connect() {
         let allResponseText = '';
+        let lastPartialLine = '';
+
         this.client.addListener('data', (data) => {
             let responseText = data.toString();
-            this.emit('console-output', responseText);
-            allResponseText += responseText;
-
-            //if we are not processing, immediately broadcast the latest data
-            if (!this.isProcessing) {
-                this.emit('unhandled-console-output', allResponseText);
-                allResponseText = '';
+            if (!responseText.endsWith('\n') && !this.checkForDebuggerPrompt(responseText)) {
+                // buffer was split and was not the result of a prompt, save the partial line
+                lastPartialLine += responseText;
             } else {
-                let match;
-                //if responseText produced a prompt, return the responseText
-                if (match = this.debuggerLineRegex.exec(allResponseText.trim())) {
-                    //resolve the command's promise (if it cares)
-                    this.currentRequest.onComplete(allResponseText);
+                if (lastPartialLine) {
+                    // there was leftover lines, join the partial lines back together
+                    responseText = lastPartialLine + responseText;
+                    lastPartialLine = '';
+                }
+
+                //forward all raw console output
+                this.emit('console-output', responseText);
+                allResponseText += responseText;
+
+                let foundDebuggerPrompt = this.checkForDebuggerPrompt(allResponseText);
+
+                //if we are not processing, immediately broadcast the latest data
+                if (!this.isProcessing) {
+                    this.emit('unhandled-console-output', allResponseText);
                     allResponseText = '';
-                    this.currentRequest = undefined;
-                    //try to run the next request
-                    this.process();
+
+                    if (foundDebuggerPrompt) {
+                        this.isAtDebuggerPrompt = true;
+                        if (this.hasRequests) {
+                            // There are requests waiting to be processed
+                            this.process();
+                        }
+                    }
+                } else {
+                    //if responseText produced a prompt, return the responseText
+                    if (foundDebuggerPrompt) {
+                        //resolve the command's promise (if it cares)
+                        this.isAtDebuggerPrompt = true;
+                        this.currentRequest.onComplete(allResponseText);
+                        allResponseText = '';
+                        this.currentRequest = undefined;
+                        //try to run the next request
+                        this.process();
+                    }
                 }
             }
-
         });
+    }
+
+    /**
+     * Checks the supplied string for the debugger input prompt
+     * @param responseText
+     */
+    private checkForDebuggerPrompt(responseText: string) {
+        let match = this.debuggerLineRegex.exec(responseText.trim());
+        return (match);
     }
 
     /**
      * Schedule a command to be run. Resolves with the result once the command finishes
      * @param commandFunction
      * @param waitForPrompt - if true, the promise will wait until we find a prompt, and return all output in between. If false, the promise will immediately resolve
+     * @param forceExecute - if true, it is assumed the command can be run at any time and will be executed immediately
+     * @param silent - if true, the command will be hidden from the output
      */
-    public executeCommand(command: string, waitForPrompt: boolean, silent: boolean = false) {
+    public executeCommand(command: string, waitForPrompt: boolean, forceExecute: boolean = false, silent: boolean = false) {
         console.debug(`Execute command (and ${waitForPrompt ? 'do' : 'do not'} wait for prompt):`, command);
         return new Promise<string>((resolve, reject) => {
             let executeCommand = () => {
@@ -1128,43 +1222,58 @@ export class RequestPipeline {
                     this.emit('console-output', command);
                 }
                 this.client.write(commandText);
+                if (waitForPrompt) {
+                    // The act of executing this command means we are no longer at the debug prompt
+                    this.isAtDebuggerPrompt = false;
+                }
             };
-            this.requests.push({
+
+            let request = {
                 executeCommand: executeCommand,
                 onComplete: (data) => {
                     console.debug(`Command finished (${waitForPrompt ? 'after waiting for prompt' : 'did not wait for prompt'}`, command);
                     console.debug('Data:', data);
                     resolve(data);
                 },
-                waitForPrompt: waitForPrompt
-            });
-            //start processing (safe to call multiple times)
-            this.process();
+                waitForPrompt: waitForPrompt,
+            };
+
+            if (!waitForPrompt) {
+                if (!this.isProcessing || forceExecute) {
+                    //fire and forget the command
+                    request.executeCommand();
+                    //the command doesn't care about the output, resolve it immediately
+                    request.onComplete(undefined);
+                } else {
+                    // Skip this request as the device is not ready to accept the command or it can not be run at any time
+                }
+            } else {
+                this.requests.push(request);
+                if (this.isAtDebuggerPrompt) {
+                    //start processing since we are already at a debug prompt (safe to call multiple times)
+                    this.process();
+                } else {
+                    // do not run the command until the device is at a debug prompt.
+                    // this will be detected in the data listener in the connect function
+                }
+            }
         });
     }
 
     /**
-     * Internall request processing function
+     * Internal request processing function
      */
     private async process() {
-        if (this.isProcessing || this.requests.length === 0) {
+        if (this.isProcessing || !this.hasRequests) {
             return;
         }
+
         //get the oldest command
         let nextRequest = this.requests.shift();
-        if (nextRequest.waitForPrompt) {
-            this.currentRequest = nextRequest;
-        } else {
-            //fire and forget the command
-        }
+        this.currentRequest = nextRequest;
 
         //run the request. the data listener will handle launching the next request once this one has finished processing
         nextRequest.executeCommand();
-
-        //if the command doesn't care about the output, resolve it immediately
-        if (!nextRequest.waitForPrompt) {
-            nextRequest.onComplete(undefined);
-        }
     }
 
     public destroy() {
