@@ -45,7 +45,7 @@
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brightscript-formatter": "^1.5.0",
-        "brightscript-language": "0.2.13",
+        "brightscript-language": "^0.2.14",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
