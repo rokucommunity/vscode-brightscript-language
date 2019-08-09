@@ -53,7 +53,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
-            sinon.stub(configProvider.util, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
             let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -73,7 +73,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('USERNAME=bob'));
             });
-            sinon.stub(configProvider.util, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
             let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -86,7 +86,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('throws on missing .env file', async () => {
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
-            sinon.stub(configProvider.util, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
 
             try {
                 let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
@@ -103,7 +103,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('handles non ${workspaceFolder} replacements', async () => {
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-            sinon.stub(configProvider.util, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
 
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place

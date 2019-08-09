@@ -1,3 +1,4 @@
+import { util as bslangUtil } from 'brightscript-language';
 import * as dotenv from 'dotenv';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
@@ -76,7 +77,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         //load the brsconfig settings (if available)
-        let brsconfig = await util.getBrsConfig(folderUri);
+        let brsconfig = await this.getBrsConfig(folderUri);
         if (brsconfig) {
             config = Object.assign({}, brsconfig, config);
         }
@@ -285,6 +286,25 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             placeHolder: placeHolder,
             value: value
         });
+    }
+
+    /**
+     * Get the brsConfig file, if available
+     */
+    public async getBrsConfig(workspaceFolder: vscode.Uri) {
+        //try to load brsconfig settings
+        let settings = await vscode.workspace.getConfiguration('brightscript', workspaceFolder);
+        let configFilePath = settings.get<string>('configFile');
+
+        //if the path is relative, resolve it relative to the workspace folder. If it's absolute, use as is (path.resolve handles this logic for us)
+        configFilePath = path.resolve(bslangUtil.uriToPath(workspaceFolder.toString()), configFilePath);
+        try {
+            let brsconfig = await bslangUtil.loadConfigFile(configFilePath);
+            return brsconfig;
+        } catch (e) {
+            console.error(`Could not load brsconfig file at "${configFilePath}`);
+            return undefined;
+        }
     }
 }
 
