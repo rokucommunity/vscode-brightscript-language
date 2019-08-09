@@ -1,8 +1,6 @@
-import { util as bslangUtil } from 'brightscript-language';
 import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import * as vscode from 'vscode';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
@@ -28,22 +26,6 @@ async function stat(filePath: string) {
             resolve(result);
         });
     });
-}
-
-export async function getBrsConfig(workspaceFolder: vscode.Uri) {
-    //try to load brsconfig settings
-    let settings = await vscode.workspace.getConfiguration('brightscript', workspaceFolder);
-    let configFilePath = settings.get<string>('configFile');
-
-    //if the path is relative, resolve it relative to the workspace folder. If it's absolute, use as is (path.resolve handles this logic for us)
-    configFilePath = path.resolve(bslangUtil.uriToPath(workspaceFolder.toString()), configFilePath);
-    try {
-        let brsconfig = await bslangUtil.loadConfigFile(configFilePath);
-        return brsconfig;
-    } catch (e) {
-        console.error(`Could not load brsconfig file at "${configFilePath}`);
-        return undefined;
-    }
 }
 
 export async function fixFilePathExtension(filePath: string) {
