@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.33] - 2019-08-09
+### Fixed
+ - issue that was crashing every debug session before it started.
+
+
+
 ## [2.0.0-beta.32] - 2019-08-07
 ### Added
  - all changes from [v1.18.2](#1182---2019-08-07)
@@ -557,6 +563,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.33]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
 [2.0.0-beta.32]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
 [2.0.0-beta.31]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
 [2.0.0-beta.30]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.29...v2.0.0-beta.30
