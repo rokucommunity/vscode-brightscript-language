@@ -1,3 +1,4 @@
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
@@ -97,14 +98,34 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         this.customLinks = [];
     }
 
+        /*
+        georgejecook: would love to know a way to do this without the exists
+        I think we need to standardize the functionality here, into a general purpose utility method
+        which will help with .bs support later, as well.
+        */
     public convertPkgPathToFsPath(pkgPath: string) {
         //remove preceeding pkg:
         if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
             pkgPath = pkgPath.substring(4);
         }
-        //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
 
+        //use debugRootDir if provided, or rootDir if not provided.
+        let rootDir = this.launchConfig.rootDir;
+        if (this.launchConfig.debugRootDir) {
+            rootDir = this.launchConfig.debugRootDir;
+        } else if (this.launchConfig.sourceDirs) {
+            if (this.launchConfig.sourceDirs.length === 1) {
+                //best case, simply choose the first item
+                rootDir = this.launchConfig.sourceDirs[0];
+            } else {
+                for (let sourceDir of this.launchConfig.sourceDirs) {
+                    let clientPath = path.normalize(path.join(sourceDir, pkgPath));
+                    if (fsExtra.existsSync(clientPath)) {
+                        return clientPath;
+                    }
+                }
+            }
+        }
         let clientPath = path.normalize(path.join(rootDir, pkgPath));
         return clientPath;
     }
