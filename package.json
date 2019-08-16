@@ -79,7 +79,7 @@
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
         "mocha-param": "^2.0.0",
-        "nyc": "^13.1.0",
+        "nyc": "^14.1.1",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
         "ts-mocha": "^6.0.0",
