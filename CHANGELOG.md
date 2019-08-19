@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.34] - 2019-08-19
+### Changed
+ - upgraded to [brightscript-language@0.2.15](https://www.npmjs.com/package/brightscript-language/v/0.2.15)
+### Fixed
+ - issue with syntax highlighting while hovering over variables in `.brs` files (fixed by upgrading [brightscript-language@0.2.15](https://www.npmjs.com/package/brightscript-language/v/0.2.15))
+
+
+
 ## [2.0.0-beta.33] - 2019-08-09
 ### Fixed
  - issue that was crashing every debug session before it started.
@@ -563,6 +571,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.34]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
 [2.0.0-beta.33]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
 [2.0.0-beta.32]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
 [2.0.0-beta.31]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
