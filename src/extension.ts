@@ -160,8 +160,8 @@ export async function configureLanguageServer(context: vscode.ExtensionContext) 
 
     // Create the language client and start the client.
     client = new LanguageClient(
-        'brightScriptLanguageServer',
-        'BrightScript Language Server',
+        'brighterScriptLanguageServer',
+        'BrighterScript Language Server',
         serverOptions,
         clientOptions
     );

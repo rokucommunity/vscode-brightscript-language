@@ -28,7 +28,7 @@
         "preversion": "npm run build && npm run tslint && npm run test",
         "prepare": "npm run build",
         "vscode:prepublish": "npm run build",
-        "copy-schema": "cpx ./node_modules/brightscript-language/brsconfig.schema.json ./out -L",
+        "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./out -L",
         "build": "npm run copy-schema && tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "npm run copy-schema && tsc -w -p ./src",
@@ -45,8 +45,8 @@
         "@types/glob": "^7.1.1",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
+        "brighterscript": "file:../brighterscript",
         "brightscript-formatter": "^1.5.0",
-        "brightscript-language": "^0.2.15",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -463,8 +463,8 @@
         ],
         "jsonValidation": [
             {
-                "fileMatch": "brsconfig.json",
-                "url": "./out/brsconfig.schema.json"
+                "fileMatch": "bsconfig.json",
+                "url": "./out/bsconfig.schema.json"
             }
         ],
         "grammars": [
@@ -560,7 +560,6 @@
                 },
                 "brightscript.configFile": {
                     "type": "string",
-                    "default": "brsconfig.json",
                     "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
                     "scope": "resource"
                 },

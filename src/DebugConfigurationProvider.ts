@@ -1,4 +1,4 @@
-import { util as bslangUtil } from 'brightscript-language';
+import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
