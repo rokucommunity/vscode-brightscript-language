@@ -236,6 +236,11 @@ describe('RokuAdapter ', () => {
     Index2: 0
     Operation: "none"
 }
+vscode_key_start:EDID:vscode_key_stop vscode_is_string:false<Component: roByteArray> =
+[
+    0
+    ...
+]
 vscode_key_start:focusable:vscode_key_stop vscode_is_string:falsefalse
 vscode_key_start:focusedChild:vscode_key_stop vscode_is_string:false<Component: roInvalid>
 vscode_key_start:id:vscode_key_stop vscode_is_string:true
@@ -248,7 +253,7 @@ vscode_key_start:mynewfield:vscode_key_stop vscode_is_string:false<Component: ro
     TITLE: "Node Three"
 }`
             );
-            expect(variables).to.be.lengthOf(5);
+            expect(variables).to.be.lengthOf(6);
 
             expect(variables.find(x => x.name === 'change')).to.deep.include(<EvaluateContainer>{
                 evaluateName: 'testNode["change"]',
@@ -279,6 +284,12 @@ vscode_key_start:mynewfield:vscode_key_stop vscode_is_string:false<Component: ro
                     value: '"none"'
                 });
             }
+            expect(variables.find(x => x.name === 'EDID')).to.deep.include(<EvaluateContainer>{
+                evaluateName: 'testNode["EDID"]',
+                type: 'roByteArray',
+            });
+            //children of EDID should be null, because we encountered the elipses (...) which means it should be evaluated later 
+            expect(variables.find(x => x.name === 'EDID').children[0]).to.be.undefined;
 
             expect(variables.find(x => x.name === 'focusable')).to.deep.include(<EvaluateContainer>{
                 evaluateName: 'testNode["focusable"]',

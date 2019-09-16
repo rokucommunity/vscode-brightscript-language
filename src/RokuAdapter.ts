@@ -761,7 +761,7 @@ export class RokuAdapter {
                 data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
 
                 //write a for loop to print every value from the array. This gets around the `...` after the 100th item issue in the roku print call
-            } else if (lowerExpressionType === 'roarray' || lowerExpressionType === 'rolist') {
+            } else if (['roarray', 'rolist', 'robytearray'].indexOf(lowerExpressionType) > -1) {
                 data = await this.requestPipeline.executeCommand(
                     `for each vscodeLoopItem in ${expression} : print "vscode_is_string:"; (invalid <> GetInterface(vscodeLoopItem, "ifString")); vscodeLoopItem : end for`
                     , true);
@@ -786,7 +786,7 @@ export class RokuAdapter {
                 let highLevelType = this.getHighLevelType(expressionType);
 
                 let children: EvaluateContainer[];
-                if (highLevelType === HighLevelType.array || lowerExpressionType === 'roassociativearray' || lowerExpressionType === 'rosgnode') {
+                if (highLevelType === HighLevelType.array || ['roassociativearray', 'rosgnode', 'robytearray'].indexOf(lowerExpressionType) > -1) {
                     //the print statment will always have 1 trailing newline, so remove that.
                     value = util.removeTrailingNewline(value);
                     //the array/associative array print is a loop of every value, so handle that
@@ -886,13 +886,17 @@ export class RokuAdapter {
             const objectType = this.getObjectType(line);
             const isRoSGNode = objectType && objectType.indexOf('roSGNode') === 0;
             //handle collections
-            if (['roList', 'roArray', 'roAssociativeArray'].indexOf(objectType) > -1 || isRoSGNode) {
+            if (['roList', 'roArray', 'roAssociativeArray', 'roByteArray'].indexOf(objectType) > -1 || isRoSGNode) {
                 let collectionEnd: ')' | ']' | '}';
                 if (line.indexOf('<Component: roList>') > -1) {
                     collectionEnd = ')';
                     child.highLevelType = HighLevelType.array;
                     child.type = objectType;
                 } else if (line.indexOf('<Component: roArray>') > -1) {
+                    collectionEnd = ']';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = this.getObjectType(line);
+                } else if (line.indexOf('<Component: roByteArray>') > -1) {
                     collectionEnd = ']';
                     child.highLevelType = HighLevelType.array;
                     child.type = this.getObjectType(line);
