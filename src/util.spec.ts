@@ -1,13 +1,12 @@
 /* tslint:disable:no-unused-expression */
-import { expect } from 'chai';
-
 import * as assert from 'assert';
+import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
-let sinon = sinonActual.createSandbox();
 
-import * as util from './util';
+import { util } from './util';
+let sinon = sinonActual.createSandbox();
 
 const rootDir = path.normalize(path.dirname(__dirname));
 
@@ -16,6 +15,14 @@ beforeEach(() => {
 });
 
 describe('Util', () => {
+
+    describe('removeTrailingNewline', () => {
+        it('works', () => {
+            expect(util.removeTrailingNewline('\r\n')).to.equal('');
+            expect(util.removeTrailingNewline('\n')).to.equal('');
+            expect(util.removeTrailingNewline('\r\n\r\n')).to.equal('\r\n');
+        });
+    });
 
     describe('checkForTrailingSlash', () => {
         it('should add trailing slash when missing', () => {

@@ -1,18 +1,11 @@
 import * as eol from 'eol';
 import * as findInFiles from 'find-in-files';
-import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
-import * as http from 'http';
 import * as path from 'path';
 import * as request from 'request';
-import * as rokuDeploy from 'roku-deploy';
-import * as url from 'url';
-
 import { FilesType, RokuDeploy } from 'roku-deploy';
-import { inspect } from 'util';
 import {
-    Breakpoint,
     DebugSession,
     Handles,
     InitializedEvent,
@@ -27,15 +20,13 @@ import {
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
-import { fileExists } from './util';
-
 import { ComponentLibraryServer } from './ComponentLibraryServer';
 import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
-import { convertManifestToObject } from './util';
+import { util } from './util';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -168,13 +159,10 @@ export class BrightScriptDebugSession extends DebugSession {
     public launchRequestWasCalled = false;
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
-        this.log('launchRequest');
         this.launchArgs = args;
         this.launchRequestWasCalled = true;
         let disconnect = () => {
         };
-        // tslint:disable-next-line:no-debugger
-        // debugger;
         this.sendEvent(new LaunchStartEvent(args));
 
         let error: Error;
@@ -187,7 +175,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             if (this.launchArgs.bsConst) {
                 let manifestPath = path.join(this.stagingPath, '/manifest');
-                if (fileExists(manifestPath)) {
+                if (util.fileExists(manifestPath)) {
                     // Update the bs_const values in the manifest in the staging folder before side loading the channel
                     let fileContents = (await fsExtra.readFile(manifestPath)).toString();
                     fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
@@ -354,7 +342,6 @@ export class BrightScriptDebugSession extends DebugSession {
                 throw error;
             }
         } catch (e) {
-            console.log(e);
             //if the message is anything other than compile errors, we want to display the error
             //TODO: look into the reason why we are getting the 'Invalid response code: 400' on compile errors
             if (e.message !== 'compileErrors' && e.message !== 'Invalid response code: 400') {
@@ -515,7 +502,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param componentLibrary The library to check
      * @param stagingFolder staging folder of the component library to search for the manifest file
      */
-    private async processComponentLibraryForAutoNaming(componentLibrary: {outFile: string}, stagingFolder: string) {
+    private async processComponentLibraryForAutoNaming(componentLibrary: { outFile: string }, stagingFolder: string) {
         let regexp = /\$\{([\w\d_]*)\}/;
         let renamingMatch;
         let manifestValues;
@@ -525,7 +512,7 @@ export class BrightScriptDebugSession extends DebugSession {
             if (!manifestValues) {
                 // The first time a value is found we need to get the manifest values
                 let manifestPath = path.join(stagingFolder + '/', 'manifest');
-                manifestValues = await convertManifestToObject(manifestPath);
+                manifestValues = await util.convertManifestToObject(manifestPath);
 
                 if (!manifestValues) {
                     throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
@@ -777,6 +764,8 @@ export class BrightScriptDebugSession extends DebugSession {
         this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
         let childVariables: AugmentedVariable[] = [];
+        //wait for any `evaluate` commands to finish so we have a higher likelyhood of being at a debugger prompt
+        await this.evaluateRequestPromise;
         if (this.rokuAdapter.isAtDebuggerPrompt) {
             const reference = this.variableHandles.get(args.variablesReference);
             if (reference) {
@@ -802,6 +791,12 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
                 childVariables = v.childVariables;
             }
+
+            //if the variable is an array, send only the requested range
+            if (Array.isArray(childVariables) && args.filter === 'indexed') {
+                //only send the variable range requested by the debugger
+                childVariables = childVariables.slice(args.start, args.start + args.count);
+            }
             response.body = {
                 variables: childVariables
             };
@@ -811,44 +806,56 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-        if (this.rokuAdapter.isAtDebuggerPrompt) {
-            if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
-                //if this command has the word print in front of it, remove that word
-                let expression = args.expression.replace(/^print/i, '').trim();
-                let refId = this.getEvaluateRefId(expression);
-                let v: DebugProtocol.Variable;
-                //if we already looked this item up, return it
-                if (this.variables[refId]) {
-                    v = this.variables[refId];
-                } else {
-                    let result = await this.rokuAdapter.getVariable(expression);
-                    v = this.getVariableFromResult(result);
-                }
-                response.body = {
-                    result: v.value,
-                    variablesReference: v.variablesReference,
-                    namedVariables: v.namedVariables || 0,
-                    indexedVariables: v.indexedVariables || 0
-                };
-            } else if (args.context === 'repl') {
-                //exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
-                let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
-                if (excludedExpressions.indexOf(args.expression.toLowerCase().trim()) > -1) {
-                    this.sendEvent(new OutputEvent(`Expression '${args.expression}' not permitted when debugging in VSCode`, 'stdout'));
-                } else {
-                    let result = await this.rokuAdapter.evaluate(args.expression);
-                    response.body = <any>{
-                        result: result
-                    };
-                    // //print the output to the screen
-                    // this.sendEvent(new OutputEvent(result, 'stdout'));
-                }
-            }
-        } else {
-            console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
-        }
+    private evaluateRequestPromise = Promise.resolve();
 
+    public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
+        let deferred = defer<any>();
+
+        this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
+            return deferred.promise;
+        });
+        try {
+            if (this.rokuAdapter.isAtDebuggerPrompt) {
+                if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
+                    //if this command has the word print in front of it, remove that word
+                    let expression = args.expression.replace(/^print/i, '').trim();
+                    let refId = this.getEvaluateRefId(expression);
+                    let v: DebugProtocol.Variable;
+                    //if we already looked this item up, return it
+                    if (this.variables[refId]) {
+                        v = this.variables[refId];
+                    } else {
+                        let result = await this.rokuAdapter.getVariable(expression);
+                        v = this.getVariableFromResult(result);
+                        //TODO - testing something, remove later
+                        (v as any).request_seq = response.request_seq;
+                    }
+                    response.body = {
+                        result: v.value,
+                        variablesReference: v.variablesReference,
+                        namedVariables: v.namedVariables || 0,
+                        indexedVariables: v.indexedVariables || 0
+                    };
+                } else if (args.context === 'repl') {
+                    //exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
+                    let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
+                    if (excludedExpressions.indexOf(args.expression.toLowerCase().trim()) > -1) {
+                        this.sendEvent(new OutputEvent(`Expression '${args.expression}' not permitted when debugging in VSCode`, 'stdout'));
+                    } else {
+                        let result = await this.rokuAdapter.evaluate(args.expression);
+                        response.body = <any>{
+                            result: result
+                        };
+                        // //print the output to the screen
+                        // this.sendEvent(new OutputEvent(result, 'stdout'));
+                    }
+                }
+            } else {
+                console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
+            }
+        } finally {
+            deferred.resolve();
+        }
         this.sendResponse(response);
     }
 
@@ -976,8 +983,10 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private async connectRokuAdapter(host: string) {
         //register events
-        this.rokuAdapter = new RokuAdapter(host, this.launchArgs.enableDebuggerAutoRecovery,
-            this.launchArgs.enableLookupVariableNodeChildren);
+        this.rokuAdapter = new RokuAdapter(
+            host,
+            this.launchArgs.enableDebuggerAutoRecovery
+        );
 
         this.rokuAdapter.on('start', async () => {
             if (!this.firstRunDeferred.isCompleted) {
@@ -1156,7 +1165,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
                     // Replace the found line with the new line containing the tracker task code
                     fileContents = fileContents.replace(line, newLine);
-                    index ++;
+                    index++;
                 }
 
                 // safe the changes back to the staging file
@@ -1337,8 +1346,6 @@ export class BrightScriptDebugSession extends DebugSession {
         } else if (result.highLevelType === 'function') {
             v = new Variable(result.name, result.value);
         }
-        console.log('RESULT ' + inspect(result));
-        console.log('HLT ' + result.highLevelType);
         v.evaluateName = result.evaluateName;
         if (result.children) {
             let childVariables = [];
@@ -1443,10 +1450,6 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.
      */
     stopDebuggerOnAppExit: boolean;
-    /*
-     * If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field
-     */
-    enableLookupVariableNodeChildren: boolean;
 
     /**
      * Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.
