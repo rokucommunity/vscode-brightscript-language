@@ -35,40 +35,9 @@ describe('PrintedObjectParser', () => {
         parseEquals('  count: 1', { key: '  count', value: '1' });
     });
 
-    let samples = [
-        `
-            <Component: roAssociativeArray> =
-            {
-                key: "Cat & dog"
-                value: true
-            }
-            <Component: roAssociativeArray> =
-            {
-                key: "child"
-                value: <Component: roAssociativeArray>
-            }
-            <Component: roAssociativeArray> =
-            {
-                key: "name"
-                value: "bob"
-            }
-            <Component: roAssociativeArray> =
-            {
-                key: "some : colon"
-                value: true
-            }`,
-
-        `"<Component: roAssociativeArray> =
-            {
-                    ___: true
-                age: 12
-                Cat & dog: true
-                child: <Component: roAssociativeArray>
-                isalive: true
-                name: "bob with quote ""
-                some : colon: true
-            }"`
-    ];
+    it('does not cause infinite loop for truncated object', () => {
+        parseEquals('...', undefined);
+    });
 });
 
 function parseEquals(line: string, expected: { key: string, value: string }) {

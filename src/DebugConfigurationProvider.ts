@@ -10,7 +10,7 @@ import {
 } from 'vscode';
 import * as vscode from 'vscode';
 
-import * as util from './util';
+import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
@@ -180,7 +180,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (showInputBox) {
             config.host = await this.openInputBox('The IP address of your Roku device');
         }
-        console.log(config.host);
         // #endregion
 
         //prompt for password if not hardcoded
