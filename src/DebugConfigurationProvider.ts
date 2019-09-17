@@ -45,11 +45,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
 
         // Process the different parts of the config
-        config = (await this.sanitizeConfiguration(config));
-        config = (await this.processEnvFile(folder, config));
-        config = (await this.processHostParameter(config));
-        config = (await this.processPasswordParameter(config));
-        config = (await this.processDeepLinkUrlParameter(config));
+        config = await this.sanitizeConfiguration(config);
+        config = await this.processEnvFile(folder, config);
+        config = await this.processHostParameter(config);
+        config = await this.processPasswordParameter(config);
+        config = await this.processDeepLinkUrlParameter(config);
 
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
@@ -282,7 +282,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
-            if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
+            if (config.deepLinkUrl.indexOf('${promptForQueryParams}') > -1) {
                 let queryParams = await this.openInputBox('Querystring params for deep link');
                 config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
             }
