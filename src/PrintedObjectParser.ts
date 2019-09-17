@@ -24,12 +24,22 @@ export class PrintedObjectParser {
     }
 
     /**
+     * Indicates whether the index is at or past the end of the line
+     */
+    private isAtEnd() {
+        return this.currentIndex >= this.line.length;
+    }
+
+    /**
      * get a string with all of the characters up to
      * @param stopChar
      */
     private takeUntil(stopChar: string, includeStopChar = true) {
         let result = '';
-        while (this.peek() !== stopChar) {
+        while (this.peek() && this.peek() !== stopChar) {
+            if (this.isAtEnd()) {
+                return undefined;
+            }
             result += this.take();
         }
         if (includeStopChar) {

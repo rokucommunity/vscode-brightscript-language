@@ -1,15 +1,15 @@
 # BrightScript Extension for VSCode
 A VSCode extension to support Roku's BrightScript language.
 
-[![Build Status](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/TwitchBronBron/vscode-brightscript-language)
-[![codecov](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/TwitchBronBron/vscode-brightscript-language)
+[![Build Status](https://travis-ci.org/RokuCommunity/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/RokuCommunity/vscode-brightscript-language)
+[![codecov](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/celsoaf.brightscript.svg)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 ## Features
 
 - Static analysis (code validation)
 - Syntax highlighting
-- Code formatting (provided by [brightscript-formatter](https://github.com/TwitchBronBron/brightscript-formatter))
+- Code formatting (provided by [brightscript-formatter](https://github.com/RokuCommunity/brightscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
   - Conditional breakpoints
   - logpoints
@@ -18,8 +18,8 @@ A VSCode extension to support Roku's BrightScript language.
 - Injection of the Roku Advanced Layout Editor(RALE) task from a single user managed version
   - This helps avoid committing the tracker to you repo and also lets you manage what version you want installed rather then other users on the project
   - See ([Extension Settings](#Extension-Settings) and [RALE Support](#RALE-Support) for more information)
-- Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/TwitchBronBron/roku-deploy))
-  - Also supports zip'ing and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
+- Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/RokuCommunity/roku-deploy))
+  - Also supports zipping and static file hosting for Component Libraries ([click here](#Component-Libraries) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)
 - Goto definition (F12)
 - Peek definition (Alt+F12)
@@ -430,9 +430,9 @@ This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm modul
 
 ## Pre-release Versions
 
-You can often find pre-release versions of this extension under the [GitHub Releases](https://github.com/TwitchBronBron/vscode-brightscript-language/releases) page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the `.vsix` is the next-best option at this point. Here's how it works.
+You can often find pre-release versions of this extension under the [GitHub Releases](https://github.com/RokuCommunity/vscode-brightscript-language/releases) page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the `.vsix` is the next-best option at this point. Here's how it works.
 
-1. Download `.vsix` file for version of the extension you want from [the releases page](https://github.com/TwitchBronBron/vscode-brightscript-language/releases);
+1. Download `.vsix` file for version of the extension you want from [the releases page](https://github.com/RokuCommunity/vscode-brightscript-language/releases);
 2. Open Visual Studio Code and click the "extensions" tab.
 3. Choose "Install from VSIX..." ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
 4. Select the file you downloaded from step 1.
@@ -462,4 +462,4 @@ View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brights
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 
 ## Changelog
-Click [here](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
+Click [here](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.

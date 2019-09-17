@@ -15,6 +15,7 @@
             true,
             "array"
         ],
+        "arrow-parens": false,
         "arrow-return-shorthand": false,
         "class-name": true,
         "comment-format": false,
@@ -26,7 +27,7 @@
         "no-debugger": false,
         "max-line-length": [
             true,
-            200
+            500
         ],
         "member-ordering": [
             true,

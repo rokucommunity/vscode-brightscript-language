@@ -1,5 +1,6 @@
 import * as eol from 'eol';
 import * as EventEmitter from 'events';
+import { orderBy } from 'natural-orderby';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
@@ -7,6 +8,7 @@ import * as rokuDeploy from 'roku-deploy';
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
+import { util } from './util';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -14,8 +16,7 @@ import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 export class RokuAdapter {
     constructor(
         private host: string,
-        private enableDebuggerAutoRecovery: boolean = false,
-        private enableLookupVariableNodeChildren: boolean = false
+        private enableDebuggerAutoRecovery: boolean = false
     ) {
         this.emitter = new EventEmitter();
         this.status = RokuAdapterStatus.none;
@@ -683,16 +684,24 @@ export class RokuAdapter {
      * Runs a regex to get the content between telnet commands
      * @param value
      */
-    private getExpressionDetails(value: string) {
-        return /([\s|\S]+?)(?:\r|\r\n)+brightscript debugger>/i.exec(value);
+    public getExpressionDetails(value: string) {
+        const match = /(.*?)\r?\nBrightscript Debugger>\s*/is.exec(value);
+        if (match) {
+            return match[1];
+        }
     }
 
     /**
      * Runs a regex to check if the target is an object and get the type if it is
      * @param value
      */
-    private getHighLevelTypeDetails(value: string) {
-        return /<.*:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
+    public getObjectType(value: string) {
+        const match = /<.*?:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -749,35 +758,47 @@ export class RokuAdapter {
             //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
             if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                 data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
+
+                //write a for loop to print every value from the array. This gets around the `...` after the 100th item issue in the roku print call
+            } else if (['roarray', 'rolist', 'robytearray'].indexOf(lowerExpressionType) > -1) {
+                data = await this.requestPipeline.executeCommand(
+                    `for each vscodeLoopItem in ${expression} : print "vscode_is_string:"; (invalid <> GetInterface(vscodeLoopItem, "ifString")); vscodeLoopItem : end for`
+                    , true);
+            } else if (['roassociativearray', 'rosgnode'].indexOf(lowerExpressionType) > -1) {
+                data = await this.requestPipeline.executeCommand(
+                    `for each vscodeLoopKey in ${expression}.keys() : print "vscode_key_start:" + vscodeLoopKey + ":vscode_key_stop " + "vscode_is_string:"; (invalid <> GetInterface(${expression}[vscodeLoopKey], "ifString")); ${expression}[vscodeLoopKey] : end for`,
+                    true);
             } else {
                 data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
             }
 
-            let match;
+            let match: string;
             if (match = this.getExpressionDetails(data)) {
-                let value = match[1];
+                let value = match;
                 if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                     value = value.trim().replace(/--string-wrap--/g, '');
                     //add an escape character in front of any existing quotes
                     value = value.replace(/"/g, '\\"');
                     //wrap the string value with literal quote marks
                     value = '"' + value + '"';
-                } else {
-                    value = value.trim();
                 }
-
                 let highLevelType = this.getHighLevelType(expressionType);
 
                 let children: EvaluateContainer[];
-                if (highLevelType === 'object') {
-                    children = this.getObjectChildren(expression, value);
-                } else if (highLevelType === 'array') {
-                    children = this.getArrayOrListChildren(expression, value);
+                if (highLevelType === HighLevelType.array || ['roassociativearray', 'rosgnode', 'robytearray'].indexOf(lowerExpressionType) > -1) {
+                    //the print statment will always have 1 trailing newline, so remove that.
+                    value = util.removeTrailingNewline(value);
+                    //the array/associative array print is a loop of every value, so handle that
+                    children = this.getForLoopPrintedChildren(expression, value);
+                } else if (highLevelType === HighLevelType.object) {
+                    children = this.getObjectChildren(expression, value.trim());
                 }
-                if (this.enableLookupVariableNodeChildren && lowerExpressionType === 'rosgnode') {
+
+                //add a computed `[[children]]` property to allow expansion of node children
+                if (lowerExpressionType === 'rosgnode') {
                     let nodeChildren = <EvaluateContainer>{
-                        name: '_children',
-                        type: 'roarray',
+                        name: '[[children]]',
+                        type: 'roArray',
                         highLevelType: 'array',
                         evaluateName: `${expression}.getChildren(-1,0)`,
                         children: []
@@ -785,11 +806,17 @@ export class RokuAdapter {
                     children.push(nodeChildren);
                 }
 
+                //if this item is an array or a list, add the item count to the end of the type
+                if (highLevelType === HighLevelType.array) {
+                    //TODO re-enable once we find how to refresh watch/variables panel, since lazy loaded arrays can't show a length
+                    //expressionType += `(${children.length})`;
+                }
+
                 let container = <EvaluateContainer>{
                     name: expression,
                     evaluateName: expression,
                     type: expressionType,
-                    value: value,
+                    value: value.trim(),
                     highLevelType: highLevelType,
                     children: children
                 };
@@ -799,12 +826,153 @@ export class RokuAdapter {
     }
 
     /**
+     * In order to get around the `...` issue in printed arrays, `getVariable` now prints every value from an array or associative array in a for loop.
+     * As such, we need to iterate over every printed result to produce the children array
+     */
+    public getForLoopPrintedChildren(expression: string, data: string) {
+        let children = [] as EvaluateContainer[];
+        let lines = eol.split(data);
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            let line = lines[lineIndex];
+
+            let keyStartWrapper = 'vscode_key_start:';
+            let keyStopWrapper = ':vscode_key_stop ';
+
+            let child = <EvaluateContainer>{
+                children: []
+            };
+
+            const keyStartIdx = line.indexOf(keyStartWrapper);
+            //if the key is present, extract it
+            if (keyStartIdx > -1) {
+                child.name = line.substring(keyStartIdx + keyStartWrapper.length, line.indexOf(keyStopWrapper));
+                child.evaluateName = `${expression}["${child.name}"]`;
+
+                //throw out the key chunk
+                line = line.substring(line.indexOf(keyStopWrapper) + keyStopWrapper.length);
+
+            } else {
+                child.name = children.length.toString();
+                child.evaluateName = `${expression}[${children.length}]`;
+            }
+
+            if (line.indexOf('vscode_is_string:true') > -1) {
+                line = line.replace('vscode_is_string:true', '');
+                //support multi-line strings
+                let stringLines = [line];
+
+                //go one past the final line so that we can more easily detect the end of the input
+                stringInner: for (lineIndex = lineIndex; lineIndex < lines.length; lineIndex++) {
+                    //go one past (since we already have current line. Also, because we want to run off the end of the list
+                    //so we can know there are no more lines
+                    let nextLine = lines[lineIndex + 1];
+                    if (nextLine === undefined || nextLine && nextLine.trimLeft().indexOf('vscode_') === 0) {
+                        break stringInner;
+                    } else {
+                        stringLines.push(nextLine);
+                    }
+                }
+                line = '"' + stringLines.join('\n') + '"';
+            } else {
+                line = line.replace('vscode_is_string:false', '');
+            }
+
+            //skip empty lines
+            if (line.trim() === '') {
+                continue;
+            }
+
+            const objectType = this.getObjectType(line);
+            const isRoSGNode = objectType && objectType.indexOf('roSGNode') === 0;
+            //handle collections
+            if (['roList', 'roArray', 'roAssociativeArray', 'roByteArray'].indexOf(objectType) > -1 || isRoSGNode) {
+                let collectionEnd: ')' | ']' | '}';
+                if (line.indexOf('<Component: roList>') > -1) {
+                    collectionEnd = ')';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = objectType;
+                } else if (line.indexOf('<Component: roArray>') > -1) {
+                    collectionEnd = ']';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = this.getObjectType(line);
+                } else if (line.indexOf('<Component: roByteArray>') > -1) {
+                    collectionEnd = ']';
+                    child.highLevelType = HighLevelType.array;
+                    child.type = this.getObjectType(line);
+                } else if (line.indexOf('<Component: roAssociativeArray>') > -1 || isRoSGNode) {
+                    collectionEnd = '}';
+                    child.highLevelType = HighLevelType.object;
+                    child.type = this.getObjectType(line);
+                }
+
+                let collectionLineList = [line];
+                inner: for (lineIndex = lineIndex + 1; lineIndex < lines.length; lineIndex++) {
+                    let innerLine = lines[lineIndex];
+
+                    collectionLineList.push(lines[lineIndex]);
+
+                    //stop collecting lines
+                    if (innerLine.trim() === collectionEnd) {
+                        break inner;
+                    }
+                }
+                //if the next-to-last line of collection is `...`, then scrap the values
+                //because we will need to run a full evaluation (later) to get around the `...` issue
+                if (collectionLineList.length > 3 && collectionLineList[collectionLineList.length - 2].trim() === '...') {
+                    child.children = [];
+
+                    //get the object children
+                } else if (child.highLevelType === HighLevelType.object) {
+                    child.children = this.getObjectChildren(child.evaluateName, collectionLineList.join('\n'));
+
+                    //get all of the array children right now since we have them
+                } else {
+                    child.children = this.getArrayOrListChildren(child.evaluateName, collectionLineList.join('\n'));
+                    child.type += `(${child.children.length})`;
+                }
+                if (isRoSGNode) {
+                    let nodeChildrenProperty = <EvaluateContainer>{
+                        name: '[[children]]',
+                        type: 'roArray',
+                        highLevelType: 'array',
+                        evaluateName: `${child.evaluateName}.getChildren(-1,0)`,
+                        children: []
+                    };
+                    child.children.push(nodeChildrenProperty);
+                }
+
+                //this if block must preseec the `line.indexOf('<Component') > -1` line because roInvalid is a component too.
+            } else if (objectType === 'roInvalid') {
+                child.highLevelType = HighLevelType.uninitialized;
+                child.type = 'roInvalid';
+                child.value = 'roInvalid';
+                child.children = undefined;
+
+            } else if (line.indexOf('<Component:') > -1) {
+                //handle things like nodes
+                child.highLevelType = HighLevelType.object;
+                child.type = objectType;
+
+            } else {
+                //is some primative type
+                child.type = this.getPrimativeTypeFromValue(line);
+                child.value = line.trim();
+                child.highLevelType = HighLevelType.primative;
+                child.children = undefined;
+            }
+            children.push(child);
+        }
+        let sortedChildren = orderBy(children, ['name']);
+        return sortedChildren;
+    }
+
+    /**
      * Get all of the children of an array or list
      */
     private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
         let collectionEnd: string;
 
-        //this function can handle roArray and roList objects, but we need to which it is
+        //this function can handle roArray and roList objects, but we need to know which it is
         if (data.indexOf('<Component: roList>') === 0) {
             collectionEnd = ')';
 
@@ -812,7 +980,7 @@ export class RokuAdapter {
         } else {
             collectionEnd = ']';
         }
-        let children: EvaluateContainer[] = [];
+        let children = [] as EvaluateContainer[];
         //split by newline. the array contents start at index 2
         let lines = eol.split(data);
         let arrayIndex = 0;
@@ -829,8 +997,8 @@ export class RokuAdapter {
 
             //if the line is an object, array or function
             let match;
-            if (match = this.getHighLevelTypeDetails(line)) {
-                let type = match[1];
+            if (match = this.getObjectType(line)) {
+                let type = match;
                 child.type = type;
                 child.highLevelType = this.getHighLevelType(type);
                 child.value = type;
@@ -877,28 +1045,39 @@ export class RokuAdapter {
                 if (trimmedLine === '}') {
                     return children;
                 }
-
+                let child: EvaluateContainer;
                 //parse the line (try and determine the key and value)
                 let lineParseResult = new PrintedObjectParser(line).result;
-
-                let child = <EvaluateContainer>{
-                    name: lineParseResult.key,
-                    evaluateName: `${expression}.${lineParseResult.key}`,
-                    children: []
-                };
-
-                const highLevelTypeMatch = this.getHighLevelTypeDetails(trimmedLine);
-                //if the line is an object, array or function
-                if (highLevelTypeMatch) {
-                    let type = highLevelTypeMatch[1];
-                    child.type = type;
-                    child.highLevelType = this.getHighLevelType(type);
-                    child.value = type;
+                if (!lineParseResult) {
+                    //skip this line because something strange happened, or we encountered the `...`
+                    child = {
+                        name: line,
+                        type: '<ERROR>',
+                        highLevelType: HighLevelType.uninitialized,
+                        evaluateName: undefined,
+                        value: '<ERROR>',
+                        children: []
+                    };
                 } else {
-                    child.type = this.getPrimativeTypeFromValue(trimmedLine);
-                    child.value = lineParseResult.value;
-                    child.highLevelType = HighLevelType.primative;
+                    child = <EvaluateContainer>{
+                        name: lineParseResult.key,
+                        evaluateName: `${expression}.${lineParseResult.key}`,
+                        children: []
+                    };
+
+                    const type = this.getObjectType(trimmedLine);
+                    //if the line is an object, array or function
+                    if (type) {
+                        child.type = type;
+                        child.highLevelType = this.getHighLevelType(type);
+                        child.value = type;
+                    } else {
+                        child.type = this.getPrimativeTypeFromValue(trimmedLine);
+                        child.value = lineParseResult.value;
+                        child.highLevelType = HighLevelType.primative;
+                    }
                 }
+
                 children.push(child);
             }
             return children;
@@ -945,7 +1124,7 @@ export class RokuAdapter {
 
             let match;
             if (match = this.getExpressionDetails(data)) {
-                let typeValue: string = match[1];
+                let typeValue: string = match;
                 //remove whitespace
                 typeValue = typeValue.trim();
                 return typeValue;
