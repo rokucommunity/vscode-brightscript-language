@@ -765,7 +765,7 @@ export class RokuAdapter {
                 data = await this.requestPipeline.executeCommand(
                     `for each vscodeLoopItem in ${expression} : print "vscode_is_string:"; (invalid <> GetInterface(vscodeLoopItem, "ifString")); vscodeLoopItem : end for`
                     , true);
-            } else if (lowerExpressionType === 'roassociativearray' || lowerExpressionType === 'rosgnode') {
+            } else if (['roassociativearray', 'rosgnode'].indexOf(lowerExpressionType) > -1) {
                 data = await this.requestPipeline.executeCommand(
                     `for each vscodeLoopKey in ${expression}.keys() : print "vscode_key_start:" + vscodeLoopKey + ":vscode_key_stop " + "vscode_is_string:"; (invalid <> GetInterface(${expression}[vscodeLoopKey], "ifString")); ${expression}[vscodeLoopKey] : end for`,
                     true);
