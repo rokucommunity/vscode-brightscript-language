@@ -46,6 +46,23 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
         let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
 
+        // Process the different parts of the config
+        config = await this.sanitizeConfiguration(config, folder);
+        config = await this.processEnvFile(folder, config);
+        config = await this.processHostParameter(config);
+        config = await this.processPasswordParameter(config);
+        config = await this.processDeepLinkUrlParameter(config);
+
+        await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
+
+        return config;
+    }
+
+    /**
+     * Takes the launch.json config and applies any defaults to missing values and sanitizes some of the more complex options
+     * @param config current config object
+     */
+    private async sanitizeConfiguration(config: BrightScriptDebugConfiguration, folder: WorkspaceFolder): Promise<BrightScriptDebugConfiguration> {
         let defaultFilesArray: FilesType[] = [
             'manifest',
             'source/**/*.*',
@@ -55,8 +72,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         //make sure we have an object
         config = config ? config : {} as any;
+
         let folderUri: vscode.Uri;
-        //us ethe workspace folder provided
+        //use the workspace folder provided
         if (folder) {
             folderUri = folder.uri;
 
@@ -119,6 +137,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
         // #endregion
 
+        // Apply any defaults to missing values
         config.type = config.type ? config.type : 'brightscript';
         config.name = config.name ? config.name : 'BrightScript Debug: Launch';
         config.host = config.host ? config.host : '${promptForHost}';
@@ -138,6 +157,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
         config.files = config.files ? config.files : defaultFilesArray;
 
+        // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
             if (await this.util.fileExists(this.trackerTaskFileLocation) === false) {
                 vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${this.trackerTaskFileLocation}`);
@@ -161,6 +181,53 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
         }
 
+        return config;
+    }
+
+    /**
+     * Reads the manifest file and updates any config values that are mapped to it
+     * @param folder current workspace folder
+     * @param config current config object
+     */
+    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
+        //process .env file if present
+        if (config.envFile) {
+            let envFilePath = config.envFile;
+            //resolve ${workspaceFolder} so we can actually load the .env file now
+            if (config.envFile.indexOf('${workspaceFolder}') > -1) {
+                envFilePath = config.envFile.replace('${workspaceFolder}', folder.uri.fsPath);
+            }
+            if (await this.util.fileExists(envFilePath) === false) {
+                throw new Error(`Cannot find .env file at "${envFilePath}`);
+            }
+            //parse the .env file
+            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
+
+            //replace any env placeholders
+            for (let key in config) {
+                let configValue = config[key];
+                let match: RegExpMatchArray;
+                let regexp = /\$\{env:([\w\d_]*)\}/g;
+                //replace all environment variable placeholders with their values
+                while (match = regexp.exec(configValue)) {
+                    let environmentVariableName = match[1];
+                    let environmentVariableValue = envConfig[environmentVariableName];
+                    if (environmentVariableValue) {
+                        configValue = configValue.replace(match[0], environmentVariableValue);
+                    }
+                }
+                config[key] = configValue;
+            }
+        }
+
+        return config;
+    }
+
+    /**
+     * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}
+     * @param config  current config object
+     */
+    private async processHostParameter(config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
         let showInputBox = false;
 
         // #region prompt for host if not hardcoded
@@ -220,6 +287,21 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
         // #endregion
 
+        //check the host and throw error if not provided or update the workspace to set last host
+        if (!config.host) {
+            throw new Error('Debug session terminated: host is required.');
+        } else {
+            await this.context.workspaceState.update('remoteHost', config.host);
+        }
+
+        return config;
+    }
+
+    /**
+     * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
+     * @param config  current config object
+     */
+    private async processPasswordParameter(config: BrightScriptDebugConfiguration) {
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
             config.password = await this.openInputBox('The developer account password for your Roku device.');
@@ -228,10 +310,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
+        return config;
+    }
+
+    /**
+     * Validates the deepLinkUrl parameter in the config and opens an input ui if set to ${promptForDeepLinkUrl} or if the url contains ${promptForQueryParams
+     * @param config  current config object
+     */
+    private async processDeepLinkUrlParameter(config: BrightScriptDebugConfiguration) {
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
-            if (config.deepLinkUrl.indexOf('${promptForQueryParams') > -1) {
+            if (config.deepLinkUrl.indexOf('${promptForQueryParams}') > -1) {
                 let queryParams = await this.openInputBox('Querystring params for deep link');
                 config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
             }
@@ -240,46 +330,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-        //process .env file if present
-        if (config.envFile) {
-            let envFilePath = config.envFile;
-            //resolve ${workspaceFolder} so we can actually load the .env file now
-            if (config.envFile.indexOf('${workspaceFolder}') > -1) {
-                envFilePath = config.envFile.replace('${workspaceFolder}', folderUri.fsPath);
-            }
-            if (await this.util.fileExists(envFilePath) === false) {
-                throw new Error(`Cannot find .env file at "${envFilePath}`);
-            }
-            //parse the .env file
-            let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
-
-            //replace any env placeholders
-            for (let key in config) {
-                let configValue = config[key];
-                let match: RegExpMatchArray;
-                let regexp = /\$\{env:([\w\d_]*)\}/g;
-                //replace all environment variable placeholders with their values
-                while (match = regexp.exec(configValue)) {
-                    let environmentVariableName = match[1];
-                    let environmentVariableValue = envConfig[environmentVariableName];
-                    if (environmentVariableValue) {
-                        configValue = configValue.replace(match[0], environmentVariableValue);
-                    }
-                }
-                config[key] = configValue;
-            }
-
-            //chech the host and throw error if not provided or update the workspace to set last host
-            if (!config.host) {
-                throw new Error('Debug session terminated: host is required.');
-            } else {
-                await this.context.workspaceState.update('remoteHost', config.host);
-            }
-            await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
-        }
         return config;
     }
 
+    /**
+     * Helper to open a vscode input box ui
+     * @param placeHolder placeHolder text
+     * @param value default value
+     */
     private async openInputBox(placeHolder: string, value: string = '') {
         return await vscode.window.showInputBox({
             placeHolder: placeHolder,
