@@ -64,7 +64,7 @@ If your project lives in a subdirectory, you will need to create a `brsconfig.js
 }
 ```
 
-This project relies heavily on the [brightscript-language](https://github.com/twitchbronbron/brightscript-language) project for language server support. See [this link](https://github.com/twitchbronbron/brightscript-language#brsconfigjson-options) to view the `brsconfig.json` options.
+This project relies heavily on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project for language server support. See [this link](https://github.com/RokuCommunity/brightscript-language#brsconfigjson-options) to view the `brsconfig.json` options.
 
 ## Language Features
 ## Ignore errors and warnings on a per-line basis
@@ -445,19 +445,19 @@ This process will REPLACE any existing version of the extension you have install
 
 Special thanks to:
 
-[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/0)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/0)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/1)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/1)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/2)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/2)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/3)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/3)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/4)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/4)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/5)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/5)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/6)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/6)[![](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/images/7)](https://sourcerer.io/fame/TwitchBronBron/TwitchBronBron/vscode-brightscript-language/links/7)
+[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/0)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/0)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/1)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/1)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/2)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/2)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/3)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/3)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/4)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/4)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/5)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/5)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/6)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/6)[![](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/images/7)](https://sourcerer.io/fame/RokuCommunity/RokuCommunity/vscode-brightscript-language/links/7)
 
-The majority of this extension's language feature support depends on the [brightscript-language](https://github.com/twitchbronbron/brightscript-language) project, which contributes the language server. To get up and running, do the following:
+The majority of this extension's language feature support depends on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project, which contributes the language server. To get up and running, do the following:
 
  1. Clone this project
- 1. Clone [brightscript-language](https://github.com/twitchbronbron/brightscript-language)
+ 1. Clone [brightscript-language](https://github.com/RokuCommunity/brightscript-language)
  1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript-language`):
 
     `"brightscript-language": "file:C:/projects/brightscript-language"`
  1. run `npm install` in both directories
  1. Open vscode in each directory, build, and run as usual
 
-View our [developer guidelines](https://github.com/TwitchBronBron/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
+View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 

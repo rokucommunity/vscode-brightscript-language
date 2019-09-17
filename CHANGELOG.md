@@ -162,7 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0-beta.13] - 2019-03-21
 ### Changed
- - upgraded to [brightscript-language@0.2.4](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.4)
+ - upgraded to [brightscript-language@0.2.4](https://github.com/RokuCommunity/brightscript-language/tree/v0.2.4)
 ### Fixed
  - greatly improved single-line recovery. Previously, certain syntax errors would prevent the rest of the block or file from parsing. The parser will now skip erraneous lines and attempt to recover. This _usually_ provides much better error recovery, but in certain cases can produce additional errors in the file.
  - bitshift assignment operators (`>>=` `<<=`) no longer cause parse errors
@@ -175,7 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - all changes from v1.9.0 and v1.10.0
 ### Changed
  - This release is the successor to `2.0.0-beta.11`. The name of the beta program caused some confusion in the past, because it seemed like it was a beta version of 1.9.0, when in reality it was just a beta version of new features, and we needed a higher number than the current version (which was 1.8.* at that time). So now, for clarity, the new versions of the languageserver beta versions will be `2.0.0-beta.[the_beta_number}`. It would have been nice to not use a version number at all, but vscode and npm both need valid semantic version numbers, so we decided to use 999 instead, which makes it much more obvious that this is an outlier.
- - Upgrade to [brightscript-language@0.2.3](https://github.com/TwitchBronBron/brightscript-language/tree/v0.2.3)
+ - Upgrade to [brightscript-language@0.2.3](https://github.com/RokuCommunity/brightscript-language/tree/v0.2.3)
  - exclude method completions from xml files (will be added back once CDATA support arrives)
  - empty script reference errors will show a more usefull error message `"Script import cannot be empty or whitespace"`
 ### Fixed
@@ -195,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0-beta.10]
 ### Added
- - Upgraded to [brightscript-language@0.1.21](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
+ - Upgraded to [brightscript-language@0.1.21](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
 ### Fixed
  - regression issue preventing the use of launch configs stored `settings.json` (see #111)
 
@@ -203,7 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0-beta.9]
 ### Fixed
- - Upgraded to [brightscript-language@0.1.20](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.20) which fixed an npm issue that was loading the wrong version of `brs`.
+ - Upgraded to [brightscript-language@0.1.20](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.20) which fixed an npm issue that was loading the wrong version of `brs`.
 
 
 
@@ -215,7 +215,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - Don't show brightscript log on workspace open (still support option to show on debug-start)
 ### Fixed
-  - Upgraded to [brightscript-language@0.1.19](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.19)) which fixes:
+  - Upgraded to [brightscript-language@0.1.19](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.19)) which fixes:
  - RHS boolean assignment parse errors (see [this issue](https://github.com/sjbarag/brs/issues/156))
  - hover bug in multi-root workspace that was only showing hovers for the first workspace
 
@@ -225,7 +225,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - All changes from 1.8.4 and 1.8.5
 ### Fixed
- - Upgraded to [brightscript-language@0.1.17](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.17)) which fixes:
+ - Upgraded to [brightscript-language@0.1.17](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.17)) which fixes:
    - Regression issue where mixed case `then` statements showed up as parse errors (fixed by
    - Parse errors related to assignment operators (i.e. `+=`, `-=`, `*=`, etc.)
    - issue where only top-level variables were being found. Now all variables are found throughout the entire function scope.
@@ -239,13 +239,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - All changes from [1.8.3](#183---2019-03-04)
 ### Fixed
  - syntax highlighting bug related to `then` not colorizing when containing any upper case character
- - the `MaxListenersExceededWarning` warning by upgrading to [brightscript-language@0.1.15](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.15)
+ - the `MaxListenersExceededWarning` warning by upgrading to [brightscript-language@0.1.15](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.15)
 
 
 
 ## [2.0.0-beta.5]
 ### Changed
- - Upgraded to [brightscript-language@0.1.14](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.14) that brings syntax fixes for using `then` as an object property name and now allows `function` as an argument type.
+ - Upgraded to [brightscript-language@0.1.14](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.14) that brings syntax fixes for using `then` as an object property name and now allows `function` as an argument type.
 ### Fixed
  - textmate grammar related to `run`, `stop`, and `then` when used as object property names
 
@@ -253,7 +253,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [2.0.0-beta.4]
 ### Changed
- - Upgraded to [brightscript-language@0.1.13](https://github.com/TwitchBronBron/brightscript-language/tree/v0.1.13) which fixes duplicate diagnostic reporting
+ - Upgraded to [brightscript-language@0.1.13](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.13) which fixes duplicate diagnostic reporting
 
 
 
@@ -577,78 +577,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-[2.0.0-beta.34]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
-[2.0.0-beta.33]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
-[2.0.0-beta.32]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
-[2.0.0-beta.31]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
-[2.0.0-beta.30]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.29...v2.0.0-beta.30
-[2.0.0-beta.29]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.28...v2.0.0-beta.29
-[2.0.0-beta.28]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
-[2.0.0-beta.27]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.26...v2.0.0-beta.27
-[2.0.0-beta.26]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
-[2.0.0-beta.25]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
-[2.0.0-beta.24]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.23...v2.0.0-beta.24
-[2.0.0-beta.23]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.22...v2.0.0-beta.23
-[2.0.0-beta.22]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.21...v2.0.0-beta.22
-[2.0.0-beta.21]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.20...v2.0.0-beta.21
-[2.0.0-beta.20]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.19...v2.0.0-beta.20
-[2.0.0-beta.19]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.18...v2.0.0-beta.19
-[2.0.0-beta.18]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.17...v2.0.0-beta.18
-[2.0.0-beta.17]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.16...v2.0.0-beta.17
-[2.0.0-beta.16]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.15...v2.0.0-beta.16
-[2.0.0-beta.15]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.14...v2.0.0-beta.15
-[2.0.0-beta.14]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.13...v2.0.0-beta.14
-[2.0.0-beta.13]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.12...v2.0.0-beta.13
-[2.0.0-beta.12]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.11...v2.0.0-beta.12
-[2.0.0-beta.11]:                  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.10...v2.0.0-beta.11
-[2.0.0-beta.10]:                  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.9...v2.0.0-beta.10
-[2.0.0-beta.9]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.8...v2.0.0-beta.9
-[2.0.0-beta.8]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.7...v2.0.0-beta.8
-[2.0.0-beta.7]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.6...v2.0.0-beta.7
-[2.0.0-beta.6]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.5...v2.0.0-beta.6
-[2.0.0-beta.5]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.4...v2.0.0-beta.5
-[2.0.0-beta.4]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.3...v2.0.0-beta.4
-[2.0.0-beta.3]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.2...v2.0.0-beta.3
-[2.0.0-beta.2]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
-[2.0.0-beta.1]:                   https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
+[2.0.0-beta.34]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
+[2.0.0-beta.33]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
+[2.0.0-beta.32]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
+[2.0.0-beta.31]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
+[2.0.0-beta.30]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.29...v2.0.0-beta.30
+[2.0.0-beta.29]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.28...v2.0.0-beta.29
+[2.0.0-beta.28]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
+[2.0.0-beta.27]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.26...v2.0.0-beta.27
+[2.0.0-beta.26]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
+[2.0.0-beta.25]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
+[2.0.0-beta.24]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.23...v2.0.0-beta.24
+[2.0.0-beta.23]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.22...v2.0.0-beta.23
+[2.0.0-beta.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.21...v2.0.0-beta.22
+[2.0.0-beta.21]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.20...v2.0.0-beta.21
+[2.0.0-beta.20]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.19...v2.0.0-beta.20
+[2.0.0-beta.19]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.18...v2.0.0-beta.19
+[2.0.0-beta.18]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.17...v2.0.0-beta.18
+[2.0.0-beta.17]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.16...v2.0.0-beta.17
+[2.0.0-beta.16]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.15...v2.0.0-beta.16
+[2.0.0-beta.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.14...v2.0.0-beta.15
+[2.0.0-beta.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.13...v2.0.0-beta.14
+[2.0.0-beta.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.12...v2.0.0-beta.13
+[2.0.0-beta.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.11...v2.0.0-beta.12
+[2.0.0-beta.11]:                  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.10...v2.0.0-beta.11
+[2.0.0-beta.10]:                  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.9...v2.0.0-beta.10
+[2.0.0-beta.9]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.8...v2.0.0-beta.9
+[2.0.0-beta.8]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.7...v2.0.0-beta.8
+[2.0.0-beta.7]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.6...v2.0.0-beta.7
+[2.0.0-beta.6]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.5...v2.0.0-beta.6
+[2.0.0-beta.5]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.4...v2.0.0-beta.5
+[2.0.0-beta.4]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.3...v2.0.0-beta.4
+[2.0.0-beta.3]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.2...v2.0.0-beta.3
+[2.0.0-beta.2]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
+[2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
-[1.18.2]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.18.1...v1.18.2
-[1.18.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.18.0...v1.18.1
-[1.18.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.1...v1.18.0
-[1.17.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.17.0...v1.17.1
-[1.17.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.16.0...v1.17.0
-[1.16.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.15.0...v1.16.0
-[1.15.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.14.0...v1.15.0
-[1.14.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.1...v1.14.0
-[1.13.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.13.0...v1.13.1
-[1.13.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.1...v1.13.0
-[1.12.1]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.12.0...v1.12.1
-[1.12.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.11.0...v1.12.0
-[1.11.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.10.0...v1.11.0
-[1.10.0]: https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.9.0...v1.10.0
-[1.9.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.6...v1.9.0
-[1.8.6]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.5...v1.8.6
-[1.8.5]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.4...v1.8.5
-[1.8.4]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.3...v1.8.4
-[1.8.3]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.2...v1.8.3
-[1.8.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.1...v1.8.2
-[1.8.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.8.0...v1.8.1
-[1.8.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.7.0...v1.8.0
-[1.7.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.1...v1.7.0
-[1.6.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.6.0...v1.6.1
-[1.6.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.5.0...v1.6.0
-[1.5.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.2...v1.5.0
-[1.4.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.1...v1.4.2
-[1.4.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.4.0...v1.4.1
-[1.4.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.2...v1.4.0
-[1.3.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.1...v1.3.2
-[1.3.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.3.0...v1.3.1
-[1.3.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.2...v1.3.0
-[1.2.2]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.1...v1.2.2
-[1.2.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.2.0...v1.2.1
-[1.2.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.1.0...v1.2.0
-[1.1.0]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.1...v1.1.0
-[1.0.1]:  https://github.com/TwitchBronBron/vscode-brightscript-language/compare/v1.0.0...v1.0.1
+[1.18.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.1...v1.18.2
+[1.18.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.0...v1.18.1
+[1.18.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.17.1...v1.18.0
+[1.17.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.17.0...v1.17.1
+[1.17.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.16.0...v1.17.0
+[1.16.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.15.0...v1.16.0
+[1.15.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.14.0...v1.15.0
+[1.14.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.13.1...v1.14.0
+[1.13.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.13.0...v1.13.1
+[1.13.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.12.1...v1.13.0
+[1.12.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.12.0...v1.12.1
+[1.12.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.11.0...v1.12.0
+[1.11.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.10.0...v1.11.0
+[1.10.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.9.0...v1.10.0
+[1.9.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.6...v1.9.0
+[1.8.6]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.5...v1.8.6
+[1.8.5]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.4...v1.8.5
+[1.8.4]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.3...v1.8.4
+[1.8.3]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v1.8.3
+[1.8.2]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.1...v1.8.2
+[1.8.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.0...v1.8.1
+[1.8.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.7.0...v1.8.0
+[1.7.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.6.1...v1.7.0
+[1.6.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.6.0...v1.6.1
+[1.6.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.5.0...v1.6.0
+[1.5.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.4.2...v1.5.0
+[1.4.2]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.4.1...v1.4.2
+[1.4.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.4.0...v1.4.1
+[1.4.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.3.2...v1.4.0
+[1.3.2]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.3.1...v1.3.2
+[1.3.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.3.0...v1.3.1
+[1.3.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.2.2...v1.3.0
+[1.2.2]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.2.1...v1.2.2
+[1.2.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.2.0...v1.2.1
+[1.2.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.1.0...v1.2.0
+[1.1.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.0.1...v1.1.0
+[1.0.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.0.0...v1.0.1
 [1.19.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.2...v1.19.0
 [1.18.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.0...v1.18.1
