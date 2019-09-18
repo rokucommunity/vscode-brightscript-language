@@ -46,7 +46,7 @@
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brighterscript": "file:../brighterscript",
-        "brightscript-formatter": "^1.5.0",
+        "brighterscript-formatter": "^1.0.1",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -103,6 +103,7 @@
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
+        "onLanguage:brighterscript",
         "onLanguage:xml",
         "workspaceContains:**/manifest",
         "workspaceContains:**/brsconfig.json",
@@ -435,11 +436,20 @@
             {
                 "id": "brightscript",
                 "extensions": [
-                    ".brs",
-                    ".bs"
+                    ".brs"
                 ],
                 "aliases": [
                     "BrightScript"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "brighterscript",
+                "extensions": [
+                    ".bs"
+                ],
+                "aliases": [
+                    "BrighterScript"
                 ],
                 "configuration": "./language-configuration.json"
             },
@@ -470,6 +480,11 @@
         "grammars": [
             {
                 "language": "brightscript",
+                "scopeName": "source.brs",
+                "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
             }

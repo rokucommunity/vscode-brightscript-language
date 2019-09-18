@@ -67,6 +67,10 @@ export async function activate(context: vscode.ExtensionContext) {
         language: 'brightscript',
         scheme: 'file'
     }, new Formatter());
+    vscode.languages.registerDocumentRangeFormattingEditProvider({
+        language: 'brighterscript',
+        scheme: 'file'
+    }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
 
     let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
