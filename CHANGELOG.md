@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.19.2] - 2019-09-17
 ### Changed
  - migrated from [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) to [brighterscript-formatter](https://www.npmjs.com/package/brighterscript-formatter). `brighterscript-formatter` fully supports formatting standard BrightScript code, so there's no lost functionality by upgrading.
-
+### Fixed 
+ - syntax colorization of `library` and `sub`
 
 
 ## [1.19.1] - 2019-09-17
