@@ -9,7 +9,7 @@ A VSCode extension to support Roku's BrightScript language.
 
 - Static analysis (code validation)
 - Syntax highlighting
-- Code formatting (provided by [brightscript-formatter](https://github.com/RokuCommunity/brightscript-formatter))
+- BrightScript and BrighterScript code formatting (provided by [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
   - Conditional breakpoints
   - logpoints

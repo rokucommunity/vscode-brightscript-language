@@ -195,7 +195,7 @@
         },
         "storage_types": {
             "comment": "Included 'dim' because it didn't warrant its own matcher",
-            "match": "(?i:\\b(boolean|integer|longinteger|float|double|string|object|function|interface|dynamic|brsub|dim)\\b)",
+            "match": "(?i:\\b(boolean|integer|longinteger|float|double|string|object|function|sub|interface|dynamic|brsub|dim)\\b)",
             "captures": {
                 "1": {
                     "name": "storage.type.brs"
@@ -251,7 +251,7 @@
             "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:\\b(if|else\\s*if|else|print|while|for\\s*each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|exit\\s*for|end\\s*if|to|step|in|sub|function|goto|rem|as)\\b)",
+            "match": "(?i:\\b(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
             "name": "keyword.control.brs"
         },
         "operators": {
