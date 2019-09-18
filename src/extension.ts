@@ -103,7 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const logOutputManager: LogOutputManager = new LogOutputManager(outputChannel, context, docLinkProvider, declarationProvider);
     const definitionRepo = new DefinitionRepository(declarationProvider);
     const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
-    const selector = { scheme: 'file', pattern: '**/*.{brs}' };
+    const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
     const brightScriptCommands = getBrightScriptCommandsInstance();
     brightScriptCommands.registerCommands(context);
 
