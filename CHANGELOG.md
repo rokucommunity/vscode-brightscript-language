@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.19.3] - 2019-09-18
+### Fixed
+ - added format-document support for BrighterScript files.
+
+
+
+## [1.19.2] - 2019-09-17
+### Changed
+ - migrated from [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) to [brighterscript-formatter](https://www.npmjs.com/package/brighterscript-formatter). `brighterscript-formatter` fully supports formatting standard BrightScript code, so there's no lost functionality by upgrading.
+### Fixed 
+ - syntax colorization of `library` and `sub`
+
+
+
 ## [1.19.1] - 2019-09-10
 ### Changed
  - .env files are processed closer to the beginning of the config resolve function, which allows users to customize which prompts they want to see.
@@ -619,6 +633,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.19.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.2...v1.19.3
+[1.19.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.1...v1.19.2
 [1.19.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.0...v1.19.1
 [1.19.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.2...v1.19.0
 [1.18.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.18.1...v1.18.2
