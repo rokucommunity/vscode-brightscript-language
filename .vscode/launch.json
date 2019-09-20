@@ -18,7 +18,8 @@
 			"name": "Debug Server",
 			"cwd": "${workspaceFolder}",
 			"program": "${workspaceFolder}/src/debugAdapter.ts",
-			"args": [ "--server=4711" ],
+            "args": [ "--server=4711" ],
+            "timeout": 10000,
 			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
 			"stopOnEntry": false
         },
@@ -27,7 +28,8 @@
 			"request": "attach",
 			"name": "Language Server",
 			"port": 6009,
-			"restart": true,
+            "restart": true,
+            "timeout": 30000,
 			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
 		},
 		{
