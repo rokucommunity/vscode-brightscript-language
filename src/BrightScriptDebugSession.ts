@@ -1041,8 +1041,14 @@ export class BrightScriptDebugSession extends DebugSession {
             if (pathIncludesCaseInsensitive(clientPath, basePath)) {
                 let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
+                let fileContents: string;
                 //load the file as a string
-                let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
+                try {
+                    fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
+                } catch (e) {
+                    console.log(`Could not set breakpoint in '${relativeClientPath}' because the file does not exist`, e);
+                    return;
+                }
                 //split the file by newline
                 let lines = eol.split(fileContents);
 
