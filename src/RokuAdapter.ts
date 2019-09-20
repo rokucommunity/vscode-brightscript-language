@@ -224,17 +224,19 @@ export class RokuAdapter {
             this.requestPipeline.on('unhandled-console-output', async (responseText: string) => {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
-                if (hasRuntimeError) {
-                    console.debug('hasRuntimeError!!');
-                    this.isAtDebuggerPrompt = true;
-                    return;
-                }
 
                 responseText = this.rendezvousTracker.processLogLine(responseText);
                 //forward all unhandled console output
                 this.processBreakpoints(responseText);
                 if (responseText) {
                     this.emit('unhandled-console-output', responseText);
+                }
+
+                // short circuit after the output has been sent as console output
+                if (hasRuntimeError) {
+                    console.debug('hasRuntimeError!!');
+                    this.isAtDebuggerPrompt = true;
+                    return;
                 }
 
                 this.processUnhandledLines(responseText);
@@ -363,6 +365,7 @@ export class RokuAdapter {
                 break;
             case RokuAdapterStatus.none:
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
+                this.compilingLines = this.compilingLines.concat(newLines);
                 if (this.startCompilingLine !== -1) {
                     console.debug('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
