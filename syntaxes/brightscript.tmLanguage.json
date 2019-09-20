@@ -51,6 +51,9 @@
             "include": "#end_function"
         },
         {
+            "include": "#function_call"
+        },
+        {
             "include": "#storage_types"
         },
         {
@@ -79,9 +82,6 @@
         },
         {
             "include": "#string_literal"
-        },
-        {
-            "include": "#function_call"
         },
         {
             "include": "#variables_and_params"
@@ -223,7 +223,7 @@
         },
         "end_function": {
             "name": "keyword.declaration.function",
-            "match": "(?i)end\\s*(sub|function)"
+            "match": "(?i)[ \\t]*end\\s*(sub|function)"
         },
         "inline_function_declaration": {
             "captures": {
