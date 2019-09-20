@@ -365,6 +365,7 @@ export class RokuAdapter {
                 break;
             case RokuAdapterStatus.none:
                 this.startCompilingLine = this.getStartingCompilingLine(newLines);
+                this.compilingLines = this.compilingLines.concat(newLines);
                 if (this.startCompilingLine !== -1) {
                     console.debug('processUnhandledLines: entering state RokuAdapterStatus.compiling');
                     newLines.splice(0, this.startCompilingLine);
