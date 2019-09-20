@@ -108,7 +108,7 @@ export async function activate(context: vscode.ExtensionContext) {
     brightScriptCommands.registerCommands(context);
 
     // experimental placeholder
-    context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
+    // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
     context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
     context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));

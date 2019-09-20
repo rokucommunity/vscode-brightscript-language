@@ -489,12 +489,6 @@
                 "path": "./syntaxes/brightscript.tmLanguage.json"
             }
         ],
-        "snippets": [
-            {
-                "language": "brightscript",
-                "path": "./snippets.json"
-            }
-        ],
         "configuration": {
             "type": "object",
             "title": "BrightScript configuration",
