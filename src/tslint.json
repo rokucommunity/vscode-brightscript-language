@@ -11,10 +11,7 @@
             true,
             "never"
         ],
-        "array-type": [
-            true,
-            "array"
-        ],
+        "array-type": false,
         "arrow-parens": false,
         "arrow-return-shorthand": false,
         "class-name": true,

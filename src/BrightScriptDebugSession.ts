@@ -27,6 +27,7 @@ import {
     RokuAdapter
 } from './RokuAdapter';
 import { util } from './util';
+import { BreakpointWriter } from './BreakpointWriter';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -1028,6 +1029,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param basePath Optional override to the project base path. Used for things like component libraries that may be parallel to the project
      */
     public async addBreakpointStatements(stagingPath: string, basePath: string = this.baseProjectPath) {
+        let bpWriter = new BreakpointWriter();
         let promises = [];
         let addBreakpointsToFile = async (clientPath, basePath) => {
             let breakpoints = this.getBreakpointsForClientPath(clientPath);
@@ -1043,69 +1045,15 @@ export class BrightScriptDebugSession extends DebugSession {
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
                 //load the file as a string
                 let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
-                //split the file by newline
-                let lines = eol.split(fileContents);
 
-                let bpIndex = 0;
-                for (let breakpoint of breakpoints) {
-                    bpIndex++;
+                let breakpointResult = bpWriter.writeBreakpointsWithSourcemaps(fileContents, clientPath, breakpoints);
 
-                    //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
-                    let lineIndex = breakpoint.line - 1;
-                    let line = lines[lineIndex];
-
-                    if (breakpoint.condition) {
-                        // add a conditional STOP statement right before this line
-                        lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
-                    } else if (breakpoint.hitCondition) {
-                        let hitCondition = parseInt(breakpoint.hitCondition);
-
-                        if (isNaN(hitCondition) || hitCondition === 0) {
-                            // add a STOP statement right before this line
-                            lines[lineIndex] = `STOP\n${line} `;
-                        } else {
-
-                            let prefix = `m.vscode_bp`;
-                            let bpName = `bp${bpIndex}`;
-                            let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
-                            let increment = `${prefix}.${bpName} ++`;
-
-                            // Create the BrightScript code required to track the number of executions
-                            let trackingExpression = `
-                                if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
-                                    if Invalid = ${prefix} then
-                                        ${prefix} = {${bpName}: 0}
-                                    else
-                                        ${prefix}.${bpName} = 0
-                                else
-                                    ${increment} : ${checkHits}
-                            `;
-                            //coerce the expression into single-line
-                            trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
-                            // Add the tracking expression right before this line
-                            lines[lineIndex] = `${trackingExpression}\n${line} `;
-                        }
-                    } else if (breakpoint.logMessage) {
-                        let logMessage = breakpoint.logMessage;
-                        //wrap the log message in quotes
-                        logMessage = `"${logMessage}"`;
-                        let expressionsCheck = /\{(.*?)\}/g;
-                        let match;
-
-                        // Get all the value to evaluate as expressions
-                        while (match = expressionsCheck.exec(logMessage)) {
-                            logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
-                        }
-
-                        // add a PRINT statement right before this line with the formated log message
-                        lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
-                    } else {
-                        // add a STOP statement right before this line
-                        lines[lineIndex] = `STOP\n${line} `;
-                    }
-                }
-                fileContents = lines.join('\n');
-                await fsExtra.writeFile(stagingFilePath, fileContents);
+                await Promise.all([
+                    //overwrite the file that now has breakpoints injected
+                    fsExtra.writeFile(stagingFilePath, breakpointResult.code),
+                    //write the sourcemaps file
+                    fsExtra.writeFile(`${stagingFilePath}.map`, breakpointResult.map)
+                ]);
             }
         };
 
