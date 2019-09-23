@@ -37,7 +37,7 @@
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": false,
+                "focus": true,
                 "panel": "shared",
                 "showReuseMessage": true,
                 "clear": true
@@ -48,6 +48,11 @@
             "type": "npm",
             "label": "build",
             "script": "build",
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "test:coverage",
             "problemMatcher": []
         }
     ]

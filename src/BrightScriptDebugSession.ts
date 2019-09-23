@@ -20,14 +20,16 @@ import {
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+import { BreakpointWriter } from './BreakpointWriter';
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { fileUtils } from './FileUtils';
 import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
 import { util } from './util';
-import { BreakpointWriter } from './BreakpointWriter';
+import { SourceMapConsumer } from 'source-map';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -286,10 +288,11 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //watch
             // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
-            this.rokuAdapter.on('compile-errors', (compileErrors) => {
+            this.rokuAdapter.on('compile-errors', async (compileErrors) => {
                 for (let compileError of compileErrors) {
-                    compileError.lineNumber = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
-                    compileError.path = this.convertDebuggerPathToClient(compileError.path);
+                    let clientLocation = await this.getClientLocation(compileError.path, compileError.lineNumber);
+                    compileError.lineNumber = clientLocation.lineNumber;
+                    compileError.path = clientLocation.path;
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
@@ -673,9 +676,8 @@ export class BrightScriptDebugSession extends DebugSession {
             let stackTrace = await this.rokuAdapter.getStackTrace();
 
             for (let debugFrame of stackTrace) {
+                let clientLocation = this.getClientLocation(debugFrame.filePath, debugFrame.lineNumber);
 
-                let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
-                let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
                 try {
@@ -895,7 +897,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 debuggerPath = debuggerPath.substring(1);
             }
 
-            debuggerPath = this.removeFileTruncation(debuggerPath);
+            debuggerPath = fileUtils.removeFileTruncation(debuggerPath);
 
             //find any files from the outDir that end the same as this file
             let results: string[] = [];
@@ -908,7 +910,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             Object.keys(componentLibraryPaths).forEach((key, index) => {
                 //if the staging path looks like the debugger path, keep it for now
-                if (this.isFileAPossibleMatch(key, debuggerPath)) {
+                if (fileUtils.pathEndsWith(key, debuggerPath)) {
                     results.push(componentLibraryPaths[key]);
                 }
             });
@@ -922,14 +924,14 @@ export class BrightScriptDebugSession extends DebugSession {
         } else {
             if (!fullPath) {
                 //the debugger path was truncated, so try and map it to a file in the outdir
-                debuggerPath = this.removeFileTruncation(debuggerPath);
+                debuggerPath = fileUtils.removeFileTruncation(debuggerPath);
 
                 //find any files from the outDir that end the same as this file
                 let results: string[] = [];
 
                 for (let stagingPath of this.stagingDirPaths) {
                     //if the staging path looks like the debugger path, keep it for now
-                    if (this.isFileAPossibleMatch(stagingPath, debuggerPath)) {
+                    if (fileUtils.pathEndsWith(stagingPath, debuggerPath)) {
                         results.push(stagingPath);
                     }
                 }
@@ -952,16 +954,6 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         }
         return lastExistingPath;
-    }
-
-    private removeFileTruncation(filePath) {
-        return (filePath.indexOf('...') === 0) ? filePath.substring(3) : filePath;
-    }
-
-    private isFileAPossibleMatch(stagingPath: string, testPath: string) {
-        let idx = stagingPath.indexOf(testPath);
-        //if the staging path looks like the debugger path, keep it for now
-        return (idx > -1 && stagingPath.endsWith(testPath));
     }
 
     /**
@@ -1134,7 +1126,7 @@ export class BrightScriptDebugSession extends DebugSession {
         );
         let keys = Object.keys(results);
         if (keys.length === 0) {
-            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub/function declared in your BrightScript project');
+            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface, RunScreenSaver, or Main sub/function declared in your BrightScript project');
         }
 
         //throw out any entry points from files not included in this project's `files` array
@@ -1256,18 +1248,36 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param debuggerPath
      * @param debuggerLineNumber
      */
-    private convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
-        let clientPath = this.convertDebuggerPathToClient(debuggerPath);
-        let breakpoints = this.getBreakpointsForClientPath(clientPath);
+    private async convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
+        let stagingFilePath = fileUtils.getStagingFilePathFromDebuggerPath(debuggerPath, this.stagingPath);
+        //look for a sourcemap for this file
+        let stagingFileMapPath = `${stagingFilePath}.map`;
 
-        let resultLineNumber = debuggerLineNumber;
-        for (let breakpoint of breakpoints) {
-            if (breakpoint.line <= resultLineNumber) {
-                resultLineNumber--;
-            } else {
-                break;
-            }
+        //if we have a sourcemap, use it
+        if (fsExtra.existsSync(stagingFileMapPath)) {
+            // let sourcemapText = (await fsExtra.readFile(stagingFileMapPath)).toString();
+            // let sourcemap = JSON.parse(sourcemapText);
+            await SourceMapConsumer.with(null, stagingFileMapPath, (consumer) => {
+                consumer.originalPositionFor({
+                    line: debuggerLineNumber,
+                    column: 0
+                });
+            });
+        } else {
+            let clientPath = this.convertDebuggerPathToClient(debuggerPath);
+            let breakpoints = this.getBreakpointsForClientPath(clientPath);
+
+            //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
+            return debuggerLineNumber;
         }
+
+        // for (let breakpoint of breakpoints) {
+        //     if (breakpoint.line <= resultLineNumber) {
+        //         resultLineNumber--;
+        //     } else {
+        //         break;
+        //     }
+        // }
         return resultLineNumber;
     }
 
