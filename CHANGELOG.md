@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [2.0.0-beta.35] - 2019-09-24
+### Added
+ - all changes from 1.19.0 through 1.19.6
+### Changed
+ - Enhanced intellisense to scan all files in context to provide more accurate results for object property completions.
+ - Enhanced intellisense that filters results based on whether you typing an object proeprty/method or not.
+ - switched languageserver to use [brighterscript](https://github.com/RokuCommunity/brighterscript). This is the first step towards support the BrighterScript language.
+### Fixed
+ - bug that would not register new files until a vscode restart. 
+
+
+
 ## [1.19.6] - 2019-09-23
 ### Fixed
  - bugs in language grammar (syntax highlighting)
@@ -313,14 +327,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-# [1.18.1] - 2019-08-03
+
 ## [1.18.2] - 2019-08-07
 ### Changed
  - upgrade to roku-deploy@2.2.1 which fixes manifest parsing bug related to colors starting with `#`.
 
 
 
-## [1.18.1] - 2019-08-02
+## [1.18.1] - 2019-08-03
 ### Fixed
  - issue where the RALE Tracker Task injection logic was enabled by default.
 
@@ -615,6 +629,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.35]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.34...v2.0.0-beta.35
 [2.0.0-beta.34]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
 [2.0.0-beta.33]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
 [2.0.0-beta.32]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
