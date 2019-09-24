@@ -9,10 +9,22 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
+            "include": "#preprocessor_keywords"
+        },
+        {
             "include": "#region_comment"
         },
         {
             "include": "#end_region_comment"
+        },
+        {
+            "include": "#global_constants"
+        },
+        {
+            "include": "#keyword_logical_operator"
+        },
+        {
+            "include": "#object_properties"
         },
         {
             "include": "#vscode_rale_tracker_entry_comment"
@@ -37,6 +49,9 @@
         },
         {
             "include": "#end_function"
+        },
+        {
+            "include": "#function_call"
         },
         {
             "include": "#storage_types"
@@ -69,13 +84,41 @@
             "include": "#string_literal"
         },
         {
-            "include": "#function_call"
-        },
-        {
             "include": "#variables_and_params"
         }
     ],
     "repository": {
+        "preprocessor_keywords": {
+            "patterns": [
+                {
+                    "match": "(?i:(#const))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#if))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#else\\s*if))",
+                    "name": "keyword.preprocessor.if.brs"
+                },
+                {
+                    "match": "(?i:(#end\\s*if))",
+                    "name": "keyword.preprocessor.endif.brs"
+                }
+            ]
+        },
+        "object_properties": {
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\.([a-z_][a-z0-9_]*))",
+            "captures": {
+                "1": {
+                    "name": "entity.name.variable.local.brs"
+                },
+                "2": {
+                    "name": "variable.other.object.property.brs"
+                }
+            }
+        },
         "identifiers_with_type_designators": {
             "name": "entity.name.variable.local.brs",
             "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#])"
@@ -111,6 +154,11 @@
             },
             "match": "(').*$\\n?",
             "name": "comment.line.apostrophe.brs"
+        },
+        "keyword_logical_operator": {
+            "comment": "Capture logical operators. ",
+            "match": "(?i:\\b(and|or|not)\\b)",
+            "name": "keyword.operator.logical.word"
         },
         "keyword_return": {
             "comment": "The return statements in functions",
@@ -175,7 +223,7 @@
         },
         "end_function": {
             "name": "keyword.declaration.function",
-            "match": "(?i)end\\s*(sub|function)"
+            "match": "(?i)[ \\t]*end\\s*(sub|function)"
         },
         "inline_function_declaration": {
             "captures": {
@@ -200,7 +248,7 @@
                     "name": "keyword.control.brs"
                 }
             },
-            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end)(?!(\\s*:)|[\\d\\w_]))"
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
             "match": "(?i:\\b(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
@@ -232,8 +280,12 @@
                 }
             ]
         },
+        "global_constants": {
+            "match": "(?i:\\b(line_num)\\b)",
+            "name": "variable.language"
+        },
         "support_builtin_functions": {
-            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|Rnd|Box|Type)\\b)",
+            "match": "(?i:\\b(GetLastRun(RuntimeError|CompileError)|Rnd|Box|Type|objfun|pos|eval)\\b)",
             "name": "support.function.brs"
         },
         "support_global_functions": {
