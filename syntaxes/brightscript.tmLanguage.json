@@ -109,12 +109,9 @@
             ]
         },
         "object_properties": {
-            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\.([a-z_][a-z0-9_]*))",
+            "match": "(?i:\\b\\.((?:[a-z0-9_])*)(?!\\s*\\()\\b)",
             "captures": {
                 "1": {
-                    "name": "entity.name.variable.local.brs"
-                },
-                "2": {
                     "name": "variable.other.object.property.brs"
                 }
             }
@@ -191,7 +188,7 @@
                     "name": "entity.name.variable.local.brs"
                 }
             },
-            "match": "(?i:\\b([a-z_][a-z0-9_\\$%!#]*)\\b)"
+            "match": "(?i:\\b(?<!\\.)([a-z_][a-z0-9_\\$%!#]*)\\b)"
         },
         "storage_types": {
             "comment": "Included 'dim' because it didn't warrant its own matcher",
