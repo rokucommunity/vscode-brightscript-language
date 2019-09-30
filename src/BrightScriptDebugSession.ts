@@ -664,6 +664,38 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * The stacktrace sent by Roku forces all BrightScript function names to lower case.
+     * This function will scan the source file, and attempt to find the exact casing from the function definition.
+     * Also, this function caches results, so it should be drastically faster than the previous implementation 
+     * that would read the source file every time
+     */
+    private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
+        let lowerSourceFilePath = sourceFilePath.toLowerCase();
+        let lowerFunctionName = functionName.toLowerCase();
+        //create the lookup if it doesn't exist
+        if (!this.functionNameCaseLookup[lowerSourceFilePath]) {
+            this.functionNameCaseLookup[lowerSourceFilePath] = {};
+
+            let fileContents = (await fsExtra.readFile(sourceFilePath)).toString();
+            //read the file contents
+            let regexp = /^\s*(?:sub|function)\s+([a-z0-9_]+)/gim;
+            let match: RegExpMatchArray;
+
+            //create a cache of all function names in this file
+            while (match = regexp.exec(fileContents)) {
+                let correctFunctionName = match[1];
+                this.functionNameCaseLookup[lowerSourceFilePath][correctFunctionName.toLowerCase()] = correctFunctionName;
+            }
+        }
+        return this.functionNameCaseLookup[lowerSourceFilePath][lowerFunctionName];
+    }
+    private functionNameCaseLookup = {} as {
+        [lowerSourceFilePath: string]: {
+            [lowerFunctionName: string]: string
+        }
+    };
+
     protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
         this.log('stackTraceRequest');
         let frames = [];
@@ -672,18 +704,17 @@ export class BrightScriptDebugSession extends DebugSession {
             let stackTrace = await this.rokuAdapter.getStackTrace();
 
             for (let debugFrame of stackTrace) {
-
                 let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
                 let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
                 try {
-                    let fileContents = (await fsExtra.readFile(clientPath)).toString();
-                    let match = new RegExp(`(?:sub|function)\\s+(${debugFrame.functionIdentifier})`, 'i').exec(fileContents);
-                    if (match) {
-                        debugFrame.functionIdentifier = match[1];
+                    let functionName = await this.getCorrectFunctionNameCase(clientPath, debugFrame.functionIdentifier);
+                    if (functionName) {
+                        debugFrame.functionIdentifier = functionName;
                     }
                 } catch (e) {
+                    console.error(e);
                 }
 
                 let frame = new StackFrame(
