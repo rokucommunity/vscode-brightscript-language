@@ -667,7 +667,7 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * The stacktrace sent by Roku forces all BrightScript function names to lower case.
      * This function will scan the source file, and attempt to find the exact casing from the function definition.
-     * Also, this function caches results, so it should be drastically faster than the previous implementation 
+     * Also, this function caches results, so it should be drastically faster than the previous implementation
      * that would read the source file every time
      */
     private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
