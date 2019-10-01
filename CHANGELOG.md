@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.37] - 2019-10-01
+### Added
+  - all changes from 1.20.0
+
+
+
 ## [2.0.0-beta.36] - 2019-09-28
 ### Changed
  - upgraded to [brighterscript@0.2.2](https://www.npmjs.com/package/brighterscript/v/0.2.2) which fixes several startup race conditions.
@@ -21,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - switched languageserver to use [brighterscript](https://github.com/RokuCommunity/brighterscript). This is the first step towards support the BrighterScript language.
 ### Fixed
  - bug that would not register new files until a vscode restart. 
+
+
+
+## [1.20.0] - 2019-10-01
+### Added
+ - "port is in use" crash message when serving component libraries
+### Changed
+ - The Roku stacktrace includes all function names back as fully lower case. The extension reads the original files and attempts to find the correct case for every function. These results were not being cached, but are now cached in order to improve performance.
+### Fixed 
+ - some syntax colors related to object function calls
 
 
 
@@ -635,6 +651,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.37]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.36...v2.0.0-beta.37
 [2.0.0-beta.36]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.35...v2.0.0-beta.36
 [2.0.0-beta.35]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.34...v2.0.0-beta.35
 [2.0.0-beta.34]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
@@ -672,6 +689,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+[1.20.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.6...v1.20.0
 [1.19.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.5...v1.19.6
 [1.19.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.4...v1.19.5
 [1.19.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.3...v1.19.4

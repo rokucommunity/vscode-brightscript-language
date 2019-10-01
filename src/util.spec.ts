@@ -2,6 +2,8 @@
 import * as assert from 'assert';
 import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
+import * as getPort from 'get-port';
+import * as net from 'net';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
 
@@ -132,6 +134,32 @@ describe('Util', () => {
         it('should return undefined when the manifest is not found', async () => {
             let manifestObject = await util.convertManifestToObject(filePath);
             assert.equal(manifestObject, undefined);
+        });
+    });
+
+    describe('isPortInUse', () => {
+        let otherServer: net.Server;
+        let port: number;
+
+        beforeEach(async () => {
+            port = await getPort();
+            otherServer = await new Promise<net.Server>((resolve, reject) => {
+                const tester = net.createServer()
+                    .once('listening', () => resolve(tester))
+                    .listen(port);
+            });
+        });
+
+        it('should detect when a port is in use', async () => {
+            assert.equal(true, await util.isPortInUse(port));
+        });
+
+        it('should detect when a port is not in use', async () => {
+            assert.equal(false, await util.isPortInUse(port + 1));
+        });
+
+        afterEach(async () => {
+            await otherServer.close();
         });
     });
 
