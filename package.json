@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.18.2",
+    "version": "1.20.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -19,10 +19,10 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language"
+        "url": "https://github.com/RokuCommunity/vscode-brightscript-language"
     },
     "bugs": {
-        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
+        "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
         "preversion": "npm run build && npm run tslint && npm run test",
@@ -43,16 +43,18 @@
         "@types/glob": "^7.1.1",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brightscript-formatter": "^1.6.0",
+        "brighterscript-formatter": "^1.0.2",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
         "find-in-files": "^0.5.0",
         "fs-extra": "^7.0.1",
+        "get-port": "^5.0.0",
         "glob": "^7.1.3",
         "hoek": "^6.1.2",
         "iconv-lite": "0.4.24",
         "micromatch": "^3.1.10",
+        "natural-orderby": "^2.0.3",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
@@ -79,7 +81,7 @@
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
         "mocha-param": "^2.0.0",
-        "nyc": "^13.1.0",
+        "nyc": "^14.1.1",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
         "ts-mocha": "^6.0.0",
@@ -96,6 +98,7 @@
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
+        "onLanguage:brighterscript",
         "onLanguage:xml",
         "onCommand:extension.brightscript.sendRemoteCommand",
         "onCommand:extension.brightscript.pressBackButton",
@@ -383,8 +386,9 @@
                             },
                             "enableLookupVariableNodeChildren": {
                                 "type": "boolean",
-                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `_children` field",
-                                "default": false
+                                "deprecationMessage": "Deprecated. This is no longer necessary, as the setting is always enabled and cannot be disabled.",
+                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `[[children]]` field",
+                                "default": true
                             }
                         }
                     }
@@ -399,8 +403,7 @@
                         "password": "${promptForPassword}",
                         "rootDir": "${workspaceFolder}",
                         "enableDebuggerAutoRecovery": false,
-                        "stopDebuggerOnAppExit": false,
-                        "enableLookupVariableNodeChildren": false
+                        "stopDebuggerOnAppExit": false
                     }
                 ],
                 "configurationSnippets": [
@@ -416,8 +419,7 @@
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
                             "enableDebuggerAutoRecovery": false,
-                            "stopDebuggerOnAppExit": false,
-                            "enableLookupVariableNodeChildren": false
+                            "stopDebuggerOnAppExit": false
                         }
                     }
                 ]
@@ -427,11 +429,20 @@
             {
                 "id": "brightscript",
                 "extensions": [
-                    ".brs",
-                    ".bs"
+                    ".brs"
                 ],
                 "aliases": [
                     "BrightScript"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "brighterscript",
+                "extensions": [
+                    ".bs"
+                ],
+                "aliases": [
+                    "BrighterScript"
                 ],
                 "configuration": "./language-configuration.json"
             },
@@ -456,6 +467,11 @@
         "grammars": [
             {
                 "language": "brightscript",
+                "scopeName": "source.brs",
+                "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
             }

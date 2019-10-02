@@ -85,7 +85,7 @@ export class ActiveDeviceManager extends EventEmitter {
     }
 
     // Discover all Roku devices on the network and watch for new ones that connect
-    private discoverAll( timeout: number = DEFAULT_TIMEOUT ): Promise<string[]> {
+    private discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
         return new Promise((resolve, reject) => {
             const finder = new RokuFinder();
             const devices: string[] = [];
@@ -130,7 +130,9 @@ class RokuFinder extends EventEmitter {
             const { ST, LOCATION } = headers;
             if (ST && LOCATION && ST.indexOf('roku') !== -1) {
                 http.get(`${LOCATION}/query/device-info`, {
-                    headers: { 'User-Agent': 'github.com/TwitchBronBron/vscode-brightscript-language' }
+                    headers: {
+                        'User-Agent': 'https://github.com/RokuCommunity/vscode-brightscript-language'
+                    }
                 }, (resp) => {
                     // Get the device info
                     let data = '';

@@ -1,13 +1,14 @@
 /* tslint:disable:no-unused-expression */
-import { expect } from 'chai';
-
 import * as assert from 'assert';
+import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
+import * as getPort from 'get-port';
+import * as net from 'net';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
-let sinon = sinonActual.createSandbox();
 
-import * as util from './util';
+import { util } from './util';
+let sinon = sinonActual.createSandbox();
 
 const rootDir = path.normalize(path.dirname(__dirname));
 
@@ -16,6 +17,14 @@ beforeEach(() => {
 });
 
 describe('Util', () => {
+
+    describe('removeTrailingNewline', () => {
+        it('works', () => {
+            expect(util.removeTrailingNewline('\r\n')).to.equal('');
+            expect(util.removeTrailingNewline('\n')).to.equal('');
+            expect(util.removeTrailingNewline('\r\n\r\n')).to.equal('\r\n');
+        });
+    });
 
     describe('checkForTrailingSlash', () => {
         it('should add trailing slash when missing', () => {
@@ -125,6 +134,32 @@ describe('Util', () => {
         it('should return undefined when the manifest is not found', async () => {
             let manifestObject = await util.convertManifestToObject(filePath);
             assert.equal(manifestObject, undefined);
+        });
+    });
+
+    describe('isPortInUse', () => {
+        let otherServer: net.Server;
+        let port: number;
+
+        beforeEach(async () => {
+            port = await getPort();
+            otherServer = await new Promise<net.Server>((resolve, reject) => {
+                const tester = net.createServer()
+                    .once('listening', () => resolve(tester))
+                    .listen(port);
+            });
+        });
+
+        it('should detect when a port is in use', async () => {
+            assert.equal(true, await util.isPortInUse(port));
+        });
+
+        it('should detect when a port is not in use', async () => {
+            assert.equal(false, await util.isPortInUse(port + 1));
+        });
+
+        afterEach(async () => {
+            await otherServer.close();
         });
     });
 

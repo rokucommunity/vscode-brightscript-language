@@ -1,4 +1,4 @@
-import { BrightScriptFormatter, FormattingOptions } from 'brightscript-formatter';
+import { Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
 import {
     DocumentRangeFormattingEditProvider,
     EndOfLine,
@@ -18,7 +18,7 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
             let text = document.getText();
-            let formatter = new BrightScriptFormatter();
+            let formatter = new BrighterScriptFormatter();
             let formattedText = formatter.format(text, <FormattingOptions>{
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
