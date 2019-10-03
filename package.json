@@ -435,6 +435,15 @@
         ],
         "languages": [
             {
+                "id": "jsonc",
+                "filenamePatterns": [
+                    "bsconfig.json",
+                    "*bsconfig.json",
+                    "brsconfig.json",
+                    "*brsconfig.json"
+                ]
+            },
+            {
                 "id": "brightscript",
                 "extensions": [
                     ".brs"
@@ -474,7 +483,11 @@
         ],
         "jsonValidation": [
             {
-                "fileMatch": "bsconfig.json",
+                "fileMatch": "*bsconfig.json",
+                "url": "./out/bsconfig.schema.json"
+            },
+            {
+                "fileMatch": "*brsconfig.json",
                 "url": "./out/bsconfig.schema.json"
             }
         ],
