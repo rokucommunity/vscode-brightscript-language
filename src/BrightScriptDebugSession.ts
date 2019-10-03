@@ -493,7 +493,7 @@ export class BrightScriptDebugSession extends DebugSession {
             // #endregion
 
             // prepare static file hosting
-            this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
+            await this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
         }
     }
 
