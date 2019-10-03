@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### [2.0.0-beta.38] - 2019-10-03
+### Added
+ - all changes from 1.20.0
+### Changed
+ - upgraded to [brighterscript@0.3.0](https://www.npmjs.com/package/brighterscript/v/0.3.0) which fixes parse error related to comments inside of associative array literals, and supports parsing opened files that are not included in a `bsconfig.json` file
+
+
+
 ## [2.0.0-beta.37] - 2019-10-01
 ### Added
   - all changes from 1.20.0
@@ -658,6 +666,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.38]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.37...v2.0.0-beta.38
 [2.0.0-beta.37]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.36...v2.0.0-beta.37
 [2.0.0-beta.36]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.35...v2.0.0-beta.36
 [2.0.0-beta.35]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.34...v2.0.0-beta.35
