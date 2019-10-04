@@ -1,5 +1,7 @@
+import * as fsExtra from 'fs-extra';
 import glob = require('glob');
 import * as path from 'path';
+import { SourceMapConsumer } from 'source-map';
 
 export class FileUtils {
 
@@ -15,7 +17,7 @@ export class FileUtils {
 
     /**
      * Given a `directoryPath`, find and return all file paths relative to the `directoryPath`
-     * @param directoryPath 
+     * @param directoryPath
      */
     public getAllRelativePaths(directoryPath: string) {
         //normalize the path
@@ -71,56 +73,69 @@ export class FileUtils {
     }
 
     /**
-     * Given a file path provided by the debugger, find the path to that file in the staging directory
-     * @param debuggerPath the path to the file which was provided by the debugger
-     * @param stagingFolderPath - the path to the root of the staging folder (where all of the files were copied before deployment)
-     * @return a full path to the file in the staging directory
+     * Given a relative file path, and a list of directories, find the first directory that contains the relative file
+     * @param relativeFilePath - the path to the item relative to each `directoryPath`
+     * @param directoryPaths - an array of directory paths
+     * @returns the first path that was found to exist, or undefined if the file was not found in any of the `directoryPaths`
      */
-    public getStagingFilePathFromDebuggerPath(debuggerPath: string, stagingFolderPath: string) {
-        let relativePath: string;
-
-        //remove preceding pkg:
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            relativePath = debuggerPath.substring(4);
-        } else {
-            relativePath = fileUtils.findPartialFileInDirectory(debuggerPath, stagingFolderPath);
+    public async findFirstRelativeFile(relativeFilePath: string, directoryPaths: string[]) {
+        for (let directoryPath of directoryPaths) {
+            let fullPath = path.normalize(path.join(directoryPath, relativeFilePath));
+            if (await fsExtra.pathExists(fullPath)) {
+                return fullPath;
+            }
         }
-        let stagingFilePath = path.join(stagingFolderPath, relativePath);
-        return stagingFilePath;
+    }
 
-        //TODO support component libraries
+    /**
+     * Find the number at the end of component library prefix at the end of the file.
+     * (i.e. "pkg:/source/main_lib1.brs" returns 1)
+     * All files in component libraries are renamed to include the component library index as the ending portion of the filename,
+     * which is necessary because the Roku debugger doesn't tell you which component library a file came from.
+     */
+    public getComponentLibraryIndex(filePath: string, postfix: string) {
+        let regex = new RegExp(postfix + '(\\d+)');
+        let match = regex.exec(filePath);
+        let result: number | undefined;
+        if (match) {
+            result = parseInt(match[1]);
+            if (isNaN(result)) {
+                result = undefined;
+            }
+        }
+        return result;
+    }
 
-        // if (debuggerPath.includes(this.componentLibraryPostfix)) {
-        //     //remove preceding slash
-        //     if (debuggerPath.toLowerCase().indexOf('/') === 0) {
-        //         debuggerPath = debuggerPath.substring(1);
-        //     }
+    /**
+     * Get the source location of a position using a sourcemap. If no sourcemap is found, undefined is returned
+     * @param filePathAbsolute - the absolute path to the file
+     * @param debuggerLineNumber - the line number provided by the debugger
+     * @param debuggerColumnNumber - the column number provided by the debugger
+     */
+    public async getSourceLocationFromSourcemap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0) {
+        //look for a sourcemap for this file
+        let sourcemapPath = `${filePathAbsolute}.map`;
 
-        //     debuggerPath = fileUtils.removeFileTruncation(debuggerPath);
-
-        //     //find any files from the outDir that end the same as this file
-        //     let results: string[] = [];
-        //     let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
-        //     let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
-        //     let componentLibraryPaths = this.componentLibrariesStagingDirPaths[libIndex];
-        //     let componentLibrary: any = this.launchArgs.componentLibraries[libIndex];
-        //     // Update the root dir
-        //     sourceDirs = [componentLibrary.rootDir];
-
-        //     Object.keys(componentLibraryPaths).forEach((key, index) => {
-        //         //if the staging path looks like the debugger path, keep it for now
-        //         if (fileUtils.pathEndsWith(key, debuggerPath)) {
-        //             results.push(componentLibraryPaths[key]);
-        //         }
-        //     });
-
-        //     if (results.length > 0) {
-        //         //a wrong file, which has output is more useful than nothing!
-        //         debuggerPath = results[0];
-        //     } else {
-        //         //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
-        //     }
-        // } else {
+        //if we have a sourcemap, use it
+        if (await fsExtra.pathExists(sourcemapPath)) {
+            // let sourcemapText = (await fsExtra.readFile(stagingFileMapPath)).toString();
+            // let sourcemap = JSON.parse(sourcemapText);
+            let position = await SourceMapConsumer.with(null, sourcemapPath, (consumer) => {
+                return consumer.originalPositionFor({
+                    line: debuggerLineNumber,
+                    column: debuggerColumnNumber
+                });
+            });
+            //get the path to the folder this sourcemap lives in
+            let folderPathForStagingFile = path.dirname(sourcemapPath);
+            //get the absolute path to the source file
+            let sourcePathAbsolute = path.resolve(folderPathForStagingFile, position.source);
+            return {
+                column: position.column,
+                line: position.line,
+                pathAbsolute: sourcePathAbsolute
+            };
+        }
     }
 }
 

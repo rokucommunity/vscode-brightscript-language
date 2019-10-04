@@ -5,6 +5,7 @@ import * as glob from 'glob';
 import * as path from 'path';
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
+import { SourceMapConsumer } from 'source-map';
 import {
     DebugSession,
     Handles,
@@ -29,7 +30,7 @@ import {
     RokuAdapter
 } from './RokuAdapter';
 import { util } from './util';
-import { SourceMapConsumer } from 'source-map';
+import { ComponentLibraryConfig } from './DebugConfigurationProvider';
 
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -157,7 +158,7 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * The path to the staging folder
      */
-    private stagingPath: string;
+    private stagingFolderPath: string;
 
     public launchRequestWasCalled = false;
 
@@ -174,10 +175,10 @@ export class BrightScriptDebugSession extends DebugSession {
 
             this.sendDebugLogLine('Moving selected files to staging area');
             //copy all project files to the staging folder
-            this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
+            this.stagingFolderPath = await this.rokuDeploy.prepublishToStaging(args as any);
 
             if (this.launchArgs.bsConst) {
-                let manifestPath = path.join(this.stagingPath, '/manifest');
+                let manifestPath = path.join(this.stagingFolderPath, '/manifest');
                 if (util.fileExists(manifestPath)) {
                     // Update the bs_const values in the manifest in the staging folder before side loading the channel
                     let fileContents = (await fsExtra.readFile(manifestPath)).toString();
@@ -189,16 +190,16 @@ export class BrightScriptDebugSession extends DebugSession {
             // inject the tracker task into the staging files if we have everything we need
             if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
                 try {
-                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
+                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingFolderPath + '/components/', 'TrackerTask.xml'));
                     console.log('TrackerTask successfully injected');
-                    await this.injectRaleTrackerTaskCode(this.stagingPath);
+                    await this.injectRaleTrackerTaskCode(this.stagingFolderPath);
                 } catch (err) {
                     console.error(err);
                 }
             }
 
             //build a list of all files in the staging folder
-            this.loadStagingDirPaths(this.stagingPath);
+            this.loadStagingFolderRelativeFilePaths(this.stagingFolderPath);
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
@@ -222,7 +223,7 @@ export class BrightScriptDebugSession extends DebugSession {
             }
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
-            await this.addBreakpointStatements(this.stagingPath);
+            await this.addBreakpointStatements(this.stagingFolderPath);
 
             //convert source breakpoint paths to build paths
             if (this.launchArgs.sourceDirs) {
@@ -245,14 +246,9 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
 
             //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
-            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
-                (debuggerPath: string, lineNumber: number) => {
-                    return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
-                },
-                (debuggerPath: string) => {
-                    return this.convertDebuggerPathToClient(debuggerPath);
-                }
-            );
+            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions((debuggerPath: string, lineNumber: number) => {
+                return this.getSourceLocation(debuggerPath, lineNumber, 0);
+            });
 
             //pass the log level down thought the adapter to the RendezvousTracker
             this.rokuAdapter.setConsoleOutput(this.launchArgs.consoleOutput);
@@ -435,17 +431,25 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private componentLibraryPostfix: string = '__lib';
 
+    /**
+     * Stores the path to the staging folder for each component library
+     */
+    private componentLibraryStagingFolders = [] as string[];
+
     protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {
         if (componentLibraries && componentLibrariesOutDir) {
             this.componentLibrariesOutDir = componentLibrariesOutDir;
             this.componentLibrariesStagingDirPaths = [];
-            let libraryNumber: number = 0;
 
-            // #region Prepare the component libraries and create some name spacing for debugging
-            for (const componentLibrary of componentLibraries as any) {
-                libraryNumber++;
+            // #region Prepare the component libraries and create some namespacing for debugging
+            for (let libraryIndex = 0; libraryIndex < componentLibraries.length; libraryIndex++) {
+                let componentLibrary = componentLibraries[libraryIndex];
+
                 componentLibrary.outDir = componentLibrariesOutDir;
                 let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+
+                //keep track of the staging folder for this comp lib
+                this.componentLibraryStagingFolders[libraryIndex] = stagingFolder;
 
                 // check the component library for any replaceable values used for auto naming from manifest values
                 await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolder);
@@ -468,7 +472,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
                         if (parsedPath.ext === '.brs') {
                             // Create the new file name to be used
-                            let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryNumber}${parsedPath.ext}`;
+                            let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryIndex}${parsedPath.ext}`;
                             relativePath = path.join(parsedPath.dir, newFileName);
 
                             // Update all the file name references in the library to the new file names
@@ -481,7 +485,7 @@ export class BrightScriptDebugSession extends DebugSession {
                                 to: newFileName
                             });
 
-                            // Rename the brs files to include the postfix name spacing tag
+                            // Rename the brs files to include the postfix namespacing tag
                             await fsExtra.move(filePath, path.join(stagingFolder, relativePath));
                         }
 
@@ -862,99 +866,26 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    private loadStagingDirPaths(stagingDir: string) {
-        if (!this.stagingDirPaths) {
+    /**
+     * Load the list of paths of all files found in the staging folder
+     */
+    private loadStagingFolderRelativeFilePaths(stagingDir: string) {
+        if (!this._stagingFolderRelativeFilePaths) {
             let paths = glob.sync(path.join(stagingDir, '**/*'));
-            this.stagingDirPaths = [];
+            this._stagingFolderRelativeFilePaths = [];
             for (let filePath of paths) {
                 //make the path relative (+1 for removing the slash)
                 let relativePath = filePath.substring(stagingDir.length + 1);
-                this.stagingDirPaths.push(relativePath);
+                this._stagingFolderRelativeFilePaths.push(relativePath);
             }
         }
-        return this.stagingDirPaths;
+        return this._stagingFolderRelativeFilePaths;
     }
-
-    private stagingDirPaths: string[];
-
     /**
-     * Given a path from the debugger, convert it to a client path
-     * @param debuggerPath
+     * The list of paths of all files found in the staging dir.
+     * DO NOT use this variable, instead call loadStagingDirPaths.
      */
-    protected convertDebuggerPathToClient(debuggerPath: string) {
-        let fullPath = false;
-        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
-
-        //remove preceding pkg:
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            debuggerPath = debuggerPath.substring(4);
-            fullPath = true;
-        }
-
-        if (debuggerPath.includes(this.componentLibraryPostfix)) {
-            //remove preceding slash
-            if (debuggerPath.toLowerCase().indexOf('/') === 0) {
-                debuggerPath = debuggerPath.substring(1);
-            }
-
-            debuggerPath = fileUtils.removeFileTruncation(debuggerPath);
-
-            //find any files from the outDir that end the same as this file
-            let results: string[] = [];
-            let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
-            let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
-            let componentLibraryPaths = this.componentLibrariesStagingDirPaths[libIndex];
-            let componentLibrary: any = this.launchArgs.componentLibraries[libIndex];
-            // Update the root dir
-            rootDir = [componentLibrary.rootDir];
-
-            Object.keys(componentLibraryPaths).forEach((key, index) => {
-                //if the staging path looks like the debugger path, keep it for now
-                if (fileUtils.pathEndsWith(key, debuggerPath)) {
-                    results.push(componentLibraryPaths[key]);
-                }
-            });
-
-            if (results.length > 0) {
-                //a wrong file, which has output is more useful than nothing!
-                debuggerPath = results[0];
-            } else {
-                //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
-            }
-        } else {
-            if (!fullPath) {
-                //the debugger path was truncated, so try and map it to a file in the outdir
-                debuggerPath = fileUtils.removeFileTruncation(debuggerPath);
-
-                //find any files from the outDir that end the same as this file
-                let results: string[] = [];
-
-                for (let stagingPath of this.stagingDirPaths) {
-                    //if the staging path looks like the debugger path, keep it for now
-                    if (fileUtils.pathEndsWith(stagingPath, debuggerPath)) {
-                        results.push(stagingPath);
-                    }
-                }
-
-                if (results.length > 0) {
-                    //a wrong file, which has output is more useful than nothing!
-                    debuggerPath = results[0];
-                } else {
-                    //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
-                }
-            }
-        }
-
-        //use sourceDirs if provided, or rootDir if not provided.
-        let lastExistingPath = '';
-        for (const sourceDir of rootDir) {
-            let clientPath = path.normalize(path.join(sourceDir, debuggerPath));
-            if (fsExtra.pathExistsSync(clientPath)) {
-                lastExistingPath = clientPath;
-            }
-        }
-        return lastExistingPath;
-    }
+    private _stagingFolderRelativeFilePaths: string[];
 
     /**
      * Called when the host stops debugging
@@ -1023,6 +954,11 @@ export class BrightScriptDebugSession extends DebugSession {
     public async addBreakpointStatements(stagingPath: string, basePath: string = this.baseProjectPath) {
         let bpWriter = new BreakpointWriter();
         let promises = [];
+        /**
+         * Add 
+         * @param clientPath - the path to the original source file from its original location
+         * @param basePath - the base path to the folder where the client path file resides
+         */
         let addBreakpointsToFile = async (clientPath, basePath) => {
             let breakpoints = this.getBreakpointsForClientPath(clientPath);
             let stagingFilePath: string;
@@ -1031,7 +967,7 @@ export class BrightScriptDebugSession extends DebugSession {
             // normalize the base path to remove things like ..
             basePath = path.normalize(basePath);
 
-            // Make sure the breakpoint to be added is for this base path
+            // Make sure this breakpoint should be applied to this base path
             if (pathIncludesCaseInsensitive(clientPath, basePath)) {
                 let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
@@ -1130,7 +1066,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
 
         //throw out any entry points from files not included in this project's `files` array
-        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
+        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingFolderPath, this.launchArgs.rootDir);
         let paths = files.map((x) => x.src);
         keys = keys.filter((x) => paths.indexOf(x) > -1);
 
@@ -1243,42 +1179,90 @@ export class BrightScriptDebugSession extends DebugSession {
     // }
 
     /**
-     * We set "breakpoints" by inserting 'STOP' lines into the code. So to translate the debugger lines back to client lines,
-     * we need to subtract those 'STOP' lines from the line count
-     * @param debuggerPath
-     * @param debuggerLineNumber
+     * Given a debugger-relative file path, find the path to that file in the staging directory.
+     * This supports the standard out dir, as well as component library out dirs
+     * @param debuggerPath the path to the file which was provided by the debugger
+     * @param stagingFolderPath - the path to the root of the staging folder (where all of the files were copied before deployment)
+     * @return a full path to the file in the staging directory
      */
-    private async convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
-        let stagingFilePath = fileUtils.getStagingFilePathFromDebuggerPath(debuggerPath, this.stagingPath);
-        //look for a sourcemap for this file
-        let stagingFileMapPath = `${stagingFilePath}.map`;
+    public getStagingFileInfo(debuggerPath: string) {
+        let stagingFolderPath: string;
 
-        //if we have a sourcemap, use it
-        if (fsExtra.existsSync(stagingFileMapPath)) {
-            // let sourcemapText = (await fsExtra.readFile(stagingFileMapPath)).toString();
-            // let sourcemap = JSON.parse(sourcemapText);
-            await SourceMapConsumer.with(null, stagingFileMapPath, (consumer) => {
-                consumer.originalPositionFor({
-                    line: debuggerLineNumber,
-                    column: 0
-                });
-            });
+        let componentLibraryIndex = fileUtils.getComponentLibraryIndex(debuggerPath, this.componentLibraryPostfix);
+
+        //component libraries
+        if (componentLibraryIndex === undefined) {
+            stagingFolderPath = this.componentLibraryStagingFolders[componentLibraryIndex];
+
+            //standard project files
         } else {
-            let clientPath = this.convertDebuggerPathToClient(debuggerPath);
-            let breakpoints = this.getBreakpointsForClientPath(clientPath);
-
-            //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
-            return debuggerLineNumber;
+            stagingFolderPath = this.stagingFolderPath;
         }
 
-        // for (let breakpoint of breakpoints) {
-        //     if (breakpoint.line <= resultLineNumber) {
-        //         resultLineNumber--;
-        //     } else {
-        //         break;
-        //     }
-        // }
-        return resultLineNumber;
+        let relativePath: string;
+
+        //if the path starts with pkg, we have an exact match.
+        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
+            relativePath = debuggerPath.substring(4);
+        } else {
+            relativePath = fileUtils.findPartialFileInDirectory(debuggerPath, stagingFolderPath);
+        }
+
+        return {
+            relativePath: relativePath,
+            absolutePath: path.join(stagingFolderPath, relativePath),
+            outDirPath: stagingFolderPath
+        };
+    }
+
+    /**
+     * Convert a debugger location into a source location.
+     * If a sourcemap with the same name is found, those will be used.
+     * Otherwise, use the `sourceDirs` and the `componentLibraries` root dirs to
+     * walk through the file system to find a source file that matches
+     * @param debuggerPath - the path that was returned by the debugger
+     * @param debuggerLineNumber - the line number that was sent by the debugger
+     */
+    private async getSourceLocation(debuggerPath: string, debuggerLineNumber: number, debuggerColumnNumber: number) {
+        let stagingFileInfo = this.getStagingFileInfo(debuggerPath);
+        let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber, debuggerColumnNumber);
+
+        //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
+        if (!sourceLocation) {
+            //an array of source folders, which will be traversed
+            let sourceDirs: string[];
+            let componentLibrary = this.getComponentLibraryForFile(stagingFileInfo.relativePath);
+            if (componentLibrary) {
+                sourceDirs = [...componentLibrary.sourceDirs, componentLibrary.rootDir];
+            } else {
+                sourceDirs = [...this.launchArgs.sourceDirs, this.launchArgs.rootDir];
+            }
+
+            //find the first occurance of this relative path
+            let sourcePath = await fileUtils.findFirstRelativeFile(
+                stagingFileInfo.relativePath,
+                //reverse the array because the array is currently sorted parent-to-child
+                //but the function walks child-to-parent
+                sourceDirs.slice().reverse()
+            );
+            sourceLocation = {
+                pathAbsolute: sourcePath,
+                line: debuggerLineNumber,
+                column: debuggerColumnNumber
+            };
+        }
+        return sourceLocation;
+    }
+
+    /**
+     * Given any file path, look for the component library postfix. 
+     * If present, return the component library config for that library id
+     */
+    private getComponentLibraryForFile(filePath: string) {
+        let idx = fileUtils.getComponentLibraryIndex(filePath, this.componentLibraryPostfix);
+        if (idx !== undefined) {
+            return this.launchArgs.componentLibraries[idx];
+        }
     }
 
     private log(...args) {
@@ -1376,7 +1360,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library.
      * This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.
      */
-    componentLibraries: [];
+    componentLibraries: ComponentLibraryConfig[];
     /**
      * The folder where the output files are places during the packaging process
      */

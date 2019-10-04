@@ -5,7 +5,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 export class BreakpointWriter {
 
     private bpIndex = 1;
-    public writeBreakpointsWithSourcemaps(fileContents: string, filePath: string, breakpoints: DebugProtocol.SourceBreakpoint[]) {
+    public writeBreakpointsWithSourcemaps(fileContents: string, originalFilePath: string, breakpoints: DebugProtocol.SourceBreakpoint[]) {
         let chunks = [] as Array<SourceNode | string>;
 
         //split the file by newline
@@ -21,6 +21,7 @@ export class BreakpointWriter {
             for (let bp of lineBreakpoints) {
                 let breakpointLines = this.getBreakpointLines(bp);
                 for (let bpLine of breakpointLines) {
+                    //this is new code not found in source, so we don't need to provide original location information
                     chunks.push(`${bpLine}${newline}`);
                 }
             }
@@ -28,11 +29,11 @@ export class BreakpointWriter {
             //add the original code now
             chunks.push(
                 //sourceNode expects 1-based row indexes
-                new SourceNode(originalLineIndex + 1, 0, filePath, `${line}${newline}`)
+                new SourceNode(originalLineIndex + 1, 0, originalFilePath, `${line}${newline}`)
             );
         }
 
-        let node = new SourceNode(null, null, filePath, chunks);
+        let node = new SourceNode(null, null, originalFilePath, chunks);
         return node.toStringWithSourceMap();
     }
 

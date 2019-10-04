@@ -15,6 +15,7 @@
         "arrow-parens": false,
         "arrow-return-shorthand": false,
         "class-name": true,
+        "variable-name": false,
         "comment-format": false,
         "curly": true,
         "forin": false,

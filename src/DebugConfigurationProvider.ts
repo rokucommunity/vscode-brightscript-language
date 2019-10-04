@@ -95,14 +95,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.componentLibraries) {
             config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
-            let compLibs: FilesType[][] = [];
-            for (let library of config.componentLibraries as any) {
+            for (let library of config.componentLibraries) {
                 library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : defaultFilesArray;
-                compLibs.push(library);
             }
-            config.componentLibraries = compLibs;
         } else {
+            //create an empty array so it's easier to reason with downstream
             config.componentLibraries = [];
         }
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
@@ -315,7 +313,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     bsConst?: { [key: string]: boolean };
     componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
-    componentLibraries: FilesType[][];
+    componentLibraries: ComponentLibraryConfig[];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];
@@ -330,4 +328,11 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     enableDebuggerAutoRecovery: boolean;
     stopDebuggerOnAppExit: boolean;
     envFile?: string;
+}
+
+export interface ComponentLibraryConfig {
+    rootDir: string;
+    outFile: string;
+    files: FilesType[];
+    sourceDirs: string[];
 }

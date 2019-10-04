@@ -6,6 +6,7 @@ import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
 let sinon = sinonActual.createSandbox();
+let n = path.normalize;
 
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
@@ -13,6 +14,7 @@ import {
     BrightScriptDebugSession,
     defer
 } from './BrightScriptDebugSession';
+import { fileUtils } from './FileUtils';
 import {
     EvaluateContainer,
     HighLevelType,
@@ -27,6 +29,8 @@ beforeEach(() => {
 
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
+    //session of type any so we can do private-ish things
+    let s: any;
     let rokuAdapter: any = {
         on: () => {
             return () => {
@@ -40,7 +44,7 @@ describe('Debugger', () => {
     beforeEach(() => {
         try {
             session = new BrightScriptDebugSession();
-
+            s = session;
         } catch (e) {
             console.log(e);
         }
@@ -125,7 +129,7 @@ describe('Debugger', () => {
                 ${constsLine}
             `.replace(/    /g, '');
 
-            bsConsts = { };
+            bsConsts = {};
         });
 
         it('should update one bs_const in the bs_const line', async () => {
@@ -525,6 +529,42 @@ describe('Debugger', () => {
             await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
             //works with extra spacing
             await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
+    });
+
+    describe('getStagingFilePathFromDebuggerPath', () => {
+        beforeEach(() => {
+            s.stagingFolderPath = n(`${rootDir}/out`);
+        });
+
+        it('finds standard files', () => {
+            expect(session.getStagingFileInfo('pkg:/source/main.brs')).to.equal(n(`${rootDir}/out/source/main.brs`));
+        });
+
+        it(`searches for partial files when '...' is encountered`, () => {
+            let stub = sinon.stub(fileUtils, 'findPartialFileInDirectory').callsFake(function(partialFilePath, directoryPath) {
+                expect(partialFilePath).to.equal('...ource/main.brs');
+                expect(directoryPath).to.equal(s.stagingFolderPath);
+                return `source/main.brs`;
+            });
+            expect(session.getStagingFileInfo('...ource/main.brs')).to.equal(n(`${rootDir}/out/source/main.brs`));
+            expect(stub.called).to.be.true;
+        });
+
+        it(`detects full paths to component library filenames`, () => {
+            s.componentLibraryStagingFolders[1] = n(`${rootDir}/compLibA/out`);
+            expect(session.getStagingFileInfo('pkg:/source/main__lib1.brs')).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
+        });
+
+        it(`detects partial paths to component library filenames`, () => {
+            s.componentLibraryStagingFolders[1] = n(`${rootDir}/compLibA/out`);
+            let stub = sinon.stub(fileUtils, 'findPartialFileInDirectory').callsFake(function(partialFilePath, directoryPath) {
+                expect(partialFilePath).to.equal('...ource/main__lib1.brs');
+                expect(directoryPath).to.equal(s.componentLibraryStagingFolders[1]);
+                return `source/main__lib1.brs`;
+            });
+            expect(session.getStagingFileInfo('...ource/main__lib1.brs')).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
+            expect(stub.called).to.be.true;
         });
     });
 

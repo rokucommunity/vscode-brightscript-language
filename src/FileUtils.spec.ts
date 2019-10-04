@@ -1,12 +1,16 @@
 // tslint:disable: no-unused-expression
 import { expect } from 'chai';
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
-let sinon = sinonActual.createSandbox();
 
 import { fileUtils } from './FileUtils';
 
-describe.only('FileUtils', () => {
+let sinon = sinonActual.createSandbox();
+let n = path.normalize;
+const rootDir = path.normalize(path.dirname(__dirname));
+
+describe('FileUtils', () => {
     afterEach(() => {
         sinon.restore();
     });
@@ -21,6 +25,10 @@ describe.only('FileUtils', () => {
     describe('removeFileTruncation', () => {
         it('does not replace when the `...` character is missing', () => {
             expect(fileUtils.removeFileTruncation('project1/main.brs')).to.equal('project1/main.brs');
+        });
+
+        it('removes leading ... when present', () => {
+            expect(fileUtils.removeFileTruncation('...project1/main.brs')).to.equal('project1/main.brs');
         });
     });
 
@@ -58,6 +66,54 @@ describe.only('FileUtils', () => {
 
         it('returns undefined when no results found', () => {
             expect(fileUtils.findPartialFileInDirectory('...promise.brs', 'SomeAppDir')).to.be.undefined;
+        });
+    });
+
+    describe('getComponentLibraryIndex', () => {
+        it('finds the index', () => {
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib0.brs', '__lib')).to.equal(0);
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib1.brs', '__lib')).to.equal(1);
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib12.brs', '__lib')).to.equal(12);
+        });
+        it('returns undefined no number was found', () => {
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib.brs', '__lib')).to.be.undefined;
+        });
+        it('returns undefined no postfix was found', () => {
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__notlib1.brs', '__lib')).to.be.undefined;
+        });
+        it('returns undefined when item after postfix is not a number', () => {
+            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__libcat.brs', '__lib')).to.be.undefined;
+        });
+    });
+
+    describe.only('findFirstRelativeFile', () => {
+        let paths = [] as string[];
+        let rootA = n(`${rootDir}/compLibA`);
+        let rootB = n(`${rootDir}/compLibB`);
+        let rootC = n(`${rootDir}/compLibC`);
+        let pathA = path.join(rootA, 'main.brs');
+        let pathB = path.join(rootB, 'main.brs');
+        let pathC = path.join(rootC, 'main.brs');
+
+        beforeEach(() => {
+            sinon.stub(fsExtra, 'pathExists').callsFake((filePath: string) => {
+                return paths.indexOf(filePath) > -1;
+            });
+        });
+
+        it('finds file from first folder', async () => {
+            paths = [pathA, pathB, pathC];
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathA);
+        });
+
+        it('finds file from middle folder', async () => {
+            paths = [pathB, pathC];
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathB);
+        });
+
+        it('finds file from last folder', async () => {
+            paths = [pathC];
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
         });
     });
 });

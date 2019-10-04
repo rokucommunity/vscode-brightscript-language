@@ -62,6 +62,7 @@
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
         "roku-deploy": "^2.2.1",
+        "source-map": "^0.7.3",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
         "vscode-uri": "1.0.6"
@@ -184,7 +185,7 @@
                             },
                             "debugRootDir": {
                                 "type": "string",
-                                "deprecationMessage": "Deprecated. Use sourceDirs instead",
+                                "deprecationMessage": "Deprecated. Use  instead",
                                 "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
                             },
@@ -278,6 +279,13 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "sourceDirs": {
+                                            "type": "array",
+                                            "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
+                                            "default": [
+                                                "${workspaceFolder}"
+                                            ]
                                         }
                                     }
                                 }
