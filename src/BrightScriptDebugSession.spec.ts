@@ -38,7 +38,7 @@ describe('Debugger', () => {
         },
         activate: () => Promise.resolve(),
         exitActiveBrightscriptDebugger: () => Promise.resolve(),
-        setRendezvousDebuggerFileConversionFunctions: function(a, b) { },
+        registerSourceLocator: function(a, b) { },
         setConsoleOutput: function(a) { }
     };
     beforeEach(() => {
@@ -95,7 +95,7 @@ describe('Debugger', () => {
         sinon.stub(session, 'sendEvent').callsFake((...args) => {
             //do nothing
         });
-        (sinon.stub(session, <any>'loadStagingDirPaths') as any).callsFake(() => {
+        (sinon.stub(session, <any>'loadStagingFolderRelativeFilePaths') as any).callsFake(() => {
 
         });
 
