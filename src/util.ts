@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
+import * as net from 'net';
 import * as path from 'path';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
@@ -113,6 +114,19 @@ class Util {
 
             return manifestValues;
         }
+    }
+
+    /**
+     * Checks to see if the port is already in use
+     * @param port target port to check
+     */
+    public async isPortInUse(port: number): Promise<boolean> {
+        return new Promise<boolean>((resolve, reject) => {
+            const tester = net.createServer()
+                .once('error', (err: any) => (err.code === 'EADDRINUSE' ? resolve(true) : reject(err)))
+                .once('listening', () => tester.once('close', () => resolve(false)).close())
+                .listen(port);
+        });
     }
 
     /**

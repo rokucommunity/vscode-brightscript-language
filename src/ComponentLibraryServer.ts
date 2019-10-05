@@ -4,11 +4,18 @@ import * as os from 'os';
 import * as path from 'path';
 import * as url from 'url';
 
+import { util } from './util';
+
 export class ComponentLibraryServer {
 
     public componentLibrariesOutDir: string;
 
-    public startStaticFileHosting(componentLibrariesOutDir: string, port: number, sendDebugLogLine) {
+    public async startStaticFileHosting(componentLibrariesOutDir: string, port: number, sendDebugLogLine) {
+
+        // Make sure the requested port is not already being used by another service
+        if (await util.isPortInUse(port)) {
+            throw new Error(`Could not host component library files.\nPort ${port} is currently occupied.`);
+        }
 
         this.componentLibrariesOutDir = componentLibrariesOutDir;
 

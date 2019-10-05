@@ -350,7 +350,7 @@ You also have the ability to create keybindings for any other Roku supported key
 | `win+ctrl+x` | `cmd+ctrl+x` | extension.brightscript.setOutputExcludeFilter | Filter the BrightScript output by typing text you want to *exclude* |
 
 ## Config file for user-specific launch settings
-If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${end:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
+If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${env:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
 
 ```json
 //launch.json

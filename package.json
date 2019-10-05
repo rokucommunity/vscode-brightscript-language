@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.19.5",
+    "version": "1.20.1",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -49,6 +49,7 @@
         "fast-xml-parser": "^3.12.16",
         "find-in-files": "^0.5.0",
         "fs-extra": "^7.0.1",
+        "get-port": "^5.0.0",
         "glob": "^7.1.3",
         "hoek": "^6.1.2",
         "iconv-lite": "0.4.24",
@@ -269,7 +270,7 @@
                                         },
                                         "files": {
                                             "type": "array",
-                                            "description": "A file path or file glob that should be copied to the deployment package.",
+                                            "description": "A file path or file glob that should be copied to the  component library zip.",
                                             "default": [
                                                 "manifest",
                                                 "source/**/*.*",
@@ -277,7 +278,41 @@
                                                 "assets/**/*.*"
                                             ],
                                             "items": {
-                                                "type": "string"
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "description": "A file path or file glob that should be copied to the component library zip."
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "src": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                    },
+                                                                    {
+                                                                        "type": "array",
+                                                                        "description": "An array of file path or globs",
+                                                                        "items": {
+                                                                            "type": "string",
+                                                                            "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "dest": {
+                                                                "type": "string",
+                                                                "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "src",
+                                                            "dest"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         },
                                         "sourceDirs": {
