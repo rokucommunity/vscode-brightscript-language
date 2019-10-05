@@ -21,10 +21,12 @@ export class BreakpointWriter {
             let lineBreakpoints = breakpoints.filter(bp => bp.line - 1 === originalLineIndex);
             //if we have a breakpoint, insert that before the line
             for (let bp of lineBreakpoints) {
-                let breakpointLines = this.getBreakpointLines(bp);
-                for (let bpLine of breakpointLines) {
-                    //this is new code not found in source, so we don't need to provide original location information
-                    chunks.push(`${bpLine}${newline}`);
+                let linesForBreakpoint = this.getBreakpointLines(bp, originalFilePath);
+
+                //separate each line for this breakpoint with a newline
+                for (let bpLine of linesForBreakpoint) {
+                    chunks.push(bpLine);
+                    chunks.push('\n');
                 }
             }
 
@@ -39,11 +41,25 @@ export class BreakpointWriter {
         return node.toStringWithSourceMap();
     }
 
-    public getBreakpointLines(breakpoint: DebugProtocol.SourceBreakpoint) {
+    public getBreakpointLines(breakpoint: DebugProtocol.SourceBreakpoint, originalFilePath: string) {
         let lines = [];
-        if (breakpoint.condition) {
+        if (breakpoint.logMessage) {
+            let logMessage = breakpoint.logMessage;
+            //wrap the log message in quotes
+            logMessage = `"${logMessage}"`;
+            let expressionsCheck = /\{(.*?)\}/g;
+            let match;
+
+            // Get all the value to evaluate as expressions
+            while (match = expressionsCheck.exec(logMessage)) {
+                logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
+            }
+
+            // add a PRINT statement right before this line with the formated log message
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, `PRINT ${logMessage}`));
+        } else if (breakpoint.condition) {
             // add a conditional STOP statement
-            lines.push(`if ${breakpoint.condition} then : STOP : end if`);
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, `if ${breakpoint.condition} then : STOP : end if`));
         } else if (breakpoint.hitCondition) {
             let hitCondition = parseInt(breakpoint.hitCondition);
 
@@ -69,26 +85,12 @@ export class BreakpointWriter {
                 //coerce the expression into single-line
                 trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
                 // Add the tracking expression right before this line
-                lines.push(trackingExpression);
+                lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, trackingExpression));
             }
-        } else if (breakpoint.logMessage) {
-            let logMessage = breakpoint.logMessage;
-            //wrap the log message in quotes
-            logMessage = `"${logMessage}"`;
-            let expressionsCheck = /\{(.*?)\}/g;
-            let match;
-
-            // Get all the value to evaluate as expressions
-            while (match = expressionsCheck.exec(logMessage)) {
-                logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
-            }
-
-            // add a PRINT statement right before this line with the formated log message
-            lines.push(`PRINT ${logMessage}`);
         } else {
-            // add a STOP statement right before this line
-            //TODO temporarily add extra newlines to help surface bugs in the sourcemap mapping code
-            lines.push(`STOP`);
+            // add a STOP statement right before this line. Map the stop code to the line the breakpoint represents
+            //because otherwise source-map will return null for this location
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, 'STOP'));
         }
         return lines;
     }
