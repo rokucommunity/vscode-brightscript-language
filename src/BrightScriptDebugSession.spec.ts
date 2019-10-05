@@ -3,11 +3,9 @@ import { expect } from 'chai';
 
 import * as assert from 'assert';
 import * as fsExtra from 'fs-extra';
+import { Server } from 'https';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
-let sinon = sinonActual.createSandbox();
-let n = path.normalize;
-
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
 import {
@@ -21,6 +19,8 @@ import {
     PrimativeType
 } from './RokuAdapter';
 
+let sinon = sinonActual.createSandbox();
+let n = path.normalize;
 const rootDir = path.normalize(path.dirname(__dirname));
 
 beforeEach(() => {
@@ -322,41 +322,49 @@ describe('Debugger', () => {
             ]);
         });
     });
-    describe('convertDebuggerPathToClient', () => {
-        it('handles truncated paths', () => {
+    describe('getSourceLocation', () => {
+        it('handles truncated paths', async () => {
             //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
+            sinon.stub(fsExtra, 'pathExists').callsFake(async (filePath: string) => {
+                if (fileUtils.pathEndsWith(filePath, '.map')) {
+                    return false;
+                } else {
+                    return true;
+                }
             });
-
-            let s: any = session;
-            s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
+            sinon.stub(fileUtils, 'getAllRelativePaths').returns([
+                'source/file1.brs',
+                'source/file2.brs'
+            ]);
             s.launchArgs = {
-                rootDir: 'C:/someproject/src'
+                rootDir: rootDir
             };
-            let clientPath = s.convertDebuggerPathToClient('...erA/file1.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
+            session.stagingFolderPath = n(`${rootDir}/out`);
+            let sourceLocation = await session.getSourceLocation('...rce/file1.brs', 1);
+            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file1.brs`));
 
-            clientPath = s.convertDebuggerPathToClient('...erB/file2.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
-
+            // sourceLocation = await session.getSourceLocation('...rce/file2.brs', 1);
+            // expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file2.brs`));
         });
 
-        it('handles pkg paths', () => {
+        it('handles pkg paths', async () => {
             //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
+            sinon.stub(fsExtra, 'pathExists').callsFake(async (filePath: string) => {
+                if (fileUtils.pathEndsWith(filePath, '.map')) {
+                    return false;
+                } else {
+                    return true;
+                }
             });
-            let s: any = session;
-            s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
             s.launchArgs = {
-                rootDir: 'C:/someproject/src'
+                rootDir: rootDir
             };
-            let clientPath = s.convertDebuggerPathToClient('pkg:folderA/file1.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
+            session.stagingFolderPath = n(`${rootDir}/out`);
+            let sourceLocation = await session.getSourceLocation('pkg:source/file1.brs', 1);
+            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file1.brs`));
 
-            clientPath = s.convertDebuggerPathToClient('pkg:folderB/file2.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
+            sourceLocation = await session.getSourceLocation('pkg:source/file2.brs', 1);
+            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file2.brs`));
         });
 
     });
@@ -538,7 +546,7 @@ describe('Debugger', () => {
         });
 
         it('finds standard files', () => {
-            expect(session.getStagingFileInfo('pkg:/source/main.brs')).to.equal(n(`${rootDir}/out/source/main.brs`));
+            expect(session.getStagingFileInfo('pkg:/source/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
         });
 
         it(`searches for partial files when '...' is encountered`, () => {
@@ -547,13 +555,13 @@ describe('Debugger', () => {
                 expect(directoryPath).to.equal(s.stagingFolderPath);
                 return `source/main.brs`;
             });
-            expect(session.getStagingFileInfo('...ource/main.brs')).to.equal(n(`${rootDir}/out/source/main.brs`));
+            expect(session.getStagingFileInfo('...ource/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
             expect(stub.called).to.be.true;
         });
 
         it(`detects full paths to component library filenames`, () => {
             s.componentLibraryStagingFolders[1] = n(`${rootDir}/compLibA/out`);
-            expect(session.getStagingFileInfo('pkg:/source/main__lib1.brs')).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
+            expect(session.getStagingFileInfo('pkg:/source/main__lib1.brs').absolutePath).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
         });
 
         it(`detects partial paths to component library filenames`, () => {
@@ -563,7 +571,11 @@ describe('Debugger', () => {
                 expect(directoryPath).to.equal(s.componentLibraryStagingFolders[1]);
                 return `source/main__lib1.brs`;
             });
-            expect(session.getStagingFileInfo('...ource/main__lib1.brs')).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
+            expect(session.getStagingFileInfo('...ource/main__lib1.brs')).to.eql({
+                relativePath: n('source/main__lib1.brs'),
+                absolutePath: n(`${rootDir}/compLibA/out/source/main__lib1.brs`),
+                outDirPath: n(`${rootDir}/compLibA/out`)
+            });
             expect(stub.called).to.be.true;
         });
     });

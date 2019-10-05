@@ -1,7 +1,7 @@
+import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as replaceLast from 'replace-last';
 
-import { EventEmitter } from 'events';
 import { SourceLocation } from './BrightScriptDebugSession';
 
 export class RendezvousTracker {
@@ -71,12 +71,12 @@ export class RendezvousTracker {
      * @param logLine
      * @returns The debug output after parsing
      */
-    public processLogLine(logLine: string): string {
+    public async processLogLine(logLine: string): Promise<string> {
         let dataChanged = false;
         let lines = logLine.split('\n');
         let normalOutput = '';
 
-        lines.map((line) => {
+        for (let line of lines) {
             let match;
             // see the following for an explanation for this regex: https://regex101.com/r/In0t7d/6
             if (match = /\[sg\.node\.(BLOCK|UNBLOCK)\s{0,}\] Rendezvous\[(\d+)\](?:\s\w+\n|\s\w{2}\s(.*)\((\d+)\)|[\s\w]+(\d+\.\d+)+|\s\w+)/g.exec(line)) {
@@ -84,7 +84,7 @@ export class RendezvousTracker {
                 if (type === 'BLOCK') {
                     // detected the start of a rendezvous event
                     this.rendezvousBlocks[id] = {
-                        fileName: this.updateClientPathMap(fileName, parseInt(lineNumber)),
+                        fileName: await this.updateClientPathMap(fileName, parseInt(lineNumber)),
                         lineNumber: lineNumber
                     };
                 } else if (type === 'UNBLOCK' && this.rendezvousBlocks[id]) {
@@ -142,7 +142,7 @@ export class RendezvousTracker {
             } else if (line) {
                 normalOutput += line + '\n';
             }
-        });
+        }
 
         if (dataChanged) {
             this.emit('rendezvous-event', this.rendezvousHistory);
@@ -157,7 +157,7 @@ export class RendezvousTracker {
      * @param lineNumber The line number parsed from the rendezvous output
      * @returns The file name that best matches the source files if we where able to map it to the source
      */
-    private updateClientPathMap(fileName: string, lineNumber: number): string {
+    private async updateClientPathMap(fileName: string, lineNumber: number): Promise<string> {
         let parsedPath = path.parse(fileName);
         let fileNameAsBrs: string;
         let fileNameAsXml: string;
@@ -181,7 +181,7 @@ export class RendezvousTracker {
             if (fileNameAsBrs || fileNameAsXml) {
                 // File name did not have a valid extension
                 // Check for both the .brs and .xml versions of the file starting with .brs
-                fileNameAsBrs =(await this.getSourceLocation(fileNameAsBrs, lineNumber)).pathAbsolute;
+                fileNameAsBrs = (await this.getSourceLocation(fileNameAsBrs, lineNumber)).pathAbsolute;
                 if (fileNameAsBrs) {
                     fileName = fileNameAsBrs;
                 } else {
@@ -191,17 +191,17 @@ export class RendezvousTracker {
                     }
                 }
             }
-            let sourceLocation = this.getSourceLocation(fileName, lineNumber, 0);
+            let sourceLocation = await this.getSourceLocation(fileName, lineNumber);
             this.clientPathsMap[fileName] = {
                 clientPath: sourceLocation.pathAbsolute,
                 clientLines: {
                     //TODO - should the line be 1 or 0 based?
-                    [lineNumber]: sourceLocation.line
+                    [lineNumber]: sourceLocation.lineNumber
                 }
             };
         } else if (!this.clientPathsMap[fileName].clientLines[lineNumber]) {
             // Add new client line to clint path map
-            this.clientPathsMap[fileName].clientLines[lineNumber] = this.convertDebuggerLineToClientLine(fileName, parseInt(lineNumber));
+            this.clientPathsMap[fileName].clientLines[lineNumber] = (await this.getSourceLocation(fileName, lineNumber)).lineNumber;
         }
 
         return fileName;

@@ -3,6 +3,8 @@ import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
 import * as path from 'path';
+// tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
+let replaceInFile = require('replace-in-file');
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
 import { SourceMapConsumer } from 'source-map';
@@ -23,6 +25,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { BreakpointWriter } from './BreakpointWriter';
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { ComponentLibraryConfig } from './DebugConfigurationProvider';
 import { fileUtils } from './FileUtils';
 import { RendezvousHistory } from './RendezvousTracker';
 import {
@@ -30,57 +33,6 @@ import {
     RokuAdapter
 } from './RokuAdapter';
 import { util } from './util';
-import { ComponentLibraryConfig } from './DebugConfigurationProvider';
-
-// tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
-let replaceInFile = require('replace-in-file');
-
-class CompileFailureEvent implements DebugProtocol.Event {
-    constructor(compileError: any) {
-        this.body = compileError;
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class LogOutputEvent implements DebugProtocol.Event {
-    constructor(lines: string) {
-        this.body = lines;
-        this.event = 'BSLogOutputEvent';
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class RendezvousEvent implements DebugProtocol.Event {
-    constructor(output: RendezvousHistory) {
-        this.body = output;
-        this.event = 'BSRendezvousEvent';
-    }
-
-    public body: RendezvousHistory;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class LaunchStartEvent implements DebugProtocol.Event {
-    constructor(args: LaunchRequestArguments) {
-        this.body = args;
-        this.event = 'BSLaunchStartEvent';
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
 
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
@@ -158,12 +110,13 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * The path to the staging folder
      */
-    private stagingFolderPath: string;
+    public stagingFolderPath: string;
 
     public launchRequestWasCalled = false;
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
+
         this.launchRequestWasCalled = true;
         let disconnect = () => {
         };
@@ -712,12 +665,12 @@ export class BrightScriptDebugSession extends DebugSession {
             let stackTrace = await this.rokuAdapter.getStackTrace();
 
             for (let debugFrame of stackTrace) {
-                let clientLocation = this.getClientLocation(debugFrame.filePath, debugFrame.lineNumber);
+                let sourceLocation = await this.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
 
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
                 try {
-                    let functionName = await this.getCorrectFunctionNameCase(clientPath, debugFrame.functionIdentifier);
+                    let functionName = await this.getCorrectFunctionNameCase(sourceLocation.pathAbsolute, debugFrame.functionIdentifier);
                     if (functionName) {
                         debugFrame.functionIdentifier = functionName;
                     }
@@ -728,8 +681,8 @@ export class BrightScriptDebugSession extends DebugSession {
                 let frame = new StackFrame(
                     debugFrame.frameId,
                     `${debugFrame.functionIdentifier}`,
-                    new Source(path.basename(clientPath), clientPath),
-                    clientLineNumber,
+                    new Source(path.basename(sourceLocation.pathAbsolute), sourceLocation.pathAbsolute),
+                    sourceLocation.lineNumber,
                     1
                 );
                 frames.push(frame);
@@ -987,7 +940,7 @@ export class BrightScriptDebugSession extends DebugSession {
         let bpWriter = new BreakpointWriter();
         let promises = [];
         /**
-         * Add 
+         * Add breakpoints to the specified file
          * @param clientPath - the path to the original source file from its original location
          * @param basePath - the base path to the folder where the client path file resides
          */
@@ -1221,9 +1174,8 @@ export class BrightScriptDebugSession extends DebugSession {
         let stagingFolderPath: string;
 
         let componentLibraryIndex = fileUtils.getComponentLibraryIndex(debuggerPath, this.componentLibraryPostfix);
-
         //component libraries
-        if (componentLibraryIndex === undefined) {
+        if (componentLibraryIndex !== undefined) {
             stagingFolderPath = this.componentLibraryStagingFolders[componentLibraryIndex];
 
             //standard project files
@@ -1239,12 +1191,15 @@ export class BrightScriptDebugSession extends DebugSession {
         } else {
             relativePath = fileUtils.findPartialFileInDirectory(debuggerPath, stagingFolderPath);
         }
-
-        return {
-            relativePath: relativePath,
-            absolutePath: path.join(stagingFolderPath, relativePath),
-            outDirPath: stagingFolderPath
-        };
+        if (relativePath) {
+            return {
+                relativePath: path.normalize(relativePath),
+                absolutePath: path.join(stagingFolderPath, relativePath),
+                outDirPath: stagingFolderPath
+            };
+        } else {
+            return undefined;
+        }
     }
 
     /**
@@ -1255,8 +1210,11 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param debuggerPath - the path that was returned by the debugger
      * @param debuggerLineNumber - the line number that was sent by the debugger
      */
-    private async getSourceLocation(debuggerPath: string, debuggerLineNumber: number): Promise<SourceLocation> {
+    public async getSourceLocation(debuggerPath: string, debuggerLineNumber: number): Promise<SourceLocation | undefined> {
         let stagingFileInfo = this.getStagingFileInfo(debuggerPath);
+        if (!stagingFileInfo) {
+            return;
+        }
         let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber);
 
         //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
@@ -1265,9 +1223,9 @@ export class BrightScriptDebugSession extends DebugSession {
             let sourceDirs: string[];
             let componentLibrary = this.getComponentLibraryForFile(stagingFileInfo.relativePath);
             if (componentLibrary) {
-                sourceDirs = [...componentLibrary.sourceDirs, componentLibrary.rootDir];
+                sourceDirs = [...(componentLibrary.sourceDirs || []), componentLibrary.rootDir];
             } else {
-                sourceDirs = [...this.launchArgs.sourceDirs, this.launchArgs.rootDir];
+                sourceDirs = [...(this.launchArgs.sourceDirs || []), this.launchArgs.rootDir];
             }
 
             //find the first occurance of this relative path
@@ -1287,7 +1245,7 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * Given any file path, look for the component library postfix. 
+     * Given any file path, look for the component library postfix.
      * If present, return the component library config for that library id
      */
     private getComponentLibraryForFile(filePath: string) {
@@ -1507,6 +1465,54 @@ export function replaceCaseInsensitive(subject: string, search: string, replacem
     } else {
         return subject;
     }
+}
+
+
+class CompileFailureEvent implements DebugProtocol.Event {
+    constructor(compileError: any) {
+        this.body = compileError;
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class LogOutputEvent implements DebugProtocol.Event {
+    constructor(lines: string) {
+        this.body = lines;
+        this.event = 'BSLogOutputEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class RendezvousEvent implements DebugProtocol.Event {
+    constructor(output: RendezvousHistory) {
+        this.body = output;
+        this.event = 'BSRendezvousEvent';
+    }
+
+    public body: RendezvousHistory;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class LaunchStartEvent implements DebugProtocol.Event {
+    constructor(args: LaunchRequestArguments) {
+        this.body = args;
+        this.event = 'BSLaunchStartEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
 }
 
 export interface SourceLocation {

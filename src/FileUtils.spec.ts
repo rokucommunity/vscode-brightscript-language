@@ -55,6 +55,10 @@ describe('FileUtils', () => {
             ]);
         });
 
+        it('normalizes the paths', () => {
+            expect(fileUtils.findPartialFileInDirectory('...ource\\lib2//lib.brs', 'NOT_IMPORTANT_DUE_TO_MOCK'));
+        });
+
         it('returns first result when multiple matches are found', () => {
             let stub = sinon.stub(console, 'warn').returns(undefined);
 
@@ -86,7 +90,7 @@ describe('FileUtils', () => {
         });
     });
 
-    describe.only('findFirstRelativeFile', () => {
+    describe('findFirstRelativeFile', () => {
         let paths = [] as string[];
         let rootA = n(`${rootDir}/compLibA`);
         let rootB = n(`${rootDir}/compLibB`);

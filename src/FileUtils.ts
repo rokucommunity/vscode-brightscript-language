@@ -3,6 +3,8 @@ import glob = require('glob');
 import * as path from 'path';
 import { SourceMapConsumer } from 'source-map';
 
+import { SourceLocation } from './BrightScriptDebugSession';
+
 export class FileUtils {
 
     /**
@@ -112,7 +114,7 @@ export class FileUtils {
      * @param debuggerLineNumber - the line number provided by the debugger
      * @param debuggerColumnNumber - the column number provided by the debugger
      */
-    public async getSourceLocationFromSourcemap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0) {
+    public async getSourceLocationFromSourcemap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0): Promise<SourceLocation> {
         //look for a sourcemap for this file
         let sourcemapPath = `${filePathAbsolute}.map`;
 
@@ -131,8 +133,8 @@ export class FileUtils {
             //get the absolute path to the source file
             let sourcePathAbsolute = path.resolve(folderPathForStagingFile, position.source);
             return {
-                column: position.column,
-                line: position.line,
+                columnIndex: position.column,
+                lineNumber: position.line,
                 pathAbsolute: sourcePathAbsolute
             };
         }

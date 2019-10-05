@@ -225,7 +225,7 @@ export class RokuAdapter {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
 
-                responseText = this.rendezvousTracker.processLogLine(responseText);
+                responseText = await this.rendezvousTracker.processLogLine(responseText);
                 //forward all unhandled console output
                 this.processBreakpoints(responseText);
                 if (responseText) {

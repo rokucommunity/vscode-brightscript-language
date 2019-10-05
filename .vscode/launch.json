@@ -26,7 +26,8 @@
 			"type": "node",
 			"request": "launch",
 			"name": "Tests",
-			"cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
 			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
 			"args": [
 				"-u", "tdd",
