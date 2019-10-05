@@ -2,6 +2,8 @@ import * as eol from 'eol';
 import { SourceNode } from 'source-map';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+import { fileUtils } from './FileUtils';
+
 export class BreakpointWriter {
 
     private bpIndex = 1;
@@ -85,6 +87,7 @@ export class BreakpointWriter {
             lines.push(`PRINT ${logMessage}`);
         } else {
             // add a STOP statement right before this line
+            //TODO temporarily add extra newlines to help surface bugs in the sourcemap mapping code
             lines.push(`STOP`);
         }
         return lines;

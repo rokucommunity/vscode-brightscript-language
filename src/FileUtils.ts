@@ -120,9 +120,9 @@ export class FileUtils {
 
         //if we have a sourcemap, use it
         if (await fsExtra.pathExists(sourcemapPath)) {
-            // let sourcemapText = (await fsExtra.readFile(stagingFileMapPath)).toString();
-            // let sourcemap = JSON.parse(sourcemapText);
-            let position = await SourceMapConsumer.with(null, sourcemapPath, (consumer) => {
+            let sourcemapText = (await fsExtra.readFile(sourcemapPath)).toString();
+            let sourcemap = JSON.parse(sourcemapText);
+            let position = await SourceMapConsumer.with(sourcemap, null, (consumer) => {
                 return consumer.originalPositionFor({
                     line: debuggerLineNumber,
                     column: debuggerColumnNumber
@@ -139,6 +139,24 @@ export class FileUtils {
             };
         }
     }
+
+    /**
+     * Get a file url for a file path (i.e. file:///C:/projects/Something or file:///projects/something
+     * @param fullPath
+     */
+    public getFileProtocolPath(fullPath: string) {
+        if (fullPath.indexOf('file://') === 0) {
+            return fullPath;
+        }
+        let result: string;
+        if (fullPath.indexOf('/') === 0 || fullPath.indexOf('\\') === 0) {
+            result = `file://${fullPath}`;
+        } else {
+            result = `file:///${fullPath}`;
+        }
+        return result;
+    }
+
 }
 
 export let fileUtils = new FileUtils();

@@ -2,9 +2,11 @@
 import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
+import * as rmfr from 'rmfr';
 import * as sinonActual from 'sinon';
 
 import { fileUtils } from './FileUtils';
+import { SourceNode } from 'source-map';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -118,6 +120,68 @@ describe('FileUtils', () => {
         it('finds file from last folder', async () => {
             paths = [pathC];
             expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
+        });
+    });
+
+    describe('getSourceLocationFromSourcemap', () => {
+        let tempDirPath = n(`${rootDir}/.test_temp`);
+        let sourceDirPath = n(`${tempDirPath}/source`);
+        let outDirPath = n(`${tempDirPath}/out`);
+        let sourceFilePath = n(`${sourceDirPath}/file.brs`);
+        let outFilePath = n(`${outDirPath}/file.brs`);
+        let outFileMapPath = n(`${outFilePath}.map`);
+
+        beforeEach(async () => {
+            await rmfr(tempDirPath);
+
+            await fsExtra.mkdir(tempDirPath);
+            await fsExtra.mkdir(sourceDirPath);
+            await fsExtra.mkdir(outDirPath);
+
+            let sourceContents = `function main()\n    print "hello"\n    print "world"\nend function
+            `;
+
+            //create a source file
+            await fsExtra.writeFile(sourceFilePath, sourceContents);
+        });
+
+        afterEach(async () => {
+            await rmfr(tempDirPath);
+        });
+
+        async function createOutFiles(sourcePath) {
+            //transform the file (by adding extra newlines
+            let result = new SourceNode(null, null, sourcePath, [
+                new SourceNode(1, 0, sourcePath, 'function main()\n'),
+                '\n',
+                new SourceNode(2, 0, sourcePath, '    print "hello"\n'),
+                '\n',
+                new SourceNode(3, 0, sourcePath, '    print "world"\n'),
+                '\n',
+                new SourceNode(4, 0, sourcePath, 'end function\n')
+            ]).toStringWithSourceMap();
+            await fsExtra.writeFile(outFilePath, result.code);
+            await fsExtra.writeFile(outFileMapPath, result.map);
+        }
+
+        it('supports absolute paths in sourcemap', async () => {
+            await createOutFiles(sourceFilePath);
+            let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
+            expect(location).to.eql({
+                pathAbsolute: sourceFilePath,
+                lineNumber: 2,
+                columnIndex: 0
+            });
+        });
+
+        it('supports relative paths in sourcemap', async () => {
+            await createOutFiles('../source/file.brs');
+            let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
+            expect(location).to.eql({
+                pathAbsolute: sourceFilePath,
+                lineNumber: 2,
+                columnIndex: 0
+            });
         });
     });
 });

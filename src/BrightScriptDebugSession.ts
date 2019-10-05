@@ -1467,7 +1467,6 @@ export function replaceCaseInsensitive(subject: string, search: string, replacem
     }
 }
 
-
 class CompileFailureEvent implements DebugProtocol.Event {
     constructor(compileError: any) {
         this.body = compileError;
