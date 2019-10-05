@@ -6,7 +6,7 @@ import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
 import * as vscode from 'vscode';
 
-import { defer } from './BrightScriptDebugSession';
+import { defer, SourceLocation } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 import { util } from './util';
@@ -1225,11 +1225,8 @@ export class RokuAdapter {
     /**
      * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
      */
-    public setRendezvousDebuggerFileConversionFunctions(
-        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
-        convertDebuggerPathToClient: (debuggerPath: string) => string
-    ) {
-        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
+    public registerSourceLocator(sourceLocator: (debuggerPath: string, lineNumber: number) => Promise<SourceLocation>) {
+        this.rendezvousTracker.registerSourceLocator(sourceLocator);
     }
 
     /**

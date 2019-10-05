@@ -27,7 +27,7 @@ describe('BrightScriptFileUtils ', () => {
 
     beforeEach(() => {
         rendezvousTracker = new RendezvousTracker();
-        rendezvousTracker.setDebuggerFileConversionFunctions(
+        rendezvousTracker.registerSourceLocator(
             (debuggerPath: string, lineNumber: number): number => {
                 return lineNumber;
             },

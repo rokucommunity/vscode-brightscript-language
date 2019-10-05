@@ -246,8 +246,8 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
 
             //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
-            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions((debuggerPath: string, lineNumber: number) => {
-                return this.getSourceLocation(debuggerPath, lineNumber, 0);
+            this.rokuAdapter.registerSourceLocator(async (debuggerPath: string, lineNumber: number) => {
+                return await this.getSourceLocation(debuggerPath, lineNumber);
             });
 
             //pass the log level down thought the adapter to the RendezvousTracker
@@ -286,9 +286,9 @@ export class BrightScriptDebugSession extends DebugSession {
             // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
             this.rokuAdapter.on('compile-errors', async (compileErrors) => {
                 for (let compileError of compileErrors) {
-                    let clientLocation = await this.getClientLocation(compileError.path, compileError.lineNumber);
-                    compileError.lineNumber = clientLocation.lineNumber;
-                    compileError.path = clientLocation.path;
+                    let sourceLocation = await this.getSourceLocation(compileError.path, compileError.lineNumber);
+                    compileError.path = sourceLocation.pathAbsolute;
+                    compileError.lineNumber = sourceLocation.lineNumber;
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
@@ -1223,9 +1223,9 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param debuggerPath - the path that was returned by the debugger
      * @param debuggerLineNumber - the line number that was sent by the debugger
      */
-    private async getSourceLocation(debuggerPath: string, debuggerLineNumber: number, debuggerColumnNumber: number) {
+    private async getSourceLocation(debuggerPath: string, debuggerLineNumber: number): Promise<SourceLocation> {
         let stagingFileInfo = this.getStagingFileInfo(debuggerPath);
-        let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber, debuggerColumnNumber);
+        let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber);
 
         //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
         if (!sourceLocation) {
@@ -1247,8 +1247,8 @@ export class BrightScriptDebugSession extends DebugSession {
             );
             sourceLocation = {
                 pathAbsolute: sourcePath,
-                line: debuggerLineNumber,
-                column: debuggerColumnNumber
+                lineNumber: debuggerLineNumber,
+                columnIndex: 0
             };
         }
         return sourceLocation;
@@ -1475,4 +1475,12 @@ export function replaceCaseInsensitive(subject: string, search: string, replacem
     } else {
         return subject;
     }
+}
+
+export interface SourceLocation {
+    pathAbsolute: string;
+    //1-based line number
+    lineNumber: number;
+    //0-based column index
+    columnIndex: number;
 }
