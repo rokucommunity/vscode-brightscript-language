@@ -91,7 +91,13 @@ export class RokuAdapter {
             'unhandled-console-output',
         data?
     ) {
-        this.emitter.emit(eventName, data);
+        //emit these events on next tick, otherwise they will be processed immediately which could cause issues
+        setTimeout(() => {
+            //in rare cases, this event is fired after the debugger has closed, so make sure the event emitter still exists
+            if (this.emitter) {
+                this.emitter.emit(eventName, data);
+            }
+        }, 0);
     }
 
     /**

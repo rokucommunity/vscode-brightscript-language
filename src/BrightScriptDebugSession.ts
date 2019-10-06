@@ -918,7 +918,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
         //anytime the adapter encounters an exception on the roku,
         this.rokuAdapter.on('runtime-error', async (exception) => {
-            let threads = await (await this.getRokuAdapter()).getThreads();
+            let rokuAdapter = await this.getRokuAdapter();
+            let threads = await rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
             this.sendEvent(new StoppedEvent('exception', threadId, exception.message));
         });
