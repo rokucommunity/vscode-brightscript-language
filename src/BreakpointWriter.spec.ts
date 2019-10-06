@@ -11,7 +11,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('correctly injects standard breakpoints', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -28,7 +28,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('injects conditions', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -46,7 +46,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('injects hit conditions', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -64,7 +64,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('injects regular stop when hit condition is 0', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -82,7 +82,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('injects logMessage', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -100,7 +100,7 @@ describe('BreakpointWriter', () => {
     });
 
     it('injects logMessage with interpolated values', () => {
-        expect(writer.writeBreakpointsWithSourcemaps(`
+        expect(writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
@@ -117,15 +117,15 @@ describe('BreakpointWriter', () => {
         `);
     });
 
-    it('generates valid sourcemaps', async () => {
-        let result = writer.writeBreakpointsWithSourcemaps(`
+    it('generates valid source map', async () => {
+        let result = writer.writeBreakpointsWithSourceMap(`
             function Main()
                 print "Hello world"
             end function
         `, 'test.brs', [{ line: 3, column: 5 }]);
         expect(result.map).to.exist;
 
-        //validate that the sourcemap is correct
+        //validate that the source map is correct
         await SourceMapConsumer.with(result.map.toString(), null, (consumer) => {
             expect(consumer.originalPositionFor({
                 line: 4,

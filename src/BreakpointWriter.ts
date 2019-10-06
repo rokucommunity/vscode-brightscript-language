@@ -7,7 +7,7 @@ import { fileUtils } from './FileUtils';
 export class BreakpointWriter {
 
     private bpIndex = 1;
-    public writeBreakpointsWithSourcemaps(fileContents: string, originalFilePath: string, breakpoints: DebugProtocol.SourceBreakpoint[]) {
+    public writeBreakpointsWithSourceMap(fileContents: string, originalFilePath: string, breakpoints: DebugProtocol.SourceBreakpoint[]) {
         let chunks = [] as Array<SourceNode | string>;
 
         //split the file by newline

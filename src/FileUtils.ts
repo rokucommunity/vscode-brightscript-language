@@ -109,27 +109,27 @@ export class FileUtils {
     }
 
     /**
-     * Get the source location of a position using a sourcemap. If no sourcemap is found, undefined is returned
+     * Get the source location of a position using a source map. If no source map is found, undefined is returned
      * @param filePathAbsolute - the absolute path to the file
      * @param debuggerLineNumber - the line number provided by the debugger
      * @param debuggerColumnNumber - the column number provided by the debugger
      */
     public async getSourceLocationFromSourcemap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0): Promise<SourceLocation> {
-        //look for a sourcemap for this file
-        let sourcemapPath = `${filePathAbsolute}.map`;
+        //look for a source map for this file
+        let sourceMapPath = `${filePathAbsolute}.map`;
 
-        //if we have a sourcemap, use it
-        if (await fsExtra.pathExists(sourcemapPath)) {
-            let sourcemapText = (await fsExtra.readFile(sourcemapPath)).toString();
-            let sourcemap = JSON.parse(sourcemapText);
-            let position = await SourceMapConsumer.with(sourcemap, null, (consumer) => {
+        //if we have a source map, use it
+        if (await fsExtra.pathExists(sourceMapPath)) {
+            let sourceMapText = (await fsExtra.readFile(sourceMapPath)).toString();
+            let sourceMap = JSON.parse(sourceMapText);
+            let position = await SourceMapConsumer.with(sourceMap, null, (consumer) => {
                 return consumer.originalPositionFor({
                     line: debuggerLineNumber,
                     column: debuggerColumnNumber
                 });
             });
-            //get the path to the folder this sourcemap lives in
-            let folderPathForStagingFile = path.dirname(sourcemapPath);
+            //get the path to the folder this source map lives in
+            let folderPathForStagingFile = path.dirname(sourceMapPath);
             //get the absolute path to the source file
             let sourcePathAbsolute = path.resolve(folderPathForStagingFile, position.source);
             return {

@@ -2,6 +2,7 @@ import * as eol from 'eol';
 import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
+import * as mergeSourceMap from 'merge-source-map';
 import * as path from 'path';
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
@@ -956,16 +957,25 @@ export class BrightScriptDebugSession extends DebugSession {
             if (pathIncludesCaseInsensitive(clientPath, basePath)) {
                 let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
+                let sourceMapPath = `${stagingFilePath}.map`;
                 //load the file as a string
                 let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
 
-                let breakpointResult = bpWriter.writeBreakpointsWithSourcemaps(fileContents, clientPath, breakpoints);
+                let breakpointResult = bpWriter.writeBreakpointsWithSourceMap(fileContents, clientPath, breakpoints);
+
+                let sourceMap = JSON.stringify(breakpointResult.map);
+
+                //if a source map already exists for this file, we need to merge that one with our new one
+                if (await fsExtra.pathExists(sourceMapPath)) {
+                    let originalSourceMap = await fsExtra.readFile(sourceMapPath);
+                    sourceMap = mergeSourceMap(originalSourceMap, sourceMap);
+                }
 
                 await Promise.all([
                     //overwrite the file that now has breakpoints injected
                     fsExtra.writeFile(stagingFilePath, breakpointResult.code),
-                    //write the sourcemaps file
-                    fsExtra.writeFile(`${stagingFilePath}.map`, breakpointResult.map)
+                    //write the source map file
+                    fsExtra.writeFile(sourceMapPath, sourceMap)
                 ]);
             }
         };
@@ -1204,7 +1214,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
     /**
      * Convert a debugger location into a source location.
-     * If a sourcemap with the same name is found, those will be used.
+     * If a source map with the same name is found, those will be used.
      * Otherwise, use the `sourceDirs` and the `componentLibraries` root dirs to
      * walk through the file system to find a source file that matches
      * @param debuggerPath - the path that was returned by the debugger
@@ -1217,7 +1227,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
         let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber);
 
-        //there is no sourcemap for this file...assume debuggerLineNumber matches source line number
+        //there is no source map for this file...assume debuggerLineNumber matches source line number
         if (!sourceLocation) {
             //an array of source folders, which will be traversed
             let sourceDirs: string[];

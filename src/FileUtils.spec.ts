@@ -123,7 +123,7 @@ describe('FileUtils', () => {
         });
     });
 
-    describe('getSourceLocationFromSourcemap', () => {
+    describe('getSourceLocationFromSourceMap', () => {
         let tempDirPath = n(`${rootDir}/.test_temp`);
         let sourceDirPath = n(`${tempDirPath}/source`);
         let outDirPath = n(`${tempDirPath}/out`);
@@ -164,7 +164,7 @@ describe('FileUtils', () => {
             await fsExtra.writeFile(outFileMapPath, result.map);
         }
 
-        it('supports absolute paths in sourcemap', async () => {
+        it('supports absolute paths in source map', async () => {
             await createOutFiles(sourceFilePath);
             let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
             expect(location).to.eql({
@@ -174,7 +174,7 @@ describe('FileUtils', () => {
             });
         });
 
-        it('supports relative paths in sourcemap', async () => {
+        it('supports relative paths in source map', async () => {
             await createOutFiles('../source/file.brs');
             let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
             expect(location).to.eql({
