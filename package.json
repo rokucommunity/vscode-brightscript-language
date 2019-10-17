@@ -650,6 +650,12 @@
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
+                },
+                "brightscript.completionItems.removeInterfaceText": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Remove the interface text after selecting a completion item.",
+                    "scope": "resource"
                 }
             }
         },

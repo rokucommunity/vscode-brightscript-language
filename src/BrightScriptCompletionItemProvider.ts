@@ -68,6 +68,17 @@ import { ifXMLElementCompletionItems } from './BrightScriptCompletionItems/ifXML
 import { ifXMLListCompletionItems } from './BrightScriptCompletionItems/ifXMLListCompletionItems';
 
 export default class BrightScriptCompletionItemProvider implements CompletionItemProvider {
+    constructor() {
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.removeInterfaceText = (config.completionItems || {}).removeInterfaceText;
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            this.removeInterfaceText = (config.completionItems || {}).removeInterfaceText;
+        });
+    }
+
+    private removeInterfaceText: boolean;
+
     private interfaceDictionary: { [key: string]: CompletionItem[] } = {
         ifAppInfo: ifAppInfoCompletionItems,
         ifAppManager: ifAppManagerCompletionItems,
@@ -135,10 +146,15 @@ export default class BrightScriptCompletionItemProvider implements CompletionIte
         for (let key in this.interfaceDictionary) {
             if (linePrefix.endsWith('.' + key.toLowerCase() + '.')) {
                 let completionItems = this.interfaceDictionary[key];
-                completionItems.forEach((item) => {
-                    item.additionalTextEdits = [
+                let additionalTextEdits = [];
+                if (this.removeInterfaceText) {
+                    additionalTextEdits = [
                         new vscode.TextEdit(new vscode.Range(new vscode.Position(position.line, position.character - (key + '.').length), position), '')
                     ];
+                }
+
+                completionItems.forEach((item) => {
+                    item.additionalTextEdits = additionalTextEdits;
                 });
                 return completionItems;
             }
