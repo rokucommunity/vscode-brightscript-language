@@ -37,9 +37,9 @@ describe('extension', () => {
 
     it('registers formatter', () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentRangeFormattingEditProvider');
-        expect(spy.calledOnce).to.be.false;
+        expect(spy.getCalls().length).to.equal(0);
         extension.activate(<any>{ subscriptions: [] });
-        expect(spy.calledOnce).to.be.true;
+        expect(spy.getCalls().length).to.be.greaterThan(1);
     });
 
     it('registers definition provider', () => {

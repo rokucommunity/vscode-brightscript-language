@@ -2,9 +2,10 @@
 import { expect } from 'chai';
 
 import * as assert from 'assert';
-import * as fs from 'fs-extra';
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import * as sinon from 'sinon';
+import * as sinonActual from 'sinon';
+let sinon = sinonActual.createSandbox();
 
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 
@@ -18,6 +19,12 @@ import {
     PrimativeType
 } from './RokuAdapter';
 
+const rootDir = path.normalize(path.dirname(__dirname));
+
+beforeEach(() => {
+    sinon.restore();
+});
+
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
     let rokuAdapter: any = {
@@ -26,7 +33,9 @@ describe('Debugger', () => {
             };
         },
         activate: () => Promise.resolve(),
-        exitActiveBrightscriptDebugger: () => Promise.resolve()
+        exitActiveBrightscriptDebugger: () => Promise.resolve(),
+        setRendezvousDebuggerFileConversionFunctions: function(a, b) { },
+        setConsoleOutput: function(a) { }
     };
     beforeEach(() => {
         try {
@@ -60,6 +69,8 @@ describe('Debugger', () => {
                 return Promise.resolve();
             },
             getOptions: () => {
+            },
+            getFilePaths: () => {
             }
         };
         (session as any).rokuAdapter = rokuAdapter;
@@ -90,6 +101,70 @@ describe('Debugger', () => {
             rootDir: '1/2/3'
         });
         assert.equal(path.normalize(session.baseProjectPath), path.normalize('1/2/3'));
+    });
+
+    describe('updateManifestBsConsts', () => {
+        let constsLine: string;
+        let startingFileContents: string;
+        let bsConsts: { [key: string]: boolean };
+
+        beforeEach(() => {
+            constsLine = 'bs_const=const=false;const2=true;const3=false';
+            startingFileContents = `title=ComponentLibraryTestChannel
+                subtitle=Test Channel for Scene Graph Component Library
+                mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
+                mm_icon_side_hd=pkg:/images/MainMenu_Icon_Side_HD.png
+                mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
+                mm_icon_side_sd=pkg:/images/MainMenu_Icon_Side_SD43.png
+                splash_screen_fd=pkg:/images/splash_fhd.jpg
+                splash_screen_hd=pkg:/images/splash_hd.jpg
+                splash_screen_sd=pkg:/images/splash_sd.jpg
+                major_version=1
+                minor_version=1
+                build_version=00001
+                ${constsLine}
+            `.replace(/    /g, '');
+
+            bsConsts = { };
+        });
+
+        it('should update one bs_const in the bs_const line', async () => {
+            let fileContents: string;
+            bsConsts.const = true;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=true;const3=false'));
+
+            delete bsConsts.const;
+            bsConsts.const2 = false;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=false;const3=false'));
+
+            delete bsConsts.const2;
+            bsConsts.const3 = true;
+            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=true;const3=true'));
+        });
+
+        it('should update all bs_consts in the bs_const line', async () => {
+            bsConsts.const = true;
+            bsConsts.const2 = false;
+            bsConsts.const3 = true;
+            let fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=false;const3=true'));
+        });
+
+        it('should throw error when there is no bs_const line', async () => {
+            await assert.rejects(async () => {
+                await session.updateManifestBsConsts(bsConsts, startingFileContents.replace(constsLine, ''));
+            });
+        });
+
+        it('should throw error if there is consts in the bsConsts that are not in the manifest', async () => {
+            bsConsts.const4 = true;
+            await assert.rejects(async () => {
+                await session.updateManifestBsConsts(bsConsts, startingFileContents);
+            });
+        });
     });
 
     describe('evaluating variable', () => {
@@ -123,6 +198,7 @@ describe('Debugger', () => {
         beforeEach(() => {
             //clear out the responses before each test
             responses = [];
+            responseDeferreds = [];
 
             sinon.stub(session, 'sendResponse').callsFake((response) => {
                 responses.push(response);
@@ -160,6 +236,7 @@ describe('Debugger', () => {
             });
         });
 
+        //this fails on TravisCI for some reason. TODO - fix this
         it('returns the correct indexed variables count', async () => {
             let expression = 'someArray';
             getVariableValue = <EvaluateContainer>{
@@ -243,6 +320,11 @@ describe('Debugger', () => {
     });
     describe('convertDebuggerPathToClient', () => {
         it('handles truncated paths', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
+
             let s: any = session;
             s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
             s.launchArgs = {
@@ -257,6 +339,10 @@ describe('Debugger', () => {
         });
 
         it('handles pkg paths', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
             let s: any = session;
             s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
             s.launchArgs = {
@@ -274,17 +360,31 @@ describe('Debugger', () => {
     describe('findMainFunction', () => {
         let folder;
         afterEach(() => {
-            fs.emptyDirSync('./.tmp');
-            fs.rmdirSync('./.tmp');
+            fsExtra.emptyDirSync('./.tmp');
+            fsExtra.rmdirSync('./.tmp');
         });
 
         async function doTest(fileContents: string, lineContents: string, lineNumber: number) {
-            fs.emptyDirSync('./.tmp');
+            fsExtra.emptyDirSync('./.tmp');
             folder = path.resolve('./.tmp/findMainFunctionTests/');
-            fs.mkdirSync(folder);
+            fsExtra.mkdirSync(folder);
 
             let filePath = path.resolve(`${folder}/main.brs`);
-            fs.writeFileSync(filePath, fileContents);
+
+            //prevent actually talking to the file system...just hardcode the list to exactly our main file
+            (session.rokuDeploy as any).getFilePaths = function() {
+                return [{
+                    src: filePath,
+                    dest: filePath
+                }];
+            };
+
+            fsExtra.writeFileSync(filePath, fileContents);
+            (session as any).launchArgs = {
+                files: [
+                    folder + '/**/*'
+                ]
+            };
             let entryPoint = await session.findEntryPoint(folder);
             expect(entryPoint.path).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
@@ -299,6 +399,7 @@ describe('Debugger', () => {
             await doTest('\n\nsub   RunUserInterface()\nend sub', 'sub   RunUserInterface()', 3);
             await doTest('\n\nsub RunUserInterface   ()\nend sub', 'sub RunUserInterface   ()', 3);
         });
+
         it('works for sub main', async () => {
             await doTest('\nsub Main()\nend sub', 'sub Main()', 2);
             //works with args
@@ -315,6 +416,116 @@ describe('Debugger', () => {
             await doTest('function   Main()\nend function', 'function   Main()', 1);
             await doTest('function Main   ()\nend function', 'function Main   ()', 1);
         });
+
+        it('works for sub RunScreenSaver', async () => {
+            await doTest('sub RunScreenSaver()\nend sub', 'sub RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('sub   RunScreenSaver()\nend sub', 'sub   RunScreenSaver()', 1);
+            await doTest('sub RunScreenSaver   ()\nend sub', 'sub RunScreenSaver   ()', 1);
+        });
+
+        it('works for function RunScreenSaver', async () => {
+            await doTest('function RunScreenSaver()\nend function', 'function RunScreenSaver()', 1);
+            //works with extra spacing
+            await doTest('function   RunScreenSaver()\nend function', 'function   RunScreenSaver()', 1);
+            await doTest('function RunScreenSaver   ()\nend function', 'function RunScreenSaver   ()', 1);
+        });
+    });
+
+    describe('injectRaleTrackerTaskCode', () => {
+        let key: string;
+        let trackerTaskCode: string;
+        let folder;
+
+        beforeEach(() => {
+            key = 'vscode_rale_tracker_entry';
+            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+        });
+
+        afterEach(() => {
+            fsExtra.emptyDirSync('./.tmp');
+            fsExtra.rmdirSync('./.tmp');
+        });
+
+        async function doTest(fileContents: string, expectedContents: string, fileExt: string = 'brs') {
+            fsExtra.emptyDirSync('./.tmp');
+            folder = path.resolve('./.tmp/findMainFunctionTests/');
+            fsExtra.mkdirSync(folder);
+
+            let filePath = path.resolve(`${folder}/main.${fileExt}`);
+
+            fsExtra.writeFileSync(filePath, fileContents);
+            await session.injectRaleTrackerTaskCode(folder);
+            let newFileContents = (await fsExtra.readFile(filePath)).toString();
+            expect(newFileContents).to.equal(expectedContents);
+        }
+
+        it('works for in line comments brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', `: ${trackerTaskCode}`);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for in line comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
+
+        it('works for stand alone comments in brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show\n  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', trackerTaskCode);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            //works with extra spacing
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+        });
+
+        it('works for stand alone comments in xml files', async () => {
+            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
+            <!--********** Copyright COMPANY All Rights Reserved. **********-->
+
+            <component name="TrackerTask" extends="Task">
+              <interface>
+                  <field id="sample" type="string"/>
+                  <function name="sampleFunction"/>
+              </interface>
+                <script type = "text/brightscript" >
+                <![CDATA[
+                    <ENTRY>
+                ]]>
+                </script>
+            </component>`;
+
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${trackerTaskCode}\n        end sub`);
+
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
+            //works with extra spacing
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
+        });
     });
 
     describe('setBreakPointsRequest', () => {
@@ -329,7 +540,7 @@ describe('Debugger', () => {
 
             args = {
                 source: {
-                    path: '/dest/some/file.brs'
+                    path: path.normalize(`${rootDir}/dest/some/file.brs`)
                 },
                 breakpoints: []
             };
@@ -356,7 +567,7 @@ describe('Debugger', () => {
         });
 
         it('handles breakpoints for non-brightscript files', () => {
-            args.source.path = '/some/xml-file.xml';
+            args.source.path = `${rootDir}/some/xml-file.xml`;
             args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
             //breakpoint should be disabled
@@ -365,19 +576,25 @@ describe('Debugger', () => {
         });
 
         it('remaps to debug folder when specified', () => {
+            //mock fsExtra so we don't have to create actual files
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
+                return true;
+            });
             (session as any).launchArgs = {
-                debugRootDir: path.normalize('/src'),
-                rootDir: path.normalize('/dest')
+                sourceDirs: [
+                    path.normalize(`${rootDir}/src`)
+                ],
+                rootDir: path.normalize(`${rootDir}/dest`)
             };
             args.breakpoints = [{ line: 1 }];
 
             session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize('/src/some/file.brs')]).not.to.be.undefined;
+            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/src/some/file.brs`)]).not.to.be.undefined;
 
-            delete (session as any).launchArgs.debugRootDir;
+            delete (session as any).launchArgs.sourceDirs;
 
             session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize('/dest/some/file.brs')]).not.to.be.undefined;
+            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/dest/some/file.brs`)]).not.to.be.undefined;
 
         });
     });

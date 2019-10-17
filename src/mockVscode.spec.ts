@@ -1,3 +1,5 @@
+import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri } from 'vscode';
+
 export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
@@ -53,6 +55,9 @@ export let vscode = {
         },
         onDidChangeWorkspaceFolders: () => {
 
+        },
+        findFiles: (include, exclude) => {
+            return [];
         }
     },
     window: {
@@ -61,6 +66,10 @@ export let vscode = {
                 show: () => { },
                 clear: () => { }
             };
+        },
+        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
+        showErrorMessage: function(message: string) {
+
         },
         activeTextEditor: {
             document: undefined
@@ -185,18 +194,44 @@ export let vscode = {
         private fileName: string;
         public getText() { return this.text; }
     },
+    TreeItem: class {
+        constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
+            this.label = label;
+            this.collapsibleState = collapsibleState;
+        }
+        public readonly label: string;
+        public readonly iconPath?: string | Uri | { light: string | Uri; dark: string | Uri };
+        public readonly command?: Command;
+        public readonly collapsibleState?: TreeItemCollapsibleState;
+        public readonly contextValue?: string;
+    },
+    DocumentLink: class {
+        constructor(range: Range, uri: string) {
+            this.range = range;
+            this.uri = uri;
+        }
+        private range: any;
+        private uri: string;
+    },
     MarkdownString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-
         private value: string;
+    },
+    Uri: {
+        file: (src: string) => {
+            return {
+                with: ({}) => {
+                    return {};
+                }
+            };
+        }
     },
     SnippetString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-
         private value: string;
     }
 };

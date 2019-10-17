@@ -1,8 +1,7 @@
-import { BrightScriptFormatter } from 'brightscript-formatter';
+import { Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
 import {
     DocumentRangeFormattingEditProvider,
     EndOfLine,
-    FormattingOptions,
     Position,
     ProviderResult,
     Range,
@@ -10,22 +9,27 @@ import {
     TextEdit,
     window, workspace,
 } from 'vscode';
+import * as vscode from 'vscode';
 
 export class Formatter implements DocumentRangeFormattingEditProvider {
 
-    public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: FormattingOptions): ProviderResult<TextEdit[]> {
+    public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): ProviderResult<TextEdit[]> {
         let config = workspace.getConfiguration('brightscript.format');
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
             let text = document.getText();
-            let formatter = new BrightScriptFormatter();
-            let formattedText = formatter.format(text, {
+            let formatter = new BrighterScriptFormatter();
+            let formattedText = formatter.format(text, <FormattingOptions>{
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 compositeKeywords: config.compositeKeywords,
                 keywordCase: config.keywordCase,
                 removeTrailingWhiteSpace: config.removeTrailingWhiteSpace,
-                keywordCaseOverride: config.keywordCaseOverride
+                keywordCaseOverride: config.keywordCaseOverride,
+                formatIndent: config.formatIndent === false ? false : true,
+                formatInteriorWhitespace: config.formatInteriorWhitespace === false ? false : true,
+                insertSpaceBeforeFunctionParenthesis: config.insertSpaceBeforeFunctionParenthesis === true ? true : false,
+                insertSpaceBetweenEmptyCurlyBraces: config.insertSpaceBeforeFunctionParenthesis === true ? true : false
             });
 
             let edits = getEditChunks(formattedText, range);
