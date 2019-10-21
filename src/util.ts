@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as net from 'net';
 import * as path from 'path';
+import * as url from 'url';
 
 const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
@@ -76,6 +77,27 @@ class Util {
         return new Promise((resolve) => {
             fsExtra.exists(filePath, resolve);
         });
+    }
+
+    /**
+     * Removes any leading scheme in the file path
+     * @param filePath
+     */
+    public removeFileScheme(filePath: string): string {
+        let scheme = this.getFileScheme(filePath);
+        if (scheme) {
+            return filePath.substring(scheme.length);
+        } else {
+            return filePath;
+        }
+    }
+
+    /**
+     * Gets any leading scheme in the file path
+     * @param filePath
+     */
+    public getFileScheme(filePath: string): string | null {
+        return url.parse(filePath).protocol;
     }
 
     /**
