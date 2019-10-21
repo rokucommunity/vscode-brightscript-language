@@ -42,7 +42,7 @@ export class LogOutputManager {
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
-        this.pkgRegex = /(pkg:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/;
+        this.pkgRegex = /(\w+:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 

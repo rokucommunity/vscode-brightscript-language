@@ -64,6 +64,31 @@ describe('Util', () => {
         });
     });
 
+    describe('removeFileScheme', () => {
+        it('should return remove the leading scheme', async () => {
+            assert.equal(util.removeFileScheme('g:/images/channel-poster_hd.png'), '/images/channel-poster_hd.png');
+            assert.equal(util.removeFileScheme('pkg:/images/channel-poster_hd.png'), '/images/channel-poster_hd.png');
+            assert.equal(util.removeFileScheme('RandomComponentLibraryName:/images/channel-poster_hd.png'), '/images/channel-poster_hd.png');
+        });
+
+        it('should should not modify the path when there is no scheme', async () => {
+            assert.equal(util.removeFileScheme('/images/channel-poster_hd.png'), '/images/channel-poster_hd.png');
+            assert.equal(util.removeFileScheme('ages/channel-poster_hd.png'), 'ages/channel-poster_hd.png');
+        });
+    });
+
+    describe('getFileScheme', () => {
+        it('should return the leading scheme', async () => {
+            assert.equal(util.getFileScheme('pkg:/images/channel-poster_hd.png'), 'pkg:');
+            assert.equal(util.getFileScheme('RandomComponentLibraryName:/images/channel-poster_hd.png'), 'randomcomponentlibraryname:');
+        });
+
+        it('should should return null when there is no scheme', async () => {
+            assert.equal(util.getFileScheme('/images/channel-poster_hd.png'), null);
+            assert.equal(util.getFileScheme('ages/channel-poster_hd.png'), null);
+        });
+    });
+
     describe('convertManifestToObject', () => {
         let fileContents: string;
         let expectedManifestObject: { [key: string]: string };
