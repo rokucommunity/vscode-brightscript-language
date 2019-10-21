@@ -35,7 +35,6 @@
         "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
         "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
-        "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"
     },
@@ -75,6 +74,7 @@
         "@types/node-ssdp": "^3.3.0",
         "@types/q": "^1.5.1",
         "@types/sinon": "7.0.6",
+        "@types/vscode": "^1.39.0",
         "chai": "^4.2.0",
         "codecov": "^3.1.0",
         "cson-parser": "^4.0.1",
@@ -91,7 +91,6 @@
         "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.2.1",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.33",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
