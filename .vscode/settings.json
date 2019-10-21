@@ -12,10 +12,5 @@
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
-    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
-    "workbench.colorCustomizations": {
-        "activityBar.background": "#123500",
-        "titleBar.activeBackground": "#194A00",
-        "titleBar.activeForeground": "#EDFFE4"
-    }
+    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
 }
