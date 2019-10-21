@@ -166,7 +166,7 @@ describe('FileUtils', () => {
 
         it('supports absolute paths in source map', async () => {
             await createOutFiles(sourceFilePath);
-            let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
+            let location = await fileUtils.getSourceLocationFromSourceMap(outFilePath, 3);
             expect(location).to.eql({
                 pathAbsolute: sourceFilePath,
                 lineNumber: 2,
@@ -176,7 +176,7 @@ describe('FileUtils', () => {
 
         it('supports relative paths in source map', async () => {
             await createOutFiles('../source/file.brs');
-            let location = await fileUtils.getSourceLocationFromSourcemap(outFilePath, 3);
+            let location = await fileUtils.getSourceLocationFromSourceMap(outFilePath, 3);
             expect(location).to.eql({
                 pathAbsolute: sourceFilePath,
                 lineNumber: 2,

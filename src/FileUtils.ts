@@ -1,7 +1,7 @@
 import * as fsExtra from 'fs-extra';
 import glob = require('glob');
 import * as path from 'path';
-import { SourceMapConsumer } from 'source-map';
+import { RawSourceMap, SourceMapConsumer } from 'source-map';
 
 import { SourceLocation } from './BrightScriptDebugSession';
 
@@ -109,12 +109,79 @@ export class FileUtils {
     }
 
     /**
+     * Normalize path and replace all directory separators with current OS separators
+     * @param thePath
+     */
+    public standardizePath(thePath: string) {
+        if (!thePath) {
+            return thePath;
+        }
+        return path.normalize(
+            thePath.replace(/[\/\\]+/g, path.sep)
+        );
+    }
+
+    /**
+     * Get the location in the out/dist/generated file for a source location
+     * @param sourceFilePathAbsolute - the absolute path to the source file
+     * @param stagingFolderPath - the path to the staging folder.
+     * @param sourceLineNumber - the line number of the source file location. this is one based.
+     * @param sourceColumnNumber - the column number of the source file location. this is zero based
+     */
+    public async getGeneratedLocationsFromSourcemap(sourceFilePathAbsolute: string, stagingFolderPath: string, sourceLineNumber: number, sourceColumnIndex: number = 0) {
+        sourceFilePathAbsolute = this.standardizePath(sourceFilePathAbsolute);
+        //find every *.map file in the staging folder
+        let sourceMapPaths = glob.sync('**/*.map', {
+            cwd: stagingFolderPath,
+            absolute: true
+        });
+
+        let locations = [] as SourceLocation[];
+
+        for (let sourceMapPath of sourceMapPaths) {
+            // try {
+            let sourceMapText = fsExtra.readFileSync(sourceMapPath).toString();
+            let rawSourceMap = JSON.parse(sourceMapText) as RawSourceMap;
+            let absoluteSourcePaths = rawSourceMap.sources.map(x =>
+                this.standardizePath(
+                    path.resolve(
+                        //path.resolve throws an exception if passed `undefined`, so use empty string if sourceRoot is null or undefined
+                        //the sourcemap should be providing a valid sourceRoot, or using absolute paths for maps
+                        rawSourceMap.sourceRoot || '',
+                        x
+                    )
+                )
+            );
+            //if the source path was found in the sourceMap, convert the source location into a target location
+            if (absoluteSourcePaths.indexOf(sourceFilePathAbsolute) > -1) {
+                let position = await SourceMapConsumer.with(rawSourceMap, null, (consumer) => {
+                    return consumer.generatedPositionFor({
+                        line: sourceLineNumber,
+                        column: sourceColumnIndex,
+                        source: sourceFilePathAbsolute
+                    });
+                });
+                locations.push({
+                    columnIndex: position.column,
+                    lineNumber: position.line,
+                    //remove the .map extension
+                    pathAbsolute: sourceMapPath.replace(/\.map$/g, '')
+                });
+            }
+            // } catch{
+            //we don't care about errors, just assume this is not a match
+            // }
+        }
+        return locations;
+    }
+
+    /**
      * Get the source location of a position using a source map. If no source map is found, undefined is returned
      * @param filePathAbsolute - the absolute path to the file
      * @param debuggerLineNumber - the line number provided by the debugger
-     * @param debuggerColumnNumber - the column number provided by the debugger
+     * @param debuggerColumnNumber - the column number provided by the debugger. This is zero based.
      */
-    public async getSourceLocationFromSourcemap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0): Promise<SourceLocation> {
+    public async getSourceLocationFromSourceMap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0): Promise<SourceLocation> {
         //look for a source map for this file
         let sourceMapPath = `${filePathAbsolute}.map`;
 
@@ -128,6 +195,10 @@ export class FileUtils {
                     column: debuggerColumnNumber
                 });
             });
+            //if the sourcemap didn't find a valid mapped location, return undefined and fallback to whatever location the debugger produced
+            if (!position || !position.source) {
+                return undefined;
+            }
             //get the path to the folder this source map lives in
             let folderPathForStagingFile = path.dirname(sourceMapPath);
             //get the absolute path to the source file

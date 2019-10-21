@@ -59,7 +59,7 @@
         "no-shadowed-variable": false,
         "no-trailing-whitespace": true,
         "no-unused-expression": true,
-        "no-var-keyword": true,
+        "no-var-keyword": false,
         "object-curly-spacing": true,
         "object-literal-shorthand": [
             true,

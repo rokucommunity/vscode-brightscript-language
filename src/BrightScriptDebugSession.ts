@@ -8,7 +8,6 @@ import * as path from 'path';
 let replaceInFile = require('replace-in-file');
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
-import { SourceMapConsumer } from 'source-map';
 import {
     DebugSession,
     Handles,
@@ -35,10 +34,11 @@ import {
 } from './RokuAdapter';
 import { util } from './util';
 
+// var mergeSourceMap = require('./mergeSourceMap');
+
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
         super();
-        // this debugger uses zero-based lines and columns
         this.setDebuggerLinesStartAt1(true);
         this.setDebuggerColumnsStartAt1(true);
     }
@@ -55,7 +55,10 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private firstRunDeferred = defer<void>();
 
-    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
+    /**
+     * A map of breakpoints, keyed by the path to the source file that contains the breakpoints
+     */
+    private breakpointsBySourcePath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
@@ -170,7 +173,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 }
 
                 //clear any breakpoints that are out of scope
-                this.removeOutOfScopeBreakpointPaths(combinedSourceDirs, this.launchArgs.rootDir);
+                await this.removeOutOfScopeBreakpointPaths(combinedSourceDirs, this.launchArgs.rootDir);
                 for (const sourceDir of this.launchArgs.sourceDirs) {
                     this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
                 }
@@ -188,7 +191,11 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //create zip package from staging folder
             this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.rokuDeploy.zipPackage(args as any);
+            await this.rokuDeploy.zipPackage({
+                ...(args as any),
+                //the staging folder needs to exist during the debug session so we can read the source maps
+                retainStagingFolder: true
+            });
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
 
@@ -326,6 +333,21 @@ export class BrightScriptDebugSession extends DebugSession {
                 });
             });
         }
+    }
+
+    /**
+     * Called when the debugger is terminated
+     */
+    public shutdown() {
+        //if configured, delete the staging directory
+        if (!this.launchArgs.retainStagingFolder) {
+            try {
+                fsExtra.removeSync(this.stagingFolderPath);
+            } catch (e) {
+                console.log('Error removing staging directory', e);
+            }
+        }
+        super.shutdown();
     }
 
     /**
@@ -504,20 +526,24 @@ export class BrightScriptDebugSession extends DebugSession {
         super.sourceRequest(response, args);
     }
 
-    protected removeOutOfScopeBreakpointPaths(sourcePaths: string[], toRootPath: string) {
+    protected async removeOutOfScopeBreakpointPaths(sourcePaths: string[], toRootPath: string) {
         //convert paths to sourceDirs paths for any breakpoints set before this launch call
         if (sourcePaths) {
-            for (let clientPath in this.breakpointsByClientPath) {
+            for (let sourcePath in this.breakpointsBySourcePath) {
                 let included = false;
                 for (const fromRootPath of sourcePaths) {
                     // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
-                    if (pathIncludesCaseInsensitive(clientPath, fromRootPath + path.sep)) {
+                    if (pathIncludesCaseInsensitive(sourcePath, fromRootPath + path.sep)) {
                         included = true;
                         break;
                     }
                 }
-                if (!included) {
-                    delete this.breakpointsByClientPath[clientPath];
+                //look through every sourcemap file to see if this file with the breakpoint is referenced anywhere.
+                let matches = await fileUtils.getGeneratedLocationsFromSourcemap(sourcePath, this.stagingFolderPath, 1, 0);
+
+                //if the file is not referenced by any source location or sourcemap, disable those breakpoints
+                if (matches.length === 0 || included === false) {
+                    delete this.breakpointsBySourcePath[sourcePath];
                 }
             }
         }
@@ -527,11 +553,11 @@ export class BrightScriptDebugSession extends DebugSession {
         //convert paths to sourceDirs paths for any breakpoints set before this launch call
 
         if (fromRootPath && toRootPath) {
-            for (let clientPath in this.breakpointsByClientPath) {
+            for (let clientPath in this.breakpointsBySourcePath) {
                 // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
                 if (pathIncludesCaseInsensitive(clientPath, fromRootPath)) {
                     let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
-                    this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
+                    this.breakpointsBySourcePath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
 
                     // Make sure the debugClientPath is not the same as the clientPath.
                     if (path.normalize(debugClientPath).toLowerCase() !== path.normalize(clientPath).toLowerCase()) {
@@ -546,32 +572,34 @@ export class BrightScriptDebugSession extends DebugSession {
         console.log('configurationDoneRequest');
     }
 
+    private breakpoints = [] as BreakpointContainer[];
+
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        let clientPath = path.normalize(args.source.path);
+        let sourceFilePath =  path.normalize(args.source.path);
         //if we have a sourceDirs, convert the rootDir path to sourceDirs path
         if (this.launchArgs && this.launchArgs.sourceDirs) {
             let lastWorkingPath = '';
             for (const sourceDir of this.launchArgs.sourceDirs) {
-                clientPath = clientPath.replace(this.launchArgs.rootDir, sourceDir);
-                if (fsExtra.pathExistsSync(clientPath)) {
-                    lastWorkingPath = clientPath;
+                sourceFilePath = sourceFilePath.replace(this.launchArgs.rootDir, sourceDir);
+                if (fsExtra.pathExistsSync(sourceFilePath)) {
+                    lastWorkingPath = sourceFilePath;
                 }
             }
-            clientPath = lastWorkingPath;
+            sourceFilePath = lastWorkingPath;
         }
-        let extension = path.extname(clientPath).toLowerCase();
+        let extension = path.extname(sourceFilePath).toLowerCase();
 
         //only accept breakpoints from brightscript files
-        if (extension === '.brs') {
+        if (extension === '.brs' || extension === '.bs') {
             if (!this.launchRequestWasCalled) {
                 //store the breakpoints indexed by clientPath
-                this.breakpointsByClientPath[clientPath] = args.breakpoints;
+                this.breakpointsBySourcePath[sourceFilePath] = args.breakpoints;
                 for (let b of args.breakpoints) {
                     (b as any).verified = true;
                 }
             } else {
                 //mark the breakpoints as verified or not based on the original breakpoints
-                let verifiedBreakpoints = this.getBreakpointsForClientPath(clientPath);
+                let verifiedBreakpoints = this.getBreakpointsForClientPath(sourceFilePath);
                 outer: for (let breakpoint of args.breakpoints) {
                     for (let verifiedBreakpoint of verifiedBreakpoints) {
                         if (breakpoint.line === verifiedBreakpoint.line) {
@@ -943,33 +971,34 @@ export class BrightScriptDebugSession extends DebugSession {
         let promises = [];
         /**
          * Add breakpoints to the specified file
-         * @param clientPath - the path to the original source file from its original location
+         * @param sourceFilePath - the path to the original source file from its original location
          * @param basePath - the base path to the folder where the client path file resides
          */
-        let addBreakpointsToFile = async (clientPath, basePath) => {
-            let breakpoints = this.getBreakpointsForClientPath(clientPath);
+        let addBreakpointsToFile = async (sourceFilePath, basePath) => {
+            let breakpoints = this.getBreakpointsForClientPath(sourceFilePath);
             let stagingFilePath: string;
             //find the manifest file for the file
-            clientPath = path.normalize(clientPath);
+            sourceFilePath = path.normalize(sourceFilePath);
             // normalize the base path to remove things like ..
             basePath = path.normalize(basePath);
 
             // Make sure this breakpoint should be applied to this base path
-            if (pathIncludesCaseInsensitive(clientPath, basePath)) {
-                let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
+            if (pathIncludesCaseInsensitive(sourceFilePath, basePath)) {
+                let relativeClientPath = replaceCaseInsensitive(sourceFilePath.toString(), basePath, '');
                 stagingFilePath = path.join(stagingPath, relativeClientPath);
                 let sourceMapPath = `${stagingFilePath}.map`;
                 //load the file as a string
                 let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
 
-                let breakpointResult = bpWriter.writeBreakpointsWithSourceMap(fileContents, clientPath, breakpoints);
+                let breakpointResult = bpWriter.writeBreakpointsWithSourceMap(fileContents, sourceFilePath, breakpoints);
 
                 let sourceMap = JSON.stringify(breakpointResult.map);
 
                 //if a source map already exists for this file, we need to merge that one with our new one
                 if (await fsExtra.pathExists(sourceMapPath)) {
-                    let originalSourceMap = await fsExtra.readFile(sourceMapPath);
-                    sourceMap = mergeSourceMap(originalSourceMap, sourceMap);
+                    var originalSourceMap = (await fsExtra.readFile(sourceMapPath)).toString();
+                    var mergedSourceMapObj = mergeSourceMap(originalSourceMap, sourceMap);
+                    sourceMap = JSON.stringify(mergedSourceMapObj);
                 }
 
                 await Promise.all([
@@ -986,9 +1015,9 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.addEntryBreakpoint();
         }
 
-        //add breakpoints to each client file
-        for (let clientPath in this.breakpointsByClientPath) {
-            promises.push(addBreakpointsToFile(clientPath, basePath));
+        //add breakpoints to each file in the dist folder that maps to a source file
+        for (let sourceFilePath in this.breakpointsBySourcePath) {
+            promises.push(addBreakpointsToFile(sourceFilePath, basePath));
         }
         await Promise.all(promises);
     }
@@ -1135,13 +1164,13 @@ export class BrightScriptDebugSession extends DebugSession {
      * so find the data from `breakpointsByClientPath` case insensitive
      */
     public getBreakpointsForClientPath(clientPath: string) {
-        for (let key in this.breakpointsByClientPath) {
+        for (let key in this.breakpointsBySourcePath) {
             if (clientPath.toLowerCase() === key.toLowerCase()) {
-                return this.breakpointsByClientPath[key];
+                return this.breakpointsBySourcePath[key];
             }
         }
         //create a new array and return it
-        return this.breakpointsByClientPath[clientPath] = [];
+        return this.breakpointsBySourcePath[clientPath] = [];
     }
 
     /**
@@ -1149,9 +1178,9 @@ export class BrightScriptDebugSession extends DebugSession {
      * so delete from `breakpointsByClientPath` case-insensitive
      */
     public deleteBreakpointsForClientPath(clientPath: string) {
-        for (let key in this.breakpointsByClientPath) {
+        for (let key in this.breakpointsBySourcePath) {
             if (clientPath.toLowerCase() === key.toLowerCase()) {
-                delete this.breakpointsByClientPath[key];
+                delete this.breakpointsBySourcePath[key];
             }
         }
     }
@@ -1226,7 +1255,7 @@ export class BrightScriptDebugSession extends DebugSession {
         if (!stagingFileInfo) {
             return;
         }
-        let sourceLocation = await fileUtils.getSourceLocationFromSourcemap(stagingFileInfo.absolutePath, debuggerLineNumber);
+        let sourceLocation = await fileUtils.getSourceLocationFromSourceMap(stagingFileInfo.absolutePath, debuggerLineNumber);
 
         //there is no source map for this file...assume debuggerLineNumber matches source line number
         if (!sourceLocation) {
@@ -1407,6 +1436,11 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * The list of files that should be bundled during a debug session
      */
     files?: FilesType[];
+
+    /**
+     * If true, then the staging folder is NOT deleted after a debug session has been closed 
+     */
+    retainStagingFolder: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
@@ -1531,4 +1565,16 @@ export interface SourceLocation {
     lineNumber: number;
     //0-based column index
     columnIndex: number;
+}
+
+export interface BreakpointContainer {
+    breakpoint: DebugProtocol.SourceBreakpoint;
+    /**
+     * The path to the file that the breakpoint was set within VSCode.
+     */
+    sourceFilePath: string;
+    /**
+     * The path to the file in the staging folder where the `stop` statement was written
+     */
+    stagingFilePath: string;
 }

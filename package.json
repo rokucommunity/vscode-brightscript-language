@@ -63,10 +63,10 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-deploy": "^2.2.1",
+        "roku-deploy": "^2.5.0",
         "source-map": "^0.7.3",
-        "vscode-debugadapter": "1.33.0",
-        "vscode-debugprotocol": "1.33.0",
+        "vscode-debugadapter": "^1.37.1",
+        "vscode-debugprotocol": "^1.37.0",
         "vscode-uri": "1.0.6"
     },
     "devDependencies": {
@@ -78,6 +78,7 @@
         "@types/q": "^1.5.1",
         "@types/rmfr": "^2.0.0",
         "@types/sinon": "7.0.6",
+        "@types/vscode": "^1.39.0",
         "chai": "^4.2.0",
         "codecov": "^3.1.0",
         "cson-parser": "^4.0.1",
@@ -93,9 +94,8 @@
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
         "tslint-origin-ordered-imports-rule": "^1.1.2",
-        "typescript": "^3.2.1",
+        "typescript": "^3.6.4",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.33",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
@@ -151,6 +151,9 @@
         "breakpoints": [
             {
                 "language": "brightscript"
+            },
+            {
+                "language": "brighterscript"
             }
         ],
         "debuggers": [
