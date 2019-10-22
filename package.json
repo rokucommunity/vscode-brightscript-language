@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.0.0-beta.38",
+    "version": "2.0.0-beta.39",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -79,7 +79,7 @@
         "@types/node-ssdp": "^3.3.0",
         "@types/q": "^1.5.1",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.39.0",
+        "@types/vscode": "^1.30.0",
         "chai": "^4.2.0",
         "codecov": "^3.6.1",
         "cson-parser": "^4.0.1",
