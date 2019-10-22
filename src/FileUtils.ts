@@ -1,3 +1,4 @@
+import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import glob = require('glob');
 import * as path from 'path';
@@ -15,6 +16,28 @@ export class FileUtils {
     public pathEndsWith(subjectPath: string, testPath: string) {
         let idx = subjectPath.indexOf(testPath);
         return (idx > -1 && subjectPath.endsWith(testPath));
+    }
+
+    /**
+     * Determines if the `subject` path includes `search` path, with case sensitive comparison
+     * @param subject
+     * @param search
+     */
+    public pathIncludesCaseInsensitive(subject: string, search: string) {
+        if (!subject || !search) {
+            return false;
+        }
+        return path.normalize(subject.toLowerCase()).indexOf(path.normalize(search.toLowerCase())) > -1;
+    }
+
+    public replaceCaseInsensitive(subject: string, search: string, replacement: string) {
+        let idx = subject.toLowerCase().indexOf(search.toLowerCase());
+        if (idx > -1) {
+            let result = subject.substring(0, idx) + replacement + subject.substring(idx + search.length);
+            return result;
+        } else {
+            return subject;
+        }
     }
 
     /**
@@ -75,7 +98,8 @@ export class FileUtils {
     }
 
     /**
-     * Given a relative file path, and a list of directories, find the first directory that contains the relative file
+     * Given a relative file path, and a list of directories, find the first directory that contains the relative file.
+     * This is basically a utility function for the sourceDirs concept
      * @param relativeFilePath - the path to the item relative to each `directoryPath`
      * @param directoryPaths - an array of directory paths
      * @returns the first path that was found to exist, or undefined if the file was not found in any of the `directoryPaths`
@@ -85,6 +109,21 @@ export class FileUtils {
             let fullPath = path.normalize(path.join(directoryPath, relativeFilePath));
             if (await fsExtra.pathExists(fullPath)) {
                 return fullPath;
+            }
+        }
+    }
+
+    /**
+     * Find the first `directoryPath` that is a parent to `filePathAbsolute`
+     * @param filePathAbsolute - the absolute path to the file
+     * @param directoryPaths - a list of directories where this file might reside
+     */
+    public findFirstParent(filePathAbsolute: string, directoryPaths: string[]) {
+        filePathAbsolute = this.standardizePath(filePathAbsolute);
+        for (let directoryPath of directoryPaths) {
+            directoryPath = this.standardizePath(directoryPath);
+            if (filePathAbsolute.indexOf(directoryPath) === 0) {
+                return directoryPath;
             }
         }
     }
@@ -109,16 +148,62 @@ export class FileUtils {
     }
 
     /**
-     * Normalize path and replace all directory separators with current OS separators
+     * Replace all directory separators with current OS separators,
+     * force all drive letters to lower case (because that's what VSCode does sometimes so this makes it consistent)
      * @param thePath
      */
     public standardizePath(thePath: string) {
         if (!thePath) {
             return thePath;
         }
-        return path.normalize(
+        var normalizedPath = path.normalize(
             thePath.replace(/[\/\\]+/g, path.sep)
         );
+        //force the drive letter to lower case
+        let match = /^[a-zA-Z]:/.exec(normalizedPath);
+        if (match) {
+            normalizedPath = match[0].toLowerCase() + normalizedPath.substring(2);
+        }
+        return normalizedPath;
+    }
+
+    /**
+     * Given a source location, compute its location in staging. You should call this for the main app (rootDir, rootDir+sourceDirs),
+     * and also once for each component library
+     */
+    public async getStagingLocationsFromSourceLocation(sourceFilePath: string, sourceLineNumber: number, sourceColumnIndex: number, rootDir: string, sourceDirs: string[], stagingFolderPath: string): Promise<SourceLocation[]> {
+        sourceFilePath = fileUtils.standardizePath(sourceFilePath);
+        sourceDirs = sourceDirs.map(x => fileUtils.standardizePath(x));
+        stagingFolderPath = fileUtils.standardizePath(stagingFolderPath);
+
+        //if sourceDirs is provided, then use those to find the staging location
+
+
+        //first, look through the sourcemaps in the staging folder
+        let locations = await this.getGeneratedLocationsFromSourceMap(sourceFilePath, stagingFolderPath, sourceLineNumber, sourceColumnIndex);
+        if (locations.length > 0) {
+            return locations;
+
+            //no sourcemaps were found that reference this file
+            //so look for a file with the same relative location in the staging folder
+        } else {
+
+            //compute the relative path for this file
+            let parentFolderPath = fileUtils.findFirstParent(sourceFilePath, sourceDirs);
+            if (parentFolderPath) {
+                let relativeFilePath = fileUtils.replaceCaseInsensitive(sourceFilePath, parentFolderPath, '');
+                let stagingFilePathAbsolute = path.join(stagingFolderPath, relativeFilePath);
+                return [{
+                    pathAbsolute: stagingFilePathAbsolute,
+                    columnIndex: sourceColumnIndex,
+                    lineNumber: sourceLineNumber
+                }];
+            } else {
+                //return an empty array so the result is still iterable
+                return [];
+            }
+        }
+
     }
 
     /**
@@ -128,7 +213,7 @@ export class FileUtils {
      * @param sourceLineNumber - the line number of the source file location. this is one based.
      * @param sourceColumnNumber - the column number of the source file location. this is zero based
      */
-    public async getGeneratedLocationsFromSourcemap(sourceFilePathAbsolute: string, stagingFolderPath: string, sourceLineNumber: number, sourceColumnIndex: number = 0) {
+    public async getGeneratedLocationsFromSourceMap(sourceFilePathAbsolute: string, stagingFolderPath: string, sourceLineNumber: number, sourceColumnIndex: number = 0) {
         sourceFilePathAbsolute = this.standardizePath(sourceFilePathAbsolute);
         //find every *.map file in the staging folder
         let sourceMapPaths = glob.sync('**/*.map', {
@@ -138,8 +223,8 @@ export class FileUtils {
 
         let locations = [] as SourceLocation[];
 
-        for (let sourceMapPath of sourceMapPaths) {
-            // try {
+        //search through every source map async
+        await Promise.all(sourceMapPaths.map(async (sourceMapPath) => {
             let sourceMapText = fsExtra.readFileSync(sourceMapPath).toString();
             let rawSourceMap = JSON.parse(sourceMapText) as RawSourceMap;
             let absoluteSourcePaths = rawSourceMap.sources.map(x =>
@@ -168,10 +253,7 @@ export class FileUtils {
                     pathAbsolute: sourceMapPath.replace(/\.map$/g, '')
                 });
             }
-            // } catch{
-            //we don't care about errors, just assume this is not a match
-            // }
-        }
+        }));
         return locations;
     }
 
@@ -179,9 +261,9 @@ export class FileUtils {
      * Get the source location of a position using a source map. If no source map is found, undefined is returned
      * @param filePathAbsolute - the absolute path to the file
      * @param debuggerLineNumber - the line number provided by the debugger
-     * @param debuggerColumnNumber - the column number provided by the debugger. This is zero based.
+     * @param debuggerColumnIndex - the column number provided by the debugger. This is zero based.
      */
-    public async getSourceLocationFromSourceMap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnNumber: number = 0): Promise<SourceLocation> {
+    public async getSourceLocationFromSourceMap(filePathAbsolute: string, debuggerLineNumber: number, debuggerColumnIndex: number = 0): Promise<SourceLocation> {
         //look for a source map for this file
         let sourceMapPath = `${filePathAbsolute}.map`;
 
@@ -192,7 +274,7 @@ export class FileUtils {
             let position = await SourceMapConsumer.with(sourceMap, null, (consumer) => {
                 return consumer.originalPositionFor({
                     line: debuggerLineNumber,
-                    column: debuggerColumnNumber
+                    column: debuggerColumnIndex
                 });
             });
             //if the sourcemap didn't find a valid mapped location, return undefined and fallback to whatever location the debugger produced
@@ -226,6 +308,50 @@ export class FileUtils {
             result = `file:///${fullPath}`;
         }
         return result;
+    }
+
+    /**
+     * Given a path to a folder, search all files until an entry point is found.
+     * (An entry point is a function that roku uses as the Main function to start the program).
+     * @param projectPath - a path to a Roku project
+     */
+    public async findEntryPoint(projectPath: string) {
+        let results = Object.assign(
+            {},
+            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'sub\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
+            await findInFiles.find({ term: 'function\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
+        );
+        let keys = Object.keys(results);
+        if (keys.length === 0) {
+            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface, RunScreenSaver, or Main sub/function declared in your BrightScript project');
+        }
+
+        let entryPath = keys[0];
+
+        let entryLineContents = results[entryPath].line[0];
+
+        let lineNumber: number;
+        //load the file contents
+        let contents = await fsExtra.readFile(entryPath);
+        let lines = eol.split(contents.toString());
+        //loop through the lines until we find the entry line
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            if (line.indexOf(entryLineContents) > -1) {
+                lineNumber = i + 1;
+                break;
+            }
+        }
+
+        return {
+            path: entryPath,
+            contents: entryLineContents,
+            lineNumber: lineNumber
+        };
     }
 
 }

@@ -35,7 +35,6 @@
         "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
         "test:coverage": "nyc mocha src/**/FileUtils.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
-        "postinstall": "node ./node_modules/vscode/bin/install",
         "package": "vsce package",
         "publish": "vsce publish"
     },

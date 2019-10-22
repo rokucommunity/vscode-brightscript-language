@@ -4,9 +4,9 @@ import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as rmfr from 'rmfr';
 import * as sinonActual from 'sinon';
+import { SourceNode } from 'source-map';
 
 import { fileUtils } from './FileUtils';
-import { SourceNode } from 'source-map';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -182,6 +182,26 @@ describe('FileUtils', () => {
                 lineNumber: 2,
                 columnIndex: 0
             });
+        });
+    });
+
+    describe('standardizePath', () => {
+        it('forces drive letters to lower case', () => {
+            expect(fileUtils.standardizePath(`C:${path.sep}projects`)).to.equal(`c:${path.sep}projects`);
+        });
+
+        it('standardizes path separators', () => {
+            expect(fileUtils.standardizePath('/a\\b//c\\d')).to.equal(`${path.sep}a${path.sep}b${path.sep}c${path.sep}d`);
+        });
+    });
+
+    describe.only('findFirstParent', () => {
+        it('finds parent from first index', () => {
+            expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`])).to.equal(n(`${rootDir}/project`));
+        });
+
+        it('finds parent from first index even though the second one would match too', () => {
+            expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`, `${rootDir}`])).to.equal(n(`${rootDir}/project`));
         });
     });
 });

@@ -95,9 +95,6 @@ describe('Debugger', () => {
         sinon.stub(session, 'sendEvent').callsFake((...args) => {
             //do nothing
         });
-        (sinon.stub(session, <any>'loadStagingFolderRelativeFilePaths') as any).callsFake(() => {
-
-        });
 
         //skip adding breakpoint statements since that's not what we are currently testing
         (session as any).addBreakpointStatements = () => { };
@@ -397,7 +394,7 @@ describe('Debugger', () => {
                     folder + '/**/*'
                 ]
             };
-            let entryPoint = await session.findEntryPoint(folder);
+            let entryPoint = await fileUtils.findEntryPoint(folder);
             expect(entryPoint.path).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
             expect(entryPoint.contents).to.equal(lineContents);

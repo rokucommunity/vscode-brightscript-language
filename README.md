@@ -105,6 +105,11 @@ then you would need change `rootDir` in your launch config to look like this:
 }
 ```
 
+## Breakpoints
+Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one. 
+
+When injecting `STOP` statements, the extension will also generate a source map for each affected file so that the extension can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
+
 ## Special Cases
 
 ### Debug source files with Custom build process
@@ -150,22 +155,37 @@ Here's a sample launch.json for this scenario:
 ### Multiple source dirs
 If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
 
-```json
+```jsonc
 {
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "brightscript",
-            ...
             "rootDir": "${workspaceFolder}/dist",
             "sourceDirs": [
                 "${workspaceFolder}/../../some-common-library-a",
                 "${workspaceFolder}/../../some-common-library-b",
                 "${workspaceFolder}/../../some-common-library-c",
             ],
-            "preLaunchTask": "your-build-task-here"
+            "preLaunchTask": "your-build-task-here",
+            //...
         }
     ]
+}
+```
+
+### SourceMaps
+The extension has full support for [source maps](https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map). Which means that if you use some type of preprocessor that transforms the source files, as long as the preprocessor generates a source map, the extension will correctly translate breakpoints from source files into compiled locations, and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:
+
+```jsonc
+{
+    "version": "0.2.0",
+    "configurations": [{
+        //this is where your preprocessor puts the final code (including source maps)
+        "rootDir": "${workspaceFolder}/dist", 
+        // run your preprocessor which writes the final code to `rootDir` (including source maps)
+        "preLaunchTask": "your-build-task-here",
+        //...other launch args
+    }]
 }
 ```
 
