@@ -4,6 +4,7 @@ import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
 import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
+import { util } from './util';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -98,10 +99,9 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public convertPkgPathToFsPath(pkgPath: string) {
-        //remove preceeding pkg:
-        if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
-            pkgPath = pkgPath.substring(4);
-        }
+        //remove any preceding file scheme
+        pkgPath = util.removeFileScheme(pkgPath);
+
         //use debugRootDir if provided, or rootDir if not provided.
         let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
 

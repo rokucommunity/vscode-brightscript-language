@@ -35,13 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - switched languageserver to use [brighterscript](https://github.com/RokuCommunity/brighterscript). This is the first step towards support the BrighterScript language.
 ### Fixed
  - bug that would not register new files until a vscode restart. 
+## [1.20.2] - 2019-10-21
+### Fixed
+ - bug in the parsing of the file paths on the device as of Roku FW 9.2 causing the opening of Component Library file to fail on runtime crashes and break points.
 
 
 
 ## [1.20.1] - 2019-10-03
 ### Fixed
  - bug in the "port is in use" crash message detection (it wasn't awaiting an async call which was causing intermittent errors).
- - bug in the componentLibrary `files` JSON schema that wasn't allowing `{src;dest}` objects. 
+ - bug in the componentLibrary `files` JSON schema that wasn't allowing `{src;dest}` objects.
 
 
 
@@ -50,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - "port is in use" crash message when serving component libraries
 ### Changed
  - The Roku stacktrace includes all function names back as fully lower case. The extension reads the original files and attempts to find the correct case for every function. These results were not being cached, but are now cached in order to improve performance.
-### Fixed 
+### Fixed
  - some syntax colors related to object function calls
 
 
@@ -83,12 +86,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.19.2] - 2019-09-17
 ### Changed
  - migrated from [brightscript-formatter](https://www.npmjs.com/package/brightscript-formatter) to [brighterscript-formatter](https://www.npmjs.com/package/brighterscript-formatter). `brighterscript-formatter` fully supports formatting standard BrightScript code, so there's no lost functionality by upgrading.
-### Fixed 
+### Fixed
  - syntax colorization of `library` and `sub`
 
 
-
-## [1.19.1] - 2019-09-10
+## [1.19.1] - 2019-09-17
 ### Changed
  - .env files are processed closer to the beginning of the config resolve function, which allows users to customize which prompts they want to see.
 
@@ -705,6 +707,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.2]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
+
+[1.20.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.6...v1.20.0
 [1.19.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.5...v1.19.6

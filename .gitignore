@@ -5,3 +5,4 @@ coverage
 .roku-deploy-staging
 *.vsix
 brsconfig.schema.json
+.history

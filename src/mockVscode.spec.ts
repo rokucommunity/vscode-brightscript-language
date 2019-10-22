@@ -70,6 +70,7 @@ export let vscode = {
     window: {
         createStatusBarItem: () => {
             return {
+                clear: () => { },
                 text: '',
                 show: () => { }
             };
@@ -80,7 +81,7 @@ export let vscode = {
                 clear: () => { }
             };
         },
-        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
+        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
         showErrorMessage: function(message: string) {
 
         },
@@ -235,7 +236,7 @@ export let vscode = {
     Uri: {
         file: (src: string) => {
             return {
-                with: ({}) => {
+                with: ({ }) => {
                     return {};
                 }
             };

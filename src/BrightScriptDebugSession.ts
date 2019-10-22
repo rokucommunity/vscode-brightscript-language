@@ -913,9 +913,9 @@ export class BrightScriptDebugSession extends DebugSession {
         let fullPath = false;
         let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
 
-        //remove preceding pkg:
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            debuggerPath = debuggerPath.substring(4);
+        //remove any preceding file scheme
+        if (util.getFileScheme(debuggerPath)) {
+            debuggerPath = util.removeFileScheme(debuggerPath);
             fullPath = true;
         }
 
