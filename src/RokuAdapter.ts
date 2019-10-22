@@ -4,7 +4,6 @@ import { orderBy } from 'natural-orderby';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
-import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
