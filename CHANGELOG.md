@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.40] - 2019-10-30
+### Added
+ - all changes from 1.20.3
+
+
+
 ## [2.0.0-beta.39] - 2019-10-21
 ### Added
  - all changes from 1.20.2
@@ -680,6 +686,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.40]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.39...v2.0.0-beta.40
 [2.0.0-beta.39]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.38...v2.0.0-beta.39
 [2.0.0-beta.38]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.37...v2.0.0-beta.38
 [2.0.0-beta.37]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.36...v2.0.0-beta.37
