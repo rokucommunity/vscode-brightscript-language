@@ -29,5 +29,5 @@ deploy:
       branch: master
       tags: true
       #do not publish pre-release versions to the vscode extension marketplace
-      condition: ($TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$) and ($TRAVIS_OS_NAME = linux)
+      condition: $TRAVIS_OS_NAME = linux && $TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$
 
