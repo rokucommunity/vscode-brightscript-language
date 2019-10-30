@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.20.3] - 2019-10-21
+### Fixed
+ - bug in debugger that would fail to identify empty arrays and associative arrays.
+
+
+
 ## [1.20.2] - 2019-10-21
 ### Fixed
  - bug in the parsing of the file paths on the device as of Roku FW 9.2 causing the opening of Component Library file to fail on runtime crashes and break points.
@@ -376,6 +382,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.20.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.2...v1.20.3
 [1.20.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.19.6...v1.20.0
