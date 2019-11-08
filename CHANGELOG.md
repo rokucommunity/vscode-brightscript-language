@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.41] - 2019-11-08
+### Updated
+ - brighterscript@0.3.1 which fixes [these issues](https://github.com/rokucommunity/brighterscript/blob/67cdf704654026203d77893f67f7946c68968649/CHANGELOG.md#031---2019-11-08).
+
+
+
 ## [2.0.0-beta.40] - 2019-10-30
 ### Added
  - all changes from 1.20.3
