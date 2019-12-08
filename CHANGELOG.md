@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.21.0] - 2019-12-08
+### Added
+ - option to use an alternate port when publishing a package to a Roku. This is mainly useful for publishing to an emulator an alternate port through port-forwarding. 
+### Changed
+ - upgraded to [roku-deploy@2.6.0](https://github.com/rokucommunity/roku-deploy/tree/v2.6.0)
+
+
+
 ## [1.20.3] - 2019-10-21
 ### Fixed
  - bug in debugger that would fail to identify empty arrays and associative arrays.

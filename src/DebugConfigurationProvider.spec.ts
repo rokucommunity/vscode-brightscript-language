@@ -26,6 +26,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
+import { WorkspaceFolder } from 'vscode';
 let configProvider: BrightScriptDebugConfigurationProvider;
 
 beforeEach(() => {
@@ -35,7 +36,9 @@ beforeEach(() => {
         }
     };
 
-    let activeDeviceManager = {};
+    let activeDeviceManager = {
+        getActiveDevices: () => []
+    };
     configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
     c = configProvider;
     sinon = sinonImport.createSandbox();
@@ -46,14 +49,21 @@ afterEach(() => {
 
 describe('BrightScriptConfigurationProvider', () => {
     describe('resolveDebugConfiguration', () => {
-        it('handles loading declared values from .env files', async () => {
+        var folder: WorkspaceFolder;
+        beforeEach(() => {
+            folder = <any>{
+                uri: { fsPath: '/some/project' }
+            };
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+        });
+
+        it('handles loading declared values from .env files', async () => {
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
-            let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
@@ -66,13 +76,12 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles missing values from .env files', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('USERNAME=bob'));
             });
-            let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
@@ -83,10 +92,10 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('throws on missing .env file', async () => {
+            sinon.restore();
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
-
             try {
-                let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
+                let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                     host: '127.0.0.1',
                     type: 'brightscript',
                     envFile: '${workspaceFolder}/.env',
@@ -99,13 +108,12 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
-            let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '/some/project/.env',
@@ -113,6 +121,26 @@ describe('BrightScriptConfigurationProvider', () => {
             });
             expect(config.password).to.equal('pass1234');
             expect(stub.called).to.be.true;
+        });
+
+        it('uses the default packagePort and remotePort', async () => {
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                password: 'password'
+            });
+            expect(config.packagePort).to.equal(80);
+            expect(config.remotePort).to.equal(8060);
+        });
+
+        it('allows for overriding packagePort and remotePort', async () => {
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                password: 'password',
+                packagePort: 1234,
+                remotePort: 5678
+            });
+            expect(config.packagePort).to.equal(1234);
+            expect(config.remotePort).to.equal(5678);
         });
     });
 });
