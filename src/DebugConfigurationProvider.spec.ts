@@ -2,12 +2,14 @@
 /* tslint:disable:no-var-requires */
 import { assert, expect } from 'chai';
 import * as sinonImport from 'sinon';
+import { WorkspaceFolder } from 'vscode';
+
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
+import { vscode } from './mockVscode.spec';
 
 let sinon: sinonImport.SinonSandbox;
 let c: any;
 let Module = require('module');
-
-import { vscode } from './mockVscode.spec';
 
 let commandsMock;
 
@@ -25,8 +27,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
-import { WorkspaceFolder } from 'vscode';
 let configProvider: BrightScriptDebugConfigurationProvider;
 
 beforeEach(() => {
@@ -49,7 +49,7 @@ afterEach(() => {
 
 describe('BrightScriptConfigurationProvider', () => {
     describe('resolveDebugConfiguration', () => {
-        var folder: WorkspaceFolder;
+        let folder: WorkspaceFolder;
         beforeEach(() => {
             folder = <any>{
                 uri: { fsPath: '/some/project' }
