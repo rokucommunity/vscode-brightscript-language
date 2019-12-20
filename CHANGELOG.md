@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.21.1] - 2019-12-20
+### Changed
+ - upgraded to [roku-deploy@2.6.1](https://github.com/rokucommunity/roku-deploy/tree/v2.6.1)
+
+
+
 ## [1.21.0] - 2019-12-08
 ### Added
  - option to use an alternate port when publishing a package to a Roku. This is mainly useful for publishing to an emulator an alternate port through port-forwarding. 
@@ -390,6 +396,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+[1.21.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.0...v1.21.1
+[1.21.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.3...v1.21.0
 [1.20.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.2...v1.20.3
 [1.20.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.1...v1.20.2
 [1.20.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.0...v1.20.1
