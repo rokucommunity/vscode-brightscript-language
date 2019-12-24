@@ -62,7 +62,7 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-deploy": "^2.2.1",
+        "roku-deploy": "^3.0.0-beta.5",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
         "vscode-languageclient": "^4.1.4",

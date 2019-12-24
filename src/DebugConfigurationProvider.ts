@@ -2,7 +2,7 @@ import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import { FilesType } from 'roku-deploy';
+import { FileEntry } from 'roku-deploy';
 import {
     CancellationToken,
     DebugConfiguration,
@@ -63,7 +63,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptDebugConfiguration, folder: WorkspaceFolder): Promise<BrightScriptDebugConfiguration> {
-        let defaultFilesArray: FilesType[] = [
+        let defaultFilesArray: FileEntry[] = [
             'manifest',
             'source/**/*.*',
             'components/**/*.*',
@@ -124,7 +124,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.componentLibraries) {
             config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
-            let compLibs: FilesType[][] = [];
+            let compLibs: FileEntry[][] = [];
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : defaultFilesArray;
@@ -373,10 +373,10 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     bsConst?: { [key: string]: boolean };
     componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
-    componentLibraries: FilesType[][];
+    componentLibraries: FileEntry[][];
     outDir: string;
     stopOnEntry: boolean;
-    files?: FilesType[];
+    files?: FileEntry[];
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     injectRaleTrackerTask: boolean;

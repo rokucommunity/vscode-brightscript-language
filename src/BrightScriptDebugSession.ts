@@ -4,7 +4,7 @@ import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
 import * as path from 'path';
 import * as request from 'request';
-import { FilesType, RokuDeploy } from 'roku-deploy';
+import { FileEntry, RokuDeploy } from 'roku-deploy';
 import {
     DebugSession,
     Handles,
@@ -1227,7 +1227,7 @@ export class BrightScriptDebugSession extends DebugSession {
         }
 
         //throw out any entry points from files not included in this project's `files` array
-        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
+        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.launchArgs.rootDir);
         let paths = files.map((x) => x.src);
         keys = keys.filter((x) => paths.indexOf(x) > -1);
 
@@ -1500,7 +1500,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * The list of files that should be bundled during a debug session
      */
-    files?: FilesType[];
+    files?: FileEntry[];
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
