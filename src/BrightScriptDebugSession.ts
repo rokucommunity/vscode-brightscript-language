@@ -1381,7 +1381,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param args
      */
     private logDebug(...args) {
-        let timestamp = dateFormat(new Date(), 'hh:mm:ss ');
+        let timestamp = dateFormat(new Date(), 'HH:mm:ss.l ');
         let messages = (Array.isArray(args) ? args : []).join(' ');
         this.sendEvent(new DebugServerLogOutputEvent(`${timestamp}: ${messages}`));
 
