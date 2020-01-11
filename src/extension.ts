@@ -47,6 +47,7 @@ import {
 } from './SymbolInformationRepository';
 
 let outputChannel: vscode.OutputChannel;
+let debugServerOutputChannel: vscode.OutputChannel;
 let client: LanguageClient;
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -72,6 +73,8 @@ export async function activate(context: vscode.ExtensionContext) {
         scheme: 'file'
     }, new Formatter());
     outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+    debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
+    debugServerOutputChannel.appendLine('Extension startup');
 
     let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
@@ -84,8 +87,14 @@ export async function activate(context: vscode.ExtensionContext) {
         if (e.event === 'BSLaunchStartEvent') {
             docLinkProvider.setLaunchConfig(e.body);
             logOutputManager.setLaunchConfig(e.body);
+
+            //write debug server log statements to the DebugServer output channel
+        } else if (e.event === 'BSDebugServerLogOutputEvent') {
+            debugServerOutputChannel.appendLine(e.body);
+
         } else if (e.event === 'BSRendezvousEvent') {
             rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
+
         } else if (!e.event) {
             if (e.body[0]) {
                 // open the first file with a compile error

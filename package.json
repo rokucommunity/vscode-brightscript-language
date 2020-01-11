@@ -44,6 +44,7 @@
         "backoff": "^2.5.0",
         "brighterscript": "^0.4.0",
         "brighterscript-formatter": "^1.0.2",
+        "dateformat": "^3.0.3",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",

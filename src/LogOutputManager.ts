@@ -18,8 +18,11 @@ export class LogLine {
 }
 
 export class LogOutputManager {
-    constructor(outputChannel, context, docLinkProvider,
-                private declarationProvider: DeclarationProvider) {
+    constructor(
+        outputChannel,
+        context, docLinkProvider,
+        private declarationProvider: DeclarationProvider
+    ) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;

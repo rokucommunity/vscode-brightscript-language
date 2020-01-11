@@ -78,7 +78,8 @@ export let vscode = {
         createOutputChannel: function() {
             return {
                 show: () => { },
-                clear: () => { }
+                clear: () => { },
+                appendLine: () => { }
             };
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
