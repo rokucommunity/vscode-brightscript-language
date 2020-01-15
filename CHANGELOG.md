@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.44] - 2020-01-15
+### Fixed
+ - issue where the extension was still using [roku-deploy@3.0.0-beta.5](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.5). The extnesion now uses  [roku-deploy@3.0.0-beta.7](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.7)
+
+
+
 ## [2.0.0-beta.43] - 2020-01-11
 ### Added
  - DebugServer output channel for showing more details of the status of the debug server without cluttering the main BrightScript log output 
