@@ -26,7 +26,6 @@
     },
     "scripts": {
         "preversion": "npm run build && npm run tslint && npm run test",
-        "prepare": "npm run build",
         "vscode:prepublish": "npm run build",
         "build": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
@@ -72,6 +71,7 @@
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/mocha": "^5.2.5",
+        "@types/mock-fs": "^4.10.0",
         "@types/node": "11.9.1",
         "@types/node-ssdp": "^3.3.0",
         "@types/q": "^1.5.1",
@@ -84,6 +84,7 @@
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
         "mocha-param": "^2.0.0",
+        "mock-fs": "^4.10.3",
         "nyc": "^14.1.1",
         "rmfr": "^2.0.0",
         "sinon": "^7.2.3",
@@ -92,7 +93,6 @@
         "ts-node": "^8.0.2",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
-        "tslint-origin-ordered-imports-rule": "^1.1.2",
         "typescript": "^3.6.4",
         "vsce": "^1.50.0",
         "vscode-debugadapter-testsupport": "1.33.0"

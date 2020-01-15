@@ -71,32 +71,32 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //make sure we have an object
         config = config ? config : {} as any;
 
-        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [this.util.checkForTrailingSlash(config.debugRootDir)];
+                config.sourceDirs = [this.util.ensureTrailingSlash(config.debugRootDir)];
             }
         } else if (config.sourceDirs) {
             let dirs: string[] = [];
 
             for (let dir of config.sourceDirs) {
-                dirs.push(this.util.checkForTrailingSlash(dir));
+                dirs.push(this.util.ensureTrailingSlash(dir));
             }
             config.sourceDirs = dirs;
         } else if (!config.sourceDirs) {
-            config.sourceDirs = [config.rootDir];
+            config.sourceDirs = [];
         }
 
         // #region Prepare Component Library config items
         if (config.componentLibraries) {
-            config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+            config.componentLibrariesOutDir = this.util.ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
             for (let library of config.componentLibraries) {
-                library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+                library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : defaultFilesArray;
             }
         } else {
@@ -114,7 +114,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
         config.request = config.request ? config.request : 'launch';
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
-        config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
+        config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : false;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
@@ -137,7 +137,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
-            config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
+            config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
         }
 
         return config;
@@ -332,7 +332,13 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
 
 export interface ComponentLibraryConfig {
     rootDir: string;
+    /**
+     * The filename for the package.
+     */
     outFile: string;
     files: FilesType[];
     sourceDirs: string[];
+    bsConst?: { [key: string]: boolean };
+    injectRaleTrackerTask: boolean;
+    trackerTaskFileLocation: string;
 }

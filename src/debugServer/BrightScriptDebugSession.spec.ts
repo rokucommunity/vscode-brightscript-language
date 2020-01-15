@@ -17,7 +17,7 @@ import {
     EvaluateContainer,
     HighLevelType,
     PrimativeType
-} from './RokuAdapter';
+} from '../RokuAdapter';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -338,7 +338,7 @@ describe('Debugger', () => {
             };
             session.stagingFolderPath = n(`${rootDir}/out`);
             let sourceLocation = await session.getSourceLocation('...rce/file1.brs', 1);
-            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file1.brs`));
+            expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file1.brs`));
 
             // sourceLocation = await session.getSourceLocation('...rce/file2.brs', 1);
             // expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file2.brs`));
@@ -358,10 +358,10 @@ describe('Debugger', () => {
             };
             session.stagingFolderPath = n(`${rootDir}/out`);
             let sourceLocation = await session.getSourceLocation('pkg:source/file1.brs', 1);
-            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file1.brs`));
+            expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file1.brs`));
 
             sourceLocation = await session.getSourceLocation('pkg:source/file2.brs', 1);
-            expect(n(sourceLocation.pathAbsolute)).to.equal(n(`${rootDir}/source/file2.brs`));
+            expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file2.brs`));
         });
 
     });

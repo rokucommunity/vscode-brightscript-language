@@ -108,7 +108,7 @@ then you would need change `rootDir` in your launch config to look like this:
 ## Breakpoints
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one. 
 
-When injecting `STOP` statements, the extension will also generate a source map for each affected file so that the extension can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
+When injecting `STOP` statements, the extension will also generate a source map for each affected file so we can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
 
 ## Special Cases
 
@@ -162,9 +162,9 @@ If you have a custom build process that pulls in files from multiple source dire
         {
             "rootDir": "${workspaceFolder}/dist",
             "sourceDirs": [
-                "${workspaceFolder}/../../some-common-library-a",
-                "${workspaceFolder}/../../some-common-library-b",
-                "${workspaceFolder}/../../some-common-library-c",
+                "${workspaceFolder}/../ProjectA",
+                "${workspaceFolder}/../ProjectB",
+                "${workspaceFolder}/../ProjectC",
             ],
             "preLaunchTask": "your-build-task-here",
             //...
@@ -174,20 +174,39 @@ If you have a custom build process that pulls in files from multiple source dire
 ```
 
 ### SourceMaps
-The extension has full support for [source maps](https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map). Which means that if you use some type of preprocessor that transforms the source files, as long as the preprocessor generates a source map, the extension will correctly translate breakpoints from source files into compiled locations, and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:
+The extension has full support for [source maps](https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map). Which means that if your preprocessor has source map support then the extension will correctly translate breakpoints from source files into compiled locations and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:
 
-```jsonc
+```javascript
+//.vscode/launch.json
 {
     "version": "0.2.0",
     "configurations": [{
         //this is where your preprocessor puts the final code (including source maps)
         "rootDir": "${workspaceFolder}/dist", 
-        // run your preprocessor which writes the final code to `rootDir` (including source maps)
+        // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
         "preLaunchTask": "your-build-task-here",
         //...other launch args
     }]
 }
 ```
+
+Your dist folder would look something like this after running your preprocessor.
+
+- ${workspaceFolder}/dist/
+    - manifest
+    - source/
+        - main.brs
+        - main.brs.map
+    - components/
+        - component1.xml
+        - component1.xml.map
+        - component1.brs
+        - component1.brs.map
+
+#### Mixing sourceDirs and source maps
+In order to maintain performance, you cannot mix [sourceDirs](#Multiple-source-dirs) and source maps. The extension will process the following way:
+
+
 
 ## BS_Const
 
@@ -216,8 +235,7 @@ If you are working on custom component libraries you can define them in the laun
   - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
   - `outFile`: The name of the zip file that your channel code will download as a component library. You can use values in your outFile string such as `${title}` to be inferred from the libraries manifest file.
   - `files`: A file path or file glob that should be copied to the deployment package.
-- `componentLibrariesPort`: Port to access component libraries. Default: `8080`
-- `componentLibrariesOutDir`: Output folder the component libraries will be hosted in. Default: `"${workspaceFolder}/libs"`
+- `componentLibrariesPort`: Port to access component libraries. Default: `8080`s
 
 
 **Example:**

@@ -2,9 +2,8 @@ import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import glob = require('glob');
 import * as path from 'path';
-import { RawSourceMap, SourceMapConsumer } from 'source-map';
-
-import { SourceLocation } from './BrightScriptDebugSession';
+import { RawSourceMap, SourceMapConsumer, SourceNode } from 'source-map';
+import { SourceLocation } from './SourceLocator';
 
 export class FileUtils {
 
@@ -114,6 +113,22 @@ export class FileUtils {
     }
 
     /**
+     * Determine if the filename ends with one of the specified extensions
+     */
+    public hasAnyExtension(fileName: string, extensions: string[]) {
+        var ext = path.extname(fileName);
+        return extensions.indexOf(ext) > -1;
+    }
+
+    /**
+     * Given a path to a directory, and an absolute path to a file,
+     * get the relative file path (relative to the containingFolderPath)
+     */
+    public getRelativePath(containingFolderPath: string, filePathAbsolute: string) {
+        return fileUtils.replaceCaseInsensitive(filePathAbsolute, containingFolderPath, '');
+    }
+
+    /**
      * Find the first `directoryPath` that is a parent to `filePathAbsolute`
      * @param filePathAbsolute - the absolute path to the file
      * @param directoryPaths - a list of directories where this file might reside
@@ -171,13 +186,12 @@ export class FileUtils {
      * Given a source location, compute its location in staging. You should call this for the main app (rootDir, rootDir+sourceDirs),
      * and also once for each component library
      */
-    public async getStagingLocationsFromSourceLocation(sourceFilePath: string, sourceLineNumber: number, sourceColumnIndex: number, rootDir: string, sourceDirs: string[], stagingFolderPath: string): Promise<SourceLocation[]> {
+    public async getStagingLocationsFromSourceLocation(sourceFilePath: string, sourceLineNumber: number, sourceColumnIndex: number, sourceDirs: string[], stagingFolderPath: string): Promise<SourceLocation[]> {
         sourceFilePath = fileUtils.standardizePath(sourceFilePath);
         sourceDirs = sourceDirs.map(x => fileUtils.standardizePath(x));
         stagingFolderPath = fileUtils.standardizePath(stagingFolderPath);
 
         //if sourceDirs is provided, then use those to find the staging location
-
 
         //first, look through the sourcemaps in the staging folder
         let locations = await this.getGeneratedLocationsFromSourceMap(sourceFilePath, stagingFolderPath, sourceLineNumber, sourceColumnIndex);
@@ -194,7 +208,7 @@ export class FileUtils {
                 let relativeFilePath = fileUtils.replaceCaseInsensitive(sourceFilePath, parentFolderPath, '');
                 let stagingFilePathAbsolute = path.join(stagingFolderPath, relativeFilePath);
                 return [{
-                    pathAbsolute: stagingFilePathAbsolute,
+                    filePath: stagingFilePathAbsolute,
                     columnIndex: sourceColumnIndex,
                     lineNumber: sourceLineNumber
                 }];
@@ -203,7 +217,6 @@ export class FileUtils {
                 return [];
             }
         }
-
     }
 
     /**
@@ -250,7 +263,7 @@ export class FileUtils {
                     columnIndex: position.column,
                     lineNumber: position.line,
                     //remove the .map extension
-                    pathAbsolute: sourceMapPath.replace(/\.map$/g, '')
+                    filePath: sourceMapPath.replace(/\.map$/g, '')
                 });
             }
         }));
@@ -288,7 +301,7 @@ export class FileUtils {
             return {
                 columnIndex: position.column,
                 lineNumber: position.line,
-                pathAbsolute: sourcePathAbsolute
+                filePath: sourcePathAbsolute
             };
         }
     }
@@ -354,6 +367,55 @@ export class FileUtils {
         };
     }
 
+    /**
+     * If a string has a leading slash, remove it
+     */
+    public removeLeadingSlash(path: string) {
+        if (path.indexOf('/') === 0 || path.indexOf('\\') === 0) {
+            return path.substring(1);
+        }
+    }
+
+    /**
+     * Create a sourceMap file that contains the contents of the `destPath` file,
+     * but points to the `srcPath` for its location in the sourceMap.
+     * This is mainly used to support sourceDirs where the line numbers should be the same.
+     * @param srcPath
+     * @param destPath
+     */
+    public async createSourcemap(srcPath: string, destPath: string) {
+        var fileContents = await fsExtra.readFile(destPath);
+        var lines = eol.split(fileContents.toString());
+        var chunks = [];
+        let newline = '\n';
+        for (let i = 0; i < lines.length; i++) {
+            //is final line
+            if (i === lines.length - 1) {
+                newline = '';
+            }
+            chunks.push(
+                new SourceNode(i + 1, 0, srcPath, `${lines[i]}${newline}`)
+            );
+        }
+        let node = new SourceNode(null, null, srcPath, chunks);
+        var result = node.toStringWithSourceMap();
+        var mapText = JSON.stringify(result.map);
+        //write the file
+        await fsExtra.writeFile(`${destPath}.map`, mapText);
+    }
 }
 
 export let fileUtils = new FileUtils();
+
+/**
+ * A tagged template literal function for standardizing the path.
+ */
+export function standardizePath(stringParts, ...expressions: any[]) {
+    let result = [];
+    for (var i = 0; i < stringParts.length; i++) {
+        result.push(stringParts[i], expressions[i]);
+    }
+    return fileUtils.standardizePath(
+        result.join('')
+    );
+}

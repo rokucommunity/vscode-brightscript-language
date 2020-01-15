@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as replaceLast from 'replace-last';
 
-import { SourceLocation } from './BrightScriptDebugSession';
+import { SourceLocation } from './debugServer/SourceLocator';
 
 export class RendezvousTracker {
     constructor() {
@@ -181,11 +181,11 @@ export class RendezvousTracker {
             if (fileNameAsBrs || fileNameAsXml) {
                 // File name did not have a valid extension
                 // Check for both the .brs and .xml versions of the file starting with .brs
-                fileNameAsBrs = (await this.getSourceLocation(fileNameAsBrs, lineNumber)).pathAbsolute;
+                fileNameAsBrs = (await this.getSourceLocation(fileNameAsBrs, lineNumber)).filePath;
                 if (fileNameAsBrs) {
                     fileName = fileNameAsBrs;
                 } else {
-                    fileNameAsXml = (await this.getSourceLocation(fileNameAsXml, lineNumber)).pathAbsolute;
+                    fileNameAsXml = (await this.getSourceLocation(fileNameAsXml, lineNumber)).filePath;
                     if (fileNameAsXml) {
                         fileName = fileNameAsXml;
                     }
@@ -193,7 +193,7 @@ export class RendezvousTracker {
             }
             let sourceLocation = await this.getSourceLocation(fileName, lineNumber);
             this.clientPathsMap[fileName] = {
-                clientPath: sourceLocation.pathAbsolute,
+                clientPath: sourceLocation.filePath,
                 clientLines: {
                     //TODO - should the line be 1 or 0 based?
                     [lineNumber]: sourceLocation.lineNumber

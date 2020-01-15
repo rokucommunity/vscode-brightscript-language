@@ -7,6 +7,7 @@ import { SourceNode } from 'source-map';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { fileUtils } from './FileUtils';
+import { Project } from './ProjectManager';
 
 export class BreakpointManager {
 
@@ -99,7 +100,7 @@ export class BreakpointManager {
      * Get a list of all breakpoint tasks that should be performed.
      * This will also exclude files with breakpoints that are not in scope.
      */
-    private async getBreakpointWork(sourceFolderPaths: string[], stagingFolderPath: string) {
+    private async getBreakpointWork(project: Project) {
         let result = {} as {
             [stagingFilePath: string]: Array<BreakpointWorkItem>
         };
@@ -110,20 +111,26 @@ export class BreakpointManager {
             for (let breakpoint of breakpoints) {
                 //get the list of locations in staging that this breakpoint should be written to.
                 //if none are found, then this breakpoint is essentially ignored
-                let stagingLocations = await fileUtils.getStagingLocationsFromSourceLocation(sourceFilePath, breakpoint.line, breakpoint.column, sourceFolderPaths, stagingFolderPath);
+                let stagingLocations = await fileUtils.getStagingLocationsFromSourceLocation(
+                    sourceFilePath,
+                    breakpoint.line,
+                    breakpoint.column,
+                    sourceFolderPaths,
+                    stagingFolderPath
+                );
                 for (let stagingLocation of stagingLocations) {
                     let obj = {
                         sourceFilePath: sourceFilePath,
                         lineNumber: stagingLocation.lineNumber,
                         columnIndex: stagingLocation.columnIndex,
-                        targetFilePath: stagingLocation.pathAbsolute,
+                        targetFilePath: stagingLocation.filePath,
                         condition: breakpoint.condition,
                         hitCondition: breakpoint.hitCondition
                     };
-                    if (!result[stagingLocation.pathAbsolute]) {
-                        result[stagingLocation.pathAbsolute] = [];
+                    if (!result[stagingLocation.filePath]) {
+                        result[stagingLocation.filePath] = [];
                     }
-                    result[stagingLocation.pathAbsolute].push(obj);
+                    result[stagingLocation.filePath].push(obj);
                 }
             }
         }
@@ -152,9 +159,8 @@ export class BreakpointManager {
      * @param sourceDirs - the list of source folders that could contain the source files.
      * @param stagingFolderPath - the path to the folder where all the files are staged
      */
-    public async writeAllBreakpoints(rootDir: string, sourceDirs: string[], stagingFolderPath: string) {
-        sourceDirs = sourceDirs && sourceDirs.length > 0 ? sourceDirs : [rootDir];
-        var breakpointsByStagingFilePath = await this.getBreakpointWork(sourceDirs, stagingFolderPath);
+    public async writeAllBreakpoints(project: Project) {
+        var breakpointsByStagingFilePath = await this.getBreakpointWork(project);
 
         let promises = [] as Promise<any>[];
         for (let stagingFilePath in breakpointsByStagingFilePath) {
@@ -243,16 +249,18 @@ export class BreakpointManager {
     }
 
     private bpIndex = 1;
-    private writeBreakpointsWithSourceMap(originalFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
+    private writeBreakpointsWithSourceMap(stagingFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
         let chunks = [] as Array<SourceNode | string>;
 
         //split the file by newline
         let lines = eol.split(fileContents);
-
+        let newline = '\n';
         for (let originalLineIndex = 0; originalLineIndex < lines.length; originalLineIndex++) {
             let line = lines[originalLineIndex];
-            let isFinalLine = originalLineIndex === lines.length - 1;
-            let newline = isFinalLine ? '' : '\n';
+            //if is final line
+            if (originalLineIndex === lines.length - 1) {
+                newline = '';
+            }
             //find breakpoints for this line (breakpoint lines are 1-indexed, but our lineIndex is 0-based)
             let lineBreakpoints = breakpoints.filter(bp => bp.lineNumber - 1 === originalLineIndex);
             //if we have a breakpoint, insert that before the line

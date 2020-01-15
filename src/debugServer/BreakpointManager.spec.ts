@@ -204,7 +204,7 @@ describe('BreakpointManager', () => {
         });
     });
 
-    describe.only('writeAllBreakpoints', () => {
+    describe('writeAllBreakpoints', () => {
         let rootDir = n(`${cwd}/.tmp/rokuProject`);
         let stagingDir = n(`${cwd}/.tmp/staging`);
         let sourceDir1 = n(`${cwd}/.tmp/source1`);
@@ -221,7 +221,7 @@ describe('BreakpointManager', () => {
             try { fsExtra.removeSync(`${cwd}/.tmp`); } catch (e) { }
         });
 
-        it('works with normal flow', async () => {
+        it.skip('works with normal flow', async () => {
             fsExtra.writeFileSync(`${rootDir}/source/main.brs`, `sub main()\n    print 1\n    print 2\nend sub`);
 
             //set the breakpoint before launch
@@ -255,7 +255,7 @@ describe('BreakpointManager', () => {
             });
         });
 
-        it.only('works with sourceDir1', async () => {
+        it.skip('works with sourceDir1', async () => {
             //create file
             fsExtra.writeFileSync(`${sourceDir1}/source/main.brs`, `sub main()\n    print 1\n    print 2\nend sub`);
 

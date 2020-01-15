@@ -1,9 +1,6 @@
 import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as net from 'net';
-import * as path from 'path';
-
-const extensions = ['.js', '.ts', '.json', '.jsx', '.tsx', '.vue', '.css', '.mcss', '.scss', '.less', '.html'];
 
 class Util {
     public async readDir(dirPath: string) {
@@ -15,7 +12,11 @@ class Util {
         });
     }
 
-    public checkForTrailingSlash(dirPath: string) {
+    /**
+     * If the path does not have a trailing slash, one is appended to it
+     * @param dirPath 
+     */
+    public ensureTrailingSlash(dirPath: string) {
         return dirPath.substr(dirPath.length - 1) !== '/' ? dirPath + '/' : dirPath;
     }
 
@@ -28,44 +29,6 @@ class Util {
                 resolve(result);
             });
         });
-    }
-
-    public async fixFilePathExtension(filePath: string) {
-        const dirPath = path.join(filePath, '../');
-        const fileName = filePath.replace(dirPath, '');
-
-        // with extension, return directly
-        if (fileName.indexOf('.') > 0) {
-            return filePath;
-        }
-
-        // Traverse the directory where the file is located, match the file name. Suffix
-        let filePathWithExt = await this.traverse(dirPath, fileName);
-        if (filePathWithExt === 'dir') {
-            filePathWithExt = await this.traverse(filePath, 'index');
-        }
-        if (filePathWithExt && filePathWithExt !== 'dir') {
-            return filePathWithExt;
-        }
-        return null;
-    }
-
-    private async traverse(dirPath: string, fileName: string) {
-        let dir = await this.readDir(dirPath);
-        for (let ext of extensions) {
-            if (dir.indexOf(fileName + ext) > -1) {
-                return path.join(dirPath, fileName + ext);
-            }
-        }
-        if (dir.indexOf(fileName) !== -1) {
-            let stats = await this.stat(path.join(dirPath, fileName)) as fs.Stats;
-            if (stats.isFile()) {
-                return path.join(dirPath, fileName);
-            } else if (stats.isDirectory()) {
-                return 'dir';
-            }
-        }
-        return null;
     }
 
     /**
@@ -168,6 +131,7 @@ class Util {
         }
         return r;
     }
+
 }
 
 const util = new Util();

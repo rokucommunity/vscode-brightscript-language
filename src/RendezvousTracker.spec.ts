@@ -38,7 +38,7 @@ describe('BrightScriptFileUtils ', () => {
                 debuggerPath = '';
             }
             return {
-                pathAbsolute: debuggerPath,
+                filePath: debuggerPath,
                 lineNumber: lineNumber,
                 columnIndex: 0
             };

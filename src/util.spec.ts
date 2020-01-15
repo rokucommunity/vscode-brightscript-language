@@ -28,12 +28,12 @@ describe('Util', () => {
 
     describe('checkForTrailingSlash', () => {
         it('should add trailing slash when missing', () => {
-            assert.equal(util.checkForTrailingSlash('./.tmp/findMainFunctionTests'), './.tmp/findMainFunctionTests/');
+            assert.equal(util.ensureTrailingSlash('./.tmp/findMainFunctionTests'), './.tmp/findMainFunctionTests/');
         });
 
         it('should not add trailing slash when present', () => {
             let unchangedStringTestValue = './.tmp/findMainFunctionTests/';
-            assert.equal(util.checkForTrailingSlash(unchangedStringTestValue), unchangedStringTestValue);
+            assert.equal(util.ensureTrailingSlash(unchangedStringTestValue), unchangedStringTestValue);
         });
     });
 

@@ -2,10 +2,7 @@ import * as eol from 'eol';
 import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
-import * as mergeSourceMap from 'merge-source-map';
 import * as path from 'path';
-// tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
-let replaceInFile = require('replace-in-file');
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
 import {
@@ -22,19 +19,19 @@ import {
     Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-
-import { BreakpointManager } from './BreakpointManager';
-import { ComponentLibraryServer } from './ComponentLibraryServer';
-import { ComponentLibraryConfig } from './DebugConfigurationProvider';
-import { fileUtils } from './FileUtils';
-import { RendezvousHistory } from './RendezvousTracker';
+import { ComponentLibraryServer } from '../ComponentLibraryServer';
+import { ComponentLibraryConfig } from '../DebugConfigurationProvider';
+import { RendezvousHistory } from '../RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
-} from './RokuAdapter';
-import { util } from './util';
-
-// var mergeSourceMap = require('./mergeSourceMap');
+} from '../RokuAdapter';
+import { util } from '../util';
+import { BreakpointManager } from './BreakpointManager';
+import { fileUtils } from './FileUtils';
+import { SourceLocation, SourceLocator } from './SourceLocator';
+import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './ProjectManager';
+import { standardizePath as s } from './FileUtils';
 
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
@@ -52,7 +49,6 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private breakpointManager = new BreakpointManager();
 
-    private componentLibrariesOutDir: string;
     private componentLibraryServer = new ComponentLibraryServer();
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
@@ -123,6 +119,11 @@ export class BrightScriptDebugSession extends DebugSession {
 
     public launchRequestWasCalled = false;
 
+    public projectManager = new ProjectManager();
+
+    public mainProject: Project;
+    public componentLibraryProjects: ComponentLibraryProject[];
+
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
 
@@ -134,31 +135,21 @@ export class BrightScriptDebugSession extends DebugSession {
         let error: Error;
         this.log('Packaging and deploying to roku');
         try {
+            //add the main project
+            this.mainProject = this.projectManager.setMainProject(
+                new Project({
+                    rootDir: this.launchArgs.rootDir,
+                    files: this.launchArgs.files,
+                    outDir: this.launchArgs.outDir,
+                    sourceDirs: this.launchArgs.sourceDirs,
+                    bsConst: this.launchArgs.bsConst,
+                    injectRaleTrackerTask: this.launchArgs.injectRaleTrackerTask,
+                    trackerTaskFileLocation: this.launchArgs.trackerTaskFileLocation
+                })
+            );
 
             this.sendDebugLogLine('Moving selected files to staging area');
-            //copy all project files to the staging folder
-            this.stagingFolderPath = await this.rokuDeploy.prepublishToStaging(args as any);
-
-            if (this.launchArgs.bsConst) {
-                let manifestPath = path.join(this.stagingFolderPath, '/manifest');
-                if (util.fileExists(manifestPath)) {
-                    // Update the bs_const values in the manifest in the staging folder before side loading the channel
-                    let fileContents = (await fsExtra.readFile(manifestPath)).toString();
-                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
-                    await fsExtra.writeFile(manifestPath, fileContents);
-                }
-            }
-
-            // inject the tracker task into the staging files if we have everything we need
-            if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
-                try {
-                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingFolderPath + '/components/', 'TrackerTask.xml'));
-                    console.log('TrackerTask successfully injected');
-                    await this.injectRaleTrackerTaskCode(this.stagingFolderPath);
-                } catch (err) {
-                    console.error(err);
-                }
-            }
+            this.mainProject.stage();
 
             //add the entry breakpoint if stopOnEntry is true
             if (this.launchArgs.stopOnEntry) {
@@ -169,17 +160,13 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
 
             //write all `stop` statements to the files in the staging folder
-            await this.breakpointManager.writeAllBreakpoints(this.launchArgs.rootDir, this.launchArgs.sourceDirs, this.stagingFolderPath);
+            await this.breakpointManager.writeAllBreakpoints(this.projectManager.mainProject);
 
             //create zip package from staging folder
             this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.rokuDeploy.zipPackage({
-                ...(args as any),
-                //the staging folder needs to exist during the debug session so we can read the source maps
-                retainStagingFolder: true
-            });
+            await this.mainProject.zipPackage({ retainStagingFolder: true });
 
-            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
+            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesPort);
 
             this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
 
@@ -230,7 +217,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.rokuAdapter.on('compile-errors', async (compileErrors) => {
                 for (let compileError of compileErrors) {
                     let sourceLocation = await this.getSourceLocation(compileError.path, compileError.lineNumber);
-                    compileError.path = sourceLocation.pathAbsolute;
+                    compileError.path = sourceLocation.filePath;
                     compileError.lineNumber = sourceLocation.lineNumber;
                 }
 
@@ -343,161 +330,62 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * updates the staging manifest with the supplied bsConsts from the launch config
-     * @param consts object of consts to be updated
-     * @param fileContents
-     */
-    public async updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): Promise<string> {
-        let bsConstLine;
-        let missingConsts: string[] = [];
-        let lines = eol.split(fileContents);
-
-        let newLine;
-        //loop through the lines until we find the bs_const line if it exists
-        for (const line of lines) {
-            if (line.toLowerCase().startsWith('bs_const')) {
-                bsConstLine = line;
-                newLine = line;
-                break;
-            }
-        }
-
-        if (bsConstLine) {
-            // update the consts in the manifest and check for missing consts
-            missingConsts = Object.keys(consts).reduce((results, key) => {
-                let match;
-                if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
-                    newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
-                } else {
-                    results.push(key);
-                }
-
-                return results;
-            }, []);
-
-            // check for consts that where not in the manifest
-            if (missingConsts.length > 0) {
-                throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
-            } else {
-                // update the manifest contents
-                return fileContents.replace(bsConstLine, newLine);
-            }
-        } else {
-            throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
-        }
-    }
-
-    private componentLibraryPostfix: string = '__lib';
-
-    /**
      * Stores the path to the staging folder for each component library
      */
-    private componentLibraryStagingFolders = [] as string[];
+    protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], port: number) {
+        var componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
+        //make sure this folder exists (and is empty)
+        await fsExtra.ensureDir(componentLibrariesOutDir);
+        await fsExtra.emptyDir(componentLibrariesOutDir);
 
-    protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], componentLibrariesOutDir: string, port: number) {
-        if (componentLibraries && componentLibrariesOutDir) {
-            this.componentLibrariesOutDir = componentLibrariesOutDir;
-            this.componentLibrariesStagingDirPaths = [];
-
-            // #region Prepare the component libraries and create some namespacing for debugging
+        if (componentLibraries) {
+            //create a ComponentLibraryProject for each component library
             for (let libraryIndex = 0; libraryIndex < componentLibraries.length; libraryIndex++) {
                 let componentLibrary = componentLibraries[libraryIndex];
 
-                (componentLibrary as any).outDir = componentLibrariesOutDir;
-                let stagingFolderPath = await this.rokuDeploy.prepublishToStaging(componentLibrary);
+                this.componentLibraryProjects.push(
+                    new ComponentLibraryProject({
+                        rootDir: componentLibrary.rootDir,
+                        files: componentLibrary.files,
+                        outDir: componentLibrariesOutDir,
+                        outFile: componentLibrary.outFile,
+                        sourceDirs: componentLibrary.sourceDirs,
+                        bsConst: componentLibrary.bsConst,
+                        injectRaleTrackerTask: componentLibrary.injectRaleTrackerTask,
+                        trackerTaskFileLocation: componentLibrary.trackerTaskFileLocation,
+                        libraryIndex: libraryIndex
+                    })
+                );
+            }
 
-                //keep track of the staging folder for this comp lib
-                this.componentLibraryStagingFolders[libraryIndex] = stagingFolderPath;
+            //prepare all of the libraries in parallel
+            var compLibPromises = this.componentLibraryProjects.map(async (compLibProject) => {
 
-                // check the component library for any replaceable values used for auto naming from manifest values
-                await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolderPath);
-
-                let paths = glob.sync(path.join(stagingFolderPath, '**/*'));
-                let pathDetails: object = {};
+                await compLibProject.stage();
 
                 // Add breakpoint lines to the staging files and before publishing
                 this.sendDebugLogLine('Adding stop statements for active breakpoints in Component Libraries');
 
                 //write the `stop` statements to every file that has breakpoints
-                await this.breakpointManager.writeAllBreakpoints(componentLibrary.rootDir, componentLibrary.sourceDirs, stagingFolderPath);
+                await this.breakpointManager.writeAllBreakpoints(compLibProject.rootDir, compLibProject.sourceDirs, compLibProject.stagingFolderPath);
 
-                await Promise.all(paths.map(async (filePath) => {
-                    //make the path relative (+1 for removing the slash)
-                    let relativePath = filePath.substring(stagingFolderPath.length + 1);
-                    let parsedPath = path.parse(relativePath);
+                compLibProject.postfixFiles();
 
-                    if (parsedPath.ext) {
-                        let originalRelativePath = relativePath;
-
-                        if (parsedPath.ext === '.brs') {
-                            // Create the new file name to be used
-                            let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryIndex}${parsedPath.ext}`;
-                            relativePath = path.join(parsedPath.dir, newFileName);
-
-                            // Update all the file name references in the library to the new file names
-                            replaceInFile.sync({
-                                files: [
-                                    path.join(stagingFolderPath, '**/*.xml'),
-                                    path.join(stagingFolderPath, '**/*.brs')
-                                ],
-                                from: (file) => new RegExp(parsedPath.base, 'gi'),
-                                to: newFileName
-                            });
-
-                            // Rename the brs files to include the postfix namespacing tag
-                            await fsExtra.move(filePath, path.join(stagingFolderPath, relativePath));
-                        }
-
-                        // Add to the map of original paths and the new paths
-                        pathDetails[relativePath] = originalRelativePath;
-                    }
-                }));
-
-                // push one file map object for each library we prepare
-                this.componentLibrariesStagingDirPaths.push(pathDetails);
-                await this.rokuDeploy.zipPackage(componentLibrary);
-            }
-            // #endregion
-
-            // prepare static file hosting
-            await this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.sendDebugLogLine(message); });
+                await compLibProject.zipPackage({ retainStagingFolder: true });
+            });
         }
+
+        // prepare static file hosting
+        var hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
+            this.sendDebugLogLine(message);
+        });
+
+        //wait for all component libaries to finish building, and the file hosting to start up
+        await Promise.all([
+            ...compLibPromises,
+            hostingPromise
+        ]);
     }
-
-    /**
-     * Takes a component Library and checks the outFile for replaceable values pulled from the libraries manifest
-     * @param componentLibrary The library to check
-     * @param stagingFolder staging folder of the component library to search for the manifest file
-     */
-    private async processComponentLibraryForAutoNaming(componentLibrary: { outFile: string }, stagingFolder: string) {
-        let regexp = /\$\{([\w\d_]*)\}/;
-        let renamingMatch;
-        let manifestValues;
-
-        // search the outFile for replaceable values such as ${title}
-        while (renamingMatch = regexp.exec(componentLibrary.outFile)) {
-            if (!manifestValues) {
-                // The first time a value is found we need to get the manifest values
-                let manifestPath = path.join(stagingFolder + '/', 'manifest');
-                manifestValues = await util.convertManifestToObject(manifestPath);
-
-                if (!manifestValues) {
-                    throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
-                }
-            }
-
-            // replace the replaceable key with the manifest value
-            let manifestVariableName = renamingMatch[1];
-            let manifestVariableValue = manifestValues[manifestVariableName];
-            if (manifestVariableValue) {
-                componentLibrary.outFile = componentLibrary.outFile.replace(renamingMatch[0], manifestVariableValue);
-            } else {
-                throw new Error(`Cannot find manifest value:\n"${manifestVariableName}"\n\nCould not complete automatic component library naming.`);
-            }
-        }
-    }
-
-    private componentLibrariesStagingDirPaths: object[];
 
     protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
         this.log('sourceRequest');
@@ -601,7 +489,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
                 try {
-                    let functionName = await this.getCorrectFunctionNameCase(sourceLocation.pathAbsolute, debugFrame.functionIdentifier);
+                    let functionName = await this.getCorrectFunctionNameCase(sourceLocation.filePath, debugFrame.functionIdentifier);
                     if (functionName) {
                         debugFrame.functionIdentifier = functionName;
                     }
@@ -612,7 +500,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 let frame = new StackFrame(
                     debugFrame.frameId,
                     `${debugFrame.functionIdentifier}`,
-                    new Source(path.basename(sourceLocation.pathAbsolute), sourceLocation.pathAbsolute),
+                    new Source(path.basename(sourceLocation.filePath), sourceLocation.filePath),
                     sourceLocation.lineNumber,
                     1
                 );
@@ -843,59 +731,6 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
-     * @param stagingPath
-     */
-    public async injectRaleTrackerTaskCode(stagingPath: string) {
-        // Search for the tracker task entry injection point
-        let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
-        let results = Object.assign(
-            {},
-            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
-            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.xml/)
-        );
-
-        let keys = Object.keys(results);
-        if (keys.length === 0) {
-            // Do not throw an error as we don't want to prevent the user from launching the channel
-            // just because they don't have a local version of the TrackerTask.
-            this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
-            this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
-        } else {
-            // This code will start the tracker task in the project
-            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
-
-            // process the entry points found in the files
-            // unlikely but we might have more then one
-            for (const key of keys) {
-                let fileResults = results[key];
-                let fileContents = (await fsExtra.readFile(key)).toString();
-
-                let index = 0;
-                for (const line of fileResults.line) {
-                    // Remove the comment part of the match from the line to use as a base for the new line
-                    let newLine = line.replace(fileResults.matches[index], '');
-                    let match;
-                    if (match = /[\S]/.exec(newLine)) {
-                        // There was some form of code before the comment the was removed
-                        // append and use single line syntax
-                        newLine += `: ${trackerTaskSupportCode}`;
-                    } else {
-                        newLine += trackerTaskSupportCode;
-                    }
-
-                    // Replace the found line with the new line containing the tracker task code
-                    fileContents = fileContents.replace(line, newLine);
-                    index++;
-                }
-
-                // safe the changes back to the staging file
-                await fsExtra.writeFile(key, fileContents);
-            }
-        }
-    }
-
-    /**
      * File paths can be different casing sometimes,
      * so delete from `breakpointsByClientPath` case-insensitive
      */
@@ -908,63 +743,6 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * Given a full path to a file, walk up the tree until we have found the base project path (full path to the folder containing the manifest file)
-     * @param filePath
-     */
-    // private async getBaseProjectPath(filePath: string) {
-    // 	//try walking up 10 levels. If we haven't found it by then, there is nothing we can do.
-    // 	let folderPath = filePath;
-    // 	for (let i = 0; i < 10; i++) {
-    // 		folderPath = path.dirname(folderPath);
-    // 		let files = await Q.nfcall(glob, path.join(folderPath, 'manifest'));
-    // 		if (files.length === 1) {
-    // 			let dir = path.dirname(files[0]);
-    // 			return path.normalize(dir);
-    // 		}
-    // 	}
-    // 	throw new Error('Unable to find base project path');
-    // }
-
-    /**
-     * Given a debugger-relative file path, find the path to that file in the staging directory.
-     * This supports the standard out dir, as well as component library out dirs
-     * @param debuggerPath the path to the file which was provided by the debugger
-     * @param stagingFolderPath - the path to the root of the staging folder (where all of the files were copied before deployment)
-     * @return a full path to the file in the staging directory
-     */
-    public getStagingFileInfo(debuggerPath: string) {
-        let stagingFolderPath: string;
-
-        let componentLibraryIndex = fileUtils.getComponentLibraryIndex(debuggerPath, this.componentLibraryPostfix);
-        //component libraries
-        if (componentLibraryIndex !== undefined) {
-            stagingFolderPath = this.componentLibraryStagingFolders[componentLibraryIndex];
-
-            //standard project files
-        } else {
-            stagingFolderPath = this.stagingFolderPath;
-        }
-
-        let relativePath: string;
-
-        //if the path starts with pkg, we have an exact match.
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            relativePath = debuggerPath.substring(4);
-        } else {
-            relativePath = fileUtils.findPartialFileInDirectory(debuggerPath, stagingFolderPath);
-        }
-        if (relativePath) {
-            return {
-                relativePath: path.normalize(relativePath),
-                absolutePath: path.join(stagingFolderPath, relativePath),
-                outDirPath: stagingFolderPath
-            };
-        } else {
-            return undefined;
-        }
-    }
-
-    /**
      * Convert a debugger location into a source location.
      * If a source map with the same name is found, those will be used.
      * Otherwise, use the `sourceDirs` and the `componentLibraries` root dirs to
@@ -973,48 +751,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param debuggerLineNumber - the line number that was sent by the debugger
      */
     public async getSourceLocation(debuggerPath: string, debuggerLineNumber: number): Promise<SourceLocation | undefined> {
-        let stagingFileInfo = this.getStagingFileInfo(debuggerPath);
-        if (!stagingFileInfo) {
-            return;
-        }
-        let sourceLocation = await fileUtils.getSourceLocationFromSourceMap(stagingFileInfo.absolutePath, debuggerLineNumber);
-
-        //there is no source map for this file...assume debuggerLineNumber matches source line number
-        if (!sourceLocation) {
-            //an array of source folders, which will be traversed
-            let sourceDirs: string[];
-            let componentLibrary = this.getComponentLibraryForFile(stagingFileInfo.relativePath);
-            if (componentLibrary) {
-                sourceDirs = [...(componentLibrary.sourceDirs || []), componentLibrary.rootDir];
-            } else {
-                sourceDirs = [...(this.launchArgs.sourceDirs || []), this.launchArgs.rootDir];
-            }
-
-            //find the first occurance of this relative path
-            let sourcePath = await fileUtils.findFirstRelativeFile(
-                stagingFileInfo.relativePath,
-                //reverse the array because the array is currently sorted parent-to-child
-                //but the function walks child-to-parent
-                sourceDirs.slice().reverse()
-            );
-            sourceLocation = {
-                pathAbsolute: sourcePath,
-                lineNumber: debuggerLineNumber,
-                columnIndex: 0
-            };
-        }
-        return sourceLocation;
-    }
-
-    /**
-     * Given any file path, look for the component library postfix.
-     * If present, return the component library config for that library id
-     */
-    private getComponentLibraryForFile(filePath: string) {
-        let idx = fileUtils.getComponentLibraryIndex(filePath, this.componentLibraryPostfix);
-        if (idx !== undefined) {
-            return this.launchArgs.componentLibraries[idx];
-        }
+        return this.projectManager.getSourceLocation(debuggerPath, debuggerLineNumber);
     }
 
     private log(...args) {
@@ -1257,12 +994,4 @@ class LaunchStartEvent implements DebugProtocol.Event {
     public event: string;
     public seq: number;
     public type: string;
-}
-
-export interface SourceLocation {
-    pathAbsolute: string;
-    //1-based line number
-    lineNumber: number;
-    //0-based column index
-    columnIndex: number;
 }

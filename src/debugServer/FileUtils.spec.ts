@@ -6,7 +6,7 @@ import * as rmfr from 'rmfr';
 import * as sinonActual from 'sinon';
 import { SourceNode } from 'source-map';
 
-import { fileUtils } from './FileUtils';
+import { fileUtils, standardizePath } from './FileUtils';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -109,17 +109,17 @@ describe('FileUtils', () => {
 
         it('finds file from first folder', async () => {
             paths = [pathA, pathB, pathC];
-            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathA);
+            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathA);
         });
 
         it('finds file from middle folder', async () => {
             paths = [pathB, pathC];
-            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathB);
+            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathB);
         });
 
         it('finds file from last folder', async () => {
             paths = [pathC];
-            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
+            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
         });
     });
 
@@ -195,13 +195,20 @@ describe('FileUtils', () => {
         });
     });
 
-    describe.only('findFirstParent', () => {
+    describe('findFirstParent', () => {
         it('finds parent from first index', () => {
             expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`])).to.equal(n(`${rootDir}/project`));
         });
 
         it('finds parent from first index even though the second one would match too', () => {
             expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`, `${rootDir}`])).to.equal(n(`${rootDir}/project`));
+        });
+    });
+
+    describe('standardizePath', () => {
+        it('works with string literals', () => {
+            expect(standardizePath`a${1}b${2}c`).to.equal('a1b2c');
+            expect(standardizePath`a${1}b${2}`).to.equal('a1b2');
         });
     });
 });
