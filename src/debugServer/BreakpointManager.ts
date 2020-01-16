@@ -46,6 +46,11 @@ export class BreakpointManager {
         //standardize the file path (lower drive letter, normalize path.sep, etc...)
         sourceFilePath = fileUtils.standardizePath(sourceFilePath);
 
+        //set column=0 for every breakpoint that is missing it
+        for (var b of allBreakpointsForFile) {
+            b.column = b.column ?? 0;
+        }
+
         //reject breakpoints from non-brightscript files
         if (!fileUtils.hasAnyExtension(sourceFilePath, ['.brs', '.bs', '.xml'])) {
             //mark every non-supported breakpoint as NOT verified, since we don't support debugging non-brightscript files
