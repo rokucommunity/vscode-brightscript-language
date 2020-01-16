@@ -330,7 +330,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * Stores the path to the staging folder for each component library
      */
     protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], port: number) {
-        if (componentLibraries) {
+        if (componentLibraries && componentLibraries.length > 0) {
             var componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
             //make sure this folder exists (and is empty)
             await fsExtra.ensureDir(componentLibrariesOutDir);
