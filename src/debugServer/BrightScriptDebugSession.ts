@@ -372,10 +372,13 @@ export class BrightScriptDebugSession extends DebugSession {
             });
         }
 
-        // prepare static file hosting
-        var hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
-            this.sendDebugLogLine(message);
-        });
+        var hostingPromise: Promise<any>;
+        if (compLibPromises) {
+            // prepare static file hosting
+            hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
+                this.sendDebugLogLine(message);
+            });
+        }
 
         //wait for all component libaries to finish building, and the file hosting to start up
         await Promise.all([
@@ -676,6 +679,7 @@ export class BrightScriptDebugSession extends DebugSession {
         if (this.rokuAdapter) {
             this.rokuAdapter.destroy();
         }
+        this.componentLibraryServer.stop();
         //return to the home screen
         await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
         this.sendResponse(response);
