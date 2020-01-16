@@ -186,19 +186,31 @@ export class FileUtils {
      * Given a source location, compute its location in staging. You should call this for the main app (rootDir, rootDir+sourceDirs),
      * and also once for each component library
      */
-    public async getStagingLocationsFromSourceLocation(sourceFilePath: string, sourceLineNumber: number, sourceColumnIndex: number, sourceDirs: string[], stagingFolderPath: string): Promise<SourceLocation[]> {
+    public async getStagingLocationsFromSourceLocation(
+        sourceFilePath: string,
+        sourceLineNumber: number,
+        sourceColumnIndex: number,
+        sourceDirs: string[],
+        stagingFolderPath: string
+    ): Promise<SourceLocation[]> {
+
         sourceFilePath = fileUtils.standardizePath(sourceFilePath);
         sourceDirs = sourceDirs.map(x => fileUtils.standardizePath(x));
         stagingFolderPath = fileUtils.standardizePath(stagingFolderPath);
 
-        //if sourceDirs is provided, then use those to find the staging location
-
         //first, look through the sourcemaps in the staging folder
-        let locations = await this.getGeneratedLocationsFromSourceMap(sourceFilePath, stagingFolderPath, sourceLineNumber, sourceColumnIndex);
+        let locations = await this.findSourceLocationFromStagingSourceMaps({
+            filePath: sourceFilePath,
+            lineNumber: sourceLineNumber,
+            columnIndex: sourceColumnIndex
+        }, stagingFolderPath);
+
         if (locations.length > 0) {
             return locations;
 
-            //no sourcemaps were found that reference this file
+            //no sourcemaps were found that reference this file.
+            //walk up the sourceDirs tree, computing the relative path for the file, and
+            //comparing that relative path to the relative path in the staging directory
             //so look for a file with the same relative location in the staging folder
         } else {
 
@@ -221,13 +233,11 @@ export class FileUtils {
 
     /**
      * Get the location in the out/dist/generated file for a source location
-     * @param sourceFilePathAbsolute - the absolute path to the source file
+     * @param sourceLocation - the source location that sound be converted to staging locations
      * @param stagingFolderPath - the path to the staging folder.
-     * @param sourceLineNumber - the line number of the source file location. this is one based.
-     * @param sourceColumnNumber - the column number of the source file location. this is zero based
      */
-    public async getGeneratedLocationsFromSourceMap(sourceFilePathAbsolute: string, stagingFolderPath: string, sourceLineNumber: number, sourceColumnIndex: number = 0) {
-        sourceFilePathAbsolute = this.standardizePath(sourceFilePathAbsolute);
+    public async findSourceLocationFromStagingSourceMaps(sourceLocation: SourceLocation, stagingFolderPath: string) {
+        let sourceFilePathAbsolute = this.standardizePath(sourceLocation.filePath);
         //find every *.map file in the staging folder
         let sourceMapPaths = glob.sync('**/*.map', {
             cwd: stagingFolderPath,
@@ -254,8 +264,8 @@ export class FileUtils {
             if (absoluteSourcePaths.indexOf(sourceFilePathAbsolute) > -1) {
                 let position = await SourceMapConsumer.with(rawSourceMap, null, (consumer) => {
                     return consumer.generatedPositionFor({
-                        line: sourceLineNumber,
-                        column: sourceColumnIndex,
+                        line: sourceLocation.lineNumber,
+                        column: sourceLocation.columnIndex,
                         source: sourceFilePathAbsolute
                     });
                 });

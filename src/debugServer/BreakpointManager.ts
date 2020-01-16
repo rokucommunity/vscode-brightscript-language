@@ -33,7 +33,7 @@ export class BreakpointManager {
      * A map of breakpoints by what file they were set in.
      * This does not handle any source-to-dest mapping...these breakpoints are stored in the file they were set in.
      * These breakpoints are all set before launch, and then this list is not changed again after that.
-     * (this may change once we get live breakpoint support)
+     * (this concept may need to be modified once we get live breakpoint support)
      */
     private breakpointsByFilePath = {} as { [sourceFilePath: string]: AugmentedSourceBreakpoint[] };
 
@@ -47,8 +47,8 @@ export class BreakpointManager {
         sourceFilePath = fileUtils.standardizePath(sourceFilePath);
 
         //reject breakpoints from non-brightscript files
-        if (['.brs', '.bs'].indexOf(path.extname(sourceFilePath).toLowerCase()) === -1) {
-            //mark every breakpoint as NOT verified, since we don't support debugging non-brightscript files
+        if (!fileUtils.hasAnyExtension(sourceFilePath, ['.brs', '.bs', '.xml'])) {
+            //mark every non-supported breakpoint as NOT verified, since we don't support debugging non-brightscript files
             for (let bp of allBreakpointsForFile) {
                 (bp as DebugProtocol.Breakpoint).verified = false;
             }
@@ -60,13 +60,15 @@ export class BreakpointManager {
             this.breakpointsByFilePath[sourceFilePath] = <any>allBreakpointsForFile;
             for (let breakpoint of this.breakpointsByFilePath[sourceFilePath]) {
                 breakpoint.wasAddedBeforeLaunch = true;
-                //indicate that this breakpoint is at a valid location
+                //indicate that this breakpoint is at a valid location. TODO figure out how to determine valid locations...
                 breakpoint.verified = true;
             }
             return this.breakpointsByFilePath[sourceFilePath];
 
             //a debug session is currently running
         } else {
+            //TODO use the standard reverse-lookup logic for converting the rootDir or stagingDir paths into sourceDirs
+
             //if a breakpoint gets set in rootDir, and we have sourceDirs, convert the rootDir path to sourceDirs path
             //so the breakpoint gets moved into the source file instead of the output file
             if (this.launchArgs && this.launchArgs.sourceDirs) {
@@ -115,8 +117,10 @@ export class BreakpointManager {
                     sourceFilePath,
                     breakpoint.line,
                     breakpoint.column,
-                    sourceFolderPaths,
-                    stagingFolderPath
+                    [
+                        project.rootDir, ...project.sourceDirs
+                    ],
+                    project.stagingFolderPath
                 );
                 for (let stagingLocation of stagingLocations) {
                     let obj = {
@@ -155,17 +159,14 @@ export class BreakpointManager {
     }
 
     /**
-     * Write "stop" lines into source code of each file for each breakpoint
-     * @param sourceDirs - the list of source folders that could contain the source files.
-     * @param stagingFolderPath - the path to the folder where all the files are staged
+     * Write "stop" lines into source code for each breakpoint of each file in the given project
      */
-    public async writeAllBreakpoints(project: Project) {
+    public async writeBreakpointsForProject(project: Project) {
         var breakpointsByStagingFilePath = await this.getBreakpointWork(project);
 
         let promises = [] as Promise<any>[];
         for (let stagingFilePath in breakpointsByStagingFilePath) {
             promises.push(this.addBreakpointsToFile(stagingFilePath, breakpointsByStagingFilePath[stagingFilePath]));
-
         }
         await Promise.all(promises);
     }
@@ -182,7 +183,7 @@ export class BreakpointManager {
         //load the file as a string
         let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
 
-        let breakpointResult = this.writeBreakpointsWithSourceMap(stagingFilePath, fileContents, breakpoints);
+        let breakpointResult = this.getSourceAndMapWithBreakpoints(stagingFilePath, fileContents, breakpoints);
 
         let sourceMap = JSON.stringify(breakpointResult.map);
 
@@ -249,7 +250,7 @@ export class BreakpointManager {
     }
 
     private bpIndex = 1;
-    private writeBreakpointsWithSourceMap(stagingFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
+    public getSourceAndMapWithBreakpoints(stagingFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
         let chunks = [] as Array<SourceNode | string>;
 
         //split the file by newline
@@ -277,11 +278,11 @@ export class BreakpointManager {
             //add the original code now
             chunks.push(
                 //sourceNode expects 1-based row indexes
-                new SourceNode(originalLineIndex + 1, 0, originalFilePath, `${line}${newline}`)
+                new SourceNode(originalLineIndex + 1, 0, stagingFilePath, `${line}${newline}`)
             );
         }
 
-        let node = new SourceNode(null, null, originalFilePath, chunks);
+        let node = new SourceNode(null, null, stagingFilePath, chunks);
         return node.toStringWithSourceMap();
     }
 

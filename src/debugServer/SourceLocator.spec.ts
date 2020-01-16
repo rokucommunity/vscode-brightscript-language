@@ -27,7 +27,7 @@ describe('SouceLocator', () => {
     afterEach(() => {
         mockFs.restore();
     });
-    describe.only('getSourceLocation', () => {
+    describe('getSourceLocation', () => {
 
         describe('standard', () => {
             it('simple case, no maps, no breakpoints, no sourceDirs', async () => {

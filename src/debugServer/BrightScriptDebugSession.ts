@@ -121,7 +121,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
     public projectManager = new ProjectManager();
 
-    public mainProject: Project;
     public componentLibraryProjects: ComponentLibraryProject[];
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
@@ -136,7 +135,7 @@ export class BrightScriptDebugSession extends DebugSession {
         this.log('Packaging and deploying to roku');
         try {
             //add the main project
-            this.mainProject = this.projectManager.setMainProject(
+            this.projectManager.mainProject = (
                 new Project({
                     rootDir: this.launchArgs.rootDir,
                     files: this.launchArgs.files,
@@ -149,7 +148,7 @@ export class BrightScriptDebugSession extends DebugSession {
             );
 
             this.sendDebugLogLine('Moving selected files to staging area');
-            this.mainProject.stage();
+            this.projectManager.mainProject.stage();
 
             //add the entry breakpoint if stopOnEntry is true
             if (this.launchArgs.stopOnEntry) {
@@ -164,7 +163,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //create zip package from staging folder
             this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.mainProject.zipPackage({ retainStagingFolder: true });
+            await this.projectManager.mainProject.zipPackage({ retainStagingFolder: true });
 
             await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesPort);
 

@@ -17,13 +17,8 @@ export const componentLibraryPostfix: string = '__lib';
  * Will contain the main project (in rootDir), as well as component libraries.
  */
 export class ProjectManager {
-    private mainProject: Project;
+    public mainProject: Project;
     private componentLibraryProjects: ComponentLibraryProject[];
-
-    public setMainProject(project: Project) {
-        this.mainProject = project;
-        return project;
-    }
 
     public addComponentLibraryProject(project: ComponentLibraryProject) {
         this.componentLibraryProjects.push(project);
@@ -106,13 +101,14 @@ interface AddProjectParams {
     injectRaleTrackerTask: boolean;
     trackerTaskFileLocation: string;
     bsConst: { [key: string]: boolean };
+    stagingFolderPath?: string;
 }
 
 export class Project {
     constructor(params: AddProjectParams) {
         this.rootDir = fileUtils.standardizePath(params.rootDir);
         this.outDir = fileUtils.standardizePath(params.rootDir);
-        this.stagingFolderPath = rokuDeploy.getStagingFolderPath(this);
+        this.stagingFolderPath = params.stagingFolderPath ?? rokuDeploy.getStagingFolderPath(this);
         this.bsConst = params.bsConst;
         this.sourceDirs = params.sourceDirs
             //standardize every sourcedir

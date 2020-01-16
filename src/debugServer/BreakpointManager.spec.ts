@@ -5,9 +5,10 @@ import { SourceMapConsumer } from 'source-map';
 
 import { BreakpointManager } from './BreakpointManager';
 import { fileUtils } from './FileUtils';
+import { Project } from './ProjectManager';
 let n = fileUtils.standardizePath.bind(fileUtils);
 
-describe('BreakpointManager', () => {
+describe.only('BreakpointManager', () => {
     let cwd = fileUtils.standardizePath(process.cwd());
 
     let bpManager: BreakpointManager;
@@ -18,128 +19,123 @@ describe('BreakpointManager', () => {
         b = bpManager;
     });
 
-    it('correctly injects standard breakpoints', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5
-            }]).code
-        ).to.equal(`
-            function Main()\nSTOP
-                print "Hello world"
-            end function
-        `);
-    });
+    describe('getSourceAndMapWithBreakpoints', () => {
+        it('correctly injects standard breakpoints', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                    function Main()
+                        print "Hello world"
+                    end function
+                `,
+                [<any>{
+                    lineNumber: 3,
+                    columnIndex: 5
+                }]).code
+            ).to.equal(`
+                    function Main()\nSTOP
+                        print "Hello world"
+                    end function
+                `);
+        });
 
-    it('injects conditions', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5,
+        it('injects conditions', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5,
                 condition: 'age=1'
-            }]).code
-        ).to.equal(`
-            function Main()\nif age=1 then : STOP : end if
-                print "Hello world"
-            end function
-        `);
-    });
+            }]).code).to.equal(`
+                function Main()\nif age=1 then : STOP : end if
+                    print "Hello world"
+                end function
+            `);
+        });
 
-    it('injects hit conditions', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5,
+        it('injects hit conditions', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5,
                 hitCondition: '1'
-            }]).code
-        ).to.equal(`
-            function Main()\nif Invalid = m.vscode_bp OR Invalid = m.vscode_bp.bp1 then if Invalid = m.vscode_bp then m.vscode_bp = {bp1: 0} else m.vscode_bp.bp1 = 0 else m.vscode_bp.bp1 ++ : if m.vscode_bp.bp1 >= 1 then STOP
-                print "Hello world"
-            end function
-        `);
-    });
+            }]).code).to.equal(`
+                function Main()\nif Invalid = m.vscode_bp OR Invalid = m.vscode_bp.bp1 then if Invalid = m.vscode_bp then m.vscode_bp = {bp1: 0} else m.vscode_bp.bp1 = 0 else m.vscode_bp.bp1 ++ : if m.vscode_bp.bp1 >= 1 then STOP
+                    print "Hello world"
+                end function
+            `);
+        });
 
-    it('injects regular stop when hit condition is 0', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5,
+        it('injects regular stop when hit condition is 0', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5,
                 hitCondition: '0'
-            }]).code
-        ).to.equal(`
-            function Main()\nSTOP
-                print "Hello world"
-            end function
-        `);
-    });
+            }]).code).to.equal(`
+                function Main()\nSTOP
+                    print "Hello world"
+                end function
+            `);
+        });
 
-    it('injects logMessage', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5,
+        it('injects logMessage', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5,
                 logMessage: 'test print'
-            }]).code
-        ).to.equal(`
-            function Main()\nPRINT "test print"
-                print "Hello world"
-            end function
-        `);
-    });
+            }]).code).to.equal(`
+                function Main()\nPRINT "test print"
+                    print "Hello world"
+                end function
+            `);
+        });
 
-    it('injects logMessage with interpolated values', () => {
-        expect(b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs',
-            [{
-                line: 3,
-                column: 5,
+        it('injects logMessage with interpolated values', () => {
+            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5,
                 logMessage: 'hello {name}, how is {city}'
-            }]).code
-        ).to.equal(`
-            function Main()\nPRINT "hello "; name;", how is "; city;""
-                print "Hello world"
-            end function
-        `);
-    });
+            }]).code).to.equal(`
+                function Main()\nPRINT "hello "; name;", how is "; city;""
+                    print "Hello world"
+                end function
+            `);
+        });
 
-    it('generates valid source map', async () => {
-        let result = b.writeBreakpointsWithSourceMap(`
-            function Main()
-                print "Hello world"
-            end function
-        `, 'test.brs', [{ line: 3, column: 5 }]);
-        expect(result.map).to.exist;
+        it('generates valid source map', async () => {
+            let result = bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+                function Main()
+                    print "Hello world"
+                end function
+            `, <any>[{
+                lineNumber: 3,
+                columnIndex: 5
+            }]);
+            expect(result.map).to.exist;
 
-        //validate that the source map is correct
-        await SourceMapConsumer.with(result.map.toString(), null, (consumer) => {
-            expect(consumer.originalPositionFor({
-                line: 4,
-                column: 0
-            })).contain({
-                line: 3
+            //validate that the source map is correct
+            await SourceMapConsumer.with(result.map.toString(), null, (consumer) => {
+                expect(consumer.originalPositionFor({
+                    line: 4,
+                    column: 0
+                })).contain({
+                    line: 3
+                });
             });
         });
     });
@@ -204,7 +200,7 @@ describe('BreakpointManager', () => {
         });
     });
 
-    describe('writeAllBreakpoints', () => {
+    describe('writeBreakpointsForProject', () => {
         let rootDir = n(`${cwd}/.tmp/rokuProject`);
         let stagingDir = n(`${cwd}/.tmp/staging`);
         let sourceDir1 = n(`${cwd}/.tmp/source1`);
@@ -239,7 +235,10 @@ describe('BreakpointManager', () => {
             //sourcemap was not yet created
             expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
 
-            await bpManager.writeAllBreakpoints(rootDir, [], stagingDir);
+            await bpManager.writeBreakpointsForProject(new Project(<any>{
+                rootDir: rootDir,
+                stagingDir: stagingDir
+            }));
 
             //it wrote the breakpoint in the correct location
             expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
@@ -277,7 +276,13 @@ describe('BreakpointManager', () => {
             //sourcemap was not yet created
             expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
 
-            await bpManager.writeAllBreakpoints(rootDir, [sourceDir1], stagingDir);
+            await bpManager.writeBreakpointsForProject(
+                new Project(<any>{
+                    rootDir: rootDir,
+                    sourceDirs: [sourceDir1],
+                    stagingFolderPath: stagingDir
+                })
+            );
 
             expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
 
@@ -311,7 +316,13 @@ describe('BreakpointManager', () => {
             //launch
             bpManager.setLaunchArgs({});
 
-            await bpManager.writeAllBreakpoints(rootDir, [sourceDir1, sourceDir2], stagingDir);
+            await bpManager.writeBreakpointsForProject(
+                new Project(<any>{
+                    rootDir: rootDir,
+                    sourceDirs: [sourceDir1, sourceDir2],
+                    stagingFolderPath: stagingDir
+                })
+            );
 
             expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
         });
@@ -342,7 +353,13 @@ describe('BreakpointManager', () => {
             //launch
             bpManager.setLaunchArgs({});
 
-            await bpManager.writeAllBreakpoints(rootDir, [sourceDir1, sourceDir2], stagingDir);
+            await bpManager.writeBreakpointsForProject(
+                new Project(<any>{
+                    rootDir: rootDir,
+                    sourceDirs: [sourceDir1, sourceDir2],
+                    stagingFolderPath: stagingDir
+                })
+            );
 
             expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
         });
