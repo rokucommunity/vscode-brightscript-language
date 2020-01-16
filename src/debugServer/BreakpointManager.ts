@@ -112,8 +112,8 @@ export class BreakpointManager {
             let breakpoints = this.breakpointsByFilePath[sourceFilePath];
             for (let breakpoint of breakpoints) {
                 //get the list of locations in staging that this breakpoint should be written to.
-                //if none are found, then this breakpoint is essentially ignored
-                let stagingLocations = await fileUtils.getStagingLocationsFromSourceLocation(
+                //if none are found, then this breakpoint is ignored
+                let stagingLocationsResult = await fileUtils.getStagingLocationsFromSourceLocation(
                     sourceFilePath,
                     breakpoint.line,
                     breakpoint.column,
@@ -122,14 +122,15 @@ export class BreakpointManager {
                     ],
                     project.stagingFolderPath
                 );
-                for (let stagingLocation of stagingLocations) {
-                    let obj = {
+                for (let stagingLocation of stagingLocationsResult.locations) {
+                    let obj: BreakpointWorkItem = {
                         sourceFilePath: sourceFilePath,
                         lineNumber: stagingLocation.lineNumber,
                         columnIndex: stagingLocation.columnIndex,
-                        targetFilePath: stagingLocation.filePath,
+                        stagingFilePath: stagingLocation.filePath,
                         condition: breakpoint.condition,
-                        hitCondition: breakpoint.hitCondition
+                        hitCondition: breakpoint.hitCondition,
+                        type: stagingLocationsResult.type
                     };
                     if (!result[stagingLocation.filePath]) {
                         result[stagingLocation.filePath] = [];
@@ -253,6 +254,12 @@ export class BreakpointManager {
     public getSourceAndMapWithBreakpoints(stagingFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
         let chunks = [] as Array<SourceNode | string>;
 
+        let originalFilePath = breakpoints[0].type === 'sourceMap' ?
+            //the calling function will merge this sourcemap into the other existing sourcemap, so just use the same name because it doesn't matter
+            breakpoints[0].stagingFilePath :
+            //the calling function doesn't have a sourcemap for this file, so we need to point it to the sourceDirs found location (probably rootDir...)
+            breakpoints[0].sourceFilePath;
+
         //split the file by newline
         let lines = eol.split(fileContents);
         let newline = '\n';
@@ -278,11 +285,11 @@ export class BreakpointManager {
             //add the original code now
             chunks.push(
                 //sourceNode expects 1-based row indexes
-                new SourceNode(originalLineIndex + 1, 0, stagingFilePath, `${line}${newline}`)
+                new SourceNode(originalLineIndex + 1, 0, originalFilePath, `${line}${newline}`)
             );
         }
 
-        let node = new SourceNode(null, null, stagingFilePath, chunks);
+        let node = new SourceNode(null, null, originalFilePath, chunks);
         return node.toStringWithSourceMap();
     }
 
@@ -372,10 +379,11 @@ interface AugmentedSourceBreakpoint extends DebugProtocol.SourceBreakpoint {
 
 interface BreakpointWorkItem {
     sourceFilePath: string;
-    targetFilePath: string;
+    stagingFilePath: string;
     lineNumber: number;
     columnIndex: number;
     condition?: string;
     hitCondition?: string;
     logMessage?: string;
+    type: 'sourceMap' | 'sourceDirs';
 }

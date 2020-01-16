@@ -192,21 +192,24 @@ export class FileUtils {
         sourceColumnIndex: number,
         sourceDirs: string[],
         stagingFolderPath: string
-    ): Promise<SourceLocation[]> {
+    ): Promise<{ type: 'sourceMap' | 'sourceDirs', locations: SourceLocation[] }> {
 
         sourceFilePath = fileUtils.standardizePath(sourceFilePath);
         sourceDirs = sourceDirs.map(x => fileUtils.standardizePath(x));
         stagingFolderPath = fileUtils.standardizePath(stagingFolderPath);
 
-        //first, look through the sourcemaps in the staging folder
-        let locations = await this.findSourceLocationFromStagingSourceMaps({
+        //look through the sourcemaps in the staging folder for any instances of this source location
+        let locations = await this.findSourceLocationInStagingSourceMaps({
             filePath: sourceFilePath,
             lineNumber: sourceLineNumber,
             columnIndex: sourceColumnIndex
         }, stagingFolderPath);
 
         if (locations.length > 0) {
-            return locations;
+            return {
+                type: 'sourceMap',
+                locations: locations
+            };
 
             //no sourcemaps were found that reference this file.
             //walk up the sourceDirs tree, computing the relative path for the file, and
@@ -219,14 +222,20 @@ export class FileUtils {
             if (parentFolderPath) {
                 let relativeFilePath = fileUtils.replaceCaseInsensitive(sourceFilePath, parentFolderPath, '');
                 let stagingFilePathAbsolute = path.join(stagingFolderPath, relativeFilePath);
-                return [{
-                    filePath: stagingFilePathAbsolute,
-                    columnIndex: sourceColumnIndex,
-                    lineNumber: sourceLineNumber
-                }];
+                return {
+                    type: 'sourceDirs',
+                    locations: [{
+                        filePath: stagingFilePathAbsolute,
+                        columnIndex: sourceColumnIndex,
+                        lineNumber: sourceLineNumber
+                    }]
+                };
             } else {
                 //return an empty array so the result is still iterable
-                return [];
+                return {
+                    type: 'sourceDirs',
+                    locations: []
+                };
             }
         }
     }
@@ -236,7 +245,7 @@ export class FileUtils {
      * @param sourceLocation - the source location that sound be converted to staging locations
      * @param stagingFolderPath - the path to the staging folder.
      */
-    public async findSourceLocationFromStagingSourceMaps(sourceLocation: SourceLocation, stagingFolderPath: string) {
+    public async findSourceLocationInStagingSourceMaps(sourceLocation: SourceLocation, stagingFolderPath: string) {
         let sourceFilePathAbsolute = this.standardizePath(sourceLocation.filePath);
         //find every *.map file in the staging folder
         let sourceMapPaths = glob.sync('**/*.map', {
