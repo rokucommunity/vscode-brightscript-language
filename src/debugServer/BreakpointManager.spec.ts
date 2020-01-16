@@ -7,6 +7,7 @@ import { BreakpointManager } from './BreakpointManager';
 import { fileUtils } from './FileUtils';
 import { Project } from './ProjectManager';
 let n = fileUtils.standardizePath.bind(fileUtils);
+import { standardizePath as s } from './FileUtils';
 
 describe.only('BreakpointManager', () => {
     let cwd = fileUtils.standardizePath(process.cwd());
@@ -237,6 +238,7 @@ describe.only('BreakpointManager', () => {
 
             await bpManager.writeBreakpointsForProject(new Project(<any>{
                 rootDir: rootDir,
+                outDir: s`${cwd}/out`,
                 stagingDir: stagingDir
             }));
 
@@ -279,6 +281,7 @@ describe.only('BreakpointManager', () => {
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{
                     rootDir: rootDir,
+                    outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1],
                     stagingFolderPath: stagingDir
                 })
@@ -319,6 +322,7 @@ describe.only('BreakpointManager', () => {
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{
                     rootDir: rootDir,
+                    outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1, sourceDir2],
                     stagingFolderPath: stagingDir
                 })
@@ -356,6 +360,7 @@ describe.only('BreakpointManager', () => {
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{
                     rootDir: rootDir,
+                    outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1, sourceDir2],
                     stagingFolderPath: stagingDir
                 })

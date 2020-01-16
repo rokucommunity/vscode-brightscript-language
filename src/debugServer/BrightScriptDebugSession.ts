@@ -121,8 +121,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
     public projectManager = new ProjectManager();
 
-    public componentLibraryProjects: ComponentLibraryProject[];
-
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
 
@@ -148,7 +146,7 @@ export class BrightScriptDebugSession extends DebugSession {
             );
 
             this.sendDebugLogLine('Moving selected files to staging area');
-            this.projectManager.mainProject.stage();
+            await this.projectManager.mainProject.stage();
 
             //add the entry breakpoint if stopOnEntry is true
             if (this.launchArgs.stopOnEntry) {
@@ -159,7 +157,7 @@ export class BrightScriptDebugSession extends DebugSession {
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
 
             //write all `stop` statements to the files in the staging folder
-            await this.breakpointManager.writeAllBreakpoints(this.projectManager.mainProject);
+            await this.breakpointManager.writeBreakpointsForProject(this.projectManager.mainProject);
 
             //create zip package from staging folder
             this.sendDebugLogLine('Creating zip archive from project sources');
@@ -342,7 +340,7 @@ export class BrightScriptDebugSession extends DebugSession {
             for (let libraryIndex = 0; libraryIndex < componentLibraries.length; libraryIndex++) {
                 let componentLibrary = componentLibraries[libraryIndex];
 
-                this.componentLibraryProjects.push(
+                this.projectManager.componentLibraryProjects.push(
                     new ComponentLibraryProject({
                         rootDir: componentLibrary.rootDir,
                         files: componentLibrary.files,
@@ -358,7 +356,7 @@ export class BrightScriptDebugSession extends DebugSession {
             }
 
             //prepare all of the libraries in parallel
-            var compLibPromises = this.componentLibraryProjects.map(async (compLibProject) => {
+            var compLibPromises = this.projectManager.componentLibraryProjects.map(async (compLibProject) => {
 
                 await compLibProject.stage();
 
@@ -366,7 +364,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.sendDebugLogLine('Adding stop statements for active breakpoints in Component Libraries');
 
                 //write the `stop` statements to every file that has breakpoints
-                await this.breakpointManager.writeAllBreakpoints(compLibProject.rootDir, compLibProject.sourceDirs, compLibProject.stagingFolderPath);
+                await this.breakpointManager.writeBreakpointsForProject(compLibProject);
 
                 compLibProject.postfixFiles();
 

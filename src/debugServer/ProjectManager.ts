@@ -7,6 +7,7 @@ import { standardizePath as s } from './FileUtils';
 import * as findInFiles from 'find-in-files';
 import { util } from '../util';
 import { SourceLocator } from './SourceLocator';
+import * as assert from 'assert';
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
 
@@ -18,7 +19,7 @@ export const componentLibraryPostfix: string = '__lib';
  */
 export class ProjectManager {
     public mainProject: Project;
-    private componentLibraryProjects: ComponentLibraryProject[];
+    public componentLibraryProjects = [] as ComponentLibraryProject[];
 
     public addComponentLibraryProject(project: ComponentLibraryProject) {
         this.componentLibraryProjects.push(project);
@@ -96,25 +97,30 @@ export class ProjectManager {
 interface AddProjectParams {
     rootDir: string;
     outDir: string;
-    sourceDirs: string[];
+    sourceDirs?: string[];
     files: Array<FilesType>;
-    injectRaleTrackerTask: boolean;
-    trackerTaskFileLocation: string;
-    bsConst: { [key: string]: boolean };
+    injectRaleTrackerTask?: boolean;
+    trackerTaskFileLocation?: string;
+    bsConst?: { [key: string]: boolean };
     stagingFolderPath?: string;
 }
 
 export class Project {
     constructor(params: AddProjectParams) {
+        assert(params?.rootDir, 'rootDir is required');
         this.rootDir = fileUtils.standardizePath(params.rootDir);
-        this.outDir = fileUtils.standardizePath(params.rootDir);
+
+        assert(params?.outDir, 'outDir is required');
+        this.outDir = fileUtils.standardizePath(params.outDir);
+
         this.stagingFolderPath = params.stagingFolderPath ?? rokuDeploy.getStagingFolderPath(this);
         this.bsConst = params.bsConst;
-        this.sourceDirs = params.sourceDirs
+        this.sourceDirs = (params.sourceDirs ?? [])
             //standardize every sourcedir
             .map(x => fileUtils.standardizePath(x));
-        this.injectRaleTrackerTask = params.injectRaleTrackerTask;
+        this.injectRaleTrackerTask = params.injectRaleTrackerTask ?? false;
         this.trackerTaskFileLocation = params.trackerTaskFileLocation;
+        this.files = params.files ?? [];
     }
     public rootDir: string;
     public outDir: string;
