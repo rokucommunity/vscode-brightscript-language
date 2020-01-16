@@ -330,12 +330,12 @@ export class BrightScriptDebugSession extends DebugSession {
      * Stores the path to the staging folder for each component library
      */
     protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], port: number) {
-        var componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
-        //make sure this folder exists (and is empty)
-        await fsExtra.ensureDir(componentLibrariesOutDir);
-        await fsExtra.emptyDir(componentLibrariesOutDir);
-
         if (componentLibraries) {
+            var componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
+            //make sure this folder exists (and is empty)
+            await fsExtra.ensureDir(componentLibrariesOutDir);
+            await fsExtra.emptyDir(componentLibrariesOutDir);
+
             //create a ComponentLibraryProject for each component library
             for (let libraryIndex = 0; libraryIndex < componentLibraries.length; libraryIndex++) {
                 let componentLibrary = componentLibraries[libraryIndex];
@@ -370,21 +370,21 @@ export class BrightScriptDebugSession extends DebugSession {
 
                 await compLibProject.zipPackage({ retainStagingFolder: true });
             });
-        }
 
-        var hostingPromise: Promise<any>;
-        if (compLibPromises) {
-            // prepare static file hosting
-            hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
-                this.sendDebugLogLine(message);
-            });
-        }
+            var hostingPromise: Promise<any>;
+            if (compLibPromises) {
+                // prepare static file hosting
+                hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
+                    this.sendDebugLogLine(message);
+                });
+            }
 
-        //wait for all component libaries to finish building, and the file hosting to start up
-        await Promise.all([
-            ...compLibPromises,
-            hostingPromise
-        ]);
+            //wait for all component libaries to finish building, and the file hosting to start up
+            await Promise.all([
+                ...compLibPromises,
+                hostingPromise
+            ]);
+        }
     }
 
     protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
