@@ -31,7 +31,7 @@ export class ProjectManager {
      */
     public async getSourceLocation(debuggerPath: string, debuggerLineNumber: number) {
 
-        let stagingFileInfo = this.getStagingFileInfo(debuggerPath);
+        let stagingFileInfo = await this.getStagingFileInfo(debuggerPath);
         if (!stagingFileInfo) {
             return;
         }
@@ -57,7 +57,7 @@ export class ProjectManager {
      * @param stagingFolderPath - the path to the root of the staging folder (where all of the files were copied before deployment)
      * @return a full path to the file in the staging directory
      */
-    public getStagingFileInfo(debuggerPath: string) {
+    public async getStagingFileInfo(debuggerPath: string) {
         let project: Project;
 
         let componentLibraryIndex = fileUtils.getComponentLibraryIndex(debuggerPath, componentLibraryPostfix);
@@ -80,7 +80,7 @@ export class ProjectManager {
         if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
             relativePath = debuggerPath.substring(4);
         } else {
-            relativePath = fileUtils.findPartialFileInDirectory(debuggerPath, project.stagingFolderPath);
+            relativePath = await fileUtils.findPartialFileInDirectory(debuggerPath, project.stagingFolderPath);
         }
         if (relativePath) {
             return {

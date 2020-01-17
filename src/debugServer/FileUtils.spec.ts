@@ -7,6 +7,7 @@ import * as sinonActual from 'sinon';
 import { SourceNode } from 'source-map';
 
 import { fileUtils, standardizePath } from './FileUtils';
+import { standardizePath as s } from './FileUtils';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -19,8 +20,12 @@ describe('FileUtils', () => {
 
     describe('getAllRelativePaths', () => {
         //basic test to get code coverage...we don't need to test the glob code too much here...
-        it('works', () => {
-            expect(fileUtils.getAllRelativePaths(path.join(__dirname, '..', 'images'))).to.contain(path.join('icon.png'));
+        it('works', async () => {
+            expect(
+                await fileUtils.getAllRelativePaths(s`${__dirname}/../../images`)
+            ).to.contain(
+                path.join('icon.png')
+            );
         });
     });
 
@@ -50,28 +55,31 @@ describe('FileUtils', () => {
 
     describe('findPartialFileInDirectory', () => {
         beforeEach(() => {
-            sinon.stub(fileUtils, 'getAllRelativePaths').returns([
+            sinon.stub(fileUtils, 'getAllRelativePaths').returns(Promise.resolve([
                 'source/main.brs',
                 'source/lib1/lib.brs',
                 'source/lib2/lib.brs'
-            ]);
+            ]));
         });
 
-        it('normalizes the paths', () => {
-            expect(fileUtils.findPartialFileInDirectory('...ource\\lib2//lib.brs', 'NOT_IMPORTANT_DUE_TO_MOCK'));
+        it('normalizes the paths', async () => {
+            let filePath = fileUtils.standardizePath(
+                await fileUtils.findPartialFileInDirectory('...ource\\lib2//lib.brs', 'NOT_IMPORTANT_DUE_TO_MOCK')
+            );
+            expect(filePath).to.equal(s`source/lib2/lib.brs`);
         });
 
-        it('returns first result when multiple matches are found', () => {
+        it('returns first result when multiple matches are found', async () => {
             let stub = sinon.stub(console, 'warn').returns(undefined);
 
-            expect(fileUtils.findPartialFileInDirectory('...lib.brs', 'SomeAppDir')).to.equal('source/lib1/lib.brs');
+            expect(await fileUtils.findPartialFileInDirectory('...lib.brs', 'SomeAppDir')).to.equal('source/lib1/lib.brs');
 
             //a warning should be logged to the console about the fact that there are multiple matches
             expect(stub.getCalls()).to.be.lengthOf(1);
         });
 
-        it('returns undefined when no results found', () => {
-            expect(fileUtils.findPartialFileInDirectory('...promise.brs', 'SomeAppDir')).to.be.undefined;
+        it('returns undefined when no results found', async () => {
+            expect(await fileUtils.findPartialFileInDirectory('...promise.brs', 'SomeAppDir')).to.be.undefined;
         });
     });
 
@@ -109,17 +117,17 @@ describe('FileUtils', () => {
 
         it('finds file from first folder', async () => {
             paths = [pathA, pathB, pathC];
-            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathA);
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathA);
         });
 
         it('finds file from middle folder', async () => {
             paths = [pathB, pathC];
-            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathB);
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathB);
         });
 
         it('finds file from last folder', async () => {
             paths = [pathC];
-            expect(fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
+            expect(await fileUtils.findFirstRelativeFile('main.brs', [rootA, rootB, rootC])).to.equal(pathC);
         });
     });
 
@@ -168,7 +176,7 @@ describe('FileUtils', () => {
             await createOutFiles(sourceFilePath);
             let location = await fileUtils.getSourceLocationFromSourceMap(outFilePath, 3);
             expect(location).to.eql({
-                pathAbsolute: sourceFilePath,
+                filePath: sourceFilePath,
                 lineNumber: 2,
                 columnIndex: 0
             });
@@ -178,7 +186,7 @@ describe('FileUtils', () => {
             await createOutFiles('../source/file.brs');
             let location = await fileUtils.getSourceLocationFromSourceMap(outFilePath, 3);
             expect(location).to.eql({
-                pathAbsolute: sourceFilePath,
+                filePath: sourceFilePath,
                 lineNumber: 2,
                 columnIndex: 0
             });

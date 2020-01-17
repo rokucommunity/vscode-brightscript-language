@@ -189,7 +189,7 @@ export class BreakpointManager {
         //load the file as a string
         let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
 
-        let breakpointResult = this.getSourceAndMapWithBreakpoints(stagingFilePath, fileContents, breakpoints);
+        let breakpointResult = this.getSourceAndMapWithBreakpoints(fileContents, breakpoints);
 
         let sourceMap = JSON.stringify(breakpointResult.map);
 
@@ -256,7 +256,7 @@ export class BreakpointManager {
     }
 
     private bpIndex = 1;
-    public getSourceAndMapWithBreakpoints(stagingFilePath: string, fileContents: string, breakpoints: BreakpointWorkItem[]) {
+    public getSourceAndMapWithBreakpoints(fileContents: string, breakpoints: BreakpointWorkItem[]) {
         let chunks = [] as Array<SourceNode | string>;
 
         let originalFilePath = breakpoints[0].type === 'sourceMap' ?

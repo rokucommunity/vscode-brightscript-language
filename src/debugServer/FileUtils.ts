@@ -1,9 +1,12 @@
 import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
-import glob = require('glob');
 import * as path from 'path';
 import { RawSourceMap, SourceMapConsumer, SourceNode } from 'source-map';
 import { SourceLocation } from './SourceLocator';
+import { promisify } from 'util';
+import glob = require('glob');
+const globp = promisify(glob);
+
 
 export class FileUtils {
 
@@ -13,6 +16,8 @@ export class FileUtils {
      * @param testPath the path that the `subjectPath` should end with
      */
     public pathEndsWith(subjectPath: string, testPath: string) {
+        subjectPath = this.standardizePath(subjectPath);
+        testPath = this.standardizePath(testPath);
         let idx = subjectPath.indexOf(testPath);
         return (idx > -1 && subjectPath.endsWith(testPath));
     }
@@ -43,10 +48,10 @@ export class FileUtils {
      * Given a `directoryPath`, find and return all file paths relative to the `directoryPath`
      * @param directoryPath
      */
-    public getAllRelativePaths(directoryPath: string) {
+    public async getAllRelativePaths(directoryPath: string) {
         //normalize the path
         directoryPath = path.normalize(directoryPath);
-        let paths = glob.sync(path.join(directoryPath, '**/*'));
+        let paths = await globp(path.join(directoryPath, '**/*'));
         for (let i = 0; i < paths.length; i++) {
             //make the path relative (+1 for removing the slash)
             paths[i] = paths[i].substring(directoryPath.length + 1);
@@ -62,14 +67,16 @@ export class FileUtils {
      * @param directoryPath the path to the directory to search through
      * @returns a relative path to the first match found in the directory
      */
-    public findPartialFileInDirectory(partialFilePath: string, directoryPath: string) {
+    public async findPartialFileInDirectory(partialFilePath: string, directoryPath: string) {
         //the debugger path was truncated, so try and map it to a file in the outdir
-        partialFilePath = this.removeFileTruncation(partialFilePath);
+        partialFilePath = this.standardizePath(
+            this.removeFileTruncation(partialFilePath)
+        );
 
         //find any files from the outDir that end the same as this file
         let results: string[] = [];
 
-        let relativePaths = this.getAllRelativePaths(directoryPath);
+        let relativePaths = await this.getAllRelativePaths(directoryPath);
         for (let relativePath of relativePaths) {
             //if the staging path looks like the debugger path, keep it for now
             if (this.pathEndsWith(relativePath, partialFilePath)) {

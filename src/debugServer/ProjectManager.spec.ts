@@ -5,7 +5,7 @@ import { standardizePath as s } from './FileUtils';
 
 let cwd = fileUtils.standardizePath(process.cwd());
 
-describe.only('Project', () => {
+describe('Project', () => {
     it('copies the necessary properties onto the instance', () => {
         var project = new Project({
             rootDir: cwd,
@@ -29,7 +29,7 @@ describe.only('Project', () => {
     });
 });
 
-describe.only('ComponentLibraryProject', () => {
+describe('ComponentLibraryProject', () => {
     describe('computeOutFileName', () => {
         it('properly computes the outFile name', () => {
             var project = new ComponentLibraryProject({

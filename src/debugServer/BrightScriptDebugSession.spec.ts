@@ -542,33 +542,33 @@
 //             s.stagingFolderPath = n(`${rootDir}/out`);
 //         });
 
-//         it('finds standard files', () => {
-//             expect(session.getStagingFileInfo('pkg:/source/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
+//         it('finds standard files', async () => {
+//             expect(await session.getStagingFileInfo('pkg:/source/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
 //         });
 
-//         it(`searches for partial files when '...' is encountered`, () => {
+//         it(`searches for partial files when '...' is encountered`, async () => {
 //             let stub = sinon.stub(fileUtils, 'findPartialFileInDirectory').callsFake(function(partialFilePath, directoryPath) {
 //                 expect(partialFilePath).to.equal('...ource/main.brs');
 //                 expect(directoryPath).to.equal(s.stagingFolderPath);
-//                 return `source/main.brs`;
+//                 return Promise.resolve(`source/main.brs`);
 //             });
-//             expect(session.getStagingFileInfo('...ource/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
+//             expect(await session.getStagingFileInfo('...ource/main.brs').absolutePath).to.equal(n(`${rootDir}/out/source/main.brs`));
 //             expect(stub.called).to.be.true;
 //         });
 
-//         it(`detects full paths to component library filenames`, () => {
+//         it(`detects full paths to component library filenames`, async () => {
 //             s.componentLibraryStagingFolders[1] = n(`${rootDir}/compLibA/out`);
-//             expect(session.getStagingFileInfo('pkg:/source/main__lib1.brs').absolutePath).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
+//             expect(await session.getStagingFileInfo('pkg:/source/main__lib1.brs').absolutePath).to.equal(n(`${rootDir}/compLibA/out/source/main__lib1.brs`));
 //         });
 
-//         it(`detects partial paths to component library filenames`, () => {
+//         it(`detects partial paths to component library filenames`, async () => {
 //             s.componentLibraryStagingFolders[1] = n(`${rootDir}/compLibA/out`);
 //             let stub = sinon.stub(fileUtils, 'findPartialFileInDirectory').callsFake(function(partialFilePath, directoryPath) {
 //                 expect(partialFilePath).to.equal('...ource/main__lib1.brs');
 //                 expect(directoryPath).to.equal(s.componentLibraryStagingFolders[1]);
-//                 return `source/main__lib1.brs`;
+//                 return Promise.resolve(`source/main__lib1.brs`);
 //             });
-//             expect(session.getStagingFileInfo('...ource/main__lib1.brs')).to.eql({
+//             expect(await session.getStagingFileInfo('...ource/main__lib1.brs')).to.eql({
 //                 relativePath: n('source/main__lib1.brs'),
 //                 absolutePath: n(`${rootDir}/compLibA/out/source/main__lib1.brs`),
 //                 outDirPath: n(`${rootDir}/compLibA/out`)

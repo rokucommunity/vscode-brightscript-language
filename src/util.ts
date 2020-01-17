@@ -14,7 +14,7 @@ class Util {
 
     /**
      * If the path does not have a trailing slash, one is appended to it
-     * @param dirPath 
+     * @param dirPath
      */
     public ensureTrailingSlash(dirPath: string) {
         return dirPath.substr(dirPath.length - 1) !== '/' ? dirPath + '/' : dirPath;

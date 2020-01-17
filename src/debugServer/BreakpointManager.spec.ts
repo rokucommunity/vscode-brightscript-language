@@ -9,7 +9,7 @@ import { Project } from './ProjectManager';
 let n = fileUtils.standardizePath.bind(fileUtils);
 import { standardizePath as s } from './FileUtils';
 
-describe.only('BreakpointManager', () => {
+describe('BreakpointManager', () => {
     let cwd = fileUtils.standardizePath(process.cwd());
 
     let bpManager: BreakpointManager;
@@ -22,7 +22,7 @@ describe.only('BreakpointManager', () => {
 
     describe('getSourceAndMapWithBreakpoints', () => {
         it('correctly injects standard breakpoints', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                     function Main()
                         print "Hello world"
                     end function
@@ -39,7 +39,7 @@ describe.only('BreakpointManager', () => {
         });
 
         it('injects conditions', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
@@ -55,7 +55,7 @@ describe.only('BreakpointManager', () => {
         });
 
         it('injects hit conditions', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
@@ -71,7 +71,7 @@ describe.only('BreakpointManager', () => {
         });
 
         it('injects regular stop when hit condition is 0', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
@@ -87,7 +87,7 @@ describe.only('BreakpointManager', () => {
         });
 
         it('injects logMessage', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
@@ -103,7 +103,7 @@ describe.only('BreakpointManager', () => {
         });
 
         it('injects logMessage with interpolated values', () => {
-            expect(bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            expect(bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
@@ -119,13 +119,16 @@ describe.only('BreakpointManager', () => {
         });
 
         it('generates valid source map', async () => {
-            let result = bpManager.getSourceAndMapWithBreakpoints('test.brs', `
+            let result = bpManager.getSourceAndMapWithBreakpoints(`
                 function Main()
                     print "Hello world"
                 end function
-            `, <any>[{
+            `, [{
                 lineNumber: 3,
-                columnIndex: 5
+                columnIndex: 5,
+                sourceFilePath: 'rootDir/source/test.brs',
+                stagingFilePath: 'stagingDir/source/test.brs',
+                type: 'sourceDirs'
             }]);
             expect(result.map).to.exist;
 
