@@ -250,6 +250,7 @@ describe('Project', () => {
             fsExtra.writeFileSync(trackerTaskFileLocation, '');
         });
         after(() => {
+            fsExtra.removeSync(tempPath);
             fsExtra.removeSync(trackerTaskFileLocation);
         });
         afterEach(() => {

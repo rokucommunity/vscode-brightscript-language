@@ -25,9 +25,12 @@ let outDir = fileUtils.standardizePath(`${cwd}/outDir`);
 let stagingFolderPath = fileUtils.standardizePath(`${outDir}/stagingDir`);
 const rootDir = path.normalize(path.dirname(__dirname));
 
-
 beforeEach(() => {
     sinon.restore();
+});
+
+afterEach(() => {
+    fsExtra.remove(outDir);
 });
 
 describe('Debugger', () => {
