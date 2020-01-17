@@ -1,4 +1,4 @@
-import { Project } from './ProjectManager';
+import { Project, ComponentLibraryProject } from './ProjectManager';
 import { fileUtils } from './FileUtils';
 import { expect } from 'chai';
 import { standardizePath as s } from './FileUtils';
@@ -26,5 +26,27 @@ describe.only('Project', () => {
         expect(project.sourceDirs).to.eql([s`${cwd}/source1`]);
         expect(project.stagingFolderPath).to.eql(s`${cwd}/staging`);
         expect(project.trackerTaskFileLocation).to.eql('z');
+    });
+});
+
+describe.only('ComponentLibraryProject', () => {
+    describe('computeOutFileName', () => {
+        it('properly computes the outFile name', () => {
+            var project = new ComponentLibraryProject({
+                rootDir: cwd,
+                outDir: s`${cwd}/out`,
+                files: ['a'],
+                bsConst: { b: true },
+                injectRaleTrackerTask: true,
+                sourceDirs: [s`${cwd}/source1`],
+                stagingFolderPath: s`${cwd}/staging`,
+                trackerTaskFileLocation: 'z',
+                libraryIndex: 0,
+                outFile: 'PrettyComponent.zip'
+            });
+            expect(project.outFile).to.equal('PrettyComponent.zip');
+            (project as any).computeOutFileName();
+            expect(project.outFile).to.equal('PrettyComponent.zip');
+        });
     });
 });

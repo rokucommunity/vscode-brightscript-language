@@ -344,7 +344,7 @@ export class ComponentLibraryProject extends Project {
      * @param componentLibrary The library to check
      * @param stagingFolder staging folder of the component library to search for the manifest file
      */
-    private async computeOutFile(manifestPath: string) {
+    private async computeOutFileName(manifestPath: string) {
         let regexp = /\$\{([\w\d_]*)\}/;
         let renamingMatch;
         let manifestValues;
@@ -379,7 +379,7 @@ export class ComponentLibraryProject extends Project {
             fileUtils.standardizePath(x.src).endsWith(manifestPathRelative)
         );
         if (manifestFileEntry) {
-            await this.computeOutFile(manifestFileEntry.src);
+            await this.computeOutFileName(manifestFileEntry.src);
         } else {
             throw new Error(`Could not find manifest path for component library at '${this.rootDir}'`);
         }
