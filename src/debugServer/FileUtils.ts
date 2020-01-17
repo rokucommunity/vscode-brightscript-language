@@ -5,6 +5,7 @@ import { RawSourceMap, SourceMapConsumer, SourceNode } from 'source-map';
 import { SourceLocation } from './SourceLocator';
 import { promisify } from 'util';
 import glob = require('glob');
+import * as eol from 'eol';
 const globp = promisify(glob);
 
 
@@ -156,7 +157,7 @@ export class FileUtils {
      * All files in component libraries are renamed to include the component library index as the ending portion of the filename,
      * which is necessary because the Roku debugger doesn't tell you which component library a file came from.
      */
-    public getComponentLibraryIndex(filePath: string, postfix: string) {
+    public getComponentLibraryIndexFromFileName(filePath: string, postfix: string) {
         let regex = new RegExp(postfix + '(\\d+)');
         let match = regex.exec(filePath);
         let result: number | undefined;

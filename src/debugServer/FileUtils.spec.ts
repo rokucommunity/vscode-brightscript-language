@@ -85,18 +85,18 @@ describe('FileUtils', () => {
 
     describe('getComponentLibraryIndex', () => {
         it('finds the index', () => {
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib0.brs', '__lib')).to.equal(0);
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib1.brs', '__lib')).to.equal(1);
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib12.brs', '__lib')).to.equal(12);
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__lib0.brs', '__lib')).to.equal(0);
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__lib1.brs', '__lib')).to.equal(1);
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__lib12.brs', '__lib')).to.equal(12);
         });
         it('returns undefined no number was found', () => {
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__lib.brs', '__lib')).to.be.undefined;
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__lib.brs', '__lib')).to.be.undefined;
         });
         it('returns undefined no postfix was found', () => {
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__notlib1.brs', '__lib')).to.be.undefined;
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__notlib1.brs', '__lib')).to.be.undefined;
         });
         it('returns undefined when item after postfix is not a number', () => {
-            expect(fileUtils.getComponentLibraryIndex('pkg:/source/main__libcat.brs', '__lib')).to.be.undefined;
+            expect(fileUtils.getComponentLibraryIndexFromFileName('pkg:/source/main__libcat.brs', '__lib')).to.be.undefined;
         });
     });
 

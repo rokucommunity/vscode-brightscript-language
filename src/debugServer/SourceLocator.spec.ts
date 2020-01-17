@@ -40,7 +40,7 @@ describe('SouceLocator', () => {
                     stagingFolderPath: stagingFolderPath,
                     fileMappings: [{
                         src: s`${rootDir}/lib1.brs`,
-                        dest: '/lib1.brs'
+                        dest: s`${stagingFolderPath}/lib1.brs`
                     }],
                     rootDir: rootDir,
                     lineNumber: 1,
@@ -74,7 +74,7 @@ describe('SouceLocator', () => {
                     stagingFolderPath: stagingFolderPath,
                     fileMappings: [{
                         src: s`${rootDir}/main.brs`,
-                        dest: '/main.brs'
+                        dest: s`${stagingFolderPath}/main.brs`
                     }],
                     rootDir: rootDir,
                     lineNumber: 3,

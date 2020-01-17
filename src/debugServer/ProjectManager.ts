@@ -8,6 +8,7 @@ import * as findInFiles from 'find-in-files';
 import { util } from '../util';
 import { SourceLocator } from './SourceLocator';
 import * as assert from 'assert';
+import * as eol from 'eol';
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
 
@@ -44,7 +45,7 @@ export class ProjectManager {
             fileMappings: project.fileMappings,
             rootDir: project.rootDir,
             stagingFilePath: stagingFileInfo.absolutePath,
-            stagingFolderPath: project.outDir,
+            stagingFolderPath: project.stagingFolderPath,
             sourceDirs: project.sourceDirs
         });
         return sourceLocation;
@@ -60,7 +61,7 @@ export class ProjectManager {
     public async getStagingFileInfo(debuggerPath: string) {
         let project: Project;
 
-        let componentLibraryIndex = fileUtils.getComponentLibraryIndex(debuggerPath, componentLibraryPostfix);
+        let componentLibraryIndex = fileUtils.getComponentLibraryIndexFromFileName(debuggerPath, componentLibraryPostfix);
         //component libraries
         if (componentLibraryIndex !== undefined) {
             let lib = this.componentLibraryProjects.find(x => x.libraryIndex === componentLibraryIndex);
@@ -135,7 +136,7 @@ export class Project {
     public async stage() {
         var rokuDeploy = new RokuDeploy();
         if (!this.fileMappings) {
-            this.fileMappings = await rokuDeploy.getFilePaths(this.files, this.stagingFolderPath, this.rootDir);
+            this.fileMappings = await this.getFileMappings();
         }
 
         //override the getFilePaths function so rokuDeploy doesn't run it again during prepublishToStaging
@@ -152,7 +153,7 @@ export class Project {
         //preload the original location of every file
         await this.resolveFileMappingsForSourceDirs();
 
-        await this.transformBsConst();
+        await this.transformManifestWithBsConst();
 
         await this.transformRaleTrackerTask();
     }
@@ -175,19 +176,19 @@ export class Project {
     /**
      * Apply the bsConst transformations to the manifest file for this project
      */
-    public async transformBsConst() {
+    public async transformManifestWithBsConst() {
         if (this.bsConst) {
             let manifestPath = s`${this.stagingFolderPath}/manifest`;
             if (await fsExtra.pathExists(manifestPath)) {
                 // Update the bs_const values in the manifest in the staging folder before side loading the channel
                 let fileContents = (await fsExtra.readFile(manifestPath)).toString();
-                fileContents = await this.updateManifestBsConsts(this.bsConst, fileContents);
+                fileContents = this.updateManifestBsConsts(this.bsConst, fileContents);
                 await fsExtra.writeFile(manifestPath, fileContents);
             }
         }
     }
 
-    private async updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): Promise<string> {
+    public updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): string {
         let bsConstLine;
         let missingConsts: string[] = [];
         let lines = eol.split(fileContents);
@@ -323,6 +324,22 @@ export class Project {
             })
         ]);
     }
+
+    /**
+     * Get the file paths from roku-deploy, and ensure the dest paths are absolute
+     * (`dest` paths are relative in later versions of roku-deploy)
+     */
+    protected async getFileMappings() {
+        let fileMappings = await rokuDeploy.getFilePaths(this.files, this.stagingFolderPath, this.rootDir);
+        for (let mapping of fileMappings) {
+            //if the dest path is relative, make it absolute (relative to the staging dir)
+            mapping.dest = path.resolve(this.stagingFolderPath, mapping.dest);
+            //standardize the paths once here, and don't need to do it again anywhere else in this project
+            mapping.src = fileUtils.standardizePath(mapping.src);
+            mapping.dest = fileUtils.standardizePath(mapping.dest);
+        }
+        return fileMappings;
+    }
 }
 
 export interface ComponentLibraryConstrutorParams extends AddProjectParams {
@@ -373,11 +390,9 @@ export class ComponentLibraryProject extends Project {
 
     public async stage() {
         //compute the file mappings now (the parent function will use these)
-        this.fileMappings = await rokuDeploy.getFilePaths(this.files, this.stagingFolderPath, this.rootDir);
+        this.fileMappings = await this.getFileMappings();
         let manifestPathRelative = fileUtils.standardizePath('/manifest');
-        var manifestFileEntry = this.fileMappings.find(x =>
-            fileUtils.standardizePath(x.src).endsWith(manifestPathRelative)
-        );
+        var manifestFileEntry = this.fileMappings.find(x => x.src.endsWith(manifestPathRelative));
         if (manifestFileEntry) {
             await this.computeOutFileName(manifestFileEntry.src);
         } else {

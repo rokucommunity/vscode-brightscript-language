@@ -20,9 +20,6 @@ export class SourceLocator {
         //throw out any sourceDirs pointing the rootDir
         sourceDirs = sourceDirs.filter(x => x !== rootDir);
 
-        //get the relative path for the file in staging
-        let relativeStagingFilePath = fileUtils.replaceCaseInsensitive(filePathInStaging, stagingFolderPath, '');
-
         //if we have sourceDirs, rootDir is the project's OUTPUT folder, so skip looking for files there, and
         //instead walk backwards through sourceDirs until we find the file we want
         if (sourceDirs.length > 0) {
@@ -58,10 +55,15 @@ export class SourceLocator {
         }
 
         //no sourceDirs and no sourceMap. assume direct file copy using roku-deploy.
-        let lowerRelativeStagingFilePath = fileUtils.standardizePath(relativeStagingFilePath.toLowerCase());
-        let fileEntry = options.fileMappings.find(x => fileUtils.standardizePath(x.dest.toLowerCase()) === lowerRelativeStagingFilePath);
+        if (!options.fileMappings) {
+            throw new Error('fileMappings cannot be undefined');
+        }
+        let lowerFilePathInStaging = filePathInStaging.toLowerCase();
+        let fileEntry = options.fileMappings.find(x => {
+            return fileUtils.standardizePath(x.dest.toLowerCase()) === lowerFilePathInStaging;
+        });
 
-        if (fileEntry && fsExtra.existsSync(fileEntry.src)) {
+        if (fileEntry && await fsExtra.pathExists(fileEntry.src)) {
             return {
                 filePath: fileEntry.src,
                 lineNumber: options.lineNumber,

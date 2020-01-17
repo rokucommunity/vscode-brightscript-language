@@ -47,7 +47,7 @@ export class BrightScriptDebugSession extends DebugSession {
      * A class that keeps track of all the breakpoints for a debug session.
      * It needs to be notified of any changes in breakpoints
      */
-    private breakpointManager = new BreakpointManager();
+    public breakpointManager = new BreakpointManager();
 
     private componentLibraryServer = new ComponentLibraryServer();
 
@@ -117,14 +117,11 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     public stagingFolderPath: string;
 
-    public launchRequestWasCalled = false;
-
     public projectManager = new ProjectManager();
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
 
-        this.launchRequestWasCalled = true;
         let disconnect = () => {
         };
         this.sendEvent(new LaunchStartEvent(args));
@@ -174,7 +171,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
             this.rokuAdapter.registerSourceLocator(async (debuggerPath: string, lineNumber: number) => {
-                return await this.getSourceLocation(debuggerPath, lineNumber);
+                return await this.projectManager.getSourceLocation(debuggerPath, lineNumber);
             });
 
             //pass the log level down thought the adapter to the RendezvousTracker
@@ -213,7 +210,7 @@ export class BrightScriptDebugSession extends DebugSession {
             // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
             this.rokuAdapter.on('compile-errors', async (compileErrors) => {
                 for (let compileError of compileErrors) {
-                    let sourceLocation = await this.getSourceLocation(compileError.path, compileError.lineNumber);
+                    let sourceLocation = await this.projectManager.getSourceLocation(compileError.path, compileError.lineNumber);
                     compileError.path = sourceLocation.filePath;
                     compileError.lineNumber = sourceLocation.lineNumber;
                 }
@@ -484,7 +481,7 @@ export class BrightScriptDebugSession extends DebugSession {
             let stackTrace = await this.rokuAdapter.getStackTrace();
 
             for (let debugFrame of stackTrace) {
-                let sourceLocation = await this.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
+                let sourceLocation = await this.projectManager.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
 
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
@@ -741,18 +738,6 @@ export class BrightScriptDebugSession extends DebugSession {
                 delete this.breakpointsBySourcePath[key];
             }
         }
-    }
-
-    /**
-     * Convert a debugger location into a source location.
-     * If a source map with the same name is found, those will be used.
-     * Otherwise, use the `sourceDirs` and the `componentLibraries` root dirs to
-     * walk through the file system to find a source file that matches
-     * @param debuggerPath - the path that was returned by the debugger
-     * @param debuggerLineNumber - the line number that was sent by the debugger
-     */
-    public async getSourceLocation(debuggerPath: string, debuggerLineNumber: number): Promise<SourceLocation | undefined> {
-        return this.projectManager.getSourceLocation(debuggerPath, debuggerLineNumber);
     }
 
     private log(...args) {
