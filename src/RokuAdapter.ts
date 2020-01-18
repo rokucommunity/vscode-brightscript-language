@@ -4,7 +4,6 @@ import { orderBy } from 'natural-orderby';
 import { Socket } from 'net';
 import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
-import * as vscode from 'vscode';
 
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
@@ -783,8 +782,8 @@ export class RokuAdapter {
                 data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
             }
 
-            let match: string;
-            if (match = this.getExpressionDetails(data)) {
+            let match = this.getExpressionDetails(data);
+            if (match !== undefined) {
                 let value = match;
                 if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
                     value = value.trim().replace(/--string-wrap--/g, '');
@@ -843,6 +842,10 @@ export class RokuAdapter {
     public getForLoopPrintedChildren(expression: string, data: string) {
         let children = [] as EvaluateContainer[];
         let lines = eol.split(data);
+        //if there are no lines, this is an empty object/array
+        if (lines.length === 1 && lines[0].trim() === '') {
+            return children;
+        }
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             let line = lines[lineIndex];
 

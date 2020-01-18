@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.20.1",
+    "version": "1.21.1",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -61,10 +61,10 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-deploy": "^2.5.0",
         "source-map": "^0.7.3",
-        "vscode-debugadapter": "^1.37.1",
-        "vscode-debugprotocol": "^1.37.0",
+        "roku-deploy": "^2.6.1",
+        "vscode-debugadapter": "1.33.0",
+        "vscode-debugprotocol": "1.33.0",
         "vscode-uri": "1.0.6"
     },
     "devDependencies": {
@@ -447,6 +447,16 @@
                                 "default": true,
                                 "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                                 "scope": "resource"
+                            },
+                            "packagePort": {
+                                "type": "number",
+                                "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 80
+                            },
+                            "remotePort": {
+                                "type": "number",
+                                "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 8060
                             }
                         }
                     }

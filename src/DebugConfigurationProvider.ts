@@ -41,8 +41,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
-
+    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<BrightScriptDebugConfiguration> {
         // Process the different parts of the config
         config = this.processUserWorkspaceSettings(config);
         config = await this.sanitizeConfiguration(config);
@@ -79,6 +78,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
+        let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
+
         let defaultFilesArray: FilesType[] = [
             'manifest',
             'source/**/*.*',
@@ -87,7 +88,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         ];
 
         //make sure we have an object
-        config = config ? config : {} as any;
+        config = Object.assign(
+            {},
+            //the workspace settings are the baseline
+            userWorkspaceSettings,
+            //override with any debug-specific settings
+            config
+        );
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
@@ -144,6 +151,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
         config.files = config.files ? config.files : defaultFilesArray;
         config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
+        config.packagePort = config.packagePort ? config.packagePort : 80;
+        config.remotePort = config.remotePort ? config.remotePort : 8060;
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
@@ -346,6 +355,8 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     enableVariablesPanel: boolean;
     enableDebuggerAutoRecovery: boolean;
     stopDebuggerOnAppExit: boolean;
+    packagePort: number;
+    remotePort: number;
     envFile?: string;
     enableSourceMaps?: boolean;
 }
