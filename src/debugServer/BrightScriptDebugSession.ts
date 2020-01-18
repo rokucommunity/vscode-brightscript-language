@@ -43,12 +43,6 @@ export class BrightScriptDebugSession extends DebugSession {
     //set imports as class properties so they can be spied upon during testing
     public rokuDeploy = require('roku-deploy') as RokuDeploy;
 
-    /**
-     * A class that keeps track of all the breakpoints for a debug session.
-     * It needs to be notified of any changes in breakpoints
-     */
-    public breakpointManager = new BreakpointManager();
-
     private componentLibraryServer = new ComponentLibraryServer();
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
@@ -76,8 +70,10 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private launchArgs: LaunchRequestArguments;
 
-    public get baseProjectPath() {
-        return path.normalize(this.launchArgs.rootDir);
+    public projectManager = new ProjectManager();
+
+    public get breakpointManager() {
+        return this.projectManager.breakpointManager;
     }
 
     /**
@@ -117,10 +113,11 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     public stagingFolderPath: string;
 
-    public projectManager = new ProjectManager();
-
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
+
+        this.projectManager.launchArgs = this.launchArgs;
+        this.breakpointManager.launchArgs = this.launchArgs;
 
         let disconnect = () => {
         };
@@ -152,6 +149,9 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
+
+            //prevent new breakpoints from being verified
+            this.breakpointManager.lockBreakpoints();
 
             //write all `stop` statements to the files in the staging folder
             await this.breakpointManager.writeBreakpointsForProject(this.projectManager.mainProject);
@@ -242,6 +242,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //ignore the compile error failure from within the publish
             (args as any).failOnCompileError = false;
+
             //publish the package to the target Roku
             await this.rokuDeploy.publish(args as any);
 
@@ -728,18 +729,6 @@ export class BrightScriptDebugSession extends DebugSession {
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
     }
 
-    /**
-     * File paths can be different casing sometimes,
-     * so delete from `breakpointsByClientPath` case-insensitive
-     */
-    public deleteBreakpointsForClientPath(clientPath: string) {
-        for (let key in this.breakpointsBySourcePath) {
-            if (clientPath.toLowerCase() === key.toLowerCase()) {
-                delete this.breakpointsBySourcePath[key];
-            }
-        }
-    }
-
     private log(...args) {
         console.log.apply(console, args);
     }
@@ -886,6 +875,11 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, then the staging folder is NOT deleted after a debug session has been closed
      */
     retainStagingFolder: boolean;
+
+    /**
+     * If true, then any source maps found will be used to convert a debug location back to a source location
+     */
+    enableSourceMaps: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {

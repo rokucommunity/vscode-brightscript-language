@@ -44,7 +44,8 @@ describe('SouceLocator', () => {
                     }],
                     rootDir: rootDir,
                     lineNumber: 1,
-                    columnIndex: 4
+                    columnIndex: 4,
+                    enableSourceMaps: true
                 });
                 expect(location).to.eql({
                     filePath: s`${rootDir}/lib1.brs`,
@@ -78,7 +79,8 @@ describe('SouceLocator', () => {
                     }],
                     rootDir: rootDir,
                     lineNumber: 3,
-                    columnIndex: 8
+                    columnIndex: 8,
+                    enableSourceMaps: true
                 });
                 expect(location).to.eql({
                     filePath: s`${rootDir}/main.brs`,
@@ -108,7 +110,8 @@ describe('SouceLocator', () => {
                     rootDir: rootDir,
                     lineNumber: 1,
                     columnIndex: 4,
-                    sourceDirs: sourceDirs
+                    sourceDirs: sourceDirs,
+                    enableSourceMaps: true
                 });
                 expect(location).to.eql({
                     filePath: s`${sourceDirs[0]}/lib1.brs`,
@@ -135,7 +138,8 @@ describe('SouceLocator', () => {
                     rootDir: rootDir,
                     lineNumber: 1,
                     columnIndex: 4,
-                    sourceDirs: sourceDirs
+                    sourceDirs: sourceDirs,
+                    enableSourceMaps: true
                 });
                 expect(location).to.eql({
                     filePath: s`${sourceDirs[1]}/lib1.brs`,
@@ -161,7 +165,8 @@ describe('SouceLocator', () => {
                     rootDir: rootDir,
                     lineNumber: 1,
                     columnIndex: 4,
-                    sourceDirs: sourceDirs
+                    sourceDirs: sourceDirs,
+                    enableSourceMaps: true
                 });
                 expect(location).to.eql({
                     filePath: s`${sourceDirs[2]}/lib1.brs`,

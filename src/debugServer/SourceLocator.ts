@@ -20,6 +20,27 @@ export class SourceLocator {
         //throw out any sourceDirs pointing the rootDir
         sourceDirs = sourceDirs.filter(x => x !== rootDir);
 
+        //look for a sourcemap for this file (if source maps are enabled)
+        if (options?.enableSourceMaps !== false) {
+            let sourceMapPath = `${filePathInStaging}.map`;
+            if (fsExtra.existsSync(sourceMapPath)) {
+                //load sourceMap into memory
+                var sourceMap = fsExtra.readFileSync(sourceMapPath).toString();
+                //parse sourcemap and get original position for the staging location
+                var originalPosition = await SourceMapConsumer.with(sourceMap, null, (consumer) => {
+                    return consumer.originalPositionFor({
+                        line: options.lineNumber,
+                        column: options.columnIndex
+                    });
+                });
+                return {
+                    lineNumber: originalPosition.line,
+                    columnIndex: originalPosition.column,
+                    filePath: originalPosition.source
+                };
+            }
+        }
+
         //if we have sourceDirs, rootDir is the project's OUTPUT folder, so skip looking for files there, and
         //instead walk backwards through sourceDirs until we find the file we want
         if (sourceDirs.length > 0) {
@@ -33,25 +54,6 @@ export class SourceLocator {
                     columnIndex: options.columnIndex
                 };
             }
-        }
-
-        //look for a sourcemap for this file
-        let sourceMapPath = `${filePathInStaging}.map`;
-        if (fsExtra.existsSync(sourceMapPath)) {
-            //load sourceMap into memory
-            var sourceMap = fsExtra.readFileSync(sourceMapPath).toString();
-            //parse sourcemap and get original position for the staging location
-            var originalPosition = await SourceMapConsumer.with(sourceMap, null, (consumer) => {
-                return consumer.originalPositionFor({
-                    line: options.lineNumber,
-                    column: options.columnIndex
-                });
-            });
-            return {
-                lineNumber: originalPosition.line,
-                columnIndex: originalPosition.column,
-                filePath: originalPosition.source
-            };
         }
 
         //no sourceDirs and no sourceMap. assume direct file copy using roku-deploy.
@@ -106,6 +108,10 @@ export interface SourceLocatorOptions {
      * The debugger column index (0-based)
      */
     columnIndex: number;
+    /**
+     * If true, then use source maps as part of the process
+     */
+    enableSourceMaps: boolean;
 }
 
 export interface SourceLocation {

@@ -9,6 +9,7 @@ import { util } from '../util';
 import { SourceLocator } from './SourceLocator';
 import * as assert from 'assert';
 import * as eol from 'eol';
+import { BreakpointManager } from './BreakpointManager';
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
 
@@ -19,6 +20,16 @@ export const componentLibraryPostfix: string = '__lib';
  * Will contain the main project (in rootDir), as well as component libraries.
  */
 export class ProjectManager {
+    /**
+     * A class that keeps track of all the breakpoints for a debug session.
+     * It needs to be notified of any changes in breakpoints
+     */
+    public breakpointManager = new BreakpointManager();
+
+    public launchArgs: {
+        enableSourceMaps: boolean;
+    };
+
     public mainProject: Project;
     public componentLibraryProjects = [] as ComponentLibraryProject[];
 
@@ -27,11 +38,30 @@ export class ProjectManager {
     }
 
     /**
+     * Given a debugger path and line number, compensate for the injected breakpoint line offsets
+     * @param filePath - the path to the file that may or may not have breakpoints
+     * @param debuggerLineNumber - the line number from the debugger
+     */
+    private getLineNumberOffsetByBreakpoints(filePath: string, debuggerLineNumber: number) {
+        let breakpoints = this.breakpointManager.getBreakpointsForFile(filePath);
+
+        let resultLineNumber = debuggerLineNumber;
+        for (let breakpoint of breakpoints) {
+            if (breakpoint.line <= resultLineNumber) {
+                resultLineNumber--;
+            } else {
+                break;
+            }
+        }
+        return resultLineNumber;
+    }
+
+    /**
      * @param debuggerPath
      * @param debuggerLineNumber - the 1-based line number from the debugger
      */
     public async getSourceLocation(debuggerPath: string, debuggerLineNumber: number) {
-
+        //get source location using
         let stagingFileInfo = await this.getStagingFileInfo(debuggerPath);
         if (!stagingFileInfo) {
             return;
@@ -46,8 +76,15 @@ export class ProjectManager {
             rootDir: project.rootDir,
             stagingFilePath: stagingFileInfo.absolutePath,
             stagingFolderPath: project.stagingFolderPath,
-            sourceDirs: project.sourceDirs
+            sourceDirs: project.sourceDirs,
+            enableSourceMaps: this.launchArgs?.enableSourceMaps ?? true
         });
+
+        //if sourcemaps are disabled, account for the breakpoint offsets
+        if (this.launchArgs?.enableSourceMaps === false) {
+            sourceLocation.lineNumber = this.getLineNumberOffsetByBreakpoints(sourceLocation.filePath, sourceLocation.lineNumber);
+        }
+
         return sourceLocation;
     }
 

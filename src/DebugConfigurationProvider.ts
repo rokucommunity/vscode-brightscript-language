@@ -42,9 +42,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<DebugConfiguration> {
-        let settings: any = vscode.workspace.getConfiguration('brightscript') || {};
 
         // Process the different parts of the config
+        config = this.processUserWorkspaceSettings(config);
         config = await this.sanitizeConfiguration(config);
         config = await this.processEnvFile(folder, config);
         config = await this.processHostParameter(config);
@@ -53,6 +53,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
+        return config;
+    }
+
+    /**
+     * There are several debug-level config values that can be stored in user settings, so get those
+     */
+    private processUserWorkspaceSettings(config: BrightScriptDebugConfiguration) {
+        //get baseline brightscript.debug user/project settings
+        var userWorkspaceDebugSettings = Object.assign(
+            {
+                enableSourceMaps: true,
+                //depricated naming convention for the RALE settings.
+                raleTrackerTaskFileLocation: (vscode.workspace.getConfiguration('brightscript.rokuAdvancedLayoutEditor') ?? <any>{}).trackerTaskFileLocation
+            },
+            vscode.workspace.getConfiguration('brightscript.debug') ?? {},
+        );
+        //merge the user/workspace settings in with the config (the config wins on conflict)
+        config = Object.assign(userWorkspaceDebugSettings, config ?? <any>{});
         return config;
     }
 
@@ -125,6 +143,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
         config.files = config.files ? config.files : defaultFilesArray;
+        config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
@@ -328,6 +347,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     enableDebuggerAutoRecovery: boolean;
     stopDebuggerOnAppExit: boolean;
     envFile?: string;
+    enableSourceMaps?: boolean;
 }
 
 export interface ComponentLibraryConfig {

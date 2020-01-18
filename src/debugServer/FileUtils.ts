@@ -8,7 +8,6 @@ import glob = require('glob');
 import * as eol from 'eol';
 const globp = promisify(glob);
 
-
 export class FileUtils {
 
     /**

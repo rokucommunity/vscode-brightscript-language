@@ -166,7 +166,7 @@ describe('BreakpointManager', () => {
         });
 
         it('does not verify breakpoints after launch', () => {
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
             expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [{
                 line: 0,
                 column: 0
@@ -186,7 +186,7 @@ describe('BreakpointManager', () => {
             }]);
 
             //launch
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
 
             //toggle off
             expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [])).to.have.deep.members([]);
@@ -234,7 +234,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
 
             //launch
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
 
             //sourcemap was not yet created
             expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
@@ -276,7 +276,7 @@ describe('BreakpointManager', () => {
             }]);
 
             //launch
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
 
             //sourcemap was not yet created
             expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
@@ -320,7 +320,7 @@ describe('BreakpointManager', () => {
             }]);
 
             //launch
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
 
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{
@@ -358,7 +358,7 @@ describe('BreakpointManager', () => {
             }]);
 
             //launch
-            bpManager.setLaunchArgs({});
+            bpManager.lockBreakpoints();
 
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{

@@ -205,11 +205,23 @@ describe('FileUtils', () => {
 
     describe('findFirstParent', () => {
         it('finds parent from first index', () => {
-            expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`])).to.equal(n(`${rootDir}/project`));
+            expect(
+                fileUtils.standardizePath(
+                    fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`])
+                )
+            ).to.equal(
+                s`${rootDir}/project`
+            );
         });
 
         it('finds parent from first index even though the second one would match too', () => {
-            expect(fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`, `${rootDir}`])).to.equal(n(`${rootDir}/project`));
+            expect(
+                fileUtils.standardizePath(
+                    fileUtils.findFirstParent(`${rootDir}/project/source/main.brs`, [`${rootDir}/project`, `${rootDir}`])
+                )
+            ).to.equal(
+                s`${rootDir}/project`
+            );
         });
     });
 

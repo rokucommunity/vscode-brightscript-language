@@ -97,19 +97,6 @@ describe('Debugger', () => {
             });
         });
     });
-    it('baseProjectPath works', async () => {
-        sinon.stub(session, 'sendEvent').callsFake((...args) => {
-            //do nothing
-        });
-
-        //skip adding breakpoint statements since that's not what we are currently testing
-        (session as any).addBreakpointStatements = () => { };
-        await session.launchRequest(<any>{}, <any>{
-            rootDir: '1/2/3',
-            outDir: outDir
-        });
-        assert.equal(path.normalize(session.baseProjectPath), path.normalize('1/2/3'));
-    });
 
     describe('evaluating variable', () => {
         let getVariableValue;
@@ -362,7 +349,7 @@ describe('Debugger', () => {
             expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: true });
 
             //mark debugger as 'launched' which should change the behavior of breakpoints.
-            session.breakpointManager.setLaunchArgs({});
+            session.breakpointManager.lockBreakpoints();
 
             //remove a breakpoint (it should remove the breakpoint)
             args.breakpoints = [];

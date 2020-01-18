@@ -15,19 +15,25 @@ export class BreakpointManager {
 
     }
 
-    private launchArgs: { sourceDirs: string[], rootDir: string; };
+    public launchArgs: {
+        sourceDirs: string[],
+        rootDir: string;
+        enableSourceMaps: boolean
+    };
 
-    public setLaunchArgs(launchArgs: any) {
-        this.launchArgs = launchArgs;
+    /**
+     * Tell the breakpoint manager that no new breakpoints can be verified
+     * (most likely due to the app being launched and roku not supporting dynamic breakpoints)
+     */
+    public lockBreakpoints() {
+        this.areBreakpointsLocked = true;
     }
 
     /**
      * Indicates whether the app has been launched or not.
      * This will determine whether the breakpoints should be written to the files, or marked as not verified (greyed out in vscode)
      */
-    private get isLaunched() {
-        return !!this.launchArgs;
-    }
+    private areBreakpointsLocked = false;
 
     /**
      * A map of breakpoints by what file they were set in.
@@ -60,7 +66,7 @@ export class BreakpointManager {
             return allBreakpointsForFile as DebugProtocol.Breakpoint[];
 
             //we have not launched the debug session yet. all of these breakpoints are treated as verified
-        } else if (this.isLaunched === false) {
+        } else if (this.areBreakpointsLocked === false) {
             //add all of the breakpoints for this file
             this.breakpointsByFilePath[sourceFilePath] = <any>allBreakpointsForFile;
             for (let breakpoint of this.breakpointsByFilePath[sourceFilePath]) {
@@ -87,7 +93,7 @@ export class BreakpointManager {
                 sourceFilePath = lastWorkingPath;
             }
 
-            let existingBreakpoints = this.getBreakpointsForFilePath(sourceFilePath);
+            let existingBreakpoints = this.getBreakpointsForFile(sourceFilePath);
 
             //new breakpoints will be verified=false, but breakpoints that were removed and then added again should be verified=true
             for (let incomingBreakpoint of allBreakpointsForFile as AugmentedSourceBreakpoint[]) {
@@ -189,22 +195,27 @@ export class BreakpointManager {
         //load the file as a string
         let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
 
-        let breakpointResult = this.getSourceAndMapWithBreakpoints(fileContents, breakpoints);
+        let sourceAndMap = this.getSourceAndMapWithBreakpoints(fileContents, breakpoints);
 
-        let sourceMap = JSON.stringify(breakpointResult.map);
+        let writeSourceMapPromise: Promise<void>;
 
-        //if a source map already exists for this file, we need to merge that one with our new one
-        if (await fsExtra.pathExists(sourceMapPath)) {
-            var originalSourceMap = (await fsExtra.readFile(sourceMapPath)).toString();
-            var mergedSourceMapObj = mergeSourceMap(originalSourceMap, sourceMap);
-            sourceMap = JSON.stringify(mergedSourceMapObj);
+        //if we got a map file back, write it to the filesystem
+        if (sourceAndMap.map) {
+            let sourceMap = JSON.stringify(sourceAndMap.map);
+            //if a source map already exists for this file, we need to merge that one with our new one
+            if (await fsExtra.pathExists(sourceMapPath)) {
+                var originalSourceMap = (await fsExtra.readFile(sourceMapPath)).toString();
+                var mergedSourceMapObj = mergeSourceMap(originalSourceMap, sourceMap);
+                sourceMap = JSON.stringify(mergedSourceMapObj);
+            }
+            //write the source map file
+            writeSourceMapPromise = fsExtra.writeFile(sourceMapPath, sourceMap);
         }
 
         await Promise.all([
             //overwrite the file that now has breakpoints injected
-            fsExtra.writeFile(stagingFilePath, breakpointResult.code),
-            //write the source map file
-            fsExtra.writeFile(sourceMapPath, sourceMap)
+            fsExtra.writeFile(stagingFilePath, sourceAndMap.code),
+            writeSourceMapPromise
         ]);
     }
 
@@ -229,7 +240,7 @@ export class BreakpointManager {
         this.entryBreakpoint = <any>entryBreakpoint;
 
         //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.getBreakpointsForFilePath(entryPoint.path);
+        let breakpoints = this.getBreakpointsForFile(entryPoint.path);
         breakpoints.push(entryBreakpoint);
         //sort the breakpoints in order of line number
         breakpoints.sort((a, b) => {
@@ -295,7 +306,16 @@ export class BreakpointManager {
         }
 
         let node = new SourceNode(null, null, originalFilePath, chunks);
-        return node.toStringWithSourceMap();
+
+        //if sourcemaps are disabled, skip sourcemap generation and only generate the code
+        if (this.launchArgs?.enableSourceMaps === false) {
+            return {
+                code: node.toString(),
+                map: undefined
+            };
+        } else {
+            return node.toStringWithSourceMap();
+        }
     }
 
     private getBreakpointLines(breakpoint: BreakpointWorkItem, originalFilePath: string) {
@@ -356,7 +376,7 @@ export class BreakpointManager {
      * File paths can be different casing sometimes,
      * so find the data from `breakpointsByClientPath` case insensitive
      */
-    private getBreakpointsForFilePath(filePath: string) {
+    public getBreakpointsForFile(filePath: string) {
         filePath = fileUtils.standardizePath(filePath);
 
         for (let key in this.breakpointsByFilePath) {

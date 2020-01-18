@@ -32,7 +32,7 @@
         "watch": "tsc -w -p ./src",
         "build-and-test": "npm run build && npm run test",
         "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
-        "test:coverage": "nyc mocha src/**/FileUtils.spec.ts --full-trace --bail",
+        "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
         "package": "vsce package",
         "publish": "vsce publish"
@@ -191,7 +191,7 @@
                             },
                             "debugRootDir": {
                                 "type": "string",
-                                "deprecationMessage": "Deprecated. Use  instead",
+                                "deprecationMessage": "Deprecated. Use sourceDirs instead",
                                 "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
                             },
@@ -369,6 +369,11 @@
                                     "normal"
                                 ]
                             },
+                            "raleTrackerTaskFileLocation": {
+                                "type": "string",
+                                "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                                "scope": "resource"
+                            },
                             "injectRaleTrackerTask": {
                                 "type": "boolean",
                                 "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
@@ -436,6 +441,12 @@
                                 "deprecationMessage": "Deprecated. This is no longer necessary, as the setting is always enabled and cannot be disabled.",
                                 "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `[[children]]` field",
                                 "default": true
+                            },
+                            "enableSourceMaps": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
+                                "scope": "resource"
                             }
                         }
                     }
@@ -662,6 +673,18 @@
                 "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                    "deprecationMessage": "Deprecated. Use brightscript.debug.raleTrackerTaskFileLocation instead",
+                    "scope": "resource"
+                },
+                "brightscript.debug.raleTrackerTaskFileLocation": {
+                    "type": "string",
+                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                    "scope": "resource"
+                },
+                "brightscript.debug.enableSourceMaps": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                     "scope": "resource"
                 }
             }
