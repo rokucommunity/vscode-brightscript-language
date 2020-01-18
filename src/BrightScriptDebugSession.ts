@@ -19,19 +19,19 @@ import {
     Variable
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { ComponentLibraryServer } from '../ComponentLibraryServer';
-import { ComponentLibraryConfig } from '../DebugConfigurationProvider';
-import { RendezvousHistory } from '../RendezvousTracker';
+import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { ComponentLibraryConfig } from './DebugConfigurationProvider';
+import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
-} from '../RokuAdapter';
-import { util } from '../util';
-import { BreakpointManager } from './BreakpointManager';
-import { fileUtils } from './FileUtils';
-import { SourceLocation, SourceLocator } from './SourceLocator';
-import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './ProjectManager';
-import { standardizePath as s } from './FileUtils';
+} from './RokuAdapter';
+import { util } from './util';
+import { BreakpointManager } from './debugServer/BreakpointManager';
+import { fileUtils } from './debugServer/FileUtils';
+import { SourceLocation, SourceLocator } from './debugServer/SourceLocator';
+import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './debugServer/ProjectManager';
+import { standardizePath as s } from './debugServer/FileUtils';
 
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {

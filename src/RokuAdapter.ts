@@ -6,7 +6,7 @@ import * as net from 'net';
 import * as rokuDeploy from 'roku-deploy';
 import * as vscode from 'vscode';
 
-import { defer } from './debugServer/BrightScriptDebugSession';
+import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 import { util } from './util';

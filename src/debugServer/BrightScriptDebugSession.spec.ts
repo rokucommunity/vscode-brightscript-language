@@ -10,7 +10,7 @@ import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
 import {
     BrightScriptDebugSession,
     defer
-} from './BrightScriptDebugSession';
+} from '../BrightScriptDebugSession';
 import { fileUtils } from './FileUtils';
 import {
     EvaluateContainer,
