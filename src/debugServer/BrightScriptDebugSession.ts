@@ -143,9 +143,7 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.projectManager.mainProject.stage();
 
             //add the entry breakpoint if stopOnEntry is true
-            if (this.launchArgs.stopOnEntry) {
-                await this.breakpointManager.registerEntryBreakpoint(this.stagingFolderPath);
-            }
+            await this.handleEntryBreakpoint();
 
             //add breakpoint lines to source files and then publish
             this.sendDebugLogLine('Adding stop statements for active breakpoints');
@@ -300,15 +298,27 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
+     * If `stopOnEntry` is enabled, register the entry breakpoint.
+     */
+    public async handleEntryBreakpoint() {
+        if (this.launchArgs.stopOnEntry) {
+            await this.breakpointManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
+        }
+    }
+
+    /**
      * Called when the debugger is terminated
      */
     public shutdown() {
         //if configured, delete the staging directory
         if (!this.launchArgs.retainStagingFolder) {
-            try {
-                fsExtra.removeSync(this.stagingFolderPath);
-            } catch (e) {
-                console.log('Error removing staging directory', e);
+            let stagingFolderPaths = this.projectManager.getStagingFolderPaths();
+            for (let stagingFolderPath of stagingFolderPaths) {
+                try {
+                    fsExtra.removeSync(stagingFolderPath);
+                } catch (e) {
+                    console.log(`Error removing staging directory '${stagingFolderPath}'`, e);
+                }
             }
         }
         super.shutdown();

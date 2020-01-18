@@ -38,6 +38,17 @@ export class ProjectManager {
     }
 
     /**
+     * Get the list of staging folder paths from all projects
+     */
+    public getStagingFolderPaths() {
+        let projects = [
+            ...(this.mainProject ? [this.mainProject] : []),
+            ...(this.componentLibraryProjects ?? [])
+        ];
+        return projects.map(x => x.stagingFolderPath);
+    }
+
+    /**
      * Given a debugger path and line number, compensate for the injected breakpoint line offsets
      * @param filePath - the path to the file that may or may not have breakpoints
      * @param debuggerLineNumber - the line number from the debugger

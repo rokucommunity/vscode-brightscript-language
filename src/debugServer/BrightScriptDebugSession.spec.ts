@@ -17,6 +17,7 @@ import {
     HighLevelType,
     PrimativeType
 } from '../RokuAdapter';
+import { DebugSession } from 'vscode-debugadapter';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -403,6 +404,49 @@ describe('Debugger', () => {
             session.setBreakPointsRequest(<any>{}, args);
             expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/dest/some/file.brs`)]).not.to.be.undefined;
 
+        });
+    });
+
+    describe('handleEntryBreakpoint', () => {
+        it('registers the entry breakpoint when stopOnEntry is enabled', async () => {
+            (session as any).launchArgs = { stopOnEntry: true };
+            session.projectManager.mainProject = <any>{
+                stagingFolderPath: stagingFolderPath
+            };
+            let stub = sinon.stub(session.breakpointManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            await session.handleEntryBreakpoint();
+            expect(stub.called).to.be.true;
+            expect(stub.args[0][0]).to.equal(stagingFolderPath);
+        });
+        it('does NOT register the entry breakpoint when stopOnEntry is enabled', async () => {
+            (session as any).launchArgs = { stopOnEntry: false };
+            let stub = sinon.stub(session.breakpointManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            await session.handleEntryBreakpoint();
+            expect(stub.called).to.be.false;
+        });
+    });
+
+    describe('shutdown', () => {
+        it('erases all staging folders when configured to do so', () => {
+            var stub = sinon.stub(fsExtra, 'removeSync').returns(null);
+            session.projectManager.mainProject = <any>{
+                stagingFolderPath: 'stagingPathA'
+            };
+            session.projectManager.componentLibraryProjects.push(<any>{
+                stagingFolderPath: 'stagingPathB'
+            });
+            (session as any).launchArgs = {
+                retainStagingFolder: false
+            };
+            //stub the super shutdown call so it doesn't kill the test session
+            sinon.stub(DebugSession.prototype, 'shutdown').returns(null);
+
+            session.shutdown();
+            expect(stub.callCount).to.equal(2);
+            expect(stub.args.map(x => x[0])).to.eql([
+                'stagingPathA',
+                'stagingPathB'
+            ]);
         });
     });
 });
