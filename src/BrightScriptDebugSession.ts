@@ -33,9 +33,57 @@ import { SourceLocation, SourceLocator } from './debugServer/SourceLocator';
 import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './debugServer/ProjectManager';
 import { standardizePath as s } from './debugServer/FileUtils';
 
+class CompileFailureEvent implements DebugProtocol.Event {
+    constructor(compileError: any) {
+        this.body = compileError;
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class LogOutputEvent implements DebugProtocol.Event {
+    constructor(lines: string) {
+        this.body = lines;
+        this.event = 'BSLogOutputEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class RendezvousEvent implements DebugProtocol.Event {
+    constructor(output: RendezvousHistory) {
+        this.body = output;
+        this.event = 'BSRendezvousEvent';
+    }
+
+    public body: RendezvousHistory;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
+class LaunchStartEvent implements DebugProtocol.Event {
+    constructor(args: LaunchRequestArguments) {
+        this.body = args;
+        this.event = 'BSLaunchStartEvent';
+    }
+
+    public body: any;
+    public event: string;
+    public seq: number;
+    public type: string;
+}
+
 export class BrightScriptDebugSession extends DebugSession {
     public constructor() {
         super();
+        // this debugger uses zero-based lines and columns
         this.setDebuggerLinesStartAt1(true);
         this.setDebuggerColumnsStartAt1(true);
     }
@@ -51,10 +99,6 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private firstRunDeferred = defer<void>();
 
-    /**
-     * A map of breakpoints, keyed by the path to the source file that contains the breakpoints
-     */
-    private breakpointsBySourcePath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
 
@@ -107,11 +151,6 @@ export class BrightScriptDebugSession extends DebugSession {
 
         this.sendResponse(response);
     }
-
-    /**
-     * The path to the staging folder
-     */
-    public stagingFolderPath: string;
 
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
@@ -295,33 +334,6 @@ export class BrightScriptDebugSession extends DebugSession {
                 });
             });
         }
-    }
-
-    /**
-     * If `stopOnEntry` is enabled, register the entry breakpoint.
-     */
-    public async handleEntryBreakpoint() {
-        if (this.launchArgs.stopOnEntry) {
-            await this.breakpointManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
-        }
-    }
-
-    /**
-     * Called when the debugger is terminated
-     */
-    public shutdown() {
-        //if configured, delete the staging directory
-        if (!this.launchArgs.retainStagingFolder) {
-            let stagingFolderPaths = this.projectManager.getStagingFolderPaths();
-            for (let stagingFolderPath of stagingFolderPaths) {
-                try {
-                    fsExtra.removeSync(stagingFolderPath);
-                } catch (e) {
-                    console.log(`Error removing staging directory '${stagingFolderPath}'`, e);
-                }
-            }
-        }
-        super.shutdown();
     }
 
     /**
@@ -786,6 +798,32 @@ export class BrightScriptDebugSession extends DebugSession {
         this.variables = {};
     }
 
+    /**
+     * If `stopOnEntry` is enabled, register the entry breakpoint.
+     */
+    public async handleEntryBreakpoint() {
+        if (this.launchArgs.stopOnEntry) {
+            await this.breakpointManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
+        }
+    }
+
+    /**
+     * Called when the debugger is terminated
+     */
+    public shutdown() {
+        //if configured, delete the staging directory
+        if (!this.launchArgs.retainStagingFolder) {
+            let stagingFolderPaths = this.projectManager.getStagingFolderPaths();
+            for (let stagingFolderPath of stagingFolderPaths) {
+                try {
+                    fsExtra.removeSync(stagingFolderPath);
+                } catch (e) {
+                    console.log(`Error removing staging directory '${stagingFolderPath}'`, e);
+                }
+            }
+        }
+        super.shutdown();
+    }
 }
 
 /**
@@ -937,51 +975,4 @@ export function defer<T>() {
             return this.isResolved || this.isRejected;
         }
     };
-}
-
-class CompileFailureEvent implements DebugProtocol.Event {
-    constructor(compileError: any) {
-        this.body = compileError;
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class LogOutputEvent implements DebugProtocol.Event {
-    constructor(lines: string) {
-        this.body = lines;
-        this.event = 'BSLogOutputEvent';
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class RendezvousEvent implements DebugProtocol.Event {
-    constructor(output: RendezvousHistory) {
-        this.body = output;
-        this.event = 'BSRendezvousEvent';
-    }
-
-    public body: RendezvousHistory;
-    public event: string;
-    public seq: number;
-    public type: string;
-}
-
-class LaunchStartEvent implements DebugProtocol.Event {
-    constructor(args: LaunchRequestArguments) {
-        this.body = args;
-        this.event = 'BSLaunchStartEvent';
-    }
-
-    public body: any;
-    public event: string;
-    public seq: number;
-    public type: string;
 }
