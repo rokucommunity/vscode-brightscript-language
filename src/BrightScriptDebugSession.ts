@@ -470,6 +470,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 this.convertBreakpointPaths(componentLibrary.rootDir, componentLibrary.rootDir);
                 await this.addBreakpointStatements(stagingFolder, componentLibrary.rootDir);
 
+                const currentComponentLibraryPostFix = `${this.componentLibraryPostfix}${libraryNumber}`;
                 await Promise.all(paths.map(async (filePath) => {
                     //make the path relative (+1 for removing the slash)
                     let relativePath = filePath.substring(stagingFolder.length + 1);
@@ -480,18 +481,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
                         if (parsedPath.ext === '.brs') {
                             // Create the new file name to be used
-                            let newFileName: string = `${parsedPath.name}${this.componentLibraryPostfix}${libraryNumber}${parsedPath.ext}`;
+                            let newFileName: string = `${parsedPath.name}${currentComponentLibraryPostFix}${parsedPath.ext}`;
                             relativePath = path.join(parsedPath.dir, newFileName);
-
-                            // Update all the file name references in the library to the new file names
-                            replaceInFile.sync({
-                                files: [
-                                    path.join(stagingFolder, '**/*.xml'),
-                                    path.join(stagingFolder, '**/*.brs')
-                                ],
-                                from: (file) => new RegExp(parsedPath.base, 'gi'),
-                                to: newFileName
-                            });
 
                             // Rename the brs files to include the postfix name spacing tag
                             await fsExtra.move(filePath, path.join(stagingFolder, relativePath));
@@ -501,6 +492,18 @@ export class BrightScriptDebugSession extends DebugSession {
                         pathDetails[relativePath] = originalRelativePath;
                     }
                 }));
+
+                // Update all the file name references in the library to the new file names
+                await replaceInFile({
+                    files: [
+                        path.join(stagingFolder, '**/*.xml'),
+                        path.join(stagingFolder, '**/*.brs')
+                    ],
+                    from: /uri="(.+)\.brs"([^\/]*)\/>/gi,
+                    to: (match) => {
+                        return match.replace('.brs',  currentComponentLibraryPostFix + '.brs');
+                    }
+                });
 
                 // push one file map object for each library we prepare
                 this.componentLibrariesStagingDirPaths.push(pathDetails);
