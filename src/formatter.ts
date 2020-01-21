@@ -1,31 +1,35 @@
+import { Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
 import {
+    DocumentRangeFormattingEditProvider,
+    EndOfLine,
+    Position,
+    ProviderResult,
+    Range,
     TextDocument,
     TextEdit,
-    Position,
-    Range,
-    window,
-    EndOfLine,
-    workspace,
-    FormattingOptions,
-    DocumentRangeFormattingEditProvider, ProviderResult,
+    window, workspace,
 } from 'vscode';
-import { BrightScriptFormatter } from 'brightscript-formatter';
+import * as vscode from 'vscode';
 
-export class Formatter implements DocumentRangeFormattingEditProvider{
+export class Formatter implements DocumentRangeFormattingEditProvider {
 
-
-    provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: FormattingOptions): ProviderResult<TextEdit[]> {
+    public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): ProviderResult<TextEdit[]> {
         let config = workspace.getConfiguration('brightscript.format');
         let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
             let text = document.getText();
-            let formatter = new BrightScriptFormatter();
-            let formattedText = formatter.format(text, {
+            let formatter = new BrighterScriptFormatter();
+            let formattedText = formatter.format(text, <FormattingOptions>{
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 compositeKeywords: config.compositeKeywords,
                 keywordCase: config.keywordCase,
-                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace
+                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace,
+                keywordCaseOverride: config.keywordCaseOverride,
+                formatIndent: config.formatIndent === false ? false : true,
+                formatInteriorWhitespace: config.formatInteriorWhitespace === false ? false : true,
+                insertSpaceBeforeFunctionParenthesis: config.insertSpaceBeforeFunctionParenthesis === true ? true : false,
+                insertSpaceBetweenEmptyCurlyBraces: config.insertSpaceBeforeFunctionParenthesis === true ? true : false
             });
 
             let edits = getEditChunks(formattedText, range);
@@ -35,8 +39,8 @@ export class Formatter implements DocumentRangeFormattingEditProvider{
             window.showErrorMessage(e.message, e.stack.split('\n')[0]);
         }
 
-        function getEditChunks(formattedText: string, range : Range) {
-            
+        function getEditChunks(formattedText: string, range: Range) {
+
             let lines = formattedText.split(lineEnding);
             //make an edit per line of the doc
             let edits: TextEdit[] = [];

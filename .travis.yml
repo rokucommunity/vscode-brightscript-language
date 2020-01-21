@@ -1,11 +1,16 @@
+os:
+ - linux
+ - osx
+ - windows
 language: node_js
 node_js:
-  - "node"
+  - "11.4.0"
 before_script:
   - npm install
 script:
-  - npm run compile
-  - npm run test
+  - npm run build
+  - npm run test:coverage
+  - npm run tslint
   - npm run package
 after_success: npm run coverage
 deploy:
@@ -16,9 +21,13 @@ deploy:
     skip_cleanup: true
     on:
       tags: true
+      condition: $TRAVIS_OS_NAME = linux
   - provider: script
     script: bash vscode-marketplace-publish.sh
     skip_cleanup: true
     on:
+      branch: master
       tags: true
+      #do not publish pre-release versions to the vscode extension marketplace
+      condition: $TRAVIS_OS_NAME = linux && $TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$
 

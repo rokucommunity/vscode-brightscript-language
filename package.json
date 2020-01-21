@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.3.0",
+    "version": "1.21.1",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -19,67 +19,130 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language"
+        "url": "https://github.com/RokuCommunity/vscode-brightscript-language"
     },
     "bugs": {
-        "url": "https://github.com/TwitchBronBron/vscode-brightscript-language/issues"
+        "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "prepare": "npm run compile",
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./src",
+        "preversion": "npm run build && npm run tslint && npm run test",
+        "prepare": "npm run build",
+        "vscode:prepublish": "npm run build",
+        "build": "tsc -p ./src",
         "tslint": "tslint ./src/**/*.ts",
         "watch": "tsc -w -p ./src",
-        "test": "nyc mocha src/**/*.spec.ts --full-trace --bail",
-        "coverage": "nyc report --reporter=text-lcov | coveralls",
-        "postinstall": "node ./node_modules/vscode/bin/install",
+        "build-and-test": "npm run build && npm run test",
+        "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
+        "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
+        "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
         "package": "vsce package",
         "publish": "vsce publish"
     },
     "dependencies": {
-        "@types/glob": "^5.0.36",
-        "brightscript-formatter": "^1.4.0",
+        "@types/glob": "^7.1.1",
+        "array-sort": "^1.0.0",
+        "backoff": "^2.5.0",
+        "brighterscript-formatter": "^1.0.2",
+        "dotenv": "^6.2.0",
         "eol": "^0.9.1",
-        "find-in-files": "^0.4.0",
-        "fs-extra": "^4.0.3",
+        "fast-xml-parser": "^3.12.16",
+        "find-in-files": "^0.5.0",
+        "fs-extra": "^7.0.1",
+        "get-port": "^5.0.0",
         "glob": "^7.1.3",
+        "hoek": "^6.1.2",
+        "iconv-lite": "0.4.24",
+        "micromatch": "^3.1.10",
+        "natural-orderby": "^2.0.3",
         "net": "^1.0.2",
+        "node-cache": "^4.2.0",
+        "node-ssdp": "^4.0.0",
         "path": "^0.12.7",
         "q": "^1.5.1",
-        "roku-deploy": "^0.2.1",
-        "vscode-debugadapter": "1.27.0",
-        "vscode-debugprotocol": "1.27.0",
-        "hoek": "^5.0.3",
-        "vscode-uri": "1.0.1",
-        "iconv-lite": "0.4.24"
+        "replace-in-file": "^4.1.0",
+        "replace-last": "^1.2.6",
+        "roku-deploy": "^2.6.1",
+        "vscode-debugadapter": "1.33.0",
+        "vscode-debugprotocol": "1.33.0",
+        "vscode-uri": "1.0.6"
     },
     "devDependencies": {
         "@types/chai": "^4.1.5",
-        "@types/fs-extra": "^4.0.8",
+        "@types/fs-extra": "^5.0.4",
         "@types/mocha": "^5.2.5",
-        "@types/node": "7.0.55",
-        "@types/sinon": "^2.3.7",
+        "@types/node": "11.9.1",
+        "@types/node-ssdp": "^3.3.0",
+        "@types/q": "^1.5.1",
+        "@types/sinon": "7.0.6",
+        "@types/vscode": "^1.18.0",
         "chai": "^4.2.0",
-        "coveralls": "^3.0.2",
-        "cson-parser": "^1.3.5",
+        "codecov": "^3.1.0",
+        "cson-parser": "^4.0.1",
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
-        "nyc": "^11.9.0",
-        "sinon": "^4.5.0",
+        "mocha-param": "^2.0.0",
+        "nyc": "^14.1.1",
+        "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
-        "ts-node": "^5.0.1",
-        "tslint": "5.9.1",
-        "typescript": "2.6.2",
+        "ts-mocha": "^6.0.0",
+        "ts-node": "^8.0.2",
+        "tslint": "^5.11.0",
+        "tslint-eslint-rules": "^5.4.0",
+        "tslint-origin-ordered-imports-rule": "^1.1.2",
+        "typescript": "^3.2.1",
         "vsce": "^1.50.0",
-        "vscode": "^1.1.21",
-        "vscode-debugadapter-testsupport": "1.27.0"
+        "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
     "activationEvents": [
         "onDebug",
-        "onLanguage:brightscript"
+        "onLanguage:brightscript",
+        "onLanguage:brighterscript",
+        "onLanguage:xml",
+        "onCommand:extension.brightscript.sendRemoteCommand",
+        "onCommand:extension.brightscript.pressBackButton",
+        "onCommand:extension.brightscript.pressHomeButton",
+        "onCommand:extension.brightscript.pressUpButton",
+        "onCommand:extension.brightscript.pressDownButton",
+        "onCommand:extension.brightscript.pressRightButton",
+        "onCommand:extension.brightscript.pressLeftButton",
+        "onCommand:extension.brightscript.pressSelectButton",
+        "onCommand:extension.brightscript.pressPlayButton",
+        "onCommand:extension.brightscript.pressRevButton",
+        "onCommand:extension.brightscript.pressFwdButton",
+        "onCommand:extension.brightscript.pressStarButton",
+        "onCommand:extension.brightscript.sendRemoteText"
     ],
     "contributes": {
+        "views": {
+            "debug": [
+                {
+                    "id": "rendezvousView",
+                    "name": "Rendezvous",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "extension.brightscript.rendezvous.toggleSortMethod",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.rendezvous.toggleSortDirection",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.rendezvous.clearHistory",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                }
+            ]
+        },
         "breakpoints": [
             {
                 "language": "brightscript"
@@ -104,6 +167,11 @@
                                 "description": "The host or ip address for the target Roku",
                                 "default": "${promptForHost}"
                             },
+                            "deepLinkUrl": {
+                                "type": "string",
+                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
+                            },
                             "password": {
                                 "type": "string",
                                 "description": "The password for the developer page on the target Roku",
@@ -116,8 +184,137 @@
                             },
                             "debugRootDir": {
                                 "type": "string",
+                                "deprecationMessage": "Deprecated. Use sourceDirs instead",
                                 "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
                                 "default": "${workspaceFolder}"
+                            },
+                            "sourceDirs": {
+                                "type": "array",
+                                "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
+                                "default": [
+                                    "${workspaceFolder}"
+                                ]
+                            },
+                            "bsConst": {
+                                "type": "object",
+                                "description": "An object of bs_const values to be updated in the manifest before side loading.",
+                                "patternProperties": {
+                                    "^[\\w]+$": {
+                                        "type": "boolean",
+                                        "required": true
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            "componentLibrariesPort": {
+                                "type": "number",
+                                "description": "Port to access component libraries.",
+                                "default": 8080
+                            },
+                            "componentLibrariesOutDir": {
+                                "type": "string",
+                                "description": "Output folder the component libraries will be hosted in.",
+                                "default": "${workspaceFolder}/libs"
+                            },
+                            "componentLibraries": {
+                                "type": "array",
+                                "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
+                                "default": [
+                                    {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    }
+                                ],
+                                "items": {
+                                    "type": "object",
+                                    "description": "Component Library Schema.",
+                                    "default": {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    },
+                                    "required": [
+                                        "rootDir",
+                                        "outFile",
+                                        "files"
+                                    ],
+                                    "properties": {
+                                        "rootDir": {
+                                            "type": "string",
+                                            "description": "Root directory of source files for this component library.",
+                                            "examples": [
+                                                "${workspaceFolder}/LibDir/"
+                                            ]
+                                        },
+                                        "outFile": {
+                                            "type": "string",
+                                            "description": "Output file name. Used as the static file name for the zip. You can use values in your outFile string such as ${title} to be inferred from the libraries manifest file.",
+                                            "default": "",
+                                            "examples": [
+                                                "LibName.zip"
+                                            ],
+                                            "pattern": "^(.*)(\\.zip)$"
+                                        },
+                                        "files": {
+                                            "type": "array",
+                                            "description": "A file path or file glob that should be copied to the  component library zip.",
+                                            "default": [
+                                                "manifest",
+                                                "source/**/*.*",
+                                                "components/**/*.*",
+                                                "assets/**/*.*"
+                                            ],
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "description": "A file path or file glob that should be copied to the component library zip."
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "src": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                    },
+                                                                    {
+                                                                        "type": "array",
+                                                                        "description": "An array of file path or globs",
+                                                                        "items": {
+                                                                            "type": "string",
+                                                                            "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "dest": {
+                                                                "type": "string",
+                                                                "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "src",
+                                                            "dest"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
                             },
                             "outDir": {
                                 "type": "string",
@@ -127,7 +324,7 @@
                             "stopOnEntry": {
                                 "type": "boolean",
                                 "description": "Have the debugger break on on the first line of the program after launch.",
-                                "default": true
+                                "default": false
                             },
                             "retainStagingFolder": {
                                 "type": "boolean",
@@ -139,18 +336,33 @@
                                 "description": "Prevent the deployment package from being deleted after launching a debug session.",
                                 "default": true
                             },
+                            "enableVariablesPanel": {
+                                "type": "boolean",
+                                "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                                "default": true
+                            },
+                            "envFile": {
+                                "type": "string",
+                                "description": "A path to an environment variables file.",
+                                "default": ".env"
+                            },
                             "consoleOutput": {
                                 "type": "string",
-                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",
                                 "default": "normal",
                                 "enum": [
                                     "full",
                                     "normal"
                                 ]
                             },
+                            "injectRaleTrackerTask": {
+                                "type": "boolean",
+                                "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
+                                "default": false
+                            },
                             "files": {
                                 "type": "array",
-                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files.",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
                                 "default": [
                                     "manifest",
                                     "source/**/*.*",
@@ -167,17 +379,59 @@
                                             "type": "object",
                                             "properties": {
                                                 "src": {
-                                                    "type": "string",
-                                                    "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string",
+                                                            "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "description": "An array of file path or globs",
+                                                            "items": {
+                                                                "type": "string",
+                                                                "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                            }
+                                                        }
+                                                    ]
                                                 },
                                                 "dest": {
                                                     "type": "string",
                                                     "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
                                                 }
-                                            }
+                                            },
+                                            "required": [
+                                                "src",
+                                                "dest"
+                                            ]
                                         }
                                     ]
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breakpoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
+                            },
+                            "stopDebuggerOnAppExit": {
+                                "type": "boolean",
+                                "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                                "default": true
+                            },
+                            "enableLookupVariableNodeChildren": {
+                                "type": "boolean",
+                                "deprecationMessage": "Deprecated. This is no longer necessary, as the setting is always enabled and cannot be disabled.",
+                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `[[children]]` field",
+                                "default": true
+                            },
+                            "packagePort": {
+                                "type": "number",
+                                "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 80
+                            },
+                            "remotePort": {
+                                "type": "number",
+                                "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 8060
                             }
                         }
                     }
@@ -187,9 +441,12 @@
                         "type": "brightscript",
                         "request": "launch",
                         "name": "BrightScript Debug: Launch",
+                        "stopOnEntry": false,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
-                        "rootDir": "${workspaceFolder}"
+                        "rootDir": "${workspaceFolder}",
+                        "enableDebuggerAutoRecovery": false,
+                        "stopDebuggerOnAppExit": false
                     }
                 ],
                 "configurationSnippets": [
@@ -200,11 +457,12 @@
                             "type": "brightscript",
                             "request": "launch",
                             "name": "BrightScript Debug: Launch",
-                            "stopOnEntry": true,
+                            "stopOnEntry": false,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
                             "rootDir": "^\"\\${workspaceFolder}\"",
-                            "consoleOutput": "normal"
+                            "enableDebuggerAutoRecovery": false,
+                            "stopDebuggerOnAppExit": false
                         }
                     }
                 ]
@@ -214,13 +472,39 @@
             {
                 "id": "brightscript",
                 "extensions": [
-                    ".brs",
-                    ".bs"
+                    ".brs"
                 ],
                 "aliases": [
                     "BrightScript"
                 ],
                 "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "brighterscript",
+                "extensions": [
+                    ".bs"
+                ],
+                "aliases": [
+                    "BrighterScript"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "Log",
+                "aliases": [
+                    "log"
+                ],
+                "extensions": [
+                    ".log"
+                ],
+                "configuration": "./log.configuration.json",
+                "mimetypes": [
+                    "log",
+                    "text/log",
+                    "text/x-log",
+                    "text/x-code-output",
+                    "x-code-output"
+                ]
             }
         ],
         "grammars": [
@@ -228,12 +512,47 @@
                 "language": "brightscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "brighterscript",
+                "scopeName": "source.brs",
+                "path": "./syntaxes/brightscript.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "brightscript",
+                "path": "./snippets.json"
             }
         ],
         "configuration": {
             "type": "object",
             "title": "BrightScript configuration",
             "properties": {
+                "brightscript.format.formatIndent": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true, lines are indented based on what they are nested inside of. If false, all leading whitespace is left alone.",
+                    "scope": "resource"
+                },
+                "brightscript.format.formatInteriorWhitespace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true, all whitespace between items is reduced to exactly 1 space character,and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)",
+                    "scope": "resource"
+                },
+                "brightscript.format.insertSpaceBeforeFunctionParenthesis": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).",
+                    "scope": "resource"
+                },
+                "brightscript.format.insertSpaceBetweenEmptyCurlyBraces": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": " if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
+                    "scope": "resource"
+                },
                 "brightscript.format.keywordCase": {
                     "type": [
                         "string",
@@ -247,6 +566,15 @@
                     ],
                     "default": "lower",
                     "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
+                    "scope": "resource"
+                },
+                "brightscript.format.keywordCaseOverride": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "default": null,
+                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
                     "scope": "resource"
                 },
                 "brightscript.format.compositeKeywords": {
@@ -268,6 +596,69 @@
                     "default": true,
                     "description": "Removes all trailing whitespace at the end of each line.",
                     "scope": "resource"
+                },
+                "brightscript.remoteControl.host": {
+                    "type": "string",
+                    "default": "${promptForHost}",
+                    "description": "IP address of the roku to remotely control",
+                    "scope": "resource"
+                },
+                "brightscript.output.includeStackTraces": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
+                    "scope": "resource"
+                },
+                "brightscript.output.focusOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                    "scope": "resource"
+                },
+                "brightscript.output.clearOnLaunch": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the brightscript log when launching.",
+                    "scope": "resource"
+                },
+                "brightscript.output.clearConsoleOnChannelStart": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
+                    "scope": "resource"
+                },
+                "brightscript.output.hyperlinkFormat": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "Full",
+                        "Filename",
+                        "FilenameAndFunction",
+                        "Short",
+                        "Hidden"
+                    ],
+                    "default": "FilenameAndFunction",
+                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n Filename KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n FilenameAndFunction KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n Short #1 [INFO] retrieving videos for category id 23 \n  Hidden [INFO] retrieving videos for category id 23",
+                    "scope": "resource"
+                },
+                "brightscript.deviceDiscovery.showInfoMessages": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, an info toast will be shown when a Roku device has been found on the network.",
+                    "scope": "resource"
+                },
+                "brightscript.deviceDiscovery.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
+                    "scope": "resource"
+                },
+                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
+                    "type": "string",
+                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                    "scope": "resource"
                 }
             }
         },
@@ -276,6 +667,222 @@
                 "command": "extension.brightscript.toggleXML",
                 "title": "Toggle xml/brs",
                 "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteCommand",
+                "title": "Send 'arg' button key press to Roku as a remote control",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear the brightscript log output",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBackButton",
+                "title": "Press the Back button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBackspaceButton",
+                "title": "Press the Backspace button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressHomeButton",
+                "title": "Press the Home button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressUpButton",
+                "title": "Press the Up button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressDownButton",
+                "title": "Press the Down button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRightButton",
+                "title": "Press the Right button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressLeftButton",
+                "title": "Press the Left button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressSelectButton",
+                "title": "Press the Select button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressPlayButton",
+                "title": "Press the Play button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRevButton",
+                "title": "Press the Rev button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressFwdButton",
+                "title": "Press the Fwd button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressStarButton",
+                "title": "Press the Star button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.sendRemoteText",
+                "title": "Send text characters to the Roku Device",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.markLogOutput",
+                "title": "Mark Log Output",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLogOutput",
+                "title": "Clear Log Output",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputIncludeFilter",
+                "title": "Set Log Output Include Filter",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputLogLevelFilter",
+                "title": "Set Log Output Level Filter",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setOutputExcludeFilter",
+                "title": "Set Log Output Exclude Filter",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.toggleSortMethod",
+                "title": "Toggle Sorting Method (smart > alphabetic)",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.toggleSortDirection",
+                "title": "Toggle Asc - Desc Sorting ",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "extension.brightscript.rendezvous.clearHistory",
+                "title": "Clear History",
+                "category": "Brightscript Rendezvous",
+                "enablement": "debugType == 'brightscript'"
+            }
+        ],
+        "keybindings": [
+            {
+                "key": "Backspace",
+                "command": "extension.brightscript.pressBackButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+Backspace",
+                "mac": "cmd+Backspace",
+                "command": "extension.brightscript.pressBackspaceButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "Escape",
+                "command": "extension.brightscript.pressHomeButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "up",
+                "command": "extension.brightscript.pressUpButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "down",
+                "command": "extension.brightscript.pressDownButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "right",
+                "command": "extension.brightscript.pressRightButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "left",
+                "command": "extension.brightscript.pressLeftButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "Enter",
+                "command": "extension.brightscript.pressSelectButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+Enter",
+                "mac": "cmd+Enter",
+                "command": "extension.brightscript.pressPlayButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+left",
+                "mac": "cmd+left",
+                "command": "extension.brightscript.pressRevButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+right",
+                "mac": "cmd+right",
+                "command": "extension.brightscript.pressFwdButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+8",
+                "mac": "cmd+8",
+                "command": "extension.brightscript.pressStarButton",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
+            },
+            {
+                "key": "win+k",
+                "mac": "cmd+k",
+                "command": "extension.brightscript.sendRemoteText",
+                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+            },
+            {
+                "key": "ctrl+l",
+                "mac": "ctrl+l",
+                "command": "extension.brightscript.markLogOutput"
+            },
+            {
+                "key": "ctrl+alt+k",
+                "mac": "ctrl+alt+k",
+                "command": "extension.brightscript.clearLogOutput"
+            },
+            {
+                "key": "win+ctrl+l",
+                "mac": "cmd+ctrl+l",
+                "command": "extension.brightscript.setOutputLogLevelFilter"
+            },
+            {
+                "key": "win+ctrl+i",
+                "mac": "cmd+ctrl+i",
+                "command": "extension.brightscript.setOutputIncludeFilter"
+            },
+            {
+                "key": "win+ctrl+x",
+                "mac": "cmd+ctrl+x",
+                "command": "extension.brightscript.setOutputExcludeFilter"
             }
         ]
     },

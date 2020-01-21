@@ -1,4 +1,5 @@
 {
+    "files.trimTrailingWhitespace": false,
     "files.exclude": {
         "out": false,
         "node_modules": false,
@@ -7,5 +8,9 @@
         "coverage": true,
         "**/node_modules": true,
         "**/out": true
-    }
+    },
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "editor.tabSize": 4,
+    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
 }
