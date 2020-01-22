@@ -490,7 +490,7 @@ export class ComponentLibraryProject extends Project {
 
     public async postfixFiles() {
         let pathDetails: object = {};
-
+        let postfix = `${componentLibraryPostfix}${this.libraryIndex}`;
         await Promise.all(this.fileMappings.map(async (fileMapping) => {
             let relativePath = fileUtils.removeLeadingSlash(
                 fileUtils.getRelativePath(this.stagingFolderPath, fileMapping.dest)
@@ -502,19 +502,8 @@ export class ComponentLibraryProject extends Project {
 
                 if (parsedPath.ext === '.brs') {
                     // Create the new file name to be used
-                    let newFileName: string = `${parsedPath.name}${componentLibraryPostfix}${this.libraryIndex}${parsedPath.ext}`;
+                    let newFileName: string = `${parsedPath.name}${postfix}${parsedPath.ext}`;
                     relativePath = path.join(parsedPath.dir, newFileName);
-
-                    //TODO - this is not efficient since we are doing this for every file. lift this out of the loop.
-                    // Update all the file name references in the library to the new file names
-                    replaceInFile.sync({
-                        files: [
-                            path.join(this.stagingFolderPath, '**/*.xml'),
-                            path.join(this.stagingFolderPath, '**/*.brs')
-                        ],
-                        from: (file) => new RegExp(parsedPath.base, 'gi'),
-                        to: newFileName
-                    });
 
                     // Rename the brs files to include the postfix namespacing tag
                     await fsExtra.move(fileMapping.dest, path.join(this.stagingFolderPath, relativePath));
@@ -524,6 +513,17 @@ export class ComponentLibraryProject extends Project {
                 pathDetails[relativePath] = originalRelativePath;
             }
         }));
-    }
 
+        // Update all the file name references in the library to the new file names
+        await replaceInFile({
+            files: [
+                path.join(this.stagingFolderPath, '**/*.xml'),
+                path.join(this.stagingFolderPath, '**/*.brs')
+            ],
+            from: /uri="(.+)\.brs"([^\/]*)\/>/gi,
+            to: (match) => {
+                return match.replace('.brs', postfix + '.brs');
+            }
+        });
+    }
 }

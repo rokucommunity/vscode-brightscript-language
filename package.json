@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.21.1",
+    "version": "1.21.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -85,8 +85,8 @@
         "mocha": "^5.2.0",
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
-        "nyc": "^14.1.1",
         "rmfr": "^2.0.0",
+        "nyc": "^15.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
         "ts-mocha": "^6.0.0",

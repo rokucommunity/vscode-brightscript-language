@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.21.2] - 2020-01-22
+### Fixed
+ - performance issue where projects including component libraries were writing to the filesystem too frequently, causing very slow build times. [#217](https://github.com/rokucommunity/vscode-brightscript-language/pull/217)
+
+
+
 ## [1.21.1] - 2019-12-20
 ### Changed
  - upgraded to [roku-deploy@2.6.1](https://github.com/rokucommunity/roku-deploy/tree/v2.6.1)
