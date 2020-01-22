@@ -390,29 +390,6 @@ describe('Debugger', () => {
             //breakpoint should be disabled
             expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: false });
         });
-
-        it.skip('remaps to debug folder when specified', () => {
-            //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
-            });
-            (session as any).launchArgs = {
-                sourceDirs: [
-                    path.normalize(`${rootDir}/src`)
-                ],
-                rootDir: path.normalize(`${rootDir}/dest`)
-            };
-            args.breakpoints = [{ line: 1 }];
-
-            session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/src/some/file.brs`)]).not.to.be.undefined;
-
-            delete (session as any).launchArgs.sourceDirs;
-
-            session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/dest/some/file.brs`)]).not.to.be.undefined;
-
-        });
     });
 
     describe('handleEntryBreakpoint', () => {

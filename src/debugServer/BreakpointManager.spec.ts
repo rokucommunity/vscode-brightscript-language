@@ -229,61 +229,66 @@ describe('BreakpointManager', () => {
     });
 
     describe('writeBreakpointsForProject', () => {
-        let rootDir = n(`${cwd}/.tmp/rokuProject`);
-        let stagingDir = n(`${cwd}/.tmp/staging`);
-        let sourceDir1 = n(`${cwd}/.tmp/source1`);
-        let sourceDir2 = n(`${cwd}/.tmp/source2`);
+        let tmpPath = s`${cwd}/.tmp`;
+        let rootDir = s`${tmpPath}/rokuProject`;
+        let outDir = s`${tmpPath}/out`;
+        let stagingFolderPath = s`${outDir}/staging`;
+        let sourceDir1 = s`${tmpPath}/source1`;
+        let sourceDir2 = s`${tmpPath}/source2`;
 
         beforeEach(() => {
             fsExtra.ensureDirSync(`${rootDir}/source`);
-            fsExtra.ensureDirSync(`${stagingDir}/source`);
+            fsExtra.ensureDirSync(`${stagingFolderPath}/source`);
+            fsExtra.ensureDirSync(`${tmpPath}/source`);
             fsExtra.ensureDirSync(`${sourceDir1}/source`);
             fsExtra.ensureDirSync(`${sourceDir2}/source`);
         });
 
         afterEach(() => {
-            try { fsExtra.removeSync(`${cwd}/.tmp`); } catch (e) { }
+            try { fsExtra.removeSync(tmpPath); } catch (e) { }
         });
 
-        it.skip('works with normal flow', async () => {
+        it('works with normal flow', async () => {
             fsExtra.writeFileSync(`${rootDir}/source/main.brs`, `sub main()\n    print 1\n    print 2\nend sub`);
 
             //set the breakpoint before launch
-            bpManager.replaceBreakpoints(n(`${rootDir}/source/main.brs`), [{
-                line: 3,
-                column: 0
+            bpManager.replaceBreakpoints(s`${rootDir}/source/main.brs`, [{
+                line: 3
             }]);
 
+            fsExtra.ensureDirSync(`${stagingFolderPath}/source`);
             //copy the file to staging
-            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
+            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingFolderPath}/source/main.brs`);
 
             //launch
             bpManager.lockBreakpoints();
 
+            //file was copied to staging
+            expect(fsExtra.pathExistsSync(`${stagingFolderPath}/source/main.brs`)).to.be.true;
             //sourcemap was not yet created
-            expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${stagingFolderPath}/source/main.brs.map`)).to.be.false;
 
             await bpManager.writeBreakpointsForProject(new Project(<any>{
                 rootDir: rootDir,
-                outDir: s`${cwd}/out`,
-                stagingDir: stagingDir
+                outDir: outDir,
+                stagingFolderPath: stagingFolderPath
             }));
 
             //it wrote the breakpoint in the correct location
-            expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
+            expect(fsExtra.readFileSync(`${stagingFolderPath}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
 
             //sourcemap was created
-            expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${stagingFolderPath}/source/main.brs.map`)).to.be.true;
 
             //sourcemap points to correct location (notice we ask about line 4, but get back line 3)
-            expect(await fileUtils.getSourceLocationFromSourceMap(`${stagingDir}/source/main.brs`, 4, 0)).to.eql({
+            expect(await fileUtils.getSourceLocationFromSourceMap(`${stagingFolderPath}/source/main.brs`, 4, 0)).to.eql({
                 columnIndex: 0,
                 lineNumber: 3,
-                pathAbsolute: n(`${rootDir}/source/main.brs`)
+                filePath: s`${rootDir}/source/main.brs`
             });
         });
 
-        it.skip('works with sourceDir1', async () => {
+        it('works with sourceDir1', async () => {
             //create file
             fsExtra.writeFileSync(`${sourceDir1}/source/main.brs`, `sub main()\n    print 1\n    print 2\nend sub`);
 
@@ -291,7 +296,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${sourceDir1}/source/main.brs`, `${rootDir}/source/main.brs`);
 
             //copy the file to staging (this is what the extension would normally do automatically)
-            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
+            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingFolderPath}/source/main.brs`);
 
             //set the breakpoint before launch
             bpManager.replaceBreakpoints(n(`${sourceDir1}/source/main.brs`), [{
@@ -303,27 +308,27 @@ describe('BreakpointManager', () => {
             bpManager.lockBreakpoints();
 
             //sourcemap was not yet created
-            expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${stagingFolderPath}/source/main.brs.map`)).to.be.false;
 
             await bpManager.writeBreakpointsForProject(
                 new Project(<any>{
                     rootDir: rootDir,
                     outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1],
-                    stagingFolderPath: stagingDir
+                    stagingFolderPath: stagingFolderPath
                 })
             );
 
-            expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
+            expect(fsExtra.readFileSync(`${stagingFolderPath}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
 
             //sourcemap was created
-            expect(fsExtra.pathExistsSync(`${stagingDir}/source/main.brs.map`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${stagingFolderPath}/source/main.brs.map`)).to.be.true;
 
             //sourcemap points to correct location (notice we ask about line 4, but get back line 3)
-            expect(await fileUtils.getSourceLocationFromSourceMap(`${stagingDir}/source/main.brs`, 4, 0)).to.eql({
+            expect(await fileUtils.getSourceLocationFromSourceMap(`${stagingFolderPath}/source/main.brs`, 4, 0)).to.eql({
                 columnIndex: 0,
                 lineNumber: 3,
-                pathAbsolute: n(`${sourceDir1}/source/main.brs`)
+                filePath: n(`${sourceDir1}/source/main.brs`)
             });
         });
 
@@ -335,7 +340,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${sourceDir2}/source/main.brs`, `${rootDir}/source/main.brs`);
 
             //copy the file to staging (this is what the extension would normally do automatically
-            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
+            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingFolderPath}/source/main.brs`);
 
             //set the breakpoint before launch
             bpManager.replaceBreakpoints(n(`${sourceDir2}/source/main.brs`), [{
@@ -351,11 +356,11 @@ describe('BreakpointManager', () => {
                     rootDir: rootDir,
                     outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1, sourceDir2],
-                    stagingFolderPath: stagingDir
+                    stagingFolderPath: stagingFolderPath
                 })
             );
 
-            expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
+            expect(fsExtra.readFileSync(`${stagingFolderPath}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
         });
 
         it('does not duplicate breakpoints with breakpoint set in both sourceDir files', async () => {
@@ -369,7 +374,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${sourceDir2}/source/main.brs`, `${rootDir}/source/main.brs`);
 
             //copy the file to staging (this is what the extension would normally do automatically
-            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
+            fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingFolderPath}/source/main.brs`);
 
             //set the breakpoint before launch
             bpManager.replaceBreakpoints(n(`${sourceDir1}/source/main.brs`), [{
@@ -389,11 +394,11 @@ describe('BreakpointManager', () => {
                     rootDir: rootDir,
                     outDir: s`${cwd}/out`,
                     sourceDirs: [sourceDir1, sourceDir2],
-                    stagingFolderPath: stagingDir
+                    stagingFolderPath: stagingFolderPath
                 })
             );
 
-            expect(fsExtra.readFileSync(`${stagingDir}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
+            expect(fsExtra.readFileSync(`${stagingFolderPath}/source/main.brs`).toString()).to.equal(`sub main()\n    print 1\nSTOP\n    print 2\nend sub`);
         });
     });
 });
