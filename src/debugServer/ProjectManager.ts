@@ -53,8 +53,10 @@ export class ProjectManager {
      * @param filePath - the path to the file that may or may not have breakpoints
      * @param debuggerLineNumber - the line number from the debugger
      */
-    private getLineNumberOffsetByBreakpoints(filePath: string, debuggerLineNumber: number) {
+    public getLineNumberOffsetByBreakpoints(filePath: string, debuggerLineNumber: number) {
         let breakpoints = this.breakpointManager.getBreakpointsForFile(filePath);
+        //throw out duplicate breakpoints (account for entry breakpoint) and sort them ascending
+        breakpoints = this.breakpointManager.sortAndRemoveDuplicateBreakpoints(breakpoints);
 
         let resultLineNumber = debuggerLineNumber;
         for (let breakpoint of breakpoints) {
@@ -100,16 +102,47 @@ export class ProjectManager {
     }
 
     /**
+     *
+     * @param stagingFolderPath - the path to
+     */
+    public async registerEntryBreakpoint(stagingFolderPath: string) {
+        //find the main function from the staging flder
+        let entryPoint = await fileUtils.findEntryPoint(stagingFolderPath);
+
+        //convert entry point staging location to source location
+        let sourceLocation = await this.getSourceLocation(entryPoint.filePath, entryPoint.lineNumber);
+
+        //register the entry breakpoint
+        this.breakpointManager.registerBreakpoint(sourceLocation.filePath, {
+            //+1 to select the first line of the function
+            line: sourceLocation.lineNumber + 1
+        });
+    }
+
+    /**
+     * Given a path to a file in some staging directory, find the project that file belongs to
+     */
+    private getProjectForStagingFile(stagingFilePath: string) {
+        let lowerStagingFilePath = stagingFilePath.toLowerCase();
+        let projects = [this.mainProject, ...this.componentLibraryProjects];
+        for (let project of projects) {
+            if (lowerStagingFilePath.indexOf(project.stagingFolderPath.toLowerCase()) === 0) {
+                return project;
+            }
+        }
+    }
+
+    /**
      * Given a debugger-relative file path, find the path to that file in the staging directory.
      * This supports the standard out dir, as well as component library out dirs
-     * @param debuggerPath the path to the file which was provided by the debugger
+     * @param debuggerOrStagingPath the path to the file which was provided by the debugger (or an absolute path to a file in the staging directory)
      * @param stagingFolderPath - the path to the root of the staging folder (where all of the files were copied before deployment)
      * @return a full path to the file in the staging directory
      */
-    public async getStagingFileInfo(debuggerPath: string) {
+    public async getStagingFileInfo(debuggerOrStagingPath: string) {
         let project: Project;
 
-        let componentLibraryIndex = fileUtils.getComponentLibraryIndexFromFileName(debuggerPath, componentLibraryPostfix);
+        let componentLibraryIndex = fileUtils.getComponentLibraryIndexFromFileName(debuggerOrStagingPath, componentLibraryPostfix);
         //component libraries
         if (componentLibraryIndex !== undefined) {
             let lib = this.componentLibraryProjects.find(x => x.libraryIndex === componentLibraryIndex);
@@ -126,10 +159,15 @@ export class ProjectManager {
         let relativePath: string;
 
         //if the path starts with pkg, we have an exact match.
-        if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-            relativePath = debuggerPath.substring(4);
+        if (debuggerOrStagingPath.toLowerCase().indexOf('pkg:') === 0) {
+            relativePath = debuggerOrStagingPath.substring(4);
+
+            //an absolute path to a file in the staging directory
+        } else if (path.isAbsolute(debuggerOrStagingPath)) {
+            project = this.getProjectForStagingFile(debuggerOrStagingPath);
+            relativePath = fileUtils.replaceCaseInsensitive(debuggerOrStagingPath, project.stagingFolderPath, '');
         } else {
-            relativePath = await fileUtils.findPartialFileInDirectory(debuggerPath, project.stagingFolderPath);
+            relativePath = await fileUtils.findPartialFileInDirectory(debuggerOrStagingPath, project.stagingFolderPath);
         }
         if (relativePath) {
             return {

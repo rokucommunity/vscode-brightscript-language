@@ -280,7 +280,7 @@ describe('Debugger', () => {
                 ]
             };
             let entryPoint = await fileUtils.findEntryPoint(folder);
-            expect(entryPoint.path).to.equal(filePath);
+            expect(entryPoint.filePath).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
             expect(entryPoint.contents).to.equal(lineContents);
         }
@@ -342,28 +342,36 @@ describe('Debugger', () => {
                 },
                 breakpoints: []
             };
-
-            args.breakpoints = [{ line: 1 }];
         });
+
         it('returns correct results', () => {
+            args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: true });
+            expect(response.body.breakpoints[0]).to.deep.include({
+                line: 1,
+                verified: true
+            });
 
             //mark debugger as 'launched' which should change the behavior of breakpoints.
             session.breakpointManager.lockBreakpoints();
 
-            //remove a breakpoint (it should remove the breakpoint)
+            //remove the breakpoint breakpoint (it should not remove the breakpoint because it was already verified)
             args.breakpoints = [];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.eql([]);
+            expect(response.body.breakpoints).to.be.lengthOf(0);
 
-            //add breakpoint after launchRequestWasCalled finished (i.e. can't set breakpoints anymore)
+            //add breakpoint during live debug session. one was there before, the other is new. Only one will be verified
             args.breakpoints = [{ line: 1 }, { line: 2 }];
             session.setBreakPointsRequest(<any>{}, args);
             expect(
                 response.body.breakpoints.map(x => ({ line: x.line, verified: x.verified }))
-            ).to.eql([{ line: 1, verified: true }, { line: 2, verified: false }]);
-
+            ).to.eql([{
+                line: 1,
+                verified: true
+            }, {
+                line: 2,
+                verified: false
+            }]);
         });
 
         it('supports breakpoints within xml files', () => {
@@ -378,9 +386,9 @@ describe('Debugger', () => {
             args.source.path = `${rootDir}/some/xml-file.jpg`;
             args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
+            expect(response.body.breakpoints).to.be.lengthOf(1);
             //breakpoint should be disabled
             expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: false });
-
         });
 
         it.skip('remaps to debug folder when specified', () => {
@@ -413,14 +421,14 @@ describe('Debugger', () => {
             session.projectManager.mainProject = <any>{
                 stagingFolderPath: stagingFolderPath
             };
-            let stub = sinon.stub(session.breakpointManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            let stub = sinon.stub(session.projectManager, 'registerEntryBreakpoint').returns(Promise.resolve());
             await session.handleEntryBreakpoint();
             expect(stub.called).to.be.true;
             expect(stub.args[0][0]).to.equal(stagingFolderPath);
         });
         it('does NOT register the entry breakpoint when stopOnEntry is enabled', async () => {
             (session as any).launchArgs = { stopOnEntry: false };
-            let stub = sinon.stub(session.breakpointManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            let stub = sinon.stub(session.projectManager, 'registerEntryBreakpoint').returns(Promise.resolve());
             await session.handleEntryBreakpoint();
             expect(stub.called).to.be.false;
         });

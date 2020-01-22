@@ -20,6 +20,16 @@ describe('BreakpointManager', () => {
         b = bpManager;
     });
 
+    describe('sanitizeSourceFilePath', () => {
+        it('returns the original string when no key was found', () => {
+            expect(bpManager.sanitizeSourceFilePath('a/b/c')).to.equal(s`a/b/c`);
+        });
+        it('returns the the found key when it already exists', () => {
+            b.breakpointsByFilePath[s`A/B/C`] = [];
+            expect(bpManager.sanitizeSourceFilePath('a/b/c')).to.equal(s`A/B/C`);
+        });
+    });
+
     describe('getSourceAndMapWithBreakpoints', () => {
         it('correctly injects standard breakpoints', () => {
             expect(bpManager.getSourceAndMapWithBreakpoints(`
@@ -28,8 +38,7 @@ describe('BreakpointManager', () => {
                     end function
                 `,
                 [<any>{
-                    lineNumber: 3,
-                    columnIndex: 5
+                    line: 3,
                 }]).code
             ).to.equal(`
                     function Main()\nSTOP
@@ -44,8 +53,7 @@ describe('BreakpointManager', () => {
                     print "Hello world"
                 end function
             `, <any>[{
-                lineNumber: 3,
-                columnIndex: 5,
+                line: 3,
                 condition: 'age=1'
             }]).code).to.equal(`
                 function Main()\nif age=1 then : STOP : end if
@@ -60,8 +68,7 @@ describe('BreakpointManager', () => {
                     print "Hello world"
                 end function
             `, <any>[{
-                lineNumber: 3,
-                columnIndex: 5,
+                line: 3,
                 hitCondition: '1'
             }]).code).to.equal(`
                 function Main()\nif Invalid = m.vscode_bp OR Invalid = m.vscode_bp.bp1 then if Invalid = m.vscode_bp then m.vscode_bp = {bp1: 0} else m.vscode_bp.bp1 = 0 else m.vscode_bp.bp1 ++ : if m.vscode_bp.bp1 >= 1 then STOP
@@ -76,8 +83,7 @@ describe('BreakpointManager', () => {
                     print "Hello world"
                 end function
             `, <any>[{
-                lineNumber: 3,
-                columnIndex: 5,
+                line: 3,
                 hitCondition: '0'
             }]).code).to.equal(`
                 function Main()\nSTOP
@@ -92,8 +98,7 @@ describe('BreakpointManager', () => {
                     print "Hello world"
                 end function
             `, <any>[{
-                lineNumber: 3,
-                columnIndex: 5,
+                line: 3,
                 logMessage: 'test print'
             }]).code).to.equal(`
                 function Main()\nPRINT "test print"
@@ -108,8 +113,7 @@ describe('BreakpointManager', () => {
                     print "Hello world"
                 end function
             `, <any>[{
-                lineNumber: 3,
-                columnIndex: 5,
+                line: 3,
                 logMessage: 'hello {name}, how is {city}'
             }]).code).to.equal(`
                 function Main()\nPRINT "hello "; name;", how is "; city;""
@@ -123,9 +127,9 @@ describe('BreakpointManager', () => {
                 function Main()
                     print "Hello world"
                 end function
-            `, [{
-                lineNumber: 3,
-                columnIndex: 5,
+            `, <any>[{
+                line: 3,
+                column: 5,
                 sourceFilePath: 'rootDir/source/test.brs',
                 stagingFilePath: 'stagingDir/source/test.brs',
                 type: 'sourceDirs'
@@ -146,61 +150,81 @@ describe('BreakpointManager', () => {
 
     describe('setBreakpointsForFile', () => {
         it('verifies all breakpoints before launch', () => {
-            expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [{
+            var breakpoints = bpManager.replaceBreakpoints(n(`${cwd}/file.brs`), [{
                 line: 0,
                 column: 0
             }, {
                 line: 1,
                 column: 0
-            }])).to.have.deep.members([{
-                line: 0,
-                column: 0,
-                verified: true,
-                wasAddedBeforeLaunch: true
-            }, {
-                line: 1,
-                column: 0,
-                verified: true,
-                wasAddedBeforeLaunch: true
             }]);
+            expect(breakpoints).to.be.lengthOf(2);
+            expect(breakpoints[0]).to.include({
+                line: 0,
+                column: 0,
+                verified: true,
+                wasAddedBeforeLaunch: true
+            });
+            expect(breakpoints[1]).to.include({
+                line: 1,
+                column: 0,
+                verified: true,
+                wasAddedBeforeLaunch: true
+            });
         });
 
         it('does not verify breakpoints after launch', () => {
             bpManager.lockBreakpoints();
-            expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [{
+            let breakpoints = bpManager.replaceBreakpoints(n(`${cwd}/file.brs`), [{
                 line: 0,
                 column: 0
-            }])).to.have.deep.members([{
+            }]);
+            expect(breakpoints).to.be.lengthOf(1);
+            expect(breakpoints[0]).to.deep.include({
                 line: 0,
                 column: 0,
                 verified: false,
                 wasAddedBeforeLaunch: false
-            }]);
+            });
         });
 
         it('re-verifies breakpoint after launch toggle', () => {
             //set the breakpoint before launch
-            bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [{
-                line: 0,
-                column: 0
+            let breakpoints = bpManager.replaceBreakpoints(s`${cwd}/file.brs`, [{
+                line: 2
             }]);
+            expect(breakpoints).to.be.lengthOf(1);
+            expect(breakpoints[0]).to.deep.include({
+                line: 2,
+                column: 0,
+                verified: true,
+                isHidden: false
+            });
 
             //launch
             bpManager.lockBreakpoints();
 
-            //toggle off
-            expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [])).to.have.deep.members([]);
+            //simulate user deleting all breakpoints
+            breakpoints = bpManager.replaceBreakpoints(s`${cwd}/file.brs`, []);
 
-            //toggle on
-            expect(bpManager.setBreakpointsForFile(n(`${cwd}/file.brs`), [{
-                line: 0,
-                column: 0
-            }])).to.have.deep.members([{
-                line: 0,
+            expect(breakpoints).to.be.lengthOf(1);
+            expect(breakpoints[0]).to.deep.include({
+                line: 2,
+                verified: true,
+                isHidden: true
+            });
+
+            //simulate user adding a breakpoint to the same place it had been before
+            breakpoints = bpManager.replaceBreakpoints(s`${cwd}/file.brs`, [{
+                line: 2
+            }]);
+            expect(breakpoints).to.be.lengthOf(1);
+            expect(breakpoints[0]).to.deep.include({
+                line: 2,
                 column: 0,
                 verified: true,
-                wasAddedBeforeLaunch: true
-            }]);
+                wasAddedBeforeLaunch: true,
+                isHidden: false
+            });
         });
     });
 
@@ -225,7 +249,7 @@ describe('BreakpointManager', () => {
             fsExtra.writeFileSync(`${rootDir}/source/main.brs`, `sub main()\n    print 1\n    print 2\nend sub`);
 
             //set the breakpoint before launch
-            bpManager.setBreakpointsForFile(n(`${rootDir}/source/main.brs`), [{
+            bpManager.replaceBreakpoints(n(`${rootDir}/source/main.brs`), [{
                 line: 3,
                 column: 0
             }]);
@@ -270,7 +294,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
 
             //set the breakpoint before launch
-            bpManager.setBreakpointsForFile(n(`${sourceDir1}/source/main.brs`), [{
+            bpManager.replaceBreakpoints(n(`${sourceDir1}/source/main.brs`), [{
                 line: 3,
                 column: 0
             }]);
@@ -314,7 +338,7 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
 
             //set the breakpoint before launch
-            bpManager.setBreakpointsForFile(n(`${sourceDir2}/source/main.brs`), [{
+            bpManager.replaceBreakpoints(n(`${sourceDir2}/source/main.brs`), [{
                 line: 3,
                 column: 0
             }]);
@@ -348,11 +372,11 @@ describe('BreakpointManager', () => {
             fsExtra.copyFileSync(`${rootDir}/source/main.brs`, `${stagingDir}/source/main.brs`);
 
             //set the breakpoint before launch
-            bpManager.setBreakpointsForFile(n(`${sourceDir1}/source/main.brs`), [{
+            bpManager.replaceBreakpoints(n(`${sourceDir1}/source/main.brs`), [{
                 line: 3,
                 column: 0
             }]);
-            bpManager.setBreakpointsForFile(n(`${sourceDir2}/source/main.brs`), [{
+            bpManager.replaceBreakpoints(n(`${sourceDir2}/source/main.brs`), [{
                 line: 3,
                 column: 0
             }]);

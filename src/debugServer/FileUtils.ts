@@ -34,6 +34,9 @@ export class FileUtils {
         return path.normalize(subject.toLowerCase()).indexOf(path.normalize(search.toLowerCase())) > -1;
     }
 
+    /**
+     * Replace the first instance of `search` in `subject` with `replacement`
+     */
     public replaceCaseInsensitive(subject: string, search: string, replacement: string) {
         let idx = subject.toLowerCase().indexOf(search.toLowerCase());
         if (idx > -1) {
@@ -219,7 +222,7 @@ export class FileUtils {
             };
 
             //no sourcemaps were found that reference this file.
-            //walk up the sourceDirs tree, computing the relative path for the file, and
+            //walk look through each sourceDir in order, computing the relative path for the file, and
             //comparing that relative path to the relative path in the staging directory
             //so look for a file with the same relative location in the staging folder
         } else {
@@ -387,7 +390,7 @@ export class FileUtils {
         }
 
         return {
-            path: entryPath,
+            filePath: entryPath,
             contents: entryLineContents,
             lineNumber: lineNumber
         };

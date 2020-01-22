@@ -33,6 +33,25 @@ describe('ProjectManager', () => {
             outDir: compLibOutDir
         });
     });
+
+    describe('getLineNumberOffsetByBreakpoints', () => {
+        it('accounts for the entry breakpoint', () => {
+            sinon.stub(manager.breakpointManager, 'getBreakpointsForFile').returns(<any>[{
+                line: 3,
+                column: 0,
+                isEntryBreakpoint: true
+            }, {
+                line: 3,
+                column: 0,
+                isEntryBreakpoint: false
+            }]);
+            //no offset because line is before any breakpoints
+            expect(manager.getLineNumberOffsetByBreakpoints('does not matter', 1)).to.equal(1);
+            //after the breakpoints, should be offset by -1
+            expect(manager.getLineNumberOffsetByBreakpoints('does not matter', 4)).to.equal(3);
+        });
+    });
+
     describe('getStagingFileInfo', () => {
         it('finds standard files in main project', async () => {
             expect(

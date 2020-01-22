@@ -8,6 +8,7 @@ import { DebugProtocol } from 'vscode-debugprotocol';
 
 import { fileUtils } from './FileUtils';
 import { Project } from './ProjectManager';
+import { stringify } from 'querystring';
 
 export class BreakpointManager {
 
@@ -43,38 +44,36 @@ export class BreakpointManager {
      */
     private breakpointsByFilePath = {} as { [sourceFilePath: string]: AugmentedSourceBreakpoint[] };
 
-    /**
-     * Set/replace/delete the list of breakpoints for this file.
-     * @param sourceFilePath
-     * @param allBreakpointsForFile
-     */
-    public setBreakpointsForFile(sourceFilePath: string, allBreakpointsForFile: DebugProtocol.SourceBreakpoint[]): DebugProtocol.Breakpoint[] {
-        //standardize the file path (lower drive letter, normalize path.sep, etc...)
-        sourceFilePath = fileUtils.standardizePath(sourceFilePath);
+    public static breakpointIdSequence = 1;
 
-        //set column=0 for every breakpoint that is missing it
-        for (var b of allBreakpointsForFile) {
-            b.column = b.column ?? 0;
-        }
+    public registerBreakpoint(sourceFilePath: string, breakpoint: DebugProtocol.SourceBreakpoint | AugmentedSourceBreakpoint) {
+        sourceFilePath = this.sanitizeSourceFilePath(sourceFilePath);
+        //get the breakpoints array (and optionally initialize it if not set)
+        let breakpointsArray = this.breakpointsByFilePath[sourceFilePath] = this.breakpointsByFilePath[sourceFilePath] ?? [];
 
-        //reject breakpoints from non-brightscript files
+        let existingBreakpoint = breakpointsArray.find(x => x.line === breakpoint.line);
+
+        let bp = <AugmentedSourceBreakpoint>Object.assign(existingBreakpoint || {}, breakpoint);
+
+        //set column=0 if the breakpoint is missing that field
+        bp.column = bp.column ?? 0;
+
+        bp.wasAddedBeforeLaunch = bp.wasAddedBeforeLaunch ?? this.areBreakpointsLocked === false;
+
+        //set an id if one does not already exist (used for pushing breakpoints to the client)
+        bp.id = bp.id ?? BreakpointManager.breakpointIdSequence++;
+
+        //any breakpoint set in this function is not hidden
+        bp.isHidden = false;
+
+        //mark non-supported breakpoint as NOT verified, since we don't support debugging non-brightscript files
         if (!fileUtils.hasAnyExtension(sourceFilePath, ['.brs', '.bs', '.xml'])) {
-            //mark every non-supported breakpoint as NOT verified, since we don't support debugging non-brightscript files
-            for (let bp of allBreakpointsForFile) {
-                (bp as DebugProtocol.Breakpoint).verified = false;
-            }
-            return allBreakpointsForFile as DebugProtocol.Breakpoint[];
+            bp.verified = false;
 
-            //we have not launched the debug session yet. all of these breakpoints are treated as verified
+            //debug session is not launched yet, all of these breakpoints are treated as verified
         } else if (this.areBreakpointsLocked === false) {
-            //add all of the breakpoints for this file
-            this.breakpointsByFilePath[sourceFilePath] = <any>allBreakpointsForFile;
-            for (let breakpoint of this.breakpointsByFilePath[sourceFilePath]) {
-                breakpoint.wasAddedBeforeLaunch = true;
-                //indicate that this breakpoint is at a valid location. TODO figure out how to determine valid locations...
-                breakpoint.verified = true;
-            }
-            return this.breakpointsByFilePath[sourceFilePath];
+            //confirm that breakpoint is at a valid location. TODO figure out how to determine valid locations...
+            bp.verified = true;
 
             //a debug session is currently running
         } else {
@@ -82,7 +81,7 @@ export class BreakpointManager {
 
             //if a breakpoint gets set in rootDir, and we have sourceDirs, convert the rootDir path to sourceDirs path
             //so the breakpoint gets moved into the source file instead of the output file
-            if (this.launchArgs && this.launchArgs.sourceDirs) {
+            if (this.launchArgs && this.launchArgs.sourceDirs && this.launchArgs.sourceDirs.length > 0) {
                 let lastWorkingPath = '';
                 for (const sourceDir of this.launchArgs.sourceDirs) {
                     sourceFilePath = sourceFilePath.replace(this.launchArgs.rootDir, sourceDir);
@@ -91,22 +90,55 @@ export class BreakpointManager {
                     }
                 }
                 sourceFilePath = lastWorkingPath;
+
             }
-
-            let existingBreakpoints = this.getBreakpointsForFile(sourceFilePath);
-
             //new breakpoints will be verified=false, but breakpoints that were removed and then added again should be verified=true
-            for (let incomingBreakpoint of allBreakpointsForFile as AugmentedSourceBreakpoint[]) {
-                if (existingBreakpoints.find(x => x.wasAddedBeforeLaunch && x.line === incomingBreakpoint.line)) {
-                    incomingBreakpoint.verified = true;
-                    incomingBreakpoint.wasAddedBeforeLaunch = true;
-                } else {
-                    incomingBreakpoint.verified = false;
-                    incomingBreakpoint.wasAddedBeforeLaunch = false;
-                }
+            if (breakpointsArray.find(x => x.wasAddedBeforeLaunch && x.line === bp.line)) {
+                bp.verified = true;
+                bp.wasAddedBeforeLaunch = true;
+            } else {
+                bp.verified = false;
+                bp.wasAddedBeforeLaunch = false;
             }
-            return allBreakpointsForFile as DebugProtocol.Breakpoint[];
         }
+
+        //if we already have a breakpoint for this exact line, don't add another one
+        if (breakpointsArray.find(x => x.line === breakpoint.line)) {
+            return;
+        } else {
+            //add the breakpoint to the list
+            breakpointsArray.push(bp);
+        }
+    }
+
+    /**
+     * Set/replace/delete the list of breakpoints for this file.
+     * @param sourceFilePath
+     * @param allBreakpointsForFile
+     */
+    public replaceBreakpoints(sourceFilePath: string, allBreakpointsForFile: DebugProtocol.SourceBreakpoint[]): AugmentedSourceBreakpoint[] {
+        sourceFilePath = this.sanitizeSourceFilePath(sourceFilePath);
+
+        if (this.areBreakpointsLocked) {
+            //keep verified breakpoints, but toss the rest
+            this.breakpointsByFilePath[sourceFilePath] = this.getBreakpointsForFile(sourceFilePath)
+                .filter(x => x.verified);
+
+            //hide all of the breakpoints (the active ones will be reenabled later in this method)
+            for (let bp of this.breakpointsByFilePath[sourceFilePath]) {
+                bp.isHidden = true;
+            }
+        } else {
+            //we're not debugging erase all of the breakpoints
+            this.breakpointsByFilePath[sourceFilePath] = [];
+        }
+
+        for (let breakpoint of allBreakpointsForFile) {
+            this.registerBreakpoint(sourceFilePath, breakpoint);
+        }
+
+        //get the final list of breakpoints
+        return this.getBreakpointsForFile(sourceFilePath);
     }
 
     /**
@@ -136,8 +168,8 @@ export class BreakpointManager {
                 for (let stagingLocation of stagingLocationsResult.locations) {
                     let obj: BreakpointWorkItem = {
                         sourceFilePath: sourceFilePath,
-                        lineNumber: stagingLocation.lineNumber,
-                        columnIndex: stagingLocation.columnIndex,
+                        line: stagingLocation.lineNumber,
+                        column: stagingLocation.columnIndex,
                         stagingFilePath: stagingLocation.filePath,
                         condition: breakpoint.condition,
                         hitCondition: breakpoint.hitCondition,
@@ -152,22 +184,27 @@ export class BreakpointManager {
         }
         //sort every breakpoint by location
         for (let stagingFilePath in result) {
-            let breakpoints = result[stagingFilePath];
-            breakpoints = orderBy(result[stagingFilePath], [x => x.lineNumber, x => x.columnIndex]);
-            //throw out any duplicate breakpoints (walk backwards so this is easier)
-            for (let i = breakpoints.length - 1; i >= 0; i--) {
-                let higherBreakpoint = breakpoints[i + 1];
-                let breakpoint = breakpoints[i];
-                //only support one breakpoint per line
-                if (higherBreakpoint && higherBreakpoint.lineNumber === breakpoint.lineNumber) {
-                    breakpoints.splice(i, 1);
-                }
-            }
-
-            result[stagingFilePath] = breakpoints;
+            result[stagingFilePath] = this.sortAndRemoveDuplicateBreakpoints(result[stagingFilePath]);
         }
 
         return result;
+    }
+
+    public sortAndRemoveDuplicateBreakpoints<T extends { line: number; column?: number; }>(
+        breakpoints: Array<T>
+    ) {
+        breakpoints = orderBy(breakpoints, [x => x.line, x => x.column]);
+        //throw out any duplicate breakpoints (walk backwards so this is easier)
+        for (let i = breakpoints.length - 1; i >= 0; i--) {
+            let breakpoint = breakpoints[i];
+            let higherBreakpoint = breakpoints[i + 1];
+            //only support one breakpoint per line
+            if (higherBreakpoint && higherBreakpoint.line === breakpoint.line) {
+                //throw out the higher breakpoint because it's probably the user-defined breakpoint
+                breakpoints.splice(i + 1, 1);
+            }
+        }
+        return breakpoints;
     }
 
     /**
@@ -178,7 +215,7 @@ export class BreakpointManager {
 
         let promises = [] as Promise<any>[];
         for (let stagingFilePath in breakpointsByStagingFilePath) {
-            promises.push(this.addBreakpointsToFile(stagingFilePath, breakpointsByStagingFilePath[stagingFilePath]));
+            promises.push(this.writeBreakpointsToFile(stagingFilePath, breakpointsByStagingFilePath[stagingFilePath]));
         }
         await Promise.all(promises);
     }
@@ -189,7 +226,7 @@ export class BreakpointManager {
      * @param basePath - the base path to the folder where the client path file resides
      * @param stagingFolderPath - the base path to the staging folder where the file should be modified
      */
-    private async addBreakpointsToFile(stagingFilePath: string, breakpoints: BreakpointWorkItem[]) {
+    private async writeBreakpointsToFile(stagingFilePath: string, breakpoints: BreakpointWorkItem[]) {
         let sourceMapPath = `${stagingFilePath}.map`;
 
         //load the file as a string
@@ -219,53 +256,6 @@ export class BreakpointManager {
         ]);
     }
 
-    private entryBreakpoint: AugmentedSourceBreakpoint;
-    private breakpointIdCounter = 0;
-
-    /**
-     *
-     * @param stagingFolderPath - the path to
-     */
-    public async registerEntryBreakpoint(stagingFolderPath: string) {
-        let entryPoint = await fileUtils.findEntryPoint(stagingFolderPath);
-
-        let entryBreakpoint = {
-            verified: true,
-            //create a breakpoint on the line BELOW this location, which is the first line of the program
-            line: entryPoint.lineNumber + 1,
-            id: this.breakpointIdCounter++,
-            isEntryBreakpoint: true,
-            wasAddedBeforeLaunch: true
-        };
-        this.entryBreakpoint = <any>entryBreakpoint;
-
-        //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.getBreakpointsForFile(entryPoint.path);
-        breakpoints.push(entryBreakpoint);
-        //sort the breakpoints in order of line number
-        breakpoints.sort((a, b) => {
-            if (a.line > b.line) {
-                return 1;
-            } else if (a.line < b.line) {
-                return -1;
-            } else {
-                return 0;
-            }
-        });
-
-        //if the user put a breakpoint at the same location as the entry breakpoint, keep THEIR breakpoint and NOT the entry breakpoint
-        let index = breakpoints.indexOf(this.entryBreakpoint);
-        let bpBefore = breakpoints[index - 1];
-        let bpAfter = breakpoints[index + 1];
-        if (
-            (bpBefore && bpBefore.line === this.entryBreakpoint.line) ||
-            (bpAfter && bpAfter.line === this.entryBreakpoint.line)
-        ) {
-            breakpoints.splice(index, 1);
-            this.entryBreakpoint = undefined;
-        }
-    }
-
     private bpIndex = 1;
     public getSourceAndMapWithBreakpoints(fileContents: string, breakpoints: BreakpointWorkItem[]) {
         let chunks = [] as Array<SourceNode | string>;
@@ -286,7 +276,7 @@ export class BreakpointManager {
                 newline = '';
             }
             //find breakpoints for this line (breakpoint lines are 1-indexed, but our lineIndex is 0-based)
-            let lineBreakpoints = breakpoints.filter(bp => bp.lineNumber - 1 === originalLineIndex);
+            let lineBreakpoints = breakpoints.filter(bp => bp.line - 1 === originalLineIndex);
             //if we have a breakpoint, insert that before the line
             for (let bp of lineBreakpoints) {
                 let linesForBreakpoint = this.getBreakpointLines(bp, bp.sourceFilePath);
@@ -333,10 +323,10 @@ export class BreakpointManager {
             }
 
             // add a PRINT statement right before this line with the formated log message
-            lines.push(new SourceNode(breakpoint.lineNumber, 0, originalFilePath, `PRINT ${logMessage}`));
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, `PRINT ${logMessage}`));
         } else if (breakpoint.condition) {
             // add a conditional STOP statement
-            lines.push(new SourceNode(breakpoint.lineNumber, 0, originalFilePath, `if ${breakpoint.condition} then : STOP : end if`));
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, `if ${breakpoint.condition} then : STOP : end if`));
         } else if (breakpoint.hitCondition) {
             let hitCondition = parseInt(breakpoint.hitCondition);
 
@@ -362,35 +352,45 @@ export class BreakpointManager {
                 //coerce the expression into single-line
                 trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
                 // Add the tracking expression right before this line
-                lines.push(new SourceNode(breakpoint.lineNumber, 0, originalFilePath, trackingExpression));
+                lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, trackingExpression));
             }
         } else {
             // add a STOP statement right before this line. Map the stop code to the line the breakpoint represents
             //because otherwise source-map will return null for this location
-            lines.push(new SourceNode(breakpoint.lineNumber, 0, originalFilePath, 'STOP'));
+            lines.push(new SourceNode(breakpoint.line, 0, originalFilePath, 'STOP'));
         }
         return lines;
     }
 
     /**
-     * File paths can be different casing sometimes,
-     * so find the data from `breakpointsByClientPath` case insensitive
+     * Get the list of breakpoints for the specified file path, or an empty array
      */
-    public getBreakpointsForFile(filePath: string) {
+    public getBreakpointsForFile(filePath: string): AugmentedSourceBreakpoint[] {
+        let key = this.sanitizeSourceFilePath(filePath);
+        return this.breakpointsByFilePath[key] ?? [];
+    }
+
+    /**
+     * File paths can be different casing sometimes,
+     * so find the existing key if it exists, or return the file path if it doesn't exist
+     */
+    public sanitizeSourceFilePath(filePath: string) {
         filePath = fileUtils.standardizePath(filePath);
 
         for (let key in this.breakpointsByFilePath) {
             if (filePath.toLowerCase() === key.toLowerCase()) {
-                return this.breakpointsByFilePath[key];
+                return key;
             }
         }
-        //didn't find any breakpoints. Create a new array for this key and return it
-        this.breakpointsByFilePath[filePath] = [];
-        return this.breakpointsByFilePath[filePath];
+        return filePath;
     }
 }
 
 interface AugmentedSourceBreakpoint extends DebugProtocol.SourceBreakpoint {
+    /**
+     * An ID for this breakpoint, which is used to set/unset breakpoints in the client
+     */
+    id: number;
     /**
      * Was this breakpoint added before launch? That means this breakpoint was written into the source code as a `stop` statement,
      * so if users toggle this breakpoint line on and off, it should get verified every time.
@@ -400,13 +400,25 @@ interface AugmentedSourceBreakpoint extends DebugProtocol.SourceBreakpoint {
      * This breakpoint has been verified (i.e. we were able to set it at the given location)
      */
     verified: boolean;
+    /**
+     * Since breakpoints are written into the source code, we can't delete the `wasAddedBeforeLaunch` breakpoints,
+     * otherwise the non-sourcemap debugging process's line offsets could get messed up. So, for the `wasAddedBeforeLaunch`
+     * breakpoints, we need to mark them as hidden when the user unsets them.
+     */
+    isHidden: boolean;
 }
 
 interface BreakpointWorkItem {
     sourceFilePath: string;
     stagingFilePath: string;
-    lineNumber: number;
-    columnIndex: number;
+    /**
+     * The 1-based line number
+     */
+    line: number;
+    /**
+     * The 0-based column index
+     */
+    column: number;
     condition?: string;
     hitCondition?: string;
     logMessage?: string;

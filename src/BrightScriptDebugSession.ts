@@ -1,7 +1,5 @@
-import * as eol from 'eol';
-import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
-import * as glob from 'glob';
+import { orderBy } from 'natural-orderby';
 import * as path from 'path';
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
@@ -16,7 +14,8 @@ import {
     StoppedEvent,
     TerminatedEvent,
     Thread,
-    Variable
+    Variable,
+    BreakpointEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { ComponentLibraryServer } from './ComponentLibraryServer';
@@ -26,10 +25,6 @@ import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
-import { util } from './util';
-import { BreakpointManager } from './debugServer/BreakpointManager';
-import { fileUtils } from './debugServer/FileUtils';
-import { SourceLocation, SourceLocator } from './debugServer/SourceLocator';
 import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './debugServer/ProjectManager';
 import { standardizePath as s } from './debugServer/FileUtils';
 
@@ -425,12 +420,31 @@ export class BrightScriptDebugSession extends DebugSession {
      * Called every time a breakpoint is created, modified, or deleted, for each file. This receives the entire list of breakpoints every time.
      */
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        let sanitizedBreakpoints = this.breakpointManager.setBreakpointsForFile(args.source.path, args.breakpoints);
+        let sanitizedBreakpoints = this.breakpointManager.replaceBreakpoints(args.source.path, args.breakpoints);
+        //sort the breakpoints
+        var sortedAndFilteredBreakpoints = orderBy(sanitizedBreakpoints, [x => x.line, x => x.column])
+            //filter out the inactive breakpoints
+            .filter(x => x.isHidden === false);
 
         response.body = {
-            breakpoints: sanitizedBreakpoints
+            breakpoints: sortedAndFilteredBreakpoints
         };
         this.sendResponse(response);
+
+        //set a small timeout so the user sees the breakpoints disappear before reappearing
+        //This is disabled because I'm not sure anyone actually wants this functionality, but I didn't want to lose it.
+        // setTimeout(() => {
+        //     //notify the client about every other breakpoint that was not explicitly requested here
+        //     //(basically force to re-enable the `stop` breakpoints that were written into the source code by the debugger)
+        //     var otherBreakpoints = sanitizedBreakpoints.filter(x => sortedAndFilteredBreakpoints.indexOf(x) === -1);
+        //     for (var breakpoint of otherBreakpoints) {
+        //         this.sendEvent(new BreakpointEvent('new', <DebugProtocol.Breakpoint>{
+        //             line: breakpoint.line,
+        //             verified: true,
+        //             source: args.source
+        //         }));
+        //     }
+        // }, 100);
     }
 
     protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
@@ -803,7 +817,7 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     public async handleEntryBreakpoint() {
         if (this.launchArgs.stopOnEntry) {
-            await this.breakpointManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
+            await this.projectManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
         }
     }
 
