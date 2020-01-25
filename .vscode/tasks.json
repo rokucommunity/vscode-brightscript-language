@@ -45,9 +45,16 @@
             "problemMatcher": []
         },
         {
+            "label": "clean",
+            "type": "npm",
+            "script": "clean",
+            "problemMatcher": [],
+        },
+        {
             "type": "npm",
             "label": "build",
             "script": "build",
+            "dependsOn": "clean",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

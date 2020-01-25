@@ -3,6 +3,7 @@ import { orderBy } from 'natural-orderby';
 import * as path from 'path';
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
+import { serializeError } from 'serialize-error';
 import {
     DebugSession,
     Handles,
@@ -971,7 +972,10 @@ export function defer<T>() {
                 resolve(value);
                 resolve = undefined;
             } else {
-                throw new Error('Already completed');
+                throw new Error(
+                    `Attempted to resolve a promise that was already ${this.isResolved ? 'resolved' : 'rejected'}.` +
+                    `New value: ${JSON.stringify(value)}`
+                );
             }
         },
         reject: function(reason?: any) {
@@ -980,7 +984,10 @@ export function defer<T>() {
                 reject(reason);
                 reject = undefined;
             } else {
-                throw new Error('Already completed');
+                throw new Error(
+                    `Attempted to reject a promise that was already ${this.isResolved ? 'resolved' : 'rejected'}.` +
+                    `New error message: ${JSON.stringify(serializeError(reason))}`
+                );
             }
         },
         isResolved: false,
