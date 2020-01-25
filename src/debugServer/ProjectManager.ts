@@ -58,15 +58,26 @@ export class ProjectManager {
         //throw out duplicate breakpoints (account for entry breakpoint) and sort them ascending
         breakpoints = this.breakpointManager.sortAndRemoveDuplicateBreakpoints(breakpoints);
 
-        let resultLineNumber = debuggerLineNumber;
-        for (let breakpoint of breakpoints) {
-            if (breakpoint.line <= resultLineNumber) {
-                resultLineNumber--;
-            } else {
-                break;
+        let sourceLineByDebuggerLine = {};
+        let sourceLineNumber = 0;
+        for (let loopDebuggerLineNumber = 1; loopDebuggerLineNumber <= debuggerLineNumber; loopDebuggerLineNumber++) {
+            sourceLineNumber++;
+            sourceLineByDebuggerLine[loopDebuggerLineNumber] = sourceLineNumber;
+
+            /**
+             * A line with a breakpoint on it should share the same debugger line number.
+             * The injected `STOP` line will be given the correct line number automatically,
+             * but we need to compensate for the actual code line. So if there's a breakpoint
+             * on this line, handle the next line's mapping as well (and skip one iteration of the loop)
+             */
+            let breakpointForLine = breakpoints.find(x => x.line === sourceLineNumber);
+            if (breakpointForLine) {
+                sourceLineByDebuggerLine[loopDebuggerLineNumber + 1] = sourceLineNumber;
+                loopDebuggerLineNumber++;
             }
         }
-        return resultLineNumber;
+
+        return sourceLineByDebuggerLine[debuggerLineNumber];
     }
 
     /**

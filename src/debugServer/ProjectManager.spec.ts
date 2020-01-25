@@ -1,4 +1,5 @@
 //tslint:disable:no-unused-expression
+//tslint:disable:jsdoc-format
 import { Project, ComponentLibraryProject, ProjectManager } from './ProjectManager';
 import { fileUtils } from './FileUtils';
 import { expect } from 'chai';
@@ -35,20 +36,114 @@ describe('ProjectManager', () => {
     });
 
     describe('getLineNumberOffsetByBreakpoints', () => {
+        let filePath = 'does not matter';
         it('accounts for the entry breakpoint', () => {
             sinon.stub(manager.breakpointManager, 'getBreakpointsForFile').returns(<any>[{
-                line: 3,
-                column: 0,
-                isEntryBreakpoint: true
+                line: 3
             }, {
-                line: 3,
-                column: 0,
-                isEntryBreakpoint: false
+                line: 3
             }]);
             //no offset because line is before any breakpoints
-            expect(manager.getLineNumberOffsetByBreakpoints('does not matter', 1)).to.equal(1);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 1)).to.equal(1);
             //after the breakpoints, should be offset by -1
-            expect(manager.getLineNumberOffsetByBreakpoints('does not matter', 4)).to.equal(3);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 4)).to.equal(3);
+        });
+
+        it('works with zero breakpoints', () => {
+            sinon.stub(manager.breakpointManager, 'getBreakpointsForFile').returns(<any>[]);
+            //no offset because line is before any breakpoints
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 1)).to.equal(1);
+            //after the breakpoints, should be offset by -1
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 4)).to.equal(4);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 12)).to.equal(12);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 50)).to.equal(50);
+        });
+
+        it('works for a complex file', () => {
+            //original file (star means breakpoint)
+            /**
+                 function main ()
+                    line = 2
+                 *  line = 3
+                 *  line = 4
+                 *  line = 5
+                 *  line = 6
+                    line = 7
+                 *  line = 8
+                    line = 9
+                 *  line = 10
+                    line = 11
+                 *  line = 12
+                end function
+             */
+
+            //modified file
+            /**
+                 function main ()
+                        line = 2
+                    STOP
+                        line = 3
+                    STOP
+                        line = 4
+                    STOP
+                        line = 5
+                    STOP
+                        line = 6
+                        line = 7
+                    STOP
+                        line = 8
+                        line = 9
+                    STOP
+                        line = 10
+                        line = 11
+                    STOP
+                        line = 12
+                end function
+             */
+            sinon.stub(manager.breakpointManager, 'getBreakpointsForFile').returns(<any>[
+                { line: 3 },
+                { line: 4 },
+                { line: 5 },
+                { line: 6 },
+                { line: 8 },
+                { line: 10 },
+                { line: 12 }
+            ]);
+            //no offset because line is before any breakpoints
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 1)).to.equal(1);
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 2)).to.equal(2);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 3)).to.equal(3);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 4)).to.equal(3);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 5)).to.equal(4);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 6)).to.equal(4);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 7)).to.equal(5);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 8)).to.equal(5);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 9)).to.equal(6);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 10)).to.equal(6);
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 11)).to.equal(7);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 12)).to.equal(8);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 13)).to.equal(8);
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 14)).to.equal(9);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 15)).to.equal(10);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 16)).to.equal(10);
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 17)).to.equal(11);
+            //breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 18)).to.equal(12);
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 19)).to.equal(12);
+            //no breakpoint
+            expect(manager.getLineNumberOffsetByBreakpoints(filePath, 20)).to.equal(13);
+
         });
     });
 
