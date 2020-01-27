@@ -223,8 +223,8 @@
                             },
                             "componentLibrariesOutDir": {
                                 "type": "string",
-                                "description": "Output folder the component libraries will be hosted in.",
-                                "default": "${workspaceFolder}/libs"
+                                "deprecationMessage": "This no longer user-configurable. This value will be set to \"${outDir}/component-libraries\" by the extension.",
+                                "default": ""
                             },
                             "componentLibraries": {
                                 "type": "array",
@@ -269,7 +269,7 @@
                                         },
                                         "outFile": {
                                             "type": "string",
-                                            "description": "Output file name. Used as the static file name for the zip. You can use values in your outFile string such as ${title} to be inferred from the libraries manifest file.",
+                                            "description": "A file name and extension used as the static file name for the zip. You can use manifest values in this property such as ${title} to be inferred from the library's manifest file.",
                                             "default": "",
                                             "examples": [
                                                 "LibName.zip"
@@ -335,7 +335,7 @@
                             },
                             "outDir": {
                                 "type": "string",
-                                "description": "The folder where the build artifacts and zip folder are placed",
+                                "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
                                 "default": "${workspaceFolder}/out"
                             },
                             "stopOnEntry": {
