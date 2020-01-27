@@ -1,7 +1,8 @@
 //tslint:disable:no-unused-expression
 //tslint:disable:jsdoc-format
-import { Project, ComponentLibraryProject, ProjectManager } from './ProjectManager';
+import { Project, ComponentLibraryProject, ProjectManager, ComponentLibraryConstrutorParams, componentLibraryPostfix } from './ProjectManager';
 import { fileUtils } from './FileUtils';
+import * as rokuDeploy from 'roku-deploy';
 import { expect } from 'chai';
 import { standardizePath as s } from './FileUtils';
 import * as path from 'path';
@@ -11,8 +12,9 @@ let sinon = sinonActual.createSandbox();
 let n = fileUtils.standardizePath.bind(fileUtils);
 
 let cwd = fileUtils.standardizePath(process.cwd());
-let rootDir = s`${cwd}/rootDir`;
-let outDir = s`${cwd}/outDir`;
+let tempPath = s`${cwd}/temp`;
+let rootDir = s`${tempPath}/rootDir`;
+let outDir = s`${tempPath}/outDir`;
 let stagingFolderPath = s`${outDir}/stagingDir`;
 let compLibOutDir = s`${outDir}/component-libraries`;
 let compLibStagingFolderPath = s`${rootDir}/component-libraries/CompLibA`;
@@ -150,10 +152,12 @@ describe('ProjectManager', () => {
     describe('getStagingFileInfo', () => {
         it('finds standard files in main project', async () => {
             expect(
-                (await manager.getStagingFileInfo('pkg:/source/main.brs')).absolutePath
-            ).to.equal(
-                s`${stagingFolderPath}/source/main.brs`
-            );
+                await manager.getStagingFileInfo('pkg:/source/main.brs')
+            ).to.include({
+                absolutePath: s`${stagingFolderPath}/source/main.brs`,
+                //the relative path should not include a leading slash
+                relativePath: s`source/main.brs`
+            });
         });
 
         it(`searches for partial files in main project when '...' is encountered`, async () => {
@@ -252,6 +256,9 @@ describe('ProjectManager', () => {
             expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file1.brs`));
 
             sourceLocation = await manager.getSourceLocation('pkg:source/file2.brs', 1);
+            expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file2.brs`));
+
+            sourceLocation = await manager.getSourceLocation('pkg:/source/file2.brs', 1);
             expect(n(sourceLocation.filePath)).to.equal(n(`${rootDir}/source/file2.brs`));
         });
 
@@ -459,23 +466,80 @@ describe('Project', () => {
 });
 
 describe('ComponentLibraryProject', () => {
+    let params: ComponentLibraryConstrutorParams;
+    beforeEach(() => {
+        params = {
+            rootDir: rootDir,
+            outDir: `${outDir}/component-libraries`,
+            files: ['a'],
+            bsConst: { b: true },
+            injectRaleTrackerTask: true,
+            sourceDirs: [s`${tempPath}/source1`],
+            stagingFolderPath: s`${outDir}/complib1-staging`,
+            trackerTaskFileLocation: 'z',
+            libraryIndex: 0,
+            outFile: 'PrettyComponent.zip'
+        };
+    });
+
     describe('computeOutFileName', () => {
         it('properly computes the outFile name', () => {
-            var project = new ComponentLibraryProject({
-                rootDir: cwd,
-                outDir: s`${cwd}/out`,
-                files: ['a'],
-                bsConst: { b: true },
-                injectRaleTrackerTask: true,
-                sourceDirs: [s`${cwd}/source1`],
-                stagingFolderPath: s`${cwd}/staging`,
-                trackerTaskFileLocation: 'z',
-                libraryIndex: 0,
-                outFile: 'PrettyComponent.zip'
-            });
+            var project = new ComponentLibraryProject(params);
             expect(project.outFile).to.equal('PrettyComponent.zip');
             (project as any).computeOutFileName();
             expect(project.outFile).to.equal('PrettyComponent.zip');
+        });
+    });
+
+    describe('stage', () => {
+        it('computes stagingFolderPath before calling getFileMappings', async () => {
+            delete params.stagingFolderPath;
+            let project = new ComponentLibraryProject(params);
+
+            sinon.stub(rokuDeploy, 'getFilePaths').returns(Promise.resolve([
+                { src: s`${rootDir}/manifest`, dest: s`manifest` },
+                { src: s`${rootDir}/source/main.brs`, dest: s`source/main.brs` }
+            ]));
+            sinon.stub(Project.prototype, 'stage').returns(Promise.resolve());
+
+            await project.stage();
+            expect(project.fileMappings[0]).to.eql({
+                src: s`${rootDir}/manifest`,
+                dest: s`${outDir}/component-libraries/PrettyComponent/manifest`
+            });
+            expect(project.fileMappings[1]).to.eql({
+                src: s`${rootDir}/source/main.brs`,
+                dest: s`${outDir}/component-libraries/PrettyComponent/source/main.brs`
+            });
+        });
+    });
+
+    describe('removeFileNamePostfix', () => {
+        let project: ComponentLibraryProject;
+        beforeEach(() => {
+            project = new ComponentLibraryProject(params);
+        });
+
+        it('removes postfix from paths that contain it', () => {
+            expect(project.removeFileNamePostfix(`source/main__lib0.brs`)).to.equal('source/main.brs');
+            expect(project.removeFileNamePostfix(`components/component1__lib0.brs`)).to.equal('components/component1.brs');
+        });
+
+        it('removes postfix case insensitive', () => {
+            expect(project.removeFileNamePostfix(`source/main__LIB0.brs`)).to.equal('source/main.brs');
+            expect(project.removeFileNamePostfix(`source/MAIN__lib0.brs`)).to.equal('source/MAIN.brs');
+        });
+
+        it('does nothing to files without the postfix', () => {
+            expect(project.removeFileNamePostfix(`source/main.brs`)).to.equal('source/main.brs');
+        });
+
+        it('does nothing to files with a different postfix', () => {
+            expect(project.removeFileNamePostfix(`source/main__lib1.brs`)).to.equal('source/main__lib1.brs');
+        });
+
+        it('only removes the postfix from the end of the file', () => {
+            expect(project.removeFileNamePostfix(`source/__lib1.brs/main.brs`)).to.equal('source/__lib1.brs/main.brs');
         });
     });
 });

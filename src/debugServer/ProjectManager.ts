@@ -92,6 +92,12 @@ export class ProjectManager {
         }
         let project = stagingFileInfo.project;
 
+        //remove the component library postfix if present
+        if (project instanceof ComponentLibraryProject) {
+            stagingFileInfo.absolutePath = project.removeFileNamePostfix(stagingFileInfo.absolutePath);
+            stagingFileInfo.relativePath = project.removeFileNamePostfix(stagingFileInfo.relativePath);
+        }
+
         var locator = new SourceLocator();
         var sourceLocation = await locator.getSourceLocation({
             lineNumber: debuggerLineNumber,
@@ -181,8 +187,12 @@ export class ProjectManager {
             relativePath = await fileUtils.findPartialFileInDirectory(debuggerOrStagingPath, project.stagingFolderPath);
         }
         if (relativePath) {
+            relativePath = fileUtils.removeLeadingSlash(
+                fileUtils.standardizePath(relativePath
+                )
+            );
             return {
-                relativePath: path.normalize(relativePath),
+                relativePath: relativePath,
                 absolutePath: s`${project.stagingFolderPath}/${relativePath}`,
                 project: project
             };
@@ -486,8 +496,12 @@ export class ComponentLibraryProject extends Project {
     }
 
     public async stage() {
-        //compute the file mappings now (the parent function will use these)
+        /*
+         Compute the file mappings now (i.e. don't let the parent class compute them).
+         This must be done BEFORE finding the manifest file location.
+         */
         this.fileMappings = await this.getFileMappings();
+
         let manifestPathRelative = fileUtils.standardizePath('/manifest');
         var manifestFileEntry = this.fileMappings.find(x => x.src.endsWith(manifestPathRelative));
         if (manifestFileEntry) {
@@ -495,13 +509,35 @@ export class ComponentLibraryProject extends Project {
         } else {
             throw new Error(`Could not find manifest path for component library at '${this.rootDir}'`);
         }
-        this.stagingFolderPath = s`${this.outDir}/${path.basename(this.outFile)}`;
+        let fileNameWithoutExtension = path.basename(this.outFile, path.extname(this.outFile));
+
+        let defaultStagingFolderPath = this.stagingFolderPath;
+
+        //compute the staging folder path.
+        this.stagingFolderPath = s`${this.outDir}/${fileNameWithoutExtension}`;
+
+        /*
+          The fileMappings were created using the default stagingFolderPath (because we need the manifest path
+          to compute the out file name and staging path), so we need to replace the default stagingFolderPath
+          with the actual stagingFolderPath.
+         */
+        for (let fileMapping of this.fileMappings) {
+            fileMapping.dest = fileUtils.replaceCaseInsensitive(fileMapping.dest, defaultStagingFolderPath, this.stagingFolderPath);
+        }
+
         return await super.stage();
+    }
+
+    /**
+     * The text used as a postfix for every brs file so we can accurately track the location of the files
+     * back to their original component library whenever the debugger truncates the file path.
+     */
+    public get postfix() {
+        return `${componentLibraryPostfix}${this.libraryIndex}`;
     }
 
     public async postfixFiles() {
         let pathDetails: object = {};
-        let postfix = `${componentLibraryPostfix}${this.libraryIndex}`;
         await Promise.all(this.fileMappings.map(async (fileMapping) => {
             let relativePath = fileUtils.removeLeadingSlash(
                 fileUtils.getRelativePath(this.stagingFolderPath, fileMapping.dest)
@@ -513,7 +549,7 @@ export class ComponentLibraryProject extends Project {
 
                 if (parsedPath.ext === '.brs') {
                     // Create the new file name to be used
-                    let newFileName: string = `${parsedPath.name}${postfix}${parsedPath.ext}`;
+                    let newFileName: string = `${parsedPath.name}${this.postfix}${parsedPath.ext}`;
                     relativePath = path.join(parsedPath.dir, newFileName);
 
                     // Rename the brs files to include the postfix namespacing tag
@@ -531,10 +567,23 @@ export class ComponentLibraryProject extends Project {
                 path.join(this.stagingFolderPath, '**/*.xml'),
                 path.join(this.stagingFolderPath, '**/*.brs')
             ],
-            from: /uri="(.+)\.brs"([^\/]*)\/>/gi,
+            from: /uri\s*=\s*"(.+)\.brs"/gi,
             to: (match) => {
-                return match.replace('.brs', postfix + '.brs');
+                return match.replace('.brs', this.postfix + '.brs');
             }
         });
+    }
+
+    /**
+     * Given a file path, return a new path with the component library postfix removed
+     */
+    public removeFileNamePostfix(filePath: string) {
+        let parts = path.parse(filePath);
+        let postfix = `${this.postfix}${parts.ext}`;
+        if (filePath.toLowerCase().endsWith(postfix.toLowerCase())) {
+            return fileUtils.replaceCaseInsensitive(filePath, postfix, parts.ext);
+        } else {
+            return filePath;
+        }
     }
 }
