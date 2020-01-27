@@ -231,4 +231,19 @@ describe('FileUtils', () => {
             expect(standardizePath`a${1}b${2}`).to.equal('a1b2');
         });
     });
+
+    describe('removeLeadingSlash', () => {
+        it('removes the leading slash', () => {
+            expect(fileUtils.removeLeadingSlash('/a')).to.equal('a');
+        });
+
+        it('removes more than one leading slash', () => {
+            expect(fileUtils.removeLeadingSlash('//a')).to.equal('a');
+            expect(fileUtils.removeLeadingSlash('///a')).to.equal('a');
+        });
+
+        it('returns the original text when no leading slash is found', () => {
+            expect(fileUtils.removeLeadingSlash('a')).to.equal('a');
+        });
+    });
 });

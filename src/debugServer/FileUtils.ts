@@ -399,10 +399,13 @@ export class FileUtils {
     /**
      * If a string has a leading slash, remove it
      */
-    public removeLeadingSlash(path: string) {
-        if (path.indexOf('/') === 0 || path.indexOf('\\') === 0) {
-            return path.substring(1);
+    public removeLeadingSlash(thePath: string) {
+        if (typeof thePath === 'string') {
+            while (thePath.startsWith('/') || thePath.startsWith('\\')) {
+                thePath = thePath.substring(1);
+            }
         }
+        return thePath;
     }
 
     /**
