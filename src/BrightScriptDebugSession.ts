@@ -27,7 +27,7 @@ import {
     RokuAdapter
 } from './RokuAdapter';
 import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './debugServer/ProjectManager';
-import { standardizePath as s } from './debugServer/FileUtils';
+import { standardizePath as s, fileUtils } from './debugServer/FileUtils';
 
 class CompileFailureEvent implements DebugProtocol.Event {
     constructor(compileError: any) {
@@ -161,39 +161,11 @@ export class BrightScriptDebugSession extends DebugSession {
         let error: Error;
         this.log('Packaging and deploying to roku');
         try {
-            //add the main project
-            this.projectManager.mainProject = (
-                new Project({
-                    rootDir: this.launchArgs.rootDir,
-                    files: this.launchArgs.files,
-                    outDir: this.launchArgs.outDir,
-                    sourceDirs: this.launchArgs.sourceDirs,
-                    bsConst: this.launchArgs.bsConst,
-                    injectRaleTrackerTask: this.launchArgs.injectRaleTrackerTask,
-                    trackerTaskFileLocation: this.launchArgs.trackerTaskFileLocation
-                })
-            );
-
-            this.sendDebugLogLine('Moving selected files to staging area');
-            await this.projectManager.mainProject.stage();
-
-            //add the entry breakpoint if stopOnEntry is true
-            await this.handleEntryBreakpoint();
-
-            //add breakpoint lines to source files and then publish
-            this.sendDebugLogLine('Adding stop statements for active breakpoints');
-
-            //prevent new breakpoints from being verified
-            this.breakpointManager.lockBreakpoints();
-
-            //write all `stop` statements to the files in the staging folder
-            await this.breakpointManager.writeBreakpointsForProject(this.projectManager.mainProject);
-
-            //create zip package from staging folder
-            this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.projectManager.mainProject.zipPackage({ retainStagingFolder: true });
-
-            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesPort);
+            //build the main project and all component libraries at the same time
+            await Promise.all([
+                this.prepareMainProject(),
+                this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesPort)
+            ]);
 
             this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
 
@@ -333,6 +305,41 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
+     * Stage, insert breakpoints, and package the main project
+     */
+    public async prepareMainProject() {
+        //add the main project
+        this.projectManager.mainProject = new Project({
+            rootDir: this.launchArgs.rootDir,
+            files: this.launchArgs.files,
+            outDir: this.launchArgs.outDir,
+            sourceDirs: this.launchArgs.sourceDirs,
+            bsConst: this.launchArgs.bsConst,
+            injectRaleTrackerTask: this.launchArgs.injectRaleTrackerTask,
+            trackerTaskFileLocation: this.launchArgs.trackerTaskFileLocation
+        });
+
+        this.sendDebugLogLine('Moving selected files to staging area');
+        await this.projectManager.mainProject.stage();
+
+        //add the entry breakpoint if stopOnEntry is true
+        await this.handleEntryBreakpoint();
+
+        //add breakpoint lines to source files and then publish
+        this.sendDebugLogLine('Adding stop statements for active breakpoints');
+
+        //prevent new breakpoints from being verified
+        this.breakpointManager.lockBreakpoints();
+
+        //write all `stop` statements to the files in the staging folder
+        await this.breakpointManager.writeBreakpointsForProject(this.projectManager.mainProject);
+
+        //create zip package from staging folder
+        this.sendDebugLogLine('Creating zip archive from project sources');
+        await this.projectManager.mainProject.zipPackage({ retainStagingFolder: true });
+    }
+
+    /**
      * Accepts custom events and requests from the extension
      * @param command name of the command to execute
      */
@@ -347,7 +354,7 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], port: number) {
         if (componentLibraries && componentLibraries.length > 0) {
-            var componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
+            let componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
             //make sure this folder exists (and is empty)
             await fsExtra.ensureDir(componentLibrariesOutDir);
             await fsExtra.emptyDir(componentLibrariesOutDir);
