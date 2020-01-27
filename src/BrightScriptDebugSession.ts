@@ -389,7 +389,7 @@ export class BrightScriptDebugSession extends DebugSession {
                 //write the `stop` statements to every file that has breakpoints
                 await this.breakpointManager.writeBreakpointsForProject(compLibProject);
 
-                compLibProject.postfixFiles();
+                await compLibProject.postfixFiles();
 
                 await compLibProject.zipPackage({ retainStagingFolder: true });
             });
