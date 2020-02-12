@@ -4,6 +4,7 @@ import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as glob from 'glob';
 import * as path from 'path';
+import { performance } from 'perf_hooks';
 import * as request from 'request';
 import { FileEntry, RokuDeploy } from 'roku-deploy';
 import {
@@ -1182,51 +1183,32 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param stagingPath
      */
     public async injectRaleTrackerTaskCode(stagingPath: string) {
-        // Search for the tracker task entry injection point
-        let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
-        let results = Object.assign(
-            {},
-            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.brs/),
-            await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, stagingPath, /.*\.xml/)
-        );
 
-        let keys = Object.keys(results);
-        if (keys.length === 0) {
-            // Do not throw an error as we don't want to prevent the user from launching the channel
-            // just because they don't have a local version of the TrackerTask.
+        const trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+        // Search for the tracker task entry injection point
+        const trackerReplacementResult = await replaceInFile({
+            files: [
+                path.join(stagingPath, '**/*.xml'),
+                path.join(stagingPath, '**/*.brs')
+            ],
+            from: `' vscode_rale_tracker_entry`,
+            to: (match) => {
+                if (match = /[\S]/.exec(match)) {
+                    // There was some form of code before the tracker entry
+                    // append and use single line syntax
+                    return `${match} : ${trackerTaskSupportCode}`;
+                } else {
+                    return trackerTaskSupportCode;
+                }
+            }
+        });
+        const injectedFiles = trackerReplacementResult
+        .filter(result => result.hasChanged)
+        .map(result => result.file);
+
+        if (injectedFiles.length === 0) {
             this.log('WARNING: Unable to find an entry point for Tracker Task.');
             this.log('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
-        } else {
-            // This code will start the tracker task in the project
-            let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
-
-            // process the entry points found in the files
-            // unlikely but we might have more then one
-            for (const key of keys) {
-                let fileResults = results[key];
-                let fileContents = (await fsExtra.readFile(key)).toString();
-
-                let index = 0;
-                for (const line of fileResults.line) {
-                    // Remove the comment part of the match from the line to use as a base for the new line
-                    let newLine = line.replace(fileResults.matches[index], '');
-                    let match;
-                    if (match = /[\S]/.exec(newLine)) {
-                        // There was some form of code before the comment the was removed
-                        // append and use single line syntax
-                        newLine += `: ${trackerTaskSupportCode}`;
-                    } else {
-                        newLine += trackerTaskSupportCode;
-                    }
-
-                    // Replace the found line with the new line containing the tracker task code
-                    fileContents = fileContents.replace(line, newLine);
-                    index++;
-                }
-
-                // safe the changes back to the staging file
-                await fsExtra.writeFile(key, fileContents);
-            }
         }
     }
 
