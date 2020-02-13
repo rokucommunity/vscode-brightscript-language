@@ -32,7 +32,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             consoleOutput: 'normal',
             request: 'launch',
             stopOnEntry: false,
-            outDir: '${workspaceFolder}/out',
+            outDir: '${workspaceFolder}/out/',
             retainDeploymentArchive: true,
             injectRaleTrackerTask : false,
             retainStagingFolder : false,
