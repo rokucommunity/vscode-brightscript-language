@@ -1183,23 +1183,20 @@ export class BrightScriptDebugSession extends DebugSession {
      * @param stagingPath
      */
     public async injectRaleTrackerTaskCode(stagingPath: string) {
-
-        const trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
         // Search for the tracker task entry injection point
         const trackerReplacementResult = await replaceInFile({
-            files: [
-                path.join(stagingPath, '**/*.xml'),
-                path.join(stagingPath, '**/*.brs')
-            ],
-            from: `' vscode_rale_tracker_entry`,
+            files: path.join(stagingPath, '**/*.+(xml|brs)'),
+            // `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`
+            from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
             to: (match) => {
-                if (match = /[\S]/.exec(match)) {
+                // Strip off the comment
+                let startOfLine = match.substring(0, match.indexOf(`'`));
+                if (/[\S]/.exec(startOfLine)) {
                     // There was some form of code before the tracker entry
                     // append and use single line syntax
-                    return `${match} : ${trackerTaskSupportCode}`;
-                } else {
-                    return trackerTaskSupportCode;
+                    startOfLine += ': ';
                 }
+                return startOfLine + `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
             }
         });
         const injectedFiles = trackerReplacementResult
