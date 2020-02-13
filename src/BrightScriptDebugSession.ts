@@ -1186,7 +1186,6 @@ export class BrightScriptDebugSession extends DebugSession {
         // Search for the tracker task entry injection point
         const trackerReplacementResult = await replaceInFile({
             files: path.join(stagingPath, '**/*.+(xml|brs)'),
-            // `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`
             from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
             to: (match) => {
                 // Strip off the comment
