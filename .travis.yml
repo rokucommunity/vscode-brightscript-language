@@ -21,6 +21,7 @@ deploy:
     skip_cleanup: true
     on:
       tags: true
+      condition: $TRAVIS_OS_NAME = linux
   - provider: script
     script: bash vscode-marketplace-publish.sh
     skip_cleanup: true
@@ -28,5 +29,5 @@ deploy:
       branch: master
       tags: true
       #do not publish pre-release versions to the vscode extension marketplace
-      condition: $TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$
+      condition: $TRAVIS_OS_NAME = linux && $TRAVIS_TAG =~ ^v[0-9]+[.][0-9]+[.][0-9]?$
 

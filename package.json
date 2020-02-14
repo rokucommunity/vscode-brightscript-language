@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.21.0",
+    "version": "1.21.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -61,7 +61,7 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-deploy": "^2.6.0",
+        "roku-deploy": "^2.6.1",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
         "vscode-uri": "1.0.6"
@@ -81,7 +81,7 @@
         "fast-plist": "^0.1.2",
         "mocha": "^5.2.0",
         "mocha-param": "^2.0.0",
-        "nyc": "^14.1.1",
+        "nyc": "^15.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.9",
         "ts-mocha": "^6.0.0",
