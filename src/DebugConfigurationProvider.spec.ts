@@ -60,7 +60,7 @@ describe('BrightScriptConfigurationProvider', () => {
             const configDefaults = (configProvider as any).configDefaults;
             existingConfigDefaults = {
                 ...configDefaults
-            }
+            };
 
             // Override any properties that would cause a prompt if not overridden
             configDefaults.host = '192.168.1.100';
