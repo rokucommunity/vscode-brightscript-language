@@ -17,6 +17,36 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public constructor(context: ExtensionContext, activeDeviceManager: any) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
+        this.defaultFilesArray = [
+            'manifest',
+            'source/**/*.*',
+            'components/**/*.*',
+            'images/**/*.*'
+        ];
+
+        this.configDefaults = {
+            type: 'brightscript',
+            name: 'BrightScript Debug: Launch',
+            host: '${promptForHost}',
+            password: '${promptForPassword}',
+            consoleOutput: 'normal',
+            request: 'launch',
+            stopOnEntry: false,
+            outDir: '${workspaceFolder}/out/',
+            retainDeploymentArchive: true,
+            injectRaleTrackerTask : false,
+            retainStagingFolder : false,
+            clearOutputOnLaunch : false,
+            selectOutputOnLogMessage : false,
+            enableVariablesPanel: true,
+            enableDebuggerAutoRecovery: false,
+            stopDebuggerOnAppExit: false,
+            enableLookupVariableNodeChildren: false,
+            files: this.defaultFilesArray,
+            packagePort: 80,
+            remotePort: 8060
+        };
+
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
         this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
@@ -34,6 +64,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public fsExtra = fsExtra;
     public util = util;
 
+    private configDefaults: any;
+    private defaultFilesArray: FilesType[];
     private showDeviceInfoMessages: boolean;
     private trackerTaskFileLocation: string;
 
@@ -60,13 +92,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async sanitizeConfiguration(config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
         let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
-
-        let defaultFilesArray: FilesType[] = [
-            'manifest',
-            'source/**/*.*',
-            'components/**/*.*',
-            'images/**/*.*'
-        ];
 
         //make sure we have an object
         config = Object.assign(
@@ -104,7 +129,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let compLibs: FilesType[][] = [];
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
-                library.files = library.files ? library.files : defaultFilesArray;
+                library.files = library.files ? library.files : this.defaultFilesArray;
                 compLibs.push(library);
             }
             config.componentLibraries = compLibs;
@@ -115,26 +140,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // #endregion
 
         // Apply any defaults to missing values
-        config.type = config.type ? config.type : 'brightscript';
-        config.name = config.name ? config.name : 'BrightScript Debug: Launch';
-        config.host = config.host ? config.host : '${promptForHost}';
-        config.password = config.password ? config.password : '${promptForPassword}';
-        config.consoleOutput = config.consoleOutput ? config.consoleOutput : 'normal';
-        config.request = config.request ? config.request : 'launch';
-        config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : false;
-        config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : '${workspaceFolder}/out');
-        config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : true;
-        config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : false;
-        config.retainStagingFolder = config.retainStagingFolder === true ? true : false;
-        config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : false;
-        config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : false;
-        config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : true;
-        config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : false;
-        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : false;
-        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : false;
-        config.files = config.files ? config.files : defaultFilesArray;
-        config.packagePort = config.packagePort ? config.packagePort : 80;
-        config.remotePort = config.remotePort ? config.remotePort : 8060;
+        config.type = config.type ? config.type : this.configDefaults.type;
+        config.name = config.name ? config.name : this.configDefaults.name;
+        config.host = config.host ? config.host : this.configDefaults.host;
+        config.password = config.password ? config.password : this.configDefaults.password;
+        config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
+        config.request = config.request ? config.request : this.configDefaults.request;
+        config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : this.configDefaults.stopOnEntry;
+        config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
+        config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
+        config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
+        config.retainStagingFolder = config.retainStagingFolder === true ? true : this.configDefaults.retainStagingFolder;
+        config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : this.configDefaults.clearOutputOnLaunch;
+        config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : this.configDefaults.selectOutputOnLogMessage;
+        config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
+        config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
+        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
+        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : this.configDefaults.enableLookupVariableNodeChildren;
+        config.files = config.files ? config.files : this.configDefaults.files;
+        config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
+        config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
@@ -183,6 +208,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                     let environmentVariableValue = envConfig[environmentVariableName];
                     if (environmentVariableValue) {
                         configValue = configValue.replace(match[0], environmentVariableValue);
+                    } else {
+                        configValue = this.configDefaults[key];
+                        console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
                     }
                 }
                 config[key] = configValue;
