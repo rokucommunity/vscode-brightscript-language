@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.21.3] - 2020-02-18
+### Fixed
+ - set many default config values so .env file works better. (#215)
+ - Speed up RALE insertion (#218)
+
+
+
 ## [1.21.2] - 2020-01-22
 ### Fixed
  - performance issue where projects including component libraries were writing to the filesystem too frequently, causing very slow build times. [#217](https://github.com/rokucommunity/vscode-brightscript-language/pull/217)
