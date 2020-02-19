@@ -50,11 +50,25 @@ afterEach(() => {
 describe('BrightScriptConfigurationProvider', () => {
     describe('resolveDebugConfiguration', () => {
         let folder: WorkspaceFolder;
+        let existingConfigDefaults;
         beforeEach(() => {
             folder = <any>{
                 uri: { fsPath: '/some/project' }
             };
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+
+            const configDefaults = (configProvider as any).configDefaults;
+            existingConfigDefaults = {
+                ...configDefaults
+            };
+
+            // Override any properties that would cause a prompt if not overridden
+            configDefaults.host = '192.168.1.100';
+            configDefaults.password = 'aaaa';
+        });
+
+        afterEach(() => {
+            (configProvider as any).configDefaults = existingConfigDefaults;
         });
 
         it('handles loading declared values from .env files', async () => {
@@ -87,7 +101,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 envFile: '${workspaceFolder}/.env',
                 password: '${env:ROKU_PASSWORD}'
             });
-            expect(config.password).to.equal('${env:ROKU_PASSWORD}');
+            expect(config.password).to.equal((configProvider as any).configDefaults.password);
             expect(stub.called).to.be.true;
         });
 
@@ -123,13 +137,12 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(stub.called).to.be.true;
         });
 
-        it('uses the default packagePort and remotePort', async () => {
-            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
-                host: '127.0.0.1',
-                password: 'password'
-            });
-            expect(config.packagePort).to.equal(80);
-            expect(config.remotePort).to.equal(8060);
+        it('uses the default values if not provided', async () => {
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{});
+            const configDefaults = (configProvider as any).configDefaults;
+            for (const key in configDefaults) {
+                expect(config[key]).to.equal(configDefaults[key]);
+            }
         });
 
         it('allows for overriding packagePort and remotePort', async () => {

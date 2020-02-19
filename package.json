@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.21.2",
+    "version": "1.21.3",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -28,7 +28,7 @@
         "preversion": "npm run build && npm run tslint && npm run test",
         "vscode:prepublish": "npm run build",
         "build": "tsc -p ./src",
-        "tslint": "tslint ./src/**/*.ts",
+        "tslint": "tslint \"./src/**/*.ts\"",
         "watch": "tsc -w -p ./src",
         "build-and-test": "npm run build && npm run test",
         "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",

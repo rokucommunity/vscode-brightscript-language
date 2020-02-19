@@ -336,7 +336,7 @@ export class Project {
     }
 
     /**
-     *  Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
+     * Search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
      */
     public async transformRaleTrackerTask() {
         // inject the tracker task into the staging files if we have everything we need
@@ -344,55 +344,27 @@ export class Project {
             return;
         }
         try {
-            await fsExtra.copy(this.trackerTaskFileLocation, s`${this.stagingFolderPath}/components/TrackerTask.xml`);
-            console.log('TrackerTask successfully injected');
             // Search for the tracker task entry injection point
-            let trackerEntryTerm = `('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)`;
-            let results = Object.assign(
-                {},
-                await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, this.stagingFolderPath, /.*\.brs/),
-                await findInFiles.find({ term: trackerEntryTerm, flags: 'ig' }, this.stagingFolderPath, /.*\.xml/)
-            );
-
-            let keys = Object.keys(results);
-            if (keys.length === 0) {
-                // Do not throw an error as we don't want to prevent the user from launching the channel
-                // just because they don't have a local version of the TrackerTask.
-
-                //TODO how do we send debug logs from inside this class??
-                // this.sendDebugLogLine('WARNING: Unable to find an entry point for Tracker Task.');
-                // this.sendDebugLogLine('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
-            } else {
-                // This code will start the tracker task in the project
-                let trackerTaskSupportCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
-
-                // process the entry points found in the files
-                // unlikely but we might have more then one
-                for (const key of keys) {
-                    let fileResults = results[key];
-                    let fileContents = (await fsExtra.readFile(key)).toString();
-
-                    let index = 0;
-                    for (const line of fileResults.line) {
-                        // Remove the comment part of the match from the line to use as a base for the new line
-                        let newLine = line.replace(fileResults.matches[index], '');
-                        let match;
-                        if (match = /[\S]/.exec(newLine)) {
-                            // There was some form of code before the comment the was removed
-                            // append and use single line syntax
-                            newLine += `: ${trackerTaskSupportCode}`;
-                        } else {
-                            newLine += trackerTaskSupportCode;
-                        }
-
-                        // Replace the found line with the new line containing the tracker task code
-                        fileContents = fileContents.replace(line, newLine);
-                        index++;
+            const trackerReplacementResult = await replaceInFile({
+                files: path.join(this.stagingFolderPath, '**/*.+(xml|brs)'),
+                from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
+                to: (match) => {
+                    // Strip off the comment
+                    let startOfLine = match.substring(0, match.indexOf(`'`));
+                    if (/[\S]/.exec(startOfLine)) {
+                        // There was some form of code before the tracker entry
+                        // append and use single line syntax
+                        startOfLine += ': ';
                     }
-
-                    // safe the changes back to the staging file
-                    await fsExtra.writeFile(key, fileContents);
+                    return startOfLine + `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
                 }
+            });
+            const injectedFiles = trackerReplacementResult
+                .filter(result => result.hasChanged)
+                .map(result => result.file);
+
+            if (injectedFiles.length === 0) {
+                console.error('WARNING: Unable to find an entry point for Tracker Task.\nPlease make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
             }
         } catch (err) {
             console.error(err);
