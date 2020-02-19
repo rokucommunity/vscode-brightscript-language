@@ -502,7 +502,7 @@ export class BrightScriptDebugSession extends DebugSession {
                     ],
                     from: /uri="(.+)\.brs"([^\/]*)\/>/gi,
                     to: (match) => {
-                        return match.replace('.brs',  currentComponentLibraryPostFix + '.brs');
+                        return match.replace('.brs', currentComponentLibraryPostFix + '.brs');
                     }
                 });
 
@@ -1199,8 +1199,8 @@ export class BrightScriptDebugSession extends DebugSession {
             }
         });
         const injectedFiles = trackerReplacementResult
-        .filter(result => result.hasChanged)
-        .map(result => result.file);
+            .filter(result => result.hasChanged)
+            .map(result => result.file);
 
         if (injectedFiles.length === 0) {
             this.log('WARNING: Unable to find an entry point for Tracker Task.');

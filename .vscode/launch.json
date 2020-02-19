@@ -32,21 +32,24 @@
             "timeout": 30000,
 			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
 		},
-		{
-			"type": "node",
-			"request": "launch",
-			"name": "Tests",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-			"args": [
-				"-u", "tdd",
-				"--timeout", "999999",
-				"--colors",
-				"./out/**/*.spec.js"
-			],
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
-			"internalConsoleOptions": "openOnSessionStart"
-		}
+        {
+            "name": "Tests",
+            "type": "node",
+            "request": "launch",
+            "smartStep": false,
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                // "--log-error",
+                "-r",
+                "source-map-support/register",
+                "./src/**/*.spec.ts"
+            ],
+            "cwd": "${workspaceRoot}",
+            "protocol": "inspector",
+            "internalConsoleOptions": "openOnSessionStart"
+        }
 	],
 	"compounds": [
 		{
