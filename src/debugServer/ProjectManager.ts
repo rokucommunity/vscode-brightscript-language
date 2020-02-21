@@ -346,7 +346,7 @@ export class Project {
         try {
             // Search for the tracker task entry injection point
             const trackerReplacementResult = await replaceInFile({
-                files: path.join(this.stagingFolderPath, '**/*.+(xml|brs)'),
+                files: `${this.stagingFolderPath}/**/*.+(xml|brs)')`,
                 from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
                 to: (match) => {
                     // Strip off the comment
