@@ -262,7 +262,7 @@ export class Project {
 
         await this.transformManifestWithBsConst();
 
-        await this.transformRaleTrackerTask();
+        await this.copyAndTransformRaleTrackerTask();
     }
 
     /**
@@ -335,19 +335,23 @@ export class Project {
         }
     }
 
+    public static RALE_TRACKER_TASK_CODE = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+    public static RALE_TRACKER_ENTRY = 'vscode_rale_tracker_entry';
     /**
      * Search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
      */
-    public async transformRaleTrackerTask() {
+    public async copyAndTransformRaleTrackerTask() {
         // inject the tracker task into the staging files if we have everything we need
         if (!this.injectRaleTrackerTask || !this.trackerTaskFileLocation) {
             return;
         }
         try {
+            await fsExtra.copy(this.trackerTaskFileLocation, s`${this.stagingFolderPath}/components/TrackerTask.xml`);
+            console.log('Tracker task successfully injected');
             // Search for the tracker task entry injection point
             const trackerReplacementResult = await replaceInFile({
-                files: `${this.stagingFolderPath}/**/*.+(xml|brs)')`,
-                from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
+                files: `${this.stagingFolderPath}/**/*.+(xml|brs)`,
+                from: new RegExp(`^.*'\\s*${Project.RALE_TRACKER_ENTRY}.*$`, 'mig'),
                 to: (match) => {
                     // Strip off the comment
                     let startOfLine = match.substring(0, match.indexOf(`'`));
@@ -356,7 +360,7 @@ export class Project {
                         // append and use single line syntax
                         startOfLine += ': ';
                     }
-                    return startOfLine + `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+                    return `${startOfLine}${Project.RALE_TRACKER_TASK_CODE}`;
                 }
             });
             const injectedFiles = trackerReplacementResult

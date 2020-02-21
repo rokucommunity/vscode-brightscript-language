@@ -362,21 +362,19 @@ describe('Project', () => {
         });
     });
 
-    describe('transformRaleTrackerTask', () => {
-        let key = 'vscode_rale_tracker_entry';
-        let trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
+    describe('copyAndTransformRaleTrackerTask', () => {
         let tempPath = s`${cwd}/tmp`;
         let trackerTaskFileLocation = s`${cwd}/TrackerTask.xml`;
         before(() => {
-            fsExtra.writeFileSync(trackerTaskFileLocation, '');
+            fsExtra.writeFileSync(trackerTaskFileLocation, `<!--dummy contents-->`);
         });
         after(() => {
             fsExtra.removeSync(tempPath);
             fsExtra.removeSync(trackerTaskFileLocation);
         });
         afterEach(() => {
-            fsExtra.emptyDirSync('./.tmp');
-            fsExtra.rmdirSync('./.tmp');
+            fsExtra.emptyDirSync(tempPath);
+            fsExtra.rmdirSync(tempPath);
         });
 
         async function doTest(fileContents: string, expectedContents: string, fileExt: string = 'brs') {
@@ -391,19 +389,26 @@ describe('Project', () => {
             project.injectRaleTrackerTask = true;
             //these file contents don't actually matter
             project.trackerTaskFileLocation = trackerTaskFileLocation;
-            await project.transformRaleTrackerTask();
+            await project.copyAndTransformRaleTrackerTask();
             let newFileContents = (await fsExtra.readFile(filePath)).toString();
             expect(newFileContents).to.equal(expectedContents);
         }
 
-        it('works for in line comments brs files', async () => {
-            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
-            let expectedBrs = brsSample.replace('<ENTRY>', `: ${trackerTaskCode}`);
+        it('copies the RALE xml file', async () => {
+            fsExtra.ensureDirSync(tempPath);
+            fsExtra.writeFileSync(`${tempPath}/RALE.xml`, 'test contents');
+            await doTest(`sub main()\nend sub`, `sub main()\nend sub`);
+            expect(fsExtra.pathExistsSync(s`${project.stagingFolderPath}/components/TrackerTask.xml`), 'TrackerTask.xml was not copied to staging').to.be.true;
+        });
 
-            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
-            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+        it('works for inline comments brs files', async () => {
+            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
+            let expectedBrs = brsSample.replace('<ENTRY>', `: ${Project.RALE_TRACKER_TASK_CODE}`);
+
+            await doTest(brsSample.replace('<ENTRY>', `\' ${Project.RALE_TRACKER_ENTRY}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${Project.RALE_TRACKER_ENTRY}`), expectedBrs);
             //works with extra spacing
-            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${Project.RALE_TRACKER_ENTRY}                 `), expectedBrs);
         });
 
         it('works for in line comments in xml files', async () => {
@@ -421,22 +426,22 @@ describe('Project', () => {
                 ]]>
                 </script>
             </component>`;
-            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${trackerTaskCode}\n        end sub`);
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${Project.RALE_TRACKER_TASK_CODE}\n        end sub`);
 
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${key}\n        end sub`), expectedXml, 'xml');
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${Project.RALE_TRACKER_ENTRY}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${Project.RALE_TRACKER_ENTRY}\n        end sub`), expectedXml, 'xml');
             //works with extra spacing
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${key}      \n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${Project.RALE_TRACKER_ENTRY}      \n        end sub`), expectedXml, 'xml');
         });
 
         it('works for stand alone comments in brs files', async () => {
             let brsSample = `\nsub main()\n  screen.show\n  <ENTRY>\nend sub`;
-            let expectedBrs = brsSample.replace('<ENTRY>', trackerTaskCode);
+            let expectedBrs = brsSample.replace('<ENTRY>', Project.RALE_TRACKER_TASK_CODE);
 
-            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
-            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\' ${Project.RALE_TRACKER_ENTRY}`), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'${Project.RALE_TRACKER_ENTRY}`), expectedBrs);
             //works with extra spacing
-            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
+            await doTest(brsSample.replace('<ENTRY>', `\'         ${Project.RALE_TRACKER_ENTRY}                 `), expectedBrs);
         });
 
         it('works for stand alone comments in xml files', async () => {
@@ -455,12 +460,12 @@ describe('Project', () => {
                 </script>
             </component>`;
 
-            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${trackerTaskCode}\n        end sub`);
+            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${Project.RALE_TRACKER_TASK_CODE}\n        end sub`);
 
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${key}\n        end sub`), expectedXml, 'xml');
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${Project.RALE_TRACKER_ENTRY}\n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${Project.RALE_TRACKER_ENTRY}\n        end sub`), expectedXml, 'xml');
             //works with extra spacing
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
+            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${Project.RALE_TRACKER_ENTRY}      \n        end sub`), expectedXml, 'xml');
         });
     });
 });
