@@ -50,11 +50,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
-        this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
+
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
             this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
-            this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
         });
     }
 
@@ -68,7 +67,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private configDefaults: any;
     private defaultFilesArray: FilesType[];
     private showDeviceInfoMessages: boolean;
-    private trackerTaskFileLocation: string;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -96,9 +94,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         var userWorkspaceDebugSettings = Object.assign(
             {
                 enableSourceMaps: true,
-                //depricated naming convention for the RALE settings.
-                raleTrackerTaskFileLocation: (vscode.workspace.getConfiguration('brightscript.rokuAdvancedLayoutEditor') ?? <any>{}).trackerTaskFileLocation
+                //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
+                raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
             },
+            //merge in all of the brightscript.debug properties
             vscode.workspace.getConfiguration('brightscript.debug') ?? {},
         );
         //merge the user/workspace settings in with the config (the config wins on conflict)
@@ -181,12 +180,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
 
         // Check for the existence of the tracker task file in auto injection is enabled
-        if (config.injectRaleTrackerTask) {
-            if (await this.util.fileExists(this.trackerTaskFileLocation) === false) {
-                vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${this.trackerTaskFileLocation}`);
-            } else {
-                config.trackerTaskFileLocation = this.trackerTaskFileLocation;
-            }
+        if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+            vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
         }
 
         // Make sure that directory paths end in a trailing slash
@@ -377,7 +372,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     injectRaleTrackerTask: boolean;
-    trackerTaskFileLocation: string;
+    raleTrackerTaskFileLocation: string;
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
@@ -400,5 +395,5 @@ export interface ComponentLibraryConfig {
     sourceDirs: string[];
     bsConst?: { [key: string]: boolean };
     injectRaleTrackerTask: boolean;
-    trackerTaskFileLocation: string;
+    raleTrackerTaskFileLocation: string;
 }

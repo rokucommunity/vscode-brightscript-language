@@ -316,7 +316,7 @@ export class BrightScriptDebugSession extends DebugSession {
             sourceDirs: this.launchArgs.sourceDirs,
             bsConst: this.launchArgs.bsConst,
             injectRaleTrackerTask: this.launchArgs.injectRaleTrackerTask,
-            trackerTaskFileLocation: this.launchArgs.trackerTaskFileLocation
+            raleTrackerTaskFileLocation: this.launchArgs.raleTrackerTaskFileLocation
         });
 
         this.sendDebugLogLine('Moving selected files to staging area');
@@ -372,7 +372,7 @@ export class BrightScriptDebugSession extends DebugSession {
                         sourceDirs: componentLibrary.sourceDirs,
                         bsConst: componentLibrary.bsConst,
                         injectRaleTrackerTask: componentLibrary.injectRaleTrackerTask,
-                        trackerTaskFileLocation: componentLibrary.trackerTaskFileLocation,
+                        raleTrackerTaskFileLocation: componentLibrary.raleTrackerTaskFileLocation,
                         libraryIndex: libraryIndex
                     })
                 );
@@ -953,7 +953,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
      */
-    trackerTaskFileLocation: string;
+    raleTrackerTaskFileLocation: string;
 
     /**
      * The list of files that should be bundled during a debug session

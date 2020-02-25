@@ -309,7 +309,7 @@ There are several string placeholders you can use when defining your deep link u
 ## RALE Support
 You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
 To do this you need a few simple things:
-- In your VS Code user settings add the `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
+- In your VS Code user settings add the `brightscript.debug.raleTrackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
 - Add the entry point comment `' vscode_rale_tracker_entry` to your code.
   - This is optional as you can still include the the code to create the tracker task yourself.
   - We recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
@@ -342,8 +342,8 @@ This extension contributes the following settings:
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 * `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
 * `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
-* `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
-
+* `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
+* `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly. 
 ## Roku Remote Control
 
 You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.

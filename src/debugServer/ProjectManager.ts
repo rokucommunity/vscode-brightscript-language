@@ -208,7 +208,7 @@ interface AddProjectParams {
     sourceDirs?: string[];
     files: Array<FilesType>;
     injectRaleTrackerTask?: boolean;
-    trackerTaskFileLocation?: string;
+    raleTrackerTaskFileLocation?: string;
     bsConst?: { [key: string]: boolean };
     stagingFolderPath?: string;
 }
@@ -227,7 +227,7 @@ export class Project {
             //standardize every sourcedir
             .map(x => fileUtils.standardizePath(x));
         this.injectRaleTrackerTask = params.injectRaleTrackerTask ?? false;
-        this.trackerTaskFileLocation = params.trackerTaskFileLocation;
+        this.raleTrackerTaskFileLocation = params.raleTrackerTaskFileLocation;
         this.files = params.files ?? [];
     }
     public rootDir: string;
@@ -238,7 +238,7 @@ export class Project {
     public fileMappings: Array<{ src: string; dest: string; }>;
     public bsConst: { [key: string]: boolean };
     public injectRaleTrackerTask: boolean;
-    public trackerTaskFileLocation: string;
+    public raleTrackerTaskFileLocation: string;
 
     public async stage() {
         var rokuDeploy = new RokuDeploy();
@@ -342,11 +342,11 @@ export class Project {
      */
     public async copyAndTransformRaleTrackerTask() {
         // inject the tracker task into the staging files if we have everything we need
-        if (!this.injectRaleTrackerTask || !this.trackerTaskFileLocation) {
+        if (!this.injectRaleTrackerTask || !this.raleTrackerTaskFileLocation) {
             return;
         }
         try {
-            await fsExtra.copy(this.trackerTaskFileLocation, s`${this.stagingFolderPath}/components/TrackerTask.xml`);
+            await fsExtra.copy(this.raleTrackerTaskFileLocation, s`${this.stagingFolderPath}/components/TrackerTask.xml`);
             console.log('Tracker task successfully injected');
             // Search for the tracker task entry injection point
             const trackerReplacementResult = await replaceInFile({

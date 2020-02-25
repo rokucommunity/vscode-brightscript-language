@@ -276,7 +276,7 @@ describe('Project', () => {
             injectRaleTrackerTask: true,
             sourceDirs: [s`${cwd}/source1`],
             stagingFolderPath: s`${cwd}/staging`,
-            trackerTaskFileLocation: 'z'
+            raleTrackerTaskFileLocation: 'z'
 
         });
     });
@@ -288,7 +288,7 @@ describe('Project', () => {
         expect(project.outDir).to.eql(s`${cwd}/out`);
         expect(project.sourceDirs).to.eql([s`${cwd}/source1`]);
         expect(project.stagingFolderPath).to.eql(s`${cwd}/staging`);
-        expect(project.trackerTaskFileLocation).to.eql('z');
+        expect(project.raleTrackerTaskFileLocation).to.eql('z');
     });
 
     describe('updateManifestBsConsts', () => {
@@ -364,13 +364,13 @@ describe('Project', () => {
 
     describe('copyAndTransformRaleTrackerTask', () => {
         let tempPath = s`${cwd}/tmp`;
-        let trackerTaskFileLocation = s`${cwd}/TrackerTask.xml`;
+        let raleTrackerTaskFileLocation = s`${cwd}/TrackerTask.xml`;
         before(() => {
-            fsExtra.writeFileSync(trackerTaskFileLocation, `<!--dummy contents-->`);
+            fsExtra.writeFileSync(raleTrackerTaskFileLocation, `<!--dummy contents-->`);
         });
         after(() => {
             fsExtra.removeSync(tempPath);
-            fsExtra.removeSync(trackerTaskFileLocation);
+            fsExtra.removeSync(raleTrackerTaskFileLocation);
         });
         afterEach(() => {
             fsExtra.emptyDirSync(tempPath);
@@ -388,7 +388,7 @@ describe('Project', () => {
             project.stagingFolderPath = folder;
             project.injectRaleTrackerTask = true;
             //these file contents don't actually matter
-            project.trackerTaskFileLocation = trackerTaskFileLocation;
+            project.raleTrackerTaskFileLocation = raleTrackerTaskFileLocation;
             await project.copyAndTransformRaleTrackerTask();
             let newFileContents = (await fsExtra.readFile(filePath)).toString();
             expect(newFileContents).to.equal(expectedContents);
@@ -481,7 +481,7 @@ describe('ComponentLibraryProject', () => {
             injectRaleTrackerTask: true,
             sourceDirs: [s`${tempPath}/source1`],
             stagingFolderPath: s`${outDir}/complib1-staging`,
-            trackerTaskFileLocation: 'z',
+            raleTrackerTaskFileLocation: 'z',
             libraryIndex: 0,
             outFile: 'PrettyComponent.zip'
         };
