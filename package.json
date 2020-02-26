@@ -25,7 +25,7 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run tslint && npm run test",
+        "preversion": "npm run build && npm run tslint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./out -L",
         "build": "npm run copy-schema && tsc -p ./src",
@@ -35,6 +35,7 @@
         "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
         "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
         "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
+        "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
         "publish": "vsce publish",
         "clean": "rimraf out"
