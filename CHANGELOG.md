@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.47] - 2020-02-26
+### Added
+ - all changes from 1.22.0
+
+
+
 ## [2.0.0-beta.46] - 2020-02-18
 ### Added
  - all changes from 1.21.3
@@ -765,6 +771,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
+[2.0.0-beta.47]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.46...v2.0.0-beta.47
+[2.0.0-beta.46]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.45...v2.0.0-beta.46
+[2.0.0-beta.45]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.44...v2.0.0-beta.45
+[2.0.0-beta.44]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.43...v2.0.0-beta.44
 [2.0.0-beta.43]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.42...v2.0.0-beta.43
 [2.0.0-beta.42]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.41...v2.0.0-beta.42
 [2.0.0-beta.41]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.40...v2.0.0-beta.41
@@ -810,6 +820,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
 
+[1.22.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.3...v1.22.0
+[1.21.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.2...v1.21.3
+[1.21.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.1...v1.21.2
 [1.21.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.3...v1.21.0
 [1.20.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.2...v1.20.3
