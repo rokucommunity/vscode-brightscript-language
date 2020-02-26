@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.22.0] - 2020-02-25
+### Added
+ - source map support during debugging. See the sourcemap section of the README for more information.
+ - support for `sourceDirs` for component libraries
+ - ability to set any default launch config settings in user/workspace settings under `brightscript.debug.launchConfigValueHere`. There is not full validation for these yet, but the logic is already in place to use them.
+### Changed
+ - setting `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` has been depricated and replaced with `brightscript.debug.raleTrackerTaskFileLocation`
+
+
+
 ## [1.21.3] - 2020-02-18
 ### Fixed
  - set many default config values so .env file works better. (#215)
