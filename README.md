@@ -105,6 +105,11 @@ then you would need change `rootDir` in your launch config to look like this:
 }
 ```
 
+## Breakpoints
+Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one. 
+
+When injecting `STOP` statements, the extension will also generate a source map for each affected file so we can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
+
 ## Special Cases
 
 ### Debug source files with Custom build process
@@ -150,24 +155,53 @@ Here's a sample launch.json for this scenario:
 ### Multiple source dirs
 If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
 
-```json
+```jsonc
 {
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "brightscript",
-            ...
             "rootDir": "${workspaceFolder}/dist",
             "sourceDirs": [
-                "${workspaceFolder}/../../some-common-library-a",
-                "${workspaceFolder}/../../some-common-library-b",
-                "${workspaceFolder}/../../some-common-library-c",
+                "${workspaceFolder}/../ProjectA",
+                "${workspaceFolder}/../ProjectB",
+                "${workspaceFolder}/../ProjectC",
             ],
-            "preLaunchTask": "your-build-task-here"
+            "preLaunchTask": "your-build-task-here",
+            //...
         }
     ]
 }
 ```
+
+### SourceMaps
+The extension has full support for [source maps](https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map). Which means that if your preprocessor has source map support then the extension will correctly translate breakpoints from source files into compiled locations and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:
+
+```javascript
+//.vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [{
+        //this is where your preprocessor puts the final code (including source maps)
+        "rootDir": "${workspaceFolder}/dist", 
+        // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
+        "preLaunchTask": "your-build-task-here",
+        //...other launch args
+    }]
+}
+```
+
+Your dist folder would look something like this after running your preprocessor.
+
+- ${workspaceFolder}/dist/
+    - manifest
+    - source/
+        - main.brs
+        - main.brs.map
+    - components/
+        - component1.xml
+        - component1.xml.map
+        - component1.brs
+        - component1.brs.map
 
 ## BS_Const
 
@@ -196,8 +230,7 @@ If you are working on custom component libraries you can define them in the laun
   - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
   - `outFile`: The name of the zip file that your channel code will download as a component library. You can use values in your outFile string such as `${title}` to be inferred from the libraries manifest file.
   - `files`: A file path or file glob that should be copied to the deployment package.
-- `componentLibrariesPort`: Port to access component libraries. Default: `8080`
-- `componentLibrariesOutDir`: Output folder the component libraries will be hosted in. Default: `"${workspaceFolder}/libs"`
+- `componentLibrariesPort`: Port to access component libraries. Default: `8080`s
 
 
 **Example:**
@@ -271,12 +304,12 @@ There are several string placeholders you can use when defining your deep link u
 ## RALE Support
 You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
 To do this you need a few simple things:
-- In your VS Code user settings add the `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
+- In your VS Code user settings add the `brightscript.debug.raleTrackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
 - Add the entry point comment `' vscode_rale_tracker_entry` to your code.
-  - This is optional as you can still include the the code to create the tracker task your self.
-  - I recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
-  - This can be added anywhere in the channel including source files but it must be on or after the your call to `screen.show()`
-- Set the `injectRaleTrackerTask` value to true in your `launch.json`. For example:
+  - This is optional as you can still include the the code to create the tracker task yourself.
+  - We recommend adding it to the end of your `screen.show()` call. For example: `screen.show() ' vscode_rale_tracker_entry`
+  - This can be added anywhere in the channel including source files but it must be on or after the call to `screen.show()`
+- Set the `injectRaleTrackerTask` value to true in `launch.json`. For example:
 
 ```json
 {
@@ -304,8 +337,8 @@ This extension contributes the following settings:
 * `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 * `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
 * `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
-* `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
-
+* `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
+* `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly. 
 ## Roku Remote Control
 
 You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.

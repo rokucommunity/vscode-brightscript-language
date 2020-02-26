@@ -1,10 +1,9 @@
-import * as eol from 'eol';
-import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
-import * as glob from 'glob';
+import { orderBy } from 'natural-orderby';
 import * as path from 'path';
 import * as request from 'request';
 import { FilesType, RokuDeploy } from 'roku-deploy';
+import { serializeError } from 'serialize-error';
 import {
     DebugSession,
     Handles,
@@ -16,20 +15,19 @@ import {
     StoppedEvent,
     TerminatedEvent,
     Thread,
-    Variable
+    Variable,
+    BreakpointEvent
 } from 'vscode-debugadapter';
 import { DebugProtocol } from 'vscode-debugprotocol';
-
 import { ComponentLibraryServer } from './ComponentLibraryServer';
+import { ComponentLibraryConfig } from './DebugConfigurationProvider';
 import { RendezvousHistory } from './RendezvousTracker';
 import {
     EvaluateContainer,
     RokuAdapter
 } from './RokuAdapter';
-import { util } from './util';
-
-// tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
-let replaceInFile = require('replace-in-file');
+import { ProjectManager, Project, ComponentLibraryProject, componentLibraryPostfix } from './debugServer/ProjectManager';
+import { standardizePath as s, fileUtils } from './debugServer/FileUtils';
 
 class CompileFailureEvent implements DebugProtocol.Event {
     constructor(compileError: any) {
@@ -89,7 +87,6 @@ export class BrightScriptDebugSession extends DebugSession {
     //set imports as class properties so they can be spied upon during testing
     public rokuDeploy = require('roku-deploy') as RokuDeploy;
 
-    private componentLibrariesOutDir: string;
     private componentLibraryServer = new ComponentLibraryServer();
 
     private rokuAdapterDeferred = defer<RokuAdapter>();
@@ -98,8 +95,6 @@ export class BrightScriptDebugSession extends DebugSession {
      */
     private firstRunDeferred = defer<void>();
 
-    private breakpointsByClientPath: { [clientPath: string]: DebugProtocol.SourceBreakpoint[] } = {};
-    private breakpointIdCounter = 0;
     private evaluateRefIdLookup: { [expression: string]: number } = {};
     private evaluateRefIdCounter = 1;
 
@@ -115,8 +110,10 @@ export class BrightScriptDebugSession extends DebugSession {
 
     private launchArgs: LaunchRequestArguments;
 
-    public get baseProjectPath() {
-        return path.normalize(this.launchArgs.rootDir);
+    public projectManager = new ProjectManager();
+
+    public get breakpointManager() {
+        return this.projectManager.breakpointManager;
     }
 
     /**
@@ -151,16 +148,12 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    /**
-     * The path to the staging folder
-     */
-    private stagingPath: string;
-
-    public launchRequestWasCalled = false;
-
     public async launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments) {
         this.launchArgs = args;
-        this.launchRequestWasCalled = true;
+
+        this.projectManager.launchArgs = this.launchArgs;
+        this.breakpointManager.launchArgs = this.launchArgs;
+
         let disconnect = () => {
         };
         this.sendEvent(new LaunchStartEvent(args));
@@ -168,71 +161,11 @@ export class BrightScriptDebugSession extends DebugSession {
         let error: Error;
         this.log('Packaging and deploying to roku');
         try {
-
-            this.sendDebugLogLine('Moving selected files to staging area');
-            //copy all project files to the staging folder
-            this.stagingPath = await this.rokuDeploy.prepublishToStaging(args as any);
-
-            if (this.launchArgs.bsConst) {
-                let manifestPath = path.join(this.stagingPath, '/manifest');
-                if (util.fileExists(manifestPath)) {
-                    // Update the bs_const values in the manifest in the staging folder before side loading the channel
-                    let fileContents = (await fsExtra.readFile(manifestPath)).toString();
-                    fileContents = await this.updateManifestBsConsts(this.launchArgs.bsConst, fileContents);
-                    await fsExtra.writeFile(manifestPath, fileContents);
-                }
-            }
-
-            // inject the tracker task into the staging files if we have everything we need
-            if (this.launchArgs.injectRaleTrackerTask && this.launchArgs.trackerTaskFileLocation) {
-                try {
-                    await fsExtra.copy(this.launchArgs.trackerTaskFileLocation, path.join(this.stagingPath + '/components/', 'TrackerTask.xml'));
-                    console.log('TrackerTask successfully injected');
-                    await this.injectRaleTrackerTaskCode(this.stagingPath);
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-
-            //build a list of all files in the staging folder
-            this.loadStagingDirPaths(this.stagingPath);
-
-            //convert source breakpoint paths to build paths
-            if (this.launchArgs.sourceDirs) {
-                let combinedSourceDirs = [];
-                for (let dir of this.launchArgs.sourceDirs) {
-                    combinedSourceDirs.push(dir);
-                }
-
-                // If we have component libraries we need to make sure we don't remove breakpoints from them by mistake
-                if (this.launchArgs.componentLibraries) {
-                    for (let library of this.launchArgs.componentLibraries as any) {
-                        combinedSourceDirs.push(library.rootDir);
-                    }
-                }
-
-                //clear any breakpoints that are out of scope
-                this.removeOutOfScopeBreakpointPaths(combinedSourceDirs, this.launchArgs.rootDir);
-                for (const sourceDir of this.launchArgs.sourceDirs) {
-                    this.convertBreakpointPaths(sourceDir, this.launchArgs.rootDir);
-                }
-            }
-            //add breakpoint lines to source files and then publish
-            this.sendDebugLogLine('Adding stop statements for active breakpoints');
-            await this.addBreakpointStatements(this.stagingPath);
-
-            //convert source breakpoint paths to build paths
-            if (this.launchArgs.sourceDirs) {
-                for (const sourceDir of this.launchArgs.sourceDirs) {
-                    this.convertBreakpointPaths(this.launchArgs.rootDir, sourceDir);
-                }
-            }
-
-            //create zip package from staging folder
-            this.sendDebugLogLine('Creating zip archive from project sources');
-            await this.rokuDeploy.zipPackage(args as any);
-
-            await this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesOutDir, this.launchArgs.componentLibrariesPort);
+            //build the main project and all component libraries at the same time
+            await Promise.all([
+                this.prepareMainProject(),
+                this.prepareAndHostComponentLibraries(this.launchArgs.componentLibraries, this.launchArgs.componentLibrariesPort)
+            ]);
 
             this.sendDebugLogLine(`Connecting to Roku via telnet at ${args.host}`);
 
@@ -242,14 +175,9 @@ export class BrightScriptDebugSession extends DebugSession {
             await this.rokuAdapter.exitActiveBrightscriptDebugger();
 
             //pass the debug functions used to locate the client files and lines thought the adapter to the RendezvousTracker
-            this.rokuAdapter.setRendezvousDebuggerFileConversionFunctions(
-                (debuggerPath: string, lineNumber: number) => {
-                    return this.convertDebuggerLineToClientLine(debuggerPath, lineNumber);
-                },
-                (debuggerPath: string) => {
-                    return this.convertDebuggerPathToClient(debuggerPath);
-                }
-            );
+            this.rokuAdapter.registerSourceLocator(async (debuggerPath: string, lineNumber: number) => {
+                return await this.projectManager.getSourceLocation(debuggerPath, lineNumber);
+            });
 
             //pass the log level down thought the adapter to the RendezvousTracker
             this.rokuAdapter.setConsoleOutput(this.launchArgs.consoleOutput);
@@ -285,10 +213,11 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //watch
             // disconnect = this.rokuAdapter.on('compile-errors', (compileErrors) => {
-            this.rokuAdapter.on('compile-errors', (compileErrors) => {
+            this.rokuAdapter.on('compile-errors', async (compileErrors) => {
                 for (let compileError of compileErrors) {
-                    compileError.lineNumber = this.convertDebuggerLineToClientLine(compileError.path, compileError.lineNumber);
-                    compileError.path = this.convertDebuggerPathToClient(compileError.path);
+                    let sourceLocation = await this.projectManager.getSourceLocation(compileError.path, compileError.lineNumber);
+                    compileError.path = sourceLocation.filePath;
+                    compileError.lineNumber = sourceLocation.lineNumber;
                 }
 
                 this.sendEvent(new CompileFailureEvent(compileErrors));
@@ -318,6 +247,7 @@ export class BrightScriptDebugSession extends DebugSession {
 
             //ignore the compile error failure from within the publish
             (args as any).failOnCompileError = false;
+
             //publish the package to the target Roku
             await this.rokuDeploy.publish(args as any);
 
@@ -375,6 +305,41 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
+     * Stage, insert breakpoints, and package the main project
+     */
+    public async prepareMainProject() {
+        //add the main project
+        this.projectManager.mainProject = new Project({
+            rootDir: this.launchArgs.rootDir,
+            files: this.launchArgs.files,
+            outDir: this.launchArgs.outDir,
+            sourceDirs: this.launchArgs.sourceDirs,
+            bsConst: this.launchArgs.bsConst,
+            injectRaleTrackerTask: this.launchArgs.injectRaleTrackerTask,
+            raleTrackerTaskFileLocation: this.launchArgs.raleTrackerTaskFileLocation
+        });
+
+        this.sendDebugLogLine('Moving selected files to staging area');
+        await this.projectManager.mainProject.stage();
+
+        //add the entry breakpoint if stopOnEntry is true
+        await this.handleEntryBreakpoint();
+
+        //add breakpoint lines to source files and then publish
+        this.sendDebugLogLine('Adding stop statements for active breakpoints');
+
+        //prevent new breakpoints from being verified
+        this.breakpointManager.lockBreakpoints();
+
+        //write all `stop` statements to the files in the staging folder
+        await this.breakpointManager.writeBreakpointsForProject(this.projectManager.mainProject);
+
+        //create zip package from staging folder
+        this.sendDebugLogLine('Creating zip archive from project sources');
+        await this.projectManager.mainProject.zipPackage({ retainStagingFolder: true });
+    }
+
+    /**
      * Accepts custom events and requests from the extension
      * @param command name of the command to execute
      */
@@ -385,155 +350,65 @@ export class BrightScriptDebugSession extends DebugSession {
     }
 
     /**
-     * updates the staging manifest with the supplied bsConsts from the launch config
-     * @param consts object of consts to be updated
-     * @param fileContents
+     * Stores the path to the staging folder for each component library
      */
-    public async updateManifestBsConsts(consts: { [key: string]: boolean }, fileContents: string): Promise<string> {
-        let bsConstLine;
-        let missingConsts: string[] = [];
-        let lines = eol.split(fileContents);
+    protected async prepareAndHostComponentLibraries(componentLibraries: ComponentLibraryConfig[], port: number) {
+        if (componentLibraries && componentLibraries.length > 0) {
+            let componentLibrariesOutDir = s`${this.launchArgs.outDir}/component-libraries`;
+            //make sure this folder exists (and is empty)
+            await fsExtra.ensureDir(componentLibrariesOutDir);
+            await fsExtra.emptyDir(componentLibrariesOutDir);
 
-        let newLine;
-        //loop through the lines until we find the bs_const line if it exists
-        for (const line of lines) {
-            if (line.toLowerCase().startsWith('bs_const')) {
-                bsConstLine = line;
-                newLine = line;
-                break;
+            //create a ComponentLibraryProject for each component library
+            for (let libraryIndex = 0; libraryIndex < componentLibraries.length; libraryIndex++) {
+                let componentLibrary = componentLibraries[libraryIndex];
+
+                this.projectManager.componentLibraryProjects.push(
+                    new ComponentLibraryProject({
+                        rootDir: componentLibrary.rootDir,
+                        files: componentLibrary.files,
+                        outDir: componentLibrariesOutDir,
+                        outFile: componentLibrary.outFile,
+                        sourceDirs: componentLibrary.sourceDirs,
+                        bsConst: componentLibrary.bsConst,
+                        injectRaleTrackerTask: componentLibrary.injectRaleTrackerTask,
+                        raleTrackerTaskFileLocation: componentLibrary.raleTrackerTaskFileLocation,
+                        libraryIndex: libraryIndex
+                    })
+                );
             }
-        }
 
-        if (bsConstLine) {
-            // update the consts in the manifest and check for missing consts
-            missingConsts = Object.keys(consts).reduce((results, key) => {
-                let match;
-                if (match = new RegExp('(' + key + '\\s*=\\s*[true|false]+[^\\S\\r\\n]*\)', 'i').exec(bsConstLine)) {
-                    newLine = newLine.replace(match[1], `${key}=${consts[key].toString()}`);
-                } else {
-                    results.push(key);
-                }
+            //prepare all of the libraries in parallel
+            var compLibPromises = this.projectManager.componentLibraryProjects.map(async (compLibProject) => {
 
-                return results;
-            }, []);
-
-            // check for consts that where not in the manifest
-            if (missingConsts.length > 0) {
-                throw new Error(`The following bs_const keys were not defined in the channel's manifest:\n\n${missingConsts.join(',\n')}`);
-            } else {
-                // update the manifest contents
-                return fileContents.replace(bsConstLine, newLine);
-            }
-        } else {
-            throw new Error('bs_const was defined in the launch.json but not in the channel\'s manifest');
-        }
-    }
-
-    private componentLibraryPostfix: string = '__lib';
-
-    protected async prepareAndHostComponentLibraries(componentLibraries, componentLibrariesOutDir: string, port: number) {
-        if (componentLibraries && componentLibrariesOutDir) {
-            this.componentLibrariesOutDir = componentLibrariesOutDir;
-            this.componentLibrariesStagingDirPaths = [];
-            let libraryNumber: number = 0;
-
-            // #region Prepare the component libraries and create some name spacing for debugging
-            for (const componentLibrary of componentLibraries as any) {
-                libraryNumber++;
-                componentLibrary.outDir = componentLibrariesOutDir;
-                let stagingFolder = await this.rokuDeploy.prepublishToStaging(componentLibrary);
-
-                // check the component library for any replaceable values used for auto naming from manifest values
-                await this.processComponentLibraryForAutoNaming(componentLibrary, stagingFolder);
-
-                let paths = glob.sync(path.join(stagingFolder, '**/*'));
-                let pathDetails: object = {};
+                await compLibProject.stage();
 
                 // Add breakpoint lines to the staging files and before publishing
                 this.sendDebugLogLine('Adding stop statements for active breakpoints in Component Libraries');
-                this.convertBreakpointPaths(componentLibrary.rootDir, componentLibrary.rootDir);
-                await this.addBreakpointStatements(stagingFolder, componentLibrary.rootDir);
 
-                const currentComponentLibraryPostFix = `${this.componentLibraryPostfix}${libraryNumber}`;
-                await Promise.all(paths.map(async (filePath) => {
-                    //make the path relative (+1 for removing the slash)
-                    let relativePath = filePath.substring(stagingFolder.length + 1);
-                    let parsedPath = path.parse(relativePath);
+                //write the `stop` statements to every file that has breakpoints
+                await this.breakpointManager.writeBreakpointsForProject(compLibProject);
 
-                    if (parsedPath.ext) {
-                        let originalRelativePath = relativePath;
+                await compLibProject.postfixFiles();
 
-                        if (parsedPath.ext === '.brs') {
-                            // Create the new file name to be used
-                            let newFileName: string = `${parsedPath.name}${currentComponentLibraryPostFix}${parsedPath.ext}`;
-                            relativePath = path.join(parsedPath.dir, newFileName);
+                await compLibProject.zipPackage({ retainStagingFolder: true });
+            });
 
-                            // Rename the brs files to include the postfix name spacing tag
-                            await fsExtra.move(filePath, path.join(stagingFolder, relativePath));
-                        }
-
-                        // Add to the map of original paths and the new paths
-                        pathDetails[relativePath] = originalRelativePath;
-                    }
-                }));
-
-                // Update all the file name references in the library to the new file names
-                await replaceInFile({
-                    files: [
-                        path.join(stagingFolder, '**/*.xml'),
-                        path.join(stagingFolder, '**/*.brs')
-                    ],
-                    from: /uri="(.+)\.brs"([^\/]*)\/>/gi,
-                    to: (match) => {
-                        return match.replace('.brs',  currentComponentLibraryPostFix + '.brs');
-                    }
+            var hostingPromise: Promise<any>;
+            if (compLibPromises) {
+                // prepare static file hosting
+                hostingPromise = this.componentLibraryServer.startStaticFileHosting(componentLibrariesOutDir, port, (message) => {
+                    this.sendDebugLogLine(message);
                 });
-
-                // push one file map object for each library we prepare
-                this.componentLibrariesStagingDirPaths.push(pathDetails);
-                await this.rokuDeploy.zipPackage(componentLibrary);
             }
-            // #endregion
 
-            // prepare static file hosting
-            await this.componentLibraryServer.startStaticFileHosting(this.componentLibrariesOutDir, port, (message) => { this.log(message); });
+            //wait for all component libaries to finish building, and the file hosting to start up
+            await Promise.all([
+                ...compLibPromises,
+                hostingPromise
+            ]);
         }
     }
-
-    /**
-     * Takes a component Library and checks the outFile for replaceable values pulled from the libraries manifest
-     * @param componentLibrary The library to check
-     * @param stagingFolder staging folder of the component library to search for the manifest file
-     */
-    private async processComponentLibraryForAutoNaming(componentLibrary: { outFile: string }, stagingFolder: string) {
-        let regexp = /\$\{([\w\d_]*)\}/;
-        let renamingMatch;
-        let manifestValues;
-
-        // search the outFile for replaceable values such as ${title}
-        while (renamingMatch = regexp.exec(componentLibrary.outFile)) {
-            if (!manifestValues) {
-                // The first time a value is found we need to get the manifest values
-                let manifestPath = path.join(stagingFolder + '/', 'manifest');
-                manifestValues = await util.convertManifestToObject(manifestPath);
-
-                if (!manifestValues) {
-                    throw new Error(`Cannot find manifest file at "${manifestPath}"\n\nCould not complete automatic component library naming.`);
-                }
-            }
-
-            // replace the replaceable key with the manifest value
-            let manifestVariableName = renamingMatch[1];
-            let manifestVariableValue = manifestValues[manifestVariableName];
-            if (manifestVariableValue) {
-                componentLibrary.outFile = componentLibrary.outFile.replace(renamingMatch[0], manifestVariableValue);
-            } else {
-                throw new Error(`Cannot find manifest value:\n"${manifestVariableName}"\n\nCould not complete automatic component library naming.`);
-            }
-        }
-    }
-
-    private componentLibrariesStagingDirPaths: object[];
 
     protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
         this.log('sourceRequest');
@@ -545,95 +420,39 @@ export class BrightScriptDebugSession extends DebugSession {
         super.sourceRequest(response, args);
     }
 
-    protected removeOutOfScopeBreakpointPaths(sourcePaths: string[], toRootPath: string) {
-        //convert paths to sourceDirs paths for any breakpoints set before this launch call
-        if (sourcePaths) {
-            for (let clientPath in this.breakpointsByClientPath) {
-                let included = false;
-                for (const fromRootPath of sourcePaths) {
-                    // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
-                    if (pathIncludesCaseInsensitive(clientPath, fromRootPath + path.sep)) {
-                        included = true;
-                        break;
-                    }
-                }
-                if (!included) {
-                    delete this.breakpointsByClientPath[clientPath];
-                }
-            }
-        }
-    }
-
-    protected convertBreakpointPaths(fromRootPath: string, toRootPath: string) {
-        //convert paths to sourceDirs paths for any breakpoints set before this launch call
-
-        if (fromRootPath && toRootPath) {
-            for (let clientPath in this.breakpointsByClientPath) {
-                // Roku is already case insensitive so lower the paths to address where Node on Windows can be inconsistent in what case builtin functions return for drive letters
-                if (pathIncludesCaseInsensitive(clientPath, fromRootPath)) {
-                    let debugClientPath = path.normalize(clientPath.replace(fromRootPath, toRootPath));
-                    this.breakpointsByClientPath[debugClientPath] = this.getBreakpointsForClientPath(clientPath);
-
-                    // Make sure the debugClientPath is not the same as the clientPath.
-                    if (path.normalize(debugClientPath).toLowerCase() !== path.normalize(clientPath).toLowerCase()) {
-                        this.deleteBreakpointsForClientPath(clientPath);
-                    }
-                }
-            }
-        }
-    }
-
     protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
         console.log('configurationDoneRequest');
     }
 
+    /**
+     * Called every time a breakpoint is created, modified, or deleted, for each file. This receives the entire list of breakpoints every time.
+     */
     public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-        let clientPath = path.normalize(args.source.path);
-        //if we have a sourceDirs, convert the rootDir path to sourceDirs path
-        if (this.launchArgs && this.launchArgs.sourceDirs) {
-            let lastWorkingPath = '';
-            for (const sourceDir of this.launchArgs.sourceDirs) {
-                clientPath = clientPath.replace(this.launchArgs.rootDir, sourceDir);
-                if (fsExtra.pathExistsSync(clientPath)) {
-                    lastWorkingPath = clientPath;
-                }
-            }
-            clientPath = lastWorkingPath;
-        }
-        let extension = path.extname(clientPath).toLowerCase();
-
-        //only accept breakpoints from brightscript files
-        if (extension === '.brs') {
-            if (!this.launchRequestWasCalled) {
-                //store the breakpoints indexed by clientPath
-                this.breakpointsByClientPath[clientPath] = args.breakpoints;
-                for (let b of args.breakpoints) {
-                    (b as any).verified = true;
-                }
-            } else {
-                //mark the breakpoints as verified or not based on the original breakpoints
-                let verifiedBreakpoints = this.getBreakpointsForClientPath(clientPath);
-                outer: for (let breakpoint of args.breakpoints) {
-                    for (let verifiedBreakpoint of verifiedBreakpoints) {
-                        if (breakpoint.line === verifiedBreakpoint.line) {
-                            (breakpoint as any).verified = true;
-                            continue outer;
-                        }
-                    }
-                    (breakpoint as any).verified = false;
-                }
-            }
-        } else {
-            //mark every breakpoint as NOT verified
-            for (let bp of args.breakpoints) {
-                (bp as any).verified = false;
-            }
-        }
+        let sanitizedBreakpoints = this.breakpointManager.replaceBreakpoints(args.source.path, args.breakpoints);
+        //sort the breakpoints
+        var sortedAndFilteredBreakpoints = orderBy(sanitizedBreakpoints, [x => x.line, x => x.column])
+            //filter out the inactive breakpoints
+            .filter(x => x.isHidden === false);
 
         response.body = {
-            breakpoints: <any>args.breakpoints
+            breakpoints: sortedAndFilteredBreakpoints
         };
         this.sendResponse(response);
+
+        //set a small timeout so the user sees the breakpoints disappear before reappearing
+        //This is disabled because I'm not sure anyone actually wants this functionality, but I didn't want to lose it.
+        // setTimeout(() => {
+        //     //notify the client about every other breakpoint that was not explicitly requested here
+        //     //(basically force to re-enable the `stop` breakpoints that were written into the source code by the debugger)
+        //     var otherBreakpoints = sanitizedBreakpoints.filter(x => sortedAndFilteredBreakpoints.indexOf(x) === -1);
+        //     for (var breakpoint of otherBreakpoints) {
+        //         this.sendEvent(new BreakpointEvent('new', <DebugProtocol.Breakpoint>{
+        //             line: breakpoint.line,
+        //             verified: true,
+        //             source: args.source
+        //         }));
+        //     }
+        // }, 100);
     }
 
     protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
@@ -670,8 +489,8 @@ export class BrightScriptDebugSession extends DebugSession {
     /**
      * The stacktrace sent by Roku forces all BrightScript function names to lower case.
      * This function will scan the source file, and attempt to find the exact casing from the function definition.
-     * Also, this function caches results, so it should be drastically faster than the previous implementation
-     * that would read the source file every time
+     * Also, this function caches results, so it should be faster than the previous implementation
+     * which read the source file from the file system on each call
      */
     private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
         let lowerSourceFilePath = sourceFilePath.toLowerCase();
@@ -707,12 +526,12 @@ export class BrightScriptDebugSession extends DebugSession {
             let stackTrace = await this.rokuAdapter.getStackTrace();
 
             for (let debugFrame of stackTrace) {
-                let clientPath = this.convertDebuggerPathToClient(debugFrame.filePath);
-                let clientLineNumber = this.convertDebuggerLineToClientLine(debugFrame.filePath, debugFrame.lineNumber);
+                let sourceLocation = await this.projectManager.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
+
                 //the stacktrace returns function identifiers in all lower case. Try to get the actual case
                 //load the contents of the file and get the correct casing for the function identifier
                 try {
-                    let functionName = await this.getCorrectFunctionNameCase(clientPath, debugFrame.functionIdentifier);
+                    let functionName = await this.getCorrectFunctionNameCase(sourceLocation.filePath, debugFrame.functionIdentifier);
                     if (functionName) {
                         debugFrame.functionIdentifier = functionName;
                     }
@@ -723,8 +542,8 @@ export class BrightScriptDebugSession extends DebugSession {
                 let frame = new StackFrame(
                     debugFrame.frameId,
                     `${debugFrame.functionIdentifier}`,
-                    new Source(path.basename(clientPath), clientPath),
-                    clientLineNumber,
+                    new Source(path.basename(sourceLocation.filePath), sourceLocation.filePath),
+                    sourceLocation.lineNumber,
                     1
                 );
                 frames.push(frame);
@@ -840,6 +659,18 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    /**
+     * the vscode hover will occasionally forget to include the closing quotemark for quoted strings,
+     * so this attempts to auto-insert a closing quotemark if an opening one was found but is missing the closing one
+     * @param text
+     */
+    private autoInsertClosingQuote(text: string) {
+        if (text.startsWith('"') && text.trim().endsWith('"') === false) {
+            text = text.trim() + '"';
+        }
+        return text;
+    }
+
     private evaluateRequestPromise = Promise.resolve();
 
     public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
@@ -848,7 +679,14 @@ export class BrightScriptDebugSession extends DebugSession {
         this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
             return deferred.promise;
         });
+
+        //fix vscode bug that excludes closing quotemark sometimes.
+        if (args.context === 'hover') {
+            args.expression = this.autoInsertClosingQuote(args.expression);
+        }
+
         try {
+
             if (this.rokuAdapter.isAtDebuggerPrompt) {
                 if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
                     //if this command has the word print in front of it, remove that word
@@ -893,110 +731,6 @@ export class BrightScriptDebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    private loadStagingDirPaths(stagingDir: string) {
-        if (!this.stagingDirPaths) {
-            let paths = glob.sync(path.join(stagingDir, '**/*'));
-            this.stagingDirPaths = [];
-            for (let filePath of paths) {
-                //make the path relative (+1 for removing the slash)
-                let relativePath = filePath.substring(stagingDir.length + 1);
-                this.stagingDirPaths.push(relativePath);
-            }
-        }
-        return this.stagingDirPaths;
-    }
-
-    private stagingDirPaths: string[];
-
-    /**
-     * Given a path from the debugger, convert it to a client path
-     * @param debuggerPath
-     */
-    protected convertDebuggerPathToClient(debuggerPath: string) {
-        let fullPath = false;
-        let rootDir = this.launchArgs.sourceDirs ? this.launchArgs.sourceDirs : [this.launchArgs.rootDir];
-
-        //remove any preceding file scheme
-        if (util.getFileScheme(debuggerPath)) {
-            debuggerPath = util.removeFileScheme(debuggerPath);
-            fullPath = true;
-        }
-
-        if (debuggerPath.includes(this.componentLibraryPostfix)) {
-            //remove preceding slash
-            if (debuggerPath.toLowerCase().indexOf('/') === 0) {
-                debuggerPath = debuggerPath.substring(1);
-            }
-
-            debuggerPath = this.removeFileTruncation(debuggerPath);
-
-            //find any files from the outDir that end the same as this file
-            let results: string[] = [];
-            let libTagIndex = debuggerPath.indexOf(this.componentLibraryPostfix);
-            let libIndex = parseInt(debuggerPath.substr(libTagIndex + this.componentLibraryPostfix.length, debuggerPath.indexOf('.brs') - libTagIndex - 5)) - 1;
-            let componentLibraryPaths = this.componentLibrariesStagingDirPaths[libIndex];
-            let componentLibrary: any = this.launchArgs.componentLibraries[libIndex];
-            // Update the root dir
-            rootDir = [componentLibrary.rootDir];
-
-            Object.keys(componentLibraryPaths).forEach((key, index) => {
-                //if the staging path looks like the debugger path, keep it for now
-                if (this.isFileAPossibleMatch(key, debuggerPath)) {
-                    results.push(componentLibraryPaths[key]);
-                }
-            });
-
-            if (results.length > 0) {
-                //a wrong file, which has output is more useful than nothing!
-                debuggerPath = results[0];
-            } else {
-                //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
-            }
-        } else {
-            if (!fullPath) {
-                //the debugger path was truncated, so try and map it to a file in the outdir
-                debuggerPath = this.removeFileTruncation(debuggerPath);
-
-                //find any files from the outDir that end the same as this file
-                let results: string[] = [];
-
-                for (let stagingPath of this.stagingDirPaths) {
-                    //if the staging path looks like the debugger path, keep it for now
-                    if (this.isFileAPossibleMatch(stagingPath, debuggerPath)) {
-                        results.push(stagingPath);
-                    }
-                }
-
-                if (results.length > 0) {
-                    //a wrong file, which has output is more useful than nothing!
-                    debuggerPath = results[0];
-                } else {
-                    //we found multiple files with the exact same path (unlikely)...nothing we can do about it.
-                }
-            }
-        }
-
-        //use sourceDirs if provided, or rootDir if not provided.
-        let lastExistingPath = '';
-        for (const sourceDir of rootDir) {
-            let clientPath = path.normalize(path.join(sourceDir, debuggerPath));
-            if (fsExtra.pathExistsSync(clientPath)) {
-                lastExistingPath = clientPath;
-            }
-        }
-        return lastExistingPath;
-    }
-
-    private removeFileTruncation(filePath) {
-        return (filePath.indexOf('...') === 0) ? filePath.substring(3) : filePath;
-    }
-
-    private isFileAPossibleMatch(stagingPath: string, testPath: string) {
-        let idx = stagingPath.indexOf(testPath);
-        //if the staging path looks like the debugger path, keep it for now
-        return (idx > -1 && stagingPath.endsWith(testPath));
-    }
-
     /**
      * Called when the host stops debugging
      * @param response
@@ -1006,6 +740,7 @@ export class BrightScriptDebugSession extends DebugSession {
         if (this.rokuAdapter) {
             this.rokuAdapter.destroy();
         }
+        this.componentLibraryServer.stop();
         //return to the home screen
         await this.rokuDeploy.pressHomeButton(this.launchArgs.host);
         this.sendResponse(response);
@@ -1042,7 +777,8 @@ export class BrightScriptDebugSession extends DebugSession {
 
         //anytime the adapter encounters an exception on the roku,
         this.rokuAdapter.on('runtime-error', async (exception) => {
-            let threads = await (await this.getRokuAdapter()).getThreads();
+            let rokuAdapter = await this.getRokuAdapter();
+            let threads = await rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
             this.sendEvent(new StoppedEvent('exception', threadId, exception.message));
         });
@@ -1054,284 +790,6 @@ export class BrightScriptDebugSession extends DebugSession {
         //make the connection
         await this.rokuAdapter.connect();
         this.rokuAdapterDeferred.resolve(this.rokuAdapter);
-    }
-
-    /**
-     * Write "stop" lines into source code of each file for each breakpoint
-     * @param stagingPath
-     * @param basePath Optional override to the project base path. Used for things like component libraries that may be parallel to the project
-     */
-    public async addBreakpointStatements(stagingPath: string, basePath: string = this.baseProjectPath) {
-        let promises = [];
-        let addBreakpointsToFile = async (clientPath, basePath) => {
-            let breakpoints = this.getBreakpointsForClientPath(clientPath);
-            let stagingFilePath: string;
-            //find the manifest file for the file
-            clientPath = path.normalize(clientPath);
-            // normalize the base path to remove things like ..
-            basePath = path.normalize(basePath);
-
-            // Make sure the breakpoint to be added is for this base path
-            if (pathIncludesCaseInsensitive(clientPath, basePath)) {
-                let relativeClientPath = replaceCaseInsensitive(clientPath.toString(), basePath, '');
-                stagingFilePath = path.join(stagingPath, relativeClientPath);
-                //load the file as a string
-                let fileContents = (await fsExtra.readFile(stagingFilePath)).toString();
-                //split the file by newline
-                let lines = eol.split(fileContents);
-
-                let bpIndex = 0;
-                for (let breakpoint of breakpoints) {
-                    bpIndex++;
-
-                    //since arrays are indexed by zero, but the breakpoint lines are indexed by 1, we need to subtract 1 from the breakpoint line number
-                    let lineIndex = breakpoint.line - 1;
-                    let line = lines[lineIndex];
-
-                    if (breakpoint.condition) {
-                        // add a conditional STOP statement right before this line
-                        lines[lineIndex] = `if ${breakpoint.condition} then : STOP : end if\n${line} `;
-                    } else if (breakpoint.hitCondition) {
-                        let hitCondition = parseInt(breakpoint.hitCondition);
-
-                        if (isNaN(hitCondition) || hitCondition === 0) {
-                            // add a STOP statement right before this line
-                            lines[lineIndex] = `STOP\n${line} `;
-                        } else {
-
-                            let prefix = `m.vscode_bp`;
-                            let bpName = `bp${bpIndex}`;
-                            let checkHits = `if ${prefix}.${bpName} >= ${hitCondition} then STOP`;
-                            let increment = `${prefix}.${bpName} ++`;
-
-                            // Create the BrightScript code required to track the number of executions
-                            let trackingExpression = `
-                                if Invalid = ${prefix} OR Invalid = ${prefix}.${bpName} then
-                                    if Invalid = ${prefix} then
-                                        ${prefix} = {${bpName}: 0}
-                                    else
-                                        ${prefix}.${bpName} = 0
-                                else
-                                    ${increment} : ${checkHits}
-                            `;
-                            //coerce the expression into single-line
-                            trackingExpression = trackingExpression.replace(/\n/gi, '').replace(/\s+/g, ' ').trim();
-                            // Add the tracking expression right before this line
-                            lines[lineIndex] = `${trackingExpression}\n${line} `;
-                        }
-                    } else if (breakpoint.logMessage) {
-                        let logMessage = breakpoint.logMessage;
-                        //wrap the log message in quotes
-                        logMessage = `"${logMessage}"`;
-                        let expressionsCheck = /\{(.*?)\}/g;
-                        let match;
-
-                        // Get all the value to evaluate as expressions
-                        while (match = expressionsCheck.exec(logMessage)) {
-                            logMessage = logMessage.replace(match[0], `"; ${match[1]};"`);
-                        }
-
-                        // add a PRINT statement right before this line with the formated log message
-                        lines[lineIndex] = `PRINT ${logMessage}\n${line} `;
-                    } else {
-                        // add a STOP statement right before this line
-                        lines[lineIndex] = `STOP\n${line} `;
-                    }
-                }
-                fileContents = lines.join('\n');
-                await fsExtra.writeFile(stagingFilePath, fileContents);
-            }
-        };
-
-        //add the entry breakpoint if stopOnEntry is true
-        if (this.launchArgs.stopOnEntry) {
-            await this.addEntryBreakpoint();
-        }
-
-        //add breakpoints to each client file
-        for (let clientPath in this.breakpointsByClientPath) {
-            promises.push(addBreakpointsToFile(clientPath, basePath));
-        }
-        await Promise.all(promises);
-    }
-
-    /**
-     * Will search the project files for the comment "' vscode_rale_tracker_entry" and replace it with the code needed to start the TrackerTask.
-     * @param stagingPath
-     */
-    public async injectRaleTrackerTaskCode(stagingPath: string) {
-        // Search for the tracker task entry injection point
-        const trackerReplacementResult = await replaceInFile({
-            files: path.join(stagingPath, '**/*.+(xml|brs)'),
-            from: /^.*'\s*vscode_rale_tracker_entry.*$/mig,
-            to: (match) => {
-                // Strip off the comment
-                let startOfLine = match.substring(0, match.indexOf(`'`));
-                if (/[\S]/.exec(startOfLine)) {
-                    // There was some form of code before the tracker entry
-                    // append and use single line syntax
-                    startOfLine += ': ';
-                }
-                return startOfLine + `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
-            }
-        });
-        const injectedFiles = trackerReplacementResult
-        .filter(result => result.hasChanged)
-        .map(result => result.file);
-
-        if (injectedFiles.length === 0) {
-            this.log('WARNING: Unable to find an entry point for Tracker Task.');
-            this.log('Please make sure that you have the following comment in your BrightScript project: "\' vscode_rale_tracker_entry"');
-        }
-    }
-
-    public async findEntryPoint(projectPath: string) {
-        let results = Object.assign(
-            {},
-            await findInFiles.find({ term: 'sub\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+RunUserInterface\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'sub\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+main\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'sub\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/),
-            await findInFiles.find({ term: 'function\\s+RunScreenSaver\\s*\\(', flags: 'ig' }, projectPath, /.*\.brs/)
-        );
-        let keys = Object.keys(results);
-        if (keys.length === 0) {
-            throw new Error('Unable to find an entry point. Please make sure that you have a RunUserInterface or Main sub/function declared in your BrightScript project');
-        }
-
-        //throw out any entry points from files not included in this project's `files` array
-        let files = await this.rokuDeploy.getFilePaths(this.launchArgs.files, this.stagingPath, this.launchArgs.rootDir);
-        let paths = files.map((x) => x.src);
-        keys = keys.filter((x) => paths.indexOf(x) > -1);
-
-        let entryPath = keys[0];
-
-        let entryLineContents = results[entryPath].line[0];
-
-        let lineNumber: number;
-        //load the file contents
-        let contents = await fsExtra.readFile(entryPath);
-        let lines = eol.split(contents.toString());
-        //loop through the lines until we find the entry line
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
-            if (line.indexOf(entryLineContents) > -1) {
-                lineNumber = i + 1;
-                break;
-            }
-        }
-
-        return {
-            path: entryPath,
-            contents: entryLineContents,
-            lineNumber: lineNumber
-        };
-    }
-
-    private entryBreakpoint: DebugProtocol.SourceBreakpoint;
-    private async addEntryBreakpoint() {
-        let entryPoint = await this.findEntryPoint(this.baseProjectPath);
-
-        let entryBreakpoint = {
-            verified: true,
-            //create a breakpoint on the line BELOW this location, which is the first line of the program
-            line: entryPoint.lineNumber + 1,
-            id: this.breakpointIdCounter++,
-            isEntryBreakpoint: true
-        };
-        this.entryBreakpoint = <any>entryBreakpoint;
-
-        //put this breakpoint into the list of breakpoints, in order
-        let breakpoints = this.getBreakpointsForClientPath(entryPoint.path);
-        breakpoints.push(entryBreakpoint);
-        //sort the breakpoints in order of line number
-        breakpoints.sort((a, b) => {
-            if (a.line > b.line) {
-                return 1;
-            } else if (a.line < b.line) {
-                return -1;
-            } else {
-                return 0;
-            }
-        });
-
-        //if the user put a breakpoint on the first line of their program, we want to keep THEIR breakpoint, not the entry breakpoint
-        let index = breakpoints.indexOf(this.entryBreakpoint);
-        let bpBefore = breakpoints[index - 1];
-        let bpAfter = breakpoints[index + 1];
-        if (
-            (bpBefore && bpBefore.line === this.entryBreakpoint.line) ||
-            (bpAfter && bpAfter.line === this.entryBreakpoint.line)
-        ) {
-            breakpoints.splice(index, 1);
-            this.entryBreakpoint = undefined;
-        }
-    }
-
-    /**
-     * File paths can be different casing sometimes,
-     * so find the data from `breakpointsByClientPath` case insensitive
-     */
-    public getBreakpointsForClientPath(clientPath: string) {
-        for (let key in this.breakpointsByClientPath) {
-            if (clientPath.toLowerCase() === key.toLowerCase()) {
-                return this.breakpointsByClientPath[key];
-            }
-        }
-        //create a new array and return it
-        return this.breakpointsByClientPath[clientPath] = [];
-    }
-
-    /**
-     * File paths can be different casing sometimes,
-     * so delete from `breakpointsByClientPath` case-insensitive
-     */
-    public deleteBreakpointsForClientPath(clientPath: string) {
-        for (let key in this.breakpointsByClientPath) {
-            if (clientPath.toLowerCase() === key.toLowerCase()) {
-                delete this.breakpointsByClientPath[key];
-            }
-        }
-    }
-
-    /**
-     * Given a full path to a file, walk up the tree until we have found the base project path (full path to the folder containing the manifest file)
-     * @param filePath
-     */
-    // private async getBaseProjectPath(filePath: string) {
-    // 	//try walking up 10 levels. If we haven't found it by then, there is nothing we can do.
-    // 	let folderPath = filePath;
-    // 	for (let i = 0; i < 10; i++) {
-    // 		folderPath = path.dirname(folderPath);
-    // 		let files = await Q.nfcall(glob, path.join(folderPath, 'manifest'));
-    // 		if (files.length === 1) {
-    // 			let dir = path.dirname(files[0]);
-    // 			return path.normalize(dir);
-    // 		}
-    // 	}
-    // 	throw new Error('Unable to find base project path');
-    // }
-
-    /**
-     * We set "breakpoints" by inserting 'STOP' lines into the code. So to translate the debugger lines back to client lines,
-     * we need to subtract those 'STOP' lines from the line count
-     * @param debuggerPath
-     * @param debuggerLineNumber
-     */
-    private convertDebuggerLineToClientLine(debuggerPath: string, debuggerLineNumber: number) {
-        let clientPath = this.convertDebuggerPathToClient(debuggerPath);
-        let breakpoints = this.getBreakpointsForClientPath(clientPath);
-
-        let resultLineNumber = debuggerLineNumber;
-        for (let breakpoint of breakpoints) {
-            if (breakpoint.line <= resultLineNumber) {
-                resultLineNumber--;
-            } else {
-                break;
-            }
-        }
-        return resultLineNumber;
     }
 
     private log(...args) {
@@ -1381,6 +839,32 @@ export class BrightScriptDebugSession extends DebugSession {
         this.variables = {};
     }
 
+    /**
+     * If `stopOnEntry` is enabled, register the entry breakpoint.
+     */
+    public async handleEntryBreakpoint() {
+        if (this.launchArgs.stopOnEntry) {
+            await this.projectManager.registerEntryBreakpoint(this.projectManager.mainProject.stagingFolderPath);
+        }
+    }
+
+    /**
+     * Called when the debugger is terminated
+     */
+    public shutdown() {
+        //if configured, delete the staging directory
+        if (!this.launchArgs.retainStagingFolder) {
+            let stagingFolderPaths = this.projectManager.getStagingFolderPaths();
+            for (let stagingFolderPath of stagingFolderPaths) {
+                try {
+                    fsExtra.removeSync(stagingFolderPath);
+                } catch (e) {
+                    console.log(`Error removing staging directory '${stagingFolderPath}'`, e);
+                }
+            }
+        }
+        super.shutdown();
+    }
 }
 
 /**
@@ -1429,7 +913,7 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * Each index is an array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the hosted component library.
      * This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.
      */
-    componentLibraries: [];
+    componentLibraries: ComponentLibraryConfig[];
     /**
      * The folder where the output files are places during the packaging process
      */
@@ -1469,12 +953,22 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     /**
      * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
      */
-    trackerTaskFileLocation: string;
+    raleTrackerTaskFileLocation: string;
 
     /**
      * The list of files that should be bundled during a debug session
      */
     files?: FilesType[];
+
+    /**
+     * If true, then the staging folder is NOT deleted after a debug session has been closed
+     */
+    retainStagingFolder: boolean;
+
+    /**
+     * If true, then any source maps found will be used to convert a debug location back to a source location
+     */
+    enableSourceMaps: boolean;
 }
 
 interface AugmentedVariable extends DebugProtocol.Variable {
@@ -1504,7 +998,10 @@ export function defer<T>() {
                 resolve(value);
                 resolve = undefined;
             } else {
-                throw new Error('Already completed');
+                throw new Error(
+                    `Attempted to resolve a promise that was already ${this.isResolved ? 'resolved' : 'rejected'}.` +
+                    `New value: ${JSON.stringify(value)}`
+                );
             }
         },
         reject: function(reason?: any) {
@@ -1513,7 +1010,10 @@ export function defer<T>() {
                 reject(reason);
                 reject = undefined;
             } else {
-                throw new Error('Already completed');
+                throw new Error(
+                    `Attempted to reject a promise that was already ${this.isResolved ? 'resolved' : 'rejected'}.` +
+                    `New error message: ${JSON.stringify(serializeError(reason))}`
+                );
             }
         },
         isResolved: false,
@@ -1522,26 +1022,4 @@ export function defer<T>() {
             return this.isResolved || this.isRejected;
         }
     };
-}
-
-/**
- * Determines if the `subject` path includes `search` path, with case sensitive comparison
- * @param subject
- * @param search
- */
-export function pathIncludesCaseInsensitive(subject: string, search: string) {
-    if (!subject || !search) {
-        return false;
-    }
-    return path.normalize(subject.toLowerCase()).indexOf(path.normalize(search.toLowerCase())) > -1;
-}
-
-export function replaceCaseInsensitive(subject: string, search: string, replacement: string) {
-    let idx = subject.toLowerCase().indexOf(search.toLowerCase());
-    if (idx > -1) {
-        let result = subject.substring(0, idx) + replacement + subject.substring(idx + search.length);
-        return result;
-    } else {
-        return subject;
-    }
 }

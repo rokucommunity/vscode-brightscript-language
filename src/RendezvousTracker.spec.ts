@@ -2,7 +2,7 @@
 /* tslint:disable:no-var-requires */
 import * as sinon from 'sinon';
 let Module = require('module');
-import { assert } from 'chai';
+import { assert, expect } from 'chai';
 
 import { vscode } from './mockVscode.spec';
 
@@ -27,23 +27,22 @@ describe('BrightScriptFileUtils ', () => {
 
     beforeEach(() => {
         rendezvousTracker = new RendezvousTracker();
-        rendezvousTracker.setDebuggerFileConversionFunctions(
-            (debuggerPath: string, lineNumber: number): number => {
-                return lineNumber;
-            },
-            (debuggerPath: string): string => {
-                //remove preceding pkg:
-                if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
-                    debuggerPath = debuggerPath.substring(4);
-                }
-
-                if (debuggerPath === 'NetworkService2.brs') {
-                    // test checking for xml file if brs was not found
-                    debuggerPath = '';
-                }
-                return debuggerPath;
+        rendezvousTracker.registerSourceLocator(async (debuggerPath: string, lineNumber: number) => {
+            //remove preceding pkg:
+            if (debuggerPath.toLowerCase().indexOf('pkg:') === 0) {
+                debuggerPath = debuggerPath.substring(4);
             }
-        );
+
+            if (debuggerPath === 'NetworkService2.brs') {
+                // test checking for xml file if brs was not found
+                debuggerPath = '';
+            }
+            return {
+                filePath: debuggerPath,
+                lineNumber: lineNumber,
+                columnIndex: 0
+            };
+        });
         rendezvousTrackerMock = sinon.mock(rendezvousTracker);
 
         // regex and examples also available at: https://regex101.com/r/In0t7d/6
@@ -255,7 +254,8 @@ describe('BrightScriptFileUtils ', () => {
                 },
                 'pkg:/components/Tasks/TrackerTask/TrackerTask.xml': {
                     occurrences: {
-                        621: {clientLineNumber: 621,
+                        621: {
+                            clientLineNumber: 621,
                             clientPath: '/components/Tasks/TrackerTask/TrackerTask.xml',
                             hitCount: 1,
                             totalTime: 0.008,
@@ -280,28 +280,28 @@ describe('BrightScriptFileUtils ', () => {
     });
 
     describe('processLogLine ', () => {
-        it('filters out all rendezvous log lines', () => {
+        it('filters out all rendezvous log lines', async () => {
             rendezvousTrackerMock.expects('emit').withArgs('rendezvous-event').once();
             let expected = `channel: Start\nStarting data processing\nData processing completed\n`;
-            assert.equal(rendezvousTracker.processLogLine(logString), expected);
+            assert.equal(await rendezvousTracker.processLogLine(logString), expected);
             assert.deepEqual(rendezvousTracker.getRendezvousHistory, expectedHistory);
             rendezvousTrackerMock.verify();
         });
 
-        it('does not filter out rendezvous log lines', () => {
+        it('does not filter out rendezvous log lines', async () => {
             rendezvousTrackerMock.expects('emit').withArgs('rendezvous-event').once();
             rendezvousTracker.setConsoleOutput('full');
-            assert.equal(rendezvousTracker.processLogLine(logString), logString);
+            assert.equal(await rendezvousTracker.processLogLine(logString), logString);
             assert.deepEqual(rendezvousTracker.getRendezvousHistory, expectedHistory);
             rendezvousTrackerMock.verify();
         });
     });
 
     describe('clearRendezvousHistory', () => {
-        it('to reset the history data', () => {
+        it('to reset the history data', async () => {
             rendezvousTrackerMock.expects('emit').withArgs('rendezvous-event').twice();
             let expected = `channel: Start\nStarting data processing\nData processing completed\n`;
-            assert.equal(rendezvousTracker.processLogLine(logString), expected);
+            assert.equal(await rendezvousTracker.processLogLine(logString), expected);
             assert.deepEqual(rendezvousTracker.getRendezvousHistory, expectedHistory);
 
             rendezvousTracker.clearRendezvousHistory();

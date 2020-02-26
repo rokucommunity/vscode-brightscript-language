@@ -37,7 +37,7 @@
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": false,
+                "focus": true,
                 "panel": "shared",
                 "showReuseMessage": true,
                 "clear": true
@@ -45,9 +45,33 @@
             "problemMatcher": []
         },
         {
+            "label": "clean",
+            "type": "npm",
+            "script": "clean",
+            "problemMatcher": [],
+        },
+        {
             "type": "npm",
             "label": "build",
             "script": "build",
+            "dependsOn": "clean",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
+            "type": "npm",
+            "script": "test:coverage",
             "problemMatcher": []
         }
     ]

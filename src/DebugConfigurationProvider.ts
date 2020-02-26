@@ -34,26 +34,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             stopOnEntry: false,
             outDir: '${workspaceFolder}/out/',
             retainDeploymentArchive: true,
-            injectRaleTrackerTask : false,
-            retainStagingFolder : false,
-            clearOutputOnLaunch : false,
-            selectOutputOnLogMessage : false,
+            injectRaleTrackerTask: false,
+            retainStagingFolder: false,
+            clearOutputOnLaunch: false,
+            selectOutputOnLogMessage: false,
             enableVariablesPanel: true,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
             enableLookupVariableNodeChildren: false,
             files: this.defaultFilesArray,
+            enableSourceMaps: true,
             packagePort: 80,
             remotePort: 8060
         };
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
-        this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
+
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
             this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
-            this.trackerTaskFileLocation = (config.rokuAdvancedLayoutEditor || {}).trackerTaskFileLocation;
         });
     }
 
@@ -67,7 +67,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private configDefaults: any;
     private defaultFilesArray: FilesType[];
     private showDeviceInfoMessages: boolean;
-    private trackerTaskFileLocation: string;
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -75,6 +74,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<BrightScriptDebugConfiguration> {
         // Process the different parts of the config
+        config = this.processUserWorkspaceSettings(config);
         config = await this.sanitizeConfiguration(config);
         config = await this.processEnvFile(folder, config);
         config = await this.processHostParameter(config);
@@ -83,6 +83,25 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
+        return config;
+    }
+
+    /**
+     * There are several debug-level config values that can be stored in user settings, so get those
+     */
+    private processUserWorkspaceSettings(config: BrightScriptDebugConfiguration) {
+        //get baseline brightscript.debug user/project settings
+        var userWorkspaceDebugSettings = Object.assign(
+            {
+                enableSourceMaps: true,
+                //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
+                raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
+            },
+            //merge in all of the brightscript.debug properties
+            vscode.workspace.getConfiguration('brightscript.debug') ?? {},
+        );
+        //merge the user/workspace settings in with the config (the config wins on conflict)
+        config = Object.assign(userWorkspaceDebugSettings, config ?? <any>{});
         return config;
     }
 
@@ -102,38 +121,36 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config
         );
 
-        config.rootDir = this.util.checkForTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
         //Check for depreciated Items
         if (config.debugRootDir) {
             if (config.sourceDirs) {
                 throw new Error('Cannot set both debugRootDir AND sourceDirs');
             } else {
-                config.sourceDirs = [this.util.checkForTrailingSlash(config.debugRootDir)];
+                config.sourceDirs = [this.util.ensureTrailingSlash(config.debugRootDir)];
             }
         } else if (config.sourceDirs) {
             let dirs: string[] = [];
 
             for (let dir of config.sourceDirs) {
-                dirs.push(this.util.checkForTrailingSlash(dir));
+                dirs.push(this.util.ensureTrailingSlash(dir));
             }
             config.sourceDirs = dirs;
         } else if (!config.sourceDirs) {
-            config.sourceDirs = [config.rootDir];
+            config.sourceDirs = [];
         }
 
         // #region Prepare Component Library config items
         if (config.componentLibraries) {
-            config.componentLibrariesOutDir = this.util.checkForTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
+            config.componentLibrariesOutDir = this.util.ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
-            let compLibs: FilesType[][] = [];
-            for (let library of config.componentLibraries as any) {
-                library.rootDir = this.util.checkForTrailingSlash(library.rootDir);
+            for (let library of config.componentLibraries) {
+                library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : this.defaultFilesArray;
-                compLibs.push(library);
             }
-            config.componentLibraries = compLibs;
         } else {
+            //create an empty array so it's easier to reason with downstream
             config.componentLibraries = [];
         }
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
@@ -147,7 +164,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
         config.request = config.request ? config.request : this.configDefaults.request;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : this.configDefaults.stopOnEntry;
-        config.outDir = this.util.checkForTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
+        config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : this.configDefaults.retainStagingFolder;
@@ -158,21 +175,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : this.configDefaults.enableLookupVariableNodeChildren;
         config.files = config.files ? config.files : this.configDefaults.files;
+        config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
 
         // Check for the existence of the tracker task file in auto injection is enabled
-        if (config.injectRaleTrackerTask) {
-            if (await this.util.fileExists(this.trackerTaskFileLocation) === false) {
-                vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${this.trackerTaskFileLocation}`);
-            } else {
-                config.trackerTaskFileLocation = this.trackerTaskFileLocation;
-            }
+        if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+            vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
         }
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
-            config.debugRootDir = this.util.checkForTrailingSlash(config.debugRootDir);
+            config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
         }
 
         return config;
@@ -351,14 +365,14 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     bsConst?: { [key: string]: boolean };
     componentLibrariesPort?; number;
     componentLibrariesOutDir: string;
-    componentLibraries: FilesType[][];
+    componentLibraries: ComponentLibraryConfig[];
     outDir: string;
     stopOnEntry: boolean;
     files?: FilesType[];
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     injectRaleTrackerTask: boolean;
-    trackerTaskFileLocation: string;
+    raleTrackerTaskFileLocation: string;
     retainStagingFolder: boolean;
     clearOutputOnLaunch: boolean;
     selectOutputOnLogMessage: boolean;
@@ -368,4 +382,18 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     packagePort: number;
     remotePort: number;
     envFile?: string;
+    enableSourceMaps?: boolean;
+}
+
+export interface ComponentLibraryConfig {
+    rootDir: string;
+    /**
+     * The filename for the package.
+     */
+    outFile: string;
+    files: FilesType[];
+    sourceDirs: string[];
+    bsConst?: { [key: string]: boolean };
+    injectRaleTrackerTask: boolean;
+    raleTrackerTaskFileLocation: string;
 }

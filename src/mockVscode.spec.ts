@@ -1,4 +1,4 @@
-import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri } from 'vscode';
+import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, Position } from 'vscode';
 
 export let vscode = {
     debug: {
@@ -67,7 +67,7 @@ export let vscode = {
                 clear: () => { }
             };
         },
-        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
+        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
         showErrorMessage: function(message: string) {
 
         },
@@ -193,6 +193,18 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
+        public getWordRangeAtPosition() {
+            //returns a dummy range (because honestly we should be mocking this in a real test...)
+            return undefined;
+        }
+        public lineAt() {
+            return {
+                text: ''
+            };
+        }
+        public offsetAt() {
+            return -1;
+        }
     },
     TreeItem: class {
         constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
@@ -222,7 +234,7 @@ export let vscode = {
     Uri: {
         file: (src: string) => {
             return {
-                with: ({}) => {
+                with: ({ }) => {
                     return {};
                 }
             };
