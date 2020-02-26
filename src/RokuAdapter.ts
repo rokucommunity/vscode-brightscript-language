@@ -9,6 +9,7 @@ import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
 import { util } from './util';
+import { SourceLocation } from './debugServer/SourceLocator';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
@@ -90,7 +91,13 @@ export class RokuAdapter {
             'unhandled-console-output',
         data?
     ) {
-        this.emitter.emit(eventName, data);
+        //emit these events on next tick, otherwise they will be processed immediately which could cause issues
+        setTimeout(() => {
+            //in rare cases, this event is fired after the debugger has closed, so make sure the event emitter still exists
+            if (this.emitter) {
+                this.emitter.emit(eventName, data);
+            }
+        }, 0);
     }
 
     /**
@@ -224,7 +231,7 @@ export class RokuAdapter {
                 //if there was a runtime error, handle it
                 let hasRuntimeError = this.checkForRuntimeError(responseText);
 
-                responseText = this.rendezvousTracker.processLogLine(responseText);
+                responseText = await this.rendezvousTracker.processLogLine(responseText);
                 //forward all unhandled console output
                 this.processBreakpoints(responseText);
                 if (responseText) {
@@ -1228,11 +1235,8 @@ export class RokuAdapter {
     /**
      * Passes the debug functions used to locate the client files and lines to the RendezvousTracker
      */
-    public setRendezvousDebuggerFileConversionFunctions(
-        convertDebuggerLineToClientLine: (debuggerPath: string, lineNumber: number) => number,
-        convertDebuggerPathToClient: (debuggerPath: string) => string
-    ) {
-        this.rendezvousTracker.setDebuggerFileConversionFunctions(convertDebuggerLineToClientLine, convertDebuggerPathToClient);
+    public registerSourceLocator(sourceLocator: (debuggerPath: string, lineNumber: number) => Promise<SourceLocation>) {
+        this.rendezvousTracker.registerSourceLocator(sourceLocator);
     }
 
     /**

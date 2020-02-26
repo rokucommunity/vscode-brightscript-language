@@ -75,7 +75,10 @@ describe('BrightScriptXmlDefinitionProvider', () => {
     let languagesMock;
 
     beforeEach(() => {
-        definitionRepo = { findDefinition: () => { } };
+        definitionRepo = {
+            findDefinition: () => { },
+            sync: () => Promise.resolve()
+        };
         definitionRepoMock = sinon.mock(definitionRepo);
 
         provider = new BrightScriptXmlDefinitionProvider(definitionRepo);
@@ -126,10 +129,10 @@ describe('BrightScriptXmlDefinitionProvider', () => {
             definitionRepoMock.verify();
         });
 
-        it.skip('will return xml file reference for a custom component', async () => {
-            let position: any = new vscode.Position(1, 1);
-            let textDocument: any = new vscode.TextDocument('valid.xml', xmlText);
-            let result = await provider.provideDefinition(textDocument, position, undefined);
+        it('will return xml file reference for a custom component', async () => {
+            let position = new vscode.Position(1, 1);
+            let textDocument = new vscode.TextDocument('valid.xml', xmlText);
+            let result = await provider.provideDefinition(<any>textDocument, <any>position, undefined);
 
             assert.isEmpty(result);
 

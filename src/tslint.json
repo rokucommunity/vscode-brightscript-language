@@ -1,7 +1,6 @@
 {
     "rulesDirectory": [
-        "../node_modules/tslint-eslint-rules/dist/rules",
-        "../node_modules/tslint-origin-ordered-imports-rule/dist"
+        "../node_modules/tslint-eslint-rules/dist/rules"
     ],
     "extends": [
         "tslint:recommended"
@@ -11,13 +10,12 @@
             true,
             "never"
         ],
-        "array-type": [
-            true,
-            "array"
-        ],
+        "ordered-imports": false,
+        "array-type": false,
         "arrow-parens": false,
         "arrow-return-shorthand": false,
         "class-name": true,
+        "variable-name": false,
         "comment-format": false,
         "curly": true,
         "forin": false,
@@ -62,7 +60,7 @@
         "no-shadowed-variable": false,
         "no-trailing-whitespace": true,
         "no-unused-expression": true,
-        "no-var-keyword": true,
+        "no-var-keyword": false,
         "object-curly-spacing": true,
         "object-literal-shorthand": [
             true,
@@ -70,10 +68,6 @@
         ],
         "object-literal-sort-keys": false,
         "only-arrow-functions": false,
-        "origin-ordered-imports": [
-            true,
-            "one-blank-line"
-        ],
         "prefer-const": false,
         "quotemark": [
             true,

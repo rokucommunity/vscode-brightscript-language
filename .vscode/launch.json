@@ -1,37 +1,44 @@
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"type": "extensionHost",
-			"request": "launch",
-			"name": "Extension",
-			"preLaunchTask": "npm",
-			"runtimeExecutable": "${execPath}",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
-			],
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ]
-		},
-		{
-			"type": "node",
-			"request": "launch",
-			"name": "Debug Server",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/src/debugAdapter.ts",
-            "args": [ "--server=4711" ],
-            "timeout": 10000,
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
-			"stopOnEntry": false
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "extensionHost",
+            "request": "launch",
+            "name": "Extension",
+            "preLaunchTask": "npm",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ]
         },
         {
-			"type": "node",
-			"request": "attach",
-			"name": "Language Server",
-			"port": 6009,
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Server",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/src/debugAdapter.ts",
+            "args": [
+                "--server=4711"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ],
+            "stopOnEntry": false
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Language Server",
+            "port": 6009,
             "restart": true,
             "timeout": 30000,
-			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
-		},
+            "outFiles": [
+                "${workspaceRoot}/server/out/**/*.js"
+            ]
+        },
         {
             "name": "Tests",
             "type": "node",
@@ -50,15 +57,41 @@
             "protocol": "inspector",
             "internalConsoleOptions": "openOnSessionStart"
         }
-	],
-	"compounds": [
-		{
-			"name": "Extension, Debug Server, Language Server",
-			"configurations": [ "Extension", "Debug Server", "Language Server" ]
+    ],
+    "compounds": [
+        {
+            "name": "Extension, Debug Server, Language Server",
+            "configurations": [
+                "Extension",
+                "Debug Server",
+                "Language Server"
+            ]
         },
         {
-			"name": "Extension,Language Server",
-			"configurations": [ "Extension", "Language Server" ]
-		}
-	]
+            "name": "Extension,Language Server",
+            "configurations": [
+                "Extension",
+                "Language Server"
+            ]
+        },
+        {
+            "request": "launch",
+            "name": "Tests",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-u",
+                "tdd",
+                "--timeout",
+                "999999",
+                "--colors",
+                "./out/**/*.spec.js"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        }
+    ]
 }

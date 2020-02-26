@@ -3,30 +3,41 @@ import { expect } from 'chai';
 
 import * as assert from 'assert';
 import * as fsExtra from 'fs-extra';
+import { Server } from 'https';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
-let sinon = sinonActual.createSandbox();
-
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
-
 import {
     BrightScriptDebugSession,
     defer
-} from './BrightScriptDebugSession';
+} from '../BrightScriptDebugSession';
+import { fileUtils } from './FileUtils';
 import {
     EvaluateContainer,
     HighLevelType,
     PrimativeType
-} from './RokuAdapter';
+} from '../RokuAdapter';
+import { DebugSession } from 'vscode-debugadapter';
 
+let sinon = sinonActual.createSandbox();
+let n = path.normalize;
+let cwd = fileUtils.standardizePath(process.cwd());
+let outDir = fileUtils.standardizePath(`${cwd}/outDir`);
+let stagingFolderPath = fileUtils.standardizePath(`${outDir}/stagingDir`);
 const rootDir = path.normalize(path.dirname(__dirname));
 
 beforeEach(() => {
     sinon.restore();
 });
 
+afterEach(() => {
+    fsExtra.remove(outDir);
+});
+
 describe('Debugger', () => {
     let session: BrightScriptDebugSession;
+    //session of type any so we can do private-ish things
+    let s: any;
     let rokuAdapter: any = {
         on: () => {
             return () => {
@@ -34,13 +45,13 @@ describe('Debugger', () => {
         },
         activate: () => Promise.resolve(),
         exitActiveBrightscriptDebugger: () => Promise.resolve(),
-        setRendezvousDebuggerFileConversionFunctions: function(a, b) { },
+        registerSourceLocator: function(a, b) { },
         setConsoleOutput: function(a) { }
     };
     beforeEach(() => {
         try {
             session = new BrightScriptDebugSession();
-
+            s = session;
         } catch (e) {
             console.log(e);
         }
@@ -84,85 +95,6 @@ describe('Debugger', () => {
         it('does not throw', () => {
             assert.doesNotThrow(() => {
                 session.initializeRequest(<any>{}, <any>{});
-            });
-        });
-    });
-    it('baseProjectPath works', async () => {
-        sinon.stub(session, 'sendEvent').callsFake((...args) => {
-            //do nothing
-        });
-        (sinon.stub(session, <any>'loadStagingDirPaths') as any).callsFake(() => {
-
-        });
-
-        //skip adding breakpoint statements since that's not what we are currently testing
-        (session as any).addBreakpointStatements = () => { };
-        await session.launchRequest(<any>{}, <any>{
-            rootDir: '1/2/3'
-        });
-        assert.equal(path.normalize(session.baseProjectPath), path.normalize('1/2/3'));
-    });
-
-    describe('updateManifestBsConsts', () => {
-        let constsLine: string;
-        let startingFileContents: string;
-        let bsConsts: { [key: string]: boolean };
-
-        beforeEach(() => {
-            constsLine = 'bs_const=const=false;const2=true;const3=false';
-            startingFileContents = `title=ComponentLibraryTestChannel
-                subtitle=Test Channel for Scene Graph Component Library
-                mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
-                mm_icon_side_hd=pkg:/images/MainMenu_Icon_Side_HD.png
-                mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
-                mm_icon_side_sd=pkg:/images/MainMenu_Icon_Side_SD43.png
-                splash_screen_fd=pkg:/images/splash_fhd.jpg
-                splash_screen_hd=pkg:/images/splash_hd.jpg
-                splash_screen_sd=pkg:/images/splash_sd.jpg
-                major_version=1
-                minor_version=1
-                build_version=00001
-                ${constsLine}
-            `.replace(/    /g, '');
-
-            bsConsts = { };
-        });
-
-        it('should update one bs_const in the bs_const line', async () => {
-            let fileContents: string;
-            bsConsts.const = true;
-            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
-            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=true;const3=false'));
-
-            delete bsConsts.const;
-            bsConsts.const2 = false;
-            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
-            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=false;const3=false'));
-
-            delete bsConsts.const2;
-            bsConsts.const3 = true;
-            fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
-            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=false;const2=true;const3=true'));
-        });
-
-        it('should update all bs_consts in the bs_const line', async () => {
-            bsConsts.const = true;
-            bsConsts.const2 = false;
-            bsConsts.const3 = true;
-            let fileContents = await session.updateManifestBsConsts(bsConsts, startingFileContents);
-            assert.equal(fileContents, startingFileContents.replace(constsLine, 'bs_const=const=true;const2=false;const3=true'));
-        });
-
-        it('should throw error when there is no bs_const line', async () => {
-            await assert.rejects(async () => {
-                await session.updateManifestBsConsts(bsConsts, startingFileContents.replace(constsLine, ''));
-            });
-        });
-
-        it('should throw error if there is consts in the bsConsts that are not in the manifest', async () => {
-            bsConsts.const4 = true;
-            await assert.rejects(async () => {
-                await session.updateManifestBsConsts(bsConsts, startingFileContents);
             });
         });
     });
@@ -318,44 +250,6 @@ describe('Debugger', () => {
             ]);
         });
     });
-    describe('convertDebuggerPathToClient', () => {
-        it('handles truncated paths', () => {
-            //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
-            });
-
-            let s: any = session;
-            s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
-            s.launchArgs = {
-                rootDir: 'C:/someproject/src'
-            };
-            let clientPath = s.convertDebuggerPathToClient('...erA/file1.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
-
-            clientPath = s.convertDebuggerPathToClient('...erB/file2.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
-
-        });
-
-        it('handles pkg paths', () => {
-            //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
-            });
-            let s: any = session;
-            s.stagingDirPaths = ['folderA/file1.brs', 'folderB/file2.brs'];
-            s.launchArgs = {
-                rootDir: 'C:/someproject/src'
-            };
-            let clientPath = s.convertDebuggerPathToClient('pkg:folderA/file1.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderA/file1.brs'));
-
-            clientPath = s.convertDebuggerPathToClient('pkg:folderB/file2.brs');
-            expect(path.normalize(clientPath)).to.equal(path.normalize('C:/someproject/src/folderB/file2.brs'));
-        });
-
-    });
 
     describe('findMainFunction', () => {
         let folder;
@@ -385,8 +279,8 @@ describe('Debugger', () => {
                     folder + '/**/*'
                 ]
             };
-            let entryPoint = await session.findEntryPoint(folder);
-            expect(entryPoint.path).to.equal(filePath);
+            let entryPoint = await fileUtils.findEntryPoint(folder);
+            expect(entryPoint.filePath).to.equal(filePath);
             expect(entryPoint.lineNumber).to.equal(lineNumber);
             expect(entryPoint.contents).to.equal(lineContents);
         }
@@ -432,102 +326,6 @@ describe('Debugger', () => {
         });
     });
 
-    describe('injectRaleTrackerTaskCode', () => {
-        let key: string;
-        let trackerTaskCode: string;
-        let folder;
-
-        beforeEach(() => {
-            key = 'vscode_rale_tracker_entry';
-            trackerTaskCode = `if true = CreateObject("roAppInfo").IsDev() then m.vscode_rale_tracker_task = createObject("roSGNode", "TrackerTask") ' Roku Advanced Layout Editor Support`;
-        });
-
-        afterEach(() => {
-            fsExtra.emptyDirSync('./.tmp');
-            fsExtra.rmdirSync('./.tmp');
-        });
-
-        async function doTest(fileContents: string, expectedContents: string, fileExt: string = 'brs') {
-            fsExtra.emptyDirSync('./.tmp');
-            folder = path.resolve('./.tmp/findMainFunctionTests/');
-            fsExtra.mkdirSync(folder);
-
-            let filePath = path.resolve(`${folder}/main.${fileExt}`);
-
-            fsExtra.writeFileSync(filePath, fileContents);
-            await session.injectRaleTrackerTaskCode(folder);
-            let newFileContents = (await fsExtra.readFile(filePath)).toString();
-            expect(newFileContents).to.equal(expectedContents);
-        }
-
-        it('works for in line comments brs files', async () => {
-            let brsSample = `\nsub main()\n  screen.show  <ENTRY>\nend sub`;
-            let expectedBrs = brsSample.replace('<ENTRY>', `: ${trackerTaskCode}`);
-
-            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
-            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
-            //works with extra spacing
-            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
-        });
-
-        it('works for in line comments in xml files', async () => {
-            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
-            <!--********** Copyright COMPANY All Rights Reserved. **********-->
-
-            <component name="TrackerTask" extends="Task">
-              <interface>
-                  <field id="sample" type="string"/>
-                  <function name="sampleFunction"/>
-              </interface>
-                <script type = "text/brightscript" >
-                <![CDATA[
-                    <ENTRY>
-                ]]>
-                </script>
-            </component>`;
-            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true : ${trackerTaskCode}\n        end sub`);
-
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true ' ${key}\n        end sub`), expectedXml, 'xml');
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '${key}\n        end sub`), expectedXml, 'xml');
-            //works with extra spacing
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true '        ${key}      \n        end sub`), expectedXml, 'xml');
-        });
-
-        it('works for stand alone comments in brs files', async () => {
-            let brsSample = `\nsub main()\n  screen.show\n  <ENTRY>\nend sub`;
-            let expectedBrs = brsSample.replace('<ENTRY>', trackerTaskCode);
-
-            await doTest(brsSample.replace('<ENTRY>', `\' ${key}`), expectedBrs);
-            await doTest(brsSample.replace('<ENTRY>', `\'${key}`), expectedBrs);
-            //works with extra spacing
-            await doTest(brsSample.replace('<ENTRY>', `\'         ${key}                 `), expectedBrs);
-        });
-
-        it('works for stand alone comments in xml files', async () => {
-            let xmlSample = `<?rokuml version="1.0" encoding="utf-8" ?>
-            <!--********** Copyright COMPANY All Rights Reserved. **********-->
-
-            <component name="TrackerTask" extends="Task">
-              <interface>
-                  <field id="sample" type="string"/>
-                  <function name="sampleFunction"/>
-              </interface>
-                <script type = "text/brightscript" >
-                <![CDATA[
-                    <ENTRY>
-                ]]>
-                </script>
-            </component>`;
-
-            let expectedXml = xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ${trackerTaskCode}\n        end sub`);
-
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             ' ${key}\n        end sub`), expectedXml, 'xml');
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '${key}\n        end sub`), expectedXml, 'xml');
-            //works with extra spacing
-            await doTest(xmlSample.replace('<ENTRY>', `sub init()\n            m.something = true\n             '        ${key}      \n        end sub`), expectedXml, 'xml');
-        });
-    });
-
     describe('setBreakPointsRequest', () => {
         let response;
         let args;
@@ -544,58 +342,96 @@ describe('Debugger', () => {
                 },
                 breakpoints: []
             };
-
-            args.breakpoints = [{ line: 1 }];
         });
+
         it('returns correct results', () => {
+            args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }]);
+            expect(response.body.breakpoints[0]).to.deep.include({
+                line: 1,
+                verified: true
+            });
 
             //mark debugger as 'launched' which should change the behavior of breakpoints.
-            session.launchRequestWasCalled = true;
+            session.breakpointManager.lockBreakpoints();
 
-            //remove a breakpoint (it should remove the breakpoint)
+            //remove the breakpoint breakpoint (it should not remove the breakpoint because it was already verified)
             args.breakpoints = [];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([]);
+            expect(response.body.breakpoints).to.be.lengthOf(0);
 
-            //add breakpoint after launchRequestWasCalled finished (i.e. can't set breakpoints anymore)
+            //add breakpoint during live debug session. one was there before, the other is new. Only one will be verified
             args.breakpoints = [{ line: 1 }, { line: 2 }];
             session.setBreakPointsRequest(<any>{}, args);
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: true }, { line: 2, verified: false }]);
-
+            expect(
+                response.body.breakpoints.map(x => ({ line: x.line, verified: x.verified }))
+            ).to.eql([{
+                line: 1,
+                verified: true
+            }, {
+                line: 2,
+                verified: false
+            }]);
         });
 
-        it('handles breakpoints for non-brightscript files', () => {
+        it('supports breakpoints within xml files', () => {
             args.source.path = `${rootDir}/some/xml-file.xml`;
             args.breakpoints = [{ line: 1 }];
             session.setBreakPointsRequest(<any>{}, args);
             //breakpoint should be disabled
-            expect(response.body.breakpoints).to.deep.equal([{ line: 1, verified: false }]);
-
+            expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: true });
         });
 
-        it('remaps to debug folder when specified', () => {
-            //mock fsExtra so we don't have to create actual files
-            sinon.stub(fsExtra, 'pathExistsSync').callsFake((path: string) => {
-                return true;
+        it('handles breakpoints for non-brightscript files', () => {
+            args.source.path = `${rootDir}/some/xml-file.jpg`;
+            args.breakpoints = [{ line: 1 }];
+            session.setBreakPointsRequest(<any>{}, args);
+            expect(response.body.breakpoints).to.be.lengthOf(1);
+            //breakpoint should be disabled
+            expect(response.body.breakpoints[0]).to.deep.include({ line: 1, verified: false });
+        });
+    });
+
+    describe('handleEntryBreakpoint', () => {
+        it('registers the entry breakpoint when stopOnEntry is enabled', async () => {
+            (session as any).launchArgs = { stopOnEntry: true };
+            session.projectManager.mainProject = <any>{
+                stagingFolderPath: stagingFolderPath
+            };
+            let stub = sinon.stub(session.projectManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            await session.handleEntryBreakpoint();
+            expect(stub.called).to.be.true;
+            expect(stub.args[0][0]).to.equal(stagingFolderPath);
+        });
+        it('does NOT register the entry breakpoint when stopOnEntry is enabled', async () => {
+            (session as any).launchArgs = { stopOnEntry: false };
+            let stub = sinon.stub(session.projectManager, 'registerEntryBreakpoint').returns(Promise.resolve());
+            await session.handleEntryBreakpoint();
+            expect(stub.called).to.be.false;
+        });
+    });
+
+    describe('shutdown', () => {
+        it('erases all staging folders when configured to do so', () => {
+            var stub = sinon.stub(fsExtra, 'removeSync').returns(null);
+            session.projectManager.mainProject = <any>{
+                stagingFolderPath: 'stagingPathA'
+            };
+            session.projectManager.componentLibraryProjects.push(<any>{
+                stagingFolderPath: 'stagingPathB'
             });
             (session as any).launchArgs = {
-                sourceDirs: [
-                    path.normalize(`${rootDir}/src`)
-                ],
-                rootDir: path.normalize(`${rootDir}/dest`)
+                retainStagingFolder: false
             };
-            args.breakpoints = [{ line: 1 }];
+            //stub the super shutdown call so it doesn't kill the test session
+            sinon.stub(DebugSession.prototype, 'shutdown').returns(null);
 
-            session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/src/some/file.brs`)]).not.to.be.undefined;
-
-            delete (session as any).launchArgs.sourceDirs;
-
-            session.setBreakPointsRequest(<any>{}, args);
-            expect((session as any).breakpointsByClientPath[path.normalize(`${rootDir}/dest/some/file.brs`)]).not.to.be.undefined;
-
+            session.shutdown();
+            expect(stub.callCount).to.equal(2);
+            expect(stub.args.map(x => x[0])).to.eql([
+                'stagingPathA',
+                'stagingPathB'
+            ]);
         });
     });
 });

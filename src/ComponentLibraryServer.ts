@@ -10,6 +10,8 @@ export class ComponentLibraryServer {
 
     public componentLibrariesOutDir: string;
 
+    private server: http.Server;
+
     public async startStaticFileHosting(componentLibrariesOutDir: string, port: number, sendDebugLogLine) {
 
         // Make sure the requested port is not already being used by another service
@@ -39,7 +41,7 @@ export class ComponentLibraryServer {
             '.zip': 'application/zip'
         };
 
-        http.createServer((req, res) => {
+        this.server = http.createServer((req, res) => {
             sendDebugLogLine(`${req.method} ${req.url}`);
 
             // parse URL
@@ -74,7 +76,7 @@ export class ComponentLibraryServer {
                         // based on the URL path, extract the file extension. e.g. .js, .doc, ...
                         const ext = path.parse(pathname).ext;
                         // if the file is found, set Content-type and send data
-                        res.setHeader('Content-type', mimeType[ext] || 'text/plain' );
+                        res.setHeader('Content-type', mimeType[ext] || 'text/plain');
                         res.end(data);
                     }
                 });
@@ -100,5 +102,14 @@ export class ComponentLibraryServer {
             });
         });
         // #endregion
+    }
+
+    /**
+     * Stop the server (if it's running)
+     */
+    public stop() {
+        if (this.server) {
+            this.server.close();
+        }
     }
 }
