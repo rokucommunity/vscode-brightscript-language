@@ -247,7 +247,16 @@ export class Project {
         }
 
         //override the getFilePaths function so rokuDeploy doesn't run it again during prepublishToStaging
-        (rokuDeploy as any).getFilePaths = () => Promise.resolve(this.fileMappings);
+        (rokuDeploy as any).getFilePaths = () => {
+            let relativeFileMappings = [];
+            for (let fileMapping of this.fileMappings) {
+                relativeFileMappings.push({
+                    src: fileMapping.src,
+                    dest: fileUtils.replaceCaseInsensitive(fileMapping.dest, this.stagingFolderPath, '')
+                });
+            }
+            return Promise.resolve(relativeFileMappings);
+        };
 
         //copy all project files to the staging folder
         await rokuDeploy.prepublishToStaging({

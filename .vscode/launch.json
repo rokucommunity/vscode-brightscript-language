@@ -73,25 +73,6 @@
                 "Extension",
                 "Language Server"
             ]
-        },
-        {
-            "request": "launch",
-            "name": "Tests",
-            "cwd": "${workspaceFolder}",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-            "args": [
-                "-u",
-                "tdd",
-                "--timeout",
-                "999999",
-                "--colors",
-                "./out/**/*.spec.js"
-            ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
-            "internalConsoleOptions": "openOnSessionStart"
         }
     ]
 }

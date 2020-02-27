@@ -280,6 +280,7 @@ describe('Project', () => {
 
         });
     });
+
     it('copies the necessary properties onto the instance', () => {
         expect(project.rootDir).to.equal(cwd);
         expect(project.files).to.eql(['a']);
@@ -289,6 +290,28 @@ describe('Project', () => {
         expect(project.sourceDirs).to.eql([s`${cwd}/source1`]);
         expect(project.stagingFolderPath).to.eql(s`${cwd}/staging`);
         expect(project.raleTrackerTaskFileLocation).to.eql('z');
+    });
+
+    describe('stage', () => {
+        afterEach(() => {
+            try { fsExtra.removeSync(`${cwd}/.tmp`); } catch (e) { }
+        });
+        it('actually stages the project', async () => {
+            project.raleTrackerTaskFileLocation = undefined;
+            project.rootDir = s`${cwd}/.tmp/rootDir`;
+            project.outDir = s`${cwd}/.tmp/out`;
+            project.stagingFolderPath = s`${cwd}/.tmp/staging`;
+            fsExtra.ensureDirSync(project.rootDir);
+            fsExtra.ensureDirSync(project.outDir);
+            fsExtra.ensureDirSync(project.stagingFolderPath);
+
+            fsExtra.writeFileSync(s`${project.rootDir}/manifest`, 'bs_const=b=true');
+            project.files = [
+                'manifest'
+            ];
+            await project.stage();
+            expect(fsExtra.pathExistsSync(s`${project.stagingFolderPath}/manifest`)).to.be.true;
+        });
     });
 
     describe('updateManifestBsConsts', () => {
