@@ -113,11 +113,7 @@ export class RokuSocketAdapter {
      * which indicates that the app is running on the Roku
      */
     public isAppRunning = false;
-    /**
-     * Every time we get a message that ends with the debugger prompt,
-     * this will be set to true. Otherwise, it will be set to false
-     */
-    public isAtDebuggerPrompt = false;
+
 
     public async activate() {
         this.isActivated = true;
@@ -188,6 +184,10 @@ export class RokuSocketAdapter {
         return text;
     }
 
+    public get isAtDebuggerPrompt() {
+        return this.socketDebugger ? this.socketDebugger.isStopped : false;
+    }
+
     /**
      * Connect to the telnet session. This should be called before the channel is launched.
      */
@@ -219,7 +219,6 @@ export class RokuSocketAdapter {
             });
 
             this.socketDebugger.on('runtime-error', (data) => {
-                console.log(data);
                 this.emit('runtime-error', <BrightScriptRuntimeError>{
                     message: data.data.stopReasonDetail,
                     errorCode: data.data.stopReason
@@ -617,37 +616,36 @@ export class RokuSocketAdapter {
     /**
      * Send command to step over
      */
-    public stepOver() {
+    public async stepOver() {
         this.clearCache();
-        return this.requestPipeline.executeCommand('over', false);
+        return await this.socketDebugger.stepOver();
     }
 
-    public stepInto() {
+    public async stepInto() {
         this.clearCache();
-        return this.requestPipeline.executeCommand('step', false);
+        return await this.socketDebugger.stepIn();
     }
 
-    public stepOut() {
+    public async stepOut() {
         this.clearCache();
-        return this.requestPipeline.executeCommand('out', false);
-
+        return await this.socketDebugger.stepOut();
     }
 
     /**
      * Tell the brightscript program to continue (i.e. resume program)
      */
-    public continue() {
+    public async continue() {
         this.clearCache();
-        return this.requestPipeline.executeCommand('c', false);
+        return await this.socketDebugger.continue();
     }
 
     /**
      * Tell the brightscript program to pause (fall into debug mode)
      */
-    public pause() {
+    public async pause() {
         this.clearCache();
         //send the kill signal, which breaks into debugger mode
-        return this.requestPipeline.executeCommand('\x03;', false, true);
+        return await this.socketDebugger.pause();
     }
 
     /**
@@ -655,7 +653,7 @@ export class RokuSocketAdapter {
      */
     public clearCache() {
         this.cache = {};
-        this.isAtDebuggerPrompt = false;
+        // this.isAtDebuggerPrompt = false;
     }
 
     /**
@@ -671,7 +669,7 @@ export class RokuSocketAdapter {
         //don't wait for the output...we don't know what command the user entered
         let responseText = await this.requestPipeline.executeCommand(command, true);
         //we know that if we got a response, we are back at a debugger prompt
-        this.isAtDebuggerPrompt = true;
+        // this.isAtDebuggerPrompt = true;
         return responseText;
     }
 
@@ -679,35 +677,25 @@ export class RokuSocketAdapter {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot get stack trace: debugger is not paused');
         }
-        return await this.resolve('stackTrace', async () => {
-            //perform a request to load the stack trace
-            let responseText = await this.requestPipeline.executeCommand('bt', true);
-            let regexp = /#(\d+)\s+(?:function|sub)\s+([\$\w\d]+).*\s+file\/line:\s+(.*)\((\d+)\)/ig;
-            let matches;
-            let frames: StackFrame[] = [];
-            while (matches = regexp.exec(responseText)) {
-                //the first index is the whole string
-                //then the matches should be in pairs
-                for (let i = 1; i < matches.length; i = i + 4) {
-                    let j = 1;
-                    let frameId = parseInt(matches[i]);
-                    let functionIdentifier = matches[i + j++];
-                    let filePath = matches[i + j++];
-                    let lineNumber = parseInt(matches[i + j++]);
-                    let frame: StackFrame = {
-                        frameId: frameId,
-                        filePath: filePath,
-                        lineNumber: lineNumber,
-                        functionIdentifier: functionIdentifier
-                    };
-                    frames.push(frame);
-                }
-            }
-            //if we didn't find frames yet, then there's not much more we can do...
-            return frames;
-        });
+        let frames: StackFrame[] = [];
+        let stackTraceData: any = await this.socketDebugger.stackTrace();
+        for (let i = 0; i < stackTraceData.stackSize; i++) {
+            let frameData = stackTraceData.entries[i];
+            let frame: StackFrame = {
+                frameId: i,
+                filePath: frameData.fileName,
+                lineNumber: frameData.lineNumber,
+                functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
+            };
+            frames.push(frame);
+        }
+
+        return frames;
     }
 
+    private cleanUpFunctionName(functionName): string {
+        return functionName.substring(functionName.lastIndexOf('@') + 1);
+    }
     /**
      * Runs a regex to get the content between telnet commands
      * @param value
@@ -1185,7 +1173,6 @@ export class RokuSocketAdapter {
         let threads: Thread[] = [];
         let threadsData: any = await this.socketDebugger.threads();
 
-        console.log(threadsData);
         for (let i = 0; i < threadsData.threadsCount; i ++) {
             let threadInfo = threadsData.threads[i];
             let thread = <Thread> {

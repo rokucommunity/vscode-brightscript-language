@@ -417,19 +417,19 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         }
     }
 
-    // protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
-    //     this.log('sourceRequest');
-    //     let old = this.sendResponse;
-    //     this.sendResponse = function(...args) {
-    //         old.apply(this, args);
-    //         this.sendResponse = old;
-    //     };
-    //     super.sourceRequest(response, args);
-    // }
+    protected sourceRequest(response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments) {
+        this.log('sourceRequest');
+        let old = this.sendResponse;
+        this.sendResponse = function(...args) {
+            old.apply(this, args);
+            this.sendResponse = old;
+        };
+        super.sourceRequest(response, args);
+    }
 
-    // protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
-    //     console.log('configurationDoneRequest');
-    // }
+    protected configurationDoneRequest(response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments) {
+        console.log('configurationDoneRequest');
+    }
 
     // /**
     //  * Called every time a breakpoint is created, modified, or deleted, for each file. This receives the entire list of breakpoints every time.
@@ -462,36 +462,36 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     //     // }, 100);
     // }
 
-    // protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
-    //     this.log('exceptionInfoRequest');
-    // }
+    protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
+        this.log('exceptionInfoRequest');
+    }
 
-    // protected async threadsRequest(response: DebugProtocol.ThreadsResponse) {
-    //     this.log('threadsRequest');
-    //     //wait for the roku adapter to load
-    //     await this.getRokuAdapter();
+    protected async threadsRequest(response: DebugProtocol.ThreadsResponse) {
+        this.log('threadsRequest');
+        //wait for the roku adapter to load
+        await this.getRokuAdapter();
 
-    //     let threads = [];
+        let threads = [];
 
-    //     //only send the threads request if we are at the debugger prompt
-    //     if (this.rokuAdapter.isAtDebuggerPrompt) {
-    //         let rokuThreads = await this.rokuAdapter.getThreads();
+        //only send the threads request if we are at the debugger prompt
+        if (this.rokuAdapter.isAtDebuggerPrompt) {
+            let rokuThreads = await this.rokuAdapter.getThreads();
 
-    //         for (let thread of rokuThreads) {
-    //             threads.push(
-    //                 new Thread(thread.threadId, `Thread ${thread.threadId}`)
-    //             );
-    //         }
-    //     } else {
-    //         console.log('Skipped getting threads because the RokuAdapter is not accepting input at this time.');
-    //     }
+            for (let thread of rokuThreads) {
+                threads.push(
+                    new Thread(thread.threadId, `Thread ${thread.threadId}`)
+                );
+            }
+        } else {
+            console.log('Skipped getting threads because the RokuAdapter is not accepting input at this time.');
+        }
 
-    //     response.body = {
-    //         threads: threads
-    //     };
+        response.body = {
+            threads: threads
+        };
 
-    //     this.sendResponse(response);
-    // }
+        this.sendResponse(response);
+    }
 
     // /**
     //  * The stacktrace sent by Roku forces all BrightScript function names to lower case.
@@ -499,71 +499,71 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     //  * Also, this function caches results, so it should be faster than the previous implementation
     //  * which read the source file from the file system on each call
     //  */
-    // private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
-    //     let lowerSourceFilePath = sourceFilePath.toLowerCase();
-    //     let lowerFunctionName = functionName.toLowerCase();
-    //     //create the lookup if it doesn't exist
-    //     if (!this.functionNameCaseLookup[lowerSourceFilePath]) {
-    //         this.functionNameCaseLookup[lowerSourceFilePath] = {};
+    private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
+        let lowerSourceFilePath = sourceFilePath.toLowerCase();
+        let lowerFunctionName = functionName.toLowerCase();
+        //create the lookup if it doesn't exist
+        if (!this.functionNameCaseLookup[lowerSourceFilePath]) {
+            this.functionNameCaseLookup[lowerSourceFilePath] = {};
 
-    //         let fileContents = (await fsExtra.readFile(sourceFilePath)).toString();
-    //         //read the file contents
-    //         let regexp = /^\s*(?:sub|function)\s+([a-z0-9_]+)/gim;
-    //         let match: RegExpMatchArray;
+            let fileContents = (await fsExtra.readFile(sourceFilePath)).toString();
+            //read the file contents
+            let regexp = /^\s*(?:sub|function)\s+([a-z0-9_]+)/gim;
+            let match: RegExpMatchArray;
 
-    //         //create a cache of all function names in this file
-    //         while (match = regexp.exec(fileContents)) {
-    //             let correctFunctionName = match[1];
-    //             this.functionNameCaseLookup[lowerSourceFilePath][correctFunctionName.toLowerCase()] = correctFunctionName;
-    //         }
-    //     }
-    //     return this.functionNameCaseLookup[lowerSourceFilePath][lowerFunctionName];
-    // }
-    // private functionNameCaseLookup = {} as {
-    //     [lowerSourceFilePath: string]: {
-    //         [lowerFunctionName: string]: string
-    //     }
-    // };
+            //create a cache of all function names in this file
+            while (match = regexp.exec(fileContents)) {
+                let correctFunctionName = match[1];
+                this.functionNameCaseLookup[lowerSourceFilePath][correctFunctionName.toLowerCase()] = correctFunctionName;
+            }
+        }
+        return this.functionNameCaseLookup[lowerSourceFilePath][lowerFunctionName];
+    }
+    private functionNameCaseLookup = {} as {
+        [lowerSourceFilePath: string]: {
+            [lowerFunctionName: string]: string
+        }
+    };
 
-    // protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
-    //     this.log('stackTraceRequest');
-    //     let frames = [];
+    protected async stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments) {
+        this.log('stackTraceRequest');
+        let frames = [];
 
-    //     if (this.rokuAdapter.isAtDebuggerPrompt) {
-    //         let stackTrace = await this.rokuAdapter.getStackTrace();
+        if (this.rokuAdapter.isAtDebuggerPrompt) {
+            let stackTrace = await this.rokuAdapter.getStackTrace();
 
-    //         for (let debugFrame of stackTrace) {
-    //             let sourceLocation = await this.projectManager.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
+            for (let debugFrame of stackTrace) {
+                let sourceLocation = await this.projectManager.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
 
-    //             //the stacktrace returns function identifiers in all lower case. Try to get the actual case
-    //             //load the contents of the file and get the correct casing for the function identifier
-    //             try {
-    //                 let functionName = await this.getCorrectFunctionNameCase(sourceLocation.filePath, debugFrame.functionIdentifier);
-    //                 if (functionName) {
-    //                     debugFrame.functionIdentifier = functionName;
-    //                 }
-    //             } catch (e) {
-    //                 console.error(e);
-    //             }
+                //the stacktrace returns function identifiers in all lower case. Try to get the actual case
+                //load the contents of the file and get the correct casing for the function identifier
+                try {
+                    let functionName = await this.getCorrectFunctionNameCase(sourceLocation.filePath, debugFrame.functionIdentifier);
+                    if (functionName) {
+                        debugFrame.functionIdentifier = functionName;
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
 
-    //             let frame = new StackFrame(
-    //                 debugFrame.frameId,
-    //                 `${debugFrame.functionIdentifier}`,
-    //                 new Source(path.basename(sourceLocation.filePath), sourceLocation.filePath),
-    //                 sourceLocation.lineNumber,
-    //                 1
-    //             );
-    //             frames.push(frame);
-    //         }
-    //     } else {
-    //         console.log('Skipped calculating stacktrace because the RokuAdapter is not accepting input at this time');
-    //     }
-    //     response.body = {
-    //         stackFrames: frames,
-    //         totalFrames: frames.length
-    //     };
-    //     this.sendResponse(response);
-    // }
+                let frame = new StackFrame(
+                    debugFrame.frameId,
+                    `${debugFrame.functionIdentifier}`,
+                    new Source(path.basename(sourceLocation.filePath), sourceLocation.filePath),
+                    sourceLocation.lineNumber - 1,
+                    1
+                );
+                frames.push(frame);
+            }
+        } else {
+            console.log('Skipped calculating stacktrace because the RokuAdapter is not accepting input at this time');
+        }
+        response.body = {
+            stackFrames: frames,
+            totalFrames: frames.length
+        };
+        this.sendResponse(response);
+    }
 
     // protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
     //     const scopes = new Array<Scope>();
@@ -574,51 +574,51 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     //     this.sendResponse(response);
     // }
 
-    // protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments) {
-    //     this.log('continueRequest');
-    //     await this.rokuAdapter.continue();
-    //     this.sendResponse(response);
-    // }
+    protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments) {
+        this.log('continueRequest');
+        await this.rokuAdapter.continue();
+        this.sendResponse(response);
+    }
 
-    // protected async pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments) {
-    //     this.log('pauseRequest');
-    //     await this.rokuAdapter.pause();
-    //     this.sendResponse(response);
-    // }
+    protected async pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments) {
+        this.log('pauseRequest');
+        await this.rokuAdapter.pause();
+        this.sendResponse(response);
+    }
 
-    // protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments) {
-    //     this.log('reverseContinueRequest');
-    //     this.sendResponse(response);
-    // }
+    protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments) {
+        this.log('reverseContinueRequest');
+        this.sendResponse(response);
+    }
 
-    // /**
-    //  * Clicked the "Step Over" button
-    //  * @param response
-    //  * @param args
-    //  */
-    // protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments) {
-    //     this.log('nextRequest');
-    //     await this.rokuAdapter.stepOver();
-    //     this.sendResponse(response);
-    // }
+    /**
+     * Clicked the "Step Over" button
+     * @param response
+     * @param args
+     */
+    protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments) {
+        this.log('nextRequest');
+        await this.rokuAdapter.stepOver();
+        this.sendResponse(response);
+    }
 
-    // protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments) {
-    //     this.log('stepInRequest');
-    //     await this.rokuAdapter.stepInto();
-    //     this.sendResponse(response);
-    // }
+    protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments) {
+        this.log('stepInRequest');
+        await this.rokuAdapter.stepInto();
+        this.sendResponse(response);
+    }
 
-    // protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments) {
-    //     this.log('stepOutRequest');
-    //     await this.rokuAdapter.stepOut();
-    //     this.sendResponse(response);
-    // }
+    protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments) {
+        this.log('stepOutRequest');
+        await this.rokuAdapter.stepOut();
+        this.sendResponse(response);
+    }
 
-    // protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments) {
-    //     this.log('stepBackRequest');
+    protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments) {
+        this.log('stepBackRequest');
 
-    //     this.sendResponse(response);
-    // }
+        this.sendResponse(response);
+    }
 
     // public async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
     //     this.log(`variablesRequest: ${JSON.stringify(args)}`);
@@ -772,7 +772,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             // this.clearState();
             let exceptionText = '';
             const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
-            (event.body as any).allThreadsStopped = false;
+            (event.body as any).allThreadsStopped = true;
             this.sendEvent(event);
         });
 
@@ -781,7 +781,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             let rokuAdapter = await this.getRokuAdapter();
             let threads = await rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
-            this.sendEvent(new StoppedEvent('exception', threadId, exception.message));
+            this.sendEvent(new StoppedEvent(StoppedEventReason.exception, threadId, exception.message));
         });
 
         // If the roku says it can't continue, we are no longer able to debug, so kill the debug session
