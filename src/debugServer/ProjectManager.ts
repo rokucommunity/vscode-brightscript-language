@@ -174,10 +174,11 @@ export class ProjectManager {
         }
 
         let relativePath: string;
+        let fileProtocol = util.getFileScheme(debuggerOrStagingPath);
 
         //if the path starts with pkg, we have an exact match.
-        if (debuggerOrStagingPath.toLowerCase().indexOf('pkg:') === 0) {
-            relativePath = debuggerOrStagingPath.substring(4);
+        if (fileProtocol) {
+            relativePath = util.removeFileScheme(debuggerOrStagingPath);
 
             //an absolute path to a file in the staging directory
         } else if (path.isAbsolute(debuggerOrStagingPath)) {
