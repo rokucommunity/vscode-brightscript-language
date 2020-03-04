@@ -673,20 +673,21 @@ export class RokuSocketAdapter {
         return responseText;
     }
 
-    public async getStackTrace() {
+    public async getStackTrace(threadIndex: number = this.socketDebugger.primaryThread) {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot get stack trace: debugger is not paused');
         }
         let frames: StackFrame[] = [];
-        let stackTraceData: any = await this.socketDebugger.stackTrace();
+        let stackTraceData: any = await this.socketDebugger.stackTrace(threadIndex);
         for (let i = 0; i < stackTraceData.stackSize; i++) {
             let frameData = stackTraceData.entries[i];
             let frame: StackFrame = {
-                frameId: i,
+                frameId: stackTraceData.stackSize - i - 1, // frame index is the reverse of the returned order.
                 filePath: frameData.fileName,
                 lineNumber: frameData.lineNumber,
                 functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
             };
+            console.log(frame.functionIdentifier, frame.frameId);
             frames.push(frame);
         }
 
@@ -761,276 +762,59 @@ export class RokuSocketAdapter {
      * Given an expression, evaluate that statement ON the roku
      * @param expression
      */
-    public async getVariable(expression: string) {
+    public async getVariable(expression: string, stackFrameIndex: number, withChildren: boolean = true) {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot resolve variable: debugger is not paused');
         }
         return await this.resolve(`variable: ${expression}`, async () => {
-            let expressionType = await this.getVariableType(expression);
+            let regexp = /(\w+|\s+)+/g;
+            let match: RegExpMatchArray;
+            let variablePath = [];
 
-            let lowerExpressionType = expressionType ? expressionType.toLowerCase() : null;
-
-            let data: string;
-            //if the expression type is a string, we need to wrap the expression in quotes BEFORE we run the print so we can accurately capture the full string value
-            if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
-                data = await this.requestPipeline.executeCommand(`print "--string-wrap--" + ${expression} + "--string-wrap--"`, true);
-
-                //write a for loop to print every value from the array. This gets around the `...` after the 100th item issue in the roku print call
-            } else if (['roarray', 'rolist', 'robytearray'].indexOf(lowerExpressionType) > -1) {
-                data = await this.requestPipeline.executeCommand(
-                    `for each vscodeLoopItem in ${expression} : print "vscode_is_string:"; (invalid <> GetInterface(vscodeLoopItem, "ifString")); vscodeLoopItem : end for`
-                    , true);
-            } else if (['roassociativearray', 'rosgnode'].indexOf(lowerExpressionType) > -1) {
-                data = await this.requestPipeline.executeCommand(
-                    `for each vscodeLoopKey in ${expression}.keys() : print "vscode_key_start:" + vscodeLoopKey + ":vscode_key_stop " + "vscode_is_string:"; (invalid <> GetInterface(${expression}[vscodeLoopKey], "ifString")); ${expression}[vscodeLoopKey] : end for`,
-                    true);
-            } else {
-                data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
+            while (match = regexp.exec(expression)) {
+                variablePath.push(match[0]);
             }
 
-            let match = this.getExpressionDetails(data);
-            if (match !== undefined) {
-                let value = match;
-                if (lowerExpressionType === 'string' || lowerExpressionType === 'rostring') {
-                    value = value.trim().replace(/--string-wrap--/g, '');
-                    //add an escape character in front of any existing quotes
-                    value = value.replace(/"/g, '\\"');
-                    //wrap the string value with literal quote marks
-                    value = '"' + value + '"';
-                }
-                let highLevelType = this.getHighLevelType(expressionType);
+            let variableInfo: any = await this.socketDebugger.getVariables(variablePath, withChildren, stackFrameIndex);
+            console.log(variableInfo);
 
-                let children: EvaluateContainer[];
-                if (highLevelType === HighLevelType.array || ['roassociativearray', 'rosgnode', 'robytearray'].indexOf(lowerExpressionType) > -1) {
-                    //the print statment will always have 1 trailing newline, so remove that.
-                    value = util.removeTrailingNewline(value);
-                    //the array/associative array print is a loop of every value, so handle that
-                    children = this.getForLoopPrintedChildren(expression, value);
-                } else if (highLevelType === HighLevelType.object) {
-                    children = this.getObjectChildren(expression, value.trim());
-                }
+            if (variableInfo.errorCode === 'OK') {
+                let mainContainer: EvaluateContainer;
+                let children: EvaluateContainer[] = [];
+                let firstHandled = false;
+                for (let variable of variableInfo.variables) {
 
-                //add a computed `[[children]]` property to allow expansion of node children
-                if (lowerExpressionType === 'rosgnode') {
-                    let nodeChildren = <EvaluateContainer>{
-                        name: '[[children]]',
-                        type: 'roArray',
-                        highLevelType: 'array',
-                        evaluateName: `${expression}.getChildren(-1,0)`,
-                        children: []
+                    let container = <EvaluateContainer>{
+                        name: expression,
+                        evaluateName: expression,
+                        variablePath: variablePath,
+                        type: variable.variableType,
+                        value: variable.value,
+                        keyType: variable.keyType,
+                        elementCount: variable.elementCount
                     };
-                    children.push(nodeChildren);
-                }
 
-                //if this item is an array or a list, add the item count to the end of the type
-                if (highLevelType === HighLevelType.array) {
-                    //TODO re-enable once we find how to refresh watch/variables panel, since lazy loaded arrays can't show a length
-                    //expressionType += `(${children.length})`;
+                    if (!firstHandled) {
+                        firstHandled = true;
+                        mainContainer = container;
+                    } else {
+                        console.log(mainContainer.keyType);
+                        let pathAddition = mainContainer.keyType === 'Integer' ? children.length : variable.name;
+                        container.name = pathAddition.toString();
+                        container.evaluateName = `${mainContainer.evaluateName}.${pathAddition}`;
+                        container.variablePath = [].concat(container.variablePath, [pathAddition.toString()]);
+                        if (container.keyType) {
+                            container.children = [];
+                        }
+                        children.push(container);
+                    }
+                    // let childVar = this.getVariableFromResult(childContainer);
+                    // childVariables.push(childVar);
                 }
-
-                let container = <EvaluateContainer>{
-                    name: expression,
-                    evaluateName: expression,
-                    type: expressionType,
-                    value: value.trim(),
-                    highLevelType: highLevelType,
-                    children: children
-                };
-                return container;
+                mainContainer.children = children;
+                return mainContainer;
             }
         });
-    }
-
-    /**
-     * In order to get around the `...` issue in printed arrays, `getVariable` now prints every value from an array or associative array in a for loop.
-     * As such, we need to iterate over every printed result to produce the children array
-     */
-    public getForLoopPrintedChildren(expression: string, data: string) {
-        let children = [] as EvaluateContainer[];
-        let lines = eol.split(data);
-        //if there are no lines, this is an empty object/array
-        if (lines.length === 1 && lines[0].trim() === '') {
-            return children;
-        }
-        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            let line = lines[lineIndex];
-
-            let keyStartWrapper = 'vscode_key_start:';
-            let keyStopWrapper = ':vscode_key_stop ';
-
-            let child = <EvaluateContainer>{
-                children: []
-            };
-
-            const keyStartIdx = line.indexOf(keyStartWrapper);
-            //if the key is present, extract it
-            if (keyStartIdx > -1) {
-                child.name = line.substring(keyStartIdx + keyStartWrapper.length, line.indexOf(keyStopWrapper));
-                child.evaluateName = `${expression}["${child.name}"]`;
-
-                //throw out the key chunk
-                line = line.substring(line.indexOf(keyStopWrapper) + keyStopWrapper.length);
-
-            } else {
-                child.name = children.length.toString();
-                child.evaluateName = `${expression}[${children.length}]`;
-            }
-
-            if (line.indexOf('vscode_is_string:true') > -1) {
-                line = line.replace('vscode_is_string:true', '');
-                //support multi-line strings
-                let stringLines = [line];
-
-                //go one past the final line so that we can more easily detect the end of the input
-                stringInner: for (lineIndex = lineIndex; lineIndex < lines.length; lineIndex++) {
-                    //go one past (since we already have current line. Also, because we want to run off the end of the list
-                    //so we can know there are no more lines
-                    let nextLine = lines[lineIndex + 1];
-                    if (nextLine === undefined || nextLine && nextLine.trimLeft().indexOf('vscode_') === 0) {
-                        break stringInner;
-                    } else {
-                        stringLines.push(nextLine);
-                    }
-                }
-                line = '"' + stringLines.join('\n') + '"';
-            } else {
-                line = line.replace('vscode_is_string:false', '');
-            }
-
-            //skip empty lines
-            if (line.trim() === '') {
-                continue;
-            }
-
-            const objectType = this.getObjectType(line);
-            const isRoSGNode = objectType && objectType.indexOf('roSGNode') === 0;
-            //handle collections
-            if (['roList', 'roArray', 'roAssociativeArray', 'roByteArray'].indexOf(objectType) > -1 || isRoSGNode) {
-                let collectionEnd: ')' | ']' | '}';
-                if (line.indexOf('<Component: roList>') > -1) {
-                    collectionEnd = ')';
-                    child.highLevelType = HighLevelType.array;
-                    child.type = objectType;
-                } else if (line.indexOf('<Component: roArray>') > -1) {
-                    collectionEnd = ']';
-                    child.highLevelType = HighLevelType.array;
-                    child.type = this.getObjectType(line);
-                } else if (line.indexOf('<Component: roByteArray>') > -1) {
-                    collectionEnd = ']';
-                    child.highLevelType = HighLevelType.array;
-                    child.type = this.getObjectType(line);
-                } else if (line.indexOf('<Component: roAssociativeArray>') > -1 || isRoSGNode) {
-                    collectionEnd = '}';
-                    child.highLevelType = HighLevelType.object;
-                    child.type = this.getObjectType(line);
-                }
-
-                let collectionLineList = [line];
-                inner: for (lineIndex = lineIndex + 1; lineIndex < lines.length; lineIndex++) {
-                    let innerLine = lines[lineIndex];
-
-                    collectionLineList.push(lines[lineIndex]);
-
-                    //stop collecting lines
-                    if (innerLine.trim() === collectionEnd) {
-                        break inner;
-                    }
-                }
-                //if the next-to-last line of collection is `...`, then scrap the values
-                //because we will need to run a full evaluation (later) to get around the `...` issue
-                if (collectionLineList.length > 3 && collectionLineList[collectionLineList.length - 2].trim() === '...') {
-                    child.children = [];
-
-                    //get the object children
-                } else if (child.highLevelType === HighLevelType.object) {
-                    child.children = this.getObjectChildren(child.evaluateName, collectionLineList.join('\n'));
-
-                    //get all of the array children right now since we have them
-                } else {
-                    child.children = this.getArrayOrListChildren(child.evaluateName, collectionLineList.join('\n'));
-                    child.type += `(${child.children.length})`;
-                }
-                if (isRoSGNode) {
-                    let nodeChildrenProperty = <EvaluateContainer>{
-                        name: '[[children]]',
-                        type: 'roArray',
-                        highLevelType: 'array',
-                        evaluateName: `${child.evaluateName}.getChildren(-1,0)`,
-                        children: []
-                    };
-                    child.children.push(nodeChildrenProperty);
-                }
-
-                //this if block must preseec the `line.indexOf('<Component') > -1` line because roInvalid is a component too.
-            } else if (objectType === 'roInvalid') {
-                child.highLevelType = HighLevelType.uninitialized;
-                child.type = 'roInvalid';
-                child.value = 'roInvalid';
-                child.children = undefined;
-
-            } else if (line.indexOf('<Component:') > -1) {
-                //handle things like nodes
-                child.highLevelType = HighLevelType.object;
-                child.type = objectType;
-
-            } else {
-                //is some primative type
-                child.type = this.getPrimativeTypeFromValue(line);
-                child.value = line.trim();
-                child.highLevelType = HighLevelType.primative;
-                child.children = undefined;
-            }
-            children.push(child);
-        }
-        let sortedChildren = orderBy(children, ['name']);
-        return sortedChildren;
-    }
-
-    /**
-     * Get all of the children of an array or list
-     */
-    private getArrayOrListChildren(expression: string, data: string): EvaluateContainer[] {
-        let collectionEnd: string;
-
-        //this function can handle roArray and roList objects, but we need to know which it is
-        if (data.indexOf('<Component: roList>') === 0) {
-            collectionEnd = ')';
-
-            //array
-        } else {
-            collectionEnd = ']';
-        }
-        let children = [] as EvaluateContainer[];
-        //split by newline. the array contents start at index 2
-        let lines = eol.split(data);
-        let arrayIndex = 0;
-        for (let i = 2; i < lines.length; i++) {
-            let line = lines[i].trim();
-            if (line === collectionEnd) {
-                return children;
-            }
-            let child = <EvaluateContainer>{
-                name: arrayIndex.toString(),
-                evaluateName: `${expression}[${arrayIndex}]`,
-                children: []
-            };
-
-            //if the line is an object, array or function
-            let match;
-            if (match = this.getObjectType(line)) {
-                let type = match;
-                child.type = type;
-                child.highLevelType = this.getHighLevelType(type);
-                child.value = type;
-            } else {
-                child.type = this.getPrimativeTypeFromValue(line);
-                child.value = line;
-                child.highLevelType = HighLevelType.primative;
-            }
-            children.push(child);
-            arrayIndex++;
-        }
-        throw new Error('Unable to parse BrightScript array');
     }
 
     private getPrimativeTypeFromValue(value: string): PrimativeType {
@@ -1052,108 +836,6 @@ export class RokuSocketAdapter {
 
     }
 
-    private getObjectChildren(expression: string, data: string): EvaluateContainer[] {
-        try {
-            let children: EvaluateContainer[] = [];
-            //split by newline. the object contents start at index 2
-            let lines = eol.split(data);
-            for (let i = 2; i < lines.length; i++) {
-                let line = lines[i];
-                let trimmedLine = line.trim();
-
-                //if this is the end of the object, we are finished collecting children. exit
-                if (trimmedLine === '}') {
-                    return children;
-                }
-                let child: EvaluateContainer;
-                //parse the line (try and determine the key and value)
-                let lineParseResult = new PrintedObjectParser(line).result;
-                if (!lineParseResult) {
-                    //skip this line because something strange happened, or we encountered the `...`
-                    child = {
-                        name: line,
-                        type: '<ERROR>',
-                        highLevelType: HighLevelType.uninitialized,
-                        evaluateName: undefined,
-                        value: '<ERROR>',
-                        children: []
-                    };
-                } else {
-                    child = <EvaluateContainer>{
-                        name: lineParseResult.key,
-                        evaluateName: `${expression}.${lineParseResult.key}`,
-                        children: []
-                    };
-
-                    const type = this.getObjectType(trimmedLine);
-                    //if the line is an object, array or function
-                    if (type) {
-                        child.type = type;
-                        child.highLevelType = this.getHighLevelType(type);
-                        child.value = type;
-                    } else {
-                        child.type = this.getPrimativeTypeFromValue(trimmedLine);
-                        child.value = lineParseResult.value;
-                        child.highLevelType = HighLevelType.primative;
-                    }
-                }
-
-                children.push(child);
-            }
-            return children;
-        } catch (e) {
-            throw new Error(`Unable to parse BrightScript object: ${e.message}. Data: ${data}`);
-        }
-    }
-
-    /**
-     * Determine if this value is a primative type
-     * @param expressionType
-     */
-    private getHighLevelType(expressionType: string) {
-        if (!expressionType) {
-            throw new Error(`Unknown expression type: ${expressionType}`);
-        }
-
-        expressionType = expressionType.toLowerCase();
-        let primativeTypes = ['boolean', 'integer', 'longinteger', 'float', 'double', 'string', 'rostring', 'invalid'];
-        if (primativeTypes.indexOf(expressionType) > -1) {
-            return HighLevelType.primative;
-        } else if (expressionType === 'roarray' || expressionType === 'rolist') {
-            return HighLevelType.array;
-        } else if (expressionType === 'function') {
-            return HighLevelType.function;
-        } else if (expressionType === '<uninitialized>') {
-            return HighLevelType.uninitialized;
-        } else {
-            return HighLevelType.object;
-        }
-    }
-
-    /**
-     * Get the type of the provided expression
-     * @param expression
-     */
-    public async getVariableType(expression) {
-        if (!this.isAtDebuggerPrompt) {
-            throw new Error('Cannot get variable type: debugger is not paused');
-        }
-        expression = `Type(${expression})`;
-        return await this.resolve(`${expression}`, async () => {
-            let data = await this.requestPipeline.executeCommand(`print ${expression}`, true);
-
-            let match;
-            if (match = this.getExpressionDetails(data)) {
-                let typeValue: string = match;
-                //remove whitespace
-                typeValue = typeValue.trim();
-                return typeValue;
-            } else {
-                return null;
-            }
-        });
-    }
-
     /**
      * Cache items by a unique key
      * @param expression
@@ -1170,60 +852,32 @@ export class RokuSocketAdapter {
      * Get a list of threads. The first thread in the list is the active thread
      */
     public async getThreads() {
-        let threads: Thread[] = [];
-        let threadsData: any = await this.socketDebugger.threads();
-
-        for (let i = 0; i < threadsData.threadsCount; i ++) {
-            let threadInfo = threadsData.threads[i];
-            let thread = <Thread> {
-                isSelected: threadInfo.isPrimary,
-                filePath: threadInfo.fileName,
-                lineNumber: threadInfo.lineNumber,
-                lineContents: threadInfo.codeSnippet,
-                threadId: i
-            };
-            threads.push(thread);
+        if (!this.isAtDebuggerPrompt) {
+            throw new Error('Cannot get threads: debugger is not paused');
         }
+        return await this.resolve('threads', async () => {
+            let threads: Thread[] = [];
+            let threadsData: any = await this.socketDebugger.threads();
 
-        //make sure the selected thread is at the top
-        threads.sort((a, b) => {
-            return a.isSelected ? -1 : 1;
+            for (let i = 0; i < threadsData.threadsCount; i ++) {
+                let threadInfo = threadsData.threads[i];
+                let thread = <Thread> {
+                    isSelected: threadInfo.isPrimary,
+                    filePath: threadInfo.fileName,
+                    lineNumber: threadInfo.lineNumber,
+                    lineContents: threadInfo.codeSnippet,
+                    threadId: i
+                };
+                threads.push(thread);
+            }
+
+            //make sure the selected thread is at the top
+            threads.sort((a, b) => {
+                return a.isSelected ? -1 : 1;
+            });
+
+            return threads;
         });
-
-        return threads;
-        // if (!this.isAtDebuggerPrompt) {
-        //     throw new Error('Cannot get threads: debugger is not paused');
-        // }
-        // return await this.resolve('threads', async () => {
-        //     let data = await this.requestPipeline.executeCommand('threads', true);
-
-        //     let dataString = data.toString();
-        //     let matches;
-        //     let threads: Thread[] = [];
-        //     if (matches = /^\s+(\d+\*)\s+(.*)\((\d+)\)\s+(.*)/gm.exec(dataString)) {
-        //         //skip index 0 because it's the whole string
-        //         for (let i = 1; i < matches.length; i = i + 4) {
-        //             let threadId: string = matches[i];
-        //             let thread = <Thread>{
-        //                 isSelected: false,
-        //                 filePath: matches[i + 1],
-        //                 lineNumber: parseInt(matches[i + 2]),
-        //                 lineContents: matches[i + 3]
-        //             };
-        //             if (threadId.indexOf('*') > -1) {
-        //                 thread.isSelected = true;
-        //                 threadId = threadId.replace('*', '');
-        //             }
-        //             thread.threadId = parseInt(threadId);
-        //             threads.push(thread);
-        //         }
-        //         //make sure the selected thread is at the top
-        //         threads.sort((a, b) => {
-        //             return a.isSelected ? -1 : 1;
-        //         });
-        //     }
-        //     return threads;
-        // });
     }
 
     /**
@@ -1305,10 +959,18 @@ export enum HighLevelType {
 export interface EvaluateContainer {
     name: string;
     evaluateName: string;
+    variablePath: string[];
     type: string;
     value: string;
+    keyType: KeyType;
+    elementCount: number;
     highLevelType: HighLevelType;
     children: EvaluateContainer[];
+}
+
+export enum KeyType {
+    string = 'String',
+    integer = 'Integer'
 }
 
 export interface Thread {

@@ -530,7 +530,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         let frames = [];
 
         if (this.rokuAdapter.isAtDebuggerPrompt) {
-            let stackTrace = await this.rokuAdapter.getStackTrace();
+            let stackTrace = await this.rokuAdapter.getStackTrace(args.threadId);
 
             for (let debugFrame of stackTrace) {
                 let sourceLocation = await this.projectManager.getSourceLocation(debugFrame.filePath, debugFrame.lineNumber);
@@ -565,14 +565,33 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    // protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-    //     const scopes = new Array<Scope>();
-    //     scopes.push(new Scope('Local', this.variableHandles.create('local'), true));
-    //     response.body = {
-    //         scopes: scopes
-    //     };
-    //     this.sendResponse(response);
-    // }
+    protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
+        const scopes = new Array<Scope>();
+
+        let refId = this.getEvaluateRefId('');
+        let v: DebugProtocol.Variable;
+        //if we already looked this item up, return it
+        if (this.variables[refId]) {
+            v = this.variables[refId];
+        } else {
+            let result = await this.rokuAdapter.getVariable('', args.frameId, true);
+            if (!result) {
+                throw new Error(`Could not get scopes`);
+            }
+            v = this.getVariableFromResult(result);
+            //TODO - testing something, remove later
+            (v as any).request_seq = response.request_seq;
+            (v as any).frameId = args.frameId;
+        }
+
+        let scope = new Scope('Local', refId, true);
+
+        scopes.push(scope);
+        response.body = {
+            scopes: scopes
+        };
+        this.sendResponse(response);
+    }
 
     protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments) {
         this.log('continueRequest');
@@ -620,101 +639,93 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    // public async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
-    //     this.log(`variablesRequest: ${JSON.stringify(args)}`);
+    public async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments) {
+        this.log(`variablesRequest: ${JSON.stringify(args)}`);
 
-    //     let childVariables: AugmentedVariable[] = [];
-    //     //wait for any `evaluate` commands to finish so we have a higher likelyhood of being at a debugger prompt
-    //     await this.evaluateRequestPromise;
-    //     if (this.rokuAdapter.isAtDebuggerPrompt) {
-    //         const reference = this.variableHandles.get(args.variablesReference);
-    //         if (reference) {
-    //             if (this.launchArgs.enableVariablesPanel) {
-    //                 const vars = await this.rokuAdapter.getScopeVariables(reference);
+        let childVariables: AugmentedVariable[] = [];
+        //wait for any `evaluate` commands to finish so we have a higher likely hood of being at a debugger prompt
+        await this.evaluateRequestPromise;
 
-    //                 for (const varName of vars) {
-    //                     let result = await this.rokuAdapter.getVariable(varName);
-    //                     let tempVar = this.getVariableFromResult(result);
-    //                     childVariables.push(tempVar);
-    //                 }
-    //             } else {
-    //                 childVariables.push(new Variable('variables disabled by launch.json setting', 'enableVariablesPanel: false'));
-    //             }
-    //         } else {
-    //             //find the variable with this reference
-    //             let v = this.variables[args.variablesReference];
-    //             //query for child vars if we haven't done it yet.
-    //             if (v.childVariables.length === 0) {
-    //                 let result = await this.rokuAdapter.getVariable(v.evaluateName);
-    //                 let tempVar = this.getVariableFromResult(result);
-    //                 v.childVariables = tempVar.childVariables;
-    //             }
-    //             childVariables = v.childVariables;
-    //         }
+        if (this.rokuAdapter.isAtDebuggerPrompt) {
+            //find the variable with this reference
+            let v = this.variables[args.variablesReference];
+            //query for child vars if we haven't done it yet.
+            if (v.childVariables.length === 0) {
+                let result = await this.rokuAdapter.getVariable(v.evaluateName, (v as any).frameId ? (v as any).frameId : 0);
+                let tempVar = this.getVariableFromResult(result);
+                v.childVariables = tempVar.childVariables;
+            }
+            childVariables = v.childVariables;
 
-    //         //if the variable is an array, send only the requested range
-    //         if (Array.isArray(childVariables) && args.filter === 'indexed') {
-    //             //only send the variable range requested by the debugger
-    //             childVariables = childVariables.slice(args.start, args.start + args.count);
-    //         }
-    //         response.body = {
-    //             variables: childVariables
-    //         };
-    //     } else {
-    //         console.log('Skipped getting variables because the RokuAdapter is not accepting input at this time');
-    //     }
-    //     this.sendResponse(response);
-    // }
+            //if the variable is an array, send only the requested range
+            if (Array.isArray(childVariables) && args.filter === 'indexed') {
+                //only send the variable range requested by the debugger
+                childVariables = childVariables.slice(args.start, args.start + args.count);
+            }
+            response.body = {
+                variables: childVariables
+            };
+        } else {
+            console.log('Skipped getting variables because the RokuAdapter is not accepting input at this time');
+        }
+        this.sendResponse(response);
+    }
 
-    // /**
-    //  * the vscode hover will occasionally forget to include the closing quotemark for quoted strings,
-    //  * so this attempts to auto-insert a closing quotemark if an opening one was found but is missing the closing one
-    //  * @param text
-    //  */
-    // private autoInsertClosingQuote(text: string) {
-    //     if (text.startsWith('"') && text.trim().endsWith('"') === false) {
-    //         text = text.trim() + '"';
-    //     }
-    //     return text;
-    // }
+    /**
+     * the vscode hover will occasionally forget to include the closing quotemark for quoted strings,
+     * so this attempts to auto-insert a closing quotemark if an opening one was found but is missing the closing one
+     * @param text
+     */
+    private autoInsertClosingQuote(text: string) {
+        if (text.startsWith('"') && text.trim().endsWith('"') === false) {
+            text = text.trim() + '"';
+        }
+        return text;
+    }
 
-    // private evaluateRequestPromise = Promise.resolve();
+    private evaluateRequestPromise = Promise.resolve();
 
-    // public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
-    //     let deferred = defer<any>();
+    public async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments) {
+        let deferred = defer<any>();
 
-    //     this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
-    //         return deferred.promise;
-    //     });
+        this.evaluateRequestPromise = this.evaluateRequestPromise.then(() => {
+            return deferred.promise;
+        });
 
-    //     //fix vscode bug that excludes closing quotemark sometimes.
-    //     if (args.context === 'hover') {
-    //         args.expression = this.autoInsertClosingQuote(args.expression);
-    //     }
+        //fix vscode bug that excludes closing quotemark sometimes.
+        if (args.context === 'hover') {
+            args.expression = this.autoInsertClosingQuote(args.expression);
+        }
 
-    //     try {
-
-    //         if (this.rokuAdapter.isAtDebuggerPrompt) {
-    //             if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
+        try {
+            if (this.rokuAdapter.isAtDebuggerPrompt) {
+                if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
     //                 //if this command has the word print in front of it, remove that word
-    //                 let expression = args.expression.replace(/^print/i, '').trim();
-    //                 let refId = this.getEvaluateRefId(expression);
-    //                 let v: DebugProtocol.Variable;
-    //                 //if we already looked this item up, return it
-    //                 if (this.variables[refId]) {
-    //                     v = this.variables[refId];
-    //                 } else {
-    //                     let result = await this.rokuAdapter.getVariable(expression);
-    //                     v = this.getVariableFromResult(result);
-    //                     //TODO - testing something, remove later
-    //                     (v as any).request_seq = response.request_seq;
-    //                 }
-    //                 response.body = {
-    //                     result: v.value,
-    //                     variablesReference: v.variablesReference,
-    //                     namedVariables: v.namedVariables || 0,
-    //                     indexedVariables: v.indexedVariables || 0
-    //                 };
+                    let expression = args.expression.replace(/^print/i, '').trim();
+                    let refId = this.getEvaluateRefId(expression);
+                    let v: DebugProtocol.Variable;
+                    //if we already looked this item up, return it
+                    if (this.variables[refId]) {
+                        v = this.variables[refId];
+                    } else {
+                        let result = await this.rokuAdapter.getVariable(expression.toLowerCase(), args.frameId, true);
+                        if (!result) {
+                            throw new Error(`bad variable request ${expression}`);
+                        }
+                        console.log(result);
+                        v = this.getVariableFromResult(result);
+                        //TODO - testing something, remove later
+                        (v as any).request_seq = response.request_seq;
+                        (v as any).frameId = args.frameId;
+                    }
+
+                    response.body = {
+                        result: v.value,
+                        variablesReference: v.variablesReference,
+                        namedVariables: v.namedVariables || 0,
+                        indexedVariables: v.indexedVariables || 0
+                    };
+                }
     //             } else if (args.context === 'repl') {
     //                 //exclude any of the standard interaction commands so we don't screw up the IDE's debugger state
     //                 let excludedExpressions = ['cont', 'c', 'down', 'd', 'exit', 'over', 'o', 'out', 'step', 's', 't', 'thread', 'th', 'up', 'u'];
@@ -729,14 +740,14 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     //                     // this.sendEvent(new OutputEvent(result, 'stdout'));
     //                 }
     //             }
-    //         } else {
-    //             console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
-    //         }
-    //     } finally {
-    //         deferred.resolve();
-    //     }
-    //     this.sendResponse(response);
-    // }
+            } else {
+                console.log('Skipped evaluate request because RokuAdapter is not accepting requests at this time');
+            }
+        } finally {
+            deferred.resolve();
+        }
+        this.sendResponse(response);
+    }
 
     // /**
     //  * Called when the host stops debugging
@@ -769,7 +780,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             let threads = await this.rokuAdapter.getThreads();
             let threadId = threads[0].threadId;
 
-            // this.clearState();
+            this.clearState();
             let exceptionText = '';
             const event: StoppedEvent = new StoppedEvent(StoppedEventReason.breakpoint, threadId, exceptionText);
             (event.body as any).allThreadsStopped = true;
@@ -801,39 +812,43 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         this.sendEvent(new LogOutputEvent(`debugger: ${message}`));
     }
 
-    // private getVariableFromResult(result: EvaluateContainer) {
-    //     let v: AugmentedVariable;
-    //     if (result.highLevelType === 'primative' || result.highLevelType === 'uninitialized') {
-    //         v = new Variable(result.name, `${result.value}`);
-    //     } else if (result.highLevelType === 'array') {
-    //         let refId = this.getEvaluateRefId(result.evaluateName);
-    //         v = new Variable(result.name, result.type, refId, result.children.length, 0);
-    //         this.variables[refId] = v;
-    //     } else if (result.highLevelType === 'object') {
-    //         let refId = this.getEvaluateRefId(result.evaluateName);
-    //         v = new Variable(result.name, result.type, refId, 0, result.children.length);
-    //         this.variables[refId] = v;
-    //     } else if (result.highLevelType === 'function') {
-    //         v = new Variable(result.name, result.value);
-    //     }
-    //     v.evaluateName = result.evaluateName;
-    //     if (result.children) {
-    //         let childVariables = [];
-    //         for (let childContainer of result.children) {
-    //             let childVar = this.getVariableFromResult(childContainer);
-    //             childVariables.push(childVar);
-    //         }
-    //         v.childVariables = childVariables;
-    //     }
-    //     return v;
-    // }
+    private getVariableFromResult(result: EvaluateContainer) {
+        let v: AugmentedVariable;
+        if (result) {
 
-    // private getEvaluateRefId(expression: string) {
-    //     if (!this.evaluateRefIdLookup[expression]) {
-    //         this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
-    //     }
-    //     return this.evaluateRefIdLookup[expression];
-    // }
+            let refId = this.getEvaluateRefId(result.evaluateName);
+            if (result.keyType) {
+                if (result.keyType === 'Integer') {
+                    v = new Variable(result.name, result.type, refId, result.elementCount, 0);
+                    this.variables[refId] = v;
+                } else if (result.keyType === 'String') {
+                    v = new Variable(result.name, result.type, refId, 0, result.elementCount);
+                }
+            } else {
+                v = new Variable(result.name, `${result.value}`);
+            }
+            this.variables[refId] = v;
+
+            v.evaluateName = result.evaluateName;
+
+            if (result.children) {
+                let childVariables = [];
+                for (let childContainer of result.children) {
+                    let childVar = this.getVariableFromResult(childContainer);
+                    childVariables.push(childVar);
+                }
+                v.childVariables = childVariables;
+            }
+        }
+        return v;
+    }
+
+    private getEvaluateRefId(expression: string) {
+        if (!this.evaluateRefIdLookup[expression]) {
+            this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
+        }
+        return this.evaluateRefIdLookup[expression];
+    }
 
     private clearState() {
         //erase all cached variables
