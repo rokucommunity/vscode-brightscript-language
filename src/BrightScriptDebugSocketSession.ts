@@ -431,36 +431,36 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         console.log('configurationDoneRequest');
     }
 
-    // /**
-    //  * Called every time a breakpoint is created, modified, or deleted, for each file. This receives the entire list of breakpoints every time.
-    //  */
-    // public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
-    //     let sanitizedBreakpoints = this.breakpointManager.replaceBreakpoints(args.source.path, args.breakpoints);
-    //     //sort the breakpoints
-    //     var sortedAndFilteredBreakpoints = orderBy(sanitizedBreakpoints, [x => x.line, x => x.column])
-    //         //filter out the inactive breakpoints
-    //         .filter(x => x.isHidden === false);
+    /**
+     * Called every time a breakpoint is created, modified, or deleted, for each file. This receives the entire list of breakpoints every time.
+     */
+    public setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments) {
+        let sanitizedBreakpoints = this.breakpointManager.replaceBreakpoints(args.source.path, args.breakpoints);
+        //sort the breakpoints
+        var sortedAndFilteredBreakpoints = orderBy(sanitizedBreakpoints, [x => x.line, x => x.column])
+            //filter out the inactive breakpoints
+            .filter(x => x.isHidden === false);
 
-    //     response.body = {
-    //         breakpoints: sortedAndFilteredBreakpoints
-    //     };
-    //     this.sendResponse(response);
+        response.body = {
+            breakpoints: sortedAndFilteredBreakpoints
+        };
+        this.sendResponse(response);
 
-    //     //set a small timeout so the user sees the breakpoints disappear before reappearing
-    //     //This is disabled because I'm not sure anyone actually wants this functionality, but I didn't want to lose it.
-    //     // setTimeout(() => {
-    //     //     //notify the client about every other breakpoint that was not explicitly requested here
-    //     //     //(basically force to re-enable the `stop` breakpoints that were written into the source code by the debugger)
-    //     //     var otherBreakpoints = sanitizedBreakpoints.filter(x => sortedAndFilteredBreakpoints.indexOf(x) === -1);
-    //     //     for (var breakpoint of otherBreakpoints) {
-    //     //         this.sendEvent(new BreakpointEvent('new', <DebugProtocol.Breakpoint>{
-    //     //             line: breakpoint.line,
-    //     //             verified: true,
-    //     //             source: args.source
-    //     //         }));
-    //     //     }
-    //     // }, 100);
-    // }
+        // set a small timeout so the user sees the breakpoints disappear before reappearing
+        // This is disabled because I'm not sure anyone actually wants this functionality, but I didn't want to lose it.
+        // setTimeout(() => {
+        //     //notify the client about every other breakpoint that was not explicitly requested here
+        //     //(basically force to re-enable the `stop` breakpoints that were written into the source code by the debugger)
+        //     var otherBreakpoints = sanitizedBreakpoints.filter(x => sortedAndFilteredBreakpoints.indexOf(x) === -1);
+        //     for (var breakpoint of otherBreakpoints) {
+        //         this.sendEvent(new BreakpointEvent('new', <DebugProtocol.Breakpoint>{
+        //             line: breakpoint.line,
+        //             verified: true,
+        //             source: args.source
+        //         }));
+        //     }
+        // }, 100);
+    }
 
     protected async exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments) {
         this.log('exceptionInfoRequest');
@@ -493,12 +493,12 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    // /**
-    //  * The stacktrace sent by Roku forces all BrightScript function names to lower case.
-    //  * This function will scan the source file, and attempt to find the exact casing from the function definition.
-    //  * Also, this function caches results, so it should be faster than the previous implementation
-    //  * which read the source file from the file system on each call
-    //  */
+    /**
+     * The stacktrace sent by Roku forces all BrightScript function names to lower case.
+     * This function will scan the source file, and attempt to find the exact casing from the function definition.
+     * Also, this function caches results, so it should be faster than the previous implementation
+     * which read the source file from the file system on each call
+     */
     private async getCorrectFunctionNameCase(sourceFilePath: string, functionName: string) {
         let lowerSourceFilePath = sourceFilePath.toLowerCase();
         let lowerFunctionName = functionName.toLowerCase();
@@ -700,7 +700,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         try {
             if (this.rokuAdapter.isAtDebuggerPrompt) {
                 if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
-    //                 //if this command has the word print in front of it, remove that word
+                    //if this command has the word print in front of it, remove that word
                     let expression = args.expression.replace(/^print/i, '').trim();
                     let refId = this.getEvaluateRefId(expression);
                     let v: DebugProtocol.Variable;
@@ -815,7 +815,6 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     private getVariableFromResult(result: EvaluateContainer) {
         let v: AugmentedVariable;
         if (result) {
-
             let refId = this.getEvaluateRefId(result.evaluateName);
             if (result.keyType) {
                 if (result.keyType === 'Integer') {
