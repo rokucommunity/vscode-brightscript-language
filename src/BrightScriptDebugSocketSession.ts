@@ -617,19 +617,19 @@ export class BrightScriptDebugSocketSession extends DebugSession {
      */
     protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments) {
         this.log('nextRequest');
-        await this.rokuAdapter.stepOver();
+        await this.rokuAdapter.stepOver(args.threadId);
         this.sendResponse(response);
     }
 
     protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments) {
         this.log('stepInRequest');
-        await this.rokuAdapter.stepInto();
+        await this.rokuAdapter.stepInto(args.threadId);
         this.sendResponse(response);
     }
 
     protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments) {
         this.log('stepOutRequest');
-        await this.rokuAdapter.stepOut();
+        await this.rokuAdapter.stepOut(args.threadId);
         this.sendResponse(response);
     }
 

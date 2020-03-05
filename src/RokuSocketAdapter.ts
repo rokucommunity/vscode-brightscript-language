@@ -616,19 +616,19 @@ export class RokuSocketAdapter {
     /**
      * Send command to step over
      */
-    public async stepOver() {
+    public async stepOver(threadId: number) {
         this.clearCache();
-        return await this.socketDebugger.stepOver();
+        return await this.socketDebugger.stepOver(threadId);
     }
 
-    public async stepInto() {
+    public async stepInto(threadId: number) {
         this.clearCache();
-        return await this.socketDebugger.stepIn();
+        return await this.socketDebugger.stepIn(threadId);
     }
 
-    public async stepOut() {
+    public async stepOut(threadId: number) {
         this.clearCache();
-        return await this.socketDebugger.stepOut();
+        return await this.socketDebugger.stepOut(threadId);
     }
 
     /**
