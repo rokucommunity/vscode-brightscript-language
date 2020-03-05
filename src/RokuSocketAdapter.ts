@@ -51,7 +51,9 @@ export class RokuSocketAdapter {
     private debugEndRegex: RegExp;
     private rendezvousTracker: RendezvousTracker;
     private socketDebugger: BrightscriptDebugger;
+    private nextFrameId: number = 1;
 
+    private stackFramesCache: { [keys: number]: StackFrame } = {};
     private cache = {};
 
     /**
@@ -113,7 +115,6 @@ export class RokuSocketAdapter {
      * which indicates that the app is running on the Roku
      */
     public isAppRunning = false;
-
 
     public async activate() {
         this.isActivated = true;
@@ -653,7 +654,7 @@ export class RokuSocketAdapter {
      */
     public clearCache() {
         this.cache = {};
-        // this.isAtDebuggerPrompt = false;
+        this.stackFramesCache = {};
     }
 
     /**
@@ -677,21 +678,29 @@ export class RokuSocketAdapter {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot get stack trace: debugger is not paused');
         }
-        let frames: StackFrame[] = [];
-        let stackTraceData: any = await this.socketDebugger.stackTrace(threadIndex);
-        for (let i = 0; i < stackTraceData.stackSize; i++) {
-            let frameData = stackTraceData.entries[i];
-            let frame: StackFrame = {
-                frameId: stackTraceData.stackSize - i - 1, // frame index is the reverse of the returned order.
-                filePath: frameData.fileName,
-                lineNumber: frameData.lineNumber - 1,
-                functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
-            };
-            console.log(frame.functionIdentifier, frame.frameId);
-            frames.push(frame);
-        }
+        return await this.resolve(`stack trace for thread ${threadIndex}`, async () => {
+            let frames: StackFrame[] = [];
+            let stackTraceData: any = await this.socketDebugger.stackTrace(threadIndex);
+            for (let i = 0; i < stackTraceData.stackSize; i++) {
+                let frameData = stackTraceData.entries[i];
+                let frame: StackFrame = {
+                    frameId: this.nextFrameId ++, // frame index is the reverse of the returned order.
+                    frameIndex: stackTraceData.stackSize - i - 1, // frame index is the reverse of the returned order.
+                    threadIndex: threadIndex, // frame index is the reverse of the returned order.
+                    filePath: frameData.fileName,
+                    lineNumber: frameData.lineNumber - 1,
+                    functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
+                };
+                this.stackFramesCache[frame.frameId] = frame;
+                frames.push(frame);
+            }
 
-        return frames;
+            return frames;
+        });
+    }
+
+    private getStackTraceById(frameId: number): StackFrame {
+        return this.stackFramesCache[frameId];
     }
 
     private cleanUpFunctionName(functionName): string {
@@ -730,43 +739,20 @@ export class RokuSocketAdapter {
     }
 
     /**
-     * Gets a string array of all the local variables using the var command
-     * @param scope
-     */
-    public async getScopeVariables(scope?: string) {
-        if (!this.isAtDebuggerPrompt) {
-            throw new Error('Cannot resolve variable: debugger is not paused');
-        }
-        return await this.resolve(`Scope Variables`, async () => {
-            let data: string;
-            let vars = [];
-
-            data = await this.requestPipeline.executeCommand(`var`, true);
-            let splitData = data.split('\n');
-
-            splitData.forEach((line) => {
-                let match;
-                if (!line.includes('Brightscript Debugger') && (match = this.getFirstWord(line))) {
-                    // There seems to be a local ifGlobal interface variable under the name of 'global' but it
-                    // is not accessible by the channel. Stript it our.
-                    if ((match[1] !== 'global') && match[1].length > 0) {
-                        vars.push(match[1]);
-                    }
-                }
-            });
-            return vars;
-        });
-    }
-
-    /**
      * Given an expression, evaluate that statement ON the roku
      * @param expression
      */
-    public async getVariable(expression: string, stackFrameIndex: number, withChildren: boolean = true) {
+    public async getVariable(expression: string, frameId: number, withChildren: boolean = true) {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot resolve variable: debugger is not paused');
         }
-        return await this.resolve(`variable: ${expression}`, async () => {
+
+        let frame = this.getStackTraceById(frameId);
+        if (!frame) {
+            throw new Error('Cannot request variable without a corresponding frame');
+        }
+
+        return await this.resolve(`variable: ${expression} ${frame.frameIndex} ${frame.threadIndex}`, async () => {
             let regexp = /(\w+|\s+)+/g;
             let match: RegExpMatchArray;
             let variablePath = [];
@@ -774,9 +760,7 @@ export class RokuSocketAdapter {
             while (match = regexp.exec(expression)) {
                 variablePath.push(match[0]);
             }
-
-            let variableInfo: any = await this.socketDebugger.getVariables(variablePath, withChildren, stackFrameIndex);
-            console.log(variableInfo);
+            let variableInfo: any = await this.socketDebugger.getVariables(variablePath, withChildren, frame.frameIndex, frame.threadIndex);
 
             if (variableInfo.errorCode === 'OK') {
                 let mainContainer: EvaluateContainer;
@@ -798,7 +782,6 @@ export class RokuSocketAdapter {
                         firstHandled = true;
                         mainContainer = container;
                     } else {
-                        console.log(mainContainer.keyType);
                         let pathAddition = mainContainer.keyType === 'Integer' ? children.length : variable.name;
                         container.name = pathAddition.toString();
                         container.evaluateName = `${mainContainer.evaluateName}.${pathAddition}`;
@@ -939,6 +922,8 @@ export class RokuSocketAdapter {
 
 export interface StackFrame {
     frameId: number;
+    frameIndex: number;
+    threadIndex: number;
     filePath: string;
     lineNumber: number;
     functionIdentifier: string;

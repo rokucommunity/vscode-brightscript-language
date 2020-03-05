@@ -568,7 +568,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
         const scopes = new Array<Scope>();
 
-        let refId = this.getEvaluateRefId('');
+        let refId = this.getEvaluateRefId('', args.frameId);
         let v: DebugProtocol.Variable;
         //if we already looked this item up, return it
         if (this.variables[refId]) {
@@ -578,7 +578,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             if (!result) {
                 throw new Error(`Could not get scopes`);
             }
-            v = this.getVariableFromResult(result);
+            v = this.getVariableFromResult(result, args.frameId);
             //TODO - testing something, remove later
             (v as any).request_seq = response.request_seq;
             (v as any).frameId = args.frameId;
@@ -651,8 +651,9 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             let v = this.variables[args.variablesReference];
             //query for child vars if we haven't done it yet.
             if (v.childVariables.length === 0) {
-                let result = await this.rokuAdapter.getVariable(v.evaluateName, (v as any).frameId ? (v as any).frameId : 0);
-                let tempVar = this.getVariableFromResult(result);
+                let result = await this.rokuAdapter.getVariable(v.evaluateName, (v as any).frameId);
+                let tempVar = this.getVariableFromResult(result, (v as any).frameId);
+                (tempVar as any).frameId = (v as any).frameId;
                 v.childVariables = tempVar.childVariables;
             }
             childVariables = v.childVariables;
@@ -702,7 +703,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
                 if (['hover', 'watch'].indexOf(args.context) > -1 || args.expression.toLowerCase().trim().startsWith('print ')) {
                     //if this command has the word print in front of it, remove that word
                     let expression = args.expression.replace(/^print/i, '').trim();
-                    let refId = this.getEvaluateRefId(expression);
+                    let refId = this.getEvaluateRefId(expression, args.frameId);
                     let v: DebugProtocol.Variable;
                     //if we already looked this item up, return it
                     if (this.variables[refId]) {
@@ -712,8 +713,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
                         if (!result) {
                             throw new Error(`bad variable request ${expression}`);
                         }
-                        console.log(result);
-                        v = this.getVariableFromResult(result);
+                        v = this.getVariableFromResult(result, args.frameId);
                         //TODO - testing something, remove later
                         (v as any).request_seq = response.request_seq;
                         (v as any).frameId = args.frameId;
@@ -812,10 +812,10 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         this.sendEvent(new LogOutputEvent(`debugger: ${message}`));
     }
 
-    private getVariableFromResult(result: EvaluateContainer) {
+    private getVariableFromResult(result: EvaluateContainer, frameId: number) {
         let v: AugmentedVariable;
         if (result) {
-            let refId = this.getEvaluateRefId(result.evaluateName);
+            let refId = this.getEvaluateRefId(result.evaluateName, frameId);
             if (result.keyType) {
                 if (result.keyType === 'Integer') {
                     v = new Variable(result.name, result.type, refId, result.elementCount, 0);
@@ -829,11 +829,12 @@ export class BrightScriptDebugSocketSession extends DebugSession {
             this.variables[refId] = v;
 
             v.evaluateName = result.evaluateName;
+            (v as any).frameId = frameId;
 
             if (result.children) {
                 let childVariables = [];
                 for (let childContainer of result.children) {
-                    let childVar = this.getVariableFromResult(childContainer);
+                    let childVar = this.getVariableFromResult(childContainer, frameId);
                     childVariables.push(childVar);
                 }
                 v.childVariables = childVariables;
@@ -842,11 +843,12 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         return v;
     }
 
-    private getEvaluateRefId(expression: string) {
-        if (!this.evaluateRefIdLookup[expression]) {
-            this.evaluateRefIdLookup[expression] = this.evaluateRefIdCounter++;
+    private getEvaluateRefId(expression: string, frameId: number) {
+        let evaluateRefId = `${expression}-${frameId}`;
+        if (!this.evaluateRefIdLookup[evaluateRefId]) {
+            this.evaluateRefIdLookup[evaluateRefId] = this.evaluateRefIdCounter++;
         }
-        return this.evaluateRefIdLookup[expression];
+        return this.evaluateRefIdLookup[evaluateRefId];
     }
 
     private clearState() {
