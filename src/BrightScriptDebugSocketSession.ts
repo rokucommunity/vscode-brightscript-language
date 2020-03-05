@@ -550,7 +550,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
                     debugFrame.frameId,
                     `${debugFrame.functionIdentifier}`,
                     new Source(path.basename(sourceLocation.filePath), sourceLocation.filePath),
-                    sourceLocation.lineNumber - 1,
+                    sourceLocation.lineNumber,
                     1
                 );
                 frames.push(frame);

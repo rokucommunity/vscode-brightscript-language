@@ -684,7 +684,7 @@ export class RokuSocketAdapter {
             let frame: StackFrame = {
                 frameId: stackTraceData.stackSize - i - 1, // frame index is the reverse of the returned order.
                 filePath: frameData.fileName,
-                lineNumber: frameData.lineNumber,
+                lineNumber: frameData.lineNumber - 1,
                 functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
             };
             console.log(frame.functionIdentifier, frame.frameId);
