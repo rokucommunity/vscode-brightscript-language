@@ -7,19 +7,23 @@ import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import { BrightScriptDebugCompileError } from './RokuAdapter';
+import * as fsExtra from 'fs-extra';
 
 export class LogLine {
-    constructor(text, mustInclude) {
-        this.text = text;
-        this.isMustInclude = mustInclude;
+    constructor(
+        public text: string,
+        public isMustInclude: boolean
+    ) {
     }
-    public text: string;
-    public isMustInclude: boolean;
 }
 
 export class LogOutputManager {
-    constructor(outputChannel, context, docLinkProvider,
-                private declarationProvider: DeclarationProvider) {
+    constructor(
+        outputChannel,
+        context,
+        docLinkProvider,
+        private declarationProvider: DeclarationProvider
+    ) {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
@@ -96,7 +100,7 @@ export class LogOutputManager {
     private isNextBreakpointSkipped: boolean = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
-    public enableDebuggerAutoRecovery: boolean;
+    public launchConfig: BrightScriptDebugConfiguration;
     public isFocusingOutputOnLaunch: boolean;
     public isClearingOutputOnLaunch: boolean;
     public isClearingConsoleOnChannelStart: boolean;
@@ -116,7 +120,7 @@ export class LogOutputManager {
     }
 
     public setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
-        this.enableDebuggerAutoRecovery = launchConfig.enableDebuggerAutoRecovery;
+        this.launchConfig = launchConfig;
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
@@ -219,7 +223,7 @@ export class LogOutputManager {
                             line = null;
                         }
                     } else if (this.isInMicroDebugger) {
-                        if (this.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
+                        if (this.launchConfig.enableDebuggerAutoRecovery && line.startsWith('Break in ')) {
                             console.log('this block is a break: skipping it');
                             this.isNextBreakpointSkipped = true;
                         }
@@ -233,9 +237,16 @@ export class LogOutputManager {
                 if (this.matchesFilter(logLine)) {
                     this.allLogLines.push(logLine);
                     this.addLogLineToOutput(logLine);
+                    this.writeLogLineToLogfile(logLine.text);
                 }
             }
         });
+    }
+
+    public writeLogLineToLogfile(text: string) {
+        if (this.launchConfig.logfilePath) {
+            fsExtra.appendFileSync(this.launchConfig.logfilePath, text + '\n');
+        }
     }
 
     public addLogLineToOutput(logLine: LogLine) {
