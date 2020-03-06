@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [1.23.0] - 2020-03-06
+### Added
+ - support for file-system logging of the BrightScript and debug output channels. (`brightscript.debug.logfilePath` in user/workspace settings or `logfilePath` in `launch.json`) (#216)
+
+
+
 ## [1.22.0] - 2020-02-25
 ### Added
  - source map support during debugging. See the sourcemap section of the README for more information.
@@ -418,7 +424,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Issues with language colorization
 
 
-
+[1.23.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.22.0...v1.23.0
+[1.22.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.3...v1.22.0
+[1.21.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.2...v1.21.3
+[1.21.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.1...v1.21.2
 [1.21.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.3...v1.21.0
 [1.20.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.20.2...v1.20.3
