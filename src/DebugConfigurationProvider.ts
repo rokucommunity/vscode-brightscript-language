@@ -1,4 +1,6 @@
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import { fileUtils } from './debugServer/FileUtils';
 import * as fsExtra from 'fs-extra';
 import { FilesType } from 'roku-deploy';
 import {
@@ -80,6 +82,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config = await this.processHostParameter(config);
         config = await this.processPasswordParameter(config);
         config = await this.processDeepLinkUrlParameter(config);
+        config = this.processLogfilePath(folder, config);
 
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
@@ -178,6 +181,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
+        config.logfilePath = config.logfilePath ?? null;
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
@@ -189,6 +193,30 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
         }
 
+        return config;
+    }
+
+    public processLogfilePath(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration) {
+        if (config?.logfilePath?.trim()) {
+            config.logfilePath = config.logfilePath.trim();
+            if (config.logfilePath.indexOf('${workspaceFolder}') > -1) {
+                config.logfilePath = config.logfilePath.replace('${workspaceFolder}', folder.uri.fsPath);
+            }
+
+            try {
+                config.logfilePath = fileUtils.standardizePath(config.logfilePath);
+                //create the logfile folder structure if not exist
+                fsExtra.ensureDirSync(path.dirname(config.logfilePath));
+
+                //create the log file if it doesn't exist
+                if (!fsExtra.pathExistsSync(config.logfilePath)) {
+                    fsExtra.createFileSync(config.logfilePath);
+                }
+                this.context.workspaceState.update('logfilePath', config.logfilePath);
+            } catch (e) {
+                throw new Error(`Could not create logfile at "${config.logfilePath}"`);
+            }
+        }
         return config;
     }
 
@@ -383,6 +411,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     remotePort: number;
     envFile?: string;
     enableSourceMaps?: boolean;
+    logfilePath?: string;
 }
 
 export interface ComponentLibraryConfig {

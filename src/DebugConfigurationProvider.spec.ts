@@ -3,13 +3,17 @@
 import { assert, expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { WorkspaceFolder } from 'vscode';
-
+import * as path from 'path';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
+import { fileUtils, standardizePath as s } from './debugServer/FileUtils';
+import * as fsExtra from 'fs-extra';
 
 let sinon: sinonImport.SinonSandbox;
 let c: any;
 let Module = require('module');
+let cwd = s`${path.dirname(__dirname)}`;
+const rootDir = s`${cwd}/rootDir`;
 
 let commandsMock;
 
@@ -154,6 +158,67 @@ describe('BrightScriptConfigurationProvider', () => {
             });
             expect(config.packagePort).to.equal(1234);
             expect(config.remotePort).to.equal(5678);
+        });
+    });
+
+    describe('processLogfilePath', () => {
+        let tmpPath = `${rootDir}/.tmp`;
+        beforeEach(() => {
+            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+        });
+        afterEach(() => {
+            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+        });
+        let workspaceFolder = <any>{
+            uri: { fsPath: tmpPath }
+        };
+        it('does nothing when prop is falsey', () => {
+            expect(configProvider.processLogfilePath(undefined, undefined)).not.to.be.ok;
+            expect(configProvider.processLogfilePath(undefined, <any>{}).logfilePath).not.to.be.ok;
+            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: null }).logfilePath).not.to.be.ok;
+            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: '' }).logfilePath).not.to.be.ok;
+            //it trims all whitespace too
+            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: ' \n\t' }).logfilePath.trim()).not.to.be.ok;
+        });
+
+        it('replaces workspaceFolder', () => {
+            expect(configProvider.processLogfilePath(workspaceFolder, <any>{
+                logfilePath: '${workspaceFolder}/logfile.log'
+            }).logfilePath).to.equal(s`${tmpPath}/logfile.log`);
+        });
+
+        it('should create the directory path and file', () => {
+            configProvider.processLogfilePath(workspaceFolder, <any>{
+                logfilePath: s`${tmpPath}/a/b/c/brs.log`
+            });
+            expect(fsExtra.pathExistsSync(s`${tmpPath}/a/b/c/brs.log`)).to.be.true;
+        });
+
+        it('should not delete the files in the log folder if it already exists', () => {
+            fsExtra.writeFileSync(`${tmpPath}/test.txt`, '');
+            configProvider.processLogfilePath(workspaceFolder, <any>{
+                logfilePath: s`${tmpPath}/brs.log`
+            });
+            expect(fsExtra.pathExistsSync(s`${tmpPath}/test.txt`)).to.be.true;
+        });
+
+        it('should not re-create the logfile if it already exists', () => {
+            fsExtra.writeFileSync(`${tmpPath}/brs.log`, 'test contents');
+            configProvider.processLogfilePath(workspaceFolder, <any>{
+                logfilePath: s`${tmpPath}/brs.log`
+            });
+            expect(fsExtra.readFileSync(`${tmpPath}/brs.log`).toString()).equals('test contents');
+        });
+
+        it('throws when creating the directory path and file when invalid characters are encountered', () => {
+            try {
+                configProvider.processLogfilePath(workspaceFolder, <any>{
+                    logfilePath: s`${tmpPath}/ZZZ/brs.log`.replace('ZZZ', '<>')
+                });
+                expect(true, 'Should have thrown').to.be.false;
+            } catch (e) {
+                expect(true, 'Successfully threw').to.be.true;
+            }
         });
     });
 });

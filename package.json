@@ -460,6 +460,11 @@
                                 "type": "number",
                                 "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
                                 "default": 8060
+                            },
+                            "logfilePath": {
+                                "type": "string",
+                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
+                                "default": "${workspaceFolder}/logging/brightscript-output.log"
                             }
                         }
                     }
@@ -698,6 +703,12 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
+                    "scope": "resource"
+                },
+                "brightscript.debug.logfilePath": {
+                    "type": "string",
+                    "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
+                    "default": "${workspaceFolder}/logs/brightscript-output.log",
                     "scope": "resource"
                 }
             }
