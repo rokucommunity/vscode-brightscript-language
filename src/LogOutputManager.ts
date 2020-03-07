@@ -244,7 +244,7 @@ export class LogOutputManager {
     }
 
     public writeLogLineToLogfile(text: string) {
-        if (this.launchConfig.logfilePath) {
+        if (this.launchConfig?.logfilePath) {
             fsExtra.appendFileSync(this.launchConfig.logfilePath, text + '\n');
         }
     }

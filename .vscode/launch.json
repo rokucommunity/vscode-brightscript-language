@@ -29,23 +29,20 @@
 			"stopOnEntry": false
 		},
 		{
+			"name": "Debug Tests",
 			"type": "node",
 			"request": "launch",
-			"name": "Tests",
 			"cwd": "${workspaceFolder}",
-			"preLaunchTask": "build",
 			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
 			"args": [
-				"-u",
-				"tdd",
-				"--timeout",
+                "-r",
+                "ts-node/register",
+                "-r",
+                "source-map-support/register",
+                "--timeout",
 				"999999",
-				"--colors",
-				"./out/**/*.spec.js"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			],
+                "./src/**/*.spec.ts"
+            ],
 			"internalConsoleOptions": "openOnSessionStart"
 		}
 	],

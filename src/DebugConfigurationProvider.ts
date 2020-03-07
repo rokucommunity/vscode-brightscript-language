@@ -196,15 +196,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
-    private processLogfilePath(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration) {
-        if (config.logfilePath) {
+    public processLogfilePath(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration) {
+        if (config?.logfilePath?.trim()) {
             config.logfilePath = config.logfilePath.trim();
             if (config.logfilePath.indexOf('${workspaceFolder}') > -1) {
                 config.logfilePath = config.logfilePath.replace('${workspaceFolder}', folder.uri.fsPath);
             }
-            config.logfilePath = fileUtils.standardizePath(config.logfilePath);
 
             try {
+                config.logfilePath = fileUtils.standardizePath(config.logfilePath);
                 //create the logfile folder structure if not exist
                 fsExtra.ensureDirSync(path.dirname(config.logfilePath));
 
