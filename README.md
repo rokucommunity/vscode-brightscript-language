@@ -1,10 +1,12 @@
 # BrightScript Extension for VSCode
+
 A VSCode extension to support Roku's BrightScript language.
 
 [![Build Status](https://travis-ci.org/RokuCommunity/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/RokuCommunity/vscode-brightscript-language)
 [![codecov](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/celsoaf.brightscript.svg)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
+
 ## Features
 
 - Static analysis (code validation)
@@ -29,12 +31,12 @@ A VSCode extension to support Roku's BrightScript language.
 - Roku remote control from keyboard ([click here](#Roku-Remote-Control) for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
 - Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
-    - Configure `brightscript.output.hyperlinkFormat` as follows:
-      - **Full** `pkg:/components/KeyLogTester.brs(24:0)`
-      - **FilenameAndFunction** `KeyLogTester.DoSomething(24:0)`
-      - **Filename** `KeyLogTester.brs(24)`
-      - **Short** `#1`
-      - **Hidden** ``
+  - Configure `brightscript.output.hyperlinkFormat` as follows:
+    - **Full** `pkg:/components/KeyLogTester.brs(24:0)`
+    - **FilenameAndFunction** `KeyLogTester.DoSomething(24:0)`
+    - **Filename** `KeyLogTester.brs(24)`
+    - **Short** `#1`
+    - **Hidden** ``
 - Marking the output log (CTRL+L)
 - Clearing the output log (CTRL+K), which also clears the mark indexes - **be sure to use the extension's command for clearing, or you may find that your hyperlinks and filters get out of sync**
 - Filtering the output log - 3 filters are available:
@@ -43,18 +45,16 @@ A VSCode extension to support Roku's BrightScript language.
   - Exclude (example `NameOfSomeNoisyComponent`)
 - Variable `bs_const` values using the `launch.json` (see the [BS_Const](#BS_Const) section for more information)
 
-
-
 ## Requirements
 
 Your project must be structured in the way that Roku expects, which looks something like this:
 
 - manifest
 - components/
-    - HomeScene.brs
-    - HomeScene.xml
+  - HomeScene.brs
+  - HomeScene.xml
 - source/
-    - main.brs
+  - main.brs
 
 If your project lives in a subdirectory, you will need to create a `brsconfig.json` file at the root of your project, and reference your subdirectory like such:
 
@@ -102,20 +102,19 @@ This extension supports launching and debugging your local project on a Roku dev
 Here is a sample `launch.json` file where your roku project lives at the root of your workspace:
 
 ```json
-
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "brightscript",
-            "request": "launch",
-            "name": "BrightScript Debug: Launch",
-            "host": "192.168.1.17",
-            "password": "password",
-            "rootDir": "${workspaceFolder}",
-            "stopOnEntry": false
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "brightscript",
+      "request": "launch",
+      "name": "BrightScript Debug: Launch",
+      "host": "192.168.1.17",
+      "password": "password",
+      "rootDir": "${workspaceFolder}",
+      "stopOnEntry": false
+    }
+  ]
 }
 ```
 
@@ -128,10 +127,10 @@ For example, if you have this structure:
   - Roku App/
     - manifest
     - components/
-        - HomeScene.brs
-        - HomeScene.xml
+      - HomeScene.brs
+      - HomeScene.xml
     - source/
-        - main.brs
+      - main.brs
 
 then you would need change `rootDir` in your launch config to look like this:
 
@@ -153,7 +152,8 @@ then you would need change `rootDir` in your launch config to look like this:
 
 When launching a debug session, this extension will first read all configurations from `brsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `brsconfig.json`, and only add values you wish to override in `launch.json`.
 ## Breakpoints
-Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one. 
+
+Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
 
 When injecting `STOP` statements, the extension will also generate a source map for each affected file so we can convert the debugger locations back into source locations. See the [SourceMaps](#SourceMaps) section for more information
 
@@ -166,61 +166,63 @@ If you have a build process that moves files from a source directory to an outpu
 **IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease.
 
 **Example:**
-  - src/
-    - main.brs
-    - language.brs
-    - manifest
-  - languages/
-    - english.brs
-    - french.brs
-  - dist/
-    - main.brs
-    - language.brs
-    - manifest
+
+- src/
+  - main.brs
+  - language.brs
+  - manifest
+- languages/
+  - english.brs
+  - french.brs
+- dist/
+  - main.brs
+  - language.brs
+  - manifest
 
 Here's a sample launch.json for this scenario:
 
 ```json
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "brightscript",
-            "request": "launch",
-            "name": "BrightScript Debug: Launch",
-            "host": "192.168.1.100",
-            "password": "password",
-            "rootDir": "${workspaceFolder}/dist",
-            "sourceDirs": ["${workspaceFolder}/src"],
-            "preLaunchTask": "your-build-task-here"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "brightscript",
+      "request": "launch",
+      "name": "BrightScript Debug: Launch",
+      "host": "192.168.1.100",
+      "password": "password",
+      "rootDir": "${workspaceFolder}/dist",
+      "sourceDirs": ["${workspaceFolder}/src"],
+      "preLaunchTask": "your-build-task-here"
+    }
+  ]
 }
-
 ```
 
 ### Multiple source dirs
+
 If you have a custom build process that pulls in files from multiple source directories, but still want to be able to place breakpoints in those source folders without using this extension's build process, you can use the `sourceDirs` launch configuration setting to specify where the various source files exist. The extension will walk through each of the `sourceDirs` entries, in order, until it finds a file that matches the relative path of the file with the active breakpoint.
 
 ```jsonc
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "rootDir": "${workspaceFolder}/dist",
-            "sourceDirs": [
-                "${workspaceFolder}/../ProjectA",
-                "${workspaceFolder}/../ProjectB",
-                "${workspaceFolder}/../ProjectC",
-            ],
-            "preLaunchTask": "your-build-task-here",
-            //...
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "rootDir": "${workspaceFolder}/dist",
+      "sourceDirs": [
+        "${workspaceFolder}/../ProjectA",
+        "${workspaceFolder}/../ProjectB",
+        "${workspaceFolder}/../ProjectC"
+      ],
+      "preLaunchTask": "your-build-task-here"
+      //...
+    }
+  ]
 }
 ```
 
 ### SourceMaps
+
 The extension has full support for [source maps](https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map). Which means that if your preprocessor has source map support then the extension will correctly translate breakpoints from source files into compiled locations and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:
 
 ```javascript
@@ -229,7 +231,7 @@ The extension has full support for [source maps](https://developer.mozilla.org/e
     "version": "0.2.0",
     "configurations": [{
         //this is where your preprocessor puts the final code (including source maps)
-        "rootDir": "${workspaceFolder}/dist", 
+        "rootDir": "${workspaceFolder}/dist",
         // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
         "preLaunchTask": "your-build-task-here",
         //...other launch args
@@ -239,39 +241,40 @@ The extension has full support for [source maps](https://developer.mozilla.org/e
 
 Your dist folder would look something like this after running your preprocessor.
 
-- ${workspaceFolder}/dist/
-    - manifest
-    - source/
-        - main.brs
-        - main.brs.map
-    - components/
-        - component1.xml
-        - component1.xml.map
-        - component1.brs
-        - component1.brs.map
+- \${workspaceFolder}/dist/
+  - manifest
+  - source/
+    - main.brs
+    - main.brs.map
+  - components/
+    - component1.xml
+    - component1.xml.map
+    - component1.brs
+    - component1.brs.map
 
 ## BS_Const
 
 If you use `bs_const` in your project manifest you can define separate launch configs in your `launch.json` allowing for easy changing without modifying the manifest yourself. This helps prevent accidentally committing a change to the `bs_consts` in your project. You can not define a constant that is not also in your manifest. See the [Manifest constant](https://developer.roku.com/en-ca/docs/references/brightscript/language/conditional-compilation.md#manifest-constant) documentation for more info on their format.
 
 example config:
+
 ```json
 {
-    "type": "brightscript",
-    "rootDir": "${workspaceFolder}/dist",
-    "host": "192.168.1.2",
-    "bsConst": {
-        "debug": true,
-        "logging": false
-    }
+  "type": "brightscript",
+  "rootDir": "${workspaceFolder}/dist",
+  "host": "192.168.1.2",
+  "bsConst": {
+    "debug": true,
+    "logging": false
+  }
 }
 ```
 
 ## Component Libraries
+
 If you are working on custom component libraries you can define them in the launch.json file. The extension will automatically zip and statically host your component libraries. The library folder(s) can ether be in your project or in another workspace on your machine.
 
 `launch.json` configuration options:
-
 
 - `componentLibraries`: This field takes an array of library configuration objects allowing you to work on more than one library at a time. For the examples, there will only be one library configured but you can simply add more if you need to. Each object in the `componentLibraries` field requires three values.
   - `rootDir`: This is the relative path to the libraries source code. Since this is a relative path your library source does not need to be in the same work space.
@@ -279,23 +282,23 @@ If you are working on custom component libraries you can define them in the laun
   - `files`: A file path or file glob that should be copied to the deployment package.
 - `componentLibrariesPort`: Port to access component libraries. Default: `8080`s
 
-
 **Example:**
+
 - .vscode
-    - launch.json
+  - launch.json
 - manifest
 - components/
-    - HomeScene.brs
-    - HomeScene.xml
+  - HomeScene.brs
+  - HomeScene.xml
 - source/
-    - main.brs
+  - main.brs
 - customLibrary
-    - manifest
-    - components/
-        - CustomButton.brs
-        - CustomButton.xml
-        - CustomTextInput.brs
-        - CustomTextInput.xml
+  - manifest
+  - components/
+    - CustomButton.brs
+    - CustomButton.xml
+    - CustomTextInput.brs
+    - CustomTextInput.xml
 
 Here's a sample launch.json for this scenario:
 
@@ -328,29 +331,32 @@ Here's a sample launch.json for this scenario:
 
 ```
 
-
 ## Deep Linking / ECP
+
 You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.
 
 ```json
 {
-    "type": "brightscript",
-    "rootDir": "${workspaceFolder}/dist",
-    "host": "192.168.1.2",
-    "deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}"
+  "type": "brightscript",
+  "rootDir": "${workspaceFolder}/dist",
+  "host": "192.168.1.2",
+  "deepLinkUrl": "http://${host}:8060/launch/dev?${promptForQueryParams}"
 }
 ```
+
 There are several string placeholders you can use when defining your deep link url, but none of them are required.
 
- - `${host}` - the roku host. This is the `host` property set in your launch configuration. By using `${host}` in the deep link url, it prevents you from needing to update the host twice in your config when you want to change which Roku to debug.
+- `${host}` - the roku host. This is the `host` property set in your launch configuration. By using `${host}` in the deep link url, it prevents you from needing to update the host twice in your config when you want to change which Roku to debug.
 
- - `${promptForQueryparams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link.
+- `${promptForQueryparams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link.
 
- - `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url.
+- `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url.
 
 ## RALE Support
+
 You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
 To do this you need a few simple things:
+
 - In your VS Code user settings add the `brightscript.debug.raleTrackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
 - Add the entry point comment `' vscode_rale_tracker_entry` to your code.
   - This is optional as you can still include the the code to create the tracker task yourself.
@@ -360,10 +366,10 @@ To do this you need a few simple things:
 
 ```json
 {
-    "type": "brightscript",
-    "rootDir": "${workspaceFolder}/dist",
-    "host": "192.168.1.2",
-    "injectRaleTrackerTask": true
+  "type": "brightscript",
+  "rootDir": "${workspaceFolder}/dist",
+  "host": "192.168.1.2",
+  "injectRaleTrackerTask": true
 }
 ```
 
@@ -371,21 +377,22 @@ To do this you need a few simple things:
 
 This extension contributes the following settings:
 
-* `brightscript.format.keywordCase`: specify case of keywords when formatting
-* `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
-* `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
-* `brightscript.format.formatInteriorWhitespace`: If true (the default), all whitespace between items is reduced to exactly 1 space character, and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)
-* `brightscript.format.insertSpaceBeforeFunctionParenthesis`:  If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).
-* `brightscript.format.insertSpaceBetweenEmptyCurlyBraces`:  if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)
-* `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
-* `brightscript.output.focusOnLaunch`: If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
-* `brightscript.output.clearOnLaunch`: If set to true, will clear the brightscript log when launching
-* `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the brightscript log after connecting to the Roku channel after launching
-* `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
-* `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
-* `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
-* `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
-* `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly. 
+- `brightscript.format.keywordCase`: specify case of keywords when formatting
+- `brightscript.format.compositeKeywords`: specify whether composite words (ie: "endif", "endfor") should be broken apart into their two-word format (ie: "end if", "end for")
+- `brightscript.format.removeTrailingWhiteSpace`: specify whether trailing whitespace should be removed on format
+- `brightscript.format.formatInteriorWhitespace`: If true (the default), all whitespace between items is reduced to exactly 1 space character, and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)
+- `brightscript.format.insertSpaceBeforeFunctionParenthesis`: If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).
+- `brightscript.format.insertSpaceBetweenEmptyCurlyBraces`: if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)
+- `brightscript.output.includeStackTraces`: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
+- `brightscript.output.focusOnLaunch`: If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys. **Experimental. Does not always work**
+- `brightscript.output.clearOnLaunch`: If set to true, will clear the brightscript log when launching
+- `brightscript.output.clearConsoleOnChannelStart`: If set to true, will clear the brightscript log after connecting to the Roku channel after launching
+- `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
+- `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
+- `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
+- `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
+- `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+
 ## Roku Remote Control
 
 You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
@@ -394,42 +401,44 @@ This extension sends key presses to the Roku device through Roku's [External Con
 
 ### Keyboard Commands:
 
-|Keyboard Key | Roku Remote Key | Keybinding Command|
-|--|--|--|
-|`Backspace` | Back Button  | `extension.brightscript.pressBackButton` |
-|`win+Backspace` (or `cmd+Backspace` on mac)  | Backspace |  `extension.brightscript.pressBackspaceButton` |
-|`Escape` | Home Button | `extension.brightscript.pressHomeButton` |
-|`up` | Up Button | `extension.brightscript.pressUpButton` |
-|`down` | Down Button | `extension.brightscript.pressDownButton` |
-|`right` | Right Button | `extension.brightscript.pressRightButton` |
-|`left` | Left Button | `extension.brightscript.pressLeftButton` |
-|`Enter` | Select Button (OK) | `extension.brightscript.pressSelectButton` |
-|`win+Enter` (or `cmd+Enter` on mac) | Play Button | `extension.brightscript.pressPlayButton` |
-|`win+left` (or `cmd+left` on mac) | Rev Button | `extension.brightscript.pressRevButton` |
-|`win+right` (or `cmd+right` on mac) | Fwd Button | `extension.brightscript.pressFwdButton` |
-|`win+8` (or `cmd+8` on mac) | Info Button | `extension.brightscript.pressStarButton` |
+| Keyboard Key                                | Roku Remote Key    | Keybinding Command                            |
+| ------------------------------------------- | ------------------ | --------------------------------------------- |
+| `Backspace`                                 | Back Button        | `extension.brightscript.pressBackButton`      |
+| `win+Backspace` (or `cmd+Backspace` on mac) | Backspace          | `extension.brightscript.pressBackspaceButton` |
+| `Escape`                                    | Home Button        | `extension.brightscript.pressHomeButton`      |
+| `up`                                        | Up Button          | `extension.brightscript.pressUpButton`        |
+| `down`                                      | Down Button        | `extension.brightscript.pressDownButton`      |
+| `right`                                     | Right Button       | `extension.brightscript.pressRightButton`     |
+| `left`                                      | Left Button        | `extension.brightscript.pressLeftButton`      |
+| `Enter`                                     | Select Button (OK) | `extension.brightscript.pressSelectButton`    |
+| `win+Enter` (or `cmd+Enter` on mac)         | Play Button        | `extension.brightscript.pressPlayButton`      |
+| `win+left` (or `cmd+left` on mac)           | Rev Button         | `extension.brightscript.pressRevButton`       |
+| `win+right` (or `cmd+right` on mac)         | Fwd Button         | `extension.brightscript.pressFwdButton`       |
+| `win+8` (or `cmd+8` on mac)                 | Info Button        | `extension.brightscript.pressStarButton`      |
 
 You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
+
 ```json
 {
-    "key": "Space",
-    "command": "extension.brightscript.sendRemoteCommand",
-    "args": "Lit_%20",
-    "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+  "key": "Space",
+  "command": "extension.brightscript.sendRemoteCommand",
+  "args": "Lit_%20",
+  "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
 }
 ```
 
 ## Other keyboard shortcuts
 
-| Keybinding (Windows) | Keybinding (Mac) | Command | Description|
-|--|--|--|--|
-| `ctrl+L` |  `ctrl+L` | extension.brightscript.markLogOutput | Add a new mark line in the BrightScript output panel |
-| `ctrl+alt+k` | `ctrl+alt+k` | extension.brightscript.clearLogOutput | Clear the current log output |
-| `win+ctrl+l` | `cmd+ctrl+l` | extension.brightscript.setOutputLogLevelFilter | Filter the BrightScript Output by log level (info, warn, debug)  |
-| `win+ctrl+i` | `cmd+ctrl+i` | extension.brightscript.setOutputIncludeFilter | Filter the BrightScript Output by typing text you want to *include* |
-| `win+ctrl+x` | `cmd+ctrl+x` | extension.brightscript.setOutputExcludeFilter | Filter the BrightScript output by typing text you want to *exclude* |
+| Keybinding (Windows) | Keybinding (Mac) | Command                                        | Description                                                         |
+| -------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------------------- |
+| `ctrl+L`             | `ctrl+L`         | extension.brightscript.markLogOutput           | Add a new mark line in the BrightScript output panel                |
+| `ctrl+alt+k`         | `ctrl+alt+k`     | extension.brightscript.clearLogOutput          | Clear the current log output                                        |
+| `win+ctrl+l`         | `cmd+ctrl+l`     | extension.brightscript.setOutputLogLevelFilter | Filter the BrightScript Output by log level (info, warn, debug)     |
+| `win+ctrl+i`         | `cmd+ctrl+i`     | extension.brightscript.setOutputIncludeFilter  | Filter the BrightScript Output by typing text you want to _include_ |
+| `win+ctrl+x`         | `cmd+ctrl+x`     | extension.brightscript.setOutputExcludeFilter  | Filter the BrightScript output by typing text you want to _exclude_ |
 
 ## Config file for user-specific launch settings
+
 If you change your `launch.json` settings regularly, or don't want to check certain values into version control, then another option is to store those values in a `.env` file. Then, reference it in your `launch.json` and use `${env:YOUR_VAR_NAME}` in `launch.json` settings. Here's an example.
 
 ```json
@@ -470,8 +479,8 @@ You can often find pre-release versions of this extension under the [GitHub Rele
 4. Select the file you downloaded from step 1.
 
 ### Reinstalling store version of the extension
-This process will REPLACE any existing version of the extension you have installed from the store. So, if you want to go back to using the store version, you need to uninstall the extension completely, and then install the extension through the VSCode store.
 
+This process will REPLACE any existing version of the extension you have installed from the store. So, if you want to go back to using the store version, you need to uninstall the extension completely, and then install the extension through the VSCode store.
 
 ## Contributing
 
@@ -492,4 +501,5 @@ View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightsc
 You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
 
 ## Changelog
+
 Click [here](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/CHANGELOG.md) to see the changelog.
