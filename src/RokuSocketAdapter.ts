@@ -674,22 +674,23 @@ export class RokuSocketAdapter {
         return responseText;
     }
 
-    public async getStackTrace(threadIndex: number = this.socketDebugger.primaryThread) {
+    public async getStackTrace(threadId: number = this.socketDebugger.primaryThread) {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot get stack trace: debugger is not paused');
         }
-        return await this.resolve(`stack trace for thread ${threadIndex}`, async () => {
+        return await this.resolve(`stack trace for thread ${threadId}`, async () => {
+            let thread = await this.getThreadByThreadId(threadId);
             let frames: StackFrame[] = [];
-            let stackTraceData: any = await this.socketDebugger.stackTrace(threadIndex);
+            let stackTraceData: any = await this.socketDebugger.stackTrace(threadId);
             for (let i = 0; i < stackTraceData.stackSize; i++) {
                 let frameData = stackTraceData.entries[i];
                 let frame: StackFrame = {
-                    frameId: this.nextFrameId ++, // frame index is the reverse of the returned order.
+                    frameId: this.nextFrameId ++,
                     frameIndex: stackTraceData.stackSize - i - 1, // frame index is the reverse of the returned order.
-                    threadIndex: threadIndex, // frame index is the reverse of the returned order.
-                    filePath: frameData.fileName,
-                    lineNumber: frameData.lineNumber - 1,
-                    functionIdentifier: this.cleanUpFunctionName(frameData.functionName)
+                    threadIndex: threadId,
+                    filePath: i === 0 ? (frameData.fileName) ? frameData.fileName : thread.filePath : frameData.fileName,
+                    lineNumber: i === 0 ? thread.lineNumber : frameData.lineNumber,
+                    functionIdentifier: this.cleanUpFunctionName(i === 0 ? (frameData.functionName) ? frameData.functionName : thread.functionName : frameData.functionName)
                 };
                 this.stackFramesCache[frame.frameId] = frame;
                 frames.push(frame);
@@ -845,15 +846,18 @@ export class RokuSocketAdapter {
             for (let i = 0; i < threadsData.threadsCount; i ++) {
                 let threadInfo = threadsData.threads[i];
                 let thread = <Thread> {
-                    isSelected: threadInfo.isPrimary,
+                    // NOTE: On THREAD_ATTACHED events the threads request is marking the wrong thread as primary. 
+                    // NOTE: Rely on the thead index from the threads update event.
+                    isSelected: this.socketDebugger.primaryThread === i,
+                    // isSelected: threadInfo.isPrimary,
                     filePath: threadInfo.fileName,
+                    functionName: threadInfo.functionName,
                     lineNumber: threadInfo.lineNumber,
                     lineContents: threadInfo.codeSnippet,
                     threadId: i
                 };
                 threads.push(thread);
             }
-
             //make sure the selected thread is at the top
             threads.sort((a, b) => {
                 return a.isSelected ? -1 : 1;
@@ -861,6 +865,15 @@ export class RokuSocketAdapter {
 
             return threads;
         });
+    }
+
+    private async getThreadByThreadId(threadId: number) {
+        let threads = await this.getThreads();
+        for (let thread of threads) {
+            if (thread.threadId === threadId) {
+                return thread;
+            }
+        }
     }
 
     /**
@@ -962,6 +975,7 @@ export interface Thread {
     isSelected: boolean;
     lineNumber: number;
     filePath: string;
+    functionName: string;
     lineContents: string;
     threadId: number;
 }

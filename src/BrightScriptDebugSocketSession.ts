@@ -543,7 +543,7 @@ export class BrightScriptDebugSocketSession extends DebugSession {
                         debugFrame.functionIdentifier = functionName;
                     }
                 } catch (e) {
-                    console.error(e);
+                    console.error(e, sourceLocation, debugFrame);
                 }
 
                 let frame = new StackFrame(
