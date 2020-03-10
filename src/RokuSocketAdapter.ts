@@ -1,4 +1,4 @@
-import { BrightscriptDebugger } from 'brightscript-debugger';
+import { BrightScriptDebugger } from 'brightscript-debugger';
 import * as eol from 'eol';
 import * as EventEmitter from 'events';
 import { orderBy } from 'natural-orderby';
@@ -50,7 +50,7 @@ export class RokuSocketAdapter {
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
     private rendezvousTracker: RendezvousTracker;
-    private socketDebugger: BrightscriptDebugger;
+    private socketDebugger: BrightScriptDebugger;
     private nextFrameId: number = 1;
 
     private stackFramesCache: { [keys: number]: StackFrame } = {};
@@ -196,7 +196,7 @@ export class RokuSocketAdapter {
         let deferred = defer();
         this.isInMicroDebugger = false;
         this.isNextBreakpointSkipped = false;
-        this.socketDebugger = new BrightscriptDebugger(this.host, this.stopOnEntry);
+        this.socketDebugger = new BrightScriptDebugger(this.host, this.stopOnEntry);
         try {
             // Emit IO output from the debugger.
             this.socketDebugger.on('io-output', (responseText) => {
@@ -770,7 +770,7 @@ export class RokuSocketAdapter {
                 for (let variable of variableInfo.variables) {
                     let value;
                     let variableType = variable.variableType;
-                    if (variable === null) {
+                    if (variable.value === null) {
                         value = 'roInvalid';
                     } else if (variableType === 'String') {
                         value = `\"${variable.value}\"`;
@@ -779,6 +779,8 @@ export class RokuSocketAdapter {
                         variableType = `${parts[0]} (${parts[1]})`;
                     } else if (variableType === 'AA') {
                         variableType = 'AssociativeArray';
+                    } else {
+                        value = variable.value;
                     }
 
                     let container = <EvaluateContainer>{
@@ -791,10 +793,25 @@ export class RokuSocketAdapter {
                         elementCount: variable.elementCount
                     };
 
-                    if (!firstHandled) {
+                    if (!firstHandled && variablePath.length > 0) {
                         firstHandled = true;
                         mainContainer = container;
                     } else {
+                        if (!firstHandled && variablePath.length === 0) {
+                            // If this is a scope request there will be no entry's in the variable path
+                            // We will need to create a fake mainContainer
+                            firstHandled = true;
+                            mainContainer = <EvaluateContainer>{
+                                name: expression,
+                                evaluateName: expression,
+                                variablePath: variablePath,
+                                type: '',
+                                value: null,
+                                keyType: 'String',
+                                elementCount: variableInfo.numVariables
+                            };
+                        }
+
                         let pathAddition = mainContainer.keyType === 'Integer' ? children.length : variable.name;
                         container.name = pathAddition.toString();
                         container.evaluateName = `${mainContainer.evaluateName}.${pathAddition}`;
@@ -804,8 +821,6 @@ export class RokuSocketAdapter {
                         }
                         children.push(container);
                     }
-                    // let childVar = this.getVariableFromResult(childContainer);
-                    // childVariables.push(childVar);
                 }
                 mainContainer.children = children;
                 return mainContainer;
@@ -858,7 +873,7 @@ export class RokuSocketAdapter {
             for (let i = 0; i < threadsData.threadsCount; i ++) {
                 let threadInfo = threadsData.threads[i];
                 let thread = <Thread> {
-                    // NOTE: On THREAD_ATTACHED events the threads request is marking the wrong thread as primary. 
+                    // NOTE: On THREAD_ATTACHED events the threads request is marking the wrong thread as primary.
                     // NOTE: Rely on the thead index from the threads update event.
                     isSelected: this.socketDebugger.primaryThread === i,
                     // isSelected: threadInfo.isPrimary,
