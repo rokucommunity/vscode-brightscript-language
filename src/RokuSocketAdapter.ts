@@ -768,13 +768,25 @@ export class RokuSocketAdapter {
                 let children: EvaluateContainer[] = [];
                 let firstHandled = false;
                 for (let variable of variableInfo.variables) {
+                    let value;
+                    let variableType = variable.variableType;
+                    if (variable === null) {
+                        value = 'roInvalid';
+                    } else if (variableType === 'String') {
+                        value = `\"${variable.value}\"`;
+                    } else if (variableType === 'Subtyped_Object') {
+                        let parts = variable.value.split('; ');
+                        variableType = `${parts[0]} (${parts[1]})`;
+                    } else if (variableType === 'AA') {
+                        variableType = 'AssociativeArray';
+                    }
 
                     let container = <EvaluateContainer>{
                         name: expression,
                         evaluateName: expression,
                         variablePath: variablePath,
-                        type: variable.variableType,
-                        value: variable.value,
+                        type: variableType,
+                        value: value,
                         keyType: variable.keyType,
                         elementCount: variable.elementCount
                     };

@@ -817,10 +817,13 @@ export class BrightScriptDebugSocketSession extends DebugSession {
         if (result) {
             let refId = this.getEvaluateRefId(result.evaluateName, frameId);
             if (result.keyType) {
+                // check to see if this is an dictionary or a list
                 if (result.keyType === 'Integer') {
+                    // list type
                     v = new Variable(result.name, result.type, refId, result.elementCount, 0);
                     this.variables[refId] = v;
                 } else if (result.keyType === 'String') {
+                    // dictionary type
                     v = new Variable(result.name, result.type, refId, 0, result.elementCount);
                 }
             } else {
