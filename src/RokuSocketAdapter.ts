@@ -754,13 +754,7 @@ export class RokuSocketAdapter {
         }
 
         return await this.resolve(`variable: ${expression} ${frame.frameIndex} ${frame.threadIndex}`, async () => {
-            let regexp = /(\w+|\s+)+/g;
-            let match: RegExpMatchArray;
-            let variablePath = [];
-
-            while (match = regexp.exec(expression)) {
-                variablePath.push(match[0]);
-            }
+            let variablePath = this.getVariablePath(expression);
             let variableInfo: any = await this.socketDebugger.getVariables(variablePath, withChildren, frame.frameIndex, frame.threadIndex);
 
             if (variableInfo.errorCode === 'OK') {
@@ -774,13 +768,15 @@ export class RokuSocketAdapter {
                         value = 'roInvalid';
                     } else if (variableType === 'String') {
                         value = `\"${variable.value}\"`;
-                    } else if (variableType === 'Subtyped_Object') {
+                    } else {
+                        value = variable.value;
+                    }
+
+                    if (variableType === 'Subtyped_Object') {
                         let parts = variable.value.split('; ');
                         variableType = `${parts[0]} (${parts[1]})`;
                     } else if (variableType === 'AA') {
                         variableType = 'AssociativeArray';
-                    } else {
-                        value = variable.value;
                     }
 
                     let container = <EvaluateContainer>{
@@ -826,6 +822,18 @@ export class RokuSocketAdapter {
                 return mainContainer;
             }
         });
+    }
+
+    private getVariablePath(expression: string): string[] {
+        // Regex 101 link for match examples: https://regex101.com/r/KNKfHP/7
+        let regexp = /(?:\"(.*?)\"|([a-z_][a-z0-9_\$%!#]*)|\[([0-9]*)\])/gi;
+        let match: RegExpMatchArray;
+        let variablePath = [];
+
+        while (match = regexp.exec(expression)) {
+            variablePath.push(match[1] ? match[1] : match[2] ? match[2] : match[3]);
+        }
+        return variablePath;
     }
 
     private getPrimativeTypeFromValue(value: string): PrimativeType {
