@@ -965,6 +965,10 @@ interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
      * If true, will attempt to skip false breakpoints created by the micro debugger, which are particularly prevalent for SG apps with multiple run loops.
      */
     enableDebuggerAutoRecovery: boolean;
+    /**
+     * If true, the debugger will use the new beta BrightScript debug protocol. See for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md.
+     */
+    enableSocketDebugger: boolean;
 
     /**
      * If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.

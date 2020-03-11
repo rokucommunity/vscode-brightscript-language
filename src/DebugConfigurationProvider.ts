@@ -48,6 +48,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             files: this.defaultFilesArray,
             enableSourceMaps: true,
             packagePort: 80,
+            enableSocketDebugger: false,
             remotePort: 8060
         };
 
@@ -98,6 +99,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         var userWorkspaceDebugSettings = Object.assign(
             {
                 enableSourceMaps: true,
+                enableSocketDebugger: false,
                 //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
                 raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
             },
@@ -212,7 +214,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : this.configDefaults.enableLookupVariableNodeChildren;
         config.files = config.files ? config.files : this.configDefaults.files;
-        config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
+        config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath = config.logfilePath ?? null;
@@ -475,6 +477,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     enableDebuggerAutoRecovery: boolean;
     stopDebuggerOnAppExit: boolean;
     packagePort: number;
+    enableSocketDebugger: boolean;
     remotePort: number;
     envFile?: string;
     enableSourceMaps?: boolean;

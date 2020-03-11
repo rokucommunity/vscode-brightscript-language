@@ -731,6 +731,12 @@
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
                 },
+                "brightscript.debug.enableSocketDebugger": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, the debugger will use the new beta BrightScript debug protocol. See for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
+                    "scope": "resource"
+                },
                 "brightscript.debug.enableSourceMaps": {
                     "type": "boolean",
                     "default": true,
