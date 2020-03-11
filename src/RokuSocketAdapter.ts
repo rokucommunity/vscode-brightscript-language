@@ -1,15 +1,10 @@
 import { BrightScriptDebugger } from 'brightscript-debugger';
 import * as eol from 'eol';
 import * as EventEmitter from 'events';
-import { orderBy } from 'natural-orderby';
 import { Socket } from 'net';
-import * as net from 'net';
-import * as rokuDeploy from 'roku-deploy';
 
 import { defer } from './BrightScriptDebugSession';
-import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
-import { util } from './util';
 import { SourceLocation } from './debugServer/SourceLocator';
 
 /**
@@ -199,8 +194,9 @@ export class RokuSocketAdapter {
         this.socketDebugger = new BrightScriptDebugger(this.host, this.stopOnEntry);
         try {
             // Emit IO output from the debugger.
-            this.socketDebugger.on('io-output', (responseText) => {
+            this.socketDebugger.on('io-output', async (responseText) => {
                 if (responseText) {
+                    responseText = await this.rendezvousTracker.processLogLine(responseText);
                     this.emit('unhandled-console-output', responseText);
                 }
             });
@@ -661,17 +657,13 @@ export class RokuSocketAdapter {
      * Execute a command directly on the roku. Returns the output of the command
      * @param command
      */
-    public async evaluate(command: string) {
+    public async evaluate(command: string, frameId: number = this.socketDebugger.primaryThread) {
         if (!this.isAtDebuggerPrompt) {
             throw new Error('Cannot run evaluate: debugger is not paused');
         }
-        //clear the cache (we don't know what command the user entered)
-        this.clearCache();
-        //don't wait for the output...we don't know what command the user entered
-        let responseText = await this.requestPipeline.executeCommand(command, true);
-        //we know that if we got a response, we are back at a debugger prompt
-        // this.isAtDebuggerPrompt = true;
-        return responseText;
+
+        // Pipe all evaluate requests though as a variable request as evaluate is not available at the moment.
+        return await this.getVariable(command, frameId);
     }
 
     public async getStackTrace(threadId: number = this.socketDebugger.primaryThread) {
@@ -706,37 +698,6 @@ export class RokuSocketAdapter {
 
     private cleanUpFunctionName(functionName): string {
         return functionName.substring(functionName.lastIndexOf('@') + 1);
-    }
-    /**
-     * Runs a regex to get the content between telnet commands
-     * @param value
-     */
-    public getExpressionDetails(value: string) {
-        const match = /(.*?)\r?\nBrightscript Debugger>\s*/is.exec(value);
-        if (match) {
-            return match[1];
-        }
-    }
-
-    /**
-     * Runs a regex to check if the target is an object and get the type if it is
-     * @param value
-     */
-    public getObjectType(value: string) {
-        const match = /<.*?:\s*(\w+\s*\:*\s*[\w\.]*)>/gi.exec(value);
-        if (match) {
-            return match[1];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Runs a regex to get the first work of a line
-     * @param value
-     */
-    private getFirstWord(value: string) {
-        return /^([\w.\-=]*)\s/.exec(value);
     }
 
     /**
@@ -836,25 +797,6 @@ export class RokuSocketAdapter {
         return variablePath;
     }
 
-    private getPrimativeTypeFromValue(value: string): PrimativeType {
-        value = value ? value.toLowerCase() : value;
-        if (!value || value === 'invalid') {
-            return PrimativeType.invalid;
-        }
-        if (value === 'true' || value === 'false') {
-            return PrimativeType.boolean;
-        }
-        if (value.indexOf('"') > -1) {
-            return PrimativeType.string;
-        }
-        if (value.split('.').length > 1) {
-            return PrimativeType.integer;
-        } else {
-            return PrimativeType.float;
-        }
-
-    }
-
     /**
      * Cache items by a unique key
      * @param expression
@@ -915,12 +857,7 @@ export class RokuSocketAdapter {
      * Disconnect from the telnet session and unset all objects
      */
     public async destroy() {
-        if (this.requestPipeline) {
-            await this.exitActiveBrightscriptDebugger();
-            this.requestPipeline.destroy();
-        }
-
-        this.requestPipeline = undefined;
+        await this.socketDebugger.exitChannel();
         this.cache = undefined;
         if (this.emitter) {
             this.emitter.removeAllListeners();
@@ -932,15 +869,7 @@ export class RokuSocketAdapter {
      * Make sure any active Brightscript Debugger threads are exited
      */
     public async exitActiveBrightscriptDebugger() {
-        // if (this.requestPipeline) {
-        //     let commandsExecuted = 0;
-        //     do {
-        //         let data = await this.requestPipeline.executeCommand(`exit`, false);
-        //         // This seems to work without the delay but I wonder about slower devices
-        //         // await setTimeout[Object.getOwnPropertySymbols(setTimeout)[0]](100);
-        //         commandsExecuted++;
-        //     } while (commandsExecuted < 10);
-        // }
+      // Legacy function called by the debug section
     }
 
     // #region Rendezvous Tracker pass though functions
@@ -1003,7 +932,8 @@ export interface EvaluateContainer {
 
 export enum KeyType {
     string = 'String',
-    integer = 'Integer'
+    integer = 'Integer',
+    legacy = 'Legacy'
 }
 
 export interface Thread {
