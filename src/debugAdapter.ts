@@ -1,3 +1,3 @@
-import { BrightScriptDebugSocketSession } from './BrightScriptDebugSocketSession';
+import { BrightScriptDebugSession } from './BrightScriptDebugSession';
 
-BrightScriptDebugSocketSession.run(BrightScriptDebugSocketSession);
+BrightScriptDebugSession.run(BrightScriptDebugSession);

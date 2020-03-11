@@ -6,7 +6,7 @@ import { BrightScriptDebugConfiguration } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
-import { BrightScriptDebugCompileError } from './RokuAdapter';
+import { BrightScriptDebugCompileError } from './RokuTelnetAdapter';
 import * as fsExtra from 'fs-extra';
 
 export class LogLine {

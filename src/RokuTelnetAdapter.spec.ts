@@ -17,10 +17,10 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { EvaluateContainer, RokuAdapter } from './RokuAdapter';
+import { EvaluateContainer, RokuTelnetAdapter } from './RokuTelnetAdapter';
 
 describe('RokuAdapter ', () => {
-    let adapter: RokuAdapter;
+    let adapter: RokuTelnetAdapter;
     let adapterMock;
     let languagesMock;
 
@@ -30,7 +30,7 @@ describe('RokuAdapter ', () => {
         languagesMock = sinon.mock(vscode.languages);
         languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
 
-        adapter = new RokuAdapter('127.0.0.1');
+        adapter = new RokuTelnetAdapter('127.0.0.1');
         adapterMock = sinon.mock(adapter);
     });
 

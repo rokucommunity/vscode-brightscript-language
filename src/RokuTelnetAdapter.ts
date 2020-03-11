@@ -14,7 +14,7 @@ import { SourceLocation } from './debugServer/SourceLocator';
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.
  */
-export class RokuAdapter {
+export class RokuTelnetAdapter {
     constructor(
         private host: string,
         private enableDebuggerAutoRecovery: boolean = false
@@ -1069,7 +1069,10 @@ export class RokuAdapter {
                         type: '<ERROR>',
                         highLevelType: HighLevelType.uninitialized,
                         evaluateName: undefined,
+                        variablePath: [],
+                        elementCount: -1,
                         value: '<ERROR>',
+                        keyType: KeyType.legacy,
                         children: []
                     };
                 } else {
@@ -1278,10 +1281,19 @@ export enum HighLevelType {
 export interface EvaluateContainer {
     name: string;
     evaluateName: string;
+    variablePath: string[];
     type: string;
     value: string;
+    keyType: KeyType;
+    elementCount: number;
     highLevelType: HighLevelType;
     children: EvaluateContainer[];
+}
+
+export enum KeyType {
+  string = 'String',
+  integer = 'Integer',
+  legacy = 'Legacy'
 }
 
 export interface Thread {

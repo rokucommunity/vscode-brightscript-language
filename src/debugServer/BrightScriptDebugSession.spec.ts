@@ -16,7 +16,7 @@ import {
     EvaluateContainer,
     HighLevelType,
     PrimativeType
-} from '../RokuAdapter';
+} from '../RokuTelnetAdapter';
 import { DebugSession } from 'vscode-debugadapter';
 
 let sinon = sinonActual.createSandbox();
