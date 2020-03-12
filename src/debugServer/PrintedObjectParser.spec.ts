@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 
 import { PrintedObjectParser } from './PrintedObjectParser';
+
 describe('PrintedObjectParser', () => {
     it('works for simple cases', () => {
         parseEquals('name: "bob"', { key: 'name', value: '"bob"' });

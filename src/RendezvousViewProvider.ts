@@ -1,7 +1,7 @@
 import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
 
-import { RendezvousHistory } from './RendezvousTracker';
+import { RendezvousHistory } from './debugServer/RendezvousTracker';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 

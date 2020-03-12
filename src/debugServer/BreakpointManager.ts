@@ -5,10 +5,10 @@ import { orderBy } from 'natural-orderby';
 import * as path from 'path';
 import { SourceNode } from 'source-map';
 import { DebugProtocol } from 'vscode-debugprotocol';
+import { stringify } from 'querystring';
 
 import { fileUtils } from './FileUtils';
 import { Project } from './ProjectManager';
-import { stringify } from 'querystring';
 
 export class BreakpointManager {
 

@@ -8,8 +8,8 @@ import * as rokuDeploy from 'roku-deploy';
 import { defer } from './BrightScriptDebugSession';
 import { PrintedObjectParser } from './PrintedObjectParser';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
+import { SourceLocation } from './SourceLocator';
 import { util } from './util';
-import { SourceLocation } from './debugServer/SourceLocator';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.

@@ -1,15 +1,16 @@
+import * as assert from 'assert';
+import * as eol from 'eol';
+import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import { FileEntry, RokuDeploy } from 'roku-deploy';
 import * as rokuDeploy from 'roku-deploy';
-import { fileUtils } from './FileUtils';
-import { standardizePath as s } from './FileUtils';
-import * as findInFiles from 'find-in-files';
-import { util } from '../util';
-import { SourceLocator } from './SourceLocator';
-import * as assert from 'assert';
-import * as eol from 'eol';
+
 import { BreakpointManager } from './BreakpointManager';
+import { fileUtils } from './FileUtils';
+import { SourceLocator } from './SourceLocator';
+import { standardizePath as s } from './FileUtils';
+import { util } from './util';
 // tslint:disable-next-line:no-var-requires Had to add the import as a require do to issues using this module with normal imports
 let replaceInFile = require('replace-in-file');
 

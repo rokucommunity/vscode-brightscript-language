@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import * as path from 'path';
 import * as replaceLast from 'replace-last';
 
-import { SourceLocation } from './debugServer/SourceLocator';
+import { SourceLocation } from './SourceLocator';
 
 export class RendezvousTracker {
     constructor() {

@@ -7,17 +7,18 @@ import { Server } from 'https';
 import * as path from 'path';
 import * as sinonActual from 'sinon';
 import { DebugProtocol } from 'vscode-debugprotocol/lib/debugProtocol';
+import { DebugSession } from 'vscode-debugadapter';
+
 import {
     BrightScriptDebugSession,
     defer
-} from '../BrightScriptDebugSession';
+} from './BrightScriptDebugSession';
 import { fileUtils } from './FileUtils';
 import {
     EvaluateContainer,
     HighLevelType,
     PrimativeType
-} from '../RokuTelnetAdapter';
-import { DebugSession } from 'vscode-debugadapter';
+} from './RokuTelnetAdapter';
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;

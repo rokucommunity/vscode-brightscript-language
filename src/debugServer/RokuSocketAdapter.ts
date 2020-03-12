@@ -5,7 +5,7 @@ import { Socket } from 'net';
 
 import { defer } from './BrightScriptDebugSession';
 import { RendezvousHistory, RendezvousTracker } from './RendezvousTracker';
-import { SourceLocation } from './debugServer/SourceLocator';
+import { SourceLocation } from './SourceLocator';
 
 /**
  * A class that connects to a Roku device over telnet debugger port and provides a standardized way of interacting with it.

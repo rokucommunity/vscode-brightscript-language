@@ -13,6 +13,7 @@ import {
 } from 'vscode';
 import * as vscode from 'vscode';
 
+import { BrightScriptDebugConfiguration } from './debugServer/BrightScriptDebugConfiguration';
 import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -452,47 +453,4 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return undefined;
         }
     }
-}
-
-export interface BrightScriptDebugConfiguration extends DebugConfiguration {
-    host: string;
-    password: string;
-    rootDir: string;
-    sourceDirs?: string[];
-    bsConst?: { [key: string]: boolean };
-    componentLibrariesPort?; number;
-    componentLibrariesOutDir: string;
-    componentLibraries: ComponentLibraryConfig[];
-    outDir: string;
-    stopOnEntry: boolean;
-    files?: FileEntry[];
-    consoleOutput: 'full' | 'normal';
-    retainDeploymentArchive: boolean;
-    injectRaleTrackerTask: boolean;
-    raleTrackerTaskFileLocation: string;
-    retainStagingFolder: boolean;
-    clearOutputOnLaunch: boolean;
-    selectOutputOnLogMessage: boolean;
-    enableVariablesPanel: boolean;
-    enableDebuggerAutoRecovery: boolean;
-    stopDebuggerOnAppExit: boolean;
-    packagePort: number;
-    enableSocketDebugger: boolean;
-    remotePort: number;
-    envFile?: string;
-    enableSourceMaps?: boolean;
-    logfilePath?: string;
-}
-
-export interface ComponentLibraryConfig {
-    rootDir: string;
-    /**
-     * The filename for the package.
-     */
-    outFile: string;
-    files: FileEntry[];
-    sourceDirs: string[];
-    bsConst?: { [key: string]: boolean };
-    injectRaleTrackerTask: boolean;
-    raleTrackerTaskFileLocation: string;
 }

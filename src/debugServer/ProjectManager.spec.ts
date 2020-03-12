@@ -1,13 +1,15 @@
 //tslint:disable:no-unused-expression
 //tslint:disable:jsdoc-format
-import { Project, ComponentLibraryProject, ProjectManager, ComponentLibraryConstrutorParams, componentLibraryPostfix } from './ProjectManager';
-import { fileUtils } from './FileUtils';
-import * as rokuDeploy from 'roku-deploy';
 import { expect } from 'chai';
-import { standardizePath as s } from './FileUtils';
-import * as path from 'path';
 import * as fsExtra from 'fs-extra';
+import * as path from 'path';
+import * as rokuDeploy from 'roku-deploy';
 import * as sinonActual from 'sinon';
+
+import { fileUtils } from './FileUtils';
+import { Project, ComponentLibraryProject, ProjectManager, ComponentLibraryConstrutorParams, componentLibraryPostfix } from './ProjectManager';
+import { standardizePath as s } from './FileUtils';
+
 let sinon = sinonActual.createSandbox();
 let n = fileUtils.standardizePath.bind(fileUtils);
 

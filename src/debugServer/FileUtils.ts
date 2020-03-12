@@ -1,11 +1,12 @@
+import * as eol from 'eol';
 import * as findInFiles from 'find-in-files';
 import * as fsExtra from 'fs-extra';
+import glob = require('glob');
 import * as path from 'path';
 import { RawSourceMap, SourceMapConsumer, SourceNode } from 'source-map';
-import { SourceLocation } from './SourceLocator';
 import { promisify } from 'util';
-import glob = require('glob');
-import * as eol from 'eol';
+
+import { SourceLocation } from './SourceLocator';
 const globp = promisify(glob);
 
 export class FileUtils {
