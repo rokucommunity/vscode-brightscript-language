@@ -9,7 +9,7 @@ import Uri from 'vscode-uri';
 
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
-import { fileUtils, standardizePath as s } from './debugServer/FileUtils';
+import { standardizePath as s } from 'roku-debug';
 import * as fsExtra from 'fs-extra';
 
 let sinon: sinonImport.SinonSandbox;

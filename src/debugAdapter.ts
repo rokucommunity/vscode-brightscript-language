@@ -1,3 +1,3 @@
-import { BrightScriptDebugSession } from './debugServer/BrightScriptDebugSession';
+import { BrightScriptDebugSession } from 'roku-debug';
 
 BrightScriptDebugSession.run(BrightScriptDebugSession);

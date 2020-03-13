@@ -1,19 +1,17 @@
 import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileUtils } from './debugServer/FileUtils';
 import * as fsExtra from 'fs-extra';
 import { FileEntry } from 'roku-deploy';
 import {
     CancellationToken,
-    DebugConfiguration,
     DebugConfigurationProvider,
     ExtensionContext,
     WorkspaceFolder,
 } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration } from './debugServer/BrightScriptDebugConfiguration';
+import { BrightScriptDebugConfiguration, fileUtils } from 'roku-debug';
 import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {

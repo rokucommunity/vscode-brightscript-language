@@ -2,11 +2,10 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
-import { BrightScriptDebugConfiguration } from './debugServer/BrightScriptDebugConfiguration';
+import { BrightScriptDebugConfiguration, BrightScriptDebugCompileError } from 'roku-debug';
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
-import { BrightScriptDebugCompileError } from './debugServer/RokuTelnetAdapter';
 import * as fsExtra from 'fs-extra';
 
 export class LogLine {
