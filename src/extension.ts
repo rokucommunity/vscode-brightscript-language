@@ -1,34 +1,6 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
-
-import {
-    CancellationToken,
-    CompletionItem,
-    CompletionItemProvider,
-    DebugConfiguration,
-    DocumentSymbolProvider,
-    ExtensionContext,
-    Position,
-    Range,
-    SymbolInformation,
-    TextDocument,
-    Uri,
-    window,
-    workspace,
-    WorkspaceFolder,
-    WorkspaceSymbolProvider,
-} from 'vscode';
-
-import {
-    LanguageClient,
-    LanguageClientOptions,
-    ServerOptions,
-    TransportKind
-} from 'vscode-languageclient';
-
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
-import BrightScriptCompletionItemProvider from './BrightScriptCompletionItemProvider';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
@@ -45,14 +17,28 @@ import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
 } from './SymbolInformationRepository';
+import { LanaguageServerManager as LanguageServerManager } from './LanguageServerManager';
 
 let outputChannel: vscode.OutputChannel;
 let debugServerOutputChannel: vscode.OutputChannel;
-let client: LanguageClient;
+let languageServerManager: LanguageServerManager;
 
 export async function activate(context: vscode.ExtensionContext) {
     let activeDeviceManager = new ActiveDeviceManager();
-    await configureLanguageServer(context);
+    languageServerManager = new LanguageServerManager(context);
+
+    if (isLanguageServerEnabled()) {
+        //run the manager. if the language server should be enabled, this will wait for it to finish initializing
+        await languageServerManager.enableLanguageServer();
+    }
+    //dynamically enable or disable the language server based on user settings
+    vscode.workspace.onDidChangeConfiguration((configuration) => {
+        if (isLanguageServerEnabled()) {
+            languageServerManager.enableLanguageServer();
+        } else {
+            languageServerManager.disableLanguageServer();
+        }
+    });
     let subscriptions = context.subscriptions;
 
     //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
@@ -139,82 +125,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 }
 
-export async function configureLanguageServer(context: vscode.ExtensionContext) {
-    // The server is implemented in node
-    let serverModule = context.asAbsolutePath(
-        path.join('out', 'LanguageServerRunner.js')
-    );
-
-    // If the extension is launched in debug mode then the debug server options are used
-    // Otherwise the run options are used
-    let serverOptions: ServerOptions = {
-        run: {
-            module: serverModule,
-            transport: TransportKind.ipc
-        },
-        debug: {
-            module: serverModule,
-            transport: TransportKind.ipc,
-            // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-            options: { execArgv: ['--nolazy', '--inspect=6009'] }
-        }
-    };
-
-    // Options to control the language client
-    let clientOptions: LanguageClientOptions = {
-        // Register the server for various types of documents
-        documentSelector: [
-            { scheme: 'file', language: 'brightscript' },
-            { scheme: 'file', language: 'xml' }
-        ],
-        synchronize: {
-            // Notify the server about file changes to every filetype it cares about
-            fileEvents: workspace.createFileSystemWatcher('**/*')
-        }
-    };
-
-    // Create the language client and start the client.
-    client = new LanguageClient(
-        'brighterScriptLanguageServer',
-        'BrighterScript Language Server',
-        serverOptions,
-        clientOptions
-    );
-    // Start the client. This will also launch the server
-    client.start();
-    await client.onReady();
-
-    client.onNotification('critical-failure', (message) => {
-        window.showErrorMessage(message);
-    });
-
-    let buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-    buildStatusStatusBar.text = '$(flame)';
-    buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-    buildStatusStatusBar.color = '#673293';
-    buildStatusStatusBar.show();
-    //update the statusbar with build statuses
-    client.onNotification('build-status', (message) => {
-        if (message === 'building') {
-            buildStatusStatusBar.text = '$(flame)...';
-            buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-            buildStatusStatusBar.color = '#673293';
-
-        } else if (message === 'success') {
-            buildStatusStatusBar.text = '$(flame)';
-            buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-            buildStatusStatusBar.color = '#673293';
-
-        } else if (message === 'critical-error') {
-            buildStatusStatusBar.text = '$(flame)';
-            buildStatusStatusBar.tooltip = 'BrightScript Language server encountered a critical runtime error';
-            buildStatusStatusBar.color = '#FF0000';
-        }
-    });
-}
-export function deactivate() {
-    if (!client) {
-        return undefined;
-    }
-    return client.stop();
+function isLanguageServerEnabled() {
+    var settings = vscode.workspace.getConfiguration('brightscript');
+    var value = settings.enableLanguageServer === false ? false : true;
+    return value;
 }
