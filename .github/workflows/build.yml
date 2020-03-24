@@ -1,5 +1,13 @@
 name: build
-on: [push, pull_request]
+on:
+  push:
+    tags:
+      - '*'
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
 
 jobs:
   ci:
@@ -14,8 +22,16 @@ jobs:
       - uses: actions/setup-node@master
         with:
           node-version: "10.19.0"
-      - run: npm ci
-      - run: npm run build
-      - run: npm run tslint
-      - run: npm run test
-      - run: npm run publish-coverage
+      # - run: npm ci
+      # - run: npm run build
+      # - run: npm run tslint
+      # - run: npm run test
+      # - run: npm run publish-coverage
+      # - run: npm run package
+      #if a tag, create a github release
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "create release"
+      #if a non-pre-release tag, 
+      - if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-beta.') == false
+        run: echo "not beta release so publish to store"
+
