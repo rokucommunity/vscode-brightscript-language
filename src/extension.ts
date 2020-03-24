@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { window } from 'vscode';
+import { gte as semverGte } from 'semver';
+import { env, extensions } from 'vscode';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -18,15 +21,27 @@ import {
     SymbolInformationRepository
 } from './SymbolInformationRepository';
 import { LanaguageServerManager as LanguageServerManager } from './LanguageServerManager';
+import { GlobalStateManager } from './GlobalStateManager';
+import { util } from './util';
+
+const EXTENSION_ID = 'celsoaf.brightscript';
 
 let outputChannel: vscode.OutputChannel;
 let debugServerOutputChannel: vscode.OutputChannel;
 let languageServerManager: LanguageServerManager;
+let globalStateManager: GlobalStateManager;
 
 export async function activate(context: vscode.ExtensionContext) {
+    globalStateManager = new GlobalStateManager(context);
+
+    var previousExtensionVersion = globalStateManager.lastRunExtensionVersion;
+
+    var currentExtensionVersion = extensions.getExtension(EXTENSION_ID).packageJSON.version;
+    //update the tracked version of the extension
+    globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
+
     let activeDeviceManager = new ActiveDeviceManager();
     languageServerManager = new LanguageServerManager(context);
-
     if (isLanguageServerEnabled()) {
         //run the manager. if the language server should be enabled, this will wait for it to finish initializing
         await languageServerManager.enableLanguageServer();
@@ -123,10 +138,65 @@ export async function activate(context: vscode.ExtensionContext) {
     //xml support
     const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
     context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
+
+    showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
 }
 
 function isLanguageServerEnabled() {
     var settings = vscode.workspace.getConfiguration('brightscript');
     var value = settings.enableLanguageServer === false ? false : true;
     return value;
+}
+
+async function showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExtensionVersion: string) {
+    let config = vscode.workspace.getConfiguration('brightscript');
+    let isReleaseNotificationsEnabled = config.get('enableReleaseNotifications') === false ? false : true;
+    //this is the first launch of the extension
+    if (lastRunExtensionVersion === undefined) {
+
+        //if release notifications are enabled
+        //TODO once we have the welcome page content prepared, remove the `&& false` from the condition below
+        if (isReleaseNotificationsEnabled && false) {
+            let viewText = 'View the get started guide';
+            let response = await window.showInformationMessage(
+                'Thank you for installing the BrightScript VSCode extension. Click the button below to read some tips on how to get the most out of this extension.',
+                viewText
+            );
+            if (response === viewText) {
+                env.openExternal(vscode.Uri.parse('https://github.com/rokucommunity/vscode-brightscript-language/blob/master/Welcome.md'));
+            }
+        }
+        globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
+        return;
+    }
+    //List of version numbers that should prompt the ReleaseNotes page.
+    //these should be in highest-to-lowest order, because we will launch the highest version
+    let versionWhitelist = [
+        '2.0.0'
+    ];
+    if (!globalStateManager) {
+        var k = 2;
+    }
+    for (let whitelistVersion of versionWhitelist) {
+        if (
+            //if the current version is larger than the whitelist version
+            semverGte(whitelistVersion, lastRunExtensionVersion) &&
+            //if the user hasn't seen this popup before
+            globalStateManager.lastSeenReleaseNotesVersion !== whitelistVersion &&
+            //if ReleaseNote popups are enabled
+            isReleaseNotificationsEnabled
+        ) {
+            //mark this version as viewed
+            globalStateManager.lastSeenReleaseNotesVersion = whitelistVersion;
+            let viewText = 'View Release Notes';
+            let response = await window.showInformationMessage(
+                `BrightScript Language v${whitelistVersion} includes significant changes from previous versions. Please take a moment to review the release notes.`,
+                viewText
+            );
+            if (response === viewText) {
+                env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/ReleaseNotes.md#${whitelistVersion}`));
+            }
+            globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
+        }
+    }
 }

@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 export var __request: any = request;
 
 import BrightScriptFileUtils from './BrightScriptFileUtils';
+import { GlobalStateManager } from './GlobalStateManager';
 
 // georgejecook: I can't find a way to stub/mock a TypeScript class constructor
 // so I have to do this for the time being. Not ideal.
@@ -29,10 +30,16 @@ export default class BrightScriptCommands {
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
-        } ));
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearGlobalState', () => {
+            new GlobalStateManager(this.context).clear();
+            vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
+        }));
+
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteCommand', (key: string) => {
             this.sendRemoteCommand(key);
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
             let stuffUserTyped: string = await vscode.window.showInputBox({
@@ -46,7 +53,7 @@ export default class BrightScriptCommands {
                 }
             }
             vscode.commands.executeCommand('workbench.action.focusPanel');
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
             this.sendRemoteCommand('Back');

@@ -7,6 +7,9 @@ A VSCode extension to support Roku's BrightScript language.
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/celsoaf.brightscript.svg)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 
+## Upgrading from V1
+If you're upgrading from version 1 of the extension, please review [these changes](ReleaseNotes.md#2.0.0)
+
 ## Features
 
 - Static analysis (code validation)
@@ -468,6 +471,7 @@ ROKU_PASSWORD=password123
 ```
 
 This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
+
 
 ## Pre-release Versions
 

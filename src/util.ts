@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as net from 'net';
 import * as url from 'url';
+import * as vscode from 'vscode';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -153,7 +154,6 @@ class Util {
         }
         return r;
     }
-
 }
 
 const util = new Util();
