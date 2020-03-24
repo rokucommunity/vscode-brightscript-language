@@ -33,7 +33,15 @@ describe('extension', () => {
     beforeEach(() => {
         context = {
             subscriptions: [],
-            asAbsolutePath: () => { }
+            asAbsolutePath: () => { },
+            globalState: {
+                get: () => {
+
+                },
+                update: () => {
+
+                }
+            }
         };
     });
 

@@ -7,6 +7,15 @@ export let vscode = {
         Left: 1,
         Right: 2
     },
+    extensions: {
+        getExtension: () => {
+            return {
+                packageJSON: {
+                    version: undefined
+                }
+            };
+        }
+    },
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
