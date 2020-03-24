@@ -88,6 +88,7 @@
         "@types/vscode": "^1.30.0",
         "chai": "^4.2.0",
         "coveralls": "^3.0.11",
+        "cpx": "^1.5.0",
         "mocha": "^7.0.1",
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
