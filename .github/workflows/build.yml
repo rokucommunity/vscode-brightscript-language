@@ -1,0 +1,21 @@
+name: build
+on: [push, pull_request]
+
+jobs:
+  build--test-deploy-release:
+    runs-on: ${{ matrix.os }}
+    env:
+      COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: "10.19.0"
+      - run: npm ci
+      - run: npm run build
+      - run: npm run tslint
+      - run: npm run test
+      - run: npm run publish-coverage
