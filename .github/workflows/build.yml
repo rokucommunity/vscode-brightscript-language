@@ -16,7 +16,8 @@ jobs:
       COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        #os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os: [ubuntu-18.04]
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
@@ -28,10 +29,50 @@ jobs:
       # - run: npm run test
       # - run: npm run publish-coverage
       # - run: npm run package
-      #if a tag, create a github release
-      - if: startsWith(github.ref, 'refs/tags/v')
-        run: echo "create release"
-      #if a non-pre-release tag, 
-      - if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-beta.') == false
-        run: echo "not beta release so publish to store"
+  release:
+    #only run this task if a tag starting with 'v' was used to trigger this (i.e. a tagged release)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: ci
+    runs-on: ubuntu-18.04
+    env:
+      VSCE_TOKEN: ${{secrets.VSCE_TOKEN}}
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: "10.19.0"
+      #- run: npm ci
+      #- run: npm run build
+      #- run: npm run package
+#      - run: echo ::set-env name=RELEASE_VERSION::${echo GITHUB_REF/refs\/tags\//}
+      - run: echo ::set-env name=RELEASE_VERSION::"${github_ref/refs\/tags\//}"
+      - run: echo ${{env.RELEASE_VERSION}}
+
+      # create github release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_VERSION }}
+          release_name: ${{ env.RELEASE_VERSION }}
+          draft: false
+          prerelease: contains(github.ref, '-beta.')
+      - name: Upload vsix to release
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./brightscript-${{ env.RELEASE_VERSION }}.vsix
+          asset_name: brightscript-${{ env.RELEASE_VERSION }}.vsix
+          asset_content_type: application/vsix
+
+      #publish vsix to extension store
+      - name: Publish to VSCode extension store
+        #if this is not a beta release
+        if: contains(github.ref, '-beta.') == false
+        run: npx vsce publish -p ${VSCE_TOKEN}
 
