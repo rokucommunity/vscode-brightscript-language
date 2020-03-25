@@ -30,7 +30,7 @@ jobs:
   release:
     #only run this task if a tag starting with 'v' was used to trigger this (i.e. a tagged release)
     if: startsWith(github.ref, 'refs/tags/v')
-      needs: ci
+    needs: ci
     runs-on: ubuntu-18.04
     env:
       VSCE_TOKEN: ${{secrets.VSCE_TOKEN}}
