@@ -1,6 +1,6 @@
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import { FilesType, RokuDeploy } from 'roku-deploy';
+import { FileEntry, RokuDeploy } from 'roku-deploy';
 import * as rokuDeploy from 'roku-deploy';
 import { fileUtils } from './FileUtils';
 import { standardizePath as s } from './FileUtils';
@@ -206,7 +206,7 @@ interface AddProjectParams {
     rootDir: string;
     outDir: string;
     sourceDirs?: string[];
-    files: Array<FilesType>;
+    files: Array<FileEntry>;
     injectRaleTrackerTask?: boolean;
     raleTrackerTaskFileLocation?: string;
     bsConst?: { [key: string]: boolean };
@@ -221,7 +221,7 @@ export class Project {
         assert(params?.outDir, 'outDir is required');
         this.outDir = fileUtils.standardizePath(params.outDir);
 
-        this.stagingFolderPath = params.stagingFolderPath ?? rokuDeploy.getStagingFolderPath(this);
+        this.stagingFolderPath = params.stagingFolderPath ?? rokuDeploy.getOptions(this).stagingFolderPath;
         this.bsConst = params.bsConst;
         this.sourceDirs = (params.sourceDirs ?? [])
             //standardize every sourcedir
@@ -233,7 +233,7 @@ export class Project {
     public rootDir: string;
     public outDir: string;
     public sourceDirs: string[];
-    public files: Array<FilesType>;
+    public files: Array<FileEntry>;
     public stagingFolderPath: string;
     public fileMappings: Array<{ src: string; dest: string; }>;
     public bsConst: { [key: string]: boolean };
@@ -247,7 +247,16 @@ export class Project {
         }
 
         //override the getFilePaths function so rokuDeploy doesn't run it again during prepublishToStaging
-        (rokuDeploy as any).getFilePaths = () => Promise.resolve(this.fileMappings);
+        (rokuDeploy as any).getFilePaths = () => {
+            let relativeFileMappings = [];
+            for (let fileMapping of this.fileMappings) {
+                relativeFileMappings.push({
+                    src: fileMapping.src,
+                    dest: fileUtils.replaceCaseInsensitive(fileMapping.dest, this.stagingFolderPath, '')
+                });
+            }
+            return Promise.resolve(relativeFileMappings);
+        };
 
         //copy all project files to the staging folder
         await rokuDeploy.prepublishToStaging({
@@ -413,7 +422,7 @@ export class Project {
      * (`dest` paths are relative in later versions of roku-deploy)
      */
     protected async getFileMappings() {
-        let fileMappings = await rokuDeploy.getFilePaths(this.files, this.stagingFolderPath, this.rootDir);
+        let fileMappings = await rokuDeploy.getFilePaths(this.files, this.rootDir);
         for (let mapping of fileMappings) {
             //if the dest path is relative, make it absolute (relative to the staging dir)
             mapping.dest = path.resolve(this.stagingFolderPath, mapping.dest);

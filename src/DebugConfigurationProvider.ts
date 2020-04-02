@@ -1,8 +1,9 @@
+import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { fileUtils } from './debugServer/FileUtils';
 import * as fsExtra from 'fs-extra';
-import { FilesType } from 'roku-deploy';
+import { FileEntry } from 'roku-deploy';
 import {
     CancellationToken,
     DebugConfiguration,
@@ -67,7 +68,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public util = util;
 
     private configDefaults: any;
-    private defaultFilesArray: FilesType[];
+    private defaultFilesArray: FileEntry[];
     private showDeviceInfoMessages: boolean;
 
     /**
@@ -77,7 +78,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<BrightScriptDebugConfiguration> {
         // Process the different parts of the config
         config = this.processUserWorkspaceSettings(config);
-        config = await this.sanitizeConfiguration(config);
+        config = await this.sanitizeConfiguration(config, folder);
         config = await this.processEnvFile(folder, config);
         config = await this.processHostParameter(config);
         config = await this.processPasswordParameter(config);
@@ -112,7 +113,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Takes the launch.json config and applies any defaults to missing values and sanitizes some of the more complex options
      * @param config current config object
      */
-    private async sanitizeConfiguration(config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
+    private async sanitizeConfiguration(config: BrightScriptDebugConfiguration, folder: WorkspaceFolder): Promise<BrightScriptDebugConfiguration> {
+        let defaultFilesArray: FileEntry[] = [
+            'manifest',
+            'source/**/*.*',
+            'components/**/*.*',
+            'images/**/*.*'
+        ];
         let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
 
         //make sure we have an object
@@ -123,6 +130,33 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //override with any debug-specific settings
             config
         );
+
+        let folderUri: vscode.Uri;
+        //use the workspace folder provided
+        if (folder) {
+            folderUri = folder.uri;
+
+            //if there's only one workspace, use that workspace's folder path
+        } else if (vscode.workspace.workspaceFolders.length === 1) {
+            folderUri = vscode.workspace.workspaceFolders[0].uri;
+        } else {
+            //there are multiple workspaces, ask the user to specify which one they want to use
+            let workspaceFolder = await vscode.window.showWorkspaceFolderPick();
+            if (workspaceFolder) {
+                folderUri = workspaceFolder.uri;
+            }
+        }
+
+        if (!folderUri) {
+            //cancel this whole thing because we can't continue without the user specifying a workspace folder
+            throw new Error('Cannot determine which workspace to use for brightscript debugging');
+        }
+
+        //load the brsconfig settings (if available)
+        let brsconfig = await this.getBrsConfig(folderUri);
+        if (brsconfig) {
+            config = Object.assign({}, brsconfig, config);
+        }
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
@@ -148,7 +182,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.componentLibraries) {
             config.componentLibrariesOutDir = this.util.ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
-            for (let library of config.componentLibraries) {
+            for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
                 library.files = library.files ? library.files : this.defaultFilesArray;
             }
@@ -186,6 +220,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
             vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+        }
+
+        //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
+        if (config.rootDir.indexOf('${workspaceFolder}') > -1) {
+            config.rootDir = path.normalize(config.rootDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
+        //for outDir, replace workspaceFolder now
+        if (config.outDir.indexOf('${workspaceFolder}') > -1) {
+            config.outDir = path.normalize(config.outDir.replace('${workspaceFolder}', folderUri.fsPath));
         }
 
         // Make sure that directory paths end in a trailing slash
@@ -383,6 +427,29 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             value: value
         });
     }
+
+    /**
+     * Get the brsConfig file, if available
+     */
+    public async getBrsConfig(workspaceFolder: vscode.Uri) {
+        //try to load brsconfig settings
+        let settings = await vscode.workspace.getConfiguration('brightscript', workspaceFolder);
+        let configFilePath = settings.get<string>('configFile');
+        if (!configFilePath) {
+            configFilePath = 'bsconfig.json';
+        }
+
+        //if the path is relative, resolve it relative to the workspace folder. If it's absolute, use as is (path.resolve handles this logic for us)
+        let workspaceFolderPath = bslangUtil.uriToPath(workspaceFolder.toString());
+        configFilePath = path.resolve(workspaceFolderPath, configFilePath);
+        try {
+            let brsconfig = await bslangUtil.loadConfigFile(configFilePath);
+            return brsconfig;
+        } catch (e) {
+            console.error(`Could not load brsconfig file at "${configFilePath}`);
+            return undefined;
+        }
+    }
 }
 
 export interface BrightScriptDebugConfiguration extends DebugConfiguration {
@@ -396,7 +463,7 @@ export interface BrightScriptDebugConfiguration extends DebugConfiguration {
     componentLibraries: ComponentLibraryConfig[];
     outDir: string;
     stopOnEntry: boolean;
-    files?: FilesType[];
+    files?: FileEntry[];
     consoleOutput: 'full' | 'normal';
     retainDeploymentArchive: boolean;
     injectRaleTrackerTask: boolean;
@@ -420,7 +487,7 @@ export interface ComponentLibraryConfig {
      * The filename for the package.
      */
     outFile: string;
-    files: FilesType[];
+    files: FileEntry[];
     sourceDirs: string[];
     bsConst?: { [key: string]: boolean };
     injectRaleTrackerTask: boolean;

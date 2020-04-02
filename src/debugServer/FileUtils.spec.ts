@@ -2,12 +2,14 @@
 import { expect } from 'chai';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
-import * as rmfr from 'rmfr';
 import * as sinonActual from 'sinon';
 import { SourceNode } from 'source-map';
 
 import { fileUtils, standardizePath } from './FileUtils';
 import { standardizePath as s } from './FileUtils';
+import * as util from 'util';
+import * as rimraf from 'rimraf';
+const rimrafp = util.promisify(rimraf);
 
 let sinon = sinonActual.createSandbox();
 let n = path.normalize;
@@ -140,7 +142,7 @@ describe('FileUtils', () => {
         let outFileMapPath = n(`${outFilePath}.map`);
 
         beforeEach(async () => {
-            await rmfr(tempDirPath);
+            await rimrafp(tempDirPath);
 
             await fsExtra.mkdir(tempDirPath);
             await fsExtra.mkdir(sourceDirPath);
@@ -154,7 +156,7 @@ describe('FileUtils', () => {
         });
 
         afterEach(async () => {
-            await rmfr(tempDirPath);
+            await rimrafp(tempDirPath);
         });
 
         async function createOutFiles(sourcePath) {

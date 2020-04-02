@@ -26,7 +26,7 @@
             "command": "npm",
             "args": [
                 "run",
-                "test",
+                "test:nocover",
                 "--loglevel",
                 "silent"
             ],
@@ -71,7 +71,7 @@
         },
         {
             "type": "npm",
-            "script": "test:coverage",
+            "script": "test",
             "problemMatcher": []
         }
     ]

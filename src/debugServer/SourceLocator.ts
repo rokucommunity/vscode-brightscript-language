@@ -1,5 +1,5 @@
 import * as fsExtra from 'fs-extra';
-import { FilesType } from 'roku-deploy';
+import { FileEntry } from 'roku-deploy';
 import * as rokuDeploy from 'roku-deploy';
 import { SourceMapConsumer } from 'source-map';
 

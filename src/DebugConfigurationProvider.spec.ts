@@ -1,9 +1,12 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
+import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
+import * as path from 'path';
 import * as sinonImport from 'sinon';
 import { WorkspaceFolder } from 'vscode';
-import * as path from 'path';
+import Uri from 'vscode-uri';
+
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { fileUtils, standardizePath as s } from './debugServer/FileUtils';
@@ -16,6 +19,7 @@ let cwd = s`${path.dirname(__dirname)}`;
 const rootDir = s`${cwd}/rootDir`;
 
 let commandsMock;
+let n = brighterscript.util.standardizePath.bind(brighterscript.util);
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -57,7 +61,7 @@ describe('BrightScriptConfigurationProvider', () => {
         let existingConfigDefaults;
         beforeEach(() => {
             folder = <any>{
-                uri: { fsPath: '/some/project' }
+                uri: Uri.parse('file:/some/project')
             };
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
 
@@ -78,9 +82,10 @@ describe('BrightScriptConfigurationProvider', () => {
         it('handles loading declared values from .env files', async () => {
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
-                expect(filePath).to.equal('/some/project/.env');
+                expect(n(filePath)).to.equal(n('/some/project/.env'));
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -99,7 +104,8 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('USERNAME=bob'));
             });
-            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
@@ -112,6 +118,8 @@ describe('BrightScriptConfigurationProvider', () => {
         it('throws on missing .env file', async () => {
             sinon.restore();
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+
             try {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                     host: '127.0.0.1',
@@ -126,6 +134,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
+            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');
@@ -145,7 +154,15 @@ describe('BrightScriptConfigurationProvider', () => {
             const config = await configProvider.resolveDebugConfiguration(folder, <any>{});
             const configDefaults = (configProvider as any).configDefaults;
             for (const key in configDefaults) {
-                expect(config[key]).to.equal(configDefaults[key]);
+                if (key === 'outDir') {
+                    expect(
+                        path.normalize(config[key])
+                    ).to.equal(
+                        path.normalize(`${folder.uri.path}/out/`)
+                    );
+                } else {
+                    expect(config[key], `Expected "${key}" to match the default`).to.equal(configDefaults[key]);
+                }
             }
         });
 

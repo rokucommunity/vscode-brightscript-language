@@ -17,5 +17,6 @@
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
+    "tslint.autoFixOnSave": true,
     "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
 }

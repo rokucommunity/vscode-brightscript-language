@@ -1,6 +1,21 @@
 import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, Position } from 'vscode';
 
 export let vscode = {
+    CompletionItem: class { },
+    CodeLens: class { },
+    StatusBarAlignment: {
+        Left: 1,
+        Right: 2
+    },
+    extensions: {
+        getExtension: () => {
+            return {
+                packageJSON: {
+                    version: undefined
+                }
+            };
+        }
+    },
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
@@ -29,6 +44,7 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
+        asAbsolutePath: function() { }
     },
     workspace: {
         workspaceFolders: [],
@@ -61,10 +77,18 @@ export let vscode = {
         }
     },
     window: {
+        createStatusBarItem: () => {
+            return {
+                clear: () => { },
+                text: '',
+                show: () => { }
+            };
+        },
         createOutputChannel: function() {
             return {
                 show: () => { },
-                clear: () => { }
+                clear: () => { },
+                appendLine: () => { }
             };
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
@@ -245,5 +269,19 @@ export let vscode = {
             this.value = value;
         }
         private value: string;
+    }
+};
+
+export let vscodeLanguageClient = {
+    LanguageClient: class {
+        public start() { }
+        public onReady() { return Promise.resolve<any>(null); }
+        public onNotification() { }
+    },
+    TransportKind: {
+        stdio: 0,
+        ipc: 1,
+        pipe: 2,
+        socket: 3
     }
 };

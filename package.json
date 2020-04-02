@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "1.23.0",
+    "version": "2.0.0-beta.49",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,24 +25,26 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run tslint && npm run test",
+        "preversion": "npm run build && npm run tslint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
-        "build": "tsc -p ./src",
+        "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./out -L",
+        "build": "npm run copy-schema && tsc -p ./src",
         "tslint": "tslint \"./src/**/*.ts\"",
-        "watch": "tsc -w -p ./src",
-        "build-and-test": "npm run build && npm run test",
-        "test": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
-        "test:coverage": "nyc mocha src/**/*.spec.ts --full-trace --bail",
-        "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
+        "watch": "npm run copy-schema && tsc -w -p ./src",
+        "test": "nyc mocha \"src/**/*.spec.ts\" --full-trace --bail",
+        "test:nocover": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
+        "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
+        "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
         "publish": "vsce publish",
         "clean": "rimraf out"
     },
     "dependencies": {
-        "@types/glob": "^7.1.1",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
+        "brighterscript": "^0.4.1",
         "brighterscript-formatter": "^1.0.2",
+        "dateformat": "^3.0.3",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -62,42 +64,44 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-deploy": "^2.6.1",
+        "roku-deploy": "^3.0.0-beta.7",
+        "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
         "vscode-debugadapter": "1.33.0",
         "vscode-debugprotocol": "1.33.0",
-        "vscode-uri": "1.0.6"
+        "vscode-languageclient": "^4.1.4",
+        "vscode-languageserver": "^4.1.3",
+        "vscode-uri": "^1.0.6"
     },
     "devDependencies": {
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
+        "@types/glob": "^7.1.1",
         "@types/mocha": "^5.2.5",
         "@types/mock-fs": "^4.10.0",
         "@types/node": "11.9.1",
         "@types/node-ssdp": "^3.3.0",
         "@types/q": "^1.5.1",
-        "@types/rmfr": "^2.0.0",
+        "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.30.0",
         "chai": "^4.2.0",
-        "codecov": "^3.6.5",
-        "cson-parser": "^4.0.1",
-        "fast-plist": "^0.1.2",
-        "mocha": "^5.2.0",
+        "coveralls": "^3.0.11",
+        "cpx": "^1.5.0",
+        "mocha": "^7.0.1",
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
         "nyc": "^15.0.0",
         "rimraf": "^3.0.0",
-        "rmfr": "^2.0.0",
         "sinon": "^7.2.3",
-        "source-map-support": "^0.5.9",
+        "source-map-support": "^0.5.16",
         "ts-mocha": "^6.0.0",
-        "ts-node": "^8.0.2",
+        "ts-node": "^8.6.2",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
-        "typescript": "^3.6.4",
-        "vsce": "^1.50.0",
+        "typescript": "^3.7.5",
+        "vsce": "^1.58.0",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
     "main": "./out/extension",
@@ -106,6 +110,8 @@
         "onLanguage:brightscript",
         "onLanguage:brighterscript",
         "onLanguage:xml",
+        "workspaceContains:**/manifest",
+        "workspaceContains:**/brsconfig.json",
         "onCommand:extension.brightscript.sendRemoteCommand",
         "onCommand:extension.brightscript.pressBackButton",
         "onCommand:extension.brightscript.pressHomeButton",
@@ -503,6 +509,15 @@
         ],
         "languages": [
             {
+                "id": "jsonc",
+                "filenamePatterns": [
+                    "bsconfig.json",
+                    "*bsconfig.json",
+                    "brsconfig.json",
+                    "*brsconfig.json"
+                ]
+            },
+            {
                 "id": "brightscript",
                 "extensions": [
                     ".brs"
@@ -538,6 +553,16 @@
                     "text/x-code-output",
                     "x-code-output"
                 ]
+            }
+        ],
+        "jsonValidation": [
+            {
+                "fileMatch": "*bsconfig.json",
+                "url": "./out/bsconfig.schema.json"
+            },
+            {
+                "fileMatch": "*brsconfig.json",
+                "url": "./out/bsconfig.schema.json"
             }
         ],
         "grammars": [
@@ -636,6 +661,11 @@
                     "description": "IP address of the roku to remotely control",
                     "scope": "resource"
                 },
+                "brightscript.configFile": {
+                    "type": "string",
+                    "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
+                    "scope": "resource"
+                },
                 "brightscript.output.includeStackTraces": {
                     "type": "boolean",
                     "default": true,
@@ -710,13 +740,25 @@
                     "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
                     "default": "${workspaceFolder}/logs/brightscript-output.log",
                     "scope": "resource"
+                },
+                "brightscript.enableLanguageServer": {
+                    "type": "boolean",
+                    "description": "Enable experimental language support, which includes things like syntax checking smarter intellisense.",
+                    "default": true,
+                    "scope": "resource"
                 }
             }
         },
         "commands": [
             {
+                "command": "extension.brightscript.clearGlobalState",
+                "title": "Clear Global State",
+                "description": "Clear the BrightScript extension's global state.",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.toggleXML",
-                "title": "Toggle xml/brs",
+                "title": "Toggle XML/BRS",
                 "category": "Brightscript"
             },
             {

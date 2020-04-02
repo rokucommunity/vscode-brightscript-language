@@ -1,34 +1,45 @@
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"type": "extensionHost",
-			"request": "launch",
-			"name": "Extension",
-			"preLaunchTask": "npm",
-			"runtimeExecutable": "${execPath}",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			]
-		},
-		{
-			"type": "node",
-			"request": "launch",
-			"name": "Server",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/src/debugAdapter.ts",
-			"args": [
-				"--server=4711"
-			],
-			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
-			],
-			"stopOnEntry": false
-		},
-		{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "extensionHost",
+            "request": "launch",
+            "name": "Extension",
+            "preLaunchTask": "npm",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Server",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/src/debugAdapter.ts",
+            "args": [
+                "--server=4711"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/**/*.js"
+            ],
+            "stopOnEntry": false
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Language Server",
+            "port": 6009,
+            "restart": true,
+            "timeout": 30000,
+            "outFiles": [
+                "${workspaceRoot}/server/out/**/*.js"
+            ]
+        },
+        {
 			"name": "Debug Tests",
 			"type": "node",
 			"request": "launch",
@@ -45,14 +56,22 @@
             ],
 			"internalConsoleOptions": "openOnSessionStart"
 		}
-	],
-	"compounds": [
-		{
-			"name": "Extension + Server",
-			"configurations": [
-				"Extension",
-				"Server"
-			]
-		}
-	]
+    ],
+    "compounds": [
+        {
+            "name": "Extension, Debug Server, Language Server",
+            "configurations": [
+                "Extension",
+                "Debug Server",
+                "Language Server"
+            ]
+        },
+        {
+            "name": "Extension,Language Server",
+            "configurations": [
+                "Extension",
+                "Language Server"
+            ]
+        }
+    ]
 }

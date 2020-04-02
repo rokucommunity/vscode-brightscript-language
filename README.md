@@ -2,13 +2,17 @@
 
 A VSCode extension to support Roku's BrightScript language.
 
-[![Build Status](https://travis-ci.org/RokuCommunity/vscode-brightscript-language.svg?branch=master)](https://travis-ci.org/RokuCommunity/vscode-brightscript-language)
-[![codecov](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language/branch/master/graph/badge.svg)](https://codecov.io/gh/RokuCommunity/vscode-brightscript-language)
+[![build](https://img.shields.io/github/workflow/status/rokucommunity/vscode-brightscript-language/build.svg?logo=github)](https://github.com/rokucommunity/vscode-brightscript-language/actions?query=workflow%3Abuild)
+[![Coverage Status](https://coveralls.io/repos/github/rokucommunity/vscode-brightscript-language/badge.svg?branch=master)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/celsoaf.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/celsoaf.brightscript.svg)](https://marketplace.visualstudio.com/items?itemName=celsoaf.brightscript)
 
+## Upgrading from V1
+If you're upgrading from version 1 of the extension, please review [these changes](ReleaseNotes.md#2.0.0)
+
 ## Features
 
+- Static analysis (code validation)
 - Syntax highlighting
 - BrightScript and BrighterScript code formatting (provided by [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter))
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
@@ -55,7 +59,50 @@ Your project must be structured in the way that Roku expects, which looks someth
 - source/
   - main.brs
 
-Here is a sample launch configuration
+If your project lives in a subdirectory, you will need to create a `brsconfig.json` file at the root of your project, and reference your subdirectory like such:
+
+```json
+{
+    "rootDir": "./someSubdir"
+}
+```
+
+This project relies heavily on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project for language server support. See [this link](https://github.com/RokuCommunity/brightscript-language#brsconfigjson-options) to view the `brsconfig.json` options.
+
+## Language Features
+## Ignore errors and warnings on a per-line basis
+In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `brsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
+ - `brs:disable-next-line`
+ - `brs:disable-next-line: code1 code2 code3`
+ - `brs:disable-line`
+ - `brs:disable-line: code1 code2 code3`
+
+Here are some examples:
+
+```brightscript
+sub Main()
+    'disable errors about invalid syntax here
+    'brs:disable-next-line
+    DoSomething(
+
+    DoSomething( 'brs:disable-line
+
+    'disable errors about wrong parameter count
+    DoSomething(1,2,3) 'brs:disable-next-line
+
+    DoSomething(1,2,3) 'brs:disable-next-line:1002
+end sub
+
+sub DoSomething()
+end sub
+```
+
+
+## Debugging
+
+This extension supports launching and debugging your local project on a Roku device. In order to do this, you will need to create a `launch.json` configuration file.
+
+Here is a sample `launch.json` file where your roku project lives at the root of your workspace:
 
 ```json
 {
@@ -104,6 +151,9 @@ then you would need change `rootDir` in your launch config to look like this:
 }
 ```
 
+### Using both `launch.json` and `brsconfig.json`
+
+When launching a debug session, this extension will first read all configurations from `brsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `brsconfig.json`, and only add values you wish to override in `launch.json`.
 ## Breakpoints
 
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
@@ -422,6 +472,7 @@ ROKU_PASSWORD=password123
 
 This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
 
+
 ## Pre-release Versions
 
 You can often find pre-release versions of this extension under the [GitHub Releases](https://github.com/RokuCommunity/vscode-brightscript-language/releases) page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the `.vsix` is the next-best option at this point. Here's how it works.
@@ -438,6 +489,16 @@ This process will REPLACE any existing version of the extension you have install
 ## Contributing
 
 [![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/0)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/0)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/1)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/1)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/2)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/2)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/3)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/3)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/4)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/4)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/5)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/5)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/6)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/6)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/7)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/7)
+
+The majority of this extension's language feature support depends on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project, which contributes the language server. To get up and running, do the following:
+
+ 1. Clone this project
+ 1. Clone [brightscript-language](https://github.com/RokuCommunity/brightscript-language)
+ 1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript-language`):
+
+    `"brightscript-language": "file:C:/projects/brightscript-language"`
+ 1. run `npm install` in both directories
+ 1. Open vscode in each directory, build, and run as usual
 
 View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 

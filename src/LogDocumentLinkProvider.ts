@@ -42,7 +42,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
         let paths = [];
         for (const rootDir of sourceRootDir) {
-            let pathsFromRoot = await this.rokuDeploy.getFilePaths(launchConfig.files, launchConfig.outDir, rootDir);
+            let pathsFromRoot = await this.rokuDeploy.getFilePaths(launchConfig.files, rootDir);
             paths = paths.concat(pathsFromRoot);
         }
         //get every file used in this project
@@ -52,7 +52,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         //convert every path into a pkg link, which maps back to the source location of the file
         for (let fileMap of paths) {
 
-            //make the dest path relative
+            //make the dest path relative. (fileMap.dest IS already relative to pkg path, but this line doesn't hurt anything so leave it here)
             let pkgPath = 'pkg:/' + path.normalize(fileMap.dest).replace(outDir, '');
             //replace windows slashes with 'nix ones
             pkgPath = pkgPath.replace(/\\/g, '/');

@@ -5,7 +5,7 @@ import * as sinon from 'sinon';
 let Module = require('module');
 import { assert } from 'chai';
 
-import { vscode } from './mockVscode.spec';
+import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 
 let commandsMock;
 
@@ -14,6 +14,8 @@ const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {
     if (file === 'vscode') {
         return vscode;
+    } else if (file === 'vscode-languageclient') {
+        return vscodeLanguageClient;
     } else if (file === './BrightScriptCommands') {
         let command = { registerCommands: () => { } };
         commandsMock = sinon.mock(command);
@@ -27,73 +29,88 @@ import BrightScriptCommands from './BrightScriptCommands';
 import * as  extension from './extension';
 
 describe('extension', () => {
+    let context: any;
+    beforeEach(() => {
+        context = {
+            subscriptions: [],
+            asAbsolutePath: () => { },
+            globalState: {
+                get: () => {
 
-    it('registers configuration provider', () => {
+                },
+                update: () => {
+
+                }
+            }
+        };
+    });
+
+    it('registers configuration provider', async () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers formatter', () => {
+    it('registers formatter', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentRangeFormattingEditProvider');
         expect(spy.getCalls().length).to.equal(0);
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.getCalls().length).to.be.greaterThan(1);
     });
 
-    it('registers definition provider', () => {
+    it('registers definition provider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDefinitionProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.callCount).to.be.greaterThan(0);
     });
 
-    it('registers document symbol provider', () => {
+    it('registers document symbol provider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentSymbolProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers workspace symbol provider', () => {
+    it('registers workspace symbol provider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerWorkspaceSymbolProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers all commands', () => {
+    it('registers all commands', async () => {
         commandsMock.expects('registerCommands');
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         commandsMock.verify();
     });
 
-    it('registers signatureHelpProvider', () => {
+    it('registers signatureHelpProvider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerSignatureHelpProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers referenceProvider', () => {
+    it('registers referenceProvider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerReferenceProvider');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers onDidStartDebugSession', () => {
+    it('registers onDidStartDebugSession', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidStartDebugSession');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers onDidReceiveDebugSessionCustomEvent', () => {
+    it('registers onDidReceiveDebugSessionCustomEvent', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
-        extension.activate(<any>{ subscriptions: [] });
+        await extension.activate(context);
         expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 });

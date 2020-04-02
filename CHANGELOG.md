@@ -6,6 +6,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.0.0-beta.49] - 2020-03-07
+### Added
+ - all changes from 1.23.0
+
+
+
+## [2.0.0-beta.48] - 2020-02-26
+### Fixed
+ - bug where no files would be copied to staging during the launch process.
+
+
+
+## [2.0.0-beta.47] - 2020-02-26
+### Added
+ - all changes from 1.22.0
+
+
+
+## [2.0.0-beta.46] - 2020-02-18
+### Added
+ - all changes from 1.21.3
+
+
+
+## [2.0.0-beta.45] - 2020-01-22
+### Fixed
+ - performance issue where projects including component libraries were writing to the filesystem too frequently, causing very slow build times. [#217](https://github.com/rokucommunity/vscode-brightscript-language/pull/217)
+
+
+
+## [2.0.0-beta.44] - 2020-01-15
+### Fixed
+ - issue where the extension was still using [roku-deploy@3.0.0-beta.5](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.5). The extension now uses  [roku-deploy@3.0.0-beta.7](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.7)
+
+
+
+## [2.0.0-beta.43] - 2020-01-11
+### Added
+ - DebugServer output channel for showing more details of the status of the debug server without cluttering the main BrightScript log output 
+### Updated
+ - use [roku-deploy@3.0.0-beta.7](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.7) which fixes bug during file copy that was not prepending `stagingFolderPath` to certain file operations.
+ - use [brighterscript@0.4.0](https://github.com/rokucommunity/brighterscript/releases/tag/v0.4.0) updates to [roku-deploy@3.0.0-beta.7](https://github.com/rokucommunity/roku-deploy/releases/tag/v3.0.0-beta.7)
+
+
+
+## [2.0.0-beta.42] - 2020-01-07
+### Updated
+ - [brighterscript@0.4.0](https://github.com/rokucommunity/brighterscript/releases/tag/v0.4.0) which fixes [these issues](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#040---2020-01-07);
+
+
+
+## [2.0.0-beta.41] - 2019-11-08
+### Updated
+ - [brighterscript@0.3.1](https://github.com/rokucommunity/brighterscript/releases/tag/v0.3.1) which fixes [these issues](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#031---2019-11-08).
+
+
+
+## [2.0.0-beta.40] - 2019-10-30
+### Added
+ - all changes from 1.20.3
+
+
+
+## [2.0.0-beta.39] - 2019-10-21
+### Added
+ - all changes from 1.20.2
+
+
+
+## [2.0.0-beta.38] - 2019-10-03
+### Added
+ - all changes from 1.20.0
+### Changed
+ - upgraded to [brighterscript@0.3.0](https://www.npmjs.com/package/brighterscript/v/0.3.0) which fixes parse error related to comments inside of associative array literals, and supports parsing opened files that are not included in a `bsconfig.json` file
+
+
+
+## [2.0.0-beta.37] - 2019-10-01
+### Added
+  - all changes from 1.20.0
+
+
+
+## [2.0.0-beta.36] - 2019-09-28
+### Changed
+ - upgraded to [brighterscript@0.2.2](https://www.npmjs.com/package/brighterscript/v/0.2.2) which fixes several startup race conditions.
+
+
+
+## [2.0.0-beta.35] - 2019-09-24
+### Added
+ - all changes from 1.19.0 through 1.19.6
+### Changed
+ - Enhanced intellisense to scan all files in context to provide more accurate results for object property completions.
+ - Enhanced intellisense that filters results based on whether you typing an object proeprty/method or not.
+ - switched languageserver to use [brighterscript](https://github.com/RokuCommunity/brighterscript). This is the first step towards support the BrighterScript language.
+### Fixed
+ - bug that would not register new files until a vscode restart.
 ## [1.23.0] - 2020-03-06
 ### Added
  - support for file-system logging of the BrightScript and debug output channels. (`brightscript.debug.logfilePath` in user/workspace settings or `logfilePath` in `launch.json`) (#216)
@@ -123,13 +221,277 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - many bugs related to inspecting large arrays/objects on the Roku during debugging. (see [#152](https://github.com/RokuCommunity/vscode-brightscript-language/issues/152))
 
 
+## [2.0.0-beta.34] - 2019-08-19
+### Changed
+ - upgraded to [brightscript-language@0.2.15](https://www.npmjs.com/package/brightscript-language/v/0.2.15)
+### Fixed
+ - issue with syntax highlighting while hovering over variables in `.brs` files (fixed by upgrading [brightscript-language@0.2.15](https://www.npmjs.com/package/brightscript-language/v/0.2.15))
+
+
+
+## [2.0.0-beta.33] - 2019-08-09
+### Fixed
+ - issue that was crashing every debug session before it started.
+
+
+
+## [2.0.0-beta.32] - 2019-08-07
+### Added
+ - all changes from [v1.18.2](#1182---2019-08-07)
+### Changed
+ - upgraded to [brightscript-language@0.2.14](https://www.npmjs.com/package/brightscript-language/v/0.2.14)
+
+
+
+## [2.0.0-beta.31] - 2019-08-03
+### Added
+ - all changes from [v1.18.1](#1181---2019-08-03)
+
+
+
+## [2.0.0-beta.30] - 2019-08-02
+### Added
+ - all changes from [v1.18.0](#1180---2019-08-02)
+
+
+
+## [2.0.0-beta.30] - 2019-06-21
+### Added
+ - all changes from [v1.17.1](#1171---2019-06-21)
+
+
+
+## [2.0.0-beta.28] - 2019-06-18
+### Added
+ - all changes from [v1.17.0](#1170---2019-06-18)
+
+
+
+## [2.0.0-beta.27] - 2019-06-13
+### Added
+ - upgraded to [brightscript-language@0.2.13](https://www.npmjs.com/package/brightscript-language/v/0.2.13) which:
+   - syntax support for `GOTO` and labels [brs#248](https://github.com/sjbarag/brs/pull/248)
+
+
+
+## [2.0.0-beta.26] - 2019-06-11
+### Added
+ - all changes from [v1.16.0](#1160---2019-06-11)
+
+
+
+## [2.0.0-beta.25] - 2019-05-31
+### Fixed
+ - upgraded to [brightscript-language@0.2.12](https://www.npmjs.com/package/brightscript-language/v/0.2.12) which:
+   - prevent compile errors for conditional compile statements
+   - syntax support for single-word `#elseif` and `#endif` [brs#249](https://github.com/sjbarag/brs/pull/249)
+   - syntax support for `stop` statements [brs#247](https://github.com/sjbarag/brs/pull/247)
+   - syntax support for empty `print` statements [brs#264](https://github.com/sjbarag/brs/pull/246)
+
+
+
+## [2.0.0-beta.24] - 2019-05-28
+### Added
+ - all changes from [v1.15.0](#1150---2019-05-28)
+### Changed
+ - upgraded to [brightscript-language@0.2.11](https://www.npmjs.com/package/brightscript-language/v/0.2.11) which:
+  - syntax support for LINE_NUM variable
+
+
+
+## [2.0.0-beta.23] - 2019-05-23
+### Changed
+ - upgraded to [brightscript-language@0.2.10](https://www.npmjs.com/package/brightscript-language/v/0.2.10) which:
+   - adds syntax support for trailing colons in if statements
+
+
+
+## [2.0.0-beta.22] - 2019-05-22
+### Changed
+ - upgraded to [brightscript-language@0.2.9](https://www.npmjs.com/package/brightscript-language/v/0.2.9) which:
+   - added syntax support for numbers with leading or trailing period
+   - added `&` as supported type designator for identifiers
+
+
+
+## [2.0.0-beta.21] - 2019-05-14
+### Added
+ - all changes from [v1.14.0](#1140---2019-05-14)
+### Changed
+ - upgraded to [brightscript-language@0.2.8](https://www.npmjs.com/package/brightscript-language/v/0.2.8) which:
+   - adds syntax support for library statements
+
+
+
+## [2.0.0-beta.20] - 2019-05-07
+### Changed
+ - upgraded to [brightscript-language@0.2.7](https://www.npmjs.com/package/brightscript-language/v/0.2.7) which:
+   - fixes many syntax errors related to using keywords as property names.
+   - adds support for hex literals
+### Fixed
+ - bug in syntax highlighting that was showing keyword colors for object properties with keyword names.
+
+
+
+## [2.0.0-beta.19] - 2019-05-01
+### Changed
+ - upgraded to [brightscript-language@0.2.6](https://www.npmjs.com/package/brightscript-language/v/0.2.6) which removes error for subs with return types ([brs#220](https://github.com/sjbarag/brs/issues/220))
+
+
+
+## [2.0.0-beta.18] - 2019-04-30
+### Changed
+ - upgraded to [brightscript-language@0.2.5](https://www.npmjs.com/package/brightscript-language/v/0.2.6) which brings syntax support for increment (++) and decrement (--) operators.
+
+
+
+## [2.0.0-beta.17] - 2019-04-26
+### Added
+ - all changes from [v1.13.1](#1131---2019-04-26)
+
+
+
+## [2.0.0-beta.16] - 2019-04-19
+### Added
+ - all changes from [v1.13.0](#1130---2019-04-19)
+
+
+
+## [2.0.0-beta.15] - 2019-04-11
+### Added
+ - all changes from [v1.12.0](#1120---2019-04-09) and [v1.12.1](#1121---2019-04-11)
+
+
+
+## [2.0.0-beta.14] - 2019-03-21
+### Added
+ - all changes from [v1.11.0](#1110---2019-04-01)
+
+
+
+## [2.0.0-beta.13] - 2019-03-21
+### Changed
+ - upgraded to [brightscript-language@0.2.4](https://github.com/RokuCommunity/brightscript-language/tree/v0.2.4)
+### Fixed
+ - greatly improved single-line recovery. Previously, certain syntax errors would prevent the rest of the block or file from parsing. The parser will now skip erraneous lines and attempt to recover. This _usually_ provides much better error recovery, but in certain cases can produce additional errors in the file.
+ - bitshift assignment operators (`>>=` `<<=`) no longer cause parse errors
+ - using colons as separators for associate arrays no longer cause parse errors (e.g `obj = {x:0 : y: 1}`)
+
+
+
+## [2.0.0-beta.12] - 2019-03-21
+### Added
+ - all changes from v1.9.0 and v1.10.0
+### Changed
+ - This release is the successor to `2.0.0-beta.11`. The name of the beta program caused some confusion in the past, because it seemed like it was a beta version of 1.9.0, when in reality it was just a beta version of new features, and we needed a higher number than the current version (which was 1.8.* at that time). So now, for clarity, the new versions of the languageserver beta versions will be `2.0.0-beta.[the_beta_number}`. It would have been nice to not use a version number at all, but vscode and npm both need valid semantic version numbers, so we decided to use 999 instead, which makes it much more obvious that this is an outlier.
+ - Upgrade to [brightscript-language@0.2.3](https://github.com/RokuCommunity/brightscript-language/tree/v0.2.3)
+ - exclude method completions from xml files (will be added back once CDATA support arrives)
+ - empty script reference errors will show a more usefull error message `"Script import cannot be empty or whitespace"`
+### Fixed
+ - parse errors for type designators (i.e. `$` `%` `!` `#` at end of variable name)
+ - parse errors for multiple spaces between two-word keywords (like `else     if` or `end    if`)
+ - issue with missing `brsconfig.json` schema file.
+
+
+
+## [2.0.0-beta.11]
+### Added
+ - Support for `go to definition` to open parent component xml file when the cursor is on a component's `extends="ParentName"` section (fixes #114).
+### Fixed
+ - Syntax colorization for multi-word keywords like endfor, endif, elseif, etc. that were not supporting zero spaces between or more than 1 space between.
+
+
+
+## [2.0.0-beta.10]
+### Added
+ - Upgraded to [brightscript-language@0.1.21](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
+### Fixed
+ - regression issue preventing the use of launch configs stored `settings.json` (see #111)
+
+
+
+## [2.0.0-beta.9]
+### Fixed
+ - Upgraded to [brightscript-language@0.1.20](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.20) which fixed an npm issue that was loading the wrong version of `brs`.
+
+
+
+## [2.0.0-beta.8]
+### Added
+ - support specifying `brsconfig.json` path as a vscode setting under the `brightscript.configFile` setting.
+ - reload workspace if brsconfig.json has changed
+ - When launching debug session, read values from brsconfig.json when available
+### Changed
+ - Don't show brightscript log on workspace open (still support option to show on debug-start)
+### Fixed
+  - Upgraded to [brightscript-language@0.1.19](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.19)) which fixes:
+ - RHS boolean assignment parse errors (see [this issue](https://github.com/sjbarag/brs/issues/156))
+ - hover bug in multi-root workspace that was only showing hovers for the first workspace
+
+
+
+## [2.0.0-beta.7]
+### Added
+ - All changes from 1.8.4 and 1.8.5
+### Fixed
+ - Upgraded to [brightscript-language@0.1.17](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.17)) which fixes:
+   - Regression issue where mixed case `then` statements showed up as parse errors (fixed by
+   - Parse errors related to assignment operators (i.e. `+=`, `-=`, `*=`, etc.)
+   - issue where only top-level variables were being found. Now all variables are found throughout the entire function scope.
+   - runtime error when getting hover result.
+   - issue with hover that would not find top-level function parameter types.
+
+
+
+## [2.0.0-beta.6]
+### Added
+ - All changes from [1.8.3](#183---2019-03-04)
+### Fixed
+ - syntax highlighting bug related to `then` not colorizing when containing any upper case character
+ - the `MaxListenersExceededWarning` warning by upgrading to [brightscript-language@0.1.15](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.15)
+
+
+
+## [2.0.0-beta.5]
+### Changed
+ - Upgraded to [brightscript-language@0.1.14](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.14) that brings syntax fixes for using `then` as an object property name and now allows `function` as an argument type.
+### Fixed
+ - textmate grammar related to `run`, `stop`, and `then` when used as object property names
+
+
+
+### [2.0.0-beta.4]
+### Changed
+ - Upgraded to [brightscript-language@0.1.13](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.13) which fixes duplicate diagnostic reporting
+
+
+
+## [2.0.0-beta.3]
+### Fixed
+ - bugs with errors showing up for script imports inside of comments.
+
+
+
+## [2.0.0-beta.2]
+### Changed
+ - Upgraded to latest `brightscript` project, which fixes bitshift assignment operators and `stop` and `run` keywords on object literals.
+
+
+
+## [2.0.0-beta.1]
+### Added
+ - Experimental language validation support. Catches most parse errors and a few basic language errors.
+
+
+
+
 ## [1.18.2] - 2019-08-07
 ### Changed
  - upgrade to roku-deploy@2.2.1 which fixes manifest parsing bug related to colors starting with `#`.
 
 
 
-## [1.18.1] - 2019-08-02
+## [1.18.1] - 2019-08-03
 ### Fixed
  - issue where the RALE Tracker Task injection logic was enabled by default.
 
@@ -422,6 +784,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Issues with language colorization
+
+
+[2.0.0-beta.49]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.48...v2.0.0-beta.49
+[2.0.0-beta.48]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.47...v2.0.0-beta.48
+[2.0.0-beta.47]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.46...v2.0.0-beta.47
+[2.0.0-beta.46]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.45...v2.0.0-beta.46
+[2.0.0-beta.45]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.44...v2.0.0-beta.45
+[2.0.0-beta.44]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.43...v2.0.0-beta.44
+[2.0.0-beta.43]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.42...v2.0.0-beta.43
+[2.0.0-beta.42]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.41...v2.0.0-beta.42
+[2.0.0-beta.41]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.40...v2.0.0-beta.41
+[2.0.0-beta.40]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.39...v2.0.0-beta.40
+[2.0.0-beta.39]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.38...v2.0.0-beta.39
+[2.0.0-beta.38]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.37...v2.0.0-beta.38
+[2.0.0-beta.37]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.36...v2.0.0-beta.37
+[2.0.0-beta.36]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.35...v2.0.0-beta.36
+[2.0.0-beta.35]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.34...v2.0.0-beta.35
+[2.0.0-beta.34]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.33...v2.0.0-beta.34
+[2.0.0-beta.33]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.32...v2.0.0-beta.33
+[2.0.0-beta.32]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.31...v2.0.0-beta.32
+[2.0.0-beta.31]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.30...v2.0.0-beta.31
+[2.0.0-beta.30]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.29...v2.0.0-beta.30
+[2.0.0-beta.29]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.28...v2.0.0-beta.29
+[2.0.0-beta.28]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.27...v2.0.0-beta.28
+[2.0.0-beta.27]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.26...v2.0.0-beta.27
+[2.0.0-beta.26]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.25...v2.0.0-beta.26
+[2.0.0-beta.25]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.24...v2.0.0-beta.25
+[2.0.0-beta.24]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.23...v2.0.0-beta.24
+[2.0.0-beta.23]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.22...v2.0.0-beta.23
+[2.0.0-beta.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.21...v2.0.0-beta.22
+[2.0.0-beta.21]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.20...v2.0.0-beta.21
+[2.0.0-beta.20]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.19...v2.0.0-beta.20
+[2.0.0-beta.19]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.18...v2.0.0-beta.19
+[2.0.0-beta.18]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.17...v2.0.0-beta.18
+[2.0.0-beta.17]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.16...v2.0.0-beta.17
+[2.0.0-beta.16]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.15...v2.0.0-beta.16
+[2.0.0-beta.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.14...v2.0.0-beta.15
+[2.0.0-beta.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.13...v2.0.0-beta.14
+[2.0.0-beta.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.12...v2.0.0-beta.13
+[2.0.0-beta.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.11...v2.0.0-beta.12
+[2.0.0-beta.11]:                  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.10...v2.0.0-beta.11
+[2.0.0-beta.10]:                  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.9...v2.0.0-beta.10
+[2.0.0-beta.9]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.8...v2.0.0-beta.9
+[2.0.0-beta.8]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.7...v2.0.0-beta.8
+[2.0.0-beta.7]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.6...v2.0.0-beta.7
+[2.0.0-beta.6]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.5...v2.0.0-beta.6
+[2.0.0-beta.5]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.4...v2.0.0-beta.5
+[2.0.0-beta.4]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.3...v2.0.0-beta.4
+[2.0.0-beta.3]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.2...v2.0.0-beta.3
+[2.0.0-beta.2]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
+[2.0.0-beta.1]:                   https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
 
 
 [1.23.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.22.0...v1.23.0
