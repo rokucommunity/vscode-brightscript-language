@@ -174,9 +174,6 @@ async function showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExt
     let versionWhitelist = [
         '2.0.0'
     ];
-    if (!globalStateManager) {
-        var k = 2;
-    }
     for (let whitelistVersion of versionWhitelist) {
         if (
             //if the current version is larger than the whitelist version
