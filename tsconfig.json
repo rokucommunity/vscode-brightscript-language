@@ -8,7 +8,7 @@
         "noImplicitThis": true,
         "inlineSourceMap": false,
         "sourceMap": true,
-        "outDir": "../out",
+        "outDir": "dist",
         "preserveConstEnums": true,
         "strictNullChecks": false,
         "noUnusedParameters": false,
