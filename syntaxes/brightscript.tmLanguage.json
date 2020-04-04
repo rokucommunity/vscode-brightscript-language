@@ -207,7 +207,7 @@
           "name": "keyword.other.this.brs"
         }
       },
-      "match": "(?i:(?<!\\.)\\b(m|global)\\b)"
+      "match": "(?i:(?<!\\.)\\b(m|global|super)\\b)"
     },
     "variables_and_params": {
       "captures": {
