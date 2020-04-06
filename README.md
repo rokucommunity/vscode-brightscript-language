@@ -59,7 +59,7 @@ Your project must be structured in the way that Roku expects, which looks someth
 - source/
   - main.brs
 
-If your project lives in a subdirectory, you will need to create a `brsconfig.json` file at the root of your project, and reference your subdirectory like such:
+If your project lives in a subdirectory, you will need to create a `bsconfig.json` file at the root of your project, and reference your subdirectory like such:
 
 ```json
 {
@@ -67,11 +67,11 @@ If your project lives in a subdirectory, you will need to create a `brsconfig.js
 }
 ```
 
-This project relies heavily on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project for language server support. See [this link](https://github.com/RokuCommunity/brightscript-language#brsconfigjson-options) to view the `brsconfig.json` options.
+This project relies heavily on the [brighterscript](https://github.com/rokucommunity/brighterscript) project for language server support. See [this link](https://github.com/rokucommunity/brighterscript#bsconfigjson-options) to view the `bsconfig.json` options.
 
 ## Language Features
 ## Ignore errors and warnings on a per-line basis
-In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `brsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
+In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `bsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
  - `brs:disable-next-line`
  - `brs:disable-next-line: code1 code2 code3`
  - `brs:disable-line`
@@ -151,9 +151,9 @@ then you would need change `rootDir` in your launch config to look like this:
 }
 ```
 
-### Using both `launch.json` and `brsconfig.json`
+### Using both `launch.json` and `bsconfig.json`
 
-When launching a debug session, this extension will first read all configurations from `brsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `brsconfig.json`, and only add values you wish to override in `launch.json`.
+When launching a debug session, this extension will first read all configurations from `bsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `bsconfig.json`, and only add values you wish to override in `launch.json`.
 ## Breakpoints
 
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
