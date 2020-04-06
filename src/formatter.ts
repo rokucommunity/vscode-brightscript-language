@@ -9,13 +9,13 @@ import {
     TextEdit,
     window, workspace,
 } from 'vscode';
+import * as eol from 'eol';
 import * as vscode from 'vscode';
 
 export class Formatter implements DocumentRangeFormattingEditProvider {
 
     public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): ProviderResult<TextEdit[]> {
         let config = workspace.getConfiguration('brightscript.format');
-        let lineEnding = document.eol === EndOfLine.CRLF ? '\r\n' : '\n';
         try {
             let text = document.getText();
             let formatter = new BrighterScriptFormatter();
@@ -32,32 +32,30 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
                 insertSpaceBetweenEmptyCurlyBraces: config.insertSpaceBeforeFunctionParenthesis === true ? true : false
             });
 
-            let edits = getEditChunks(formattedText, range);
+            let edits = this.getEditChunks(document, formattedText, range);
 
             return edits;
         } catch (e) {
             window.showErrorMessage(e.message, e.stack.split('\n')[0]);
         }
+    }
+    private getEditChunks(document: TextDocument, formattedText: string, range: Range) {
+        let lines = eol.split(formattedText);
+        //make an edit per line of the doc
+        let edits: TextEdit[] = [];
+        for (let lineNumber = range.start.line; lineNumber <= range.end.line; lineNumber++) {
+            let formattedLine = lines[lineNumber];
 
-        function getEditChunks(formattedText: string, range: Range) {
-
-            let lines = formattedText.split(lineEnding);
-            //make an edit per line of the doc
-            let edits: TextEdit[] = [];
-            for (let lineNumber = range.start.line; lineNumber <= range.end.line; lineNumber++) {
-                let formattedLine = lines[lineNumber];
-
-                let docLine = document.lineAt(lineNumber);
-                let range = new Range(
-                    new Position(lineNumber, 0),
-                    new Position(lineNumber, docLine.text.length)
-                );
-                range = document.validateRange(range);
-                let edit = TextEdit.replace(range, formattedLine);
-                edits.push(edit);
-            }
-            return edits;
+            let docLine = document.lineAt(lineNumber);
+            let range = new Range(
+                new Position(lineNumber, 0),
+                new Position(lineNumber, docLine.text.length)
+            );
+            range = document.validateRange(range);
+            let edit = TextEdit.replace(range, formattedLine);
+            edits.push(edit);
         }
+        return edits;
     }
 
 }
