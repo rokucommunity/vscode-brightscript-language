@@ -2,27 +2,27 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "command": "npm",
-            "label": "npm",
+            "label": "watch",
             "type": "shell",
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared"
-            },
+            "command": "npm",
             "args": [
                 "run",
                 "watch",
                 "--loglevel",
                 "silent"
             ],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
             "isBackground": true,
             "problemMatcher": "$tsc-watch"
         },
         {
-            "type": "shell",
             "label": "test",
+            "type": "shell",
             "command": "npm",
             "args": [
                 "run",
@@ -38,7 +38,7 @@
                 "echo": true,
                 "reveal": "always",
                 "focus": true,
-                "panel": "shared",
+                "panel": "dedicated",
                 "showReuseMessage": true,
                 "clear": true
             },
@@ -64,8 +64,7 @@
                 "echo": true,
                 "reveal": "always",
                 "focus": true,
-                "panel": "shared",
-                "showReuseMessage": true,
+                "panel": "dedicated",
                 "clear": true
             }
         },

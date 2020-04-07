@@ -47,7 +47,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             files: this.defaultFilesArray,
             enableSourceMaps: true,
             packagePort: 80,
-            enableSocketDebugger: false,
+            enableDebugProtocol: false,
             remotePort: 8060
         };
 
@@ -98,7 +98,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         var userWorkspaceDebugSettings = Object.assign(
             {
                 enableSourceMaps: true,
-                enableSocketDebugger: false,
+                enableDebugProtocol: false,
                 //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
                 raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
             },

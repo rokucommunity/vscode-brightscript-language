@@ -5,38 +5,38 @@
             "type": "extensionHost",
             "request": "launch",
             "name": "Extension",
-            "preLaunchTask": "npm",
+            "preLaunchTask": "watch",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}"
             ],
             "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
+                "${workspaceFolder}/dist/**/*.js"
             ]
         },
         {
+            "name": "Debug Server",
             "type": "node",
             "request": "launch",
-            "name": "Debug Server",
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/src/debugAdapter.ts",
             "args": [
                 "--server=4711"
             ],
             "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
+                "${workspaceFolder}/dist/**/*.js"
             ],
             "stopOnEntry": false
         },
         {
+            "name": "Language Server",
             "type": "node",
             "request": "attach",
-            "name": "Language Server",
             "port": 6009,
             "restart": true,
             "timeout": 30000,
             "outFiles": [
-                "${workspaceRoot}/server/out/**/*.js"
+                "${workspaceRoot}/dist/**/*.js"
             ]
         },
         {
