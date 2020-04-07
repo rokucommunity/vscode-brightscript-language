@@ -395,6 +395,7 @@ This extension contributes the following settings:
 - `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
 - `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 - `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+- `brightscript.debug.enableSocketDebugger` - If true, the debugger will use the new BrightScript debug protocol. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
 
 ## Roku Remote Control
 
