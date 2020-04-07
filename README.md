@@ -491,15 +491,20 @@ This process will REPLACE any existing version of the extension you have install
 
 [![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/0)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/0)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/1)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/1)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/2)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/2)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/3)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/3)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/4)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/4)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/5)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/5)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/6)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/6)[![](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/images/7)](https://sourcerer.io/fame/TwitchBronBron/rokucommunity/vscode-brightscript-language/links/7)
 
-The majority of this extension's language feature support depends on the [brightscript-language](https://github.com/RokuCommunity/brightscript-language) project, which contributes the language server. To get up and running, do the following:
+The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug] project. To get up and running, do the following:
 
- 1. Clone this project
- 1. Clone [brightscript-language](https://github.com/RokuCommunity/brightscript-language)
- 1. Open the `package.json` for this project and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brightscript-language`):
+ 1. Clone this project to a folder on your computer called `vscode-brightscript-language`
+ 1. Clone [brighterscript](https://github.com/RokuCommunity/brighterscript) to a folder on your computer called `brighterscript`
+ 1. From a terminal, run `npm install && npm run build` in the `brighterscript` folder
+ 1. Clone [roku-debug](https://github.com/RokuCommunity/roku-debug] to a folder on your computer called `roku-debug`
+ 1. From a terminal, run `npm install && npm run build` in the `roku-debug` folder
+ 1. Open the `package.json` for this project (`vscode-brightscript-language`) and edit the dependencies.brightscript value to look like this (assuming brightscript was installed to `C:/projects/brighterscript`):
 
-    `"brightscript-language": "file:C:/projects/brightscript-language"`
- 1. run `npm install` in both directories
- 1. Open vscode in each directory, build, and run as usual
+    `"brighterscript": "file:PATH/TO/brighterscript"`,
+    `"roku-debug": "file:PATH/TO/roku-debug"`
+
+ 1. From a terminal, run `npm install && npm run build` in the `vscode-brightscript-language` folder. 
+ 1. Open vscode in the `vscode-brightscript-language` folder and press the debug button. 
 
 View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
