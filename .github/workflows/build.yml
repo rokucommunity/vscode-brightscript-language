@@ -12,7 +12,8 @@ jobs:
   ci:
     runs-on: ${{ matrix.os }}
     env:
-      COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      #just hardcode this. It's not a mission-critical token, and we can always change it
+      COVERALLS_REPO_TOKEN: "Ysqq6q68DgojDzv3gvl5Yv029HXZYwGxq"
     strategy:
       matrix:
         os: [ubuntu-18.04, macos-10.15, windows-2019]
@@ -23,7 +24,7 @@ jobs:
           node-version: "10.19.0"
       - run: npm ci
       - run: npm run build
-      - run: npm run tslint
+      - run: npm run lint
       - run: npm run test
       - run: npm run publish-coverage
       - run: npm run package

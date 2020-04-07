@@ -25,24 +25,24 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run tslint && npm run test && npm run check-extraneous",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
-        "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./out -L",
-        "build": "npm run copy-schema && tsc -p ./src",
-        "tslint": "tslint \"./src/**/*.ts\"",
-        "watch": "npm run copy-schema && tsc -w -p ./src",
+        "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
+        "build": "npm run copy-schema && tsc -p ./",
+        "lint": "tslint \"./src/**/*.ts\"",
+        "watch": "npm run copy-schema && tsc -w -p ./",
         "test": "nyc mocha \"src/**/*.spec.ts\" --full-trace --bail",
         "test:nocover": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
         "publish": "vsce publish",
-        "clean": "rimraf out"
+        "clean": "rimraf dist"
     },
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.4.2",
+        "brighterscript": "^0.4.3",
         "brighterscript-formatter": "^1.0.2",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -105,7 +105,7 @@
         "vsce": "^1.58.0",
         "vscode-debugadapter-testsupport": "1.33.0"
     },
-    "main": "./out/extension",
+    "main": "./dist/extension",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
@@ -169,7 +169,7 @@
             {
                 "type": "brightscript",
                 "label": "BrightScript Debug",
-                "program": "./out/debugAdapter.js",
+                "program": "./dist/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {
                     "launch": {
@@ -559,11 +559,11 @@
         "jsonValidation": [
             {
                 "fileMatch": "*bsconfig.json",
-                "url": "./out/bsconfig.schema.json"
+                "url": "./dist/bsconfig.schema.json"
             },
             {
                 "fileMatch": "*brsconfig.json",
-                "url": "./out/bsconfig.schema.json"
+                "url": "./dist/bsconfig.schema.json"
             }
         ],
         "grammars": [

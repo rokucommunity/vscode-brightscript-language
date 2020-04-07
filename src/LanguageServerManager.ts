@@ -26,7 +26,7 @@ export class LanaguageServerManager {
         }
         // The server is implemented in node
         let serverModule = this.context.asAbsolutePath(
-            path.join('out', 'LanguageServerRunner.js')
+            path.join('dist', 'LanguageServerRunner.js')
         );
 
         // If the extension is launched in debug mode then the debug server options are used
