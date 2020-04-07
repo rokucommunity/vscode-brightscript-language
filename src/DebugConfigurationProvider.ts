@@ -1,18 +1,17 @@
 import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileUtils } from './debugServer/FileUtils';
 import * as fsExtra from 'fs-extra';
 import { FileEntry } from 'roku-deploy';
 import {
     CancellationToken,
-    DebugConfiguration,
     DebugConfigurationProvider,
     ExtensionContext,
     WorkspaceFolder,
 } from 'vscode';
 import * as vscode from 'vscode';
 
+import { BrightScriptDebugConfiguration, fileUtils } from 'roku-debug';
 import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -48,6 +47,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             files: this.defaultFilesArray,
             enableSourceMaps: true,
             packagePort: 80,
+            enableSocketDebugger: false,
             remotePort: 8060
         };
 
@@ -98,6 +98,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         var userWorkspaceDebugSettings = Object.assign(
             {
                 enableSourceMaps: true,
+                enableSocketDebugger: false,
                 //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
                 raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
             },
@@ -212,7 +213,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : this.configDefaults.enableLookupVariableNodeChildren;
         config.files = config.files ? config.files : this.configDefaults.files;
-        config.enableSourceMaps = config.enableSourceMaps === false ? false : true;
+        config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath = config.logfilePath ?? null;
@@ -450,46 +451,4 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return undefined;
         }
     }
-}
-
-export interface BrightScriptDebugConfiguration extends DebugConfiguration {
-    host: string;
-    password: string;
-    rootDir: string;
-    sourceDirs?: string[];
-    bsConst?: { [key: string]: boolean };
-    componentLibrariesPort?; number;
-    componentLibrariesOutDir: string;
-    componentLibraries: ComponentLibraryConfig[];
-    outDir: string;
-    stopOnEntry: boolean;
-    files?: FileEntry[];
-    consoleOutput: 'full' | 'normal';
-    retainDeploymentArchive: boolean;
-    injectRaleTrackerTask: boolean;
-    raleTrackerTaskFileLocation: string;
-    retainStagingFolder: boolean;
-    clearOutputOnLaunch: boolean;
-    selectOutputOnLogMessage: boolean;
-    enableVariablesPanel: boolean;
-    enableDebuggerAutoRecovery: boolean;
-    stopDebuggerOnAppExit: boolean;
-    packagePort: number;
-    remotePort: number;
-    envFile?: string;
-    enableSourceMaps?: boolean;
-    logfilePath?: string;
-}
-
-export interface ComponentLibraryConfig {
-    rootDir: string;
-    /**
-     * The filename for the package.
-     */
-    outFile: string;
-    files: FileEntry[];
-    sourceDirs: string[];
-    bsConst?: { [key: string]: boolean };
-    injectRaleTrackerTask: boolean;
-    raleTrackerTaskFileLocation: string;
 }

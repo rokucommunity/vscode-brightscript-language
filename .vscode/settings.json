@@ -10,7 +10,8 @@
         "**/node_modules": true,
         "**/bower_components": true,
         "**/*.code-search": true,
-        "**/dist": true
+        "**/dist": true,
+        "**/out": true
     },
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
