@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.1] - 2020-04-10
+### Added
+- several new diagnostics for conditional compiles. Some of them allow the parser to recover and continue. (BrightScript/BrighterScript) 
+### Changed
+ - upgraded to [brighterscript@0.5.0](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.0)
+ - parser diagnostics have been broken out into their own error codes, removing the use of error code 1000 for a generic catch-all. That code still exists and will hold runtime errors from the parser. (BrightScript/BrighterScript) 
+### Fixed
+ - (BrightScript|BrighterScript) bug in parser that was flagging the new class keywords (`new`, `class`, `public`, `protected`, `private`, `override`) as parse errors. These are now allowed as both local variables and property names.
+
+
+
 ## [2.1.0] - 2020-04-07
 ### Added
  - Support for the [BrightScript debug protocol](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md). It's disabled by default, but can be enabled by setting `brightscript.debug.enableDebugProtocol` to `true` in your user settings or launch configuration.
@@ -806,6 +817,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.23.0...v2.0.0
 [2.0.0-beta.50]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.49...v2.0.0-beta.50
