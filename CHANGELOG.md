@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.2] - 2020-04-11
+### Changed
+ - upgraded to [brighterscript@0.5.2](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.2)
+ - upgraded to [roku-debug@0.3.5](https://www.npmjs.com/package/roku-debug/v/0.3.5)
+ - upgraded to [roku-deploy@3.0.2](https://www.npmjs.com/package/roku-deploy/v/3.0.2) which fixed a file copy bug in subdirectories of symlinked folders
+ - (LanguageServer) downgrade diagnostic issue 1007 from an error to a warning, and updated the message to "Component is mising "extends" attribute and will automatically extend "Group" by default". ([BrighterScript#53](https://github.com/rokucommunity/brighterscript/issues/53))
+### Fixed
+ - (LanguageServer) Prevent xml files found outside of the `pkg:/components` folder from being parsed and validated. ([BrighterScript#51](https://github.com/rokucommunity/brighterscript/issues/51))
+ - (LanguageServer) allow empty `elseif` and `else` blocks. ([BrighterScript#48](https://github.com/rokucommunity/brighterscript/issues/48))
+
+
+
 ## [2.1.1] - 2020-04-10
 ### Added
 - several new diagnostics for conditional compiles. Some of them allow the parser to recover and continue. (BrightScript/BrighterScript) 
@@ -13,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - upgraded to [brighterscript@0.5.0](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.0)
  - parser diagnostics have been broken out into their own error codes, removing the use of error code 1000 for a generic catch-all. That code still exists and will hold runtime errors from the parser. (BrightScript/BrighterScript) 
 ### Fixed
- - (BrightScript|BrighterScript) bug in parser that was flagging the new class keywords (`new`, `class`, `public`, `protected`, `private`, `override`) as parse errors. These are now allowed as both local variables and property names.
+ - (LanguageServer) bug in parser that was flagging the new class keywords (`new`, `class`, `public`, `protected`, `private`, `override`) as parse errors. These are now allowed as both local variables and property names.
 
 
 
@@ -817,6 +829,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.23.0...v2.0.0
