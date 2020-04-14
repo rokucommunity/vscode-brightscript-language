@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.4] - 2020-04-14
+### Changed
+ - upgraded to [brighterscript@0.5.4](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.4) which fixed a syntax bug, now allowing the use of a period before an indexed getter (i.e. `object.["key]"`). It
+
+
+
 ## [2.1.3] - 2020-04-12
 ### Changed
  - upgraded to [brighterscript@0.5.3](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.3) which fixed several syntax errors during brighscript file parsing. 
@@ -835,6 +841,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.0...v2.1.1
