@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.5] - 2020-04-15
+### Added
+ - (LanguageServer) ability to filter out diagnostics by using the `diagnosticFilters` option in bsconfig
+### Changed
+ - upgraded to [brighterscript@0.6.0](https://github.com/rokucommunity/brighterscript/releases/tag/v0.6.0) 
+ - (LanguageServer depricated the `ignoreErrorCodes` in favor of `diagnosticFilters`
+### Fixed
+ - (LanguageServer) Bug in the language server that wasn't reloading the project when changing the `bsconfig.json`
+
+
+
 ## [2.1.4] - 2020-04-14
 ### Changed
  - upgraded to [brighterscript@0.5.4](https://github.com/rokucommunity/brighterscript/releases/tag/v0.5.4) which fixed a syntax bug, now allowing the use of a period before an indexed getter (i.e. `object.["key]"`). It
@@ -841,6 +852,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.4...v2.1.5
 [2.1.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.2...v2.1.3
 [2.1.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.1...v2.1.2
