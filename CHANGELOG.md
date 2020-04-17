@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.6] - 2020-04-16
+### Changed
+ - upgraded to [roku-debug@0.3.6](https://www.npmjs.com/package/roku-debug/v/0.3.6) which fixed a bug in the new BrightScript debug protocol that would sometimes crash during launch.
+
+
+
 ## [2.1.5] - 2020-04-15
 ### Added
  - (LanguageServer) ability to filter out diagnostics by using the `diagnosticFilters` option in bsconfig
@@ -852,6 +858,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.5...v2.1.6
 [2.1.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.4...v2.1.5
 [2.1.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.3...v2.1.4
 [2.1.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.2...v2.1.3
