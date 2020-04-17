@@ -64,7 +64,7 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-debug": "^0.3.5",
+        "roku-debug": "^0.3.6",
         "roku-deploy": "^3.0.2",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
