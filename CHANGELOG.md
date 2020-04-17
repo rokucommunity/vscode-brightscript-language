@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.1.6] - 2020-04-16
+### Added
+ - syntax highlighting for `import` and `namespace`
 ### Changed
  - upgraded to [roku-debug@0.3.6](https://www.npmjs.com/package/roku-debug/v/0.3.6) which fixed a bug in the new BrightScript debug protocol that would sometimes crash during launch.
 
