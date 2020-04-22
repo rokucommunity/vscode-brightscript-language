@@ -470,8 +470,7 @@
                             },
                             "logfilePath": {
                                 "type": "string",
-                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
-                                "default": "${workspaceFolder}/logging/brightscript-output.log"
+                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
                             }
                         }
                     }
@@ -745,7 +744,6 @@
                 "brightscript.debug.logfilePath": {
                     "type": "string",
                     "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
-                    "default": "${workspaceFolder}/logs/brightscript-output.log",
                     "scope": "resource"
                 },
                 "brightscript.enableLanguageServer": {

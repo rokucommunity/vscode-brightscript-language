@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.7] - 2020-04-23
+### Changed
+ - Disable file system logging by default.
+
+
+
 ## [2.1.6] - 2020-04-16
 ### Added
  - syntax highlighting for `import` and `namespace`
