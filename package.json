@@ -751,6 +751,12 @@
                     "description": "Enable experimental language support, which includes things like syntax checking smarter intellisense.",
                     "default": true,
                     "scope": "resource"
+                },
+                "brightscript.focusOutputPanelOnStartup": {
+                    "type": "boolean",
+                    "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
+                    "default": false,
+                    "scope": "resource"
                 }
             }
         },

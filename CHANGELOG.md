@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.1.7] - 2020-04-23
+### Added
+ - new setting `brightscript.focusOutputPanelOnStartup`. 
 ### Changed
  - Disable file system logging by default.
+ - The "BrightScript Log" output channel is no longer automatically focused on extension init. You will need to set  `brightscript.focusOutputPanelOnStartup` to `true` in order to regain this functionality.
 
 
 

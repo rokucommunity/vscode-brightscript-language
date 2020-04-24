@@ -133,7 +133,10 @@ export async function activate(context: vscode.ExtensionContext) {
         logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
     });
 
-    outputChannel.show();
+    //focus the output panel on extension startup (only if configured to do so...defaults to false)
+    if (vscode.workspace.getConfiguration('brightscript')?.focusOutputPanelOnStartup === true) {
+        outputChannel.show();
+    }
 
     //xml support
     const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
