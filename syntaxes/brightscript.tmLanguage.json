@@ -156,7 +156,7 @@
       }
     },
     "end_class": {
-      "match": "(?i:(end\\s*class))",
+      "match": "(?i:\\s*(end\\s*class))",
       "name": "storage.type.class.brs"
     },
     "preprocessor_keywords": {
