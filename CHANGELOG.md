@@ -6,12 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.1.7] - 2020-04-23
+## [2.1.7] - 2020-04-24
 ### Added
  - new setting `brightscript.focusOutputPanelOnStartup`. 
 ### Changed
  - Disable file system logging by default.
  - The "BrightScript Log" output channel is no longer automatically focused on extension init. You will need to set  `brightscript.focusOutputPanelOnStartup` to `true` in order to regain this functionality.
+ - Upgraded to [brighterscript@0.7.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#072---2020-04-24) 
+ - Upgraded to [brighterscript-formatter@1.1.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#110---2020-04-23) which brings indent support for namespace and class, and keyword support for namespace, class, and import.
 
 
 
@@ -869,6 +871,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.6...v2.1.7
 [2.1.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.5...v2.1.6
 [2.1.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.4...v2.1.5
 [2.1.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.3...v2.1.4
