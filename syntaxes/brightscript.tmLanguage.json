@@ -18,6 +18,9 @@
         "include": "#end_namespace"
     },
     {
+        "include": "#class_fields"
+    },
+    {
       "include": "#class_declaration"
     },
     {
@@ -154,6 +157,20 @@
           "name": "entity.name.type.class.brs"
         }
       }
+    },
+    "class_fields": {
+        "match": "(?i:(public|protected|private)(?:\\s+(override)(?:\\s([a-z0-9_]+))?)?)",
+        "captures": {
+            "1": {
+                "name": "storage.modifier.brs"
+            },
+            "2": {
+                "name": "storage.modifier.brs"
+            },
+            "3": {
+                "name": "variable.object.property.brs"
+            }
+        }
     },
     "end_class": {
       "match": "(?i:\\s*(end\\s*class))",
