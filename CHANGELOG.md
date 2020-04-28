@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.8] - 2020-04-27
+### Changed
+ - Upgraded to [brighterscript@0.8.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#072---2020-04-24) 
+ - Upgraded to [brighterscript-formatter@1.1.1](https://github.com/RokuCommunity/brighterscript-formatter/compare/v1.1.0...v1.1.1)
+### Fixed
+ - incorrect syntax highlighting for commented-out `end if` statement. 
+ - colorize class fields
+### Fixed
+ - formatter bug that was de-indenting `for each` loop bodies and everything after.
+
+
+
 ## [2.1.7] - 2020-04-24
 ### Added
  - new setting `brightscript.focusOutputPanelOnStartup`. 
@@ -873,6 +885,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.7...v2.1.8
 [2.1.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.6...v2.1.7
 [2.1.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.5...v2.1.6
 [2.1.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.4...v2.1.5
