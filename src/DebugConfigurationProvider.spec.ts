@@ -9,7 +9,7 @@ import Uri from 'vscode-uri';
 
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
-import { standardizePath as s } from 'roku-debug';
+import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 
 let sinon: sinonImport.SinonSandbox;
@@ -19,7 +19,6 @@ let cwd = s`${path.dirname(__dirname)}`;
 const rootDir = s`${cwd}/rootDir`;
 
 let commandsMock;
-let n = brighterscript.util.standardizePath.bind(brighterscript.util);
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -82,7 +81,7 @@ describe('BrightScriptConfigurationProvider', () => {
         it('handles loading declared values from .env files', async () => {
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
-                expect(n(filePath)).to.equal(n('/some/project/.env'));
+                expect(s`${filePath}`).to.equal(s`/some/project/.env`);
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
             sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
