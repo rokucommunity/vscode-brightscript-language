@@ -196,6 +196,10 @@
                 {
                     "match": "(?i:(#end\\s*if))",
                     "name": "keyword.preprocessor.endif.brs"
+                },
+                {
+                    "match": "(?i:(#else))",
+                    "name": "keyword.preprocessor.else.brs"
                 }
             ]
         },
