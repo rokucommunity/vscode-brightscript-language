@@ -593,6 +593,627 @@
                     "description": "If true, lines are indented based on what they are nested inside of. If false, all leading whitespace is left alone.",
                     "scope": "resource"
                 },
+                "brightscript.format.keywordCase": {
+                    "type": "string",
+                    "enum": [
+                        "lower",
+                        "upper",
+                        "title",
+                        "original"
+                    ],
+                    "default": "lower",
+                    "description": "Replaces all keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
+                    "scope": "resource"
+                },
+                "brightscript.format.typeCase": {
+                    "type": "string",
+                    "enum": [
+                        "lower",
+                        "upper",
+                        "title",
+                        "original"
+                    ],
+                    "default": "lower",
+                    "description": "Replaces all type keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
+                    "scope": "resource"
+                },
+                "brightscript.format.compositeKeywords": {
+                    "type": "string",
+                    "enum": [
+                        "split",
+                        "combine",
+                        "original"
+                    ],
+                    "default": "split",
+                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
+                    "scope": "resource"
+                },
+                "brightscript.format.removeTrailingWhiteSpace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Removes all trailing whitespace at the end of each line.",
+                    "scope": "resource"
+                },
+                "brightscript.format.keywordCaseOverride": {
+                    "type": "object",
+                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
+                    "properties": {
+                        "endfunction": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endif": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endsub": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endwhile": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "exitwhile": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "exitfor": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endfor": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "elseif": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "#elseif": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "#endif": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endclass": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "endnamespace": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "and": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "eval": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "if": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "then": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "else": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "for": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "to": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "step": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "exit": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "each": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "while": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "function": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "sub": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "as": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "return": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "print": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "goto": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "dim": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "stop": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "void": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "boolean": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "integer": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "longinteger": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "float": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "double": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "object": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "interface": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "invalid": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "dynamic": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "or": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "let": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "next": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "not": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "#if": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "#else": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "#const": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "class": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "namespace": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "import": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        }
+                    },
+                    "scope": "resource"
+                },
+                "brightscript.format.typeCaseOverride": {
+                    "type": "object",
+                    "description": " Provides a way to override type keyword case at the individual TokenType level. Types are defined as keywords that are preceeded by an `as` token.",
+                    "properties": {
+                        "boolean": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "double": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "dynamic": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "float": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "function": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "integer": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "invalid": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "longinteger": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "object": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "string": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        },
+                        "void": {
+                            "type": "string",
+                            "enum": [
+                                "lower",
+                                "upper",
+                                "title",
+                                "original"
+                            ]
+                        }
+                    }
+                },
                 "brightscript.format.formatInteriorWhitespace": {
                     "type": "boolean",
                     "default": true,
@@ -608,51 +1229,17 @@
                 "brightscript.format.insertSpaceBetweenEmptyCurlyBraces": {
                     "type": "boolean",
                     "default": false,
-                    "description": " if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
+                    "description": "If true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
                     "scope": "resource"
                 },
-                "brightscript.format.keywordCase": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
+                "brightscript.format.formatSingleLineCommentType": {
+                    "type": "string",
+                    "description": "Forces all single-line comments to use the same style",
                     "enum": [
-                        "lower",
-                        "upper",
-                        "title",
-                        null
+                        "singlequote",
+                        "rem",
+                        "original"
                     ],
-                    "default": "lower",
-                    "description": "Replaces all keywords with the upper or lower case settings specified. null means they are not modified at all.",
-                    "scope": "resource"
-                },
-                "brightscript.format.keywordCaseOverride": {
-                    "type": [
-                        "object",
-                        "null"
-                    ],
-                    "default": null,
-                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
-                    "scope": "resource"
-                },
-                "brightscript.format.compositeKeywords": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "enum": [
-                        "split",
-                        "combine",
-                        null
-                    ],
-                    "default": "split",
-                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
-                    "scope": "resource"
-                },
-                "brightscript.format.removeTrailingWhiteSpace": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Removes all trailing whitespace at the end of each line.",
                     "scope": "resource"
                 },
                 "brightscript.remoteControl.host": {
