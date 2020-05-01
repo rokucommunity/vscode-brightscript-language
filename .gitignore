@@ -1,6 +1,6 @@
 out
 dist
-node_modules
+node_modules*
 coverage
 .DS_Store
 .nyc_output

@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.10] - 2020-05-01
+### Changed
+ - Upgraded to [brighterscript-formatter@1.1.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#114---2020-05-01)
+### Fixed 
+ - (Formatter) bug indenting all-uppercase two-word conditional compile tokens `#ELSE IF` and `#END IF`
+ - (Formatter) Unwanted spacing between a negative sign and a number whenever preceeded by a comma ([brightscript-formatter#8](https://github.com/rokucommunity/brighterscript-formatter/issues/8))
+ - (Formatter) Remove whitespace preceeding a comma within a statement [brightscript-formatter#5](https://github.com/rokucommunity/brighterscript-formatter/issues/5))
+ - (Formatter) Remove leading whitespace around `++` and `--` [brightscript-formatter#10](https://github.com/rokucommunity/brighterscript-formatter/issues/10))
+ - (Formatter) bug when providing `null` to keywordCaseOverride would case crash
+ - (Formatter) Fix bug with `titleCase` option not being properly handled.
+ - (Formatter) Only indent once for left square bracket and left square curly brace on the same line [brightscript-formatter#6](https://github.com/rokucommunity/brighterscript-formatter/issues/6))
+
+
+
 ## [2.1.9] - 2020-04-29
 ### Changed
  - Upgraded to [brighterscript@0.8.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#082---2020-04-29) 
