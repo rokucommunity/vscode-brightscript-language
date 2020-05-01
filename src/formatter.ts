@@ -20,16 +20,10 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
             let text = document.getText();
             let formatter = new BrighterScriptFormatter();
             let formattedText = formatter.format(text, <FormattingOptions>{
+                //pass along all config format values
+                ...config,
                 indentSpaceCount: options.tabSize,
-                indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
-                compositeKeywords: config.compositeKeywords,
-                keywordCase: config.keywordCase,
-                removeTrailingWhiteSpace: config.removeTrailingWhiteSpace,
-                keywordCaseOverride: config.keywordCaseOverride,
-                formatIndent: config.formatIndent === false ? false : true,
-                formatInteriorWhitespace: config.formatInteriorWhitespace === false ? false : true,
-                insertSpaceBeforeFunctionParenthesis: config.insertSpaceBeforeFunctionParenthesis === true ? true : false,
-                insertSpaceBetweenEmptyCurlyBraces: config.insertSpaceBeforeFunctionParenthesis === true ? true : false
+                indentStyle: options.insertSpaces ? 'spaces' : 'tabs'
             });
 
             let edits = this.getEditChunks(document, formattedText, range);
