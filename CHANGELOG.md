@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.1.11] - 2020-05-02
+### Changed
+ - Upgraded to [brighterscript@0.9.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#092---2020-05-02) 
+ - Include keywords in intellisense anywhere other than next to a dot ([brighterscript#67](https://github.com/rokucommunity/brighterscript/issues/67))
+
 ### Fixed
  - colorization of the `new` keyword in BrighterScript
+ - Bug in LanguageServer that would show parse errors for functions named `constructor`([brighterscript#66](https://github.com/rokucommunity/brighterscript/issues/66))
+ - bug when printing diagnostics that would sometimes fail to find the line in question `([brighterscript#68](https://github.com/rokucommunity/brighterscript/issues/68))
+ - Some performance issues during typing caused by the LanguageServer validating too frequently.
 
 
 
@@ -27,8 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - (Formatter) Remove leading whitespace around `++` and `--` [brightscript-formatter#10](https://github.com/rokucommunity/brighterscript-formatter/issues/10))
  - (Formatter) bug when providing `null` to keywordCaseOverride would case crash
  - (Formatter) Fix bug with `titleCase` option not being properly handled.
- - (Formatter) Only indent once for left square bracket and left square curly brace on the same line [brightscript-formatter#6](https://github.com/rokucommunity/brighterscript-formatter/issues/6))
- - (LanguageServer) Parse bug with upper-case two-word conditional compile tokens `#ELSE IF` and `#END IF` [brightscript#63](https://github.com/rokucommunity/brighterscript/issues/63))
+ - (Formatter) Only indent once for left square bracket and left square curly brace on the same line ([brightscript-formatter#6](https://github.com/rokucommunity/brighterscript-formatter/issues/6))
+ - (LanguageServer) Parse bug with upper-case two-word conditional compile tokens `#ELSE IF` and `#END IF` ([brightscript#63](https://github.com/rokucommunity/brighterscript/issues/63))
 
 
 
