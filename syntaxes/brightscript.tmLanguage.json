@@ -278,12 +278,15 @@
             "match": "(?i:(?<!\\.)\\b(m|global|super)\\b)"
         },
         "variables_and_params": {
+            "match": "(?i:(?:\\b(new)\\s)?\\b(?<!\\.)([a-z_][a-z0-9_\\$%!#]*)\\b)",
             "captures": {
                 "1": {
+                    "name": "keyword.operator.new.brs"
+                },
+                "2": {
                     "name": "entity.name.variable.local.brs"
                 }
-            },
-            "match": "(?i:\\b(?<!\\.)([a-z_][a-z0-9_\\$%!#]*)\\b)"
+            }
         },
         "storage_types": {
             "comment": "Included 'dim' because it didn't warrant its own matcher",

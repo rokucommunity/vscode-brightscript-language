@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.11] - 2020-05-02
+### Fixed
+ - colorization of the `new` keyword in BrighterScript
+
+
+
 ## [2.1.10] - 2020-05-01
 ### Added
  - (LanguageServer) New BrighterScript compile flag `autoImportComponentScript` which will automatically inject a script at transpile-time for a component with the same name if it exists.
@@ -915,6 +921,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.10...v2.1.11
 [2.1.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.9...v2.1.10
 [2.1.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.8...v2.1.9
 [2.1.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.7...v2.1.8
