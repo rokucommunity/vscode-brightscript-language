@@ -17,7 +17,7 @@ If you're upgrading from version 1 of the extension, please review [these change
   ![BrightScript-language-debugging](https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif)
 
 - Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. See [here](https://developer.roku.com/docs/developer-program/debugging/debugging-channels.md#scenegraph-debug-server-port-8080-commands) for information on how to enable rendezvous logging your Roku.
-- Static analysis (code validation)
+- Real time code validation
 - Syntax highlighting
 - Code formatting
 - Injection of the Roku Advanced Layout Editor(RALE) task from a single user managed version
