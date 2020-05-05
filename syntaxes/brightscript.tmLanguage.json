@@ -162,15 +162,12 @@
             }
         },
         "class_fields": {
-            "match": "(?i:(public|protected|private)(?:\\s+(override)(?:\\s([a-z0-9_]+))?)?)",
+            "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
-                },
+                }, 
                 "2": {
-                    "name": "storage.modifier.brs"
-                },
-                "3": {
                     "name": "variable.object.property.brs"
                 }
             }
