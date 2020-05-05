@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### Unreleased
+### Changed
+ - Upgraded to [brighterscript-formatter@1.1.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#116---2020-05-04)
+### Fixed
+ - issue where object properties named `next` would incorrectly cause a de-indent ([brighterscript-formatter#12](https://github.com/rokucommunity/brighterscript-formatter/issues/12))
+
+
+
 ## [2.1.12] - 2020-05-04
 ### Changed
  - Upgraded to [brighterscript@0.9.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#093) 
