@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### Unreleased
+### [2.1.13] - 2020-05-04
 ### Changed
  - Upgraded to [brighterscript-formatter@1.1.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#116---2020-05-04)
 ### Fixed
@@ -946,6 +946,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.12...v2.1.13
 [2.1.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.11...v2.1.12
 [2.1.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.10...v2.1.11
 [2.1.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.9...v2.1.10
