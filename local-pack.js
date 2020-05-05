@@ -16,30 +16,53 @@ var extensionPackageJson = JSON.parse(
 
 var brighterscriptFolderPath = path.resolve('../', 'brighterscript');
 var brighterscriptPackageJsonPath = path.join(brighterscriptFolderPath, 'package.json');
+
+var rokuDebugFolderPath = path.resolve('../', 'roku-debug');
+var rokuDebugPackageJsonPath = path.join(rokuDebugFolderPath, 'package.json');
+
 var rokuDeployFolderPath = path.resolve('../', 'roku-deploy');
 var rokuDeployPackageJsonPath = path.join(rokuDeployFolderPath, 'package.json');
 
-var rokuDeployPackagePath, brighterscriptPackagePath;
+var brighterscriptPackagePath, rokuDebugPackagePath, rokuDeployPackagePath;
 
 
 var backups = {
     vscodeBrightscriptLanguagePackageJson: fs.existsSync('package.json') ? fs.readFileSync('package.json').toString() : undefined,
     brighterscriptPackageJson: fs.exists(brighterscriptPackageJsonPath) ? fs.readFileSync(brighterscriptPackageJsonPath).toString() : undefined,
+    rokuDebugPackageJson: fs.exists(rokuDebugPackageJsonPath) ? fs.readFileSync(rokuDebugPackageJsonPath).toString() : undefined,
     rokuDeployPackageJson: fs.exists(rokuDeployPackageJsonPath) ? fs.readFileSync(rokuDeployPackageJsonPath).toString() : undefined
 }
 try {
+      //uses local roku-debug
+      if (extensionPackageJson.dependencies['roku-debug'].indexOf('file:') === 0) {
+        var rokuDebugPackageJson = JSON.parse(
+            fs.readFileSync(rokuDebugPackageJsonPath).toString()
+        );
+        var rokuDebugPackagePath = path.join(rokuDebugFolderPath, `roku-debug-${rokuDebugPackageJson.version}.tgz`);
 
-    var usesLocalBrighterscript = extensionPackageJson.dependencies['brighterscript'].indexOf('file:') === 0;
+        console.log('building and packing roku-debug');
+        console.log(
+            childProcess.execSync('npm install && npm run build && npm pack', {
+                cwd: rokuDebugFolderPath
+            }).toString()
+        );
 
-    //if the extension relies on a local version of brighterscript
-    if (usesLocalBrighterscript) {
+        console.log('installing roku-debug into the extension');
+        //install the roku-debug package in the extension
+        console.log(
+            childProcess.execSync(`npm install "${rokuDebugPackagePath}"`).toString()
+        );
+    }
+
+
+    //uses local BrightScript
+    if (extensionPackageJson.dependencies['brighterscript'].indexOf('file:') === 0) {
         var brighterscriptPackageJson = JSON.parse(
             fs.readFileSync(brighterscriptPackageJsonPath).toString()
         );
-        var usesLocalRokuDeploy = brighterscriptPackageJson.dependencies['roku-deploy'].indexOf('file:') === 0;
 
-        //if brighterscript depends on a local version of roku-deploy
-        if (usesLocalRokuDeploy) {
+        //if local brighterscript uses local roku-deploy
+        if (brighterscriptPackageJson.dependencies['roku-deploy'].indexOf('file:') === 0) {
             var rokuDeployPackageJson = JSON.parse(
                 fs.readFileSync(rokuDeployPackageJsonPath).toString()
             );
@@ -91,6 +114,10 @@ try {
 
     if (backups.brighterscriptPackageJson) {
         fs.writeFileSync(brighterscriptPackageJsonPath, backups.brighterscriptPackageJson);
+    }
+
+    if (backups.rokuDebugPackageJson) {
+        fs.writeFileSync(rokuDebugPackageJsonPath, backups.rokuDebugPackageJson);
     }
 
     if (backups.rokuDeployPackageJson) {
