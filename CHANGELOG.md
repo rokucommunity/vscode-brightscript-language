@@ -6,7 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [2.1.13] - 2020-05-04
+### [2.1.14] - 2020-05-05
+### Added
+ - diagnostic for detecting unnecessary script imports when autoImportComponentScript is enabled
+### Changed
+ - several performance regressions that were introduced in v0.8.2. ([#230](https://github.com/rokucommunity/vscode-brightscript-language/issues/230))
+ - Upgraded to [brighterscript@0.9.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#094---2020-05-05) 
+ - filter duplicate dignostics from multiple projects. ([#75](https://github.com/rokucommunity/brighterscript/issues/75))
+ - bug that was flagging namespaced functions with the same name as a stdlib function.
+ - bug that was not properly transpiling brighterscript script tags in xml components.
+ - fixes to the `autoImportComponentScript` logic that was not properly finding the files in all situations.
+ - Replace `type="text/brighterscript"` with `type="text/brightscript"` in xml script imports during transpile. ([#73](https://github.com/rokucommunity/brighterscript/issues/73))
+
+
+
+## [2.1.13] - 2020-05-04
 ### Changed
  - Upgraded to [brighterscript-formatter@1.1.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#116---2020-05-04)
 ### Fixed
@@ -16,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.1.12] - 2020-05-04
 ### Changed
- - Upgraded to [brighterscript@0.9.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#093) 
+ - Upgraded to [brighterscript@0.9.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#093---2020-05-04) 
  - do not show BRS1013 for standalone files ([brighterscript#72](https://github.com/rokucommunity/brighterscript/issues/72))
  - BS1011 (same name as global function) is no longer shown for local variables that are not of type function ([brighterscript#70](https://github.com/rokucommunity/brighterscript/issues/70))
 ### Fixed
@@ -946,6 +960,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.13...v2.1.14
 [2.1.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.12...v2.1.13
 [2.1.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.11...v2.1.12
 [2.1.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.10...v2.1.11
