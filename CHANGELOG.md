@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [2.1.15] - 2020-05-07
+## [2.1.15] - 2020-05-07
 ### Changed
   - Upgraded to [brighterscript@0.9.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#095) 
 ### Fixed
@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [2.1.14] - 2020-05-05
+## [2.1.14] - 2020-05-05
 ### Added
  - diagnostic for detecting unnecessary script imports when autoImportComponentScript is enabled
 ### Changed
@@ -576,7 +576,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.11]
+## [2.0.0-beta.11] - 2019-03-12
 ### Added
  - Support for `go to definition` to open parent component xml file when the cursor is on a component's `extends="ParentName"` section (fixes #114).
 ### Fixed
@@ -584,7 +584,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.10]
+## [2.0.0-beta.10] - 2019-03-12
 ### Added
  - Upgraded to [brightscript-language@0.1.21](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.21) which brought support for supressing errors using a comment
 ### Fixed
@@ -592,13 +592,13 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.9]
+## [2.0.0-beta.9] - 2019-03-11
 ### Fixed
  - Upgraded to [brightscript-language@0.1.20](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.20) which fixed an npm issue that was loading the wrong version of `brs`.
 
 
 
-## [2.0.0-beta.8]
+## [2.0.0-beta.8] - 2019-03-10
 ### Added
  - support specifying `brsconfig.json` path as a vscode setting under the `brightscript.configFile` setting.
  - reload workspace if brsconfig.json has changed
@@ -612,7 +612,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.7]
+## [2.0.0-beta.7] - 2019-03-09
 ### Added
  - All changes from 1.8.4 and 1.8.5
 ### Fixed
@@ -625,7 +625,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.6]
+## [2.0.0-beta.6] - 2019-03-04
 ### Added
  - All changes from [1.8.3](#183---2019-03-04)
 ### Fixed
@@ -634,7 +634,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## [2.0.0-beta.5]
+## [2.0.0-beta.5] - 2019-03-03
 ### Changed
  - Upgraded to [brightscript-language@0.1.14](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.14) that brings syntax fixes for using `then` as an object property name and now allows `function` as an argument type.
 ### Fixed
@@ -642,25 +642,25 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-### [2.0.0-beta.4]
+### [2.0.0-beta.4] - 2019-02-25
 ### Changed
  - Upgraded to [brightscript-language@0.1.13](https://github.com/RokuCommunity/brightscript-language/tree/v0.1.13) which fixes duplicate diagnostic reporting
 
 
 
-## [2.0.0-beta.3]
+## [2.0.0-beta.3] - 2019-02-25
 ### Fixed
  - bugs with errors showing up for script imports inside of comments.
 
 
 
-## [2.0.0-beta.2]
+## [2.0.0-beta.2] - 2019-02-24
 ### Changed
  - Upgraded to latest `brightscript` project, which fixes bitshift assignment operators and `stop` and `run` keywords on object literals.
 
 
 
-## [2.0.0-beta.1]
+## [2.0.0-beta.1] - 2019-02-20
 ### Added
  - Experimental language validation support. Catches most parse errors and a few basic language errors.
 
@@ -959,7 +959,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 
 
 
-## 1.0.0 - 2018-03-16
+## [1.0.0] - 2018-03-16
 ### Added
 - Remote debugging support
 - Code formatter
@@ -1035,8 +1035,6 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.0.0-beta.3]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.8.2...v2.0.0-beta.1
-
-
 [1.23.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.3...v1.22.0
 [1.21.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.21.2...v1.21.3
@@ -1091,3 +1089,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [1.2.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.1.0...v1.2.0
 [1.1.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.0.1...v1.1.0
 [1.0.1]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/v1.0.0...v1.0.1
+[1.0.0]:  https://github.com/RokuCommunity/vscode-brightscript-language/compare/f3e1d91...v1.0.0
