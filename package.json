@@ -39,7 +39,8 @@
         "package-local": "node scripts/package-local.js",
         "publish": "vsce publish",
         "clean": "rimraf dist",
-        "install-local": "node scripts/install-local.js"
+        "install-local": "node scripts/install-local.js",
+        "uninstall-local": "node scripts/uninstall-local.js"
     },
     "dependencies": {
         "array-sort": "^1.0.0",
