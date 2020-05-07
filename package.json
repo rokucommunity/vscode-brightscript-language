@@ -25,7 +25,7 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./",
@@ -36,14 +36,16 @@
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
+        "package-local": "node scripts/package-local.js",
         "publish": "vsce publish",
-        "clean": "rimraf dist"
+        "clean": "rimraf dist",
+        "install-local": "node scripts/install-local.js"
     },
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.9.5",
-        "brighterscript-formatter": "^1.1.6",
+        "brighterscript": "file:../brighterscript",
+        "brighterscript-formatter": "file:../brighterscript-formatter",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -64,8 +66,8 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-debug": "^0.3.6",
-        "roku-deploy": "^3.0.2",
+        "roku-debug": "file:../roku-debug",
+        "roku-deploy": "file:../roku-deploy",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
@@ -89,6 +91,7 @@
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.30.0",
         "chai": "^4.2.0",
+        "changelog-parser": "^2.8.0",
         "coveralls": "^3.0.11",
         "mocha": "^7.1.1",
         "mocha-param": "^2.0.0",
