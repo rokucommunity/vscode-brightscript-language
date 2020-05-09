@@ -11,7 +11,7 @@ import {
 } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration, fileUtils } from 'roku-debug';
+import { LaunchConfiguration, fileUtils } from 'roku-debug';
 import { util } from './util';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -75,7 +75,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration, token?: CancellationToken): Promise<BrightScriptDebugConfiguration> {
+    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
         // Process the different parts of the config
         config = this.processUserWorkspaceSettings(config);
         config = await this.sanitizeConfiguration(config, folder);
@@ -93,7 +93,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     /**
      * There are several debug-level config values that can be stored in user settings, so get those
      */
-    private processUserWorkspaceSettings(config: BrightScriptDebugConfiguration) {
+    private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration) {
         //get baseline brightscript.debug user/project settings
         var userWorkspaceDebugSettings = Object.assign(
             {
@@ -114,7 +114,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Takes the launch.json config and applies any defaults to missing values and sanitizes some of the more complex options
      * @param config current config object
      */
-    private async sanitizeConfiguration(config: BrightScriptDebugConfiguration, folder: WorkspaceFolder): Promise<BrightScriptDebugConfiguration> {
+    private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
         let defaultFilesArray: FileEntry[] = [
             'manifest',
             'source/**/*.*',
@@ -206,17 +206,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
         config.retainStagingFolder = config.retainStagingFolder === true ? true : this.configDefaults.retainStagingFolder;
-        config.clearOutputOnLaunch = config.clearOutputOnLaunch === true ? true : this.configDefaults.clearOutputOnLaunch;
-        config.selectOutputOnLogMessage = config.selectOutputOnLogMessage === true ? true : this.configDefaults.selectOutputOnLogMessage;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
-        config.enableLookupVariableNodeChildren = config.enableLookupVariableNodeChildren === true ? true : this.configDefaults.enableLookupVariableNodeChildren;
         config.files = config.files ? config.files : this.configDefaults.files;
         config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath = config.logfilePath ?? null;
+
+
+        if (config.request !== 'launch') {
+            vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
+        }
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
@@ -241,7 +243,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
-    public processLogfilePath(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration) {
+    public processLogfilePath(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration) {
         if (config?.logfilePath?.trim()) {
             config.logfilePath = config.logfilePath.trim();
             if (config.logfilePath.indexOf('${workspaceFolder}') > -1) {
@@ -270,7 +272,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param folder current workspace folder
      * @param config current config object
      */
-    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
+    private async processEnvFile(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         //process .env file if present
         if (config.envFile) {
             let envFilePath = config.envFile;
@@ -311,7 +313,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptDebugConfiguration): Promise<BrightScriptDebugConfiguration> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         let showInputBox = false;
 
         // #region prompt for host if not hardcoded
@@ -385,7 +387,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
      * @param config  current config object
      */
-    private async processPasswordParameter(config: BrightScriptDebugConfiguration) {
+    private async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
             config.password = await this.openInputBox('The developer account password for your Roku device.');
@@ -401,7 +403,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the deepLinkUrl parameter in the config and opens an input ui if set to ${promptForDeepLinkUrl} or if the url contains ${promptForQueryParams
      * @param config  current config object
      */
-    private async processDeepLinkUrlParameter(config: BrightScriptDebugConfiguration) {
+    private async processDeepLinkUrlParameter(config: BrightScriptLaunchConfiguration) {
         if (config.deepLinkUrl) {
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
@@ -413,7 +415,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 config.deepLinkUrl = await this.openInputBox('Full deep link url');
             }
         }
-
         return config;
     }
 
@@ -451,4 +452,46 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return undefined;
         }
     }
+}
+
+interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
+    /**
+     * The name of this launch configuration
+     */
+    name: string;
+    /**
+     * The type of this debug configuration
+     */
+    type: string;
+    /**
+     * Should the debugger launch or attach. roku-debug only supports launching
+     */
+    request: 'launch' | 'attach';
+
+    /**
+     * A path to a file where all brightscript console output will be written. If falsey, file logging will be disabled.
+     */
+    logfilePath?: string;
+    /**
+     *  If true, then the zip archive is NOT deleted after a debug session has been closed.
+     * @default true
+     */
+    retainDeploymentArchive?: boolean;
+
+    /**
+     * A path to an environment variables file which will be used to augment the launch config
+     */
+    envFile?: string;
+
+    /**
+     * @deprecated
+     */
+    rokuAdvancedLayoutEditor?: {
+        /**
+         * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
+         * @deprecated
+         */
+        raleTrackerTaskFileLocation?: string;
+    };
+
 }
