@@ -399,8 +399,10 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 ## [1.19.0] - 2019-09-16
 ### Changed
  - location of repository is now https://github.com/RokuCommunity/vscode-brightscript-language
+ - removed experimental flag `enableLookupVariableNodeChildren` because it is now enabled by default.
 ### Fixed
  - many bugs related to inspecting large arrays/objects on the Roku during debugging. (see [#152](https://github.com/RokuCommunity/vscode-brightscript-language/issues/152))
+
 
 
 ## [2.0.0-beta.34] - 2019-08-19

@@ -43,7 +43,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             enableVariablesPanel: true,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
-            enableLookupVariableNodeChildren: false,
             files: this.defaultFilesArray,
             enableSourceMaps: true,
             packagePort: 80,

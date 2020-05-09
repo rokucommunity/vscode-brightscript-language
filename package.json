@@ -450,12 +450,6 @@
                                 "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
                                 "default": true
                             },
-                            "enableLookupVariableNodeChildren": {
-                                "type": "boolean",
-                                "deprecationMessage": "Deprecated. This is no longer necessary, as the setting is always enabled and cannot be disabled.",
-                                "description": "If true, will get all children of a node, when the value is displayed in a debug session, and store it in the virtual `[[children]]` field",
-                                "default": true
-                            },
                             "enableSourceMaps": {
                                 "type": "boolean",
                                 "default": true,
