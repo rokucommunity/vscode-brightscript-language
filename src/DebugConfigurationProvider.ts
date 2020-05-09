@@ -2,7 +2,7 @@ import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
-import { FileEntry } from 'roku-deploy';
+import { FileEntry, DefaultFiles } from 'roku-deploy';
 import {
     CancellationToken,
     DebugConfigurationProvider,
@@ -19,12 +19,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public constructor(context: ExtensionContext, activeDeviceManager: any) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
-        this.defaultFilesArray = [
-            'manifest',
-            'source/**/*.*',
-            'components/**/*.*',
-            'images/**/*.*'
-        ];
 
         this.configDefaults = {
             type: 'brightscript',
@@ -38,12 +32,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             retainDeploymentArchive: true,
             injectRaleTrackerTask: false,
             retainStagingFolder: false,
-            clearOutputOnLaunch: false,
-            selectOutputOnLogMessage: false,
             enableVariablesPanel: true,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
-            files: this.defaultFilesArray,
+            files: [...DefaultFiles],
             enableSourceMaps: true,
             packagePort: 80,
             enableDebugProtocol: false,
@@ -67,7 +59,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public util = util;
 
     private configDefaults: any;
-    private defaultFilesArray: FileEntry[];
     private showDeviceInfoMessages: boolean;
 
     /**
@@ -178,13 +169,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.sourceDirs = [];
         }
 
-        // #region Prepare Component Library config items
         if (config.componentLibraries) {
             config.componentLibrariesOutDir = this.util.ensureTrailingSlash(config.componentLibrariesOutDir ? config.componentLibrariesOutDir : '${workspaceFolder}/libs');
 
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
-                library.files = library.files ? library.files : this.defaultFilesArray;
+                library.files = library.files ? library.files : [...DefaultFiles];
             }
         } else {
             //create an empty array so it's easier to reason with downstream
