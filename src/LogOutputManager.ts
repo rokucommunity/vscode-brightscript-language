@@ -2,11 +2,12 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
-import { BrightScriptDebugConfiguration, BrightScriptDebugCompileError } from 'roku-debug';
+import { BrightScriptDebugCompileError } from 'roku-debug';
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
+import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class LogLine {
     constructor(
@@ -99,7 +100,7 @@ export class LogOutputManager {
     private isNextBreakpointSkipped: boolean = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
-    public launchConfig: BrightScriptDebugConfiguration;
+    public launchConfig: BrightScriptLaunchConfiguration;
     public isFocusingOutputOnLaunch: boolean;
     public isClearingOutputOnLaunch: boolean;
     public isClearingConsoleOnChannelStart: boolean;
@@ -118,7 +119,7 @@ export class LogOutputManager {
         }
     }
 
-    public setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
+    public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
     }
 

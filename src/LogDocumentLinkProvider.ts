@@ -3,8 +3,8 @@ import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { BrightScriptDebugConfiguration } from 'roku-debug';
 import { util } from './util';
+import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -35,7 +35,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
 
-    public async setLaunchConfig(launchConfig: BrightScriptDebugConfiguration) {
+    public async setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
         this.fileMaps = {};
 
@@ -68,7 +68,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     public fileMaps: { [pkgPath: string]: { src: string; dest: string; pkgPath: string; } };
     public customLinks: DocumentLink[];
 
-    private launchConfig: BrightScriptDebugConfiguration;
+    private launchConfig: BrightScriptLaunchConfiguration;
 
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         return this.customLinks;

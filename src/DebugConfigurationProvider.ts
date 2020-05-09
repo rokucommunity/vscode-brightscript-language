@@ -441,7 +441,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 }
 
-interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
+export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     /**
      * The name of this launch configuration
      */
