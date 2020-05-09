@@ -181,7 +181,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.componentLibraries = [];
         }
         config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
-        // #endregion
 
         // Apply any defaults to missing values
         config.type = config.type ? config.type : this.configDefaults.type;
@@ -305,7 +304,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         let showInputBox = false;
 
-        // #region prompt for host if not hardcoded
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
             if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
                 let deviceWaitTime = 5000;
