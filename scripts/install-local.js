@@ -5,6 +5,7 @@
 var fsExtra = require('fs-extra');
 var path = require('path');
 var childProcess = require('child_process');
+var chalk = require('chalk');
 
 let packages = [
     'roku-debug',
