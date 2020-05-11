@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - only initialize the log manager when launching a BrightScript debug session.
  - only clear/focus console/output when launching a BrightScript debug session
- - Upgraded to [roku-debug@](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#095) 
+ - Upgraded to [roku-deploy@3.1.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#311---2020-05-08) 
+### Fixed
+ - Added missing roku-deploy options into launch config schema.
 
 
 
