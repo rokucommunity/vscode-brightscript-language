@@ -127,7 +127,10 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
 
     vscode.debug.onDidStartDebugSession((e) => {
-        logOutputManager.onDidStartDebugSession();
+        //if this is a brightscript debug session
+        if (e.type === 'brightscript') {
+            logOutputManager.onDidStartDebugSession();
+        }
     });
     vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
         logOutputManager.onDidReceiveDebugSessionCustomEvent(e);

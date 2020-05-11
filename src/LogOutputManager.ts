@@ -18,6 +18,7 @@ export class LogLine {
 }
 
 export class LogOutputManager {
+
     constructor(
         outputChannel,
         context,
@@ -27,20 +28,12 @@ export class LogOutputManager {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.includeStackTraces = (config.output || {}).includeStackTraces;
-        this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
-        this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
-        this.isClearingConsoleOnChannelStart = (config.output || {}).clearConsoleOnChannelStart;
-        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+
+        this.loadConfigSettings();
         vscode.workspace.onDidChangeConfiguration((e) => {
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.includeStackTraces = (config.output || {}).includeStackTraces;
-            this.isFocusingOutputOnLaunch = (config.output || {}).focusOnLaunch;
-            this.isClearingOutputOnLaunch = (config.output || {}).clearOnLaunch;
-            this.isClearingConsoleOnChannelStart = (config.output || {}).clearConsoleOnChannelStart;
-            this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+            this.loadConfigSettings();
         });
+
         this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
@@ -119,6 +112,15 @@ export class LogOutputManager {
         }
     }
 
+    private loadConfigSettings() {
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        this.includeStackTraces = (config.output || {}).includeStackTraces;
+        this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
+        this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
+        this.isClearingConsoleOnChannelStart = config?.output?.clearConsoleOnChannelStart === false ? false : true;
+        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+    }
+
     public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
     }
@@ -137,6 +139,7 @@ export class LogOutputManager {
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
                 vscode.commands.executeCommand('workbench.action.focusPanel');
+                this.outputChannel.show();
             }
             if (this.isClearingOutputOnLaunch) {
                 this.clearOutput();
