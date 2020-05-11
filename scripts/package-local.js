@@ -92,6 +92,13 @@ try {
         fs.writeFileSync(project.packageJsonPath, project.packageJsonBackup);
         //delete the tarballs
         try { fs.removeSync(project.tarballPath); } catch (e) { }
+
+        //run install on the packages because `npm prune` will have removed some of them
+        console.log(`Re-installing devDependencies for ${projectName}`);
+        childProcess.execSync(`npm install`, {
+            cwd: project.folderPath,
+            stdio: 'inherit'
+        });
     });
 
     console.log('Restoring vscode-brightscript-language/package.json');
