@@ -19,7 +19,7 @@ process.chdir(thisProjectRootPath);
 let packageJson = JSON.parse(fsExtra.readFileSync('package.json').toString());
 
 for (let packageName of packages) {
-    console.log(`\n--------${packageName}--------`);
+    printHeader(packageName);
     let packageSrcPath = path.resolve(path.join('..', packageName));
 
     //if the project doesn't exist, clone it from github
@@ -66,10 +66,27 @@ for (let packageName of packages) {
     packageJson.dependencies[packageName] = `file:../${packageName}`;
 }
 
-console.log(`\n--------vscode-brightscript-langauge--------`);
+printHeader('vscode-brightscript-language');
 console.log('saving package.json changes');
 fsExtra.writeFileSync('package.json', JSON.stringify(packageJson, null, 4));
 console.log('npm install');
 childProcess.execSync('npm install', {
     stdio: 'inherit'
 });
+
+
+
+function printHeader(name) {
+    var length = 80;
+    let text = '\n';
+
+    text += ''.padStart(length, '-') + '\n';
+
+    let leftLen = Math.round((length / 2) - (name.length / 2));
+    let rightLen = 80 - (name.length + leftLen);
+    text += ''.padStart(leftLen, '-') + chalk.white(name) + ''.padStart(rightLen, '-') + '\n';
+
+    text += ''.padStart(length, '-') + '\n';
+
+    console.log(chalk.blue(text));
+}
