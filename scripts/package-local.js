@@ -94,7 +94,7 @@ try {
         try { fs.removeSync(project.tarballPath); } catch (e) { }
 
         //run install on the packages because `npm prune` will have removed some of them
-        console.log(`Re-installing devDependencies for ${projectName}`);
+        console.log(`reinstalling devDependencies for ${projectName}`);
         childProcess.execSync(`npm install`, {
             cwd: project.folderPath,
             stdio: 'inherit'
@@ -103,6 +103,10 @@ try {
 
     console.log('Restoring vscode-brightscript-language/package.json');
     fs.writeFileSync('package.json', extensionPackageJsonBackup);
+    console.log(`reinstalling devDependencies for vscode-brightscript-language`);
+    childProcess.execSync(`npm install`, {
+        stdio: 'inherit'
+    });
 }
 
 function printHeader(name) {
