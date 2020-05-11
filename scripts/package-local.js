@@ -8,127 +8,107 @@
 var fs = require('fs-extra');
 var path = require('path');
 var childProcess = require('child_process');
-var replaceInFile = require('replace-in-file');
+var chalk = require('chalk');
 
-var extensionPackageJson = JSON.parse(
-    fs.readFileSync('package.json').toString()
-);
+var extensionPackageJsonBackup = fs.readFileSync('package.json').toString();
+var extensionPackageJson = JSON.parse(extensionPackageJsonBackup);
 
-var brighterscriptFolderPath = path.resolve('../', 'brighterscript');
-var brighterscriptPackageJsonPath = path.join(brighterscriptFolderPath, 'package.json');
+//these are in priority order
+var projectNames = [
+    'roku-deploy',
+    'brighterscript',
+    'brighterscript-formatter',
+    'roku-debug'
+];
+var projects = {};
 
-var rokuDebugFolderPath = path.resolve('../', 'roku-debug');
-var rokuDebugPackageJsonPath = path.join(rokuDebugFolderPath, 'package.json');
-
-var rokuDeployFolderPath = path.resolve('../', 'roku-deploy');
-var rokuDeployPackageJsonPath = path.join(rokuDeployFolderPath, 'package.json');
-
-var brighterscriptPackagePath, rokuDebugPackagePath, rokuDeployPackagePath;
-
-
-var backups = {
-    vscodeBrightscriptLanguagePackageJson: fs.existsSync('package.json') ? fs.readFileSync('package.json').toString() : undefined,
-    brighterscriptPackageJson: fs.exists(brighterscriptPackageJsonPath) ? fs.readFileSync(brighterscriptPackageJsonPath).toString() : undefined,
-    rokuDebugPackageJson: fs.exists(rokuDebugPackageJsonPath) ? fs.readFileSync(rokuDebugPackageJsonPath).toString() : undefined,
-    rokuDeployPackageJson: fs.exists(rokuDeployPackageJsonPath) ? fs.readFileSync(rokuDeployPackageJsonPath).toString() : undefined
-}
 try {
-      //uses local roku-debug
-      if (extensionPackageJson.dependencies['roku-debug'].indexOf('file:') === 0) {
-        var rokuDebugPackageJson = JSON.parse(
-            fs.readFileSync(rokuDebugPackageJsonPath).toString()
-        );
-        var rokuDebugPackagePath = path.join(rokuDebugFolderPath, `roku-debug-${rokuDebugPackageJson.version}.tgz`);
 
-        console.log('building and packing roku-debug');
-        console.log(
-            childProcess.execSync('npm install && npm run build && npm pack', {
-                cwd: rokuDebugFolderPath
-            }).toString()
-        );
+    projectNames.forEach((projectName) => {
+        printHeader(projectName);
+        //create the project and add it to the map
+        var project = projects[projectName] = {};
+        project.folderPath = path.resolve('..', projectName);
+        project.packageJsonPath = path.resolve(project.folderPath, 'package.json');
+        project.packageJsonBackup = fs.existsSync(project.packageJsonPath) ? fs.readFileSync(project.packageJsonPath).toString() : undefined;
 
-        console.log('installing roku-debug into the extension');
-        //install the roku-debug package in the extension
-        console.log(
-            childProcess.execSync(`npm install "${rokuDebugPackagePath}"`).toString()
-        );
-    }
-
-
-    //uses local BrightScript
-    if (extensionPackageJson.dependencies['brighterscript'].indexOf('file:') === 0) {
-        var brighterscriptPackageJson = JSON.parse(
-            fs.readFileSync(brighterscriptPackageJsonPath).toString()
-        );
-
-        //if local brighterscript uses local roku-deploy
-        if (brighterscriptPackageJson.dependencies['roku-deploy'].indexOf('file:') === 0) {
-            var rokuDeployPackageJson = JSON.parse(
-                fs.readFileSync(rokuDeployPackageJsonPath).toString()
-            );
-
-            var rokuDeployPackagePath = path.join(rokuDeployFolderPath, `roku-deploy-${rokuDeployPackageJson.version}.tgz`);
-            rokuDeployPackagePath = rokuDeployPackagePath.replace(/[\/\\]+/gi, '/');
-            console.log('building and packing roku-deploy');
-            //build the roku-deploy tgz
-            console.log(
-                childProcess.execSync('npm install && npm run build && npm pack', {
-                    cwd: rokuDeployFolderPath
-                }).toString()
-            );
-
-            console.log('installing roku-deploy into brighterscript');
-            replaceInFile.sync({
-                files: brighterscriptPackageJsonPath,
-                from: /"roku-deploy"\s*:\s*".*?"/g,
-                to: `"roku-deploy": "file:${rokuDeployPackagePath}"`
-            });
+        if (extensionPackageJson.dependencies['roku-debug'].startsWith('file:') === false) {
+            console.log(`Skipping ${projectName} because it's not referenced locally in the extension`);
         }
 
-        var brighterscriptPackagePath = path.join(brighterscriptFolderPath, `brighterscript-${brighterscriptPackageJson.version}.tgz`);
-
-        console.log('building and packing brighterscript');
-        console.log(
-            childProcess.execSync('npm install && npm run build && npm pack', {
-                cwd: brighterscriptFolderPath
-            }).toString()
+        var project = projects[projectName];
+        console.log(`Reading and parsing ${projectName}/package.json`);
+        var package = JSON.parse(
+            fs.readFileSync(project.packageJsonPath).toString()
         );
 
-        console.log('installing brighterscript into extension');
-        //install the brighterscript package in the extension
-        console.log(
-            childProcess.execSync(`npm install "${brighterscriptPackagePath}"`).toString()
-        );
-    }
+        //install any local dependencies into this project (this depends on the projects being iterated in order above)
+        projectNames.forEach((innerProjectName) => {
+            if (package.dependencies[innerProjectName] && package.dependencies[innerProjectName].startsWith('file:')) {
+                console.log(`Installing local ${innerProjectName} into ${projectName}`);
+                package.dependencies[innerProjectName] = `file:../${project.tarballPath}`;
+            }
+        });
+        console.log(`Updating ${projectName}/package.json`);
+        fs.writeFileSync(project.packageJsonPath, JSON.stringify(package, null, 4));
+
+        console.log(`installing ${projectName} dependencies`);
+        childProcess.execSync('npm install && npm run build && npm pack', {
+            cwd: project.folderPath,
+            stdio: 'inherit'
+        });
+        project.tarballPath = path.join(project.folderPath, `${projectName}-${package.version}.tgz`);
+        console.log('tarball path', project.tarballPath);
+    });
+
+    printHeader('vscode-brightscript-language');
+
+    console.log('Remove extraneous packages');
+    childProcess.execSync('npm prune', {
+        stdio: 'inherit'
+    });
+
+    //install the packages into the extension
+    projectNames.forEach(projectName => {
+        var project = projects[projectName];
+        if (extensionPackageJson.dependencies[projectName].startsWith('file:')) {
+            extensionPackageJson.dependencies[projectName] = `file:${project.tarballPath}`
+        }
+    });
+    console.log('Saving vscode-brightscript-language/package.json');
+    fs.writeFileSync('package.json', JSON.stringify(extensionPackageJson, null, 4));
 
     console.log('packing the extension');
-    console.log(
-        childProcess.execSync(`npm install && npm run build && npm run package`).toString()
-    );
+    childProcess.execSync(`npm install && npm run build && npm run package`, {
+        stdio: 'inherit'
+    });
 
 } finally {
     console.log('cleaning up');
-    if (backups.vscodeBrightscriptLanguagePackageJson) {
-        fs.writeFileSync(brighterscriptPackageJsonPath, backups.vscodeBrightscriptLanguagePackageJson);
-    }
+    //restore package.json for all affected projects
+    Object.keys(projects).forEach((projectName) => {
+        var project = projects[projectName];
+        console.log(`Restoring ${projectName}/package.json`);
+        fs.writeFileSync(project.packageJsonPath, project.packageJsonBackup);
+        //delete the tarballs
+        try { fs.removeSync(project.tarballPath); } catch (e) { }
+    });
 
-    if (backups.brighterscriptPackageJson) {
-        fs.writeFileSync(brighterscriptPackageJsonPath, backups.brighterscriptPackageJson);
-    }
+    console.log('Restoring vscode-brightscript-language/package.json');
+    fs.writeFileSync('package.json', extensionPackageJsonBackup);
+}
 
-    if (backups.rokuDebugPackageJson) {
-        fs.writeFileSync(rokuDebugPackageJsonPath, backups.rokuDebugPackageJson);
-    }
+function printHeader(name) {
+    var length = 80;
+    let text = '\n';
 
-    if (backups.rokuDeployPackageJson) {
-        fs.writeFileSync(rokuDeployPackageJsonPath, backups.rokuDeployPackageJson);
-    }
+    text += ''.padStart(length, '-') + '\n';
 
-    //clean up
-    if (brighterscriptPackagePath && fs.existsSync(brighterscriptPackagePath)) {
-        fs.removeSync(brighterscriptPackagePath);
-    }
-    if (rokuDeployPackagePath && fs.existsSync(rokuDeployPackagePath)) {
-        fs.removeSync(rokuDeployPackagePath);
-    }
+    let leftLen = Math.round((length / 2) - (name.length / 2));
+    let rightLen = 80 - (name.length + leftLen);
+    text += ''.padStart(leftLen, '-') + chalk.white(name) + ''.padStart(rightLen, '-') + '\n';
+
+    text += ''.padStart(length, '-') + '\n';
+
+    console.log(chalk.blue(text));
 }
