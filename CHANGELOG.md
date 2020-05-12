@@ -6,8 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.1.6] - 2020-05-09
+## [2.1.6] - 2020-05-11
 ### Changed
+ - brightscript debug commands from the debug console in the telnet adapter like cont and step are now supported (but use at your own risk as there are synchronization issues between the adapter and vscode sometimes)
+ - source maps are now cached on launch to improve step speed.
  - only initialize the log manager when launching a BrightScript debug session.
  - only clear/focus console/output when launching a BrightScript debug session
  - Upgraded to [roku-deploy@3.1.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#311---2020-05-08) 
@@ -16,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Upgraded to [brighterscript@0.9.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#096) 
 ### Fixed
  - Added missing roku-deploy options into launch config schema.
+ - issue that was treating logpoints like regular breakpoints
+ - bugs when debugging files with sourcemaps. This still isn't perfect, as files with injected breakpoints will debug the staging file. However, files with maps that don't have breakpoints will be debuggable in the source file. Fix coming soon for the prior.
+ - several bugs where the source locations and staging locations were not being computed properly, causing a poor debugging experience.
+ - bugs related to sourcemaps not loading from the proper locations.
+ - bug with circular dependencies in source maps (shouldn't ever actually exist, but at least we won't loop forever now)
 
 
 
@@ -983,6 +990,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.16]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.15...v2.1.16
 [2.1.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.14...v2.1.15
 [2.1.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.13...v2.1.14
 [2.1.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.12...v2.1.13
