@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## Unversioned
+### Changed
+ - Upgraded to [brighterscript-formatter@1.1.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#118) 
+### Fixed
+ - formatter bug that would incorrectly add spacing between a negative sign and a number if it's the first entry in an array ([brighterscript-formatter#14](https://github.com/rokucommunity/brighterscript-formatter/issues/14))
+ - formatter bug that would incorrectly add spacing to the left of a negative sign if preceeded by a left curly bracket or left paren.  
+ - (formatter) Prevent indent after lines with indexed getter function call (i.e. `someObj[someKey]()`) ([brighterscript-formatter#15](https://github.com/rokucommunity/brighterscript-formatter/issues/15))
+
+
+
+
 ## [2.1.6] - 2020-05-11
 ### Changed
  - brightscript debug commands from the debug console in the telnet adapter like cont and step are now supported (but use at your own risk as there are synchronization issues between the adapter and vscode sometimes)
