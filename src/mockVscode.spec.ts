@@ -40,6 +40,9 @@ export let vscode = {
     commands: {
         registerCommand: () => {
 
+        },
+        executeCommand: () => {
+
         }
     },
     context: {
@@ -131,6 +134,7 @@ export let vscode = {
     OutputChannel: class {
         public clear() { }
         public appendLine() { }
+        public show() { }
     },
     DebugCollection: class {
         public clear() { }
