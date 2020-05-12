@@ -203,7 +203,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath = config.logfilePath ?? null;
 
-
         if (config.request !== 'launch') {
             vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
         }
@@ -480,5 +479,4 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
          */
         raleTrackerTaskFileLocation?: string;
     };
-
 }
