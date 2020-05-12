@@ -45,7 +45,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.9.5",
+        "brighterscript": "^0.9.6",
         "brighterscript-formatter": "^1.1.7",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",

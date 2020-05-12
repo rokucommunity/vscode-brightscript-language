@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - only clear/focus console/output when launching a BrightScript debug session
  - Upgraded to [roku-deploy@3.1.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#311---2020-05-08) 
  - Upgraded to [brighterscript-formatter@1.1.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#117---2020-05-11) 
+ - Upgraded to [brighterscript@0.9.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#096) 
 ### Fixed
  - Added missing roku-deploy options into launch config schema.
 
