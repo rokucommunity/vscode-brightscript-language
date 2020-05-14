@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## Unversioned
+## [2.1.17] - 2020-05-14
 ### Changed
  - Upgraded to [brighterscript-formatter@1.1.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#118) 
 ### Fixed
@@ -16,8 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-
-## [2.1.6] - 2020-05-11
+## [2.1.16] - 2020-05-11
 ### Changed
  - brightscript debug commands from the debug console in the telnet adapter like cont and step are now supported (but use at your own risk as there are synchronization issues between the adapter and vscode sometimes)
  - source maps are now cached on launch to improve step speed.
@@ -1001,6 +1000,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.17]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.16...v2.1.17
 [2.1.16]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.15...v2.1.16
 [2.1.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.14...v2.1.15
 [2.1.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.13...v2.1.14
