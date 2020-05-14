@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.18] - 2020-05-14
+### Changed
+ - Upgraded to [brighterscript@0.9.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#097---2020-05-14) 
+ - BrighterScript TypeScript compile targets "ES2017" which provides a signifiant performance boost in lexer (~30%) and parser (~175%)
+### Fixed
+ - (LanguageServer) false negative diagnostic when using the `new` keyword as a local variable [#79](https://github.com/rokucommunity/brighterscript/issues/79)
+
+
+
 ## [2.1.17] - 2020-05-14
 ### Changed
  - Upgraded to [brighterscript-formatter@1.1.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#118) 
@@ -25,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Upgraded to [roku-deploy@3.1.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#311---2020-05-08) 
  - Upgraded to [roku-debug@0.3.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#037---2020-05-11) 
  - Upgraded to [brighterscript-formatter@1.1.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#117---2020-05-11) 
- - Upgraded to [brighterscript@0.9.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#096) 
+ - Upgraded to [brighterscript@0.9.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#096---2020-05-11) 
 ### Fixed
  - Added missing roku-deploy options into launch config schema.
  - issue that was treating logpoints like regular breakpoints
@@ -1000,6 +1009,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.18]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.17...v2.1.18
 [2.1.17]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.16...v2.1.17
 [2.1.16]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.15...v2.1.16
 [2.1.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.14...v2.1.15
