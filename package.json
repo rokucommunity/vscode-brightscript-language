@@ -45,7 +45,6 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.9.7",
         "brighterscript-formatter": "^1.1.8",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -91,6 +90,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.30.0",
+        "brighterscript": "^0.9.8",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
