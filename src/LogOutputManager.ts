@@ -7,6 +7,7 @@ import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
+import * as path from 'path';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class LogLine {
@@ -260,10 +261,12 @@ export class LogOutputManager {
             if (match) {
                 const pkgPath = match[1];
                 const lineNumber = Number(match[2]);
+                // pkgPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
                 const filename = this.getFilename(pkgPath);
-                const extension = pkgPath.substring(pkgPath.length - 4);
+                const extension = path.extname(pkgPath);
                 let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
                 const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
+                console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
                 this.outputChannel.appendLine(logText);
@@ -278,6 +281,8 @@ export class LogOutputManager {
         let name = parts.length > 0 ? parts[parts.length - 1] : pkgPath;
         if (name.toLowerCase().endsWith('.xml') || name.toLowerCase().endsWith('.brs')) {
             name = name.substring(0, name.length - 4);
+        } else if (name.toLowerCase().endsWith('.xml')) {
+            name = name.substring(0, name.length - 3);
         }
         return name;
     }
@@ -297,7 +302,7 @@ export class LogOutputManager {
                 return `${filename}${extension}(${lineNumber})`;
                 break;
             default:
-                const isBrs = extension.toLowerCase() === '.brs';
+                const isBrs = extension.toLowerCase() === '.brs' || extension.toLowerCase() === '.bs';
                 if (isBrs) {
                     const methodName = this.getMethodName(pkgPath, lineNumber);
                     if (methodName) {
@@ -311,7 +316,7 @@ export class LogOutputManager {
 
     public getMethodName(pkgPath: string, lineNumber: number): string | null {
         let fsPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
-        const method = this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
+        const method = fsPath ? this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber) : null;
         return method ? method.name : null;
     }
 

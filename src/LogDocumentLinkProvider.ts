@@ -1,10 +1,13 @@
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
-import { util } from './util';
+import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+
+const fileUtils = new BrightScriptFileUtils();
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -79,18 +82,18 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public addCustomLink(customLink: CustomDocumentLink) {
-        let match: RegExpExecArray;
-
-        let fileMap = this.getFileMap(customLink.pkgPath);
-        if (fileMap) {
-            let uri = vscode.Uri.file(fileMap.src);
-            if (customLink.lineNumber) {
-                uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
+        for (let i = 0; i < 2; i++) {
+            let fileMap = this.getFileMap(customLink.pkgPath);
+            if (fileMap) {
+                let uri = vscode.Uri.file(fileMap.src);
+                if (customLink.lineNumber) {
+                    uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
+                }
+                let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+                this.customLinks.push(new DocumentLink(range, uri));
+                return;
             }
-            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-            this.customLinks.push(new DocumentLink(range, uri));
-        } else {
-            console.log('could not find matching file for link with path ' + customLink.pkgPath);
+            customLink.pkgPath = fileUtils.getAlternateBrsFileName(customLink.pkgPath);
         }
     }
 
@@ -99,13 +102,42 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public convertPkgPathToFsPath(pkgPath: string) {
-        //remove any preceding file scheme
-        pkgPath = util.removeFileScheme(pkgPath);
+        //remove preceeding pkg:
+        if (pkgPath.toLowerCase().indexOf('pkg:') === 0) {
+            pkgPath = pkgPath.substring(4);
+        }
 
         //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
+        let rootDir = this.launchConfig.rootDir;
+        for (let i = 0; i < 2; i++) {
+            if (this.launchConfig.debugRootDir) {
+                rootDir = this.launchConfig.debugRootDir;
+                let clientPath = path.normalize(path.join(rootDir, pkgPath));
+                if (fsExtra.existsSync(clientPath)) {
+                    return clientPath;
+                }
+            }
 
-        let clientPath = path.normalize(path.join(rootDir, pkgPath));
-        return clientPath;
+            if (this.launchConfig.sourceDirs) {
+                if (this.launchConfig.sourceDirs.length === 1) {
+                //best case, simply choose the first item
+                    rootDir = this.launchConfig.sourceDirs[0];
+                    let clientPath = path.normalize(path.join(rootDir, pkgPath));
+                    if (fsExtra.existsSync(clientPath)) {
+                        return clientPath;
+                    }
+
+                } else {
+                    for (let sourceDir of this.launchConfig.sourceDirs) {
+                        let clientPath = path.normalize(path.join(sourceDir, pkgPath));
+                        if (fsExtra.existsSync(clientPath)) {
+                            return clientPath;
+                        }
+                    }
+                }
+            }
+            pkgPath = fileUtils.getAlternateBrsFileName(pkgPath);
+        }
+        return pkgPath;
     }
 }
