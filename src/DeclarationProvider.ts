@@ -73,7 +73,7 @@ export class DeclarationProvider implements Disposable {
     constructor() {
         const subscriptions: Disposable[] = [];
 
-        const watcher = vscode.workspace.createFileSystemWatcher('**/*.brs');
+        const watcher = vscode.workspace.createFileSystemWatcher('**/*.{brs,bs}');
         watcher.onDidCreate(this.onDidChangeFile, this);
         watcher.onDidChange(this.onDidChangeFile, this);
         watcher.onDidDelete(this.onDidDeleteFile, this);
@@ -89,6 +89,10 @@ export class DeclarationProvider implements Disposable {
     private fullscan: boolean = true;
 
     private dirty: Map<string, Uri> = new Map();
+    private fileNamespaces = new Map<Uri, Set<string>>();
+    private fileClasses = new Map<Uri, Set<string>>();
+    private allNamespaces = new Map<string, BrightScriptDeclaration>();
+    private allClasses = new Map<string, BrightScriptDeclaration>();
 
     private syncing: Promise<void>;
     private encoding: WorkspaceEncoding = new WorkspaceEncoding();
@@ -149,7 +153,7 @@ export class DeclarationProvider implements Disposable {
         if (this.fullscan) {
             this.fullscan = false;
 
-            for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+            for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
                 this.dirty.set(uri.fsPath, uri);
             }
         }
@@ -190,6 +194,33 @@ export class DeclarationProvider implements Disposable {
         let funcEndChar: number;
         let mDefs = {};
         console.log('READ DECLARATIONS');
+        let oldNamespaces = this.fileNamespaces.get(uri);
+        if (oldNamespaces) {
+            for (let key of oldNamespaces.keys()) {
+                let ns = this.allNamespaces.get(key);
+                if (ns && ns.uri === uri) {
+                    this.allNamespaces.delete(key);
+                }
+            }
+        }
+        this.fileNamespaces.delete(uri);
+
+        let oldClasses = this.fileClasses.get(uri);
+        if (oldClasses) {
+
+            for (let key of oldClasses.keys()) {
+                let clazz = this.allClasses.get(key);
+                if (clazz && clazz.uri === uri) {
+                    this.allClasses.delete(key);
+                }
+            }
+        }
+        this.fileClasses.delete(uri);
+
+        let namespaces = new Set<string>();
+        let classes = new Set<string>();
+        let namespaceSymbol: BrightScriptDeclaration | null;
+        let classSymbol: BrightScriptDeclaration | null;
 
         for (const [line, text] of iterlines(input)) {
             // console.log("" + line + ": " + text);
@@ -197,7 +228,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
+            let match = /^\s*(?:override)*\s*(?:public|private)*\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
@@ -206,18 +237,19 @@ export class DeclarationProvider implements Disposable {
                 }
                 currentFunction = new BrightScriptDeclaration(
                     match[1].trim(),
-                    SymbolKind.Function,
+                    match[1].trim().toLowerCase() === 'new' ? SymbolKind.Constructor : SymbolKind.Function,
                     container,
                     match[2].split(','),
                     new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
                     new Range(line, 0, line, text.length),
                 );
-                // console.log(">>>>>>>>>>>>>>>> function START " + currentFunction.name + " " + currentFunction.params + " " + currentFunction);
-                // console.log(text);
-                // console.log(match[0]+ ">>>" + match[1]);
-                // console.log(match[0].length+ ">>>" +match[1].length);
-                // console.log(currentFunction.nameRange.start.character + " ," + currentFunction.nameRange.end.character);
                 symbols.push(currentFunction);
+
+                if (classSymbol) {
+                    currentFunction.container = classSymbol;
+                } else if (namespaceSymbol) {
+                    currentFunction.container = namespaceSymbol;
+                }
                 continue;
             }
 
@@ -231,11 +263,11 @@ export class DeclarationProvider implements Disposable {
                 continue;
             }
 
-            // //VAR
-            match = /^\s*(?:m\.)([a-zA-Z_0-9]*)/i.exec(text);
+            // //FIELD
+            match = /^(?!.*\()(?: |\t)*(public|private)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
             if (match !== null) {
                 // console.log("FOUND VAR " + match);
-                const name = match[1].trim();
+                const name = match[2].trim();
                 if (mDefs[name] !== true) {
                     mDefs[name] = true;
                     let varSymbol = new BrightScriptDeclaration(
@@ -248,10 +280,62 @@ export class DeclarationProvider implements Disposable {
                     );
                     console.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
+
+                    if (classSymbol) {
+                        varSymbol.container = classSymbol;
+                    } else if (namespaceSymbol) {
+                        varSymbol.container = namespaceSymbol;
+                    }
                 }
                 continue;
             }
+
+            //start namespace declaration
+            match = /^(?: |\t)*namespace(?: |\t)*([a-z|\.|_]*).*$/i.exec(text);
+            if (match !== null) {
+                const name = match[1].trim();
+                if (name) {
+                    namespaceSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Namespace,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[1].length, line, match[0].length),
+                        new Range(line, 0, line, text.length),
+                    );
+                    // console.log('FOUND NAMESPACES ' + namespaceSymbol.name);
+                    symbols.push(namespaceSymbol);
+                    namespaces.add(name.toLowerCase());
+                }
+            }
+            //end namespace declaration
+            match = /^(?: |\t)*end namespace.*$/i.exec(text);
+            if (match !== null && namespaceSymbol) {
+                namespaceSymbol = null;
+            }
+
+            //start class declaration
+            match = /(?:(class)\s+([a-z_][a-z0-9_]*))\s*(?:extends\s*([a-z_][a-z0-9_]+))*$/i.exec(text);
+            if (match !== null) {
+                const name = match[2].trim();
+                if (name) {
+                    classSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Class,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[2].length, line, match[0].length),
+                        new Range(line, 0, line, text.length),
+                    );
+                    // console.log('FOUND CLASS ' + classSymbol.name);
+                    symbols.push(classSymbol);
+                    classes.add(name.toLowerCase());
+                }
+            }
+
         }
+        this.fileNamespaces.set(uri, namespaces);
+        this.fileClasses.set(uri, classes);
         this.cache.set(uri.fsPath, symbols);
         return symbols;
     }
