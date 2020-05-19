@@ -90,7 +90,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.30.0",
-        "brighterscript": "^0.9.8",
+        "brighterscript": "^0.10.0",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
