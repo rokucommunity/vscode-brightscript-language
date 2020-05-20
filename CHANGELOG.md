@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.21] - 2020-05-20
+### Added
+ - (Brs/BS Formatter) new option `insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces` which...does what it says. ([brighterscript-formatter#16](https://github.com/rokucommunity/brighterscript-formatter/issues/16)
+### Changed
+ - Upgraded to [brighterscript-formatter@1.2.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#120---2020-05-20) 
+ - missing launch.json schema information for `enableDebugProtocol`
+### Fixed
+ - issue where somehow BrighterScript got moved from a dependency into a devDependency, causing the entire package to be excluded from the extension. ([#244](https://github.com/rokucommunity/vscode-brightscript-language/issues/244))
+ - incorrect indent when using `class`, `endclass`, `namespace`, `endnamespace` as an object property ([brighterscript-formatter#18](https://github.com/rokucommunity/brighterscript-formatter/issues/18))
+
+
+
 ## [2.1.20] - 2020-05-19
 ### Added
  - (BrighterScript) parser support for the new [callfunc operator](https://github.com/rokucommunity/brighterscript/blob/master/docs/callfunc-operator.md)

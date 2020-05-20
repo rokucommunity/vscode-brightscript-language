@@ -46,7 +46,7 @@
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brighterscript": "^0.10.0",
-        "brighterscript-formatter": "^1.1.8",
+        "brighterscript-formatter": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -635,6 +635,12 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Removes all trailing whitespace at the end of each line.",
+                    "scope": "resource"
+                },
+                "brightscript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "if true, ensure exactly 1 space after leading and before trailing curly braces. If false, REMOVE all whitespace after leading and before trailing curly braces (excluding beginning-of-line indentation spacing)",
                     "scope": "resource"
                 },
                 "brightscript.format.keywordCaseOverride": {
