@@ -264,7 +264,7 @@ export class DeclarationProvider implements Disposable {
             }
 
             // //FIELD
-            match = /^(?!.*\()(?: |\t)*(public|private)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
+            match = /^(?!.*\()(?: |\t)*(public|private|protected)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
             if (match !== null) {
                 // console.log("FOUND VAR " + match);
                 const name = match[2].trim();
