@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.1.22] - 2020-05-20
+### Added
+ - (BRS/BS formatter) new option `formatMultiLineObjectsAndArrays` which inserts newlines and indents multi-line objects and arrays
+
+
+
 ## [2.1.21] - 2020-05-20
 ### Added
- - (Brs/BS Formatter) new option `insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces` which...does what it says. ([brighterscript-formatter#16](https://github.com/rokucommunity/brighterscript-formatter/issues/16)
+ - (BRS/BS Formatter) new option `insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces` which...does what it says. ([brighterscript-formatter#16](https://github.com/rokucommunity/brighterscript-formatter/issues/16)
 ### Changed
  - Upgraded to [brighterscript-formatter@1.2.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#120---2020-05-20) 
  - missing launch.json schema information for `enableDebugProtocol`
@@ -1038,6 +1044,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.1.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.21...v2.1.22
 [2.1.21]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.20...v2.1.21
 [2.1.20]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.19...v2.1.20
 [2.1.19]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.18...v2.1.19
