@@ -68,9 +68,21 @@ export class DefinitionRepository {
     }
 
     private getWord(document: TextDocument, position: Position): string {
-        const range = document.getWordRangeAtPosition(position, /[^\s\x21-\x2f\x3a-\x40\x5b-\x5e\x7b-\x7e]+/);
-        if (range !== undefined) {
-            return document.getText(range);
+        const wordRange = document.getWordRangeAtPosition(position, /[^\s\x21-\x2f\x3a-\x40\x5b-\x5e\x7b-\x7e]+/);
+
+        const phraseRange = document.getWordRangeAtPosition(position, /(\w|\.)+/);
+        if (wordRange !== undefined) {
+            const word = document.getText(wordRange);
+            if (phraseRange !== undefined) {
+                const phrase = document.getText(phraseRange);
+                let parts = phrase.split('.');
+                const index = parts.indexOf(word);
+                if (index < parts.length - 1) {
+                    parts.splice(index + 1, parts.length - 1 - index);
+                    return parts.join('.');
+                }
+            }
+            return word;
         }
     }
 
@@ -153,7 +165,7 @@ export class DefinitionRepository {
         const excludes = getExcludeGlob();
         //get usable bit of name
         let fileName = name.replace(/^.*[\\\/]/, '').toLowerCase();
-        for (const uri of await vscode.workspace.findFiles('**/*.brs', excludes)) {
+        for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
             if (uri.path.toLowerCase().indexOf(fileName) !== -1) {
                 declarations.push(BrightScriptDeclaration.fromUri(uri));
             }
