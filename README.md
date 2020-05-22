@@ -474,6 +474,45 @@ ROKU_PASSWORD=password123
 
 This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm module for parsing the `.env` files, so see [this link](https://github.com/motdotla/dotenv#rules) for syntax information.
 
+## Snippets
+
+This extension adds some basic snippets for Roku development.
+
+### Examples snippets in .bs/.brs files:
+
+Typing `sub<tab>` generates:
+```brs
+sub subName()
+
+end sub
+```
+with "subName" editable, and cursor inside the block
+
+Typing `for-each<tab>` generates:
+```brs
+for each item in collection
+
+end for
+```
+with "item" and "collection" editable and cursor inside the block
+
+### Examples snippets in .xml files:
+
+Typing `<component<tab>` generates
+```xml
+<component name="ComponentName">
+  <script type="text/brightscript" uri="ComponentName.brs" />
+  
+</component>
+```
+with "ComponentName" editabl eand cursor inside the block
+
+Typing `<field<tab>` generates
+```xml
+<field name="name" type="integer" />
+```
+with "name" editable, and the type is a dropdown of possible values
+
 
 ## Pre-release Versions
 
