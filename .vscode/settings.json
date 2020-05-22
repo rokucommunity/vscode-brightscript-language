@@ -18,5 +18,4 @@
     "editor.tabSize": 4,
     "tslint.autoFixOnSave": true,
     "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
-    "editor.formatOnSave": true
 }
