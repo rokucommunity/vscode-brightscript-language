@@ -13,7 +13,7 @@
         "prefix": "<component",
         "body": [
             "<component name=\"${1:ComponentName}\">",
-            "\t<script type=\"text/brightscript\" uri=\"{$1}\" />",
+            "\t<script type=\"text/brightscript\" uri=\"$1.brs\" />",
             "\t$0",
             "</component>"
         ],
@@ -24,6 +24,7 @@
         "prefix": "<component-extends",
         "body": [
             "<component name=\"${1:ComponentName}\" extends=\"${2:Parent}\">",
+            "\t<script type=\"text/brightscript\" uri=\"$1.brs\" />",
             "\t$0",
             "</component>"
         ],
