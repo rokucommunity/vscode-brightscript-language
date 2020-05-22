@@ -482,11 +482,11 @@ This extension adds some basic snippets for Roku development.
 
 Typing `sub<tab>` generates:
 ```brs
-sub subName()
+sub subName(params)
 
 end sub
 ```
-with "subName" editable, and cursor inside the block
+with "subName" and "params" editable, and cursor inside the block
 
 Typing `for-each<tab>` generates:
 ```brs

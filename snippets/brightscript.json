@@ -10,7 +10,7 @@
     "For Each": {
         "prefix": "for-each",
         "body": [
-            "for each ${1:item} in ${2:object}",
+            "for each ${1:item} in ${2:collection}",
             "\t$0",
             "end for"
         ],
@@ -20,7 +20,7 @@
     "Function": {
         "prefix": "function",
         "body": [
-            "function ${1:functionName}()",
+            "function ${1:functionName}(${2:params})",
             "\t$0",
             "end function"
         ],
@@ -30,7 +30,7 @@
     "Function With Return Type": {
         "prefix": "function-as",
         "body": [
-            "function ${1:functionName}() as ${2|boolean,integer,longInteger,float,double,string,object,function,interface,dynamic|}",
+            "function ${1:functionName}(${2:params}) as ${3|boolean,integer,longInteger,float,double,string,object,function,interface,dynamic|}",
             "\t$0",
             "end function"
         ],
@@ -62,7 +62,7 @@
     "Sub": {
         "prefix": "sub",
         "body": [
-            "sub ${1:subName}()",
+            "sub ${1:subName}(${2:params})",
             "\t$0",
             "end sub"
         ],

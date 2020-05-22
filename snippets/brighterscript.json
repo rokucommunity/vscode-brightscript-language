@@ -3,7 +3,7 @@
         "prefix": "class",
         "body": [
             "class ${1:ClassName}",
-            "\tsub new()",
+            "\tsub new(${2:params})",
             "\t\t$0",
             "\tend sub",
             "end class"
@@ -15,7 +15,7 @@
         "prefix": "class-extends",
         "body": [
             "class ${1:ClassName} extends ${Parent}",
-            "\tsub new()",
+            "\tsub new(${2:params})",
             "\t\tsuper()",
             "\t\t$0",
             "\tend sub",
