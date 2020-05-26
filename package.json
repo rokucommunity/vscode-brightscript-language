@@ -45,7 +45,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.10.0",
+        "brighterscript": "file:../brighterscript",
         "brighterscript-formatter": "^1.3.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -130,7 +130,8 @@
         "onCommand:extension.brightscript.pressRevButton",
         "onCommand:extension.brightscript.pressFwdButton",
         "onCommand:extension.brightscript.pressStarButton",
-        "onCommand:extension.brightscript.sendRemoteText"
+        "onCommand:extension.brightscript.sendRemoteText",
+        "onCommand:extension.brightscript.previewTranspiledBrighterScript"
     ],
     "contributes": {
         "views": {
@@ -144,6 +145,13 @@
             ]
         },
         "menus": {
+            "editor/title": [
+                {
+                    "when": "editorLangId == brighterscript",
+                    "command": "extension.brightscript.previewTranspiledBrighterScript",
+                    "group": "navigation"
+                }
+            ],
             "view/title": [
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortMethod",
@@ -1491,9 +1499,24 @@
                 "title": "Clear History",
                 "category": "Brightscript Rendezvous",
                 "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "extension.brightscript.previewTranspiledBrighterScript",
+                "title": "Show Transpiled BrightScript",
+                "description": "If a BrighterScript file is focused, show its transpiled code in a preview window next to the file in the editor.",
+                "category": "BrighterScript",
+                "icon": {
+                    "light": "./images/view-source-light.svg",
+                    "dark": "./images/view-source-dark.svg"
+                }
             }
         ],
         "keybindings": [
+            {
+                "key": "ctrl+k v",
+                "command": "extension.brightscript.previewTranspiledBrighterScript",
+                "when": "editorLangId == brighterscript"
+            },
             {
                 "key": "Backspace",
                 "command": "extension.brightscript.pressBackButton",

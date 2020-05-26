@@ -6,6 +6,7 @@ export var __request: any = request;
 
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
+import { Uri } from 'vscode';
 
 // georgejecook: I can't find a way to stub/mock a TypeScript class constructor
 // so I have to do this for the time being. Not ideal.
@@ -27,6 +28,10 @@ export default class BrightScriptCommands {
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
         let subscriptions = context.subscriptions;
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.previewTranspiledBrighterScript',
+            this.previewTranspiledBrighterScript.bind(this)
+        ));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
@@ -142,5 +147,16 @@ export default class BrightScriptCommands {
         } else {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
+    }
+
+    public async previewTranspiledBrighterScript(uri: Uri, obj: { groupId: number }) {
+        let customUri = Uri.parse(`bs-transpile-preview:${uri.fsPath}`);
+
+        let doc = await vscode.workspace.openTextDocument(customUri);
+
+        await vscode.window.showTextDocument(doc, {
+            preview: true,
+            viewColumn: vscode.ViewColumn.Beside
+        });
     }
 }

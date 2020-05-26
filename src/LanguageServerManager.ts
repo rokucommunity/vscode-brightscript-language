@@ -2,7 +2,9 @@ import {
     LanguageClient,
     LanguageClientOptions,
     ServerOptions,
-    TransportKind
+    TransportKind,
+    ExecuteCommandOptions,
+    ExecuteCommandParams
 } from 'vscode-languageclient';
 import * as vscode from 'vscode';
 import * as path from 'path';
@@ -10,6 +12,8 @@ import {
     window,
     workspace,
 } from 'vscode';
+import { CustomCommands } from 'brighterscript';
+import { CodeWithSourceMap } from 'brighterscript/node_modules/source-map';
 
 export class LanaguageServerManager {
     constructor(private context: vscode.ExtensionContext) {
@@ -96,6 +100,14 @@ export class LanaguageServerManager {
                 this.buildStatusStatusBar.color = '#FF0000';
             }
         });
+    }
+
+    public async getTranspiledFileContents(pathAbsolute: string) {
+        let result = await this.client.sendRequest('workspace/executeCommand', {
+            command: CustomCommands.TranspileFile,
+            arguments: [pathAbsolute]
+        } as ExecuteCommandParams);
+        return result as CodeWithSourceMap;
     }
 
     public disableLanguageServer() {
