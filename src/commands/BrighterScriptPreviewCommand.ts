@@ -1,10 +1,10 @@
-import { Uri } from 'vscode';
+import { Uri, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 import { extension } from '../extension';
 import { util } from '../util';
 import * as path from 'path';
 import * as querystring from 'querystring';
-import { ifUrlTransferCompletionItems } from '../BrightScriptCompletionItems/ifUrlTransferCompletionItems';
+import { SourceMapConsumer } from 'brighterscript/node_modules/source-map';
 
 export const FILE_SCHEME = 'bs-preview';
 
@@ -34,12 +34,7 @@ export class BrighterScriptPreviewCommand {
 
         //anytime the underlying file changed, tell vscode the preview needs to be regenerated
         vscode.workspace.onDidChangeTextDocument((e) => {
-            if (
-                //we are watching this file
-                this.activePreviews[e.document.uri.fsPath] &&
-                //the file is not our preview scheme (this prevents an infinite loop)
-                e.document.uri.scheme !== FILE_SCHEME
-            ) {
+            if (this.isWatchingUri(e.document.uri)) {
                 let uri = this.getBsPreviewUri(e.document.uri);
                 this.keyedDebounce(uri.fsPath, () => {
                     this.onDidChangeEmitter.fire(uri);
@@ -47,31 +42,107 @@ export class BrighterScriptPreviewCommand {
             }
         });
 
+        // sync the preview and the source doc on mouse click
+        vscode.window.onDidChangeTextEditorSelection((e) => {
+            let uri = e.textEditor.document.uri;
+            //if this is one of our source files
+            if (this.activePreviews[uri.fsPath]) {
+                //convert the source location into the transpiled location
+                this.activePreviews[uri.fsPath].sourceDocRange = e.selections[0];
+
+                this.syncPreviewLocation(uri);
+            }
+        });
+
         //whenever the source file is closed, dispose of our preview
         vscode.workspace.onDidCloseTextDocument(async (e) => {
-            let previewDoc = this.activePreviews[e?.uri?.fsPath];
-            if (previewDoc) {
+            let activePreview = this.activePreviews[e?.uri?.fsPath];
+            if (activePreview) {
                 //close the preview by showing it and then closing the active editor
-                await vscode.window.showTextDocument(previewDoc.uri, { preview: true, preserveFocus: false });
+                await vscode.window.showTextDocument(activePreview.previewEditor.document.uri, { preview: true, preserveFocus: false });
                 await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
                 delete this.activePreviews[e.uri.fsPath];
             }
         });
     }
 
-    private activePreviews = {} as { [fsPath: string]: vscode.TextDocument };
+    private syncPreviewLocation(uri: vscode.Uri) {
+        this.syncPreviewLocationDebounce(uri.fsPath, async () => {
+            let activePreview = this.activePreviews[uri.fsPath];
+            if (activePreview && activePreview.sourceMap && activePreview.sourceDocRange) {
+                try {
+                    let previewRange = await SourceMapConsumer.with(activePreview.sourceMap, null, (consumer) => {
+                        let start = consumer.generatedPositionFor({
+                            source: uri.fsPath,
+                            line: activePreview.sourceDocRange.start.line + 1,
+                            column: activePreview.sourceDocRange.start.character,
+                            bias: SourceMapConsumer.LEAST_UPPER_BOUND
+                        });
+                        let end = consumer.generatedPositionFor({
+                            source: uri.fsPath,
+                            line: activePreview.sourceDocRange.end.line + 1,
+                            column: activePreview.sourceDocRange.end.character,
+                            bias: SourceMapConsumer.LEAST_UPPER_BOUND
+                        });
+                        return new Range(
+                            start.line - 1,
+                            start.column,
+                            end.line - 1,
+                            end.column
+                        );
+                    });
+
+                    //scroll the preview editor to the source's clicked location
+                    activePreview.previewEditor.revealRange(previewRange, vscode.TextEditorRevealType.InCenter);
+                    activePreview.previewEditor.selection = new vscode.Selection(previewRange.start, previewRange.end);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }, 300);
+    }
+    private syncPreviewLocationDebounce = util.keyedDebounce();
+
+    private isWatchingUri(uri: vscode.Uri) {
+        if (
+            //we are watching this file
+            this.activePreviews[uri.fsPath] &&
+            //the file is not our preview scheme (this prevents an infinite loop)
+            uri.scheme !== FILE_SCHEME) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private activePreviews = {} as {
+        [fsPath: string]: {
+            sourceDoc: vscode.TextDocument,
+            /**
+             * The editor that contains the preview doc
+             */
+            previewEditor: vscode.TextEditor,
+            /**
+             * the latest source map for the preview.
+             */
+            sourceMap: any,
+            sourceDocRange: Range,
+            previewDocPosition: Position
+        }
+    };
 
     /**
      * The handler for the command. Creates a custom URI so we can open it
      * with our TextDocumentContentProvider to show the transpiled code
      */
     public async openPreview(uri: Uri, showToSide: boolean) {
+        let previewDoc: vscode.TextDocument;
         if (!this.activePreviews[uri.fsPath]) {
+            this.activePreviews[uri.fsPath] = {} as any;
             let customUri = this.getBsPreviewUri(uri);
-            this.activePreviews[uri.fsPath] = await vscode.workspace.openTextDocument(customUri);
+            previewDoc = await vscode.workspace.openTextDocument(customUri);
         }
-        let doc = this.activePreviews[uri.fsPath];
-        await vscode.window.showTextDocument(doc, {
+        this.activePreviews[uri.fsPath].previewEditor = await vscode.window.showTextDocument(previewDoc, {
             preview: true,
             preserveFocus: true,
             viewColumn: showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active
@@ -87,6 +158,7 @@ export class BrighterScriptPreviewCommand {
     public async provideTextDocumentContent(uri: vscode.Uri) {
         let fsPath = this.getPathFromUri(uri);
         let result = await extension.languageServerManager.getTranspiledFileContents(fsPath);
+        this.activePreviews[fsPath].sourceMap = result.map;
         return result.code;
     }
 
