@@ -47,6 +47,7 @@
         "backoff": "^2.5.0",
         "brighterscript": "file:../brighterscript",
         "brighterscript-formatter": "^1.3.0",
+        "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -131,7 +132,8 @@
         "onCommand:extension.brightscript.pressFwdButton",
         "onCommand:extension.brightscript.pressStarButton",
         "onCommand:extension.brightscript.sendRemoteText",
-        "onCommand:extension.brightscript.previewTranspiledBrighterScript"
+        "onCommand:brighterscript.showPreview",
+        "onCommand:brighterscript.showPreviewToSide"
     ],
     "contributes": {
         "views": {
@@ -147,8 +149,8 @@
         "menus": {
             "editor/title": [
                 {
-                    "when": "editorLangId == brighterscript",
-                    "command": "extension.brightscript.previewTranspiledBrighterScript",
+                    "when": "editorLangId == brighterscript && resourceScheme == file",
+                    "command": "brighterscript.showPreviewToSide",
                     "group": "navigation"
                 }
             ],
@@ -1501,9 +1503,13 @@
                 "enablement": "debugType == 'brightscript'"
             },
             {
-                "command": "extension.brightscript.previewTranspiledBrighterScript",
-                "title": "Show Transpiled BrightScript",
-                "description": "If a BrighterScript file is focused, show its transpiled code in a preview window next to the file in the editor.",
+                "command": "brighterscript.showPreview",
+                "title": "Preview Transpiled code",
+                "category": "BrighterScript"
+            },
+            {
+                "command": "brighterscript.showPreviewToSide",
+                "title": "Preview Transpiled code to the Side",
                 "category": "BrighterScript",
                 "icon": {
                     "light": "./images/view-source-light.svg",
@@ -1513,8 +1519,13 @@
         ],
         "keybindings": [
             {
+                "key": "ctrl+shift+v",
+                "command": "brighterscript.showPreview",
+                "when": "editorLangId == brighterscript"
+            },
+            {
                 "key": "ctrl+k v",
-                "command": "extension.brightscript.previewTranspiledBrighterScript",
+                "command": "brighterscript.showPreviewToSide",
                 "when": "editorLangId == brighterscript"
             },
             {

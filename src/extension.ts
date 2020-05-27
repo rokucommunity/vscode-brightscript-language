@@ -3,7 +3,7 @@ import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
-import { getBrightScriptCommandsInstance } from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
@@ -22,8 +22,6 @@ import {
 } from './SymbolInformationRepository';
 import { LanaguageServerManager as LanguageServerManager } from './LanguageServerManager';
 import { GlobalStateManager } from './GlobalStateManager';
-import { util } from './util';
-import { BsTranspilePreviewProvider } from './BsTranspilePreviewProvider';
 
 const EXTENSION_ID = 'celsoaf.brightscript';
 
@@ -33,7 +31,6 @@ export class Extension {
     public debugServerOutputChannel: vscode.OutputChannel;
     public languageServerManager: LanguageServerManager;
     public globalStateManager: GlobalStateManager;
-    public bsTranspilePreviewProvider: BsTranspilePreviewProvider;
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
@@ -46,18 +43,8 @@ export class Extension {
 
         let activeDeviceManager = new ActiveDeviceManager();
         this.languageServerManager = new LanguageServerManager(context);
-        if (this.isLanguageServerEnabled()) {
-            //run the manager. if the language server should be enabled, this will wait for it to finish initializing
-            await this.languageServerManager.enableLanguageServer();
-        }
-        //dynamically enable or disable the language server based on user settings
-        vscode.workspace.onDidChangeConfiguration((configuration) => {
-            if (this.isLanguageServerEnabled()) {
-                this.languageServerManager.enableLanguageServer();
-            } else {
-                this.languageServerManager.disableLanguageServer();
-            }
-        });
+        let languageServerPromise = this.languageServerManager.init();
+
         let subscriptions = context.subscriptions;
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
@@ -119,8 +106,8 @@ export class Extension {
         const definitionRepo = new DefinitionRepository(declarationProvider);
         const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
         const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
-        const brightScriptCommands = getBrightScriptCommandsInstance();
-        brightScriptCommands.registerCommands(context);
+
+        BrightScriptCommands.registerCommands(context);
 
         // experimental placeholder
         // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
@@ -150,15 +137,8 @@ export class Extension {
         const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
         context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 
-        this.bsTranspilePreviewProvider = new BsTranspilePreviewProvider();
-
         this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
-    }
-
-    public isLanguageServerEnabled() {
-        var settings = vscode.workspace.getConfiguration('brightscript');
-        var value = settings.enableLanguageServer === false ? false : true;
-        return value;
+        await languageServerPromise;
     }
 
     public async showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExtensionVersion: string) {

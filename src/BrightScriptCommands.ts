@@ -1,37 +1,37 @@
 import * as request from 'request';
 import * as vscode from 'vscode';
-
-// tslint:disable-next-line
-export var __request: any = request;
-
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
-import { Uri } from 'vscode';
+import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 
-// georgejecook: I can't find a way to stub/mock a TypeScript class constructor
-// so I have to do this for the time being. Not ideal.
 export function getBrightScriptCommandsInstance() {
     return new BrightScriptCommands();
 }
 
-export default class BrightScriptCommands {
+export class BrightScriptCommands {
 
     constructor() {
         this.fileUtils = new BrightScriptFileUtils();
     }
 
+    private static instance: BrightScriptCommands;
+    public static registerCommands(context: vscode.ExtensionContext) {
+        if (!this.instance) {
+            this.instance = new BrightScriptCommands();
+        }
+        this.instance.registerCommands(context);
+    }
+
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
     private host: string;
-    public function;
 
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
-        let subscriptions = context.subscriptions;
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.previewTranspiledBrighterScript',
-            this.previewTranspiledBrighterScript.bind(this)
-        ));
+        brighterScriptPreviewCommand.register(context);
+
+        let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
@@ -147,16 +147,5 @@ export default class BrightScriptCommands {
         } else {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
-    }
-
-    public async previewTranspiledBrighterScript(uri: Uri, obj: { groupId: number }) {
-        let customUri = Uri.parse(`bs-transpile-preview:${uri.fsPath}`);
-
-        let doc = await vscode.workspace.openTextDocument(customUri);
-
-        await vscode.window.showTextDocument(doc, {
-            preview: true,
-            viewColumn: vscode.ViewColumn.Beside
-        });
     }
 }

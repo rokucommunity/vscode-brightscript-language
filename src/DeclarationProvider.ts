@@ -187,13 +187,12 @@ export class DeclarationProvider implements Disposable {
 
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
         const container = BrightScriptDeclaration.fromUri(uri);
-        console.log('>>>>>>readDeclarations>>>>>>>' + uri.path);
         const symbols: BrightScriptDeclaration[] = [];
         let currentFunction: BrightScriptDeclaration;
         let funcEndLine: number;
         let funcEndChar: number;
         let mDefs = {};
-        console.log('READ DECLARATIONS');
+
         let oldNamespaces = this.fileNamespaces.get(uri);
         if (oldNamespaces) {
             for (let key of oldNamespaces.keys()) {
@@ -363,7 +362,7 @@ export class DeclarationProvider implements Disposable {
         //try to load it now
         if (symbols) {
             const matchingMethods = symbols
-              .filter( (symbol) => symbol.kind === SymbolKind.Function && symbol.nameRange.start.line < lineNumber);
+                .filter((symbol) => symbol.kind === SymbolKind.Function && symbol.nameRange.start.line < lineNumber);
             return matchingMethods.length > 0 ? matchingMethods[matchingMethods.length - 1] : null;
         }
         return null;

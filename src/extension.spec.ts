@@ -25,7 +25,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import BrightScriptCommands from './BrightScriptCommands';
 import * as  extension from './extension';
 
 describe('extension', () => {
