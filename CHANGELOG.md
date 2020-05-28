@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.2.0] - 2020-05-27
+### Added
+ - commands to show preview of transpiled BrighterScript (`brighterscript.showPreview` and `brighterscript.showPreviewToSide`);
+### Changed
+ - Upgraded to [brighterscript@0.10.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0103---2020-05-27)
+
+
+
 ## [2.1.23] - 2020-05-20
 ### Changed
  - disabled `formatMultiLineObjectsAndArrays` by default because it has a bug. Will re-enable in the future when that option gets fixed.
