@@ -3,7 +3,7 @@ import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
-import { BrightScriptCommands } from './BrightScriptCommands';
+import { brightScriptCommands } from './BrightScriptCommands';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
@@ -20,8 +20,8 @@ import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
 } from './SymbolInformationRepository';
-import { LanaguageServerManager as LanguageServerManager } from './LanguageServerManager';
 import { GlobalStateManager } from './GlobalStateManager';
+import { languageServerManager } from './LanguageServerManager';
 
 const EXTENSION_ID = 'celsoaf.brightscript';
 
@@ -29,7 +29,6 @@ export class Extension {
 
     public outputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
-    public languageServerManager: LanguageServerManager;
     public globalStateManager: GlobalStateManager;
 
     public async activate(context: vscode.ExtensionContext) {
@@ -42,8 +41,7 @@ export class Extension {
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
 
         let activeDeviceManager = new ActiveDeviceManager();
-        this.languageServerManager = new LanguageServerManager(context);
-        let languageServerPromise = this.languageServerManager.init();
+        let languageServerPromise = languageServerManager.init(context);
 
         let subscriptions = context.subscriptions;
 
@@ -107,7 +105,7 @@ export class Extension {
         const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
         const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
 
-        BrightScriptCommands.registerCommands(context);
+        brightScriptCommands.registerCommands(context);
 
         // experimental placeholder
         // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));

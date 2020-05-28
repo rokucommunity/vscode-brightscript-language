@@ -4,22 +4,10 @@ import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 
-export function getBrightScriptCommandsInstance() {
-    return new BrightScriptCommands();
-}
-
 export class BrightScriptCommands {
 
     constructor() {
         this.fileUtils = new BrightScriptFileUtils();
-    }
-
-    private static instance: BrightScriptCommands;
-    public static registerCommands(context: vscode.ExtensionContext) {
-        if (!this.instance) {
-            this.instance = new BrightScriptCommands();
-        }
-        this.instance.registerCommands(context);
     }
 
     private fileUtils: BrightScriptFileUtils;
@@ -149,3 +137,5 @@ export class BrightScriptCommands {
         }
     }
 }
+
+export const brightScriptCommands = new BrightScriptCommands();

@@ -1,13 +1,14 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
 import { expect } from 'chai';
-import * as sinon from 'sinon';
+import { createSandbox } from 'sinon';
 let Module = require('module');
-import { assert } from 'chai';
-
+import * as  extension from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
+import { brightScriptCommands } from './BrightScriptCommands';
+import { languageServerManager } from './LanguageServerManager';
 
-let commandsMock;
+const sinon = createSandbox();
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -16,20 +17,16 @@ Module.prototype.require = function hijacked(file) {
         return vscode;
     } else if (file === 'vscode-languageclient') {
         return vscodeLanguageClient;
-    } else if (file === './BrightScriptCommands') {
-        let command = { registerCommands: () => { } };
-        commandsMock = sinon.mock(command);
-        return { getBrightScriptCommandsInstance: () => command };
     } else {
         return oldRequire.apply(this, arguments);
     }
 };
 
-import * as  extension from './extension';
-
 describe('extension', () => {
     let context: any;
     beforeEach(() => {
+        sinon.stub(languageServerManager, 'init').returns(Promise.resolve());
+
         context = {
             subscriptions: [],
             asAbsolutePath: () => { },
@@ -42,6 +39,10 @@ describe('extension', () => {
                 }
             }
         };
+    });
+
+    afterEach(() => {
+        sinon.restore();
     });
 
     it('registers configuration provider', async () => {
@@ -80,9 +81,9 @@ describe('extension', () => {
     });
 
     it('registers all commands', async () => {
-        commandsMock.expects('registerCommands');
+        let stub = sinon.stub(brightScriptCommands, 'registerCommands').callsFake(() => { });
         await extension.activate(context);
-        commandsMock.verify();
+        expect(stub.callCount).to.equal(1);
     });
 
     it('registers signatureHelpProvider', async () => {

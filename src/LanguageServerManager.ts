@@ -17,11 +17,14 @@ import { CodeWithSourceMap } from 'source-map';
 import { Deferred } from 'brighterscript';
 
 export class LanaguageServerManager {
-    constructor(private context: vscode.ExtensionContext) {
+    constructor() {
         this.deferred = new Deferred();
     }
 
-    public async init() {
+    private context: vscode.ExtensionContext;
+
+    public async init(context: vscode.ExtensionContext) {
+        this.context = context;
         if (this.isLanguageServerEnabledInSettings()) {
             return this.enableLanguageServer();
         }
@@ -168,3 +171,5 @@ export class LanaguageServerManager {
         return result as CodeWithSourceMap;
     }
 }
+
+export const languageServerManager = new LanaguageServerManager();
