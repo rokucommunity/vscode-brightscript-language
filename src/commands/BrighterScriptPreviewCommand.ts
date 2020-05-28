@@ -225,6 +225,9 @@ export class BrighterScriptPreviewCommand {
             activePreview = this.activePreviews[uri.fsPath] = {} as any;
             let customUri = this.getBsPreviewUri(uri);
             previewDoc = await vscode.workspace.openTextDocument(customUri);
+        } else {
+            activePreview = this.activePreviews[uri.fsPath];
+            previewDoc = activePreview.previewEditor.document;
         }
         activePreview.sourceEditor = sourceEditor;
         activePreview.previewEditor = await vscode.window.showTextDocument(previewDoc, {
