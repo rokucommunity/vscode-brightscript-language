@@ -1058,6 +1058,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.2.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.23...v2.2.0
 [2.1.23]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.22...v2.1.23
 [2.1.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.21...v2.1.22
 [2.1.21]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.20...v2.1.21
