@@ -5,6 +5,7 @@ import { util } from '../util';
 import * as path from 'path';
 import * as querystring from 'querystring';
 import { SourceMapConsumer } from 'source-map';
+import { languageServerManager } from '../LanguageServerManager';
 
 export const FILE_SCHEME = 'bs-preview';
 
@@ -239,7 +240,7 @@ export class BrighterScriptPreviewCommand {
 
     public async provideTextDocumentContent(uri: vscode.Uri) {
         let fsPath = this.getSourcePathFromPreviewUri(uri);
-        let result = await extension.languageServerManager.getTranspiledFileContents(fsPath);
+        let result = await languageServerManager.getTranspiledFileContents(fsPath);
         this.activePreviews[fsPath].sourceMap = result.map;
         return result.code;
     }
