@@ -1512,8 +1512,8 @@
                 "title": "Preview Transpiled code to the Side",
                 "category": "BrighterScript",
                 "icon": {
-                    "light": "./images/view-source-light.svg",
-                    "dark": "./images/view-source-dark.svg"
+                    "light": "./images/preview-right-light.svg",
+                    "dark": "./images/preview-right-dark.svg"
                 }
             }
         ],
