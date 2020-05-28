@@ -156,21 +156,16 @@ class Util {
         return r;
     }
 
+    private debounceByKey = {} as { [key: string]: any };
+
     /**
      * Get a debounce function that runs a separate debounce for every unique key provided
      */
-    public keyedDebounce() {
-        let debounceByKey = {} as { [key: string]: any };
-
-        return (key, fn: (key: string) => void, waitMilliseconds: number) => {
-            if (!debounceByKey[key]) {
-                debounceByKey[key] = debounce(() => {
-                    fn(key);
-                    delete debounceByKey[key];
-                }, waitMilliseconds);
-            }
-            debounceByKey[key]();
-        };
+    public keyedDebounce(key: string, fn: () => void, waitMilliseconds: number) {
+        if (!this.debounceByKey[key]) {
+            this.debounceByKey[key] = debounce(fn, waitMilliseconds);
+        }
+        this.debounceByKey[key]();
     }
 }
 
