@@ -4,7 +4,7 @@ import { extension } from '../extension';
 import { util } from '../util';
 import * as path from 'path';
 import * as querystring from 'querystring';
-import { SourceMapConsumer } from 'brighterscript/node_modules/source-map';
+import { SourceMapConsumer } from 'source-map';
 
 export const FILE_SCHEME = 'bs-preview';
 

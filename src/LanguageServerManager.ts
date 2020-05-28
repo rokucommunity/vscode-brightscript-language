@@ -13,7 +13,7 @@ import {
     workspace,
 } from 'vscode';
 import { CustomCommands } from 'brighterscript';
-import { CodeWithSourceMap } from 'brighterscript/node_modules/source-map';
+import { CodeWithSourceMap } from 'source-map';
 import { Deferred } from 'brighterscript';
 
 export class LanaguageServerManager {
