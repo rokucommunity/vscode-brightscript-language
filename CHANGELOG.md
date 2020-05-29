@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.2.1] - 2020-05-28
+### Changed
+ - Upgraded to [brighterscript@0.10.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0104---2020-05-28)
+### Fixed
+ - (LanguageServer) `CreateObject("roRegex")` with third parameter caused compile error ([BrighterScript#95](https://github.com/rokucommunity/brighterscript/issues/95))
+ - (BrighterScript) flag parameter with same name as namespace
+ - (BrighterScript) flag variable with same name as namespace
+
+
+
 ## [2.2.0] - 2020-05-27
 ### Added
  - commands to show preview of transpiled BrighterScript (`brighterscript.showPreview` and `brighterscript.showPreviewToSide`);
@@ -1058,6 +1068,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.2.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.23...v2.2.0
 [2.1.23]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.22...v2.1.23
 [2.1.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.21...v2.1.22
