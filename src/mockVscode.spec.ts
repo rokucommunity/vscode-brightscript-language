@@ -69,15 +69,14 @@ export let vscode = {
                 get: function() { }
             };
         },
-        onDidChangeConfiguration: () => {
-
-        },
-        onDidChangeWorkspaceFolders: () => {
-
-        },
+        onDidChangeConfiguration: () => { },
+        onDidChangeWorkspaceFolders: () => { },
         findFiles: (include, exclude) => {
             return [];
-        }
+        },
+        registerTextDocumentContentProvider: () => { },
+        onDidChangeTextDocument: () => { },
+        onDidCloseTextDocument: () => { }
     },
     window: {
         createStatusBarItem: () => {
@@ -100,7 +99,8 @@ export let vscode = {
         },
         activeTextEditor: {
             document: undefined
-        }
+        },
+        onDidChangeTextEditorSelection: () => { }
     },
     CompletionItemKind: {
         Function: 2

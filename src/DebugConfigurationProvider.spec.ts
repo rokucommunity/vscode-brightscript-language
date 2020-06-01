@@ -3,7 +3,7 @@
 import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
-import * as sinonImport from 'sinon';
+import { createSandbox } from 'sinon';
 import { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
 
@@ -12,7 +12,7 @@ import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 
-let sinon: sinonImport.SinonSandbox;
+let sinon = createSandbox();
 let c: any;
 let Module = require('module');
 let cwd = s`${path.dirname(__dirname)}`;
@@ -25,10 +25,6 @@ const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {
     if (file === 'vscode') {
         return vscode;
-    } else if (file === './BrightScriptCommands') {
-        let command = { registerCommands: () => { } };
-        commandsMock = sinon.mock(command);
-        return { getBrightScriptCommandsInstance: () => command };
     } else {
         return oldRequire.apply(this, arguments);
     }
@@ -48,7 +44,6 @@ beforeEach(() => {
     };
     configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
     c = configProvider;
-    sinon = sinonImport.createSandbox();
 });
 afterEach(() => {
     sinon.restore();

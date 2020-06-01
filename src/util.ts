@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as fsExtra from 'fs-extra';
 import * as net from 'net';
 import * as url from 'url';
+import { debounce } from 'debounce';
 import * as vscode from 'vscode';
 
 class Util {
@@ -153,6 +154,18 @@ class Util {
             }
         }
         return r;
+    }
+
+    private debounceByKey = {} as { [key: string]: any };
+
+    /**
+     * Get a debounce function that runs a separate debounce for every unique key provided
+     */
+    public keyedDebounce(key: string, fn: () => void, waitMilliseconds: number) {
+        if (!this.debounceByKey[key]) {
+            this.debounceByKey[key] = debounce(fn, waitMilliseconds);
+        }
+        this.debounceByKey[key]();
     }
 }
 

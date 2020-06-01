@@ -1,19 +1,10 @@
 import * as request from 'request';
 import * as vscode from 'vscode';
-
-// tslint:disable-next-line
-export var __request: any = request;
-
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
+import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 
-// georgejecook: I can't find a way to stub/mock a TypeScript class constructor
-// so I have to do this for the time being. Not ideal.
-export function getBrightScriptCommandsInstance() {
-    return new BrightScriptCommands();
-}
-
-export default class BrightScriptCommands {
+export class BrightScriptCommands {
 
     constructor() {
         this.fileUtils = new BrightScriptFileUtils();
@@ -22,10 +13,12 @@ export default class BrightScriptCommands {
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
     private host: string;
-    public function;
 
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
+
+        brighterScriptPreviewCommand.register(context);
+
         let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
@@ -144,3 +137,5 @@ export default class BrightScriptCommands {
         }
     }
 }
+
+export const brightScriptCommands = new BrightScriptCommands();
