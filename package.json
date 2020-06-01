@@ -594,6 +594,18 @@
             {
                 "language": "brightscript",
                 "path": "./snippets.json"
+            },
+            {
+                "language": "brightscript",
+                "path": "./snippets/brightscript.json"
+            },
+            {
+                "language": "brightscript",
+                "path": "./snippets/brighterscript.json"
+            },
+            {
+                "language": "xml",
+                "path": "./snippets/xml.json"
             }
         ],
         "configuration": {
@@ -1666,6 +1678,7 @@
     "categories": [
         "Formatters",
         "Programming Languages",
-        "Debuggers"
+        "Debuggers",
+        "Snippets"
     ]
 }
