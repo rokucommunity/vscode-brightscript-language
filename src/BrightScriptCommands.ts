@@ -86,10 +86,32 @@ export class BrightScriptCommands {
         }));
     }
 
-    public async openFile(filename: string) {
+    public async openFile(filename: string, range: vscode.Range = null, preview: boolean = false): Promise<boolean> {
         let uri = vscode.Uri.file(filename);
-        let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-        await vscode.window.showTextDocument(doc, { preview: false });
+        try {
+            let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+            await vscode.window.showTextDocument(doc, { preview: preview });
+            if (range) {
+                this.gotoRange(range);
+            }
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
+    private gotoRange(range: vscode.Range) {
+        let editor = vscode.window.activeTextEditor;
+        editor.selection = new vscode.Selection(
+            range.start.line,
+            range.start.character,
+            range.start.line,
+            range.start.character
+        );
+        vscode.commands.executeCommand('revealLine', {
+            lineNumber: range.start.line,
+            at: 'center'
+        });
     }
 
     public async onToggleXml() {
@@ -97,7 +119,10 @@ export class BrightScriptCommands {
             const currentDocument = vscode.window.activeTextEditor.document;
             let alternateFileName = this.fileUtils.getAlternateFileName(currentDocument.fileName);
             if (alternateFileName) {
-                this.openFile(alternateFileName);
+                if (! await this.openFile(alternateFileName)
+                    && alternateFileName.toLowerCase().endsWith('.brs')) {
+                    await this.openFile(this.fileUtils.getBsFileName(alternateFileName));
+                }
             }
         }
     }
@@ -136,6 +161,7 @@ export class BrightScriptCommands {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
     }
+
 }
 
 export const brightScriptCommands = new BrightScriptCommands();
