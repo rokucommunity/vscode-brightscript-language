@@ -46,7 +46,7 @@
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brighterscript": "^0.10.4",
-        "brighterscript-formatter": "^1.3.0",
+        "brighterscript-formatter": "^1.4.0",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -1255,6 +1255,12 @@
                     "type": "boolean",
                     "default": false,
                     "description": "If true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
+                    "scope": "resource"
+                },
+                "brightscript.format.insertSpaceBetweenAssociativeArrayLiteralKeyAndColon": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
                     "scope": "resource"
                 },
                 "brightscript.format.formatSingleLineCommentType": {

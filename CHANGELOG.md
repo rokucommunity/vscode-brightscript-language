@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased]
+### Added 
+- (Formatter) new option `insertSpaceBetweenAssociativeArrayLiteralKeyAndColon` which will ensure exactly 1 or 0 spaces between an associative array key and its trailing colon. ([brighterscript-formatter#17](https://github.com/rokucommunity/brighterscript-formatter/issues/17))
+### Changed
+ - Upgraded to [brighterscript-formatter@1.4.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#140---2020-05-29)
+### Fixed
+ - (Formatter) bugs related to formatting single-line if statements ([brighterscript-formatter#13](https://github.com/rokucommunity/brighterscript-formatter/issues/13))
+ 
+
+
 ## [2.2.1] - 2020-05-28
 ### Changed
  - Upgraded to [brighterscript@0.10.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0104---2020-05-28)
