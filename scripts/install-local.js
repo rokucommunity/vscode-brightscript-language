@@ -31,6 +31,13 @@ for (let packageName of packages) {
             cwd: path.resolve('..'),
             stdio: 'inherit'
         });
+    } else {
+        console.log(`'${packageName}' exists. Getting latest`);
+        
+        childProcess.execSync(`git fetch && git pull`, {
+            cwd: packageSrcPath,
+            stdio: 'inherit'
+        });
     }
 
     //install all npm dependencies 
