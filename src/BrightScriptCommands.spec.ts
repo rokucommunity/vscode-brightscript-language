@@ -16,7 +16,7 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import BrightScriptCommands from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;

@@ -23,7 +23,8 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
                 //pass along all config format values
                 ...config,
                 indentSpaceCount: options.tabSize,
-                indentStyle: options.insertSpaces ? 'spaces' : 'tabs'
+                indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
+                formatMultiLineObjectsAndArrays: false
             });
 
             let edits = this.getEditChunks(document, formattedText, range);

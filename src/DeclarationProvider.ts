@@ -187,13 +187,12 @@ export class DeclarationProvider implements Disposable {
 
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
         const container = BrightScriptDeclaration.fromUri(uri);
-        console.log('>>>>>>readDeclarations>>>>>>>' + uri.path);
         const symbols: BrightScriptDeclaration[] = [];
         let currentFunction: BrightScriptDeclaration;
         let funcEndLine: number;
         let funcEndChar: number;
         let mDefs = {};
-        console.log('READ DECLARATIONS');
+
         let oldNamespaces = this.fileNamespaces.get(uri);
         if (oldNamespaces) {
             for (let key of oldNamespaces.keys()) {
@@ -228,7 +227,7 @@ export class DeclarationProvider implements Disposable {
             funcEndChar = text.length;
 
             //FUNCTION START
-            let match = /^\s*(?:override)*\s*(?:public|private)*\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
+            let match = /^\s*(?:public|protected|private)*\s*(?:override)*\s*(?:function|sub)\s+(.*[^\(])\s*\((.*)\)/i.exec(text);
             // console.log("match " + match);
             if (match !== null) {
                 // function has started
@@ -264,7 +263,7 @@ export class DeclarationProvider implements Disposable {
             }
 
             // //FIELD
-            match = /^(?!.*\()(?: |\t)*(public|private)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
+            match = /^(?!.*\()(?: |\t)*(public|private|protected)(?: |\t)*([a-z|\.|_]*).*((?: |\t)*=(?: |\t)*.*)*$/i.exec(text);
             if (match !== null) {
                 // console.log("FOUND VAR " + match);
                 const name = match[2].trim();
@@ -363,7 +362,7 @@ export class DeclarationProvider implements Disposable {
         //try to load it now
         if (symbols) {
             const matchingMethods = symbols
-              .filter( (symbol) => symbol.kind === SymbolKind.Function && symbol.nameRange.start.line < lineNumber);
+                .filter((symbol) => symbol.kind === SymbolKind.Function && symbol.nameRange.start.line < lineNumber);
             return matchingMethods.length > 0 ? matchingMethods[matchingMethods.length - 1] : null;
         }
         return null;

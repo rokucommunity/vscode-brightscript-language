@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.1.19",
+    "version": "2.3.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -45,7 +45,9 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript-formatter": "^1.1.8",
+        "brighterscript": "^0.10.4",
+        "brighterscript-formatter": "^1.4.0",
+        "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
@@ -90,7 +92,6 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.30.0",
-        "brighterscript": "^0.9.8",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
@@ -130,7 +131,9 @@
         "onCommand:extension.brightscript.pressRevButton",
         "onCommand:extension.brightscript.pressFwdButton",
         "onCommand:extension.brightscript.pressStarButton",
-        "onCommand:extension.brightscript.sendRemoteText"
+        "onCommand:extension.brightscript.sendRemoteText",
+        "onCommand:brighterscript.showPreview",
+        "onCommand:brighterscript.showPreviewToSide"
     ],
     "contributes": {
         "views": {
@@ -144,6 +147,13 @@
             ]
         },
         "menus": {
+            "editor/title": [
+                {
+                    "when": "editorLangId == brighterscript && resourceScheme == file",
+                    "command": "brighterscript.showPreviewToSide",
+                    "group": "navigation"
+                }
+            ],
             "view/title": [
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortMethod",
@@ -470,6 +480,10 @@
                             "logfilePath": {
                                 "type": "string",
                                 "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
+                            },
+                            "enableDebugProtocol": {
+                                "type": "boolean",
+                                "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                             }
                         }
                     }
@@ -631,6 +645,18 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Removes all trailing whitespace at the end of each line.",
+                    "scope": "resource"
+                },
+                "brightscript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "if true, ensure exactly 1 space after leading and before trailing curly braces. If false, REMOVE all whitespace after leading and before trailing curly braces (excluding beginning-of-line indentation spacing)",
+                    "scope": "resource"
+                },
+                "brightscript.format.formatMultiLineObjectsAndArrays": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "if true, insert newlines and indents for multi-line objects and arrays.",
                     "scope": "resource"
                 },
                 "brightscript.format.keywordCaseOverride": {
@@ -1231,6 +1257,12 @@
                     "description": "If true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
                     "scope": "resource"
                 },
+                "brightscript.format.insertSpaceBetweenAssociativeArrayLiteralKeyAndColon": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
+                    "scope": "resource"
+                },
                 "brightscript.format.formatSingleLineCommentType": {
                     "type": "string",
                     "description": "Forces all single-line comments to use the same style",
@@ -1475,9 +1507,33 @@
                 "title": "Clear History",
                 "category": "Brightscript Rendezvous",
                 "enablement": "debugType == 'brightscript'"
+            },
+            {
+                "command": "brighterscript.showPreview",
+                "title": "Preview Transpiled code",
+                "category": "BrighterScript"
+            },
+            {
+                "command": "brighterscript.showPreviewToSide",
+                "title": "Preview Transpiled code to the Side",
+                "category": "BrighterScript",
+                "icon": {
+                    "light": "./images/preview-right-light.svg",
+                    "dark": "./images/preview-right-dark.svg"
+                }
             }
         ],
         "keybindings": [
+            {
+                "key": "ctrl+shift+v",
+                "command": "brighterscript.showPreview",
+                "when": "editorLangId == brighterscript"
+            },
+            {
+                "key": "ctrl+k v",
+                "command": "brighterscript.showPreviewToSide",
+                "when": "editorLangId == brighterscript"
+            },
             {
                 "key": "Backspace",
                 "command": "extension.brightscript.pressBackButton",

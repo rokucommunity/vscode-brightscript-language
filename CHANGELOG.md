@@ -6,6 +6,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.3.0] - 2020-06-01
+### Added 
+- (Formatter) new option `insertSpaceBetweenAssociativeArrayLiteralKeyAndColon` which will ensure exactly 1 or 0 spaces between an associative array key and its trailing colon. ([brighterscript-formatter#17](https://github.com/rokucommunity/brighterscript-formatter/issues/17))
+### Changed
+ - Upgraded to [brighterscript-formatter@1.4.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#140---2020-05-29)
+### Fixed
+ - (Formatter) bugs related to formatting single-line if statements ([brighterscript-formatter#13](https://github.com/rokucommunity/brighterscript-formatter/issues/13))
+ 
+
+
+## [2.2.1] - 2020-05-28
+### Changed
+ - Upgraded to [brighterscript@0.10.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0104---2020-05-28)
+### Fixed
+ - (LanguageServer) `CreateObject("roRegex")` with third parameter caused compile error ([BrighterScript#95](https://github.com/rokucommunity/brighterscript/issues/95))
+ - (BrighterScript) flag parameter with same name as namespace
+ - (BrighterScript) flag variable with same name as namespace
+
+
+
+## [2.2.0] - 2020-05-27
+### Added
+ - commands to show preview of transpiled BrighterScript (`brighterscript.showPreview` and `brighterscript.showPreviewToSide`);
+### Changed
+ - Upgraded to [brighterscript@0.10.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0103---2020-05-27)
+
+
+
+## [2.1.23] - 2020-05-20
+### Changed
+ - disabled `formatMultiLineObjectsAndArrays` by default because it has a bug. Will re-enable in the future when that option gets fixed.
+
+
+
+## [2.1.22] - 2020-05-20
+### Added
+ - (BRS/BS formatter) new option `formatMultiLineObjectsAndArrays` which inserts newlines and indents multi-line objects and arrays
+
+
+
+## [2.1.21] - 2020-05-20
+### Added
+ - (BRS/BS Formatter) new option `insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces` which...does what it says. ([brighterscript-formatter#16](https://github.com/rokucommunity/brighterscript-formatter/issues/16)
+### Changed
+ - Upgraded to [brighterscript-formatter@1.2.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#120---2020-05-20) 
+ - missing launch.json schema information for `enableDebugProtocol`
+### Fixed
+ - issue where somehow BrighterScript got moved from a dependency into a devDependency, causing the entire package to be excluded from the extension. ([#244](https://github.com/rokucommunity/vscode-brightscript-language/issues/244))
+ - incorrect indent when using `class`, `endclass`, `namespace`, `endnamespace` as an object property ([brighterscript-formatter#18](https://github.com/rokucommunity/brighterscript-formatter/issues/18))
+
+
+
+## [2.1.20] - 2020-05-19
+### Added
+ - (BrighterScript) parser support for the new [callfunc operator](https://github.com/rokucommunity/brighterscript/blob/master/docs/callfunc-operator.md)
+### Changed
+ - Upgraded to [brighterscript@0.10.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0100)
+
+
+
 ## [2.1.19] - 2020-05-16
 ### Changed
  - Upgraded to [brighterscript@0.9.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#098---2020-05-16)
@@ -1018,6 +1078,13 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.3.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.2.1...v2.3.0
+[2.2.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.23...v2.2.0
+[2.1.23]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.22...v2.1.23
+[2.1.22]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.21...v2.1.22
+[2.1.21]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.20...v2.1.21
+[2.1.20]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.19...v2.1.20
 [2.1.19]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.18...v2.1.19
 [2.1.18]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.17...v2.1.18
 [2.1.17]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.16...v2.1.17
