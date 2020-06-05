@@ -119,20 +119,10 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
             }
 
             if (this.launchConfig.sourceDirs) {
-                if (this.launchConfig.sourceDirs.length === 1) {
-                //best case, simply choose the first item
-                    rootDir = this.launchConfig.sourceDirs[0];
-                    let clientPath = path.normalize(path.join(rootDir, pkgPath));
+                for (let sourceDir of this.launchConfig.sourceDirs) {
+                    let clientPath = path.normalize(path.join(sourceDir, pkgPath));
                     if (fsExtra.existsSync(clientPath)) {
                         return clientPath;
-                    }
-
-                } else {
-                    for (let sourceDir of this.launchConfig.sourceDirs) {
-                        let clientPath = path.normalize(path.join(sourceDir, pkgPath));
-                        if (fsExtra.existsSync(clientPath)) {
-                            return clientPath;
-                        }
                     }
                 }
             }
