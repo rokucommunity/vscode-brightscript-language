@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.3.0",
+    "version": "2.4.2",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -45,7 +45,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.10.4",
+        "brighterscript": "^0.10.5",
         "brighterscript-formatter": "^1.4.0",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -188,11 +188,7 @@
                 "runtime": "node",
                 "configurationAttributes": {
                     "launch": {
-                        "required": [
-                            "host",
-                            "password",
-                            "rootDir"
-                        ],
+                        "required": [],
                         "properties": {
                             "host": {
                                 "type": "string",
@@ -594,6 +590,18 @@
             {
                 "language": "brightscript",
                 "path": "./snippets.json"
+            },
+            {
+                "language": "brightscript",
+                "path": "./snippets/brightscript.json"
+            },
+            {
+                "language": "brightscript",
+                "path": "./snippets/brighterscript.json"
+            },
+            {
+                "language": "xml",
+                "path": "./snippets/xml.json"
             }
         ],
         "configuration": {
@@ -1666,6 +1674,7 @@
     "categories": [
         "Formatters",
         "Programming Languages",
-        "Debuggers"
+        "Debuggers",
+        "Snippets"
     ]
 }

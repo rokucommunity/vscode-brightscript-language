@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.4.2] - 2020-06-04
+### Changed
+ - Upgraded to [brighterscript@0.10.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0103---2020-05-27)
+ - (LanguageServer) log full error to language server console in client anytime critical error is encountered (attempting to find cause of [brighterscript#97](https://github.com/rokucommunity/brighterscript/issues/97))
+
+
+
+## [2.4.1] - 2020-06-04
+### Changed
+ - remove required fields (`rootDir`, `host`, `password`) from `launch.json` as it's perfectly valid to provide none and rely on the `bsconfig.json`. ([#251](https://github.com/rokucommunity/vscode-brightscript-language/issues/251))
+
+
+
+## [2.4.0] - 2020-06-01
+### Added
+ - basic snippets for brs/bs and xml files ([#248](https://github.com/rokucommunity/vscode-brightscript-language/pull/248))
+### Fixed
+ - bug where command `extension.brightscript.toggleXML` wouldn't account for `.bs` files ([#242](https://github.com/rokucommunity/vscode-brightscript-language/pull/242))
+
+
+
 ## [2.3.0] - 2020-06-01
 ### Added 
 - (Formatter) new option `insertSpaceBetweenAssociativeArrayLiteralKeyAndColon` which will ensure exactly 1 or 0 spaces between an associative array key and its trailing colon. ([brighterscript-formatter#17](https://github.com/rokucommunity/brighterscript-formatter/issues/17))
@@ -1078,6 +1099,9 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.4.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.1...v2.4.2
+[2.4.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.0...v2.4.1
+[2.4.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.1.23...v2.2.0
