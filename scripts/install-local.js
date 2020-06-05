@@ -7,6 +7,8 @@ var path = require('path');
 var childProcess = require('child_process');
 var chalk = require('chalk');
 
+var argv = require('yargs').argv;
+
 let packages = [
     'roku-debug',
     'roku-deploy',
@@ -31,9 +33,10 @@ for (let packageName of packages) {
             cwd: path.resolve('..'),
             stdio: 'inherit'
         });
-    } else {
+        //if --pull was provided, fetch and pull latest for each repo
+    } else if (argv.pull === true) {
         console.log(`'${packageName}' exists. Getting latest`);
-        
+
         childProcess.execSync(`git fetch && git pull`, {
             cwd: packageSrcPath,
             stdio: 'inherit'
