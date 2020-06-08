@@ -28,4 +28,14 @@ export default class BrightScriptFileUtils {
         }
     }
 
+    public getBsFileName(fileName: string): string | undefined {
+        if (fileName !== undefined && (fileName.toLowerCase().endsWith('.brs'))) {
+            return fileName.substring(0, fileName.length - 3) + 'bs';
+        } else if (fileName.toLowerCase().endsWith('.bs')) {
+            return fileName;
+        } else {
+            return undefined;
+        }
+    }
+
 }
