@@ -478,7 +478,7 @@ This extension uses the [dotenv](https://www.npmjs.com/package/dotenv) npm modul
 
 This extension adds some basic snippets for Roku development.
 
-### Examples snippets in .bs/.brs files:
+### Example snippets in .bs/.brs files:
 
 Typing `sub<tab>` generates:
 ```brs
@@ -496,7 +496,7 @@ end for
 ```
 with "item" and "collection" editable and cursor inside the block
 
-### Examples snippets in .xml files:
+### Example snippets in .xml files:
 
 Typing `<component<tab>` generates
 ```xml
@@ -505,7 +505,7 @@ Typing `<component<tab>` generates
   
 </component>
 ```
-with "ComponentName" editabl eand cursor inside the block
+with "ComponentName" editable and cursor inside the block
 
 Typing `<field<tab>` generates
 ```xml
