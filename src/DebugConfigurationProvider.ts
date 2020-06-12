@@ -280,23 +280,22 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
 
             // temporarily convert entire config to string for any envConfig replacements.
-            let configString = JSON.stringify(config)
-            
+            let configString = JSON.stringify(config);
             let match: RegExpMatchArray;
             let regexp = /\$\{env:([\w\d_]*)\}/g;
-            
+
             // apply any defined values to env placeholders
             while (match = regexp.exec(configString)) {
                 let environmentVariableName = match[1];
                 let environmentVariableValue = envConfig[environmentVariableName];
-                
+
                 if (environmentVariableValue) {
                     configString = configString.replace(match[0], environmentVariableValue);
                 }
             }
 
             config = JSON.parse(configString);
-            
+
             // apply any default values to env placeholders
             for (let key in config) {
                 let configValue = config[key];
