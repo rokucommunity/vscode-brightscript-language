@@ -5,7 +5,7 @@ export default class BrightScriptFileUtils {
      * @returns {string} Returns the xml file name, if filename is a brs or bs file, otherwise the brs filename.
      */
     public getAlternateFileName(fileName: string): string | undefined {
-        let lowerFileName = fileName?.toLowerCase();
+        let lowerFileName = fileName?.toLowerCase() || '';
         if (lowerFileName.endsWith('.brs') || lowerFileName?.endsWith('.bs')) {
             return fileName.replace(/\.b(r?)s$/, '.xml');
         } else if (lowerFileName?.endsWith('.xml')) {
