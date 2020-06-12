@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.4.4] - 2020-06-12
+### Changed
+ - Upgraded to [brighterscript@0.10.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0109)
+### Added
+ - (BrighterScript) bslib.brs gets copied to `pkg:/source` and added as an import to every component on transpile.
+ - (LanguageServer) several timing logs under the `"info"` log level.
+### Changed
+ - (LanguageServer) pipe the language server output to the extension's log window
+### Fixed
+ - (LanguageServer) bug with global `val` function signature that did not support the second parameter ([BrighterScript#110](https://github.com/rokucommunity/vscode-brightscript-language/issues/110))
+ - (LanguageServer) bug with global 'StrI' function signature that did not support the second parameter.
+
+
+
 ## [2.4.3] - 2020-06-10
 ### Changed
  - Upgraded to [brighterscript@0.10.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0108---2020-06-09)
@@ -1110,6 +1124,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.4.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.3...v2.4.4
 [2.4.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.2...v2.4.3
 [2.4.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.0...v2.4.1
