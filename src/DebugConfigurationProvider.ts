@@ -295,22 +295,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
 
             config = JSON.parse(configString);
-
-            // apply any default values to env placeholders
-            for (let key in config) {
-                let configValue = config[key];
-                let match: RegExpMatchArray;
-                //replace all environment variable placeholders with their values
-                while (match = regexp.exec(configValue)) {
-                    let environmentVariableName = match[1];
-                    let environmentVariableValue = envConfig[environmentVariableName];
-                    if (!environmentVariableValue) {
-                        configValue = this.configDefaults[key];
-                        console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                    }
-                }
-                config[key] = configValue;
-            }
         }
         return config;
     }
