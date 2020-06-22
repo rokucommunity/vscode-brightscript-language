@@ -2,13 +2,16 @@ import * as vscode from 'vscode';
 
 import { DiagnosticCollection } from 'vscode';
 
-import { BrightScriptDebugCompileError } from 'roku-debug';
+import { BrightScriptDebugCompileError, Project, ProjectManager, BreakpointManager } from 'roku-debug';
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { SourceMapManager } from 'roku-debug/dist/managers/SourceMapManager';
+import { LocationManager, SourceLocation } from 'roku-debug';
+import { extension } from './extension';
 
 export class LogLine {
     constructor(
@@ -19,7 +22,6 @@ export class LogLine {
 }
 
 export class LogOutputManager {
-
     constructor(
         outputChannel,
         context,
@@ -29,6 +31,7 @@ export class LogOutputManager {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
+        this.docLinkProvider.logOutputManager = this;
 
         this.loadConfigSettings();
         vscode.workspace.onDidChangeConfiguration((e) => {
@@ -43,6 +46,10 @@ export class LogOutputManager {
         this.pkgRegex = /(\w+:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.sourceMapManager = new SourceMapManager();
+        this.locationManager = new LocationManager(this.sourceMapManager);
+        this.breakpointManager = new BreakpointManager(this.sourceMapManager, this.locationManager);
+        this.projectManager = new ProjectManager(this.breakpointManager, this.locationManager);
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -94,11 +101,18 @@ export class LogOutputManager {
     private isNextBreakpointSkipped: boolean = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
+    private isUsingSourceMaps: boolean;
+    private breakpointManager: BreakpointManager;
+
     public launchConfig: BrightScriptLaunchConfiguration;
     public isFocusingOutputOnLaunch: boolean;
     public isClearingOutputOnLaunch: boolean;
     public isClearingConsoleOnChannelStart: boolean;
     public hyperlinkFormat: string;
+    public sourceMapManager: any;
+    public locationManager: any;
+    public projectManager: ProjectManager;
+
     private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
     private docLinkProvider: LogDocumentLinkProvider;
@@ -124,6 +138,19 @@ export class LogOutputManager {
 
     public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
+        this.isUsingSourceMaps = launchConfig.enableSourceMaps;
+        this.projectManager.mainProject = new Project({
+            rootDir: this.launchConfig.rootDir,
+            files: this.launchConfig.files,
+            outDir: this.launchConfig.outDir,
+            sourceDirs: this.launchConfig.sourceDirs,
+            bsConst: this.launchConfig.bsConst,
+            injectRaleTrackerTask: this.launchConfig.injectRaleTrackerTask,
+            raleTrackerTaskFileLocation: this.launchConfig.raleTrackerTaskFileLocation
+        });
+        //stage now so we have the various vars.. annoying but I see no way around this
+        this.projectManager.mainProject.stage(true);
+        console.log('launch config is set');
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: any) {
@@ -207,9 +234,9 @@ export class LogOutputManager {
     /**
      * Log output methods
      */
-    public appendLine(lineText: string, mustInclude: boolean = false): void {
+    public async appendLine(lineText: string, mustInclude: boolean = false): Promise<void> {
         let lines = lineText.split('\n');
-        lines.forEach((line) => {
+        for (let line of lines) {
             if (line !== '') {
                 if (!this.includeStackTraces) {
                     // filter out debugger noise
@@ -244,7 +271,7 @@ export class LogOutputManager {
                     this.writeLogLineToLogfile(logLine.text);
                 }
             }
-        });
+        }
     }
 
     public writeLogLineToLogfile(text: string) {
@@ -254,18 +281,25 @@ export class LogOutputManager {
     }
 
     public addLogLineToOutput(logLine: LogLine) {
-        const logLineNumber = this.displayedLogLines.length;
         if (this.matchesFilter(logLine)) {
             this.displayedLogLines.push(logLine);
+            const logLineNumber = this.displayedLogLines.length - 1;
             let match = this.pkgRegex.exec(logLine.text);
             if (match) {
                 const pkgPath = match[1];
                 const lineNumber = Number(match[2]);
-                // pkgPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
                 const filename = this.getFilename(pkgPath);
                 const extension = path.extname(pkgPath);
+
+                let sourceLocation: SourceLocation;
+                sourceLocation = {
+                    filePath: pkgPath,
+                    lineNumber: lineNumber,
+                    columnIndex: 0
+                };
+
                 let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
-                const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
+                const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, sourceLocation.filePath, sourceLocation.lineNumber, filename);
                 console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
@@ -352,7 +386,7 @@ export class LogOutputManager {
         this.reFilterOutput();
     }
 
-    public reFilterOutput(): void {
+    public async reFilterOutput(): Promise<void> {
         this.outputChannel.clear();
         this.docLinkProvider.resetCustomLinks();
 
@@ -367,5 +401,13 @@ export class LogOutputManager {
     public markOutput(): void {
         this.appendLine(`---------------------- MARK ${this.markCount} ----------------------`, true);
         this.markCount++;
+    }
+
+    public async getSourceLineLocation(pkgPath: string, lineNumber: number): Promise<SourceLocation> {
+        return await this.projectManager.getSourceLocation(
+            pkgPath,
+            lineNumber
+        );
+        // return await this.locationManager.getSourceLocation();
     }
 }

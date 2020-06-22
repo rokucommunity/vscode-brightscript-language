@@ -74,9 +74,9 @@ describe('LogDocumentLinkProvider', () => {
             });
             let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full');
             linkProvider.addCustomLink(link);
-            expect(linkProvider.customLinks.length).to.equal(1);
+            expect(linkProvider.rawLinks.length).to.equal(1);
             linkProvider.resetCustomLinks();
-            expect(linkProvider.customLinks.length).to.equal(0);
+            expect(linkProvider.rawLinks.length).to.equal(0);
         });
     });
 
@@ -89,7 +89,7 @@ describe('LogDocumentLinkProvider', () => {
             });
             let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full.brs');
             linkProvider.addCustomLink(link);
-            expect(linkProvider.customLinks.length).to.equal(1);
+            expect(linkProvider.rawLinks.length).to.equal(1);
         });
     });
 });

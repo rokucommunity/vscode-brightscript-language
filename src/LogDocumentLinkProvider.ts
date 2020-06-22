@@ -2,10 +2,13 @@ import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
+import { SourceLocation } from 'roku-debug';
 import * as vscode from 'vscode';
 
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { link } from 'fs';
+import { LogOutputManager } from './LogOutputManager';
 
 const fileUtils = new BrightScriptFileUtils();
 
@@ -25,6 +28,7 @@ export class CustomDocumentLink {
     public pkgPath: string;
     public filename: string;
     public lineNumber: number;
+    public transpiledLocation?: SourceLocation;
 }
 /**
  * Provides file links in any output window that has the pkg:/ format.
@@ -32,8 +36,9 @@ export class CustomDocumentLink {
  */
 export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
-        this.customLinks = [];
+        this.rawLinks = [];
     }
+    public logOutputManager: LogOutputManager;
 
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
@@ -69,12 +74,15 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public fileMaps: { [pkgPath: string]: { src: string; dest: string; pkgPath: string; } };
-    public customLinks: DocumentLink[];
-
+    public rawLinks: CustomDocumentLink[];
     private launchConfig: BrightScriptLaunchConfiguration;
 
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
-        return this.customLinks;
+        let links = [];
+        for (const [i, link] of this.rawLinks.entries()) {
+            links.push(await this.createDocLink(link));
+        }
+        return links;
     }
 
     public getFileMap(pkgPath) {
@@ -82,23 +90,39 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public addCustomLink(customLink: CustomDocumentLink) {
-        for (let i = 0; i < 2; i++) {
-            let fileMap = this.getFileMap(customLink.pkgPath);
-            if (fileMap) {
-                let uri = vscode.Uri.file(fileMap.src);
-                if (customLink.lineNumber) {
-                    uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-                }
-                let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-                this.customLinks.push(new DocumentLink(range, uri));
-                return;
+        this.rawLinks.push(customLink);
+    }
+
+    private async createDocLink(customLink: CustomDocumentLink): Promise<DocumentLink> {
+        if (this.launchConfig.enableSourceMaps) {
+            if (!customLink.transpiledLocation) {
+
+                customLink.transpiledLocation = await this.logOutputManager.getSourceLineLocation(customLink.pkgPath, customLink.lineNumber);
             }
-            customLink.pkgPath = fileUtils.getAlternateBrsFileName(customLink.pkgPath);
+            let uri = vscode.Uri.file(customLink.transpiledLocation.filePath);
+            uri = uri.with({ fragment: customLink.transpiledLocation.lineNumber.toString().trim() });
+            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+            return new DocumentLink(range, uri);
+        } else {
+
+            for (let i = 0; i < 2; i++) {
+                let fileMap = this.getFileMap(customLink.pkgPath);
+                if (fileMap) {
+                    let uri = vscode.Uri.file(fileMap.src);
+                    if (customLink.lineNumber) {
+                        uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
+                    }
+                    let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+                    return new DocumentLink(range, uri);
+                }
+                customLink.pkgPath = fileUtils.getAlternateBrsFileName(customLink.pkgPath);
+            }
         }
+
     }
 
     public resetCustomLinks() {
-        this.customLinks = [];
+        this.rawLinks = [];
     }
 
     public convertPkgPathToFsPath(pkgPath: string) {
