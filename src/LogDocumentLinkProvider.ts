@@ -78,7 +78,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         let links = [];
         for (const [i, link] of this.rawLinks.entries()) {
-            links.push(await this.createDocLink(link));
+            links.push(this.createDocLink(link));
         }
         return links;
     }
@@ -91,7 +91,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         this.rawLinks.push(customLink);
     }
 
-    private async createDocLink(customLink: CustomDocumentLink): Promise<DocumentLink> {
+    private createDocLink(customLink: CustomDocumentLink): DocumentLink {
         if (customLink.transpiledLocation) {
             let uri = vscode.Uri.file(customLink.transpiledLocation.filePath);
             uri = uri.with({ fragment: customLink.transpiledLocation.lineNumber.toString().trim() });
