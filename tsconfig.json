@@ -13,5 +13,8 @@
         "strictNullChecks": false,
         "noUnusedParameters": false,
         "allowSyntheticDefaultImports": true
-    }
+    },
+    "lib": [
+        "es2019"
+    ]
 }
