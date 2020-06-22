@@ -31,7 +31,6 @@ export class LogOutputManager {
         this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
-        this.docLinkProvider.logOutputManager = this;
 
         this.loadConfigSettings();
         vscode.workspace.onDidChangeConfiguration((e) => {
@@ -267,7 +266,7 @@ export class LogOutputManager {
                 this.allLogLines.push(logLine);
                 if (this.matchesFilter(logLine)) {
                     this.allLogLines.push(logLine);
-                    this.addLogLineToOutput(logLine);
+                    await this.addLogLineToOutput(logLine);
                     this.writeLogLineToLogfile(logLine.text);
                 }
             }
@@ -280,7 +279,7 @@ export class LogOutputManager {
         }
     }
 
-    public addLogLineToOutput(logLine: LogLine) {
+    public async addLogLineToOutput(logLine: LogLine) {
         if (this.matchesFilter(logLine)) {
             this.displayedLogLines.push(logLine);
             const logLineNumber = this.displayedLogLines.length - 1;
@@ -292,14 +291,19 @@ export class LogOutputManager {
                 const extension = path.extname(pkgPath);
 
                 let sourceLocation: SourceLocation;
-                sourceLocation = {
-                    filePath: pkgPath,
-                    lineNumber: lineNumber,
-                    columnIndex: 0
-                };
+                if (this.isUsingSourceMaps) {
+                    sourceLocation = await this.getSourceLineLocation(pkgPath, lineNumber);
+                } else {
+                    sourceLocation = {
+                        filePath: pkgPath,
+                        lineNumber: lineNumber,
+                        columnIndex: 0
+                    };
+                }
 
-                let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
+                let customText = this.getCustomLogText(sourceLocation.filePath, filename, extension, Number(sourceLocation.lineNumber), logLineNumber);
                 const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, sourceLocation.filePath, sourceLocation.lineNumber, filename);
+                customLink.transpiledLocation = sourceLocation;
                 console.debug(`adding custom link ${customLink}`);
                 this.docLinkProvider.addCustomLink(customLink);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
@@ -393,7 +397,7 @@ export class LogOutputManager {
         for (let i = 0; i < this.allLogLines.length - 1; i++) {
             let logLine = this.allLogLines[i];
             if (this.matchesFilter(logLine)) {
-                this.addLogLineToOutput(logLine);
+                await this.addLogLineToOutput(logLine);
             }
         }
     }
@@ -408,6 +412,5 @@ export class LogOutputManager {
             pkgPath,
             lineNumber
         );
-        // return await this.locationManager.getSourceLocation();
     }
 }

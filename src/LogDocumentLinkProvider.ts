@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { link } from 'fs';
-import { LogOutputManager } from './LogOutputManager';
 
 const fileUtils = new BrightScriptFileUtils();
 
@@ -38,7 +37,6 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
         this.rawLinks = [];
     }
-    public logOutputManager: LogOutputManager;
 
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
@@ -94,11 +92,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     private async createDocLink(customLink: CustomDocumentLink): Promise<DocumentLink> {
-        if (this.launchConfig.enableSourceMaps) {
-            if (!customLink.transpiledLocation) {
-
-                customLink.transpiledLocation = await this.logOutputManager.getSourceLineLocation(customLink.pkgPath, customLink.lineNumber);
-            }
+        if (customLink.transpiledLocation) {
             let uri = vscode.Uri.file(customLink.transpiledLocation.filePath);
             uri = uri.with({ fragment: customLink.transpiledLocation.lineNumber.toString().trim() });
             let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
