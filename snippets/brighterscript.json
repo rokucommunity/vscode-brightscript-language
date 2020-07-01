@@ -14,8 +14,8 @@
     "Class with Extends": {
         "prefix": "class-extends",
         "body": [
-            "class ${1:ClassName} extends ${Parent}",
-            "\tsub new(${2:params})",
+            "class ${1:ClassName} extends ${2:Parent}",
+            "\tsub new(${3:params})",
             "\t\tsuper()",
             "\t\t$0",
             "\tend sub",
