@@ -279,18 +279,32 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //parse the .env file
             let envConfig = dotenv.parse(await this.fsExtra.readFile(envFilePath));
 
-            //replace any env placeholders
+            // temporarily convert entire config to string for any envConfig replacements.
+            let configString = JSON.stringify(config);
+            let match: RegExpMatchArray;
+            let regexp = /\$\{env:([\w\d_]*)\}/g;
+
+            // apply any defined values to env placeholders
+            while (match = regexp.exec(configString)) {
+                let environmentVariableName = match[1];
+                let environmentVariableValue = envConfig[environmentVariableName];
+
+                if (environmentVariableValue) {
+                    configString = configString.replace(match[0], environmentVariableValue);
+                }
+            }
+
+            config = JSON.parse(configString);
+
+            // apply any default values to env placeholders
             for (let key in config) {
                 let configValue = config[key];
                 let match: RegExpMatchArray;
-                let regexp = /\$\{env:([\w\d_]*)\}/g;
                 //replace all environment variable placeholders with their values
                 while (match = regexp.exec(configValue)) {
                     let environmentVariableName = match[1];
                     let environmentVariableValue = envConfig[environmentVariableName];
-                    if (environmentVariableValue) {
-                        configValue = configValue.replace(match[0], environmentVariableValue);
-                    } else {
+                    if (!environmentVariableValue) {
                         configValue = this.configDefaults[key];
                         console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
                     }
@@ -298,7 +312,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 config[key] = configValue;
             }
         }
-
         return config;
     }
 
