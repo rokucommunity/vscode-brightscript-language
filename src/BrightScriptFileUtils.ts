@@ -16,7 +16,7 @@ export default class BrightScriptFileUtils {
     /**
      * Utility method to simplify getting alternate brs/bs extensions
      * @param  {string} fileName
-     * @returns {string} Returns the brs file name, if filename is a brs file, otherwise the bs filename. If filenAMe is neither, then fileName is returned unchanged
+     * @returns {string} Returns the brs file name, if filename is a brs file, otherwise the bs filename. If filename is neither, then filename is returned unchanged
      */
     public getAlternateBrsFileName(fileName: string): string | undefined {
         if (fileName !== undefined && (fileName.toLowerCase().endsWith('.bs'))) {
