@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### [2.4.6] - 2020-07-02
+### Changed
+ - Upgraded to [roku-debug@0.4.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#040---2020-07-02) 
+ - (Debugger) Try to look up original function names for anonymous functions in call stack [roku-debug#6](https://github.com/rokucommunity/roku-debug/issues/6)
+
+
+
 ## [2.4.5] - 2020-07-02
 ### Fixed
  - bug where .env placeholders in nested launch.json settings were not being handled in the config resolver. [#256](https://github.com/rokucommunity/vscode-brightscript-language/pull/256)
@@ -1130,6 +1137,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.4.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.4...v2.4.5
 [2.4.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.3...v2.4.4
 [2.4.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.2...v2.4.3
