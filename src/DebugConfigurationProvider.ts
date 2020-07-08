@@ -283,6 +283,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let configString = JSON.stringify(config);
             let match: RegExpMatchArray;
             let regexp = /\$\{env:([\w\d_]*)\}/g;
+            let updatedConfigString = configString;
 
             // apply any defined values to env placeholders
             while (match = regexp.exec(configString)) {
@@ -290,11 +291,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 let environmentVariableValue = envConfig[environmentVariableName];
 
                 if (environmentVariableValue) {
-                    configString = configString.replace(match[0], environmentVariableValue);
+                    updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
                 }
             }
 
-            config = JSON.parse(configString);
+            config = JSON.parse(updatedConfigString);
 
             // apply any default values to env placeholders
             for (let key in config) {
