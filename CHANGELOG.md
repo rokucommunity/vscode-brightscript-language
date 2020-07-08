@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.5.0] - 2020-07-08
+### Added
+ - (Debugger) support for inline values during a debug session. [roku-debug#8](https://github.com/rokucommunity/roku-debug/pull/8)
+ - (LanguageServer) diagnostic for unknown file reference in import statements in BrighterScript files ([brighterscript#139](https://github.com/rokucommunity/brighterscript/pull/139))
+ - (BrighterScript) [Source literals feature](https://github.com/rokucommunity/brighterscript/blob/master/docs/source-literals.md) which adds new literals such as `SOURCE_FILE_PATH`, `SOURCE_LINE_NUM`, `FUNCTION_NAME`, and more. ([brighterscript#13](https://github.com/rokucommunity/brighterscript/issues/13))
+ - (BrighterScript) [Template string feature](https://github.com/rokucommunity/brighterscript/blob/master/docs/template-strings.md) which brings template string support to BrighterScript. ([brighterscript#98](https://github.com/rokucommunity/brighterscript/issues/98))
+### Changed
+ - upgraded to [roku-deploy@3.2.1](https://www.npmjs.com/package/roku-deploy/v/3.2.1)
+ - Upgraded to [roku-debug@0.5.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#050---2020-07-06) 
+ - Upgraded to [brighterscript@0.11.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0109)
+### Fixed
+ - (Debugger) Fixed bug when inspecting indexed variables that would always show the list or array itself when using the BrightScript debug protocol [roku-debug#8](https://github.com/rokucommunity/roku-debug/pull/8)
+ - (LanguageServer) bug in parser that would fail to find function calls in certain situations, killing the rest of the parse.
+ - (LanguageServer) Do not show BS1010 diagnostic `hint`s for the same script imported for parent and child. ([brighterscript#113](https://github.com/rokucommunity/brighterscript/issues/113))
+
+
+
 ### [2.4.6] - 2020-07-02
 ### Changed
  - Upgraded to [roku-debug@0.4.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#040---2020-07-02) 
@@ -1137,6 +1154,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.5.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.6...v2.5.0
 [2.4.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.4...v2.4.5
 [2.4.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.3...v2.4.4
