@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased] 
+### Fixed
+ - bug in the `.env` file processing during debug launch.
+
+
+
 ## [2.5.0] - 2020-07-08
 ### Added
  - (Debugger) support for inline values during a debug session. [roku-debug#8](https://github.com/rokucommunity/roku-debug/pull/8)
