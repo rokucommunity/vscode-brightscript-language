@@ -283,6 +283,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             let configString = JSON.stringify(config);
             let match: RegExpMatchArray;
             let regexp = /\$\{env:([\w\d_]*)\}/g;
+            let updatedConfigString = configString;
 
             // apply any defined values to env placeholders
             while (match = regexp.exec(configString)) {
@@ -290,11 +291,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 let environmentVariableValue = envConfig[environmentVariableName];
 
                 if (environmentVariableValue) {
-                    configString = configString.replace(match[0], environmentVariableValue);
+                    updatedConfigString = updatedConfigString.replace(match[0], environmentVariableValue);
                 }
             }
 
-            config = JSON.parse(configString);
+            config = JSON.parse(updatedConfigString);
+
+            let configDefaults = {
+                rootDir: config.rootDir,
+                ...this.configDefaults
+            };
 
             // apply any default values to env placeholders
             for (let key in config) {
@@ -304,10 +310,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 while (match = regexp.exec(configValue)) {
                     let environmentVariableName = match[1];
                     let environmentVariableValue = envConfig[environmentVariableName];
-                    if (!environmentVariableValue) {
-                        configValue = this.configDefaults[key];
-                        console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                    }
+                    configValue = configDefaults[key];
+                    console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
                 }
                 config[key] = configValue;
             }
