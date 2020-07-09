@@ -6,9 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased] 
+## [2.5.1] - 2020-07-09
+### Changed
+ - (LanguageServer) add 350ms debounce in `onDidChangeWatchedFiles` to increase performance by reducing the number of times a file is parsed and validated.
+ - Upgraded to [brighterscript@0.11.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0112---2020-07-09)
 ### Fixed
- - bug in the `.env` file processing during debug launch.
+ - (Debugger) bug in the `.env` file processing during debug launch.
+ - (LanguageServer) bug in the log output that wasn't casting string log levels into their numeric enum versions, causing messages to be lost at certain log levels.
+ - (LanguageServer) load manifest file exactly one time per program rather than every time a file gets parsed.
+ - (LanguageServer) bug in `info` logging that wasn't showing the proper parse times for files on first run.
 
 
 
@@ -1160,6 +1166,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.5.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.6...v2.5.0
 [2.4.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.5...v2.4.6
 [2.4.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.4...v2.4.5
