@@ -250,25 +250,25 @@ describe('LogOutputManager ', () => {
         });
     });
 
-    describe('tests getCustomLogText', () => {
+    describe('tests getCustomLogText brs files', () => {
         it('tests Full', () => {
             logOutputManager.hyperlinkFormat = 'Full';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, 'pkg:/path/file.brs(20)');
         });
 
         it('tests Short', () => {
             logOutputManager.hyperlinkFormat = 'Short';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, '#2');
         });
 
         it('tests Hidden', () => {
             logOutputManager.hyperlinkFormat = 'Hidden';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, ' ');
         });
 
@@ -283,7 +283,7 @@ describe('LogOutputManager ', () => {
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 let logText = logOutputManager.getCustomLogText(param.text, 'file',
-                    '.brs', 20, 2);
+                    '.brs', 20, 2, false);
                 assert.equal(logText, 'file.brs(20)');
             });
         });
@@ -321,7 +321,7 @@ describe('LogOutputManager ', () => {
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 let logText = logOutputManager.getCustomLogText(param.text, 'file',
-                    '.brs', 20, 2);
+                    '.brs', 20, 2, false);
                 assert.equal(logText, 'file.methodName(20)');
             });
         });

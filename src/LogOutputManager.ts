@@ -39,7 +39,7 @@ export class LogOutputManager {
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
-        this.pkgRegex = /(\w+:\/.*\.(?:brs|xml))[ \t]*(?:\((\d+)(?:\:(\d+))?\))?/;
+        this.pkgRegex = /((pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
@@ -258,13 +258,15 @@ export class LogOutputManager {
             this.displayedLogLines.push(logLine);
             let match = this.pkgRegex.exec(logLine.text);
             if (match) {
-                const pkgPath = match[1];
-                const lineNumber = Number(match[2]);
-                const filename = this.getFilename(pkgPath);
-                const extension = pkgPath.substring(pkgPath.length - 4);
-                let customText = this.getCustomLogText(pkgPath, filename, extension, Number(lineNumber), logLineNumber);
-                const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, pkgPath, lineNumber, filename);
-                this.docLinkProvider.addCustomLink(customLink);
+                const isFilePath = match[2] === 'file://';
+                const path = isFilePath ? match[3] : 'pkg:/' + match[3];
+                const lineNumber = isFilePath ? Number(match[7]) : Number(match[5]);
+
+                const filename = this.getFilename(path);
+                const ext = `.${match[4]}`.toLowerCase();
+                let customText = this.getCustomLogText(path, filename, ext, Number(lineNumber), logLineNumber, isFilePath);
+                const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, path, lineNumber, filename);
+                this.docLinkProvider.addCustomLink(customLink, isFilePath);
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
                 this.outputChannel.appendLine(logText);
             } else {
@@ -282,7 +284,7 @@ export class LogOutputManager {
         return name;
     }
 
-    public getCustomLogText(pkgPath: string, filename: string, extension: string, lineNumber: number, logLineNumber: number): string {
+    public getCustomLogText(pkgPath: string, filename: string, extension: string, lineNumber: number, logLineNumber: number, isFilePath: boolean): string {
         switch (this.hyperlinkFormat) {
             case 'Full':
                 return pkgPath + `(${lineNumber})`;
@@ -297,9 +299,8 @@ export class LogOutputManager {
                 return `${filename}${extension}(${lineNumber})`;
                 break;
             default:
-                const isBrs = extension.toLowerCase() === '.brs';
-                if (isBrs) {
-                    const methodName = this.getMethodName(pkgPath, lineNumber);
+                if (extension === '.brs' || extension === '.bs') {
+                    const methodName = this.getMethodName(pkgPath, lineNumber, isFilePath);
                     if (methodName) {
                         return `${filename}.${methodName}(${lineNumber})`;
                     }
@@ -309,8 +310,8 @@ export class LogOutputManager {
         }
     }
 
-    public getMethodName(pkgPath: string, lineNumber: number): string | null {
-        let fsPath = this.docLinkProvider.convertPkgPathToFsPath(pkgPath);
+    public getMethodName(path: string, lineNumber: number, isFilePath: boolean): string | null {
+        let fsPath = isFilePath ? path : this.docLinkProvider.convertPkgPathToFsPath(path);
         const method = this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
         return method ? method.name : null;
     }
