@@ -11,6 +11,7 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
+import { config } from 'process';
 
 let sinon = createSandbox();
 let c: any;
@@ -230,6 +231,96 @@ describe('BrightScriptConfigurationProvider', () => {
             } catch (e) {
                 expect(true, 'Successfully threw').to.be.true;
             }
+        });
+    });
+
+    describe('processEnvFile', () => {
+        let folder = {
+            uri: {
+                fsPath: process.cwd()
+            }
+        };
+        it('does nothing if .envFile is not specified', async () => {
+            let config = await c.processEnvFile(folder, {
+                rootDir: '${env:ROOT_DIR}'
+            });
+            expect(config.rootDir).to.equal('${env:ROOT_DIR}');
+        });
+
+        it('throws exception when .env file does not exist', async () => {
+            let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
+            let threw = false;
+            try {
+                await c.processEnvFile(folder, {
+                    envFile: '${workspaceFolder}/.env'
+                });
+            } catch (e) {
+                threw = true;
+            }
+            expect(threw).to.be.true;
+        });
+
+        it('replaces ${workspaceFolder} in .envFile path', async () => {
+            let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
+            try {
+                await c.processEnvFile(folder, {
+                    envFile: '${workspaceFolder}/.env'
+                });
+            } catch (e) { }
+            expect(stub.callCount).to.equal(1);
+            expect(stub.getCalls()[0].args[0]).to.equal(folder.uri.fsPath + '/.env');
+        });
+
+        it('replaces same env value multiple times in a config', async () => {
+            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
+                PASSWORD=password
+            `));
+            let config = await c.processEnvFile(folder, {
+                envFile: '${workspaceFolder}/.env',
+                rootDir: '${env:PASSWORD}',
+                stagingFolderPath: '${env:PASSWORD}'
+            });
+
+            expect(config.rootDir).to.equal('password');
+            expect(config.stagingFolderPath).to.equal('password');
+        });
+
+        it('does not replace text outside of the ${} syntax', async () => {
+            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
+                PASSWORD=password
+            `));
+            let config = await c.processEnvFile(folder, {
+                'envFile': '${workspaceFolder}/.env',
+                //this key looks exactly like the text within the ${}, make sure it persists. (dunno why someone would do this...)
+                'env:PASSWORD': '${env:PASSWORD}'
+            });
+
+            expect(config['env:PASSWORD']).to.equal('password');
+        });
+
+        it('ignores ${env:} items that are not found in the env file', async () => {
+            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
+                PASSWORD=password
+            `));
+            let config = await c.processEnvFile(folder, {
+                envFile: '${workspaceFolder}/.env',
+                rootDir: '${env:NOT_PASSWORD}'
+            });
+
+            expect(config.rootDir).to.equal('${env:NOT_PASSWORD}');
+        });
+
+        it('loads env file when not using ${workspaceFolder} var', async () => {
+            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
+            let stub = sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
+            `));
+            let config = await c.processEnvFile(folder, {
+                envFile: '.env'
+            });
+            expect(stub.getCalls()[0]?.args[0]).to.equal('.env');
         });
     });
 });

@@ -297,6 +297,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             config = JSON.parse(updatedConfigString);
 
+            let configDefaults = {
+                rootDir: config.rootDir,
+                ...this.configDefaults
+            };
+
             // apply any default values to env placeholders
             for (let key in config) {
                 let configValue = config[key];
@@ -305,10 +310,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 while (match = regexp.exec(configValue)) {
                     let environmentVariableName = match[1];
                     let environmentVariableValue = envConfig[environmentVariableName];
-                    if (!environmentVariableValue) {
-                        configValue = this.configDefaults[key];
-                        console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
-                    }
+                    configValue = configDefaults[key];
+                    console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
                 }
                 config[key] = configValue;
             }
