@@ -280,6 +280,8 @@ export class LogOutputManager {
         let name = parts.length > 0 ? parts[parts.length - 1] : pkgPath;
         if (name.toLowerCase().endsWith('.xml') || name.toLowerCase().endsWith('.brs')) {
             name = name.substring(0, name.length - 4);
+        } else if (name.toLowerCase().endsWith('.bs')) {
+            name = name.substring(0, name.length - 3);
         }
         return name;
     }
