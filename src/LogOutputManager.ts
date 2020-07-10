@@ -39,7 +39,7 @@ export class LogOutputManager {
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
-        this.pkgRegex = /((pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))/;
+        this.pkgRegex = /(?:\s*at line (\d*) of file )*(?:(pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))*/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
@@ -260,7 +260,10 @@ export class LogOutputManager {
             if (match) {
                 const isFilePath = match[2] === 'file://';
                 const path = isFilePath ? match[3] : 'pkg:/' + match[3];
-                const lineNumber = isFilePath ? Number(match[7]) : Number(match[5]);
+                let lineNumber = match[1] ? Number(match[1]) : undefined;
+                if (!lineNumber) {
+                    lineNumber = isFilePath ? Number(match[7]) : Number(match[5]);
+                }
 
                 const filename = this.getFilename(path);
                 const ext = `.${match[4]}`.toLowerCase();
