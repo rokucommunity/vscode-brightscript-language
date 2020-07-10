@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.5.1] - 2020-07-09
 ### Changed
+ - Upgraded to [brighterscript@0.12.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0120---2020-07-09)
+### Fixed
+ - Throttle LanguageServer validation to prevent running too many validations in a row.
+
+
+
+## [2.5.1] - 2020-07-09
+### Changed
  - (LanguageServer) add 350ms debounce in `onDidChangeWatchedFiles` to increase performance by reducing the number of times a file is parsed and validated.
  - Upgraded to [brighterscript@0.11.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0112---2020-07-09)
 ### Fixed
@@ -1166,6 +1174,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.5.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.1...v2.5.2
 [2.5.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.6...v2.5.0
 [2.4.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.4.5...v2.4.6
