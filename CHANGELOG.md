@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+ - (Debugger) Prevent debug session crash if target breakpoint file doesn't exist. [roku-debug#10](https://github.com/rokucommunity/roku-debug/pull/10)
+  - (Debugger) Bug when converting source location to staging locations that incorrectly checked rootDir before sourceDirs. [roku-debug#10](https://github.com/rokucommunity/roku-debug/pull/10)
+
 
 
 ## [2.5.1] - 2020-07-09
