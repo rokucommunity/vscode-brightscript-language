@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased] - 2020-07-14
+### Changed
+ - upgraded to [roku-deploy@3.2.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#322---2020-07-14)
+### Fixed
+ - (LanguageServer) - critical bug in roku-deploy when when loading `stagingFolderPath` from `rokudeploy.json` or `bsconfig.json` that would crash the language server
+
+
 ## [2.5.3] - 2020-07-11
 ### Fixed
  - (Debugger) Prevent debug session crash if target breakpoint file doesn't exist. [roku-debug#10](https://github.com/rokucommunity/roku-debug/pull/10)
