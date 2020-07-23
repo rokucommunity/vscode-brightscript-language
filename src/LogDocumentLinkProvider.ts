@@ -4,6 +4,7 @@ import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
 import { util } from './util';
+import BrightscriptFileUtils from './BrightScriptFileUtils';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
@@ -30,11 +31,13 @@ export class CustomDocumentLink {
 export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
         this.customLinks = [];
+        this.fileUtils = new BrightscriptFileUtils();
     }
 
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
-
+    public fileUtils: BrightscriptFileUtils;
+    
     public async setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
         this.fileMaps = {};
@@ -109,13 +112,10 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public convertPkgPathToFsPath(pkgPath: string) {
-        //remove any preceding file scheme
-        pkgPath = util.removeFileScheme(pkgPath);
-
-        //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
-
-        let clientPath = path.normalize(path.join(rootDir, pkgPath));
-        return clientPath;
+        let mappedPath = this.getFileMap(pkgPath);
+        if (!mappedPath) {
+            mappedPath = this.getFileMap(this.fileUtils.getAlternateBrsFileName(pkgPath));
+        }
+        return mappedPath ? mappedPath.src : undefined;
     }
 }
