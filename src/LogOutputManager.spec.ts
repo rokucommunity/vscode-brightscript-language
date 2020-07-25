@@ -350,7 +350,6 @@ describe('LogOutputManager ', () => {
         });
     });
 
-
     describe('tests getCustomLogText file prefix', () => {
         it('tests Full', () => {
             logOutputManager.hyperlinkFormat = 'Full';
@@ -450,7 +449,6 @@ describe('LogOutputManager ', () => {
             });
         });
     });
-
 
     describe('tests matchesFilter', () => {
         describe('mustInclude items', () => {

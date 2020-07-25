@@ -37,7 +37,7 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
     public fileUtils: BrightscriptFileUtils;
-    
+
     public async setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
         this.fileMaps = {};
