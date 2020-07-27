@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased]
+### Changed
+ - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-0716)
+### Fixed
+ - (BrighterScript) bug on Windows when transpiling import statements into xml script tags that would use the wrong path separator sometimes.
+
+
+
 ## [2.5.4] - 2020-07-14
 ### Changed
  - upgraded to [roku-deploy@3.2.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#322---2020-07-14)
