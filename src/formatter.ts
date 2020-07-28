@@ -32,10 +32,8 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
             let text = document.getText();
             let formatter = new BrighterScriptFormatter();
             let formattedText = formatter.format(text, <FormattingOptions>{
-                //override with user settings
-                ...userSettingsOptions,
-                //override user settings with bsfmt.json options
-                ...(bsfmtOptions ?? {}),
+                //if we found bsfmt.json options, use ONLY those. Otherwise, use any options found from user/workspace settings
+                ...(bsfmtOptions ?? userSettingsOptions),
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 formatMultiLineObjectsAndArrays: false
