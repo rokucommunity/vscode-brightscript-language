@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- (Formatter) ability to load formatter settings in `bsfmt.json` file in cwd. The extension loads `./bsfmt.json` first, and then from user settings next. 
+- (Formatter) ability to load formatter settings in `bsfmt.json` file in cwd. If `bsfmt.json` exists, then user/workspace formatting settings are ignored. 
 ### Changed
  - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-0716)
  - Upgraded to [brighterscript-formatter@1.5.2](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#152---2020-07-19)
