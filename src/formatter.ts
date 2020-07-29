@@ -1,4 +1,5 @@
-import { Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
+import { Runner, Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
+
 import {
     DocumentRangeFormattingEditProvider,
     EndOfLine,
@@ -15,13 +16,24 @@ import * as vscode from 'vscode';
 export class Formatter implements DocumentRangeFormattingEditProvider {
 
     public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): ProviderResult<TextEdit[]> {
-        let config = workspace.getConfiguration('brightscript.format');
+
+        //TODO is there anything we can to do to better detect when the same file is used in multiple workspaces?
+        //vscode seems to pick the lowest workspace (or perhaps the last workspace?)
+        const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
+
+        let bsfmtOptions = new Runner().getBsfmtOptions({
+            cwd: workspaceFolder.uri.fsPath,
+            //we just want bsfmt options...but files is mandatory. Don't worry, we won't actually use it.
+            files: []
+        });
+        let userSettingsOptions = workspace.getConfiguration('brightscript.format');
+
         try {
             let text = document.getText();
             let formatter = new BrighterScriptFormatter();
             let formattedText = formatter.format(text, <FormattingOptions>{
-                //pass along all config format values
-                ...config,
+                //if we found bsfmt.json options, use ONLY those. Otherwise, use any options found from user/workspace settings
+                ...(bsfmtOptions ?? userSettingsOptions),
                 indentSpaceCount: options.tabSize,
                 indentStyle: options.insertSpaces ? 'spaces' : 'tabs',
                 formatMultiLineObjectsAndArrays: false
