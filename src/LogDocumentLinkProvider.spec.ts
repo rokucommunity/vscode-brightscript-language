@@ -73,14 +73,14 @@ describe('LogDocumentLinkProvider', () => {
                 dest: path.normalize('C:/project/out/source/main.brs')
             });
             let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full');
-            linkProvider.addCustomLink(link);
+            linkProvider.addCustomPkgLink(link);
             expect(linkProvider.customLinks.length).to.equal(1);
             linkProvider.resetCustomLinks();
             expect(linkProvider.customLinks.length).to.equal(0);
         });
     });
 
-    describe('addCustomLink', () => {
+    describe('addCustomLink - pkg', () => {
         it('adds links', () => {
             let linkProviderMock = sinon.mock(linkProvider);
             linkProviderMock.expects('getFileMap').returns({
@@ -88,7 +88,20 @@ describe('LogDocumentLinkProvider', () => {
                 dest: path.normalize('C:/project/out/source/main.brs')
             });
             let link = new CustomDocumentLink(1, 10, 1, 'pkg:/full.brs(12)', 12, 'full.brs');
-            linkProvider.addCustomLink(link);
+            linkProvider.addCustomPkgLink(link);
+            expect(linkProvider.customLinks.length).to.equal(1);
+        });
+    });
+
+    describe('addCustomLink - file', () => {
+        it('adds links', () => {
+            let linkProviderMock = sinon.mock(linkProvider);
+            linkProviderMock.expects('getFileMap').returns({
+                src: path.normalize('C:/project/source/main.brs'),
+                dest: path.normalize('C:/project/out/source/main.brs')
+            });
+            let link = new CustomDocumentLink(1, 10, 1, 'file:///full.brs(12)', 12, 'full.brs');
+            linkProvider.addCustomFileLink(link);
             expect(linkProvider.customLinks.length).to.equal(1);
         });
     });

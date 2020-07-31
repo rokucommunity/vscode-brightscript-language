@@ -4,6 +4,7 @@ import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
 
 import { util } from './util';
+import BrightscriptFileUtils from './BrightScriptFileUtils';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
@@ -30,10 +31,12 @@ export class CustomDocumentLink {
 export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     constructor() {
         this.customLinks = [];
+        this.fileUtils = new BrightscriptFileUtils();
     }
 
     //add import as property so it can be mocked in tests
     private rokuDeploy = rokuDeploy;
+    public fileUtils: BrightscriptFileUtils;
 
     public async setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
@@ -78,9 +81,17 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         return this.fileMaps[pkgPath];
     }
 
-    public addCustomLink(customLink: CustomDocumentLink) {
-        let match: RegExpExecArray;
+    public addCustomFileLink(customLink: CustomDocumentLink) {
+        let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+        let uri = vscode.Uri.file(customLink.pkgPath);
+        if (customLink.lineNumber) {
+            uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
+        }
 
+        this.customLinks.push(new DocumentLink(range, uri));
+    }
+
+    public addCustomPkgLink(customLink: CustomDocumentLink) {
         let fileMap = this.getFileMap(customLink.pkgPath);
         if (fileMap) {
             let uri = vscode.Uri.file(fileMap.src);
@@ -99,13 +110,12 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     public convertPkgPathToFsPath(pkgPath: string) {
-        //remove any preceding file scheme
-        pkgPath = util.removeFileScheme(pkgPath);
-
-        //use debugRootDir if provided, or rootDir if not provided.
-        let rootDir = this.launchConfig.debugRootDir ? this.launchConfig.debugRootDir : this.launchConfig.rootDir;
-
-        let clientPath = path.normalize(path.join(rootDir, pkgPath));
-        return clientPath;
+        let mappedPath = this.getFileMap(pkgPath);
+        if (!mappedPath) {
+            //if a .brs file gets in here, that comes from a .brs file, but no sourcemap is present, then try to find the alternate source file.
+            //this issue can arise when sourcemaps are nto present
+            mappedPath = this.getFileMap(this.fileUtils.getAlternateBrsFileName(pkgPath));
+        }
+        return mappedPath ? mappedPath.src : undefined;
     }
 }
