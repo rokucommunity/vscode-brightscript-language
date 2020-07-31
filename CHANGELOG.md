@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased]
+## [2.6.0] - 2020-07-29
+### Added
+- (Formatter) ability to load formatter settings in `bsfmt.json` file in cwd. If `bsfmt.json` exists, then user/workspace formatting settings are ignored. 
 ### Changed
  - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-0716)
+ - Upgraded to [brighterscript-formatter@1.5.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#154---2020-07-29)
 ### Fixed
  - (BrighterScript) bug on Windows when transpiling import statements into xml script tags that would use the wrong path separator sometimes.
 
@@ -1198,6 +1201,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.6.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.2...v2.5.3
 [2.5.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.1...v2.5.2
