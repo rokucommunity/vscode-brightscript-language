@@ -81,29 +81,27 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         return this.fileMaps[pkgPath];
     }
 
-    public addCustomLink(customLink: CustomDocumentLink, isFilePath: boolean = false) {
-        if (isFilePath) {
-            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-            let uri = vscode.Uri.file(customLink.pkgPath);
+    public addCustomFileLink(customLink: CustomDocumentLink) {
+        let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+        let uri = vscode.Uri.file(customLink.pkgPath);
+        if (customLink.lineNumber) {
+            uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
+        }
+
+        this.customLinks.push(new DocumentLink(range, uri));
+    }
+
+    public addCustomPkgLink(customLink: CustomDocumentLink) {
+        let fileMap = this.getFileMap(customLink.pkgPath);
+        if (fileMap) {
+            let uri = vscode.Uri.file(fileMap.src);
             if (customLink.lineNumber) {
                 uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
             }
-
+            let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
             this.customLinks.push(new DocumentLink(range, uri));
-
         } else {
-
-            let fileMap = this.getFileMap(customLink.pkgPath);
-            if (fileMap) {
-                let uri = vscode.Uri.file(fileMap.src);
-                if (customLink.lineNumber) {
-                    uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-                }
-                let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-                this.customLinks.push(new DocumentLink(range, uri));
-            } else {
-                console.log('could not find matching file for link with path ' + customLink.pkgPath);
-            }
+            console.log('could not find matching file for link with path ' + customLink.pkgPath);
         }
     }
 
@@ -114,6 +112,8 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     public convertPkgPathToFsPath(pkgPath: string) {
         let mappedPath = this.getFileMap(pkgPath);
         if (!mappedPath) {
+            //if a .brs file gets in here, that comes from a .brs file, but no sourcemap is present, then try to find the alternate source file.
+            //this issue can arise when sourcemaps are nto present
             mappedPath = this.getFileMap(this.fileUtils.getAlternateBrsFileName(pkgPath));
         }
         return mappedPath ? mappedPath.src : undefined;

@@ -39,6 +39,12 @@ export class LogOutputManager {
         this.includeRegex = null;
         this.logLevelRegex = null;
         this.excludeRegex = null;
+        /**
+         * we want to catch a few different link formats here:
+         *  - pkg:/path/file.brs(LINE:COL)
+         *  - file://path/file.bs:LINE
+         *  - at line LINE of file pkg:/path/file.brs - this case can arise when the device reports various scenegraph errors such as fields not present, or texture size issues, etc
+         */
         this.pkgRegex = /(?:\s*at line (\d*) of file )*(?:(pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))*/;
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
@@ -269,7 +275,11 @@ export class LogOutputManager {
                 const ext = `.${match[4]}`.toLowerCase();
                 let customText = this.getCustomLogText(path, filename, ext, Number(lineNumber), logLineNumber, isFilePath);
                 const customLink = new CustomDocumentLink(logLineNumber, match.index, customText.length, path, lineNumber, filename);
-                this.docLinkProvider.addCustomLink(customLink, isFilePath);
+                if (isFilePath) {
+                    this.docLinkProvider.addCustomFileLink(customLink);
+                } else {
+                    this.docLinkProvider.addCustomPkgLink(customLink);
+                }
                 let logText = logLine.text.substring(0, match.index) + customText + logLine.text.substring(match.index + match[0].length);
                 this.outputChannel.appendLine(logText);
             } else {

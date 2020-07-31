@@ -298,7 +298,7 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');
@@ -342,7 +342,7 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');
@@ -398,7 +398,7 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomFileLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');
@@ -442,7 +442,7 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');
