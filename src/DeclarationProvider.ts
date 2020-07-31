@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as iconv from 'iconv-lite';
 import * as vscode from 'vscode';
 
@@ -351,13 +351,16 @@ export class DeclarationProvider implements Disposable {
     public getFunctionBeforeLine(filePath: string, lineNumber: number): BrightScriptDeclaration | null {
         let symbols = this.cache.get(filePath);
         if (!symbols) {
-            for (const doc of vscode.workspace.textDocuments) {
-                if (doc.uri.fsPath === filePath) {
-                    let decls = this.readDeclarations(doc.uri, doc.getText());
-                    this.cache.set(filePath, decls);
-                }
+            try {
+
+                let uri = vscode.Uri.file(filePath);
+                let decls = this.readDeclarations(uri, fs.readFileSync(filePath, 'utf8'));
+                this.cache.set(filePath, decls);
+                // if there was no match, then get the declarations now
+                symbols = this.cache.get(filePath);
+            } catch (e) {
+                console.error(`error loading symbols for file ${filePath}: ${e.message}`);
             }
-            symbols = this.cache.get(filePath);
         }
         //try to load it now
         if (symbols) {

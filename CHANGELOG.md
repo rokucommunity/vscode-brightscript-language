@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.6.0] - 2020-07-29
+### Added
+- (Formatter) ability to load formatter settings in `bsfmt.json` file in cwd. If `bsfmt.json` exists, then user/workspace formatting settings are ignored. 
+### Changed
+ - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-0716)
+ - Upgraded to [brighterscript-formatter@1.5.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#154---2020-07-29)
+### Fixed
+ - (BrighterScript) bug on Windows when transpiling import statements into xml script tags that would use the wrong path separator sometimes.
+
+
+
+## [2.5.4] - 2020-07-14
+### Changed
+ - upgraded to [roku-deploy@3.2.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#322---2020-07-14)
+ - upgraded to [brighterscript@0.12.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0121---2020-07-15)
+### Fixed
+ - (LanguageServer) - critical bug in BrighterScript and roku-deploy when when loading `stagingFolderPath` from `rokudeploy.json` or `bsconfig.json` that would crash the language server
+
+
+
 ## [2.5.3] - 2020-07-11
 ### Fixed
  - (Debugger) Prevent debug session crash if target breakpoint file doesn't exist. [roku-debug#10](https://github.com/rokucommunity/roku-debug/pull/10)
@@ -1181,6 +1201,8 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.6.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.4...v2.6.0
+[2.5.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.2...v2.5.3
 [2.5.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.1...v2.5.2
 [2.5.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.0...v2.5.1

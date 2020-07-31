@@ -254,21 +254,21 @@ describe('LogOutputManager ', () => {
         it('tests Full', () => {
             logOutputManager.hyperlinkFormat = 'Full';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, 'pkg:/path/file.brs(20)');
         });
 
         it('tests Short', () => {
             logOutputManager.hyperlinkFormat = 'Short';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, '#2');
         });
 
         it('tests Hidden', () => {
             logOutputManager.hyperlinkFormat = 'Hidden';
             let logText = logOutputManager.getCustomLogText('pkg:/path/file.brs', 'file',
-                '.brs', 20, 2);
+                '.brs', 20, 2, false);
             assert.equal(logText, ' ');
         });
 
@@ -283,7 +283,7 @@ describe('LogOutputManager ', () => {
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 let logText = logOutputManager.getCustomLogText(param.text, 'file',
-                    '.brs', 20, 2);
+                    '.brs', 20, 2, false);
                 assert.equal(logText, 'file.brs(20)');
             });
         });
@@ -298,7 +298,7 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');
@@ -321,7 +321,7 @@ describe('LogOutputManager ', () => {
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
                 let logText = logOutputManager.getCustomLogText(param.text, 'file',
-                    '.brs', 20, 2);
+                    '.brs', 20, 2, false);
                 assert.equal(logText, 'file.methodName(20)');
             });
         });
@@ -342,7 +342,107 @@ describe('LogOutputManager ', () => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
-                logDocumentLinkProviderMock.expects('addCustomLink');
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
+                const logLine = new LogLine(param.text + ' sometext', true);
+                logOutputManager.addLogLineToOutput(logLine);
+                // assert.equal(logText, 'file.methodName(20)');
+            });
+        });
+    });
+
+    describe('tests getCustomLogText file prefix', () => {
+        it('tests Full', () => {
+            logOutputManager.hyperlinkFormat = 'Full';
+            let logText = logOutputManager.getCustomLogText('file:///path/file.brs', 'file',
+                '.brs', 20, 2, true);
+            assert.equal(logText, 'file:///path/file.brs(20)');
+        });
+
+        it('tests Short', () => {
+            logOutputManager.hyperlinkFormat = 'Short';
+            let logText = logOutputManager.getCustomLogText('file:///path/file.brs', 'file',
+                '.brs', 20, 2, true);
+            assert.equal(logText, '#2');
+        });
+
+        it('tests Hidden', () => {
+            logOutputManager.hyperlinkFormat = 'Hidden';
+            let logText = logOutputManager.getCustomLogText('file:///path/file.brs', 'file',
+                '.brs', 20, 2, true);
+            assert.equal(logText, ' ');
+        });
+
+        describe('tests Filename', () => {
+            let params = [
+                { configSetting: 'Filename', text: 'file:///file.brs(20)' },
+                { configSetting: 'Filename', text: 'file:///path/file.brs(20)' },
+                { configSetting: 'Filename', text: 'file:///path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.hyperlinkFormat = param.configSetting;
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                let logText = logOutputManager.getCustomLogText(param.text, 'file',
+                    '.brs', 20, 2, true);
+                assert.equal(logText, 'file.brs(20)');
+            });
+        });
+
+        describe('tests Filename with addline to log', () => {
+            let params = [
+                { configSetting: 'Filename', text: 'file:///file.brs(20)' },
+                { configSetting: 'Filename', text: 'file:///path/file.brs(20)' },
+                { configSetting: 'Filename', text: 'file:///path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.hyperlinkFormat = param.configSetting;
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                logDocumentLinkProviderMock.expects('addCustomFileLink');
+                const logLine = new LogLine(param.text + ' sometext', true);
+                logOutputManager.addLogLineToOutput(logLine);
+                // assert.equal(logText, 'file.methodName(20)');
+            });
+        });
+        describe('tests FilenameAndFunction', () => {
+            let params = [
+                { configSetting: null, text: 'file:///file.brs(20)' },
+                { configSetting: null, text: 'file:///path/file.brs(20)' },
+                { configSetting: null, text: 'file:///path/path2/file.brs(20)' },
+                { configSetting: '', text: 'file:///file.brs(20)' },
+                { configSetting: '', text: 'file:///path/file.brs(20)' },
+                { configSetting: '', text: 'file:///path/path2/file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'file:///file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'file:///path/file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'file:///path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.hyperlinkFormat = param.configSetting;
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                let logText = logOutputManager.getCustomLogText(param.text, 'file',
+                    '.brs', 20, 2, true);
+                assert.equal(logText, 'file.methodName(20)');
+            });
+        });
+
+        describe('tests FilenameAndFunction with addline to log', () => {
+            let params = [
+                { configSetting: null, text: 'pkg:/file.brs(20)' },
+                { configSetting: null, text: 'pkg:/path/file.brs(20)' },
+                { configSetting: null, text: 'pkg:/path/path2/file.brs(20)' },
+                { configSetting: '', text: 'pkg:/file.brs(20)' },
+                { configSetting: '', text: 'pkg:/path/file.brs(20)' },
+                { configSetting: '', text: 'pkg:/path/path2/file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'pkg:/file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'pkg:/path/file.brs(20)' },
+                { configSetting: 'FilenameAndFunction', text: 'pkg:/path/path2/file.brs(20)' },
+            ];
+            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+                logOutputManager.hyperlinkFormat = param.configSetting;
+                declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
+                logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
+                logDocumentLinkProviderMock.expects('addCustomPkgLink');
                 const logLine = new LogLine(param.text + ' sometext', true);
                 logOutputManager.addLogLineToOutput(logLine);
                 // assert.equal(logText, 'file.methodName(20)');

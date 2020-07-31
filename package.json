@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.5.3",
+    "version": "2.6.0",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -46,8 +46,8 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.12.0",
-        "brighterscript-formatter": "^1.4.0",
+        "brighterscript": "^0.12.2",
+        "brighterscript-formatter": "^1.5.4",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -70,7 +70,7 @@
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
         "roku-debug": "^0.5.1",
-        "roku-deploy": "^3.2.1",
+        "roku-deploy": "^3.2.2",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
