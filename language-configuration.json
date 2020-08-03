@@ -66,5 +66,9 @@
             "start": "^(i?\\s*'\\s*#region(\\s+.*)?)$",
             "end": "^(i?\\s*'\\s*#endregion(\\s*.*)?)$"
         }
+    },
+    "indentationRules": {
+        "increaseIndentPattern": "(((^|[=,(:])\\s*\\b(if|else|elseif|for|while|function|sub)\\b((?!\\b(then)\\b).)*)|(\\b(then)\\b\\s*)|({\\s*))$",
+        "decreaseIndentPattern": "^\\s*((\\b(else|elseif|endif|endfor|endwhile|endsub|endfunction)\\b)|((\\b(end)\\s+(if|for|while|sub|function)\\b))|})"
     }
 }
