@@ -6,11 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.7.0] - 2020-08-03
+### Added
+ - support for clickable `file://` links in the log output ([#262](https://github.com/rokucommunity/vscode-brightscript-language/pull/262))
+### Changed
+ - upgraded to [brighterscript@0.12.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0123---2020-08-03)
+### Fixed
+ - (Language Server) bug that would provide stale completions due to the file throttling introduced in brighterscript@0.11.2. Now the language server will wait for the throttled parsing to complete before serving completion results. 
+ - improvements in the auto-indent functionality for certain language keywords ([#271](https://github.com/rokucommunity/vscode-brightscript-language/pull/271)).
+
+
+
 ## [2.6.0] - 2020-07-29
 ### Added
 - (Formatter) ability to load formatter settings in `bsfmt.json` file in cwd. If `bsfmt.json` exists, then user/workspace formatting settings are ignored. 
 ### Changed
- - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-0716)
+ - upgraded to [brighterscript@0.12.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0122---2020-07-16)
  - Upgraded to [brighterscript-formatter@1.5.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#154---2020-07-29)
 ### Fixed
  - (BrighterScript) bug on Windows when transpiling import statements into xml script tags that would use the wrong path separator sometimes.
@@ -1201,6 +1212,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 - Issues with language colorization
 
 
+[2.7.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.2...v2.5.3
