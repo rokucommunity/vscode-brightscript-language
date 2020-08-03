@@ -19,7 +19,7 @@ describe('Language auto-indent rules', () => {
                 throw new Error('No cases found');
             }
             matches.forEach(match => {
-                const expected = readFileSync(match).toString().trimRight().replace(/\r\n/, '\n');
+                const expected = readFileSync(match).toString().trimRight().replace(/\r\n/g, '\n');
                 const actual = reIndent(match, expected, config.indentationRules);
                 expect(actual).to.equal(expected);
             });
