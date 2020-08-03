@@ -14,6 +14,9 @@ function autoIndent2 (arg)
     p = {  
         x: 100,
         y: 100,
+        fn:function(arg)
+            print "is p.fn"
+        end function
     }
 
     fn=sub ()

@@ -13,6 +13,9 @@ function autoIndent1(arg as Object) as void
     p = {
         x: 100
         y: 100
+        fn: sub(arg as object)
+            print "is p.fn"
+        end sub
     }
 
     fn = sub()
