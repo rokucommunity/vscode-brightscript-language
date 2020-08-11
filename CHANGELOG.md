@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.0] - 2020-08-10
+### Added
+ - (Language Server) ability to mark the `extends` and `project` options in `bsconfig.json` as optional by prefixing the path with a question mark. See [this link](https://github.com/rokucommunity/brighterscript#optional-extends-and-project) for more details. 
+### Changed
+ - upgraded to [brighterscript@0.13.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0130---2020-08-10)
+
+
+
 ## [2.7.0] - 2020-08-03
 ### Added
  - support for clickable `file://` links in the log output ([#262](https://github.com/rokucommunity/vscode-brightscript-language/pull/262))
@@ -1211,7 +1219,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 ### Fixed
 - Issues with language colorization
 
-
+[2.8.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.3...v2.5.4
