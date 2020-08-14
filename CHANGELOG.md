@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.1] - 2020-08-14
+### Fixed
+ - bug in `DebugConfigProvider` that incorrectly used `${workspaceFolder}` when `rootDir` didn't exist. 
+
+
+
 ## [2.8.0] - 2020-08-10
 ### Added
  - (Language Server) ability to mark the `extends` and `project` options in `bsconfig.json` as optional by prefixing the path with a question mark. See [this link](https://github.com/rokucommunity/brighterscript#optional-extends-and-project) for more details. 
@@ -1367,3 +1373,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.6.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.5.4...v2.6.0
 [2.7.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.6.0...v2.7.0
 [2.8.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.7.0...v2.8.0
+[2.8.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.0...v2.8.1

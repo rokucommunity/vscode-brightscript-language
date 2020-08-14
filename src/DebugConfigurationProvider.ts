@@ -227,7 +227,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
         }
 
-        if (!config.rootDir || fsExtra.existsSync(config.rootDir) === false) {
+        if (!config.rootDir) {
             console.log('No rootDir specified: defaulting to ${workspaceFolder}');
             //use the current workspace folder
             config.rootDir = folderUri.fsPath;
