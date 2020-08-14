@@ -9,7 +9,7 @@ import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbol
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
-import { BrightScriptDebugConfigurationProvider as BrsDebugConfigurationProvider } from './DebugConfigurationProvider';
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
@@ -67,7 +67,7 @@ export class Extension {
         this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
         this.debugServerOutputChannel.appendLine('Extension startup');
 
-        let configProvider = new BrsDebugConfigurationProvider(context, activeDeviceManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);
         context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
 
         let docLinkProvider = new LogDocumentLinkProvider();
