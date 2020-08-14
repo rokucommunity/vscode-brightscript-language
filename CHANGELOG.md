@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.8.1] - 2020-08-14
 ###  Changed
  - upgraded to [roku-deploy@3.2.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#323---2020-08-14)
+ - upgraded to [roku-debug@0.5.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#053---2020-08-14)
  - throw exception when copying to staging folder and `rootDir` does not exist in the file system
  - throw exception when zipping package and `${stagingFolder}/manifest` does not exist in the file system
 ### Fixed
