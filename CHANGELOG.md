@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.2] - 2020-09-01
+### Changed
+ - update to [brighterscript@0.13.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0132---2020-08-31)
+ - (Language Server) Upgraded BS1104 to error (previously a warning) and refined the messaging.
+
+
+
 ## [2.8.1] - 2020-08-14
 ###  Changed
  - upgraded to [roku-deploy@3.2.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#323---2020-08-14)
@@ -1380,3 +1387,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.7.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.6.0...v2.7.0
 [2.8.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.7.0...v2.8.0
 [2.8.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.0...v2.8.1
+[2.8.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.1...v2.8.2
