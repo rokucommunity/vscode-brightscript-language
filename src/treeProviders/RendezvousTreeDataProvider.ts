@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 
 import { RendezvousHistory } from 'roku-debug';
 
-export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+export class RendezvousTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     constructor(context: vscode.ExtensionContext) {
         this.toggleSmartSorting();

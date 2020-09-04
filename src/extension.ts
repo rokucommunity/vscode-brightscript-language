@@ -15,7 +15,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-import { RendezvousViewProvider } from './RendezvousViewProvider';
+import { RendezvousTreeDataProvider } from './treeProviders/RendezvousTreeDataProvider';
 import {
     BrightScriptWorkspaceSymbolProvider,
     SymbolInformationRepository
@@ -46,7 +46,7 @@ export class Extension {
         let subscriptions = context.subscriptions;
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
-        let rendezvousViewProvider = new RendezvousViewProvider(context);
+        let rendezvousViewProvider = new RendezvousTreeDataProvider(context);
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
