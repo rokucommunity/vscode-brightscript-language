@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.3] - 2020-09-04
+### Changed
+ - (Language Server) Add error diagnostic BS1115 which flags duplicate component names [brighterscript#186](https://github.com/rokucommunity/brighterscript/pull/186)
+ - update to [brighterscript@0.14.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0140---2020-09-04)
+
+
 ## [2.8.2] - 2020-09-01
 ### Changed
  - update to [brighterscript@0.13.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0132---2020-08-31)
@@ -1388,3 +1394,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.7.0...v2.8.0
 [2.8.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.0...v2.8.1
 [2.8.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.1...v2.8.2
+[2.8.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.2...v2.8.3
