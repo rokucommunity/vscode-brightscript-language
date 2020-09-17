@@ -22,6 +22,7 @@ import {
 } from './SymbolInformationRepository';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
+import { ProjectsViewTreeProvider } from './treeProviders/ProjectTreeProvider';
 
 const EXTENSION_ID = 'celsoaf.brightscript';
 
@@ -30,6 +31,8 @@ export class Extension {
     public outputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
+
+    public projectsViewTreeProvider: ProjectsViewTreeProvider;
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
@@ -47,10 +50,22 @@ export class Extension {
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
         let rendezvousViewProvider = new RendezvousTreeDataProvider(context);
-        vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+        subscriptions.push(
+            vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider)
+        );
+
+        this.projectsViewTreeProvider = new ProjectsViewTreeProvider(context, languageServerManager);
+        subscriptions.push(
+            vscode.window.registerTreeDataProvider('projectsView', this.projectsViewTreeProvider)
+        );
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
             vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
+            this.projectsViewTreeProvider.clear();
+            await languageServerManager.restart();
         }));
 
         //register the code formatter

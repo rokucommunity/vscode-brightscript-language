@@ -11,7 +11,8 @@
         "**/bower_components": true,
         "**/*.code-search": true,
         "**/dist": true,
-        "**/out": true
+        "**/out": true,
+        "**/.nyc_output": true
     },
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,

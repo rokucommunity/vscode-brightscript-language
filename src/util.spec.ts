@@ -26,6 +26,18 @@ describe('Util', () => {
         });
     });
 
+    describe('removeTrailingSlash', () => {
+        it('removes trailing windows slash', () => {
+            expect(util.removeTrailingSlash('a\\b\\c\\')).to.equal('a\\b\\c');
+        });
+        it('removes trailing unix slash', () => {
+            expect(util.removeTrailingSlash('a/b/c/')).to.equal('a/b/c');
+        });
+        it('returns original string when no trailing slash detected', () => {
+            expect(util.removeTrailingSlash('a/b/c')).to.equal('a/b/c');
+        });
+    });
+
     describe('checkForTrailingSlash', () => {
         it('should add trailing slash when missing', () => {
             assert.equal(util.ensureTrailingSlash('./.tmp/findMainFunctionTests'), './.tmp/findMainFunctionTests/');

@@ -46,8 +46,8 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.14.0",
-        "brighterscript-formatter": "^1.5.4",
+        "brighterscript": "file:../brighterscript",
+        "brighterscript-formatter": "file:../brighterscript-formatter",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "eol": "^0.9.1",
@@ -69,8 +69,8 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-debug": "^0.5.3",
-        "roku-deploy": "^3.2.3",
+        "roku-debug": "file:../roku-debug",
+        "roku-deploy": "file:../roku-deploy",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
@@ -146,6 +146,14 @@
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
                 }
+            ],
+            "explorer": [
+                {
+                    "id": "projectsView",
+                    "name": "BrightScript Projects",
+                    "visibility": "visible",
+                    "group": "BrightScript Projects"
+                }
             ]
         },
         "menus": {
@@ -159,18 +167,30 @@
             "view/title": [
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortMethod",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == 'rendezvousView'",
                     "group": "Rendezvous"
                 },
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortDirection",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == 'rendezvousView'",
                     "group": "Rendezvous"
                 },
                 {
                     "command": "extension.brightscript.rendezvous.clearHistory",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == 'rendezvousView'",
                     "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.languageServer.restart",
+                    "when": "view == 'projectsView'",
+                    "group": "navigation"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "extension.brightscript.languageServer.reloadProject",
+                    "when": "view == 'projectsView' && viewItem == 'project'",
+                    "group": "inline"
                 }
             ]
         },
@@ -1531,6 +1551,18 @@
                     "light": "./images/preview-right-light.svg",
                     "dark": "./images/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.languageServer.restart",
+                "title": "Restart BS Server",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.languageServer.reloadProject",
+                "title": "Reload Project",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
             }
         ],
         "keybindings": [

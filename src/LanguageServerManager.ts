@@ -12,9 +12,9 @@ import {
     window,
     workspace,
 } from 'vscode';
-import { CustomCommands } from 'brighterscript';
+import { CustomCommands, Deferred, ProjectInfo, CustomNotifications } from 'brighterscript';
 import { CodeWithSourceMap } from 'source-map';
-import { Deferred } from 'brighterscript';
+import { util } from './util';
 
 export class LanaguageServerManager {
     constructor() {
@@ -111,8 +111,20 @@ export class LanaguageServerManager {
             this.client.start();
             await this.client.onReady();
 
-            this.client.onNotification('critical-failure', (message) => {
+            //anytime there's a critical failure, show that to the user as a popup
+            this.client.onNotification(CustomNotifications.criticalFailure, (message) => {
                 window.showErrorMessage(message);
+            });
+
+            //anytime the project changes (new project created, files deleted, files added), notify listeners.
+            this.client.onNotification(CustomNotifications.projectsChanged, (message) => {
+                for (let listener of this._onProjectsChangedHandlers) {
+                    try {
+                        listener(message);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
             });
 
             this.buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -138,6 +150,10 @@ export class LanaguageServerManager {
                     this.buildStatusStatusBar.color = '#FF0000';
                 }
             });
+
+            this.client.onNotification('project-change', (message) => {
+
+            });
             this.deferred.resolve(true);
         } catch (e) {
             this.client?.stop();
@@ -146,12 +162,30 @@ export class LanaguageServerManager {
         }
     }
 
+    /**
+     * Stop and then start the language server.
+     * This is a noop if the language server is currently disabled
+     */
+    public async restart() {
+        this.disableLanguageServer();
+        await util.delay(1);
+        await this.enableLanguageServer();
+    }
+
+    public async reloadProject(workspacePath: string) {
+        await this.client.sendRequest('workspace/executeCommand', {
+            command: CustomCommands.reloadProject,
+            arguments: [workspacePath]
+        } as ExecuteCommandParams);
+    }
+
     private disableLanguageServer() {
         if (this.client) {
             this.client.stop();
             this.buildStatusStatusBar.dispose();
             this.buildStatusStatusBar = undefined;
             this.client = undefined;
+            this.deferred = new Deferred();
         }
     }
 
@@ -165,11 +199,34 @@ export class LanaguageServerManager {
         //wait for the language server to be ready
         await this.ready();
         let result = await this.client.sendRequest('workspace/executeCommand', {
-            command: CustomCommands.TranspileFile,
+            command: CustomCommands.transpileFile,
             arguments: [pathAbsolute]
         } as ExecuteCommandParams);
         return result as CodeWithSourceMap;
     }
+
+    public async getProjectsInfo() {
+        await this.ready();
+        const result = await this.client.sendRequest('workspace/executeCommand', {
+            command: CustomCommands.getProjectsInfo,
+            arguments: []
+        } as ExecuteCommandParams);
+        return result as ProjectInfo[];
+    }
+
+    public onProjectsChanged(callback) {
+        this._onProjectsChangedHandlers.push(callback);
+        //immediately fire an event
+        process.nextTick(() => {
+            callback();
+        });
+        //return a function that will dispose of this handler
+        return () => {
+            this._onProjectsChangedHandlers.splice(this._onProjectsChangedHandlers.indexOf(callback), 1);
+        };
+    }
+    private _onProjectsChangedHandlers = [];
 }
 
 export const languageServerManager = new LanaguageServerManager();
+

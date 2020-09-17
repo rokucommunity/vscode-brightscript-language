@@ -23,6 +23,17 @@ class Util {
         return dirPath.substr(dirPath.length - 1) !== '/' ? dirPath + '/' : dirPath;
     }
 
+    /**
+     * If there's a trailing slash, remove it. Otherwise return the original string
+     */
+    public removeTrailingSlash(dirPath: string) {
+        if (dirPath.endsWith('/') || dirPath.endsWith('\\')) {
+            return dirPath.substring(0, dirPath.length - 1);
+        } else {
+            return dirPath;
+        }
+    }
+
     public async stat(filePath: string) {
         return await new Promise((resolve, reject) => {
             fs.stat(filePath, (err, result) => {
@@ -166,6 +177,22 @@ class Util {
             this.debounceByKey[key] = debounce(fn, waitMilliseconds);
         }
         this.debounceByKey[key]();
+    }
+
+    /**
+     * Given a string, get an ID that is guaranteed to be unique for that string for the lifetime of a single run of this app
+     */
+    public getIdForKey(key: string) {
+        if (!this.idByKey[key]) {
+            this.idByKey[key] = this.idByKeySequence++;
+        }
+        return this.idByKey[key];
+    }
+    private idByKey = {} as { [key: string]: number };
+    private idByKeySequence = 1;
+    public clearIdsForKeys() {
+        this.idByKey = {};
+        this.idByKeySequence = 1;
     }
 }
 
