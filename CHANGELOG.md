@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [Unreleased]
+### Changed
+ - upgraded to [roku-debug@0.5.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#054---2020-09-25)
+### Fixed
+ - (Debugger) fixed some false positive detections of `Can't continue` in the TelnetAdapter
+
+
+
 ## [2.8.3] - 2020-09-04
 ### Changed
  - (Language Server) Add error diagnostic BS1115 which flags duplicate component names [brighterscript#186](https://github.com/rokucommunity/brighterscript/pull/186)
