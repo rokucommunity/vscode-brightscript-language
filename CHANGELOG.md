@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+### Added
+ - (Language Server) alpha version of plugin system. This is subject to change at any time, so use at your own risk.
 ### Changed
  - upgraded to [roku-debug@0.5.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#054---2020-09-25)
+ - update to [brighterscript@0.15.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0150---2020-09-18)
 ### Fixed
  - (Debugger) fixed some false positive detections of `Can't continue` in the TelnetAdapter
 
