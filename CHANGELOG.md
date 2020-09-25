@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased]
+## [2.8.4] - 2020-09-25
 ### Added
  - (Language Server) alpha version of plugin system. This is subject to change at any time, so use at your own risk.
 ### Changed
@@ -1406,3 +1406,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.0...v2.8.1
 [2.8.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.1...v2.8.2
 [2.8.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.2...v2.8.3
+[2.8.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.3...v2.8.4
