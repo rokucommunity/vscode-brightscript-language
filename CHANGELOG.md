@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.6] - 2020-09-30
+### Changed
+ - upgraded to [roku-debug@0.5.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#056---2020-09-30)
+### Fixed
+ - (Debugger) bug preventing component library debug sessions from launching in certain situations
+
+
+
 ## [2.8.5] - 2020-09-30
 ### Changed
  - upgraded to [roku-debug@0.5.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#055---2020-09-28)
@@ -1416,3 +1424,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.2...v2.8.3
 [2.8.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.3...v2.8.4
 [2.8.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.4...v2.8.5
+[2.8.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.5...v2.8.6
