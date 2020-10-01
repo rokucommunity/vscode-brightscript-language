@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.7] - 2020-10-01
+### Changed
+ - update to [brighterscript@0.15.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0152---2020-10-01)
+### Fixed
+ - (LanguageServer) annoying popup that would show anytime invalid XML was encountered.
+ - (LanguageServer) improved performance in the lexer and parser
+ - (LanguageServer) potential for accidentally changing cwd during bsconfig resolving
+
+
+
 ## [2.8.6] - 2020-09-30
 ### Changed
  - upgraded to [roku-debug@0.5.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#056---2020-09-30)
@@ -1425,3 +1435,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.3...v2.8.4
 [2.8.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.4...v2.8.5
 [2.8.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.5...v2.8.6
+[2.8.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.6...v2.8.7
