@@ -6,9 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [Unreleased]
+## [2.8.9] - 2020-10-12
+### Changed
+ - (LanguageServer) significant changes to the plugin API related to AST traversal.
+ - LanguageServer) plugin system (still in alpha) support for re-scanning the AST after modifing the AST by calling `invalidateReferences()`
+ - (LanguageServer) now sends a _diff_ of diagnostics for files, instead of the entire project's diagnostics every time. This improves performance for projects with a high number of diagnostics or files ([BrighterScript#204](https://github.com/rokucommunity/brighterscript/pull/204))
+ - update to [brighterscript@0.16.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0164---2020-10-12)
 ### Fixed
  - (Debugger) Fixed bug where `stagingFolderPath` was defaulting to `${workspaceFolder}/.roku-deploy-staging`, when it should have been `${workspaceFolder}/out/.roku-deploy-staging`. 
+ - (LanguageServer) bugs with plugin interoperability with BrighterScript when using `instanceof`. All internal BrighterScript logic now uses the `is` functions from `astutils/reflection`, and plugin authors should do the same.
+ - (LanguageServer) critical bug in diagnostic printing that would crash the program if a diagnostic was missing a valid range.
+ - (LanguageServer) Prevent bogus diagnostic on all callfunc operations ([BrighterScript#205](https://github.com/rokucommunity/brighterscript/issues/205))
+ - (LanguageServer) transpile bug for namespaced class constructors that wouldn't properly prepend the namespace in some situations. ([BrighterScript#208](https://github.com/rokucommunity/brighterscript/pull/208))
+ - (LanguageServer) bug in class validation that was causing bogus diagnostics during class construction in namespaces.([BrighterScript#203](https://github.com/rokucommunity/brighterscript/issues/203))
 
 
 
@@ -1451,3 +1461,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.5...v2.8.6
 [2.8.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.6...v2.8.7
 [2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
+[2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
