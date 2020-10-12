@@ -75,6 +75,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config = await this.processDeepLinkUrlParameter(config);
         config = this.processLogfilePath(folder, config);
 
+        //force a specific staging folder path because sometimes this conflicts with bsconfig.json
+        config.stagingFolderPath = path.join(folder.uri.fsPath, '.roku-deploy-staging');
+
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
         return config;

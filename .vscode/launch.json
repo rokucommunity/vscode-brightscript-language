@@ -34,10 +34,7 @@
             "request": "attach",
             "port": 6009,
             "restart": true,
-            "timeout": 120000,
-            "outFiles": [
-                "${workspaceRoot}/dist/**/*.js"
-            ]
+            "timeout": 120000
         },
         {
 			"name": "Debug Tests",
