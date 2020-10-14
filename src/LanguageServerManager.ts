@@ -16,7 +16,7 @@ import { CustomCommands } from 'brighterscript';
 import { CodeWithSourceMap } from 'source-map';
 import { Deferred } from 'brighterscript';
 
-export class LanaguageServerManager {
+export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
     }
@@ -155,7 +155,7 @@ export class LanaguageServerManager {
         }
     }
 
-    private isLanguageServerEnabledInSettings() {
+    public isLanguageServerEnabledInSettings() {
         var settings = vscode.workspace.getConfiguration('brightscript');
         var value = settings.enableLanguageServer === false ? false : true;
         return value;
@@ -172,4 +172,4 @@ export class LanaguageServerManager {
     }
 }
 
-export const languageServerManager = new LanaguageServerManager();
+export const languageServerManager = new LanguageServerManager();
