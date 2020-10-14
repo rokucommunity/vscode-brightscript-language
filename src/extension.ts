@@ -107,14 +107,16 @@ export class Extension {
 
         brightScriptCommands.registerCommands(context);
 
-        // experimental placeholder
-        // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
-        context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
-        context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
-        context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));
-        context.subscriptions.push(declarationProvider);
-        vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
-        vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
+        if (!languageServerManager.isLanguageServerEnabledInSettings) {
+            // experimental placeholder
+            // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
+            context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
+            context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
+            context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));
+            context.subscriptions.push(declarationProvider);
+            vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
+            vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
+        }
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session
