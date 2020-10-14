@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.10] - 2020-10-13
+### Changed
+ - updated to [brighterscript@0.16.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0167---2020-10-13)
+### Fixed
+ - (LanguageServer) bug when finding bsconfig.json that would use the wrong cwd in multi-workspace language server situations. This fix may resolve significant multi-workspace performance problems you might have been seeing.
+ - (LanguageServer) performance issue during the parser phase. We now defer certain collections until needed ([BrighterScript#210](https://github.com/rokucommunity/brighterscript/pull/210))
+
+
+
 ## [2.8.9] - 2020-10-12
 ### Changed
  - (LanguageServer) significant changes to the plugin API related to AST traversal.
@@ -1462,3 +1471,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.6...v2.8.7
 [2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
 [2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
+[2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10
