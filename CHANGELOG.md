@@ -6,6 +6,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.10] - 2020-10-13
+### Changed
+ - updated to [brighterscript@0.16.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0167---2020-10-13)
+### Fixed
+ - (LanguageServer) bug when finding bsconfig.json that would use the wrong cwd in multi-workspace language server situations. This fix may resolve significant multi-workspace performance problems you might have been seeing.
+ - (LanguageServer) performance issue during the parser phase. We now defer certain collections until needed ([BrighterScript#210](https://github.com/rokucommunity/brighterscript/pull/210))
+
+
+
+## [2.8.9] - 2020-10-12
+### Changed
+ - (LanguageServer) significant changes to the plugin API related to AST traversal.
+ - LanguageServer) plugin system (still in alpha) support for re-scanning the AST after modifing the AST by calling `invalidateReferences()`
+ - (LanguageServer) now sends a _diff_ of diagnostics for files, instead of the entire project's diagnostics every time. This improves performance for projects with a high number of diagnostics or files ([BrighterScript#204](https://github.com/rokucommunity/brighterscript/pull/204))
+ - update to [brighterscript@0.16.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0164---2020-10-12)
+### Fixed
+ - (Debugger) Fixed bug where `stagingFolderPath` was defaulting to `${workspaceFolder}/.roku-deploy-staging`, when it should have been `${workspaceFolder}/out/.roku-deploy-staging`. 
+ - (LanguageServer) bugs with plugin interoperability with BrighterScript when using `instanceof`. All internal BrighterScript logic now uses the `is` functions from `astutils/reflection`, and plugin authors should do the same.
+ - (LanguageServer) critical bug in diagnostic printing that would crash the program if a diagnostic was missing a valid range.
+ - (LanguageServer) Prevent bogus diagnostic on all callfunc operations ([BrighterScript#205](https://github.com/rokucommunity/brighterscript/issues/205))
+ - (LanguageServer) transpile bug for namespaced class constructors that wouldn't properly prepend the namespace in some situations. ([BrighterScript#208](https://github.com/rokucommunity/brighterscript/pull/208))
+ - (LanguageServer) bug in class validation that was causing bogus diagnostics during class construction in namespaces.([BrighterScript#203](https://github.com/rokucommunity/brighterscript/issues/203))
+
+
+
+## [2.8.8] - 2020-10-06
+### Changed
+ - upgraded to [roku-debug@0.5.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#057---2020-10-06)
+### Fixed
+ - (Debugger) bug that was not passing in the `stagingFolderPath` property for the root project, and therefore incorrectly loading that value from `bsconfig.json` if it existed. ([roku-debug#18](https://github.com/rokucommunity/roku-debug/pull/18))
+
+
+
+## [2.8.7] - 2020-10-01
+### Changed
+ - update to [brighterscript@0.15.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0152---2020-10-01)
+### Fixed
+ - (LanguageServer) annoying popup that would show anytime invalid XML was encountered.
+ - (LanguageServer) improved performance in the lexer and parser
+ - (LanguageServer) potential for accidentally changing cwd during bsconfig resolving
+
+
+
+## [2.8.6] - 2020-09-30
+### Changed
+ - upgraded to [roku-debug@0.5.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#056---2020-09-30)
+### Fixed
+ - (Debugger) bug preventing component library debug sessions from launching in certain situations
+
+
+
+## [2.8.5] - 2020-09-30
+### Changed
+ - upgraded to [roku-debug@0.5.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#055---2020-09-28)
+### Fixed
+ - (Debugger) bug where debugger couldn't find `manifest` file for component libraries during publish.
+
+
+
+## [2.8.4] - 2020-09-25
+### Added
+ - (Language Server) alpha version of plugin system. This is subject to change at any time, so use at your own risk.
+### Changed
+ - upgraded to [roku-debug@0.5.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#054---2020-09-25)
+ - update to [brighterscript@0.15.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0150---2020-09-18)
+### Fixed
+ - (Debugger) fixed some false positive detections of `Can't continue` in the TelnetAdapter
+
+
+
 ## [2.8.3] - 2020-09-04
 ### Changed
  - (Language Server) Add error diagnostic BS1115 which flags duplicate component names [brighterscript#186](https://github.com/rokucommunity/brighterscript/pull/186)
@@ -1395,3 +1465,10 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.0...v2.8.1
 [2.8.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.1...v2.8.2
 [2.8.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.2...v2.8.3
+[2.8.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.3...v2.8.4
+[2.8.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.4...v2.8.5
+[2.8.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.5...v2.8.6
+[2.8.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.6...v2.8.7
+[2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
+[2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
+[2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10

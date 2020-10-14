@@ -62,13 +62,13 @@ class PreversionValidator {
             if (!match) {
                 this.errors.push(`Changlog contains invalid version number in header '${version.title}'`);
             }
-            var versionNumber = match[1];
+            var versionNumber = match ? match[1] : undefined;
             if (!links[versionNumber]) {
                 this.errors.push(`Changelog is missing link for version '${versionNumber}'`);
             }
 
             //header must end with date
-            if(/\d\d\d\d\-\d\d\-\d\d$/gi.test(version.title) === false){
+            if (/\d\d\d\d\-\d\d\-\d\d$/gi.test(version.title) === false) {
                 this.errors.push(`Changelog is missing date in header '${version.title}'`);
             }
 

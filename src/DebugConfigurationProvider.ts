@@ -66,8 +66,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        //force a specific staging folder path because sometimes this conflicts with bsconfig.json
+        config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+
         // Process the different parts of the config
         config = this.processUserWorkspaceSettings(config);
+
         config = await this.sanitizeConfiguration(config, folder);
         config = await this.processEnvFile(folder, config);
         config = await this.processHostParameter(config);
@@ -220,6 +224,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //for outDir, replace workspaceFolder now
         if (config.outDir.indexOf('${workspaceFolder}') > -1) {
             config.outDir = path.normalize(config.outDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
+        if (config.stagingFolderPath.includes('${outDir}')) {
+            config.stagingFolderPath = path.normalize(config.stagingFolderPath.replace('${outDir}', config.outDir));
+        }
+        if (config.stagingFolderPath.includes('${workspaceFolder}')) {
+            config.stagingFolderPath = path.normalize(config.stagingFolderPath.replace('${workspaceFolder}', folderUri.fsPath));
         }
 
         // Make sure that directory paths end in a trailing slash
