@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.11] - 2020-10-15
+### Changed
+ - updated to [brighterscript@0.16.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0168---2020-10-15)
+### Fixed
+ - (LanguageServer) bug when printing diagnostics that would crash if the contents were missing (like for in-memory-only files injected by plugins) ([BrighterScript#217](https://github.com/rokucommunity/brighterscript/pull/217))
+ - (LanguageServer) performance improvements by moving property name collection into the parser, which elimitates a costly AST walk
+
+
+
 ## [2.8.10] - 2020-10-13
 ### Changed
  - updated to [brighterscript@0.16.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0167---2020-10-13)
@@ -1472,3 +1481,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
 [2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
 [2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10
+[2.8.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.11
