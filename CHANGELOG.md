@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.12] - 2020-10-18
+### Fixed
+ - (LanguageServer) reduce throttle for validation and parsing now that those have improved performance.
+ - (LanguageServer) massively improve validation performance by refactoring `getFileByPkgPath`
+ - (LanguageServer) micro-optimization of hot parser functions
+ - (LanguageServer) change codebase to use `import type` many places, which reduces the number of files imported at runtime
+
+
+
 ## [2.8.11] - 2020-10-15
 ### Changed
  - updated to [brighterscript@0.16.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0168---2020-10-15)
@@ -1481,4 +1490,5 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
 [2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
 [2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10
-[2.8.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.11
+[2.8.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.10...v2.8.11
+[2.8.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.11...v2.8.12
