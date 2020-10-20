@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.13] - 2020-10-20
+### Changed
+ - updated to [brighterscript@0.16.10](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#01610---2020-10-20)
+### Fixed
+ - (LanguageServer) crash when a callable has the same name as a javascript reserved name ([BrighterScript#226](https://github.com/rokucommunity/brighterscript/pull/226))
+ - (LanguageServer) crash when `import` statement is malformed ([BrighterScript#224](https://github.com/rokucommunity/brighterscript/pull/224))
+
+
+
 ## [2.8.12] - 2020-10-18
+### Changed
+ - updated to [brighterscript@0.16.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0169---2020-10-18)
 ### Fixed
  - (LanguageServer) reduce throttle for validation and parsing now that those have improved performance.
  - (LanguageServer) massively improve validation performance by refactoring `getFileByPkgPath`
@@ -1492,3 +1503,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10
 [2.8.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.10...v2.8.11
 [2.8.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.11...v2.8.12
+[2.8.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.12...v2.8.13
