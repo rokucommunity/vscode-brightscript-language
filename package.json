@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.8.10",
+    "version": "2.8.14",
     "publisher": "celsoaf",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -46,7 +46,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.16.7",
+        "brighterscript": "^0.16.11",
         "brighterscript-formatter": "^1.5.4",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",

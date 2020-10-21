@@ -6,6 +6,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.14] - 2020-10-20
+### Changed
+ - updated to [brighterscript@0.16.11](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#01611---2020-10-20)
+ - (LanguageServer) removed `bs1106` (.bs file script tags must use the `type="brighterscript"`) diagnostic because it's unnecessary.
+### Fixed
+ - (LanguageServer) bug when using single quotes in an xml script tag
+
+
+
+## [2.8.13] - 2020-10-20
+### Changed
+ - updated to [brighterscript@0.16.10](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#01610---2020-10-20)
+### Fixed
+ - (LanguageServer) crash when a callable has the same name as a javascript reserved name ([BrighterScript#226](https://github.com/rokucommunity/brighterscript/pull/226))
+ - (LanguageServer) crash when `import` statement is malformed ([BrighterScript#224](https://github.com/rokucommunity/brighterscript/pull/224))
+
+
+
+## [2.8.12] - 2020-10-18
+### Changed
+ - updated to [brighterscript@0.16.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0169---2020-10-18)
+### Fixed
+ - (LanguageServer) reduce throttle for validation and parsing now that those have improved performance.
+ - (LanguageServer) massively improve validation performance by refactoring `getFileByPkgPath`
+ - (LanguageServer) micro-optimization of hot parser functions
+ - (LanguageServer) change codebase to use `import type` many places, which reduces the number of files imported at runtime
+
+
+
+## [2.8.11] - 2020-10-15
+### Changed
+ - updated to [brighterscript@0.16.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0168---2020-10-15)
+### Fixed
+ - (LanguageServer) bug when printing diagnostics that would crash if the contents were missing (like for in-memory-only files injected by plugins) ([BrighterScript#217](https://github.com/rokucommunity/brighterscript/pull/217))
+ - (LanguageServer) performance improvements by moving property name collection into the parser, which elimitates a costly AST walk
+
+
+
 ## [2.8.10] - 2020-10-13
 ### Changed
  - updated to [brighterscript@0.16.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0167---2020-10-13)
@@ -1472,3 +1510,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.7...v2.8.8
 [2.8.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.8...v2.8.9
 [2.8.10]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.9...v2.8.10
+[2.8.11]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.10...v2.8.11
+[2.8.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.11...v2.8.12
+[2.8.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.12...v2.8.13
+[2.8.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.13...v2.8.14
