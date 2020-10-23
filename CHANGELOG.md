@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.8.15] - 2020-10-23
+### Changed
+ - updated to [roku-debug@0.5.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#058---2020-10-23)
+### Fixed
+ - (Debugger) bug when converting `$anon_###` function names into original function names that was using the wrong line number to look up the name. ([roku-debug#21](https://github.com/rokucommunity/roku-debug/pull/21))
+
+
+
 ## [2.8.14] - 2020-10-20
 ### Changed
  - updated to [brighterscript@0.16.11](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#01611---2020-10-20)
@@ -1514,3 +1522,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.11...v2.8.12
 [2.8.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.12...v2.8.13
 [2.8.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.13...v2.8.14
+[2.8.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.14...v2.8.15
