@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-### [2.9.0] - 2020-10-28
+## [2.10.0] - 2020-10-30
+### Added
+ - (LanguageServer) support for BrighterScript type definitions
+### Changed
+ - updated to [brighterscript@0.18.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0180---2020-10-30)
+
+
+
+## [2.9.0] - 2020-10-28
 ### Added
  - (LanguageServer) support for BrighterScript annotations
 ### Changed
@@ -1533,3 +1541,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.13...v2.8.14
 [2.8.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.14...v2.8.15
 [2.9.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.15...v2.9.0
+[2.10.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.9.0...v2.10.0
