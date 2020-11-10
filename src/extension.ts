@@ -97,17 +97,19 @@ export class Extension {
                 }
             }
         });
-        //register the definition provider
+
         const declarationProvider: DeclarationProvider = new DeclarationProvider();
-        const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
         const logOutputManager: LogOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
         const definitionRepo = new DefinitionRepository(declarationProvider);
-        const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
-        const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
 
         brightScriptCommands.registerCommands(context);
 
         if (!languageServerManager.isLanguageServerEnabledInSettings) {
+            //register the definition provider
+            const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
+            const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
+            const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
+
             // experimental placeholder
             // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
             context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
