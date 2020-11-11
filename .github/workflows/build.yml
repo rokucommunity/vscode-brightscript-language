@@ -34,7 +34,8 @@ jobs:
     needs: ci
     runs-on: ubuntu-18.04
     env:
-      VSCE_TOKEN: ${{secrets.VSCE_TOKEN}}
+      VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+      OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@master
