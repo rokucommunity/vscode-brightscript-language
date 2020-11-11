@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.10.3] - 2020-11-11
+### Fixed
+ - bug with hardcoded extension ID that did not properly work with new vscode publisher id.
+
+
+
 ## [2.10.2] - 2020-11-11
 ### Changed
  - Publish to OpenVSX registry
@@ -1562,3 +1568,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.10.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.9.0...v2.10.0
 [2.10.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.0...v2.10.1
 [2.10.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.1...v2.10.2
+[2.10.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.2...v2.10.3
