@@ -6,6 +6,7 @@ A VSCode extension to support Roku's BrightScript language.
 [![Coverage Status](https://coveralls.io/repos/github/rokucommunity/vscode-brightscript-language/badge.svg?branch=master)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/RokuCommunity.brightscript.svg?style=flat-square)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/RokuCommunity.brightscript.svg)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
+[![OpenVSX](https://img.shields.io/badge/OpenVSX-Published-blue.svg)](https://open-vsx.org/extension/RokuCommunity/brightscript)
 
 ## Upgrading from V1
 If you're upgrading from version 1 of the extension, please review [these changes](ReleaseNotes.md#2.0.0)
