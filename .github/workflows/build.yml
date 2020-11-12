@@ -34,7 +34,8 @@ jobs:
     needs: ci
     runs-on: ubuntu-18.04
     env:
-      VSCE_TOKEN: ${{secrets.VSCE_TOKEN}}
+      VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
+      OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@master
@@ -69,9 +70,15 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ env.RELEASE_VERSION }}
 
-      #publish vsix to extension store
+      #publish vsix to Visual Studio extension store
       - name: Publish to VSCode extension store
         #exclude beta release tags
         if: contains(github.ref, '-beta.') == false
         run: npx vsce publish -p ${{env.VSCE_TOKEN}}
+
+      #pubish to OpenVSX
+      - name: Publish to OpenVSX registry
+        #exclude beta release tags
+        if: contains(github.ref, '-beta.') == false
+        run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}}
 

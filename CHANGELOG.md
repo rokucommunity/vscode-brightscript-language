@@ -6,6 +6,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.10.3] - 2020-11-11
+### Fixed
+ - bug with hardcoded extension ID that did not properly work with new vscode publisher id.
+
+
+
+## [2.10.2] - 2020-11-11
+### Changed
+ - Publish to OpenVSX registry
+ - Rename VSCode marketplace publisher to "RokuCommunity"
+ - update badges
+
+
+
+## [2.10.1] - 2020-10-30
+### Changed
+ - updated to [brighterscript@0.18.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0181---2020-10-30)
+### Fixed
+ - (LanguageServer) exclude bs1100 for typedef files (`Missing "super()" call in class constructor method.`)
+ - (LanguageServer) fix some invalid class field types in typedef files
+ - (LanguageServer) include override keyword in class methods in typedef files
+
+
+
+## [2.10.0] - 2020-10-30
+### Added
+ - (LanguageServer) support for BrighterScript type definitions
+### Changed
+ - updated to [brighterscript@0.18.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0180---2020-10-30)
+
+
+
+## [2.9.0] - 2020-10-28
+### Added
+ - (LanguageServer) support for BrighterScript annotations
+### Changed
+ - updated to [brighterscript@0.17.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0170---2020-10-27)
+ - Upgraded to [brighterscript-formatter@1.5.5](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#155---2020-10-28)
+
+
+
+## [2.8.15] - 2020-10-23
+### Changed
+ - updated to [roku-debug@0.5.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#058---2020-10-23)
+### Fixed
+ - (Debugger) bug when converting `$anon_###` function names into original function names that was using the wrong line number to look up the name. ([roku-debug#21](https://github.com/rokucommunity/roku-debug/pull/21))
+
+
+
 ## [2.8.14] - 2020-10-20
 ### Changed
  - updated to [brighterscript@0.16.11](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#01611---2020-10-20)
@@ -1514,3 +1563,9 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.8.12]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.11...v2.8.12
 [2.8.13]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.12...v2.8.13
 [2.8.14]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.13...v2.8.14
+[2.8.15]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.14...v2.8.15
+[2.9.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.8.15...v2.9.0
+[2.10.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.9.0...v2.10.0
+[2.10.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.0...v2.10.1
+[2.10.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.1...v2.10.2
+[2.10.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.2...v2.10.3

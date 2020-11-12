@@ -23,7 +23,7 @@ import {
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 
-const EXTENSION_ID = 'celsoaf.brightscript';
+const EXTENSION_ID = 'RokuCommunity.brightscript';
 
 export class Extension {
 
@@ -36,7 +36,7 @@ export class Extension {
 
         var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
-        var currentExtensionVersion = extensions.getExtension(EXTENSION_ID).packageJSON.version;
+        var currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
 
