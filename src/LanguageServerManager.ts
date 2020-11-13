@@ -9,12 +9,20 @@ import {
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {
+    Disposable,
     window,
     workspace,
 } from 'vscode';
 import { CustomCommands } from 'brighterscript';
 import { CodeWithSourceMap } from 'source-map';
 import { Deferred } from 'brighterscript';
+import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
+import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
+import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
+import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
+import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
+import { DefinitionRepository } from './DefinitionRepository';
+import { DeclarationProvider } from './DeclarationProvider';
 
 export class LanguageServerManager {
     constructor() {
@@ -22,9 +30,19 @@ export class LanguageServerManager {
     }
 
     private context: vscode.ExtensionContext;
+    private definitionRepository: DefinitionRepository;
+    private declarationProvider: DeclarationProvider;
 
-    public async init(context: vscode.ExtensionContext) {
+    public async init(
+        context: vscode.ExtensionContext,
+        definitionRepository: DefinitionRepository,
+        declarationProvider: DeclarationProvider
+
+    ) {
         this.context = context;
+        this.definitionRepository = definitionRepository;
+        this.declarationProvider = declarationProvider;
+
         if (this.isLanguageServerEnabledInSettings()) {
             return this.enableLanguageServer();
         }
@@ -60,6 +78,9 @@ export class LanguageServerManager {
             if (this.client) {
                 return this.ready();
             }
+
+            //disable the simple providers (the language server will handle all of these)
+            this.disableSimpleProviders();
 
             let newDeferred = new Deferred<any>();
             //chain any pending promises to this new deferred
@@ -152,6 +173,49 @@ export class LanguageServerManager {
             this.buildStatusStatusBar.dispose();
             this.buildStatusStatusBar = undefined;
             this.client = undefined;
+            //enable the simple providers (since there is no language server)
+            this.enableSimpleProviders();
+        }
+    }
+
+    private simpleSubscriptions = [] as Disposable[];
+
+    /**
+     * Enable the simple providers (which means the language server is disabled).
+     * These were the original providers created by George. Most of this functionality has been moved into the language server. 
+     * However, if the language server is disabled, we want to at least fall back to these.
+     */
+    private enableSimpleProviders() {
+        if (this.simpleSubscriptions.length === 0) {
+            //register the definition provider
+            const definitionProvider = new BrightScriptDefinitionProvider(this.definitionRepository);
+            const symbolInformationRepository = new SymbolInformationRepository(this.declarationProvider);
+            const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
+
+            this.simpleSubscriptions.push(
+                vscode.languages.registerDefinitionProvider(selector, definitionProvider),
+                vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(this.declarationProvider)),
+                vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(this.declarationProvider, symbolInformationRepository)),
+                vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider()),
+                vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(this.definitionRepository), '(', ','),
+            );
+
+            this.context.subscriptions.push(...this.simpleSubscriptions);
+        }
+    }
+
+    /**
+     * Disable the simple subscriptions (which means we'll depend on the language server)
+     */
+    private disableSimpleProviders() {
+        if (this.simpleSubscriptions.length > 0) {
+            for (const sub of this.simpleSubscriptions) {
+                const idx = this.context.subscriptions.indexOf(sub);
+                if (idx > -1) {
+                    this.context.subscriptions.splice(idx, 1);
+                    sub.dispose();
+                }
+            }
         }
     }
 
