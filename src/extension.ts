@@ -4,10 +4,6 @@ import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { brightScriptCommands } from './BrightScriptCommands';
-import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
-import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
-import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
-import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
@@ -16,10 +12,6 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
-import {
-    BrightScriptWorkspaceSymbolProvider,
-    SymbolInformationRepository
-} from './SymbolInformationRepository';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 
@@ -45,6 +37,11 @@ export class Extension {
         const declarationProvider: DeclarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
 
+        //create channels
+        this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
+        this.debugServerOutputChannel.appendLine('Extension startup');
+
         let docLinkProvider = new LogDocumentLinkProvider();
 
         const logOutputManager: LogOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
@@ -52,7 +49,7 @@ export class Extension {
         const definitionRepo = new DefinitionRepository(declarationProvider);
         context.subscriptions.push(declarationProvider);
 
-        let languageServerPromise = languageServerManager.init(context, definitionRepo, declarationProvider);
+        let languageServerPromise = languageServerManager.init(context, definitionRepo);
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
@@ -73,10 +70,6 @@ export class Extension {
                 scheme: 'file'
             }, new Formatter())
         );
-
-        this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
-        this.debugServerOutputChannel.appendLine('Extension startup');
 
         //register the debug configuration provider
         let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);

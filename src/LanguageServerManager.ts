@@ -31,17 +31,17 @@ export class LanguageServerManager {
 
     private context: vscode.ExtensionContext;
     private definitionRepository: DefinitionRepository;
-    private declarationProvider: DeclarationProvider;
+    private get declarationProvider() {
+        return this.definitionRepository.provider;
+    }
 
     public async init(
         context: vscode.ExtensionContext,
-        definitionRepository: DefinitionRepository,
-        declarationProvider: DeclarationProvider
+        definitionRepository: DefinitionRepository
 
     ) {
         this.context = context;
         this.definitionRepository = definitionRepository;
-        this.declarationProvider = declarationProvider;
 
         if (this.isLanguageServerEnabledInSettings()) {
             return this.enableLanguageServer();
@@ -182,7 +182,7 @@ export class LanguageServerManager {
 
     /**
      * Enable the simple providers (which means the language server is disabled).
-     * These were the original providers created by George. Most of this functionality has been moved into the language server. 
+     * These were the original providers created by George. Most of this functionality has been moved into the language server
      * However, if the language server is disabled, we want to at least fall back to these.
      */
     private enableSimpleProviders() {
