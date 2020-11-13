@@ -43,9 +43,6 @@ export class LanguageServerManager {
         this.context = context;
         this.definitionRepository = definitionRepository;
 
-        if (this.isLanguageServerEnabledInSettings()) {
-            return this.enableLanguageServer();
-        }
         //dynamically enable or disable the language server based on user settings
         vscode.workspace.onDidChangeConfiguration((configuration) => {
             if (this.isLanguageServerEnabledInSettings()) {
@@ -54,6 +51,12 @@ export class LanguageServerManager {
                 this.disableLanguageServer();
             }
         });
+
+        if (this.isLanguageServerEnabledInSettings()) {
+            return this.enableLanguageServer();
+        } else {
+            this.disableLanguageServer();
+        }
     }
 
     private deferred: Deferred<any>;
@@ -74,18 +77,19 @@ export class LanguageServerManager {
 
     private async enableLanguageServer() {
         try {
+
             //if we already have a language server, nothing more needs to be done
             if (this.client) {
                 return this.ready();
             }
 
-            //disable the simple providers (the language server will handle all of these)
-            this.disableSimpleProviders();
-
             let newDeferred = new Deferred<any>();
             //chain any pending promises to this new deferred
             this.deferred.resolve(newDeferred.promise);
             this.deferred = newDeferred;
+
+            //disable the simple providers (the language server will handle all of these)
+            this.disableSimpleProviders();
 
             // The server is implemented in node
             let serverModule = this.context.asAbsolutePath(
@@ -173,9 +177,9 @@ export class LanguageServerManager {
             this.buildStatusStatusBar.dispose();
             this.buildStatusStatusBar = undefined;
             this.client = undefined;
-            //enable the simple providers (since there is no language server)
-            this.enableSimpleProviders();
         }
+        //enable the simple providers (since there is no language server)
+        this.enableSimpleProviders();
     }
 
     private simpleSubscriptions = [] as Disposable[];
@@ -216,6 +220,7 @@ export class LanguageServerManager {
                     sub.dispose();
                 }
             }
+            this.simpleSubscriptions = [];
         }
     }
 
