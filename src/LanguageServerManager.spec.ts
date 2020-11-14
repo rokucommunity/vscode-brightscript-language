@@ -78,4 +78,28 @@ describe('extension', () => {
         languageServerManager['enableSimpleProviders']();
         expect(spy.calledOnce).to.be.true;
     });
+
+    describe('enableLanguageServer', () => {
+        it('properly handles runtime exception', async () => {
+            languageServerManager['client'] = {} as any;
+            sinon.stub(languageServerManager as any, 'ready').callsFake(async () => {
+                throw new Error('failed for test');
+            });
+            let error: Error;
+            try {
+                await languageServerManager['enableLanguageServer']();
+            } catch (e) {
+                error = e;
+            }
+            expect(error?.message).to.eql('failed for test');
+
+            //run it a second time
+            try {
+                await languageServerManager['enableLanguageServer']();
+            } catch (e) {
+                error = e;
+            }
+            expect(error?.message).to.eql('failed for test');
+        });
+    });
 });

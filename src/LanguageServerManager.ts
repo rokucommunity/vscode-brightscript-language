@@ -72,6 +72,15 @@ export class LanguageServerManager {
         }
     }
 
+    private refreshDeferred() {
+        let newDeferred = new Deferred<any>();
+        //chain any pending promises to this new deferred
+        if (!this.deferred.isCompleted) {
+            this.deferred.resolve(newDeferred.promise);
+        }
+        this.deferred = newDeferred;
+    }
+
     private client: LanguageClient;
     private buildStatusStatusBar: vscode.StatusBarItem;
 
@@ -82,11 +91,7 @@ export class LanguageServerManager {
             if (this.client) {
                 return this.ready();
             }
-
-            let newDeferred = new Deferred<any>();
-            //chain any pending promises to this new deferred
-            this.deferred.resolve(newDeferred.promise);
-            this.deferred = newDeferred;
+            this.refreshDeferred();
 
             //disable the simple providers (the language server will handle all of these)
             this.disableSimpleProviders();
@@ -165,8 +170,12 @@ export class LanguageServerManager {
             });
             this.deferred.resolve(true);
         } catch (e) {
-            this.client?.stop();
+            console.error(e);
+            this.client?.stop?.();
             delete this.client;
+
+            this.refreshDeferred();
+
             this.deferred.reject(e);
         }
     }
