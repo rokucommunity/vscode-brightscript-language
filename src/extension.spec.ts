@@ -6,7 +6,7 @@ let Module = require('module');
 import * as  extension from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { brightScriptCommands } from './BrightScriptCommands';
-import { languageServerManager } from './LanguageServerManager';
+import { LanguageServerManager, languageServerManager } from './LanguageServerManager';
 
 const sinon = createSandbox();
 
@@ -66,38 +66,10 @@ describe('extension', () => {
         expect(spy.callCount).to.be.greaterThan(0);
     });
 
-    it('registers document symbol provider', async () => {
-        let spy = sinon.spy(vscode.languages, 'registerDocumentSymbolProvider');
-        expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
-    });
-
-    it('registers workspace symbol provider', async () => {
-        let spy = sinon.spy(vscode.languages, 'registerWorkspaceSymbolProvider');
-        expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
-    });
-
     it('registers all commands', async () => {
         let stub = sinon.stub(brightScriptCommands, 'registerCommands').callsFake(() => { });
         await extension.activate(context);
         expect(stub.callCount).to.equal(1);
-    });
-
-    it('registers signatureHelpProvider', async () => {
-        let spy = sinon.spy(vscode.languages, 'registerSignatureHelpProvider');
-        expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
-    });
-
-    it('registers referenceProvider', async () => {
-        let spy = sinon.spy(vscode.languages, 'registerReferenceProvider');
-        expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
     });
 
     it('registers onDidStartDebugSession', async () => {
