@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.11.0] - 2020-11-14
+### Changed
+ - use LanguageServer for most completion/provider functionality. (you can disable this by setting `"brightscript.enableLanguageServer": false` in user/workspace settings). ([279](https://github.com/rokucommunity/vscode-brightscript-language/pull/279))
+ - updated to [brighterscript@0.20.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0200---2020-11-13)
+
+
+
 ## [2.10.3] - 2020-11-11
 ### Fixed
  - bug with hardcoded extension ID that did not properly work with new vscode publisher id.
@@ -1569,3 +1576,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.10.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.0...v2.10.1
 [2.10.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.1...v2.10.2
 [2.10.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.2...v2.10.3
+[2.11.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.3...v2.11.0
