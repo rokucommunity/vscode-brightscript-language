@@ -48,10 +48,6 @@ jobs:
       - run: npm run build
       - run: npm run package
 
-      #compute release version
-      - name: Compute release version
-        run: echo ::set-env name=RELEASE_VERSION::${GITHUB_REF##*/v}
-
       #create GitHub release
       - name: Create GitHub Release
         id: create_release
@@ -62,13 +58,11 @@ jobs:
           draft: false
           prerelease: false #contains(github.ref, '-beta.') == true
 
-      #upload vsix to GitHub release
-      - name: Upload vsix to GitHub release
-        uses: AButler/upload-release-assets@v2.0
+      #upload package to GitHub release
+      - name: Upload GitHub Release Assets
+        uses: alexellis/upload-assets@0.2.3
         with:
-          files: '*.vsix'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ env.RELEASE_VERSION }}
+          asset_paths: '["*.vsix"]'
 
       #publish vsix to Visual Studio extension store
       - name: Publish to VSCode extension store
