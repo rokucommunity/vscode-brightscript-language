@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.11.1] - 2020-11-17
+### Changed
+ - updated to [brighterscript@0.20.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0201---2020-11-16)
+### Fixed
+ - (LanguageServer) - load BrighterScript plugins relative to the project ([BrighterScript#243](https://github.com/rokucommunity/brighterscript/pull/243))
+
+
+
 ## [2.11.0] - 2020-11-14
 ### Changed
  - use LanguageServer for most completion/provider functionality. (you can disable this by setting `"brightscript.enableLanguageServer": false` in user/workspace settings). ([279](https://github.com/rokucommunity/vscode-brightscript-language/pull/279))
@@ -1577,3 +1585,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.10.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.1...v2.10.2
 [2.10.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.2...v2.10.3
 [2.11.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.3...v2.11.0
+[2.11.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.0...v2.11.1
