@@ -356,7 +356,7 @@
             "name": "keyword.control.brs"
         },
         "operators": {
-            "match": "=|>=|<zz|>|<|<>|\\+|-|\\*|\\/|\\^|&|\\b(?i:(And|Not|Or))\\b",
+            "match": "=|>=|<zz|>|<|<>|\\+|-|\\*|\\/|\\^|&|\\b(?i:(And|Not|Or|Mod))\\b",
             "name": "keyword.operator.brs"
         },
         "support_functions": {
