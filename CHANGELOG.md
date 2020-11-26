@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.11.3] - 2020-11-25
+### Added
+ - (Formatter) indentation and keyword support for `try`,`catch`,`throw`,`end try`.
+ - (Editor) syntax highlighting for  `try`,`catch`,`throw`,`end try`.
+### Changed
+ - updated to [brighterscript-formatter@1.6.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#160---2020-11-25)
+
+
+
 ## [2.11.2] - 2020-11-23
 ### Added
  - (LanguageServer) `try/catch` and `throw` syntax support [BrighterScript#218](https://github.com/rokucommunity/brighterscript/issues/218)
@@ -1597,3 +1606,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.11.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.10.3...v2.11.0
 [2.11.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.0...v2.11.1
 [2.11.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.1...v2.11.2
+[2.11.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.2...v2.11.3
