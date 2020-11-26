@@ -359,7 +359,7 @@
             "name": "keyword.control.brs"
         },
         "try_catch": {
-            "match": "(?i:\\b(try|catch|(end(( \\t)*try))\\b)",
+            "match": "(?i:\\b(try|catch|(end[ \\t]*try))\\b)",
             "name": "keyword.control.trycatch.brs"
         },
         "operators": {
