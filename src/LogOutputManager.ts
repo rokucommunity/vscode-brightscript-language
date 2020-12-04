@@ -131,7 +131,7 @@ export class LogOutputManager {
         this.launchConfig = launchConfig;
     }
 
-    public onDidReceiveDebugSessionCustomEvent(e: any) {
+    public onDidReceiveDebugSessionCustomEvent(e: { event: string, body?: any }) {
         if (e.event === 'BSRendezvousEvent') {
             // No need to handle rendezvous type events
             return;
@@ -150,16 +150,16 @@ export class LogOutputManager {
             if (this.isClearingOutputOnLaunch) {
                 this.clearOutput();
             }
-        } else {
+        } else if (e.body && Array.isArray(e.body)) {
             let errorsByPath = {};
-            if (e.body) {
-                e.body.forEach(async (compileError) => {
+            e.body.forEach(async (compileError: { path?: string }) => {
+                if (compileError.path) {
                     if (!errorsByPath[compileError.path]) {
                         errorsByPath[compileError.path] = [];
                     }
                     errorsByPath[compileError.path].push(compileError);
-                });
-            }
+                }
+            });
             for (const path in errorsByPath) {
                 if (errorsByPath.hasOwnProperty(path)) {
                     const errors = errorsByPath[path];
@@ -327,7 +327,7 @@ export class LogOutputManager {
 
     public getMethodName(path: string, lineNumber: number, isFilePath: boolean): string | null {
         let fsPath = isFilePath ? path : this.docLinkProvider.convertPkgPathToFsPath(path);
-        const method = this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
+        const method = fsPath && this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
         return method ? method.name : null;
     }
 
