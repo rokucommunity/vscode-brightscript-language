@@ -152,7 +152,7 @@ export class LogOutputManager {
             }
         } else if (e.body && Array.isArray(e.body)) {
             let errorsByPath = {};
-            e.body.forEach(async (compileError: { path?: string }) => {
+            e.body.forEach((compileError: { path?: string }) => {
                 if (compileError.path) {
                     if (!errorsByPath[compileError.path]) {
                         errorsByPath[compileError.path] = [];
@@ -327,7 +327,7 @@ export class LogOutputManager {
 
     public getMethodName(path: string, lineNumber: number, isFilePath: boolean): string | null {
         let fsPath = isFilePath ? path : this.docLinkProvider.convertPkgPathToFsPath(path);
-        const method = fsPath && this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber);
+        const method = fsPath ? this.declarationProvider.getFunctionBeforeLine(fsPath, lineNumber) : null;
         return method ? method.name : null;
     }
 
