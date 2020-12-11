@@ -1,3 +1,17 @@
 {
-    "extends": "./src/tsconfig",
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2018",
+        "noImplicitAny": false,
+        "removeComments": false,
+        "noUnusedLocals": false,
+        "noImplicitThis": true,
+        "inlineSourceMap": false,
+        "sourceMap": true,
+        "outDir": "dist",
+        "preserveConstEnums": true,
+        "strictNullChecks": false,
+        "noUnusedParameters": false,
+        "allowSyntheticDefaultImports": true
+    }
 }

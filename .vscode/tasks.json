@@ -2,31 +2,31 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "command": "npm",
-            "label": "npm",
+            "label": "watch",
             "type": "shell",
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared"
-            },
+            "command": "npm",
             "args": [
                 "run",
                 "watch",
                 "--loglevel",
                 "silent"
             ],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
             "isBackground": true,
             "problemMatcher": "$tsc-watch"
         },
         {
-            "type": "shell",
             "label": "test",
+            "type": "shell",
             "command": "npm",
             "args": [
                 "run",
-                "test",
+                "test:nocover",
                 "--loglevel",
                 "silent"
             ],
@@ -37,17 +37,40 @@
             "presentation": {
                 "echo": true,
                 "reveal": "always",
-                "focus": false,
-                "panel": "shared",
+                "focus": true,
+                "panel": "dedicated",
                 "showReuseMessage": true,
                 "clear": true
             },
             "problemMatcher": []
         },
         {
+            "label": "clean",
+            "type": "npm",
+            "script": "clean",
+            "problemMatcher": [],
+        },
+        {
             "type": "npm",
             "label": "build",
             "script": "build",
+            "dependsOn": "clean",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "type": "npm",
+            "script": "test",
             "problemMatcher": []
         }
     ]

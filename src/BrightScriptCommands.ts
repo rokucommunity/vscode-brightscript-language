@@ -1,18 +1,10 @@
 import * as request from 'request';
 import * as vscode from 'vscode';
-
-// tslint:disable-next-line
-export var __request: any = request;
-
 import BrightScriptFileUtils from './BrightScriptFileUtils';
+import { GlobalStateManager } from './GlobalStateManager';
+import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 
-// georgejecook: I can't find a way to stub/mock a TypeScript class constructor
-// so I have to do this for the time being. Not ideal.
-export function getBrightScriptCommandsInstance() {
-    return new BrightScriptCommands();
-}
-
-export default class BrightScriptCommands {
+export class BrightScriptCommands {
 
     constructor() {
         this.fileUtils = new BrightScriptFileUtils();
@@ -21,18 +13,26 @@ export default class BrightScriptCommands {
     private fileUtils: BrightScriptFileUtils;
     private context: vscode.ExtensionContext;
     private host: string;
-    public function;
 
     public registerCommands(context: vscode.ExtensionContext) {
         this.context = context;
+
+        brighterScriptPreviewCommand.register(context);
+
         let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
-        } ));
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearGlobalState', () => {
+            new GlobalStateManager(this.context).clear();
+            vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
+        }));
+
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteCommand', (key: string) => {
             this.sendRemoteCommand(key);
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
             let stuffUserTyped: string = await vscode.window.showInputBox({
@@ -46,7 +46,7 @@ export default class BrightScriptCommands {
                 }
             }
             vscode.commands.executeCommand('workbench.action.focusPanel');
-        } ));
+        }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
             this.sendRemoteCommand('Back');
@@ -86,10 +86,32 @@ export default class BrightScriptCommands {
         }));
     }
 
-    public async openFile(filename: string) {
+    public async openFile(filename: string, range: vscode.Range = null, preview: boolean = false): Promise<boolean> {
         let uri = vscode.Uri.file(filename);
-        let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-        await vscode.window.showTextDocument(doc, { preview: false });
+        try {
+            let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+            await vscode.window.showTextDocument(doc, { preview: preview });
+            if (range) {
+                this.gotoRange(range);
+            }
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
+    private gotoRange(range: vscode.Range) {
+        let editor = vscode.window.activeTextEditor;
+        editor.selection = new vscode.Selection(
+            range.start.line,
+            range.start.character,
+            range.start.line,
+            range.start.character
+        );
+        vscode.commands.executeCommand('revealLine', {
+            lineNumber: range.start.line,
+            at: 'center'
+        });
     }
 
     public async onToggleXml() {
@@ -97,7 +119,10 @@ export default class BrightScriptCommands {
             const currentDocument = vscode.window.activeTextEditor.document;
             let alternateFileName = this.fileUtils.getAlternateFileName(currentDocument.fileName);
             if (alternateFileName) {
-                this.openFile(alternateFileName);
+                if (! await this.openFile(alternateFileName)
+                    && alternateFileName.toLowerCase().endsWith('.brs')) {
+                    await this.openFile(this.fileUtils.getBsFileName(alternateFileName));
+                }
             }
         }
     }
@@ -136,4 +161,7 @@ export default class BrightScriptCommands {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
     }
+
 }
+
+export const brightScriptCommands = new BrightScriptCommands();

@@ -88,7 +88,10 @@ export class XmlUtils {
         let wordRange = document.getWordRangeAtPosition(position, wordRegex);
         let wordStart = wordRange ? wordRange.start : position;
         return document.getText(
-            new Range(new Position(wordStart.line, wordStart.character),
-                new Position(wordRange.end.line, wordRange.end.character)));
+            new Range(
+                new Position(wordStart.line, wordStart.character),
+                new Position(wordRange?.end?.line, wordRange?.end?.character)
+            )
+        );
     }
 }

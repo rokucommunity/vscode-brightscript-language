@@ -1,7 +1,10 @@
 out
-node_modules
+dist
+node_modules*
 coverage
+.DS_Store
 .nyc_output
 .roku-deploy-staging
 *.vsix
+brsconfig.schema.json
 .history

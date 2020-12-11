@@ -1,47 +1,74 @@
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"type": "extensionHost",
-			"request": "launch",
-			"name": "Extension",
-			"preLaunchTask": "npm",
-			"runtimeExecutable": "${execPath}",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
-			],
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ]
-		},
-		{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "extensionHost",
+            "request": "launch",
+            "name": "Extension",
+            "preLaunchTask": "watch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ]
+        },
+        {
+            "name": "Debug Server",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/src/debugAdapter.ts",
+            "args": [
+                "--server=4711"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ],
+            "stopOnEntry": false
+        },
+        {
+            "name": "Language Server",
+            "type": "node",
+            "request": "attach",
+            "port": 6009,
+            "restart": true,
+            "timeout": 120000
+        },
+        {
+			"name": "Debug Tests",
 			"type": "node",
 			"request": "launch",
-			"name": "Server",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/src/debugAdapter.ts",
-			"args": [ "--server=4711" ],
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
-			"stopOnEntry": false
-		},
-		{
-			"type": "node",
-			"request": "launch",
-			"name": "Tests",
 			"cwd": "${workspaceFolder}",
 			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
 			"args": [
-				"-u", "tdd",
-				"--timeout", "999999",
-				"--colors",
-				"./out/**/*.spec.js"
-			],
-			"outFiles": [ "${workspaceFolder}/out/**/*.js" ],
+                "-r",
+                "ts-node/register",
+                "-r",
+                "source-map-support/register",
+                "--timeout",
+				"999999",
+                "./src/**/*.spec.ts"
+            ],
 			"internalConsoleOptions": "openOnSessionStart"
 		}
-	],
-	"compounds": [
-		{
-			"name": "Extension + Server",
-			"configurations": [ "Extension", "Server" ]
-		}
-	]
+    ],
+    "compounds": [
+        {
+            "name": "Extension, Debug Server, Language Server",
+            "configurations": [
+                "Extension",
+                "Debug Server",
+                "Language Server"
+            ]
+        },
+        {
+            "name": "Extension,Language Server",
+            "configurations": [
+                "Extension",
+                "Language Server"
+            ]
+        }
+    ]
 }

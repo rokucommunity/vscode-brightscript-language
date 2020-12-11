@@ -1,0 +1,44 @@
+{
+    "Class": {
+        "prefix": "class",
+        "body": [
+            "class ${1:ClassName}",
+            "\tsub new(${2:params})",
+            "\t\t$0",
+            "\tend sub",
+            "end class"
+        ],
+        "description": "Class with constructor function"
+    },
+
+    "Class with Extends": {
+        "prefix": "class-extends",
+        "body": [
+            "class ${1:ClassName} extends ${2:Parent}",
+            "\tsub new(${3:params})",
+            "\t\tsuper()",
+            "\t\t$0",
+            "\tend sub",
+            "end class"
+        ],
+        "description": "Class that extends another class"
+    },
+
+    "Import": {
+        "prefix": "import",
+        "body": [
+            "import \"${1:file}\""
+        ],
+        "description": "Import a .bs file"
+    },
+
+    "Namespace": {
+        "prefix": "namespace",
+        "body": [
+            "namespace ${1:NamespaceName}",
+            "\t$0",
+            "end namespace"
+        ],
+        "description": "Create empty namespace"
+    }
+}

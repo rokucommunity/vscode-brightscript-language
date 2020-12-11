@@ -1,7 +1,7 @@
 import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
 
-import { RendezvousHistory } from './RendezvousTracker';
+import { RendezvousHistory } from 'roku-debug';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -12,12 +12,12 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         let subscriptions = context.subscriptions;
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.toggleSortMethod', () => {
             this.toggleSmartSorting();
-            this._onDidChangeTreeData.fire();
+            this._onDidChangeTreeData.fire(null);
         }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.toggleSortDirection', () => {
             this.sortAscending = !this.sortAscending;
-            this._onDidChangeTreeData.fire();
+            this._onDidChangeTreeData.fire(null);
         }));
         // #endregion
 
@@ -63,7 +63,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             // let diff = this.objectDiff(e.body, this.viewedData);
 
             this.rendezvousHistory = e.body;
-            this._onDidChangeTreeData.fire();
+            this._onDidChangeTreeData.fire(null);
         }
     }
 

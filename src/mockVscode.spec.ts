@@ -1,6 +1,21 @@
-import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri } from 'vscode';
+import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, Position } from 'vscode';
 
 export let vscode = {
+    CompletionItem: class { },
+    CodeLens: class { },
+    StatusBarAlignment: {
+        Left: 1,
+        Right: 2
+    },
+    extensions: {
+        getExtension: () => {
+            return {
+                packageJSON: {
+                    version: undefined
+                }
+            };
+        }
+    },
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
@@ -25,10 +40,14 @@ export let vscode = {
     commands: {
         registerCommand: () => {
 
+        },
+        executeCommand: () => {
+
         }
     },
     context: {
         subscriptions: [],
+        asAbsolutePath: function() { }
     },
     workspace: {
         workspaceFolders: [],
@@ -50,30 +69,38 @@ export let vscode = {
                 get: function() { }
             };
         },
-        onDidChangeConfiguration: () => {
-
-        },
-        onDidChangeWorkspaceFolders: () => {
-
-        },
+        onDidChangeConfiguration: () => { },
+        onDidChangeWorkspaceFolders: () => { },
         findFiles: (include, exclude) => {
             return [];
-        }
+        },
+        registerTextDocumentContentProvider: () => { },
+        onDidChangeTextDocument: () => { },
+        onDidCloseTextDocument: () => { }
     },
     window: {
+        createStatusBarItem: () => {
+            return {
+                clear: () => { },
+                text: '',
+                show: () => { }
+            };
+        },
         createOutputChannel: function() {
             return {
                 show: () => { },
-                clear: () => { }
+                clear: () => { },
+                appendLine: () => { }
             };
         },
-        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) {},
+        registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
         showErrorMessage: function(message: string) {
 
         },
         activeTextEditor: {
             document: undefined
-        }
+        },
+        onDidChangeTextEditorSelection: () => { }
     },
     CompletionItemKind: {
         Function: 2
@@ -107,6 +134,7 @@ export let vscode = {
     OutputChannel: class {
         public clear() { }
         public appendLine() { }
+        public show() { }
     },
     DebugCollection: class {
         public clear() { }
@@ -193,6 +221,18 @@ export let vscode = {
         private text: any;
         private fileName: string;
         public getText() { return this.text; }
+        public getWordRangeAtPosition() {
+            //returns a dummy range (because honestly we should be mocking this in a real test...)
+            return undefined;
+        }
+        public lineAt() {
+            return {
+                text: ''
+            };
+        }
+        public offsetAt() {
+            return -1;
+        }
     },
     TreeItem: class {
         constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
@@ -222,7 +262,7 @@ export let vscode = {
     Uri: {
         file: (src: string) => {
             return {
-                with: ({}) => {
+                with: ({ }) => {
                     return {};
                 }
             };
@@ -233,5 +273,19 @@ export let vscode = {
             this.value = value;
         }
         private value: string;
+    }
+};
+
+export let vscodeLanguageClient = {
+    LanguageClient: class {
+        public start() { }
+        public onReady() { return Promise.resolve<any>(null); }
+        public onNotification() { }
+    },
+    TransportKind: {
+        stdio: 0,
+        ipc: 1,
+        pipe: 2,
+        socket: 3
     }
 };

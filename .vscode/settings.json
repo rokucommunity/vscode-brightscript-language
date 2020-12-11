@@ -1,16 +1,21 @@
 {
     "files.trimTrailingWhitespace": false,
     "files.exclude": {
-        "out": false,
-        "node_modules": false,
-        ".nyc_output": true,
-        ".roku-deploy-staging": false,
-        "coverage": true,
+        "**/.nyc_output": true,
+        "**/.roku-deploy-staging": false,
+        "**/coverage": true,
+        "**/node_modules": true
+    },
+    "search.exclude": {
         "**/node_modules": true,
+        "**/bower_components": true,
+        "**/*.code-search": true,
+        "**/dist": true,
         "**/out": true
     },
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
+    "tslint.autoFixOnSave": true,
     "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
 }

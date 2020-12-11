@@ -1,0 +1,68 @@
+{
+    "Children element": {
+        "prefix": "<children",
+        "body": [
+            "<children>",
+            "\t$0",
+            "</children>"
+        ],
+        "description": "Children SceneGraph element"
+    },
+
+    "Component Element": {
+        "prefix": "<component",
+        "body": [
+            "<component name=\"${1:ComponentName}\">",
+            "\t<script type=\"text/brightscript\" uri=\"$1.brs\" />",
+            "\t$0",
+            "</component>"
+        ],
+        "description": "SceneGraph component"
+    },
+
+    "Component Element With Extends": {
+        "prefix": "<component-extends",
+        "body": [
+            "<component name=\"${1:ComponentName}\" extends=\"${2:Parent}\">",
+            "\t<script type=\"text/brightscript\" uri=\"$1.brs\" />",
+            "\t$0",
+            "</component>"
+        ],
+        "description": "SceneGraph component that extends another component"
+    },
+
+    "Field Element": {
+        "prefix": "<field",
+        "body": [
+            "<field name=\"${1:name}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" />"
+        ],
+        "description": "Field element"
+    },
+
+    "Field Element with Alias": {
+        "prefix": "<field-alias",
+        "body": [
+            "<field name=\"${1:name}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" alias=\"${3:alias}\" />"
+        ],
+        "description": "Field element with alias"
+    },
+
+    "Interface element": {
+        "prefix": "<interface",
+        "body": [
+            "<interface>",
+            "\t$0",
+            "</interface>"
+        ],
+        "description": "Interface element"
+    },
+
+    "Script element": {
+        "prefix": "<script",
+        "body": [
+            "<script type=\"text/brightscript\" uri=\"${1:fileName}\" />"
+        ],
+        "description": "Script element"
+    }
+
+}
