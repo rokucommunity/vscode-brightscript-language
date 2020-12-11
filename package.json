@@ -14,7 +14,7 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.30.0",
+        "vscode": "^1.50.0",
         "node": "^7.9.0"
     },
     "repository": {
@@ -71,6 +71,7 @@
         "replace-last": "^1.2.6",
         "roku-debug": "^0.5.8",
         "roku-deploy": "^3.2.3",
+        "roku-test-automation": "^1.0.57",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
@@ -92,7 +93,7 @@
         "@types/q": "^1.5.1",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.30.0",
+        "@types/vscode": "^1.50.0",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
@@ -146,6 +147,14 @@
                     "name": "Rendezvous",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
+                }, {
+                    "type": "webview",
+                    "id": "rdbRegistryView",
+                    "name": "Registry"
+                }, {
+                    "type": "webview",
+                    "id": "rdbCommandsView",
+                    "name": "Commands"
                 }
             ]
         },
