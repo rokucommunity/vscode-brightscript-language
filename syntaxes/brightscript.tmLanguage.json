@@ -9,106 +9,155 @@
     "foldingStopMarker": "(?i)^\\s*(next|e(nd(if| (sub|if|function))|xit( while)?))\\s*$",
     "patterns": [
         {
-            "include": "#apostrophe_comment"
-        },
-        {
-            "include": "#rem_comment"
-        },
-        {
-            "include": "#import_statement"
-        },
-        {
-            "include": "#namespace_declaration"
-        },
-        {
-            "include": "#end_namespace"
-        },
-        {
-            "include": "#class_fields"
-        },
-        {
-            "include": "#class_declaration"
-        },
-        {
-            "include": "#end_class"
-        },
-        {
-            "include": "#preprocessor_keywords"
-        },
-        {
-            "include": "#region_comment"
-        },
-        {
-            "include": "#end_region_comment"
-        },
-        {
-            "include": "#global_constants"
-        },
-        {
-            "include": "#keyword_logical_operator"
-        },
-        {
-            "include": "#object_properties"
-        },
-        {
-            "include": "#vscode_rale_tracker_entry_comment"
-        },
-        {
-            "include": "#identifiers_with_type_designators"
-        },
-        {
-            "include": "#m_and_global"
-        },
-        {
-            "include": "#keyword_return"
-        },
-        {
-            "include": "#literal_invalid"
-        },
-        {
-            "include": "#function_declaration"
-        },
-        {
-            "include": "#inline_function_declaration"
-        },
-        {
-            "include": "#end_function"
-        },
-        {
-            "include": "#function_call"
-        },
-        {
-            "include": "#storage_types"
-        },
-        {
-            "include": "#literal"
-        },
-        {
-            "include": "#program_statements"
-        },
-        {
-            "include": "#try_catch"
-        },
-        {
-            "include": "#non_identifier_keywords"
-        },
-        {
-            "include": "#operators"
-        },
-        {
-            "include": "#support_functions"
-        },
-        {
-            "include": "#constant_numeric"
-        },
-        {
-            "include": "#string_literal"
-        },
-        {
-            "include": "#variables_and_params"
+            "include": "#entire_language"
         }
     ],
     "repository": {
+        "entire_language": {
+            "patterns": [
+                {
+                    "include": "#apostrophe_comment"
+                },
+                {
+                    "include": "#template_string"
+                },
+                {
+                    "include": "#rem_comment"
+                },
+                {
+                    "include": "#import_statement"
+                },
+                {
+                    "include": "#namespace_declaration"
+                },
+                {
+                    "include": "#end_namespace"
+                },
+                {
+                    "include": "#class_fields"
+                },
+                {
+                    "include": "#class_declaration"
+                },
+                {
+                    "include": "#end_class"
+                },
+                {
+                    "include": "#preprocessor_keywords"
+                },
+                {
+                    "include": "#region_comment"
+                },
+                {
+                    "include": "#end_region_comment"
+                },
+                {
+                    "include": "#global_constants"
+                },
+                {
+                    "include": "#keyword_logical_operator"
+                },
+                {
+                    "include": "#object_properties"
+                },
+                {
+                    "include": "#vscode_rale_tracker_entry_comment"
+                },
+                {
+                    "include": "#identifiers_with_type_designators"
+                },
+                {
+                    "include": "#m_and_global"
+                },
+                {
+                    "include": "#keyword_return"
+                },
+                {
+                    "include": "#literal_invalid"
+                },
+                {
+                    "include": "#function_declaration"
+                },
+                {
+                    "include": "#inline_function_declaration"
+                },
+                {
+                    "include": "#end_function"
+                },
+                {
+                    "include": "#function_call"
+                },
+                {
+                    "include": "#storage_types"
+                },
+                {
+                    "include": "#literal"
+                },
+                {
+                    "include": "#program_statements"
+                },
+                {
+                    "include": "#try_catch"
+                },
+                {
+                    "include": "#non_identifier_keywords"
+                },
+                {
+                    "include": "#operators"
+                },
+                {
+                    "include": "#support_functions"
+                },
+                {
+                    "include": "#constant_numeric"
+                },
+                {
+                    "include": "#string_literal"
+                },
+                {
+                    "include": "#variables_and_params"
+                }
+            ]
+        },
+        "template_string": {
+            "begin": "(`)",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.template.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "begin": "(\\$\\{)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.template-expression.begin.brs"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#entire_language"
+                        }
+                    ],
+                    "end": "(\\})",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.template-expression.end"
+                        }
+                    }
+                },
+                {
+                    "match": "(.)",
+                    "name": "string.template.brs"
+                }
+            ],
+            "end": "(`)",
+            "endCaptures": {
+                "1": {
+                    "name": "string.template.brs"
+                }
+            }
+        },
         "import_statement": {
             "match": "(?i:(import)\\s(\".*\"))",
             "captures": {
