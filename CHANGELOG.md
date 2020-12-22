@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.11.6] - 2020-12-22
+### Changed
+ - updated to [brighterscript@0.23.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0231---2020-12-22)
+ - (LanguageServer) Refactored statement separators processing and cleaned error messages
+ - (LanguageServer) Improved try-catch parsing
+ - (LanguageServer) Improved label error handling
+### Fixed
+ - syntax highlighting for BrighterScript template strings ([#287](https://github.com/rokucommunity/vscode-brightscript-language/pull/287))
+ - (LanguageServer) crashes related to negative ranges in token location tracking
+ - (LanguageServer) bug causing invalid diagnostics to be thrown on files with multiple dots in their names ([BrighterScript#257](https://github.com/rokucommunity/brighterscript/pull/257))
+ - syntax error for [integer type declaration character](https://developer.roku.com/docs/references/brightscript/language/expressions-variables-types.md#type-declaration-characters) ([BrighterScript#254](https://github.com/rokucommunity/brighterscript/pull/254))
+ - syntax error for floats with more than 5 decimal places that also have a trailing exponent ([BrighterScript#255](https://github.com/rokucommunity/brighterscript/pull/255))
+
+
+
 ## [2.11.5] - 2020-12-10
 ### Fixed
  - show better error messages in certain debug crash situations ([#286](https://github.com/rokucommunity/vscode-brightscript-language/pull/286))
@@ -1621,3 +1636,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.11.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.2...v2.11.3
 [2.11.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.3...v2.11.4
 [2.11.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.4...v2.11.5
+[2.11.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.5...v2.11.6
