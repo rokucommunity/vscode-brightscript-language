@@ -13,12 +13,12 @@
       padding-left: var(--li-identation);
     }
     .valueNode {
-      color: "#8d8d8d";
+      color: #ececec;
     }
   </style>
   <li>
     <JSONKey key={nodeKey} />
-    <span class="valueNode" contenteditable="true">
+    <label for="jsonNodeValue" class="valueNode" contenteditable="true">
       {nodeValue}
-    </span>
+    </label>
   </li>

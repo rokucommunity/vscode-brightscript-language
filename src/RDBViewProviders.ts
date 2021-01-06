@@ -58,33 +58,16 @@ export class RDBRegistryViewProvider implements vscode.WebviewViewProvider {
 		const scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
 		const stylePathOnDisk = vscode.Uri.file(path.join(this.extensionPath, '', "bundle.css"));
 		const styleUri = stylePathOnDisk.with({ scheme: 'vscode-resource' });
-		// Use a nonce to whitelist which scripts can be run
-        const nonce = this.getNonce();
-        
 		return `<!DOCTYPE html>
 			<html lang="en">
-			<head>
-				<meta charset='utf-8'>
-				<meta name='viewport' content='width=device-width,initial-scale=1'>
-				<link rel="stylesheet" type="text/css" href="${styleUri}">
-                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-resource: https:; script-src 'nonce-${nonce}';style-src vscode-resource: 'unsafe-inline' http: https: data:;">
-                <base href="${vscode.Uri.file(path.join(this.extensionPath, '')).with({ scheme: 'vscode-resource' })}/">
-				<script defer nonce="${nonce}" src="${scriptUri}"></script>
-			</head>
-
-			<body>
-				
-			</body>
+                <head>
+                    <meta charset='utf-8'>
+                    <link rel="stylesheet" type="text/css" href="${styleUri}">
+                    <base href="${vscode.Uri.file(path.join(this.extensionPath, '')).with({ scheme: 'vscode-resource' })}/">
+                    <script defer src="${scriptUri}"></script>
+                </head>
+                <body></body>
 			</html>`;
-    }
-
-    getNonce() {
-        let text = "";
-        const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        for (let i = 0; i < 32; i++) {
-            text += possible.charAt(Math.floor(Math.random() * possible.length));
-        }
-        return text;
     }
 }
 

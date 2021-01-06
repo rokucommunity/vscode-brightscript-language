@@ -8,10 +8,11 @@
         padding: 0;
     }
     .key {
-        color: "#3faacb";
+        color: #3faacb;
+        font-weight: bold;
     }
 </style>
 
 <div>
-    <span class="key">{key}</span>
+    <label for="jsonKey" class="key">{key}</label>
 </div>
