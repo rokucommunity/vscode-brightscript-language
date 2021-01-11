@@ -3,6 +3,7 @@
     import JSONNode from './JSONNode.svelte';
     import JSONArrow from './JSONArrow.svelte';
     export let nodeKey, nodeValue, isParentExpanded;
+    export let onValueChange = () => {};
     let objectKey = nodeKey;
     const keys = Object.keys(nodeValue);
     let expanded = false;
@@ -16,6 +17,10 @@
     function expand() {
         expanded = true;
     }
+
+    let onNestedNodeValueChange = (e, key, updatedValue) => {
+        console.log("rokudebug", "onNestedNodeValueChangeonNestedNodeValueChange", JSON.stringify(updatedValue), key, JSON.stringify(nodeValue), keys);
+    };
   </script>
   <style>
     label {
@@ -45,7 +50,7 @@
     {#if expanded}
         <ul class:collapse={!expanded} on:click={expand}>
             {#each keys as key, index}
-                <JSONNode nodeKey={key} nodeValue={nodeValue[key]} />
+                <JSONNode onValueChange={onValueChange} nodeKey={key} bind:nodeValue={nodeValue[key]} />
             {/each}
         </ul>
     {/if}

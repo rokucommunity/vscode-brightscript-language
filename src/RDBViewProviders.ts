@@ -22,6 +22,33 @@ export class RDBRegistryViewProvider implements vscode.WebviewViewProvider {
         });
         console.log('populateRegistry', values);
         this.view?.webview.postMessage({ type: 'readRegistry', values: values });
+        this.view?.webview.onDidReceiveMessage(
+            message => {
+              switch (message.command) {
+                case 'updateRegistry':
+                  let updatedEntry = {};
+                  updatedEntry[message.sectionKey] = this.sanitizeInput(message.updatedValue);
+                  console.log("updateRegistry", updatedEntry);
+                  this.odc.writeRegistry({
+                        values: updatedEntry
+                  }, {
+                    timeout: 20000
+                  });
+                  return;
+              }
+            }
+        );
+    }
+
+    sanitizeInput(values): object {
+        let input = values;
+        Object.keys(values).map((key) => {
+            if (typeof values[key] == 'object') {
+                input[key] = JSON.stringify(values[key]);
+            }
+        });
+
+        return input;
     }
 
 	public resolveWebviewView(

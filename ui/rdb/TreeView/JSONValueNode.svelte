@@ -1,7 +1,7 @@
 <script>
     import JSONKey from './JSONKey.svelte';
     export let nodeKey, nodeValue;
-    const nodeType = typeof(nodeValue);
+    export let onValueChange = () => {};
   </script>
   <style>
     li {
@@ -18,7 +18,5 @@
   </style>
   <li>
     <JSONKey key={nodeKey} />
-    <label for="jsonNodeValue" class="valueNode" contenteditable="true">
-      {nodeValue}
-    </label>
+    <label for="jsonNodeValue" on:blur={onValueChange} bind:textContent={nodeValue} class="valueNode" contenteditable="true" />
   </li>

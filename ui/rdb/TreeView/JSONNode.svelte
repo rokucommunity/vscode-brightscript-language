@@ -4,6 +4,7 @@
     export let nodeValue;
     export let nodeKey;
     let valueType = typeof nodeValue;
+    export let onValueChange = () => {};
     console.log(
         "rokudebug-v1",
         "nodeKey:" + nodeKey,
@@ -31,4 +32,4 @@
     }
 </script>
 
-<svelte:component this={componentType} {nodeKey} {nodeValue} />
+<svelte:component bind:nodeValue={nodeValue} onValueChange={onValueChange} this={componentType} {nodeKey} />
