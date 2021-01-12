@@ -9,9 +9,6 @@
       word-wrap: break-word;
       word-break: break-all;
     }
-    .indent {
-      padding-left: var(--li-identation);
-    }
     .valueNode {
       color: #ececec;
     }

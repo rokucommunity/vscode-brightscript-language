@@ -17,16 +17,8 @@
     function expand() {
         expanded = true;
     }
-
-    let onNestedNodeValueChange = (e, key, updatedValue) => {
-        console.log("rokudebug", "onNestedNodeValueChangeonNestedNodeValueChange", JSON.stringify(updatedValue), key, JSON.stringify(nodeValue), keys);
-    };
   </script>
   <style>
-    label {
-    position: relative;
-      display: inline-block;
-    }
     .indent {
       padding-left: var(--li-identation);
     }
@@ -37,12 +29,11 @@
     }
 
     ul {
-		margin: 0;
-		list-style: none;
-		padding-left: 1.2rem; 
-		user-select: none;
-	}
-    
+        margin: 0;
+        list-style: none;
+        padding-left: 1.2rem; 
+        user-select: none;
+    }
   </style>
   <li class:indent={isParentExpanded}>
     <JSONArrow {expanded} on:click={toggleExpand} />

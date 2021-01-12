@@ -1,16 +1,9 @@
 <script>
     import JSONObjectNode from "./JSONObjectNode.svelte";
     import JsonValueNode from "./JSONValueNode.svelte";
-    export let nodeValue;
-    export let nodeKey;
+    export let nodeValue, nodeKey;
     let valueType = typeof nodeValue;
     export let onValueChange = () => {};
-    console.log(
-        "rokudebug-v1",
-        "nodeKey:" + nodeKey,
-        "nodeValue:" + nodeValue,
-        "valueType:" + valueType
-    );
 
     if (valueType === "string" && isJSON(nodeValue)) {
         nodeValue = JSON.parse(nodeValue)

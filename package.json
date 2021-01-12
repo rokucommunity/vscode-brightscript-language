@@ -30,7 +30,7 @@
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
         "lint": "tslint \"./src/**/*.ts\"",
-        "watch": "npm run copy-schema && tsc -w -p ./ && npm run svelte-build",
+        "watch": "npm run copy-schema && tsc -w -p ./",
         "test": "nyc mocha \"src/**/*.spec.ts\" --full-trace --bail",
         "test:nocover": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",

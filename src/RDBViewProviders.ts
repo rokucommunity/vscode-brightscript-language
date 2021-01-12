@@ -5,10 +5,10 @@ import { OnDeviceComponent } from 'roku-test-automation';
 export class RDBRegistryViewProvider implements vscode.WebviewViewProvider {
     private view?: vscode.WebviewView;
     private odc?: OnDeviceComponent;
-    private extensionPath: string;
+    private rdbBasePath: string;
 
     constructor(context: vscode.ExtensionContext, private rdbOutputChannel: vscode.OutputChannel) {
-        this.extensionPath = context.extensionPath + "/dist/ui/rdb"
+        this.rdbBasePath = context.extensionPath + "/dist/ui/rdb"
     }
     
     public setOnDeviceComponent(odc: OnDeviceComponent) {
@@ -51,50 +51,50 @@ export class RDBRegistryViewProvider implements vscode.WebviewViewProvider {
         return input;
     }
 
-	public resolveWebviewView(
-		view: vscode.WebviewView,
-		context: vscode.WebviewViewResolveContext,
-		_token: vscode.CancellationToken,
-	) {
+    public resolveWebviewView(
+        view: vscode.WebviewView,
+        context: vscode.WebviewViewResolveContext,
+        _token: vscode.CancellationToken,
+    ) {
         console.log('resolveWebviewView');
         
         this.view = view;
         const webView = view.webview;
         webView.options = {
-			// Allow scripts in the webview
-			enableScripts: true,
+            // Allow scripts in the webview
+            enableScripts: true,
 
-			localResourceRoots: [
-				vscode.Uri.file(path.join(this.extensionPath, ''))
-			]
-		};
+            localResourceRoots: [
+                vscode.Uri.file(path.join(this.rdbBasePath, ''))
+            ]
+        };
 
-		webView.html = this.getHtmlForWebview();
-		webView.onDidReceiveMessage(data => {
-			switch (data.type) {
-				case 'colorSelected':
-					
-				case 'command':
-					
-			}
+        webView.html = this.getHtmlForWebview();
+        webView.onDidReceiveMessage(data => {
+            switch (data.type) {
+                case 'colorSelected':
+                    
+                case 'command':
+                    
+            }
         });
     }
     
     private getHtmlForWebview() {
-		const scriptPathOnDisk = vscode.Uri.file(path.join(this.extensionPath, '', "index.js"));
-		const scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
-		const stylePathOnDisk = vscode.Uri.file(path.join(this.extensionPath, '', "bundle.css"));
-		const styleUri = stylePathOnDisk.with({ scheme: 'vscode-resource' });
-		return `<!DOCTYPE html>
-			<html lang="en">
+        const scriptPathOnDisk = vscode.Uri.file(path.join(this.rdbBasePath, '', "index.js"));
+        const scriptUri = scriptPathOnDisk.with({ scheme: 'vscode-resource' });
+        const stylePathOnDisk = vscode.Uri.file(path.join(this.rdbBasePath, '', "bundle.css"));
+        const styleUri = stylePathOnDisk.with({ scheme: 'vscode-resource' });
+        return `<!DOCTYPE html>
+            <html lang="en">
                 <head>
                     <meta charset='utf-8'>
                     <link rel="stylesheet" type="text/css" href="${styleUri}">
-                    <base href="${vscode.Uri.file(path.join(this.extensionPath, '')).with({ scheme: 'vscode-resource' })}/">
+                    <base href="${vscode.Uri.file(path.join(this.rdbBasePath, '')).with({ scheme: 'vscode-resource' })}/">
                     <script defer src="${scriptUri}"></script>
                 </head>
                 <body></body>
-			</html>`;
+            </html>`;
     }
 }
 

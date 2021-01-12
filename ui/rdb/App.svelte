@@ -1,5 +1,5 @@
 <script lang="ts">
-    import TreeView from "./TreeView/TreeView.svelte";
+    import JSONTreeView from "./JSONTreeView/JSONTreeView.svelte";
     let registryValues = {};
     window.addEventListener('message', event => {
         const message = event.data;
@@ -11,5 +11,5 @@
     });
 </script>
 {#if Object.keys(registryValues).length > 0}
-    <TreeView {registryValues} />
+    <JSONTreeView {registryValues} />
 {/if}
