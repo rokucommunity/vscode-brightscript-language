@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.11.7] - 2020-01-12
+### Added
+ - (LanguageServer) support for passing custom types as function parameters and return types ([BrighterScript#262](https://github.com/rokucommunity/brighterscript/issues/262))
+### Changed
+ - updated to [brighterscript@0.23.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0231---2020-12-22)
+### Fixed
+ - (Debugger) occasional failure to launch during home press commands when device would send 202 instead of 200 http response
+ - (LanguageServer) bug with transpiled child classes causing on-device stack overflows ([BrighterScript#267](https://github.com/rokucommunity/brighterscript/issues/267))
+
+
+
 ## [2.11.6] - 2020-12-22
 ### Changed
  - updated to [brighterscript@0.23.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0231---2020-12-22)
@@ -1637,3 +1648,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.11.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.3...v2.11.4
 [2.11.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.4...v2.11.5
 [2.11.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.5...v2.11.6
+[2.11.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.6...v2.11.7
