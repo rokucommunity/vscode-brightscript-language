@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.12.0] - 2020-01-15
+### Added
+ - (LanguageServer) support for proper xml parsing and additional SceneGraph diagnostics (such as component interface validation)
+ - (LanguageServer) support for string-based diagnostic codes from plugins
+### Changed
+ - updated to [brighterscript@0.26.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0260---2021-01-14)
+
+
+
 ## [2.11.7] - 2020-01-12
 ### Added
  - (LanguageServer) support for passing custom types as function parameters and return types ([BrighterScript#262](https://github.com/rokucommunity/brighterscript/issues/262))
@@ -1650,3 +1659,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.11.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.4...v2.11.5
 [2.11.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.5...v2.11.6
 [2.11.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.6...v2.11.7
+[2.12.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.7...v2.12.0
