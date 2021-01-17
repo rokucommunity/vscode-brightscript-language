@@ -116,6 +116,12 @@
                 },
                 {
                     "include": "#variables_and_params"
+                },
+                {
+                    "include": "#annotation"
+                },
+                {
+                    "include": "#annotation_parameterless"
                 }
             ]
         },
@@ -491,6 +497,43 @@
         "vscode_rale_tracker_entry_comment": {
             "match": "('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)",
             "name": "keyword.preprocessor.brs"
+        },
+        "annotation_parameterless": {
+            "match": "^(i?\\s*(@)\\s*([a-zA-Z0-9_]+))",
+            "captures": {
+                "1": {
+                    "name": "punctuation.decorator.brs"
+                },
+                "2": {
+                    "name": "entity.name.function.brs meta.function-call.brs"
+                }
+            }
+        },
+        "annotation": {
+            "name": "meta.decorator.brs",
+            "begin": "(@)\\s*([a-zA-Z0-9_]+)\\s*(\\()",
+            "beginCaptures": {
+                "1": {
+                    "name": "punctuation.decorator.brs"
+                },
+                "2": {
+                    "name": "entity.name.function.brs meta.function-call.brs"
+                },
+                "3": {
+                    "name": "meta.brace.round.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#entire_language"
+                }
+            ],
+            "end": "(\\))",
+            "endCaptures": {
+                "1": {
+                    "name": "meta.brace.round.brs"
+                }
+            }
         }
     }
 }
