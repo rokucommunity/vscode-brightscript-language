@@ -83,22 +83,15 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
 
     public addCustomFileLink(customLink: CustomDocumentLink) {
         let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-        let uri = vscode.Uri.file(customLink.pkgPath);
-        if (customLink.lineNumber) {
-            uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-        }
-
+        let uri = vscode.Uri.parse(`vscode://rokucommunity.brightscript/openFile/${customLink.pkgPath}#${customLink.lineNumber}`)
         this.customLinks.push(new DocumentLink(range, uri));
     }
 
     public addCustomPkgLink(customLink: CustomDocumentLink) {
         let fileMap = this.getFileMap(customLink.pkgPath);
         if (fileMap) {
-            let uri = vscode.Uri.file(fileMap.src);
-            if (customLink.lineNumber) {
-                uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-            }
             let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+             let uri = vscode.Uri.parse(`vscode://rokucommunity.brightscript/openFile/${customLink.pkgPath}#${customLink.lineNumber}`)
             this.customLinks.push(new DocumentLink(range, uri));
         } else {
             console.log('could not find matching file for link with path ' + customLink.pkgPath);
