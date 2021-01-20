@@ -6,7 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.12.1] - 2020-01-16
+## [2.12.2] - 2021-01-19
+### Changed
+ - (LanguageServer) (For plugin authors) refactored many async methods into sync methods to simplify file creation/management. ([#278](https://github.com/rokucommunity/brighterscript/pull/278))
+ - updated to [brighterscript@0.28.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0281---2021-01-19)
+ - updated to [roku-debug@0.5.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#059---2021-01-19)
+### Fixed
+ - (LanguageServer) bug with transpiling classes that would not always get the correct superclass index. ([#279](https://github.com/rokucommunity/brighterscript/pull/279))
+ - (Debugger) timing issue when shutting down debug session before the log processor has finish its job
+ - (Debugger) off-by-one location of "compile errors" when device validates XML components
+ - (Debugger) off-by-one code stepping with debug protocol
+ - (Debugger) XML sourcemap resolution; follow mapped source even if we don't have a resolved mapping
+ - (Debugger) errors being dropped when a "line" error is found
+ - (Debugger) added extra XML error matching
+ - (Debugger) filter out "generic XML error" on a file if a specific one was captured as well
+
+
+## [2.12.1] - 2021-01-16
 ### Added
  - (LanguageServer) annotation support for classes and class methods ([BrighterScript#270](https://github.com/rokucommunity/brighterscript/pull/270))
  - syntax highlighting support for annotations
@@ -18,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.12.0] - 2020-01-15
+## [2.12.0] - 2021-01-15
 ### Added
  - (LanguageServer) support for proper xml parsing and additional SceneGraph diagnostics (such as component interface validation)
  - (LanguageServer) support for string-based diagnostic codes from plugins
@@ -27,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.11.7] - 2020-01-12
+## [2.11.7] - 2021-01-12
 ### Added
  - (LanguageServer) support for passing custom types as function parameters and return types ([BrighterScript#262](https://github.com/rokucommunity/brighterscript/issues/262))
 ### Changed
@@ -1673,3 +1689,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.11.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.6...v2.11.7
 [2.12.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.11.7...v2.12.0
 [2.12.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.0...v2.12.1
+[2.12.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.1...v2.12.2
