@@ -83,7 +83,7 @@ export class Extension {
         );
 
         vscode.window.registerUriHandler({
-            async handleUri(uri: vscode.Uri) {
+            handleUri: async function(uri: vscode.Uri) {
                 if (uri.path.startsWith('/openFile/')) {
                     let docUri = vscode.Uri.file(uri.path.substr(10));
                     let doc = await vscode.workspace.openTextDocument(docUri);
