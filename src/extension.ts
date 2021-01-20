@@ -96,7 +96,6 @@ export class Extension {
                         at: 'center'
                     });
                 }
-
             }
         });
 
