@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.13.0] - 2021-01-25
+### Added
+ - (BrighterScript) support for ternary operator (see [the BrighterScript ternary operator docs](https://github.com/rokucommunity/brighterscript/blob/master/docs/ternary-operator.md) for more information)
+### Changed
+ - updated to [brighterscript@0.29.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0290---2021-01-25)
+
+
+
 ## [2.12.3] - 2021-01-24
 ### Changed
  - updated to [brighterscript@0.28.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0282--2021-01-22)
@@ -1699,3 +1707,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.12.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.0...v2.12.1
 [2.12.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.1...v2.12.2
 [2.12.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.2...v2.12.3
+[2.13.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.3...v2.13.0
