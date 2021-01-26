@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.14.0] - 2021-01-26
+### Added
+ - (BrighterScript) null coalescing operator (see [the BrighterScript docs](https://github.com/rokucommunity/brighterscript/blob/master/docs/null-coalescing-operator.md) for more information)
+### Fixed
+ - (BrighterScript)infinite parser loop when encountering annotations without an identifier above a class method ([#291](https://github.com/rokucommunity/brighterscript/pull/291))
+
+
+
 ## [2.13.0] - 2021-01-25
 ### Added
  - (BrighterScript) support for ternary operator (see [the BrighterScript ternary operator docs](https://github.com/rokucommunity/brighterscript/blob/master/docs/ternary-operator.md) for more information)
@@ -1708,3 +1716,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.12.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.1...v2.12.2
 [2.12.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.2...v2.12.3
 [2.13.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.3...v2.13.0
+[2.14.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.13.0...v2.14.0
