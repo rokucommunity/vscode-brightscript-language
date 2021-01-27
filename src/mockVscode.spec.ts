@@ -100,7 +100,8 @@ export let vscode = {
         activeTextEditor: {
             document: undefined
         },
-        onDidChangeTextEditorSelection: () => { }
+        onDidChangeTextEditorSelection: () => { },
+        registerUriHandler: () => { }
     },
     CompletionItemKind: {
         Function: 2
@@ -266,7 +267,8 @@ export let vscode = {
                     return {};
                 }
             };
-        }
+        },
+        parse: () => { }
     },
     SnippetString: class {
         constructor(value: string = null) {
