@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.14.2] - 2021-02-03
+### Changed
+ - updated to [brighterscript@0.30.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0304---2021-02-02)
+### Fixed
+ - (LanguageServer) fixed crash during validation caused by a missing function body when parsing malformed code
+
+
+
 ## [2.14.1] - 2021-01-31
 ### Fixed
  - (LanguageServer) xml parse error crashing validation ((BrighterScript#294)[https://github.com/rokucommunity/brighterscript/pull/294])
@@ -1729,3 +1737,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.13.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.12.3...v2.13.0
 [2.14.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.13.0...v2.14.0
 [2.14.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.0...v2.14.1
+[2.14.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.1...v2.14.2
