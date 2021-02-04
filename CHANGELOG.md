@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.15.0] - 2021-02-04
+### Added
+- (LanguageServer) syntax support for `dim` statements
+- (LanguageServer) completion and code navigation for labels
+### Changed
+ - updated to [brighterscript@0.30.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0305---2021-02-03)
+### Fixed
+ - (LanguageServer) exception related to signature help when writing comments
+
+
+
 ## [2.14.2] - 2021-02-03
 ### Changed
  - updated to [brighterscript@0.30.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0304---2021-02-02)
@@ -1738,3 +1749,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.14.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.13.0...v2.14.0
 [2.14.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.0...v2.14.1
 [2.14.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.1...v2.14.2
+[2.15.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.3...v2.15.0
