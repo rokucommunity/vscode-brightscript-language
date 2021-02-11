@@ -4,10 +4,6 @@ import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { brightScriptCommands } from './BrightScriptCommands';
-import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
-import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
-import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
-import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
@@ -15,16 +11,12 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-import { RendezvousTreeDataProvider } from './treeProviders/RendezvousTreeDataProvider';
-import {
-    BrightScriptWorkspaceSymbolProvider,
-    SymbolInformationRepository
-} from './SymbolInformationRepository';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { ProjectsViewTreeProvider } from './treeProviders/ProjectTreeProvider';
+import { RendezvousTreeDataProvider } from './treeProviders/RendezvousTreeDataProvider';
 
-const EXTENSION_ID = 'celsoaf.brightscript';
+const EXTENSION_ID = 'RokuCommunity.brightscript';
 
 export class Extension {
 
@@ -39,14 +31,28 @@ export class Extension {
 
         var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
-        var currentExtensionVersion = extensions.getExtension(EXTENSION_ID).packageJSON.version;
+        var currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
 
         let activeDeviceManager = new ActiveDeviceManager();
-        let languageServerPromise = languageServerManager.init(context);
 
-        let subscriptions = context.subscriptions;
+        const declarationProvider: DeclarationProvider = new DeclarationProvider();
+        context.subscriptions.push(declarationProvider);
+
+        //create channels
+        this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
+        this.debugServerOutputChannel.appendLine('Extension startup');
+
+        let docLinkProvider = new LogDocumentLinkProvider();
+
+        const logOutputManager: LogOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
+
+        const definitionRepo = new DefinitionRepository(declarationProvider);
+        context.subscriptions.push(declarationProvider);
+
+        let languageServerPromise = languageServerManager.init(context, definitionRepo);
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
         let rendezvousViewProvider = new RendezvousTreeDataProvider(context);
@@ -59,7 +65,7 @@ export class Extension {
             vscode.window.registerTreeDataProvider('projectsView', this.projectsViewTreeProvider)
         );
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
+        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
             vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
         }));
 
@@ -69,25 +75,45 @@ export class Extension {
         }));
 
         //register the code formatter
-        vscode.languages.registerDocumentRangeFormattingEditProvider({
-            language: 'brightscript',
-            scheme: 'file'
-        }, new Formatter());
-        vscode.languages.registerDocumentRangeFormattingEditProvider({
-            language: 'brighterscript',
-            scheme: 'file'
-        }, new Formatter());
+        context.subscriptions.push(
+            vscode.languages.registerDocumentRangeFormattingEditProvider({
+                language: 'brightscript',
+                scheme: 'file'
+            }, new Formatter()),
+            vscode.languages.registerDocumentRangeFormattingEditProvider({
+                language: 'brighterscript',
+                scheme: 'file'
+            }, new Formatter())
+        );
 
-        this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
-        this.debugServerOutputChannel.appendLine('Extension startup');
-
+        //register the debug configuration provider
         let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);
-        context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider));
+        context.subscriptions.push(
+            vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
+        );
 
-        let docLinkProvider = new LogDocumentLinkProvider();
         //register a link provider for this extension's "BrightScript Log" output
-        vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider);
+        context.subscriptions.push(
+            vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
+        );
+
+        vscode.window.registerUriHandler({
+            handleUri: async function(uri: vscode.Uri) {
+                if (uri.path.startsWith('/openFile/')) {
+                    let docUri = vscode.Uri.file(uri.path.substr(10));
+                    let doc = await vscode.workspace.openTextDocument(docUri);
+                    await vscode.window.showTextDocument(doc, { preview: false });
+                    let editor = vscode.window.activeTextEditor;
+                    let lineNumber = Number(uri.fragment) ? Number(uri.fragment) - 1 : 0;
+                    editor.selection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
+                    vscode.commands.executeCommand('revealLine', {
+                        lineNumber: lineNumber,
+                        at: 'center'
+                    });
+                }
+            }
+        });
+
         //give the launch config to the link provider any time we launch the app
         vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
             if (e.event === 'BSLaunchStartEvent') {
@@ -112,24 +138,9 @@ export class Extension {
                 }
             }
         });
-        //register the definition provider
-        const declarationProvider: DeclarationProvider = new DeclarationProvider();
-        const symbolInformationRepository = new SymbolInformationRepository(declarationProvider);
-        const logOutputManager: LogOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
-        const definitionRepo = new DefinitionRepository(declarationProvider);
-        const definitionProvider = new BrightScriptDefinitionProvider(definitionRepo);
-        const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
 
+        //register all commands for this extension
         brightScriptCommands.registerCommands(context);
-
-        // experimental placeholder
-        // context.subscriptions.push(vscode.languages.registerCompletionItemProvider(selector, new BrightScriptCompletionItemProvider(), '.'));
-        context.subscriptions.push(vscode.languages.registerDefinitionProvider(selector, definitionProvider));
-        context.subscriptions.push(vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(declarationProvider)));
-        context.subscriptions.push(vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(declarationProvider, symbolInformationRepository)));
-        context.subscriptions.push(declarationProvider);
-        vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider());
-        vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(definitionRepo), '(', ',');
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session
@@ -137,6 +148,7 @@ export class Extension {
                 logOutputManager.onDidStartDebugSession();
             }
         });
+
         vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
             logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
         });

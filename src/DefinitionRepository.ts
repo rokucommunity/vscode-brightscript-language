@@ -7,7 +7,9 @@ import { DeclarationProvider, getExcludeGlob } from './DeclarationProvider';
 
 export class DefinitionRepository {
 
-    constructor(private provider: DeclarationProvider) {
+    constructor(
+        public provider: DeclarationProvider
+    ) {
         this.declarationProvider = provider;
         provider.onDidChange((e) => {
             this.cache.set(e.uri.fsPath, e.decls.filter((d) => d.isGlobal));

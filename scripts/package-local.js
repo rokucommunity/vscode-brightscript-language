@@ -24,7 +24,7 @@ var projects = {};
 
 try {
 
-    projectNames.forEach((projectName) => {
+    for (const projectName of projectNames) {
         printHeader(projectName);
         //create the project and add it to the map
         var project = projects[projectName] = {};
@@ -32,8 +32,9 @@ try {
         project.packageJsonPath = path.resolve(project.folderPath, 'package.json');
         project.packageJsonBackup = fs.existsSync(project.packageJsonPath) ? fs.readFileSync(project.packageJsonPath).toString() : undefined;
 
-        if (extensionPackageJson.dependencies['roku-debug'].startsWith('file:') === false) {
+        if (extensionPackageJson.dependencies[projectName].startsWith('file:') === false) {
             console.log(`Skipping ${projectName} because it's not referenced locally in the extension`);
+            continue;
         }
 
         var project = projects[projectName];
@@ -59,7 +60,7 @@ try {
         });
         project.tarballPath = path.join(project.folderPath, `${projectName}-${package.version}.tgz`);
         console.log('tarball path', project.tarballPath);
-    });
+    }
 
     printHeader('vscode-brightscript-language');
 
@@ -86,8 +87,11 @@ try {
 } finally {
     console.log('cleaning up');
     //restore package.json for all affected projects
-    Object.keys(projects).forEach((projectName) => {
+    for (const projectName of projectNames) {
         var project = projects[projectName];
+        if (!fs.pathExistsSync(project.folderPath)) {
+            continue;
+        }
         console.log(`Restoring ${projectName}/package.json`);
         fs.writeFileSync(project.packageJsonPath, project.packageJsonBackup);
         //delete the tarballs
@@ -99,7 +103,7 @@ try {
             cwd: project.folderPath,
             stdio: 'inherit'
         });
-    });
+    }
 
     console.log('Restoring vscode-brightscript-language/package.json');
     fs.writeFileSync('package.json', extensionPackageJsonBackup);

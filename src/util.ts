@@ -198,3 +198,4 @@ class Util {
 
 const util = new Util();
 export { util };
+export default util;

@@ -9,25 +9,39 @@ import {
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {
+    Disposable,
     window,
     workspace,
 } from 'vscode';
 import { CustomCommands, Deferred, ProjectInfo, CustomNotifications } from 'brighterscript';
 import { CodeWithSourceMap } from 'source-map';
-import { util } from './util';
+import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
+import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
+import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
+import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
+import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
+import { DefinitionRepository } from './DefinitionRepository';
+import util from './util';
 
-export class LanaguageServerManager {
+export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
     }
 
     private context: vscode.ExtensionContext;
+    private definitionRepository: DefinitionRepository;
+    private get declarationProvider() {
+        return this.definitionRepository.provider;
+    }
 
-    public async init(context: vscode.ExtensionContext) {
+    public async init(
+        context: vscode.ExtensionContext,
+        definitionRepository: DefinitionRepository
+
+    ) {
         this.context = context;
-        if (this.isLanguageServerEnabledInSettings()) {
-            return this.enableLanguageServer();
-        }
+        this.definitionRepository = definitionRepository;
+
         //dynamically enable or disable the language server based on user settings
         vscode.workspace.onDidChangeConfiguration((configuration) => {
             if (this.isLanguageServerEnabledInSettings()) {
@@ -36,6 +50,12 @@ export class LanaguageServerManager {
                 this.disableLanguageServer();
             }
         });
+
+        if (this.isLanguageServerEnabledInSettings()) {
+            return this.enableLanguageServer();
+        } else {
+            this.disableLanguageServer();
+        }
     }
 
     private deferred: Deferred<any>;
@@ -51,20 +71,29 @@ export class LanaguageServerManager {
         }
     }
 
+    private refreshDeferred() {
+        let newDeferred = new Deferred<any>();
+        //chain any pending promises to this new deferred
+        if (!this.deferred.isCompleted) {
+            this.deferred.resolve(newDeferred.promise);
+        }
+        this.deferred = newDeferred;
+    }
+
     private client: LanguageClient;
     private buildStatusStatusBar: vscode.StatusBarItem;
 
     private async enableLanguageServer() {
         try {
+
             //if we already have a language server, nothing more needs to be done
             if (this.client) {
                 return this.ready();
             }
+            this.refreshDeferred();
 
-            let newDeferred = new Deferred<any>();
-            //chain any pending promises to this new deferred
-            this.deferred.resolve(newDeferred.promise);
-            this.deferred = newDeferred;
+            //disable the simple providers (the language server will handle all of these)
+            this.disableSimpleProviders();
 
             // The server is implemented in node
             let serverModule = this.context.asAbsolutePath(
@@ -156,8 +185,12 @@ export class LanaguageServerManager {
             });
             this.deferred.resolve(true);
         } catch (e) {
-            this.client?.stop();
+            console.error(e);
+            this.client?.stop?.();
             delete this.client;
+
+            this.refreshDeferred();
+
             this.deferred.reject(e);
         }
     }
@@ -187,9 +220,53 @@ export class LanaguageServerManager {
             this.client = undefined;
             this.deferred = new Deferred();
         }
+        //enable the simple providers (since there is no language server)
+        this.enableSimpleProviders();
     }
 
-    private isLanguageServerEnabledInSettings() {
+    private simpleSubscriptions = [] as Disposable[];
+
+    /**
+     * Enable the simple providers (which means the language server is disabled).
+     * These were the original providers created by George. Most of this functionality has been moved into the language server
+     * However, if the language server is disabled, we want to at least fall back to these.
+     */
+    private enableSimpleProviders() {
+        if (this.simpleSubscriptions.length === 0) {
+            //register the definition provider
+            const definitionProvider = new BrightScriptDefinitionProvider(this.definitionRepository);
+            const symbolInformationRepository = new SymbolInformationRepository(this.declarationProvider);
+            const selector = { scheme: 'file', pattern: '**/*.{brs,bs}' };
+
+            this.simpleSubscriptions.push(
+                vscode.languages.registerDefinitionProvider(selector, definitionProvider),
+                vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(this.declarationProvider)),
+                vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(this.declarationProvider, symbolInformationRepository)),
+                vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider()),
+                vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(this.definitionRepository), '(', ','),
+            );
+
+            this.context.subscriptions.push(...this.simpleSubscriptions);
+        }
+    }
+
+    /**
+     * Disable the simple subscriptions (which means we'll depend on the language server)
+     */
+    private disableSimpleProviders() {
+        if (this.simpleSubscriptions.length > 0) {
+            for (const sub of this.simpleSubscriptions) {
+                const idx = this.context.subscriptions.indexOf(sub);
+                if (idx > -1) {
+                    this.context.subscriptions.splice(idx, 1);
+                    sub.dispose();
+                }
+            }
+            this.simpleSubscriptions = [];
+        }
+    }
+
+    public isLanguageServerEnabledInSettings() {
         var settings = vscode.workspace.getConfiguration('brightscript');
         var value = settings.enableLanguageServer === false ? false : true;
         return value;
@@ -228,5 +305,4 @@ export class LanaguageServerManager {
     private _onProjectsChangedHandlers = [];
 }
 
-export const languageServerManager = new LanaguageServerManager();
-
+export const languageServerManager = new LanguageServerManager();
