@@ -3,7 +3,6 @@ import {
     LanguageClientOptions,
     ServerOptions,
     TransportKind,
-    ExecuteCommandOptions,
     ExecuteCommandParams
 } from 'vscode-languageclient';
 import * as vscode from 'vscode';
@@ -22,7 +21,7 @@ import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbol
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import { DefinitionRepository } from './DefinitionRepository';
-import { DeclarationProvider } from './DeclarationProvider';
+import { util } from './util';
 
 export class LanguageServerManager {
     constructor() {
@@ -180,12 +179,23 @@ export class LanguageServerManager {
         }
     }
 
+    /**
+     * Stop and then start the language server.
+     * This is a noop if the language server is currently disabled
+     */
+    public async restart() {
+        this.disableLanguageServer();
+        await util.delay(1);
+        await this.enableLanguageServer();
+    }
+
     private disableLanguageServer() {
         if (this.client) {
             this.client.stop();
             this.buildStatusStatusBar.dispose();
             this.buildStatusStatusBar = undefined;
             this.client = undefined;
+            this.deferred = new Deferred();
         }
         //enable the simple providers (since there is no language server)
         this.enableSimpleProviders();

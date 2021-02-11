@@ -1532,6 +1532,12 @@
                     "light": "./images/preview-right-light.svg",
                     "dark": "./images/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.languageServer.restart",
+                "title": "Restart Language Server",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
             }
         ],
         "keybindings": [
