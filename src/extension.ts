@@ -59,6 +59,10 @@ export class Extension {
             vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
         }));
 
+        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
+            await languageServerManager.restart();
+        }));
+
         //register the code formatter
         context.subscriptions.push(
             vscode.languages.registerDocumentRangeFormattingEditProvider({
