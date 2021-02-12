@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.16.1] - 2021-02-12
+### Added
+ - (LanguageServer) additional debug logging
+### Changed
+ - updated to [brighterscript@0.30.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0308---2021-02-12)
+### Fixed
+ - (LanguageServer) don't mangle xml scripts during transpile preview
+
+
+
 ## [2.16.0] - 2021-02-11
 ### Added
  - Command to restart language server called "BrightScript: Restart Language Server"
@@ -1761,3 +1771,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.14.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.1...v2.14.2
 [2.15.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.3...v2.15.0
 [2.16.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.15.0...v2.16.0
+[2.16.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.0...v2.16.1
