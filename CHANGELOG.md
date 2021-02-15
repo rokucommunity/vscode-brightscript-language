@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### [2.16.2] - 2021-02-15
+### Changed
+ - updated to [brighterscript@0.30.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0309---2021-02-15)
+### Fixed
+ - (LanguageServer) prevent excess validations when non-workspace files are changed  ([BrighterScript#315](https://github.com/rokucommunity/brighterscript/pull/315))
+ - (LanguageServer) catch errors when getting signatures ([BrighterScript#285](https://github.com/rokucommunity/brighterscript/pull/285))
+ - (LanguageServer) missing `Roku_Ads` function in global functions list. ([BrighterScript#312](https://github.com/rokucommunity/brighterscript/pull/312))
+
+
+
 ## [2.16.1] - 2021-02-12
 ### Added
  - (LanguageServer) additional debug logging
@@ -1772,3 +1782,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.15.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.14.3...v2.15.0
 [2.16.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.15.0...v2.16.0
 [2.16.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.0...v2.16.1
+[2.16.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.1...v2.16.2
