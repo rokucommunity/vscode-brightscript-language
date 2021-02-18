@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.1] - 2021-02-18
+### Changed
+ - updated to [brighterscript@0.31.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0311---2021-02-18)
+### Fixed
+  - (LanguageServer) prevent exception in codeAction functionality when file cannot be found in a Program, which caused unwanted focus on the "BrighterScript Language Server" output panel.
+
+
+
 ### [2.17.0] - 2021-02-17
 ### Added
  - (LanguageServer) codeAction to add missing `extends` attribute in components
@@ -1795,3 +1803,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.16.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.0...v2.16.1
 [2.16.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.1...v2.16.2
 [2.17.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.2...v2.17.0
+[2.17.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.0...v2.17.1
