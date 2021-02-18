@@ -64,7 +64,7 @@
             ]
         },
         {
-            "name": "Extension,Language Server",
+            "name": "Extension, Language Server",
             "configurations": [
                 "Extension",
                 "Language Server"
