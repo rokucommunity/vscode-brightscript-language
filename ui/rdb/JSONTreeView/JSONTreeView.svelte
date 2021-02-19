@@ -2,8 +2,8 @@
     import JSONNode from "./JSONNode.svelte";
     export let registryValues;
     const keys = Object.keys(registryValues);
+    const vscode = acquireVsCodeApi();
     export let onValueChange = (key) => {
-        const vscode = acquireVsCodeApi();
         vscode.postMessage({
             command: 'updateRegistry',
             sectionKey: key,
