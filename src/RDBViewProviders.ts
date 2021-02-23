@@ -14,30 +14,54 @@ export class RDBRegistryViewProvider implements vscode.WebviewViewProvider {
     public setOnDeviceComponent(odc: OnDeviceComponent) {
         this.odc = odc;
         this.populateRegistry();
+        this.handleWebViewCommands();
     }
 
     private async populateRegistry() {
         const {values} = await this.odc.readRegistry({}, {
             timeout: 20000
         });
-        console.log('populateRegistry', values);
         this.view?.webview.postMessage({ type: 'readRegistry', values: values });
+    }
+
+    private handleWebViewCommands() {
         this.view?.webview.onDidReceiveMessage(
             message => {
               switch (message.command) {
                 case 'updateRegistry':
                   let updatedEntry = {};
                   updatedEntry[message.sectionKey] = this.sanitizeInput(message.updatedValue);
-                  console.log("updateRegistry", updatedEntry);
                   this.odc.writeRegistry({
                         values: updatedEntry
                   }, {
                     timeout: 20000
                   });
                   return;
+                case 'showSaveDialog':
+                    vscode.window.showSaveDialog({saveLabel: "Save"}).then(uri => {
+                        vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
+                    });
+                  return;
+                case 'showChooseFileDialog':
+                    const options: vscode.OpenDialogOptions = {
+                        canSelectMany: false,
+                        openLabel: 'Select',
+                        canSelectFiles: true,
+                        canSelectFolders: false
+                    };
+                    vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
+                  return;
               }
             }
         );
+    }
+
+    async importContentsToRegistry(uri) {
+        if (uri && uri[0]) {
+            const input = await vscode.workspace.fs.readFile(uri[0]);
+            const data = Buffer.from(input).toString('utf8');
+            this.view?.webview.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
+        }
     }
 
     sanitizeInput(values): object {
