@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.2] - 2021-02-25
+### Changed
+ - updated to [brighterscript@0.32.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0323---2021-02-25)
+### Fixed
+ - (LanguageServer) fix significant performance bug in diagnostic filtering
+ - (LanguageServer) null reference error in Scope.getFileByRelativePath()
+ - (LanguageServer) fix class fields that were missing in getSymbol requests
+
+
+
 ## [2.17.1] - 2021-02-18
 ### Changed
  - updated to [brighterscript@0.31.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0311---2021-02-18)
@@ -1804,3 +1814,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.16.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.1...v2.16.2
 [2.17.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.16.2...v2.17.0
 [2.17.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.0...v2.17.1
+[2.17.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.1...v2.17.2
