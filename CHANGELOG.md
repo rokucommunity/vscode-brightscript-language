@@ -6,12 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.4] - 2021-02-28
+### Added
+ - (LanguageServeR) file path completions inside strings that start with `pkg:` or `libpkg:`
+### Changed
+ - (LanguageServer) BrighterScript support for a ropm version of bslib ([BrighterScript#334](https://github.com/rokucommunity/brighterscript/pull/334))
+
+
+
 ## [2.17.3] - 2021-02-27
+### Changed
+ - updated to [brighterscript@0.33.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0330---2021-02-27)
 ### Fixed
  - (LanguageServer) bslib bugs
  - (LanguageServer) parse crash when encountering immediately-invoked function expressions
  - (LanguageServer) error during language server completions when activated on the first token in the file
-
 
 
 ## [2.17.2] - 2021-02-25
@@ -1824,3 +1833,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.0...v2.17.1
 [2.17.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.1...v2.17.2
 [2.17.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.2...v2.17.3
+[2.17.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.3...v2.17.4
