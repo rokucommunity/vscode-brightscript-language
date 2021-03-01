@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.17.4] - 2021-02-28
 ### Added
- - (LanguageServeR) file path completions inside strings that start with `pkg:` or `libpkg:`
+ - (LanguageServer) file path completions inside strings that start with `pkg:` or `libpkg:`
 ### Changed
  - (LanguageServer) BrighterScript support for a ropm version of bslib ([BrighterScript#334](https://github.com/rokucommunity/brighterscript/pull/334))
 
