@@ -6,11 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.5] - 2021-03-02
+### Changed
+ - updated to [brighterscript@0.34.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0341---2021-03-02)
+### Fixed
+ - (LanguageServer) syntax parsing bugs within single-line if statements
+
+
+
 ## [2.17.4] - 2021-02-28
 ### Added
  - (LanguageServer) file path completions inside strings that start with `pkg:` or `libpkg:`
 ### Changed
  - (LanguageServer) BrighterScript support for a ropm version of bslib ([BrighterScript#334](https://github.com/rokucommunity/brighterscript/pull/334))
+ - updated to [brighterscript@0.34.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0340---2021-02-28)
 
 
 
@@ -1834,3 +1843,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.1...v2.17.2
 [2.17.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.2...v2.17.3
 [2.17.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.3...v2.17.4
+[2.17.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.4...v2.17.5
