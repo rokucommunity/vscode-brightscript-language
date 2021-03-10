@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.6] - 2021-03-10
+### Added
+ - (LanguageServer) code actions for suggesting import statements in brighterscript files
+ - (LanguageServer) support for loading bslib without alias
+### Changed
+ - updated to [brighterscript@0.35.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0350---2021-03-09)
+### Fixed
+ - (LanguageServer) bugs during hover and completion requests ([BrighterScript#328](https://github.com/rokucommunity/brighterscript/pull/328))
+
+
+
 ## [2.17.5] - 2021-03-02
 ### Changed
  - updated to [brighterscript@0.34.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0341---2021-03-02)
@@ -1844,3 +1855,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.2...v2.17.3
 [2.17.4]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.3...v2.17.4
 [2.17.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.4...v2.17.5
+[2.17.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.5...v2.17.6
