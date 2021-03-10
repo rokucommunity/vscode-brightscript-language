@@ -611,6 +611,17 @@
             "type": "object",
             "title": "BrightScript configuration",
             "properties": {
+                "brightscript.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the language server."
+				},
                 "brightscript.format.formatIndent": {
                     "type": "boolean",
                     "default": true,

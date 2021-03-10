@@ -131,7 +131,7 @@ export class LanguageServerManager {
 
             // Create the language client and start the client.
             this.client = new LanguageClient(
-                'brighterScriptLanguageServer',
+                'brightscript',
                 'BrighterScript Language Server',
                 serverOptions,
                 clientOptions
