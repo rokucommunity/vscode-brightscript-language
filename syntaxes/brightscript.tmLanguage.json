@@ -34,6 +34,9 @@
                     "include": "#end_namespace"
                 },
                 {
+                    "include": "#class_methods"
+                },
+                {
                     "include": "#class_fields"
                 },
                 {
@@ -218,6 +221,23 @@
                     "name": "entity.name.type.class.brs"
                 }
             }
+        },
+        "class_methods": {
+            "captures": {
+                "1": {
+                    "name": "storage.modifier.brs"
+                },
+                "2": {
+                    "name": "storage.modifier.brs"
+                },
+                "3": {
+                    "name": "keyword.declaration.function.brs"
+                },
+                "4": {
+                    "name": "entity.name.function.brs"
+                }
+            },
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
         "class_fields": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
