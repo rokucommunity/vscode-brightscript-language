@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.17.8] - 2021-03-16
+### Added
+ - (LanguageServer) class import code actions ([BrighterScript#365](https://github.com/rokucommunity/brighterscript/pull/365))
+### Changed
+ - (LanguageServer) append stack trace to every language server error ([BrighterScript#354)](https://github.com/rokucommunity/brighterscript/pull/354))
+### Fixed
+ - (LanguageServer) restrict function and class imports to .bs files only ([BrighterScript#365)](https://github.com/rokucommunity/brighterscript/pull/365))
+ - (LanguageServer) crashes due to unsafe property access in callfunc expressions ([BrighterScript#360)](https://github.com/rokucommunity/brighterscript/pull/360))
+ - (LanguageServer) crashes in signature help ([BrighterScript#358)](https://github.com/rokucommunity/brighterscript/pull/358))
+
+
+
 ## [2.17.7] - 2021-03-13
 ### Added
  - (Debugger) RDB integration ([roku-debug#25](https://github.com/rokucommunity/roku-debug/pull/25)
@@ -1867,3 +1879,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.5]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.4...v2.17.5
 [2.17.6]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.5...v2.17.6
 [2.17.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.6...v2.17.7
+[2.17.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.7...v2.17.8
