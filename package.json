@@ -1374,12 +1374,6 @@
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                     "scope": "resource"
                 },
-                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
-                    "type": "string",
-                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
-                    "deprecationMessage": "Deprecated. Use brightscript.debug.raleTrackerTaskFileLocation instead",
-                    "scope": "resource"
-                },
                 "brightscript.debug.raleTrackerTaskFileLocation": {
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
