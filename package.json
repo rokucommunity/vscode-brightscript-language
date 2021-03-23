@@ -1573,11 +1573,6 @@
                 "when": "editorLangId == brighterscript"
             },
             {
-                "key": "Backspace",
-                "command": "extension.brightscript.pressBackButton",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible && !searchViewletVisible"
-            },
-            {
                 "key": "win+Backspace",
                 "mac": "cmd+Backspace",
                 "command": "extension.brightscript.pressBackspaceButton",
