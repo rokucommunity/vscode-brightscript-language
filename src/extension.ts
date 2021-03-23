@@ -15,7 +15,7 @@ import { RendezvousViewProvider } from './RendezvousViewProvider';
 import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
-import { RokuDevice, OnDeviceComponent, ConfigOptions } from 'roku-test-automation';
+import { RokuDevice, OnDeviceComponent } from 'roku-test-automation';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -39,7 +39,7 @@ export class Extension {
 
         let activeDeviceManager = new ActiveDeviceManager();
 
-        const declarationProvider: DeclarationProvider = new DeclarationProvider();
+        const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
 
         //create channels
@@ -50,23 +50,15 @@ export class Extension {
 
         let docLinkProvider = new LogDocumentLinkProvider();
 
-        const logOutputManager: LogOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
+        const logOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
-        context.subscriptions.push(declarationProvider);
 
         let languageServerPromise = languageServerManager.init(context, definitionRepo);
 
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
-
-        // register our RDB views
-        const rdbRegistryViewProvider = new RDBRegistryViewProvider(context, this.rdbOutputChannel);
-        vscode.window.registerWebviewViewProvider('rdbRegistryView', rdbRegistryViewProvider);
-
-        // const rdbCommandsViewProvider = new RDBCommandsViewProvider(context, this.rdbOutputChannel);
-        // vscode.window.registerWebviewViewProvider('rdbCommandsView', rdbCommandsViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
             vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
@@ -96,31 +88,12 @@ export class Extension {
         );
 
         //give the launch config to the link provider any time we launch the app
-        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {            
+        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
             if (e.event === 'BSLaunchStartEvent') {
                 const config: BrightScriptLaunchConfiguration = e.body;
                 docLinkProvider.setLaunchConfig(config);
                 logOutputManager.setLaunchConfig(config);
-                
-                const rtaConfig = {
-                    RokuDevice: {
-                        devices:[{
-                            host: config.host,
-                            password: config.password,
-                            properties: {}
-                        }]
-                    }, 
-                    NetworkProxy: {},
-                    OnDeviceComponent: {
-                        restoreRegistry: false
-                    }
-                }
-                const device = new RokuDevice(rtaConfig)
-                this.odc = new OnDeviceComponent(device, rtaConfig);
-                
-                rdbRegistryViewProvider.setOnDeviceComponent(this.odc);
-                // rdbCommandsViewProvider.setOnDeviceComponent(this.odc);
-
+                this.setupRDB(context, config);
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
                 this.debugServerOutputChannel.appendLine(e.body);
@@ -214,6 +187,43 @@ export class Extension {
                 }
                 this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
             }
+        }
+    }
+
+    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
+        // TODO handle case where user changes their Roku Device
+        if (!config.injectRdbOnDeviceComponent || this.odc) {
+            return;
+        }
+        // register our RDB views
+        const rdbViews = {
+            RDBRegistryView: {
+                class: RDBRegistryViewProvider
+            },
+            RDBCommandsView: {
+                class: RDBCommandsViewProvider
+            }
+        }
+
+        for (const viewId in rdbViews) {
+            const view = rdbViews[viewId];
+            view.provider = new view.class(context, this.rdbOutputChannel);
+            vscode.window.registerWebviewViewProvider(viewId, view.provider);
+        }
+
+        const rtaConfig = {
+            RokuDevice: {
+                devices:[{
+                    host: config.host,
+                    password: config.password
+                }]
+            }
+        }
+        const device = new RokuDevice(rtaConfig)
+        this.odc = new OnDeviceComponent(device, rtaConfig);
+
+        for (const viewId in rdbViews) {
+            rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
         }
     }
 

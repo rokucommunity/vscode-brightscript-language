@@ -1,8 +1,18 @@
-import App from './App.svelte';
+import RegistryView from './views/RegistryView.svelte';
+import CommandsView from './views/CommandsView.svelte';
 
-const app = new App({
-	target: document.body,
-	props: {}
+declare const viewName; // Provided by ViewProviders
+let view;
+
+switch(viewName) {
+	case 'RegistryView':
+		view = RegistryView;
+		break;
+	case 'CommandsView':
+		view = CommandsView;
+		break;
+}
+const app = new view({
+	target: document.body
 });
-
-export default app;
+export {app};
