@@ -5,7 +5,7 @@
             "type": "extensionHost",
             "request": "launch",
             "name": "Extension",
-            "preLaunchTask": "watch",
+            "preLaunchTask": "svelte-watch",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}"

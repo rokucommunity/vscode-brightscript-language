@@ -2,13 +2,14 @@
     import JSONNode from "./JSONNode.svelte";
     export let registryValues;
     const keys = Object.keys(registryValues);
-    const vscode = acquireVsCodeApi();
+    // TODO this is causing it to break
+    // const vscode = acquireVsCodeApi();
     export let onValueChange = (key) => {
-        vscode.postMessage({
-            command: 'updateRegistry',
-            sectionKey: key,
-            updatedValue: registryValues[key]
-        })
+        // vscode.postMessage({
+        //     command: 'updateRegistry',
+        //     sectionKey: key,
+        //     updatedValue: registryValues[key]
+        // })
     };
 </script>
 
