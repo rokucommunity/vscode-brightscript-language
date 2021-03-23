@@ -95,8 +95,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             {
                 enableSourceMaps: true,
                 enableDebugProtocol: false,
-                //config.rokuAdvancedLayoutEditor is depricated...but still need to support it for a little while
-                raleTrackerTaskFileLocation: config?.rokuAdvancedLayoutEditor?.raleTrackerTaskFileLocation
             },
             //merge in all of the brightscript.debug properties
             vscode.workspace.getConfiguration('brightscript.debug') ?? {},
@@ -508,15 +506,4 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * A path to an environment variables file which will be used to augment the launch config
      */
     envFile?: string;
-
-    /**
-     * @deprecated
-     */
-    rokuAdvancedLayoutEditor?: {
-        /**
-         * This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.
-         * @deprecated
-         */
-        raleTrackerTaskFileLocation?: string;
-    };
 }
