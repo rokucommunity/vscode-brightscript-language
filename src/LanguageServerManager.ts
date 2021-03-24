@@ -85,6 +85,8 @@ export class LanguageServerManager {
     private client: LanguageClient;
     private languageServerStatusBar: vscode.StatusBarItem;
 
+    private clientDispose: Disposable;
+
     private async enableLanguageServer() {
         try {
 
@@ -108,8 +110,9 @@ export class LanguageServerManager {
                 path.join('dist', 'LanguageServerRunner.js')
             );
 
+            //give the runner the specific version of bsc to run
             const args = [
-                'brighterscript'
+                this.selectedBscInfo.path
             ];
             // If the extension is launched in debug mode then the debug server options are used
             // Otherwise the run options are used
@@ -150,7 +153,7 @@ export class LanguageServerManager {
                 clientOptions
             );
             // Start the client. This will also launch the server
-            this.client.start();
+            this.clientDispose = this.client.start();
             await this.client.onReady();
 
             this.client.onNotification('critical-failure', (message) => {
@@ -194,15 +197,18 @@ export class LanguageServerManager {
     public async restart() {
         await this.disableLanguageServer();
         await util.delay(1);
-        await this.enableLanguageServer();
+        await this.syncVersionAndTryRun();
     }
 
     private async disableLanguageServer() {
         if (this.client) {
-            await this.client.stop();
+            await this.client.stop()
             this.languageServerStatusBar.dispose();
             this.languageServerStatusBar = undefined;
+            this.clientDispose?.dispose();
             this.client = undefined;
+            //delay slightly to let things catch up
+            await util.delay(100);
             this.deferred = new Deferred();
         }
         //enable the simple providers (since there is no language server)
@@ -288,7 +294,7 @@ export class LanguageServerManager {
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup
-            vscode.window.showErrorMessage(`Configured language server missing: using embedded version v${this.embeddedBscInfo.version} instead.\n\n configured path: ${bsdkPath}`);
+            vscode.window.showErrorMessage(`Can't find language sever at "${bsdkPath}". Using embedded version v${this.embeddedBscInfo.version} instead.`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 

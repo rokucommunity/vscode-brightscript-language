@@ -15,16 +15,17 @@ export class LanguageServerInfoCommand {
             const commands = [{
                 label: `Select BrighterScript Version`,
                 description: `(current v${languageServerManager.selectedBscInfo.version})`,
-                command: () => {
-                    this.selectBrighterScriptVersion();
-                    languageServerManager.syncVersionAndTryRun();
-                }
+                command: this.selectBrighterScriptVersion.bind(this)
             }];
             let selection = await vscode.window.showQuickPick(commands, { placeHolder: `BrighterScript Project Info` });
-            selection?.command();
+            await selection?.command();
         }));
     }
 
+    /**
+     * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to 
+     * call the reload manually
+     */
     public async selectBrighterScriptVersion() {
         const versions = [{
             label: `Use VS Code's version`,
@@ -32,7 +33,6 @@ export class LanguageServerInfoCommand {
             detail: undefined as string //require.resolve('brighterscript')
         }];
 
-        const cwd = process.cwd();
         //look for brighterscript in all workspace folders
         vscode.workspace.workspaceFolders.forEach(workspaceFolder => {
             const workspaceOrFolderPath = this.getWorkspaceOrFolderPath(workspaceFolder.uri.fsPath);
