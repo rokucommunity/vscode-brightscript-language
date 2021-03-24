@@ -22,11 +22,22 @@ import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
+import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
+import * as fsExtra from 'fs-extra';
 
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
+        this.embeddedBscInfo = {
+            path: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
+            version: require('brighterscript/package.json').version
+        };
+        //default to the embedded bsc version
+        this.selectedBscInfo = this.embeddedBscInfo;
     }
+
+    public embeddedBscInfo: BscInfo;
+    public selectedBscInfo: BscInfo;
 
     private context: vscode.ExtensionContext;
     private definitionRepository: DefinitionRepository;
@@ -44,18 +55,9 @@ export class LanguageServerManager {
 
         //dynamically enable or disable the language server based on user settings
         vscode.workspace.onDidChangeConfiguration((configuration) => {
-            if (this.isLanguageServerEnabledInSettings()) {
-                this.enableLanguageServer();
-            } else {
-                this.disableLanguageServer();
-            }
+            this.syncVersionAndTryRun();
         });
-
-        if (this.isLanguageServerEnabledInSettings()) {
-            return this.enableLanguageServer();
-        } else {
-            this.disableLanguageServer();
-        }
+        await this.syncVersionAndTryRun();
     }
 
     private deferred: Deferred<any>;
@@ -81,7 +83,7 @@ export class LanguageServerManager {
     }
 
     private client: LanguageClient;
-    private buildStatusStatusBar: vscode.StatusBarItem;
+    private languageServerStatusBar: vscode.StatusBarItem;
 
     private async enableLanguageServer() {
         try {
@@ -92,6 +94,12 @@ export class LanguageServerManager {
             }
             this.refreshDeferred();
 
+            //create the statusbar
+            this.languageServerStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+            this.languageServerStatusBar.command = LanguageServerInfoCommand.commandName;
+            this.updateStatusbar('running');
+            this.languageServerStatusBar.show();
+
             //disable the simple providers (the language server will handle all of these)
             this.disableSimpleProviders();
 
@@ -100,16 +108,21 @@ export class LanguageServerManager {
                 path.join('dist', 'LanguageServerRunner.js')
             );
 
+            const args = [
+                'brighterscript'
+            ];
             // If the extension is launched in debug mode then the debug server options are used
             // Otherwise the run options are used
             let serverOptions: ServerOptions = {
                 run: {
                     module: serverModule,
-                    transport: TransportKind.ipc
+                    transport: TransportKind.ipc,
+                    args: args
                 },
                 debug: {
                     module: serverModule,
                     transport: TransportKind.ipc,
+                    args: args,
                     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
                     options: { execArgv: ['--nolazy', '--inspect=6009'] }
                 }
@@ -144,27 +157,16 @@ export class LanguageServerManager {
                 window.showErrorMessage(message);
             });
 
-            this.buildStatusStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-            this.buildStatusStatusBar.text = '$(flame)';
-            this.buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-            this.buildStatusStatusBar.color = '#673293';
-            this.buildStatusStatusBar.show();
             //update the statusbar with build statuses
             this.client.onNotification('build-status', (message) => {
                 if (message === 'building') {
-                    this.buildStatusStatusBar.text = '$(flame)...';
-                    this.buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-                    this.buildStatusStatusBar.color = '#673293';
+                    this.updateStatusbar('running');
 
                 } else if (message === 'success') {
-                    this.buildStatusStatusBar.text = '$(flame)';
-                    this.buildStatusStatusBar.tooltip = 'BrightScript Language server is running';
-                    this.buildStatusStatusBar.color = '#673293';
+                    this.updateStatusbar('running');
 
                 } else if (message === 'critical-error') {
-                    this.buildStatusStatusBar.text = '$(flame)';
-                    this.buildStatusStatusBar.tooltip = 'BrightScript Language server encountered a critical runtime error';
-                    this.buildStatusStatusBar.color = '#FF0000';
+                    this.updateStatusbar('encountered a critical runtime error', '#FF0000');
                 }
             });
             this.deferred.resolve(true);
@@ -179,21 +181,27 @@ export class LanguageServerManager {
         }
     }
 
+    private updateStatusbar(tooltip: string, color?: string) {
+        this.languageServerStatusBar.text = `$(flame)bsc-${this.selectedBscInfo.version}`;
+        this.languageServerStatusBar.tooltip = 'BrightScript Language Server: ' + tooltip;
+        this.languageServerStatusBar.color = color;
+    }
+
     /**
      * Stop and then start the language server.
      * This is a noop if the language server is currently disabled
      */
     public async restart() {
-        this.disableLanguageServer();
+        await this.disableLanguageServer();
         await util.delay(1);
         await this.enableLanguageServer();
     }
 
-    private disableLanguageServer() {
+    private async disableLanguageServer() {
         if (this.client) {
-            this.client.stop();
-            this.buildStatusStatusBar.dispose();
-            this.buildStatusStatusBar = undefined;
+            await this.client.stop();
+            this.languageServerStatusBar.dispose();
+            this.languageServerStatusBar = undefined;
             this.client = undefined;
             this.deferred = new Deferred();
         }
@@ -258,6 +266,96 @@ export class LanguageServerManager {
         } as ExecuteCommandParams);
         return result as CodeWithSourceMap;
     }
+
+    /**
+     * Check user settings for which language server version to use,
+     * and if different, re-launch the specific version of the language server'
+     */
+    public async syncVersionAndTryRun() {
+        const bsdkPath = await this.getBsdkPath();
+
+        //if the path to bsc is different, spin down the old server and start a new one
+        if (bsdkPath !== this.selectedBscInfo.path) {
+            await this.disableLanguageServer();
+        }
+
+        //try to load the package version. 
+        try {
+            this.selectedBscInfo = {
+                path: bsdkPath,
+                version: require(`${bsdkPath}/package.json`).version
+            };
+        } catch (e) {
+            console.error(e);
+            //fall back to the embedded version, and show a popup
+            vscode.window.showErrorMessage(`Configured language server missing: using embedded version v${this.embeddedBscInfo.version} instead.\n\n configured path: ${bsdkPath}`);
+            this.selectedBscInfo = this.embeddedBscInfo;
+        }
+
+        if (this.isLanguageServerEnabledInSettings()) {
+            await this.enableLanguageServer();
+        } else {
+            await this.disableLanguageServer();
+        }
+    }
+
+    /**
+     * Get the full path to the brighterscript module where the LanguageServer should be run
+     */
+    private async getBsdkPath() {
+        //if there's a bsdk entry in the workspace settings, assume the path is relative to the workspace
+        if (this.workspaceConfigIncludesBsdkKey()) {
+            let bsdk = vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk');
+            return bsdk === 'embedded'
+                ? this.embeddedBscInfo.path
+                : path.resolve(path.dirname(vscode.workspace.workspaceFile.fsPath), bsdk);
+        }
+
+        const folderResults = new Set<string>();
+        //look for a bsdk entry in each of the workspace folders
+        for (const folder of vscode.workspace.workspaceFolders) {
+            const bsdk = vscode.workspace.getConfiguration('brightscript', folder).get<string>('bsdk');
+            if (bsdk) {
+                folderResults.add(
+                    bsdk === 'embedded'
+                        ? this.embeddedBscInfo.path
+                        : path.resolve(folder.uri.fsPath, bsdk)
+                );
+            }
+        }
+        const values = [...folderResults.values()];
+        //there's no bsdk configuration in folder settings.
+        if (values.length === 0) {
+            return this.embeddedBscInfo.path;
+
+            //we have exactly one result. use it
+        } else if (values.length === 1) {
+            return values[0];
+        } else {
+            //there were multiple versions. make the user pick which to use
+            return await languageServerInfoCommand.selectBrighterScriptVersion();
+        }
+    }
+
+    private workspaceConfigIncludesBsdkKey() {
+        return vscode.workspace.workspaceFile &&
+            fsExtra.pathExistsSync(vscode.workspace.workspaceFile.fsPath) &&
+            /"brightscript.bsdk"/.exec(
+                fsExtra.readFileSync(vscode.workspace.workspaceFile.fsPath
+                ).toString()
+            );
+    }
 }
 
 export const languageServerManager = new LanguageServerManager();
+
+interface BscInfo {
+    /**
+     * The full path to the brighterscript module
+     */
+    path: string;
+    /**
+     * The version of the brighterscript module
+     */
+    version: string;
+}
