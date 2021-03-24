@@ -202,7 +202,7 @@ export class LanguageServerManager {
 
     private async disableLanguageServer() {
         if (this.client) {
-            await this.client.stop()
+            await this.client.stop();
             this.languageServerStatusBar.dispose();
             this.languageServerStatusBar = undefined;
             this.clientDispose?.dispose();
@@ -285,7 +285,7 @@ export class LanguageServerManager {
             await this.disableLanguageServer();
         }
 
-        //try to load the package version. 
+        //try to load the package version.
         try {
             this.selectedBscInfo = {
                 path: bsdkPath,

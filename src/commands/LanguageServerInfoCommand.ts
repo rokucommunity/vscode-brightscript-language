@@ -21,7 +21,7 @@ export class LanguageServerInfoCommand {
     }
 
     /**
-     * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to 
+     * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to
      * call the reload manually
      */
     public async selectBrighterScriptVersion() {
