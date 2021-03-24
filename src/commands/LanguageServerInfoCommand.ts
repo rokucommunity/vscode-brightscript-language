@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { languageServerManager } from '../LanguageServerManager';
 import * as path from 'path';
 
-export const FILE_SCHEME = 'bs-preview';
-
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
 
@@ -11,7 +9,7 @@ export class LanguageServerInfoCommand {
     public register(context: vscode.ExtensionContext) {
         this.context = context;
 
-        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.info', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
                 label: `Select BrighterScript Version`,
                 description: `(current v${languageServerManager.selectedBscInfo.version})`,
