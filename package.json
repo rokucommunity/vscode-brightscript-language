@@ -97,7 +97,7 @@
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
         "coveralls": "^3.0.11",
-        "mocha": "^7.1.1",
+        "mocha": "^8.3.2",
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
         "nyc": "^15.0.0",
@@ -112,7 +112,7 @@
         "typescript": "^3.8.3",
         "vsce": "^1.81.1",
         "vscode-debugadapter-testsupport": "1.33.0",
-        "yargs": "^15.3.1"
+        "yargs": "^16.2.0"
     },
     "main": "./dist/extension",
     "activationEvents": [
