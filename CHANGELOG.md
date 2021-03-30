@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.18.0] - 2021-03-30
+### Added
+ - (LanguageServer) version picker for running locally-installed versions of BrighterScript ([#300](https://github.com/rokucommunity/vscode-brightscript-language/pull/300))
+ - (LanguageSever) setting `brightscript.bsdk` for specifying the version of BrighterScript to use for the language server ([#300](https://github.com/rokucommunity/vscode-brightscript-language/pull/300))
+### Changed
+ - updated to [brighterscript@0.37.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0371---2021-03-30)
+### Fixed
+ - colorization issues with certain SceneGraph support functions
+
+
+
 ## [2.17.9] - 2021-03-18
 ### Added
  - (LanguageServer) support for bs:disable comments in xml files ([BrighterScript#363](https://github.com/rokucommunity/brighterscript/pull/363))
@@ -1890,3 +1901,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.7]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.6...v2.17.7
 [2.17.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.7...v2.17.8
 [2.17.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.8...v2.17.9
+[2.18.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.9...v2.18.0
