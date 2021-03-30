@@ -12,13 +12,6 @@ export const FILE_SCHEME = 'bs-preview';
 export class BrighterScriptPreviewCommand {
     public static SELECTION_SYNC_DELAY = 300;
 
-    /**
-     * Register commands:
-     * - `brighterscript.showPreview`
-     * - `brighterscript.showPreviewToSide`
-     *
-     * Register custom TextDocumentProvider
-     */
     public register(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(vscode.commands.registerCommand('brighterscript.showPreview', async (uri: vscode.Uri) => {

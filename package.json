@@ -1386,6 +1386,11 @@
                     "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
                     "default": false,
                     "scope": "resource"
+                },
+                "brightscript.bsdk": {
+                    "type": "string",
+                    "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                    "scope": "resource"
                 }
             }
         },
@@ -1538,6 +1543,11 @@
                 "title": "Restart Language Server",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.languageServer.info",
+                "title": "View BrighterScript LanguageServer Info",
+                "category": "BrightScript"
             }
         ],
         "keybindings": [

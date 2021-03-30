@@ -1,4 +1,9 @@
-import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, Position } from 'vscode';
+import { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope } from 'vscode';
+
+afterEach(() => {
+    delete vscode.workspace.workspaceFile;
+    delete vscode.workspace._configuration;
+});
 
 export let vscode = {
     CompletionItem: class { },
@@ -50,7 +55,8 @@ export let vscode = {
         asAbsolutePath: function() { }
     },
     workspace: {
-        workspaceFolders: [],
+        workspaceFolders: [] as WorkspaceFolder[],
+        workspaceFile: undefined as Uri,
         createFileSystemWatcher: () => {
             return {
                 onDidCreate: () => {
@@ -64,9 +70,12 @@ export let vscode = {
                 }
             };
         },
-        getConfiguration: function() {
+        _configuration: {} as any,
+        getConfiguration: function(configurationName: string, scope?: ConfigurationScope | null) {
             return {
-                get: function() { }
+                get: (name: string) => {
+                    return this._configuration?.[`${configurationName}.${name}`];
+                }
             };
         },
         onDidChangeConfiguration: () => { },
