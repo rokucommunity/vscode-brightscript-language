@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
+import * as rta from 'roku-test-automation';
+
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { brightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -15,18 +17,16 @@ import { RendezvousViewProvider } from './RendezvousViewProvider';
 import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
-import { RokuDevice, OnDeviceComponent } from 'roku-test-automation';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
 export class Extension {
-
     public outputChannel: vscode.OutputChannel;
     public rdbOutputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
 
-    public odc?: OnDeviceComponent;
+    public odc?: rta.OnDeviceComponent;
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
@@ -211,16 +211,20 @@ export class Extension {
             vscode.window.registerWebviewViewProvider(viewId, view.provider);
         }
 
-        const rtaConfig = {
+        const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices:[{
                     host: config.host,
                     password: config.password
                 }]
-            }
+            },
+            // OnDeviceComponent: {
+            //     logLevel: 'verbose',
+            //     serverDebugLogging: true
+            // }
         }
-        const device = new RokuDevice(rtaConfig)
-        this.odc = new OnDeviceComponent(device, rtaConfig);
+        const device = new rta.RokuDevice(rtaConfig);
+        this.odc = new rta.OnDeviceComponent(device, rtaConfig);
 
         for (const viewId in rdbViews) {
             rdbViews[viewId].provider.setOnDeviceComponent(this.odc);

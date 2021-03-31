@@ -1,32 +1,55 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { OnDeviceComponent } from 'roku-test-automation';
+import * as rta from 'roku-test-automation';
 import * as chokidar from 'chokidar';
+import * as fs from 'fs';
 
 import { util } from './util';
 
 export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
-    protected view?: vscode.WebviewView;
-    protected odc?: OnDeviceComponent;
-    protected rdbBasePath: string;
     protected abstract viewName: string;
+
+    protected view?: vscode.WebviewView;
+    protected odc?: rta.OnDeviceComponent;
+    protected rdbBasePath: string;
     private rdbWatcher: chokidar.FSWatcher;
 
+    private odcCommands = [
+        'callFunc',
+        'deleteEntireRegistry',
+        'deleteRegistrySections',
+        'getFocusedNode',
+        'getValueAtKeyPath',
+        'hasFocus',
+        'isInFocusChain',
+        'observeField',
+        'readRegistry',
+        'setValueAtKeyPath',
+        'writeRegistry',
+    ]
+
     constructor(context: vscode.ExtensionContext, private rdbOutputChannel: vscode.OutputChannel) {
-        this.rdbBasePath = context.extensionPath + "/dist/ui/rdb";
+        this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
         context.subscriptions.push(this);
     }
 
     dispose() {
-        this.rdbWatcher.close();
+        this.rdbWatcher?.close();
     }
 
-    public setOnDeviceComponent(odc: OnDeviceComponent) {
+    public setOnDeviceComponent(odc: rta.OnDeviceComponent) {
         this.odc = odc;
         this.onOnDeviceComponentReady();
     }
 
     protected onOnDeviceComponentReady() {}
+
+    protected handleViewMessage(message) {}
+
+    /** Adds ability to add additional script contents to the main webview html */
+    protected additionalScriptContents() {
+        return '';
+    }
 
     protected getHtmlForWebview() {
         if (util.isExtensionHostRunning()) {
@@ -49,7 +72,11 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     <meta charset='utf-8'>
                     <link rel="stylesheet" type="text/css" href="${styleUri}">
                     <base href="${vscode.Uri.file(this.rdbBasePath).with({ scheme: 'vscode-resource' })}/">
-                    <script>viewName = '${this.viewName}'</script>
+                    <script>
+                        viewName = '${this.viewName}';
+                        let odcCommands = ['${this.odcCommands.join(`','`)}'];
+                        ${this.additionalScriptContents()}
+                    </script>
                     <script defer src="${scriptUri}"></script>
                 </head>
                 <body></body>
@@ -61,70 +88,77 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken,
     ) {
+        this.view = view;
+        const webview = view.webview;
+
+        webview.onDidReceiveMessage(async (message) => {
+            console.log(message);
+            try {
+                const context = message.context;
+                if(this.odcCommands.includes(message.command)) {
+                    console.log('built in command');
+                    const response = await this.odc[message.command](context.args, context.options);
+                    console.log('response', response);
+
+                    webview.postMessage({
+                        ...message,
+                        response: response
+                    })
+                } else {
+                    this.handleViewMessage(message);
+                }
+            } catch(e) {
+                webview.postMessage({
+                    ...message,
+                    error: e.message
+                });
+            }
+        });
+
         view.show(true);
 
-        this.view = view;
-        const webView = view.webview;
-        webView.options = {
+        webview.options = {
             // Allow scripts in the webview
             enableScripts: true,
 
             localResourceRoots: [
-                vscode.Uri.file(path.join(this.rdbBasePath, ''))
+                vscode.Uri.file(this.rdbBasePath)
             ]
         };
-        webView.html = this.getHtmlForWebview();
+        webview.html = this.getHtmlForWebview();
     }
 }
 
 export class RDBRegistryViewProvider extends RDBBaseViewProvider {
     protected viewName = 'RegistryView';
-    protected async onOnDeviceComponentReady() {
-        await this.populateRegistry();
-        this.handleWebViewCommands();
-    }
 
-    private handleWebViewCommands() {
-        const view = this.view;
-        view.webview.onDidReceiveMessage(
-            message => {
-                switch (message.command) {
-                    case 'updateRegistry':
-                    let updatedEntry = {};
-                    updatedEntry[message.sectionKey] = this.sanitizeInput(message.updatedValue);
-                    this.odc.writeRegistry({
-                            values: updatedEntry
-                    }, {
-                        timeout: 20000
-                    });
-                    return;
-                    case 'showSaveDialog':
-                        vscode.window.showSaveDialog({saveLabel: "Save"}).then(uri => {
-                            vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
-                        });
-                    return;
-                    case 'showChooseFileDialog':
-                        const options: vscode.OpenDialogOptions = {
-                            canSelectMany: false,
-                            openLabel: 'Select',
-                            canSelectFiles: true,
-                            canSelectFolders: false
-                        };
-                        vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
-                    return;
-                }
-            }
-        );
-    }
-
-    private async populateRegistry() {
-        const {values} = await this.odc.readRegistry({}, {
-            timeout: 20000
-        });
-        // TODO temporary. Will move to front end side most likely
-        setInterval(() => {
-            this.view?.webview.postMessage({ type: 'readRegistry', values: values });
-        }, 5000);
+    protected handleViewMessage(message) {
+        switch (message.command) {
+            // TODO switch over
+            // case 'updateRegistry':
+            //     let updatedEntry = {};
+            //     updatedEntry[message.sectionKey] = this.sanitizeInput(message.updatedValue);
+            //     this.odc.writeRegistry({
+            //             values: updatedEntry
+            //     }, {
+            //         timeout: 20000
+            //     });
+            //     return;
+            case 'exportRegistry':
+                vscode.window.showSaveDialog({saveLabel: 'Save'}).then(uri => {
+                    vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
+                });
+                return;
+            case 'importRegistry':
+                const options: vscode.OpenDialogOptions = {
+                    canSelectMany: false,
+                    openLabel: 'Select',
+                    canSelectFiles: true,
+                    canSelectFolders: false
+                };
+                vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
+                return;
+        }
     }
 
     async importContentsToRegistry(uri) {
@@ -149,4 +183,9 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
 
 export class RDBCommandsViewProvider extends RDBBaseViewProvider {
     protected viewName = 'CommandsView';
+
+    protected additionalScriptContents() {
+        const requestArgsPath = path.join(rta.utils.getServerFilesPath(), 'requestArgs.schema.json');
+        return `let requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
+    }
 }

@@ -1,325 +1,77 @@
-<script>
-    let requestArgsSchema = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "anyOf": [
-            {
-                "$ref": "#/definitions/ODCCallFuncArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCGetFocusedNodeArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCGetValueAtKeyPathArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCGetValuesAtKeyPathsArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCHandshakeArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCHasFocusArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCIsInFocusChainArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCObserveFieldArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCSetValueAtKeyPathArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCReadRegistryArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCWriteRegistryArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCDeleteRegistrySectionsArgs"
-            },
-            {
-                "$ref": "#/definitions/ODCDeleteEntireRegistrySectionsArgs"
-            }
-        ],
-        "definitions": {
-            "ODCCallFuncArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "funcName": {
-                        "type": "string"
-                    },
-                    "funcParams": {
-                        "items": {
-                        },
-                        "type": "array"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCDeleteEntireRegistrySectionsArgs": {
-                "type": "object"
-            },
-            "ODCDeleteRegistrySectionsArgs": {
-                "properties": {
-                    "allowEntireRegistryDelete": {
-                        "type": "boolean"
-                    },
-                    "sections": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "string"
-                            }
-                        ]
-                    }
-                },
-                "type": "object"
-            },
-            "ODCGetFocusedNodeArgs": {
-                "type": "object"
-            },
-            "ODCGetValueAtKeyPathArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    },
-                    "timeout": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCGetValuesAtKeyPathsArgs": {
-                "properties": {
-                    "requests": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/ODCGetValueAtKeyPathArgs"
-                        },
-                        "type": "object"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCHandshakeArgs": {
-                "properties": {
-                    "logLevel": {
-                        "$ref": "#/definitions/ODCLogLevels"
-                    },
-                    "version": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCHasFocusArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCIsInFocusChainArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCKeyPathBaseTypes": {
-                "enum": [
-                    "global",
-                    "scene"
-                ],
-                "type": "string"
-            },
-            "ODCLogLevels": {
-                "enum": [
-                    "debug",
-                    "error",
-                    "info",
-                    "off",
-                    "verbose",
-                    "warn"
-                ],
-                "type": "string"
-            },
-            "ODCObserveFieldArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    },
-                    "match": {
-                        "anyOf": [
-                            {
-                                "properties": {
-                                    "base": {
-                                        "$ref": "#/definitions/ODCKeyPathBaseTypes",
-                                        "description": "Specifies what the entry point is for this key path. Defaults to 'global' if not specified"
-                                    },
-                                    "keyPath": {
-                                        "type": "string"
-                                    },
-                                    "value": {
-                                        "type": [
-                                            "string",
-                                            "number",
-                                            "boolean"
-                                        ]
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            {
-                                "type": [
-                                    "string",
-                                    "number",
-                                    "boolean"
-                                ]
-                            }
-                        ]
-                    },
-                    "retryInterval": {
-                        "type": "number"
-                    },
-                    "retryTimeout": {
-                        "type": "number"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCReadRegistryArgs": {
-                "properties": {
-                    "values": {
-                        "additionalProperties": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "type": "object"
-                    }
-                },
-                "type": "object"
-            },
-            "ODCSetValueAtKeyPathArgs": {
-                "properties": {
-                    "base": {
-                        "$ref": "#/definitions/ODCKeyPathBaseTypes"
-                    },
-                    "keyPath": {
-                        "type": "string"
-                    },
-                    "value": {
-                    }
-                },
-                "type": "object"
-            },
-            "ODCWriteRegistryArgs": {
-                "properties": {
-                    "values": {
-                        "additionalProperties": {
-                            "additionalProperties": {
-                                "type": "string"
-                            },
-                            "type": "object"
-                        },
-                        "type": "object"
-                    }
-                },
-                "type": "object"
-            }
-        }
-    }
-
-    function addCommand(functionName, argsKey, displayName) {
-        if (!displayName) {
-            displayName = functionName;
-        }
-
-        return {
-            functionName: functionName,
-            displayName: displayName,
-            args: requestArgsSchema.definitions[argsKey]
-        }
-    }
-
-    let commandList = [
-        addCommand('callFunc', 'ODCCallFuncArgs'),
-        addCommand('getFocusedNode', 'ODCGetFocusedNodeArgs'),
-        addCommand('getValueAtKeyPath', 'ODCGetValueAtKeyPathArgs'),
-        addCommand('hasFocus', 'ODCHasFocusArgs'),
-        addCommand('isInFocusChain', 'ODCIsInFocusChainArgs'),
-        addCommand('observeField', 'ODCObserveFieldArgs'),
-        addCommand('setValueAtKeyPath', 'ODCSetValueAtKeyPathArgs'),
-        addCommand('readRegistry', 'ODCReadRegistryArgs'),
-        addCommand('writeRegistry', 'ODCWriteRegistryArgs'),
-        addCommand('deleteRegistrySections', 'ODCDeleteRegistrySectionsArgs'),
-        addCommand('deleteEntireRegistry', 'ODCDeleteEntireRegistrySectionsArgs'),
-    ]
-
-    let selected;
-    // preselect the first item
-    let commandArgs = convertArgs(commandList[0].args.properties);
+<script lang="ts">
+    window.vscode = acquireVsCodeApi();
+    import {odc} from "../ExtensionIntermediary";
 
     function onCommandChange() {
-        commandArgs = convertArgs(selected.args.properties);
+        formArgs = {}
+        commandArgs = convertArgs(selected.args);
     }
 
-    function convertArgs(rawArgs) {
+    function convertArgs(inputArgs) {
         const args = [];
-        for (const key in rawArgs) {
-            let rawArg = rawArgs[key];
+        for (const key of inputArgs.propertyOrder) {
+            let rawArg = inputArgs.properties[key];
             // Handles references to other definitions in schema
             if (rawArg['$ref']) {
                 const refParts = rawArg['$ref'].split("/");
-                rawArg = requestArgsSchema;
+                let rawArgRef = requestArgsSchema;
+
                 for (const key of refParts) {
+                    // Skip first entry
                     if (key === '#') continue;
-                    console.log('key', key);
-                    rawArg = rawArg[key];
+                    rawArgRef = rawArgRef[key];
                 }
-                console.log('rawArg', rawArg);
+                for (const key in rawArgRef) {
+                    rawArg[key] = rawArgRef[key];
+                }
             }
             args.push({
                 ...rawArg,
                 id: key
             });
-
-            console.log('sd:', key, args);
         }
         return args;
+    }
+
+    const commandList = []
+    for (const commandName of odcCommands) {
+        let argsKey = 'ODC.' + commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
+        commandList.push({
+            name: commandName,
+            args: requestArgsSchema.definitions[argsKey]
+        })
+    }
+    // preselect the first item
+    let commandArgs = convertArgs(commandList[0].args);
+
+    let selected;
+    let formArgs = {};
+    let commandResponse = '';
+
+    async function sendCommand() {
+        commandResponse = 'running...';
+        const processedArgs = {}
+        for (const key in formArgs) {
+            let argValue = formArgs[key];
+            const argType = selected.args.properties[key].type
+            if (argType == 'boolean') {
+                if (argValue == 'true') {
+                    processedArgs[key] = true;
+                } else {
+                    processedArgs[key] = false;
+                }
+            } else if (argType == 'array' || argType == 'object') {
+                processedArgs[key] = JSON.parse(argValue);
+            } else {
+                processedArgs[key] = argValue;
+            }
+        }
+        try {
+            const response = await odc.sendOdcMessage(selected.name, processedArgs);
+            commandResponse = JSON.stringify(response, null, 2);
+        } catch(error) {
+            commandResponse = error;
+        }
     }
 </script>
 
@@ -329,27 +81,43 @@
         padding-right: 6px;
         font-weight: bold;
     }
+
+    .commandOption {
+        margin-top: 6px;
+    }
+
+    pre {
+        white-space: pre-wrap;
+    }
+
+    input {
+        width: 180px;
+    }
 </style>
+<label for="command">Command:</label>
 <!-- svelte-ignore a11y-no-onchange -->
 <select name="command" bind:value={selected} on:change={onCommandChange}>
 {#each commandList as command}
-    <option value="{command}">{command.displayName}</option>
+    <option value="{command}">{command.name}</option>
 {/each}
 </select>
+
 {#each commandArgs as args}
-    <br><label for="{args.id}">{args.id}</label>
+    <div class="commandOption">
+        <label for="{args.id}" title="{args.description}">{args.id}:</label>
     {#if args.enum}
-        <select name="{args.id}">
+        <select name="{args.id}" title="{args.description}" bind:value={formArgs[args.id]}>
         {#each args.enum as value}
             <option>{value}</option>
         {/each}
         </select>
     {:else}
-        <input name="{args.id}" placeholder="{args.type}" />
+        <input name="{args.id}" placeholder="{args.type}" title="{args.description}" bind:value={formArgs[args.id]} />
     {/if}
+    </div>
 {/each}
-<br><button text="">Send</button>
+<br><button on:click={sendCommand}>Send</button>
 <hr />
-<div id="response">
-
-</div>
+<pre>
+    {commandResponse}
+</pre>
