@@ -1,14 +1,14 @@
 <script>
     import JSONNode from "./JSONNode.svelte";
+    import {intermediary} from "../ExtensionIntermediary";
     export let registryValues;
-    export let vscode;
     const keys = Object.keys(registryValues);
     export let onValueChange = (key) => {
-        vscode.postMessage({
-            command: 'updateRegistry',
-            sectionKey: key,
-            updatedValue: registryValues[key]
-        })
+        // vscode.postMessage({
+        //     command: 'updateRegistry',
+        //     sectionKey: key,
+        //     updatedValue: registryValues[key]
+        // })
     };
 </script>
 

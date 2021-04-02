@@ -36,14 +36,19 @@
                 "panel": "shared"
             },
             "isBackground": true,
-            "problemMatcher": {
+            "problemMatcher": [{
+                "pattern": {
+                    "regexp": "^\\[!\\]"
+                },
+                "severity": "error"
+            }, {
                 "base": "$tsc-watch",
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
                     "endsPattern": "waiting for changes..."
-                }
-            },
+                },
+            }],
             "dependsOn": ["watch"]
         },
         {

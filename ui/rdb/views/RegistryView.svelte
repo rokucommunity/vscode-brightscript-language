@@ -1,28 +1,22 @@
-<script>
+
+<script lang="ts">
+    window.vscode = acquireVsCodeApi();
+    import {odc, intermediary} from "../ExtensionIntermediary";
     import JSONTreeView from "../components/JSONTreeView/JSONTreeView.svelte";
     let registryValues = {};
-    const vscode = acquireVsCodeApi();
-    window.addEventListener("message", (event) => {
-        const message = event.data;
-        switch (message.type) {
-            case "readRegistry":
-                registryValues = formatValues(message.values);
-                break;
-        }
-    });
+    (async () => {
+        const result = await odc.readRegistry();
+        registryValues = formatValues(result.values);
+    })();
 
     function exportRegistry() {
-        vscode.postMessage({
-            command: "showSaveDialog",
+        intermediary.sendMessage('exportRegistry', {
             content: registryValues,
         });
     }
 
     function importRegistry() {
-        vscode.postMessage({
-            command: "showChooseFileDialog",
-            type: "importRegistry",
-        });
+        intermediary.sendMessage('importRegistry');
     }
 
     function formatValues(values) {
@@ -52,5 +46,5 @@
         <button on:click={exportRegistry}>Export</button>
         <button on:click={importRegistry}>Import</button>
     </div>
-    <JSONTreeView {registryValues} {vscode} />
+    <JSONTreeView {registryValues} />
 {/if}
