@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
+import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 
 export class BrightScriptCommands {
 
@@ -18,6 +19,7 @@ export class BrightScriptCommands {
         this.context = context;
 
         brighterScriptPreviewCommand.register(context);
+        languageServerInfoCommand.register(context);
 
         let subscriptions = context.subscriptions;
 

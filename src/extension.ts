@@ -64,6 +64,10 @@ export class Extension {
             vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
         }));
 
+        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
+            await languageServerManager.restart();
+        }));
+
         //register the code formatter
         context.subscriptions.push(
             vscode.languages.registerDocumentRangeFormattingEditProvider({
@@ -86,6 +90,23 @@ export class Extension {
         context.subscriptions.push(
             vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
         );
+
+        vscode.window.registerUriHandler({
+            handleUri: async function(uri: vscode.Uri) {
+                if (uri.path.startsWith('/openFile/')) {
+                    let docUri = vscode.Uri.file(uri.path.substr(10));
+                    let doc = await vscode.workspace.openTextDocument(docUri);
+                    await vscode.window.showTextDocument(doc, { preview: false });
+                    let editor = vscode.window.activeTextEditor;
+                    let lineNumber = Number(uri.fragment) ? Number(uri.fragment) - 1 : 0;
+                    editor.selection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
+                    vscode.commands.executeCommand('revealLine', {
+                        lineNumber: lineNumber,
+                        at: 'center'
+                    });
+                }
+            }
+        });
 
         //give the launch config to the link provider any time we launch the app
         vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
