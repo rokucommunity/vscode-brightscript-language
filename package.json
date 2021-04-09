@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.11.5",
+    "version": "2.18.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -14,7 +14,7 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.50.0",
+        "vscode": "^1.30.0",
         "node": "^7.9.0"
     },
     "repository": {
@@ -49,7 +49,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.22.0",
+        "brighterscript": "^0.37.1",
         "brighterscript-formatter": "^1.6.0",
         "chokidar": "^3.5.1",
         "debounce": "^1.2.0",
@@ -74,7 +74,7 @@
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
         "roku-debug": "^0.6.0",
-        "roku-deploy": "^3.2.3",
+        "roku-deploy": "^3.2.4",
         "roku-test-automation": "^1.0.62",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
@@ -101,12 +101,12 @@
         "@types/q": "^1.5.1",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.50.0",
+        "@types/vscode": "^1.30.0",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
         "coveralls": "^3.0.11",
-        "mocha": "^7.1.1",
+        "mocha": "^8.3.2",
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
         "nyc": "^15.0.0",
@@ -118,18 +118,15 @@
         "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.16",
-        "svelte": "^3.0.0",
-        "svelte-check": "^1.1.22",
-        "svelte-preprocess": "^4.6.1",
         "ts-mocha": "^7.0.0",
         "ts-node": "^8.9.1",
         "tslib": "^2.0.0",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
-        "typescript": "^3.9.7",
+        "typescript": "^3.8.3",
         "vsce": "^1.81.1",
         "vscode-debugadapter-testsupport": "1.33.0",
-        "yargs": "^15.3.1"
+        "yargs": "^16.2.0"
     },
     "main": "./dist/extension",
     "activationEvents": [
@@ -1381,6 +1378,12 @@
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                     "scope": "resource"
                 },
+                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
+                    "type": "string",
+                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                    "deprecationMessage": "Deprecated. Use brightscript.debug.raleTrackerTaskFileLocation instead",
+                    "scope": "resource"
+                },
                 "brightscript.debug.raleTrackerTaskFileLocation": {
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
@@ -1413,6 +1416,11 @@
                     "type": "boolean",
                     "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
                     "default": false,
+                    "scope": "resource"
+                },
+                "brightscript.bsdk": {
+                    "type": "string",
+                    "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
                     "scope": "resource"
                 }
             }
@@ -1560,6 +1568,17 @@
                     "light": "./images/preview-right-light.svg",
                     "dark": "./images/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.languageServer.restart",
+                "title": "Restart Language Server",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.languageServer.info",
+                "title": "View BrighterScript LanguageServer Info",
+                "category": "BrightScript"
             }
         ],
         "keybindings": [
