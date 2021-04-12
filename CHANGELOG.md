@@ -1032,7 +1032,7 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
  - support for `sourceDirs` for component libraries
  - ability to set any default launch config settings in user/workspace settings under `brightscript.debug.launchConfigValueHere`. There is not full validation for these yet, but the logic is already in place to use them.
 ### Changed
- - setting `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` has been depricated and replaced with `brightscript.debug.raleTrackerTaskFileLocation`
+ - setting `brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation` has been deprecated and replaced with `brightscript.debug.raleTrackerTaskFileLocation`
 
 
 

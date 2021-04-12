@@ -21,13 +21,14 @@ export default {
             output: 'bundle.css'
         }),
         svelte({
-            // enable run-time checks when not in production
-            dev: !production,
+            compilerOptions: {
+                dev: !production
+            },
             preprocess: autoPreprocess()
         }),
         typescript({
             tsconfig: "./ui/tsconfig.json",
-            sourceMap: !production
+            sourceMap: true
         }),
 
         // If you have external dependencies installed from
