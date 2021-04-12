@@ -1,10 +1,22 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
     import {odc} from "../ExtensionIntermediary";
+    const storage = window.localStorage;
+
+    let commandArgs: any[];
+    let selected;
+    let formArgs = {};
+    let commandResponse = '';
 
     function onCommandChange() {
-        formArgs = {}
         commandArgs = convertArgs(selected.args);
+        storage.previousCommandName = selected.name
+        const argValues = storage[`${selected.name}ArgValues`];
+        if(argValues) {
+            formArgs = JSON.parse(argValues);
+        } else {
+            formArgs = {}
+        }
     }
 
     function convertArgs(inputArgs) {
@@ -33,26 +45,13 @@
         return args;
     }
 
-    const commandList = []
-    for (const commandName of odcCommands) {
-        let argsKey = 'ODC.' + commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
-        commandList.push({
-            name: commandName,
-            args: requestArgsSchema.definitions[argsKey]
-        })
-    }
-    // preselect the first item
-    let commandArgs = convertArgs(commandList[0].args);
-
-    let selected;
-    let formArgs = {};
-    let commandResponse = '';
-
     async function sendCommand() {
         commandResponse = 'running...';
         const processedArgs = {}
+        const argValuesForCommand = {}
         for (const key in formArgs) {
             let argValue = formArgs[key];
+            argValuesForCommand[key] = argValue
             const argType = selected.args.properties[key].type
             if (argType == 'boolean') {
                 if (argValue == 'true') {
@@ -66,6 +65,9 @@
                 processedArgs[key] = argValue;
             }
         }
+
+        storage[`${selected.name}ArgValues`] = JSON.stringify(argValuesForCommand);
+
         try {
             const response = await odc.sendOdcMessage(selected.name, processedArgs);
             commandResponse = JSON.stringify(response, null, 2);
@@ -73,9 +75,35 @@
             commandResponse = error;
         }
     }
+
+    const commandList = []
+    for (const commandName of odcCommands) {
+        let argsKey = 'ODC.' + commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
+        commandList.push({
+            name: commandName,
+            args: requestArgsSchema.definitions[argsKey]
+        })
+    }
+
+    if (!storage.previousCommandName) {
+        storage.previousCommandName = 'getFocusedNode'
+    }
+
+    // preselect the last used function
+    for (const command of commandList) {
+        if (command.name === storage.previousCommandName) {
+            commandArgs = convertArgs(command.args);
+            selected = command;
+            onCommandChange();
+        }
+    }
 </script>
 
 <style>
+    #container {
+        margin: 10px 0px;
+    }
+
     label {
         display: inline;
         padding-right: 6px;
@@ -94,30 +122,32 @@
         width: 180px;
     }
 </style>
-<label for="command">Command:</label>
-<!-- svelte-ignore a11y-no-onchange -->
-<select name="command" bind:value={selected} on:change={onCommandChange}>
-{#each commandList as command}
-    <option value="{command}">{command.name}</option>
-{/each}
-</select>
+<div id="container">
+    <label for="command">Command:</label>
+    <!-- svelte-ignore a11y-no-onchange -->
+    <select name="command" bind:value={selected} on:change={onCommandChange}>
+    {#each commandList as command}
+        <option value="{command}">{command.name}</option>
+    {/each}
+    </select>
 
-{#each commandArgs as args}
-    <div class="commandOption">
-        <label for="{args.id}" title="{args.description}">{args.id}:</label>
-    {#if args.enum}
-        <select name="{args.id}" title="{args.description}" bind:value={formArgs[args.id]}>
-        {#each args.enum as value}
-            <option>{value}</option>
-        {/each}
-        </select>
-    {:else}
-        <input name="{args.id}" placeholder="{args.type}" title="{args.description}" bind:value={formArgs[args.id]} />
-    {/if}
-    </div>
-{/each}
-<br><button on:click={sendCommand}>Send</button>
-<hr />
-<pre>
-    {commandResponse}
-</pre>
+    {#each commandArgs as args}
+        <div class="commandOption">
+            <label for="{args.id}" title="{args.description}">{args.id}:</label>
+        {#if args.enum}
+            <select name="{args.id}" title="{args.description}" bind:value={formArgs[args.id]}>
+            {#each args.enum as value}
+                <option>{value}</option>
+            {/each}
+            </select>
+        {:else}
+            <input name="{args.id}" placeholder="{args.type}" title="{args.description}" bind:value={formArgs[args.id]} />
+        {/if}
+        </div>
+    {/each}
+    <br><button on:click={sendCommand}>Send</button>
+    <hr />
+    <pre>
+        {commandResponse}
+    </pre>
+</div>
