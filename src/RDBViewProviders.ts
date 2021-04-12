@@ -134,16 +134,6 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
 
     protected handleViewMessage(message) {
         switch (message.command) {
-            // TODO switch over
-            // case 'updateRegistry':
-            //     let updatedEntry = {};
-            //     updatedEntry[message.sectionKey] = this.sanitizeInput(message.updatedValue);
-            //     this.odc.writeRegistry({
-            //             values: updatedEntry
-            //     }, {
-            //         timeout: 20000
-            //     });
-            //     return;
             case 'exportRegistry':
                 vscode.window.showSaveDialog({saveLabel: 'Save'}).then(uri => {
                     vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
@@ -167,17 +157,6 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
             const data = Buffer.from(input).toString('utf8');
             this.view?.webview.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
         }
-    }
-
-    sanitizeInput(values): object {
-        let input = values;
-        Object.keys(values).map((key) => {
-            if (typeof values[key] == 'object') {
-                input[key] = JSON.stringify(values[key]);
-            }
-        });
-
-        return input;
     }
 }
 
