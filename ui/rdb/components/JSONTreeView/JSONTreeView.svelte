@@ -4,10 +4,8 @@
     export let registryValues;
     const keys = Object.keys(registryValues);
     export let onValueChange = (key) => {
-        const updatedValue = {};
-        updatedValue[key] = sanitizeInput(registryValues[key])
         odc.writeRegistry({
-            values: updatedValue
+            values: {[key]: sanitizeInput(registryValues[key])}
         })
     };
 
