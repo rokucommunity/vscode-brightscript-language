@@ -61,6 +61,8 @@
                 }
             } else if (argType == 'array' || argType == 'object') {
                 processedArgs[key] = JSON.parse(argValue);
+            } else if (argType == 'number') {
+                processedArgs[key] = Number(argValue);
             } else {
                 processedArgs[key] = argValue;
             }
