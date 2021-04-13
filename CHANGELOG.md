@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.18.1] - 2021-04-13
+### Changed
+ - updated to [brighterscript@0.37.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0373---2021-04-12)
+### Fixed
+ - (LanguageServer) crash when encountering BrighterScript circular imports
+ - (LanguageServer) bug where having multiple components with the same name would cause issues in the program, normally requiring a language server restart. 
+
+
+
 ## [2.18.0] - 2021-03-30
 ### Added
  - (LanguageServer) version picker for running locally-installed versions of BrighterScript ([#300](https://github.com/rokucommunity/vscode-brightscript-language/pull/300))
@@ -1902,3 +1911,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.8]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.7...v2.17.8
 [2.17.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.8...v2.17.9
 [2.18.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.9...v2.18.0
+[2.18.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.18.0...v2.18.1
