@@ -142,9 +142,12 @@ export class Extension {
             logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
         });
 
-        //focus the output panel on extension startup (only if configured to do so...defaults to false)
         if (vscode.workspace.getConfiguration('brightscript')?.focusOutputPanelOnStartup === true) {
+            //focus the output panel on extension startup (only if configured to do so...defaults to false)
             this.outputChannel.show();
+        } else if (vscode.workspace.getConfiguration('brightscript')?.showOutputPanelOnStartup === true) {
+            //show the output panel on extension startup without taking focus (only if configured to do so...defaults to false)
+            this.outputChannel.show(true);
         }
 
         //xml support

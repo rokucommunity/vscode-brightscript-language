@@ -1387,6 +1387,12 @@
                     "default": false,
                     "scope": "resource"
                 },
+                "brightscript.showOutputPanelOnStartup": {
+                    "type": "boolean",
+                    "description": "If enabled, the 'BrightScript Log' output channel will be shown but not focused as soon as this extension is initialized. If 'focusOutputPanelOnStartup' is set to true this setting is ignored",
+                    "default": false,
+                    "scope": "resource"
+                },
                 "brightscript.bsdk": {
                     "type": "string",
                     "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
