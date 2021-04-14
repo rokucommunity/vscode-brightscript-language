@@ -22,9 +22,11 @@ export class Extension {
     public outputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
+    private chanperfStatusBar: vscode.StatusBarItem;
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
+        this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
         var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
@@ -115,6 +117,17 @@ export class Extension {
 
             } else if (e.event === 'BSRendezvousEvent') {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
+
+            } else if (e.event === 'BSChanperfEvent') {
+                console.log(e);
+                if (!e.body.missingInfoMessage) {
+                    this.chanperfStatusBar.text = `cpu: ${e.body.totalCpuUsage}%, mem: ${e.body.totalMemKib}Kib`;
+                } else {
+                    this.chanperfStatusBar.text = e.body.missingInfoMessage;
+                }
+
+                this.chanperfStatusBar.show();
+                // rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
             } else if (!e.event) {
                 if (e.body[0]) {
