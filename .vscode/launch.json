@@ -37,22 +37,22 @@
             "timeout": 120000
         },
         {
-			"name": "Debug Tests",
-			"type": "node",
-			"request": "launch",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-			"args": [
+            "name": "Debug Tests",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
                 "-r",
                 "ts-node/register",
                 "-r",
                 "source-map-support/register",
                 "--timeout",
-				"999999",
+                "999999",
                 "./src/**/*.spec.ts"
             ],
-			"internalConsoleOptions": "openOnSessionStart"
-		}
+            "internalConsoleOptions": "openOnSessionStart"
+        }
     ],
     "compounds": [
         {
