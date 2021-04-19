@@ -119,15 +119,13 @@ export class Extension {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
             } else if (e.event === 'BSChanperfEvent') {
-                console.log(e);
                 if (!e.body.missingInfoMessage) {
-                    this.chanperfStatusBar.text = `cpu: ${e.body.totalCpuUsage}%, mem: ${e.body.totalMemKib}Kib`;
+                    this.chanperfStatusBar.text = `cpu: ${e.body.cpu.total}%, mem: ${e.body.memory.total}KiB`;
                 } else {
                     this.chanperfStatusBar.text = e.body.missingInfoMessage;
                 }
 
                 this.chanperfStatusBar.show();
-                // rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
             } else if (!e.event) {
                 if (e.body[0]) {
