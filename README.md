@@ -510,7 +510,7 @@ with "ComponentName" editable and cursor inside the block
 
 Typing `<field<tab>` generates
 ```xml
-<field name="name" type="integer" />
+<field id="id" type="integer" />
 ```
 with "name" editable, and the type is a dropdown of possible values
 

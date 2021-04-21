@@ -34,7 +34,7 @@
     "Field Element": {
         "prefix": "<field",
         "body": [
-            "<field name=\"${1:name}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" />"
+            "<field id=\"${1:id}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" />"
         ],
         "description": "Field element"
     },
@@ -42,7 +42,7 @@
     "Field Element with Alias": {
         "prefix": "<field-alias",
         "body": [
-            "<field name=\"${1:name}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" alias=\"${3:alias}\" />"
+            "<field id=\"${1:id}\" type=\"${2|integer,longInteger,float,string,boolean,vector2d,color,time,uri,node,array,floatArray,intArray,boolArray,stringArray,vector2dArray,colorArray,timeArray,nodeArray,assocArray,rect2d,rect2dArray|}\" alias=\"${3:alias}\" />"
         ],
         "description": "Field element with alias"
     },
