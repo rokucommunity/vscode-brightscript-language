@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as prettyBytes from 'pretty-bytes';
 import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
@@ -119,10 +120,10 @@ export class Extension {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
             } else if (e.event === 'BSChanperfEvent') {
-                if (!e.body.missingInfoMessage) {
-                    this.chanperfStatusBar.text = `cpu: ${e.body.cpu.total}%, mem: ${e.body.memory.total}KiB`;
+                if (!e.body.error) {
+                    this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
                 } else {
-                    this.chanperfStatusBar.text = e.body.missingInfoMessage;
+                    this.chanperfStatusBar.text = e.body.error.message;
                 }
 
                 this.chanperfStatusBar.show();
@@ -146,6 +147,13 @@ export class Extension {
             //if this is a brightscript debug session
             if (e.type === 'brightscript') {
                 logOutputManager.onDidStartDebugSession();
+            }
+        });
+
+        vscode.debug.onDidTerminateDebugSession((e) => {
+            //if this is a brightscript debug session
+            if (e.type === 'brightscript') {
+                this.chanperfStatusBar.hide();
             }
         });
 
