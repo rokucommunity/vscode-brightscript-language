@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        BrightScript VSCode Extension
+    </title>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/index.html">
+            <div id="logo">BrightScript VSCode Extension</div>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+            
+            
+                
+                    <div class="folder">
+                        <div class="name entry"></div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Extension Settings.html">Extension Settings.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/index.html">index.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Introduction.html">Introduction.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Roku Remote Control.html">Roku Remote Control.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Debugging</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Component Libraries.html">Component Libraries.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Deep Linking (ECP).html">Deep Linking (ECP).html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\RALE Support.html">RALE Support.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Editing</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Editing\Ignoring Errors and Warnings.html">Ignoring Errors and Warnings.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+        </div>
+        <div id="content">
+            <h1 id="roku-remote-control">Roku Remote Control</h1>
+<p>You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press <code>win+k (or cmd+k on mac)</code> from inside those same panels to bring up a text box to send text to the Roku device.</p>
+<p>This extension sends key presses to the Roku device through Roku&#39;s <a href="https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues">External Control API</a>. The 12 standard Roku remote buttons are already included. The keys are mapped using the <code>when</code> clause so it will only send remote commands if the Output or Debug Console Panel has focus (<code>panelFocus</code>) AND the Editor Find widget is NOT visible (<code>!findWidgetVisible</code>).</p>
+<h2 id="keyboard-commands">Keyboard Commands</h2>
+<table>
+<thead>
+<tr>
+<th>Keyboard Key</th>
+<th>Roku Remote Key</th>
+<th>Keybinding Command</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Backspace</code></td>
+<td>Back Button</td>
+<td><code>extension.brightscript.pressBackButton</code></td>
+</tr>
+<tr>
+<td><code>win+Backspace</code> (or <code>cmd+Backspace</code> on mac)</td>
+<td>Backspace</td>
+<td><code>extension.brightscript.pressBackspaceButton</code></td>
+</tr>
+<tr>
+<td><code>Escape</code></td>
+<td>Home Button</td>
+<td><code>extension.brightscript.pressHomeButton</code></td>
+</tr>
+<tr>
+<td><code>up</code></td>
+<td>Up Button</td>
+<td><code>extension.brightscript.pressUpButton</code></td>
+</tr>
+<tr>
+<td><code>down</code></td>
+<td>Down Button</td>
+<td><code>extension.brightscript.pressDownButton</code></td>
+</tr>
+<tr>
+<td><code>right</code></td>
+<td>Right Button</td>
+<td><code>extension.brightscript.pressRightButton</code></td>
+</tr>
+<tr>
+<td><code>left</code></td>
+<td>Left Button</td>
+<td><code>extension.brightscript.pressLeftButton</code></td>
+</tr>
+<tr>
+<td><code>Enter</code></td>
+<td>Select Button (OK)</td>
+<td><code>extension.brightscript.pressSelectButton</code></td>
+</tr>
+<tr>
+<td><code>win+Enter</code> (or <code>cmd+Enter</code> on mac)</td>
+<td>Play Button</td>
+<td><code>extension.brightscript.pressPlayButton</code></td>
+</tr>
+<tr>
+<td><code>win+left</code> (or <code>cmd+left</code> on mac)</td>
+<td>Rev Button</td>
+<td><code>extension.brightscript.pressRevButton</code></td>
+</tr>
+<tr>
+<td><code>win+right</code> (or <code>cmd+right</code> on mac)</td>
+<td>Fwd Button</td>
+<td><code>extension.brightscript.pressFwdButton</code></td>
+</tr>
+<tr>
+<td><code>win+8</code> (or <code>cmd+8</code> on mac)</td>
+<td>Info Button</td>
+<td><code>extension.brightscript.pressStarButton</code></td>
+</tr>
+</tbody></table>
+<p>You also have the ability to create keybindings for any other Roku supported key by adding. Here&#39;s a example entry for <code>keybindings.json</code> of how to create a VSCode keyboard shortcut to send the space key to the Roku:</p>
+<pre><code class="language-json">{
+  &quot;key&quot;: &quot;Space&quot;,
+  &quot;command&quot;: &quot;extension.brightscript.sendRemoteCommand&quot;,
+  &quot;args&quot;: &quot;Lit_%20&quot;,
+  &quot;when&quot;: &quot;panelFocus &amp;&amp; !inDebugRepl &amp;&amp; !findWidgetVisible&quot;
+}
+</code></pre>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>

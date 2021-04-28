@@ -41,7 +41,9 @@
         "clean": "rimraf dist",
         "install-local": "node scripts/install-local.js",
         "install-pull-local": "node scripts/install-local.js --pull",
-        "uninstall-local": "node scripts/uninstall-local.js"
+        "uninstall-local": "node scripts/uninstall-local.js",
+        "build-docs": "cd ../../statigen && npm run build && node dist/cli.js -s docs -o .tmp/docs",
+        "watch-docs": "cd ../../statigen && npm run build && node -r source-map-support/register dist/cli.js --cwd C:/projects/roku/vscode-brightscript-language -s docs -o .tmp/docs --watch"
     },
     "dependencies": {
         "array-sort": "^1.0.0",
@@ -105,6 +107,7 @@
         "rimraf": "^3.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.16",
+        "static-site-generator": "file:../../static-site-generator",
         "ts-mocha": "^7.0.0",
         "ts-node": "^8.9.1",
         "tslint": "^5.11.0",

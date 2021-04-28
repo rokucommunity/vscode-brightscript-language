@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        BrightScript VSCode Extension
+    </title>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/index.html">
+            <div id="logo">BrightScript VSCode Extension</div>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+            
+            
+                
+                    <div class="folder">
+                        <div class="name entry"></div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Extension Settings.html">Extension Settings.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/index.html">index.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Introduction.html">Introduction.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Roku Remote Control.html">Roku Remote Control.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Debugging</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Component Libraries.html">Component Libraries.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Deep Linking (ECP).html">Deep Linking (ECP).html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\RALE Support.html">RALE Support.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Editing</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Editing\Ignoring Errors and Warnings.html">Ignoring Errors and Warnings.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+        </div>
+        <div id="content">
+            <h1 id="extension-settings">Extension Settings</h1>
+<p>This extension contributes the following settings:</p>
+<ul>
+<li><code>brightscript.format.keywordCase</code>: specify case of keywords when formatting</li>
+<li><code>brightscript.format.compositeKeywords</code>: specify whether composite words (ie: &quot;endif&quot;, &quot;endfor&quot;) should be broken apart into their two-word format (ie: &quot;end if&quot;, &quot;end for&quot;)</li>
+<li><code>brightscript.format.removeTrailingWhiteSpace</code>: specify whether trailing whitespace should be removed on format</li>
+<li><code>brightscript.format.formatInteriorWhitespace</code>: If true (the default), all whitespace between items is reduced to exactly 1 space character, and certain keywords and operators are padded with whitespace (i.e. <code>1+1</code> becomes <code>1 + 1</code>)</li>
+<li><code>brightscript.format.insertSpaceBeforeFunctionParenthesis</code>: If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. <code>function main ()</code> or <code>function ()</code>). If false, all spacing is removed (i.e. <code>function main()</code> or <code>function()</code>).</li>
+<li><code>brightscript.format.insertSpaceBetweenEmptyCurlyBraces</code>: if true, empty curly braces will contain exactly 1 whitespace char (i.e. <code>{ }</code>). If false, there will be zero whitespace chars between empty curly braces (i.e. <code>{}</code>)</li>
+<li><code>brightscript.output.includeStackTraces</code>: If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you&#39;ll still get the traces in the debug console, in any case</li>
+<li><code>brightscript.output.focusOnLaunch</code>: If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension&#39;s remote control keys. <strong>Experimental. Does not always work</strong></li>
+<li><code>brightscript.output.clearOnLaunch</code>: If set to true, will clear the brightscript log when launching</li>
+<li><code>brightscript.output.clearConsoleOnChannelStart</code>: If set to true, will clear the brightscript log after connecting to the Roku channel after launching</li>
+<li><code>brightscript.output.hyperlinkFormat</code>: specifies the display format for log output <code>pkg</code> link</li>
+<li><code>brightscript.deviceDiscovery.showInfoMessages</code>: If set to true, an info toast will be shown when a Roku device has been found on the network.</li>
+<li><code>brightscript.deviceDiscovery.enabled</code>: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the <code>${promptForHost}</code> option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.</li>
+<li><code>brightscript.debug.raleTrackerTaskFileLocation</code>: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. <code>/Users/user/roku/TrackerTask/TrackerTask.xml</code>)</li>
+<li><code>brightscript.debug.enableSourceMaps</code>: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you&#39;re noticing issues with the sourcemaps not working properly.</li>
+<li><code>brightscript.debug.enableDebugProtocol</code> - If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See <a href="https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md">the official documentation</a> for more details.</li>
+</ul>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>

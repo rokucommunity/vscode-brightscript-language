@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        BrightScript VSCode Extension
+    </title>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+    <div id="navbar">
+        <a href="/index.html">
+            <div id="logo">BrightScript VSCode Extension</div>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+            
+            
+                
+                    <div class="folder">
+                        <div class="name entry"></div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Extension Settings.html">Extension Settings.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/index.html">index.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Introduction.html">Introduction.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Roku Remote Control.html">Roku Remote Control.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Debugging</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Component Libraries.html">Component Libraries.html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\Deep Linking (ECP).html">Deep Linking (ECP).html</a>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Debugging\RALE Support.html">RALE Support.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                            <div class="children">
+                                
+                
+                    <div class="folder">
+                        <div class="name entry">Editing</div>
+                        
+                            <div class="children">
+                                
+                
+                    <a class="entry"href="/Editing\Ignoring Errors and Warnings.html">Ignoring Errors and Warnings.html</a>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+                            </div>
+                        
+                    </div>
+                
+            
+        </div>
+        <div id="content">
+            <h1 id="ignore-errors-and-warnings-on-a-per-line-basis">Ignore errors and warnings on a per-line basis</h1>
+<p>In addition to disabling an entire class of errors in the <code>ignoreErrorCodes</code> array in <code>bsconfig.json</code>, you may also disable errors for a subset of the complier rules within a file with the following comment flags:</p>
+<ul>
+<li><code>brs:disable-next-line</code></li>
+<li><code>brs:disable-next-line: code1 code2 code3</code></li>
+<li><code>brs:disable-line</code></li>
+<li><code>brs:disable-line: code1 code2 code3</code></li>
+</ul>
+<p>Here are some examples:</p>
+<pre><code class="language-brightscript">sub Main()
+    &#39;disable errors about invalid syntax here
+    &#39;brs:disable-next-line
+    DoSomething(
+
+    DoSomething( &#39;brs:disable-line
+
+    &#39;disable errors about wrong parameter count
+    DoSomething(1,2,3) &#39;brs:disable-next-line
+
+    DoSomething(1,2,3) &#39;brs:disable-next-line:1002
+end sub
+
+sub DoSomething()
+end sub
+</code></pre>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>
