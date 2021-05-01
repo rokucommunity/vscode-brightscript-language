@@ -132,7 +132,7 @@ export class LogOutputManager {
     }
 
     public onDidReceiveDebugSessionCustomEvent(e: { event: string, body?: any }) {
-        if (e.event === 'BSRendezvousEvent') {
+        if (e.event === 'BSRendezvousEvent' || e.event === 'BSChanperfEvent') {
             // No need to handle rendezvous type events
             return;
         }

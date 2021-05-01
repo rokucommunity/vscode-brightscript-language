@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.19.0] - 2021-04-27
+### Added
+ - (Debugger) support for inspecting roXmlElement
+ - (Debugger) support for capturing chanperf events (these are shown in the status bar)
+### Changed
+ - updated to [brighterscript@0.37.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0374---2021-04-20)
+ - updated to [roku-debug@0.7.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#070---2021-04-27)
+### Fixed
+ - (LanguageServer) bug validating namespace function calls
+
+
+
 ## [2.18.1] - 2021-04-13
 ### Changed
  - updated to [brighterscript@0.37.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0373---2021-04-12)
@@ -51,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
  - (Debugger) RDB integration ([roku-debug#25](https://github.com/rokucommunity/roku-debug/pull/25)
 ### Changed
- - updated to [roku-debug@0.5.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#060---2021-03-09)
+ - updated to [roku-debug@0.6.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#060---2021-03-09)
 ### Fixed
  - syntax highlight issue for keywords in class method declarations
 
@@ -1912,3 +1924,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.17.9]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.8...v2.17.9
 [2.18.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.9...v2.18.0
 [2.18.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.18.0...v2.18.1
+[2.19.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.18.1...v2.19.0
