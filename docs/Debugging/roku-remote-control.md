@@ -1,4 +1,6 @@
-
+---
+title: Roku Remote Control
+---
 # Roku Remote Control
 
 You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press `win+k (or cmd+k on mac)` from inside those same panels to bring up a text box to send text to the Roku device.
@@ -22,7 +24,7 @@ This extension sends key presses to the Roku device through Roku's [External Con
 | `win+right` (or `cmd+right` on mac)         | Fwd Button         | `extension.brightscript.pressFwdButton`       |
 | `win+8` (or `cmd+8` on mac)                 | Info Button        | `extension.brightscript.pressStarButton`      |
 
-You also have the ability to create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
+You can also create keybindings for any other Roku supported key by adding. Here's a example entry for `keybindings.json` of how to create a VSCode keyboard shortcut to send the space key to the Roku:
 
 ```json
 {

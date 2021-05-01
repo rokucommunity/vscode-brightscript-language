@@ -1,3 +1,6 @@
+---
+title: Ignoring Errors and Warnings
+---
 # Ignore errors and warnings on a per-line basis
 In addition to disabling an entire class of errors in the `ignoreErrorCodes` array in `bsconfig.json`, you may also disable errors for a subset of the complier rules within a file with the following comment flags:
  - `brs:disable-next-line`

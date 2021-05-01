@@ -1,3 +1,6 @@
+---
+title: Deep Linking (ECP)
+---
 # Deep Linking (ECP)
 
 You can launch a debug session with a deep link by setting the `deepLinkUrl` property in your `launch.json` configuration.

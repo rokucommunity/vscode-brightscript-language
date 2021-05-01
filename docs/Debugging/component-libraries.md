@@ -1,3 +1,6 @@
+---
+title: Component Libraries
+---
 # Component Libraries
 
 If you are working on custom component libraries you can define them in the launch.json file. The extension will automatically zip and statically host your component libraries. The library folder(s) can ether be in your project or in another workspace on your machine.

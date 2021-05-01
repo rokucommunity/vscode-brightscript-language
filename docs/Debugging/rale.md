@@ -1,6 +1,9 @@
+---
+title: RALE Support
+---
 # RALE Support
 
-You can also have the extension automatically inject the `TrackerTack.xml` and the code snippet required to start the tracker task.
+The extension can automatically inject the `TrackerTask.xml` and the code snippet required to start the tracker task.
 To do this you need a few simple things:
 
 - In your VS Code user settings add the `brightscript.debug.raleTrackerTaskFileLocation` setting. (See [Extension Settings](#Extension-Settings) for more information)
