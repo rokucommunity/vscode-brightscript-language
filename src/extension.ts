@@ -13,6 +13,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
+import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 
@@ -21,6 +22,7 @@ const EXTENSION_ID = 'RokuCommunity.brightscript';
 export class Extension {
 
     public outputChannel: vscode.OutputChannel;
+    public sceneGraphDebugChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
@@ -42,6 +44,7 @@ export class Extension {
 
         //create channels
         this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
+        this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands Log');
         this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
         this.debugServerOutputChannel.appendLine('Extension startup');
 
@@ -142,6 +145,7 @@ export class Extension {
 
         //register all commands for this extension
         brightScriptCommands.registerCommands(context);
+        sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
         vscode.debug.onDidStartDebugSession((e) => {
             //if this is a brightscript debug session
