@@ -355,6 +355,38 @@
                                     }
                                 }
                             },
+                            "autoRunSgDebugCommands": {
+                                "type": "array",
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                            "enum": [
+                                                "chanperf"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                            "enum": [
+                                                "fpsdisplay"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                            "enum": [
+                                                "logrendezvous"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Custom SGDebug command that will be run on port 8080"
+                                        }
+                                    ]
+                                }
+                            },
                             "outDir": {
                                 "type": "string",
                                 "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
@@ -1358,6 +1390,38 @@
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
+                },
+                "brightscript.debug.autoRunSgDebugCommands": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                "enum": [
+                                    "chanperf"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                "enum": [
+                                    "fpsdisplay"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                "enum": [
+                                    "logrendezvous"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Custom SGDebug command that will be run on port 8080"
+                            }
+                        ]
+                    }
                 },
                 "brightscript.debug.enableDebugProtocol": {
                     "type": "boolean",
