@@ -127,6 +127,13 @@ export class SceneGraphDebugCommands {
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.showKey', async () => {
             await this.logCommandOutput(async (commandController) => commandController.showkey());
         }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.custom8080Command', async () => {
+            let command = await vscode.window.showInputBox({ placeHolder: 'custom command' });
+            if (command) {
+                await this.logCommandOutput(async (commandController) => commandController.exec(command));
+            }
+        }));
     }
 
     private async logCommandOutput(callback: (controller: SceneGraphDebugCommandController) => Promise<SceneGraphCommandResponse>) {

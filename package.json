@@ -1571,6 +1571,11 @@
                 "category": "Brightscript 8080"
             },
             {
+                "command": "extension.brightscript.custom8080Command",
+                "title": "custom - Enter any command string to be run on port 8080'",
+                "category": "Brightscript 8080"
+            },
+            {
                 "command": "extension.brightscript.clearGlobalState",
                 "title": "Clear Global State",
                 "description": "Clear the BrightScript extension's global state.",
