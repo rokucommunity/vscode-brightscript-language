@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as prettyBytes from 'pretty-bytes';
 import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
@@ -22,9 +23,11 @@ export class Extension {
     public outputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
+    private chanperfStatusBar: vscode.StatusBarItem;
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
+        this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
         var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
@@ -116,6 +119,15 @@ export class Extension {
             } else if (e.event === 'BSRendezvousEvent') {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
+            } else if (e.event === 'BSChanperfEvent') {
+                if (!e.body.error) {
+                    this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
+                } else {
+                    this.chanperfStatusBar.text = e.body.error.message;
+                }
+
+                this.chanperfStatusBar.show();
+
             } else if (!e.event) {
                 if (e.body[0]) {
                     // open the first file with a compile error
@@ -135,6 +147,13 @@ export class Extension {
             //if this is a brightscript debug session
             if (e.type === 'brightscript') {
                 logOutputManager.onDidStartDebugSession();
+            }
+        });
+
+        vscode.debug.onDidTerminateDebugSession((e) => {
+            //if this is a brightscript debug session
+            if (e.type === 'brightscript') {
+                this.chanperfStatusBar.hide();
             }
         });
 

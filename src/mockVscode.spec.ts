@@ -24,6 +24,7 @@ export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
+        onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { },
     },
     languages: {
