@@ -1385,7 +1385,15 @@
                 "brightscript.focusOutputPanelOnStartup": {
                     "type": "boolean",
                     "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
+                    "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
                     "default": false,
+                    "scope": "resource"
+                },
+                "brightscript.outputPanelStartupBehavior": {
+                    "type": "string",
+                    "description": "Used to configure if the 'BrightScript Log' output channel will be shown, shown and be focused, or nothing happens as soon as this extension is initialized",
+                    "enum": ["show", "focus", "nothing"],
+                    "default": "nothing",
                     "scope": "resource"
                 },
                 "brightscript.bsdk": {
