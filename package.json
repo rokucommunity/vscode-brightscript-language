@@ -1456,7 +1456,11 @@
                 "brightscript.outputPanelStartupBehavior": {
                     "type": "string",
                     "description": "Used to configure if the 'BrightScript Log' output channel will be shown, shown and be focused, or nothing happens as soon as this extension is initialized",
-                    "enum": ["show", "focus", "nothing"],
+                    "enum": [
+                        "show",
+                        "focus",
+                        "nothing"
+                    ],
                     "default": "nothing",
                     "scope": "resource"
                 },
