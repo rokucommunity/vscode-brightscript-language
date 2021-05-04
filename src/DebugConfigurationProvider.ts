@@ -35,6 +35,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             enableVariablesPanel: true,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
+            autoRunSgDebugCommands: [],
             files: [...DefaultFiles],
             enableSourceMaps: true,
             packagePort: 80,
@@ -192,6 +193,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.host = config.host ? config.host : this.configDefaults.host;
         config.password = config.password ? config.password : this.configDefaults.password;
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
+        config.autoRunSgDebugCommands = config.autoRunSgDebugCommands ? config.autoRunSgDebugCommands : this.configDefaults.autoRunSgDebugCommands;
         config.request = config.request ? config.request : this.configDefaults.request;
         config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : this.configDefaults.stopOnEntry;
         config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
