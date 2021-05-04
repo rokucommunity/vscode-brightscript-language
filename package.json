@@ -1463,117 +1463,117 @@
             {
                 "command": "extension.brightscript.bsprofPause",
                 "title": "bsprof-pause - Pause BS profiling",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.bsprofResume",
                 "title": "bsprof-resume - Resume BS profiling",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.bsprofStatus",
                 "title": "bsprof-status - Get BS profiling status",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.chanperf",
                 "title": "chanperf - Show channel CPU and memory usage",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.chanperfChangeInterval",
                 "title": "chanperf - Change how often to show channel CPU and memory usage",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.clearLaunchCaches",
                 "title": "clear_launch_caches - Clear all caches that can affect channel launch time",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.fpsDisplay",
                 "title": "fps_display - Display onscreen graphics statistics",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.free",
                 "title": "free - Return the output of the free(1) command",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.genkey",
                 "title": "genkey - Generate a new developer key",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.loadedTextures",
                 "title": "loaded_textures - Show loaded textures",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.logrendezvous",
                 "title": "logrendezvous - Turn Rendezvous Logging on or off",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.plugins",
                 "title": "plugins - Show list of all installed plugins",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.r2d2bitmaps",
                 "title": "r2d2_bitmaps - Enumerate R2D2 bitmaps",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.removePlugin",
                 "title": "remove_plugin - Remove a plugin from the account and device",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgnodesAll",
                 "title": "sgnodes all - Logs every existing node created by the currently running channel",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgnodesRoots",
                 "title": "sgnodes roots - Logs every existing node without a parent created by the currently running channel",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgnodesNodeId",
                 "title": "sgnodes node_ID - Logs node(s) with an id field matching the supplied node_ID",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgperfStart",
                 "title": "sgperf start - Enables tracking of basic node operation performance metrics",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgperfStop",
                 "title": "sgperf stop - Disabled tracking of basic node operation performance metrics",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgperfClear",
                 "title": "sgperf clear - Resets basic node operation performance metrics",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.sgperfReport",
                 "title": "sgperf report - Logs the current node operation performance metrics",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.press",
                 "title": "press - Simulate a list of keypress'",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.custom8080Command",
                 "title": "custom - Enter any command string to be run on port 8080'",
-                "category": "Brightscript 8080"
+                "category": "Brightscript Debug"
             },
             {
                 "command": "extension.brightscript.clearGlobalState",
