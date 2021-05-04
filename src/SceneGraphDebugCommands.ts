@@ -139,8 +139,36 @@ export class SceneGraphDebugCommands {
     private async logCommandOutput(callback: (controller: SceneGraphDebugCommandController) => Promise<SceneGraphCommandResponse>) {
         await this.getRemoteHost();
         let response = await callback(new SceneGraphDebugCommandController(this.host));
-        this.outputChannel.appendLine(`>${response.command}\n${response?.error ? response?.error.message : response.result.rawResponse}`);
+
         this.outputChannel.show();
+
+        // The output channel seems to have a limit to the amount of output that can be displayed in a single log.
+        // For this reason we split the output into groups of 20 lines and send each group. If we don't do this a lot of
+        // the middle of the string gets cut out.
+        let lines = (response?.error ? response?.error.message : response.result.rawResponse).split('\n');
+        let lineGroups = this.chunkArray(lines);
+
+        // Log the command statement
+        this.outputChannel.append(`>${response.command}\n`);
+
+        // Log each group of 20 lines
+        for (let lineGroup of lineGroups) {
+            this.outputChannel.append(lineGroup.join('\n') + '\n');
+        }
+    }
+
+    private chunkArray(arr: Array<any>, chunkSize = 20) {
+        if (chunkSize <= 0) {
+            return arr;
+        }
+
+        let chunks = [];
+        for (let i = 0, len = arr.length; i < len; i += 20) {
+            chunks.push(arr.slice(i, i + chunkSize));
+
+        }
+
+        return chunks;
     }
 
     public async getRemoteHost() {
