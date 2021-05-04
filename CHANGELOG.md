@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.20.0] - 2021-05-03
+### Added
+ - Commands for all port 8080 requests (chanperf, rendezvous tracking, etc...) ([#308](https://github.com/rokucommunity/vscode-brightscript-language/pull/308))
+ - (Debugger) launch config options `autoRunSgDebugCommands` for running port 8080 commands before starting a debug session
+ - new `showOutputPanelOnStartup` setting.
+### Changed
+ - updated to [roku-debug@0.8.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#080---2021-05-03)
+ - Deprecated `focusOutputPanelOnStartup` in favor of the new `showOutputPanelOnStartup` setting.
+
+
+
 ## [2.19.0] - 2021-04-27
 ### Added
  - (Debugger) support for inspecting roXmlElement
@@ -1925,3 +1936,4 @@ This is a summary of all changes between 1.23.0 and 2.0.0-beta.50
 [2.18.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.17.9...v2.18.0
 [2.18.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.18.0...v2.18.1
 [2.19.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.18.1...v2.19.0
+[2.20.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.19.0...v2.20.0
