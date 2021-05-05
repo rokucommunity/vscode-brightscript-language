@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.20.1] - 2021-05-03
+[2.20.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.20.0...v2.20.1
+### Added
+ - (LanguageServer) warning for mismatched class method accessibility ([BrighterScript#402](https://github.com/rokucommunity/brighterscript/pull/402))
+ - (LanguageServer) allow class field overrides in child classes as long as they are the same type ([BrighterScript#394](https://github.com/rokucommunity/brighterscript/pull/394))
+### Changed
+ - updated to [brighterscript@0.38.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0380---2021-05-04)
+ - updated to [roku-debug@0.8.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#081---2021-05-04)
+### Fixed
+ - (Debugger) Fix incorrect sgnodes shell prompt matching string. ([RokuDebug#31](https://github.com/rokucommunity/roku-debug/pull/31))
+ - (Debugger) Increase port 8080 commands max buffer size ([RokuDebug#31](https://github.com/rokucommunity/roku-debug/pull/31))
+ - (Extension) Fixed an issue where some sg debug command logs could have missing results for large responses ([#309](https://github.com/rokucommunity/vscode-brightscript-language/pull/309))
+
+
+
 ## [2.20.0] - 2021-05-03
 [2.20.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.19.0...v2.20.0
 ### Added
