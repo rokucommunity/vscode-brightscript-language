@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.21.0] - 2021-05-18
+[2.21.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.20.2...v2.21.0
+### Changed
+ - upgraded to languageclient version 7 ([#306](https://github.com/rokucommunity/vscode-brightscript-language/pull/306))
+ - updated to [brighterscript@0.39.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0390---2021-05-18)
+
+
+
 ## [2.20.2] - 2021-05-17
 [2.20.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.20.1...v2.20.2
 ### Added
