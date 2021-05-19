@@ -1578,6 +1578,11 @@
                 "category": "Brightscript Debug"
             },
             {
+                "command": "extension.brightscript.showkey",
+                "title": "showkey - Show the current developer key.",
+                "category": "Brightscript Debug"
+            },
+            {
                 "command": "extension.brightscript.press",
                 "title": "press - Simulate a list of keypress'",
                 "category": "Brightscript Debug"
