@@ -54,7 +54,7 @@ export class SceneGraphDebugCommands {
             await this.logCommandOutput(async (commandController) => commandController.free());
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.genKey', async () => {
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.genkey', async () => {
             await this.logCommandOutput(async (commandController) => commandController.genkey());
         }));
 
