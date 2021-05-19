@@ -8,6 +8,9 @@ afterEach(() => {
 export let vscode = {
     CompletionItem: class { },
     CodeLens: class { },
+    CodeAction: class { },
+    Diagnostic: class { },
+    CallHierarchyItem: class {},
     StatusBarAlignment: {
         Left: 1,
         Right: 2
