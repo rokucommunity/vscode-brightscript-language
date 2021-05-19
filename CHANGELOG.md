@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.22.0] - 2021-05-19
+[2.22.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.21.0...v2.22.0
+### Added
+ - `extension.brightscript.showkey` command to show the current developer key ([#313](https://github.com/rokucommunity/vscode-brightscript-language/pull/313))
+### Fixed
+ - broken `extension.brightscript.genkey` command due to wrong casing of the command ([#313](https://github.com/rokucommunity/vscode-brightscript-language/pull/313))
+
+
+
 ## [2.21.0] - 2021-05-18
 [2.21.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.20.2...v2.21.0
 ### Changed
