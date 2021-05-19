@@ -124,7 +124,7 @@ export class SceneGraphDebugCommands {
             await this.logCommandOutput(async (commandController) => commandController.sgperf('report'));
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.showKey', async () => {
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.showkey', async () => {
             await this.logCommandOutput(async (commandController) => commandController.showkey());
         }));
 
