@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.22.1] - 2021-05-28
+[2.22.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.0...v2.22.1
+### Changed
+ - Latest roku-deploy changed the internal zip libary which yields up to 75% speed boost during the zipping process. 
+ - updated to [brighterscript@0.39.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0392---2021-05-28)
+ - updated to [roku-debug@0.8.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#082---2021-05-28)
+ - updated to [roku-deploy@3.4.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#340---2021-05-28)
+
+
+
 ## [2.22.0] - 2021-05-19
 [2.22.0]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.21.0...v2.22.0
 ### Added
