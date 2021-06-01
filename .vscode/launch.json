@@ -19,12 +19,13 @@
             "type": "node",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/src/debugAdapter.ts",
+            "program": "${workspaceFolder}/dist/debugAdapter.js",
             "args": [
                 "--server=4711"
             ],
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../roku-debug/dist/**/*.js"
             ],
             "stopOnEntry": false
         },
@@ -56,7 +57,7 @@
     ],
     "compounds": [
         {
-            "name": "Extension, Debug Server, Language Server",
+            "name": "Extension + Debug Server + Language Server",
             "configurations": [
                 "Extension",
                 "Debug Server",
@@ -64,7 +65,15 @@
             ]
         },
         {
-            "name": "Extension, Language Server",
+            "name": "Extension + Debug Server",
+            "configurations": [
+                "Extension",
+                "Debug Server",
+                "Language Server"
+            ]
+        },
+        {
+            "name": "Extension + Language Server",
             "configurations": [
                 "Extension",
                 "Language Server"
