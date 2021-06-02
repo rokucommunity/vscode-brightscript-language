@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.22.2] - 2021-06-01
+[2.22.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.1...v2.22.2
+### Fixed
+ - extension crash due to a missing dependency in roku-deploy
+### Changed
+ - updated to [brighterscript@0.39.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0393---2021-06-01) which includes roku-deploy@3.4.1
+ - updated to [roku-debug@0.8.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#082---2021-05-28) which includes roku-deploy@3.4.1
+ - updated to [roku-deploy@3.4.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#341---2021-06-01)
+
+
+
 ## [2.22.1] - 2021-05-28
 [2.22.1]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.0...v2.22.1
 ### Changed
