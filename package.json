@@ -182,6 +182,9 @@
             },
             {
                 "language": "brighterscript"
+            },
+            {
+                "language": "scenegraph"
             }
         ],
         "debuggers": [
@@ -583,6 +586,16 @@
                 "configuration": "./language-configuration.json"
             },
             {
+                "id": "scenegraph",
+                "extensions": [
+                    ".xml"
+                ],
+                "aliases": [
+                    "SceneGraph"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
                 "id": "Log",
                 "aliases": [
                     "log"
@@ -620,6 +633,11 @@
                 "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "scenegraph",
+                "scopeName": "scenegraph.xml",
+                "path": "./syntaxes/scenegraph.tmLanguage.json"
             }
         ],
         "snippets": [
