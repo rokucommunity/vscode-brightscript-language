@@ -26,6 +26,9 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'readRegistry',
         'setValueAtKeyPath',
         'writeRegistry',
+        'storeNodeReferences',
+        'getNodeReferences',
+        'deleteNodeReferences',
     ]
 
     constructor(context: vscode.ExtensionContext, private rdbOutputChannel: vscode.OutputChannel) {

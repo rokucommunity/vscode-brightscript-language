@@ -75,7 +75,7 @@
         "replace-last": "^1.2.6",
         "roku-debug": "^0.6.0",
         "roku-deploy": "^3.2.4",
-        "roku-test-automation": "^1.0.63",
+        "roku-test-automation": "^1.1.1",
         "semver": "^7.1.3",
         "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
