@@ -17,5 +17,4 @@ jobs:
       - run: node scripts/create-vsix.js ${{ github.event.inputs.branch }}
       - uses: actions/upload-artifact@v2
         with:
-          name: vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix
