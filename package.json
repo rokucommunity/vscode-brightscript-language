@@ -102,7 +102,7 @@
         "mocha-param": "^2.0.0",
         "mock-fs": "^4.10.3",
         "nyc": "^15.0.0",
-        "ovsx": "0.1.0-next.e000fdb",
+        "ovsx": "^0.2.0",
         "rimraf": "^3.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.16",
