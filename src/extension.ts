@@ -239,6 +239,7 @@ export class Extension {
                     password: config.password
                 }]
             },
+            // uncomment for debugging
             // OnDeviceComponent: {
             //     logLevel: 'verbose',
             //     serverDebugLogging: true
