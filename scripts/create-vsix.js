@@ -11,8 +11,7 @@ function main() {
     fsExtra.emptyDirSync(tmpPath);
     process.chdir(tmpPath);
 
-    //TODO get this from the github actions event
-    const branch = process.argv[2];
+    const branch = process.argv[2].replace(/^refs\/heads\//, '');
 
     //clone the extension repo
     clone(
@@ -32,7 +31,7 @@ function main() {
         //only clone projects that have the same brach name as our target
         if (hasBranch(project, branch)) {
             log(`Installing local version of ${project}`);
-            
+
             clone(project, branch);
             changeVersion(project, buildVersion);
             execSync(`npm i && npm run build && npm pack`, {
