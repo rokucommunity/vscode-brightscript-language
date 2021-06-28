@@ -1,77 +1,43 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
     import {odc} from "../ExtensionIntermediary";
+    import { commandsView } from "./CommandsView";
+
     const storage = window.localStorage;
 
     let commandArgs: any[];
-    let selected;
+    let selectedCommand;
+
+    // Where we store the info the user put in the form
     let formArgs = {};
     let commandResponse = '';
 
     function onCommandChange() {
-        commandArgs = convertArgs(selected.args);
-        storage.previousCommandName = selected.name
-        const argValues = storage[`${selected.name}ArgValues`];
+        commandArgs = commandsView.convertArgs(selectedCommand.args);
+        storage.previousCommandName = selectedCommand.name;
+        const argValues = storage[`${selectedCommand.name}ArgValues`];
         if(argValues) {
             formArgs = JSON.parse(argValues);
         } else {
-            formArgs = {}
+            formArgs = {};
         }
-    }
-
-    function convertArgs(inputArgs) {
-        const args = [];
-        for (const key of inputArgs.propertyOrder) {
-            let rawArg = inputArgs.properties[key];
-            // Handles references to other definitions in schema
-            if (rawArg['$ref']) {
-                const refParts = rawArg['$ref'].split("/");
-                let rawArgRef = requestArgsSchema;
-
-                for (const key of refParts) {
-                    // Skip first entry
-                    if (key === '#') continue;
-                    rawArgRef = rawArgRef[key];
-                }
-                for (const key in rawArgRef) {
-                    rawArg[key] = rawArgRef[key];
-                }
-            }
-            args.push({
-                ...rawArg,
-                id: key
-            });
-        }
-        return args;
     }
 
     async function sendCommand() {
         commandResponse = 'running...';
-        const processedArgs = {}
-        const argValuesForCommand = {}
+        const processedArgs = {};
+        const argValuesForCommand = {};
         for (const key in formArgs) {
             let argValue = formArgs[key];
-            argValuesForCommand[key] = argValue
-            const argType = selected.args.properties[key].type
-            if (argType == 'boolean') {
-                if (argValue == 'true') {
-                    processedArgs[key] = true;
-                } else {
-                    processedArgs[key] = false;
-                }
-            } else if (argType == 'array' || argType == 'object') {
-                processedArgs[key] = JSON.parse(argValue);
-            } else if (argType == 'number') {
-                processedArgs[key] = Number(argValue);
-            } else {
-                processedArgs[key] = argValue;
-            }
+            argValuesForCommand[key] = argValue;
+            const argType = selectedCommand.args.properties[key].type;
+            processedArgs[key] = commandsView.processArgToSendToExtension(argType, argValue);
         }
 
-        storage[`${selected.name}ArgValues`] = JSON.stringify(argValuesForCommand);
+        storage[`${selectedCommand.name}ArgValues`] = JSON.stringify(argValuesForCommand);
 
         try {
-            const response = await odc.sendOdcMessage(selected.name, processedArgs);
+            const response = await odc.sendOdcMessage(selectedCommand.name, processedArgs);
             commandResponse = JSON.stringify(response, null, 2);
         } catch(error) {
             commandResponse = error;
@@ -94,8 +60,8 @@
     // preselect the last used function
     for (const command of commandList) {
         if (command.name === storage.previousCommandName) {
-            commandArgs = convertArgs(command.args);
-            selected = command;
+            commandArgs = commandsView.convertArgs(command.args);
+            selectedCommand = command;
             onCommandChange();
         }
     }
@@ -127,7 +93,7 @@
 <div id="container">
     <label for="command">Command:</label>
     <!-- svelte-ignore a11y-no-onchange -->
-    <select name="command" bind:value={selected} on:change={onCommandChange}>
+    <select name="command" bind:value={selectedCommand} on:change={onCommandChange}>
     {#each commandList as command}
         <option value="{command}">{command.name}</option>
     {/each}

@@ -17,25 +17,25 @@
     function expand() {
         expanded = true;
     }
-  </script>
-  <style>
+</script>
+<style>
     .indent {
-      padding-left: var(--li-identation);
+        padding-left: var(--li-identation);
     }
     .collapse {
-      --li-display: inline;
-      display: inline;
-      font-style: italic;
+        --li-display: inline;
+        display: inline;
+        font-style: italic;
     }
 
     ul {
         margin: 0;
         list-style: none;
-        padding-left: 1.2rem; 
+        padding-left: 1.2rem;
         user-select: none;
     }
-  </style>
-  <li class:indent={isParentExpanded}>
+</style>
+<li class:indent={isParentExpanded}>
     <JSONArrow {expanded} on:click={toggleExpand} />
     <JSONKey key={objectKey}/>
     {#if expanded}
@@ -45,4 +45,4 @@
             {/each}
         </ul>
     {/if}
-  </li>
+</li>

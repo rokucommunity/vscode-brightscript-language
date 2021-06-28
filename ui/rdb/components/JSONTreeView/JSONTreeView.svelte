@@ -1,15 +1,24 @@
 <script>
     import JSONNode from "./JSONNode.svelte";
-    import {intermediary} from "../../ExtensionIntermediary";
+    import {odc} from "../../ExtensionIntermediary";
     export let registryValues;
     const keys = Object.keys(registryValues);
     export let onValueChange = (key) => {
-        // vscode.postMessage({
-        //     command: 'updateRegistry',
-        //     sectionKey: key,
-        //     updatedValue: registryValues[key]
-        // })
+        odc.writeRegistry({
+            values: {[key]: sanitizeInput(registryValues[key])}
+        })
     };
+
+    function sanitizeInput(values) {
+        let input = values;
+        Object.keys(values).map((key) => {
+            if (typeof values[key] == 'object') {
+                input[key] = JSON.stringify(values[key]);
+            }
+        });
+
+        return input;
+    }
 </script>
 
 <style>

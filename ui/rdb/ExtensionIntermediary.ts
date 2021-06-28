@@ -100,6 +100,18 @@ class ODCIntermediary {
     public async deleteEntireRegistry(args?: rta.ODC.DeleteEntireRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
     }
+
+    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferences, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
+    }
+
+    public async getNodeReferences(args?: rta.ODC.GetNodeReferences, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodeReferences>>('getNodeReferences', args, options);
+    }
+
+    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferences, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
+    }
 }
 
 const odc = new ODCIntermediary();
