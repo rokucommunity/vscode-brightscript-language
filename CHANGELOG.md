@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.22.3] - 2021-06-28
+[2.22.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.2...v2.22.3
+### Fixed
+ - (Debugger) freeze when debugger prompt split across multiple telnet messages ([roku-debug#35](https://github.com/rokucommunity/roku-debug/pull/35))
+ - (LanguageServer) allow up to 6 arguments in `CreateObject` function signature ([brighterscript#430](https://github.com/rokucommunity/brighterscript/pull/430))
+ - (LanguageServer) add `v30/bslCore` library functions to global callables ([brighterscript#433](https://github.com/rokucommunity/brighterscript/pull/433))
+
+
+
 ## [2.22.2] - 2021-06-01
 [2.22.2]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.1...v2.22.2
 ### Fixed
