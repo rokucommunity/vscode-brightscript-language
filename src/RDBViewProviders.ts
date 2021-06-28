@@ -95,14 +95,10 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         const webview = view.webview;
 
         webview.onDidReceiveMessage(async (message) => {
-            console.log(message);
             try {
                 const context = message.context;
                 if(this.odcCommands.includes(message.command)) {
-                    console.log('built in command');
                     const response = await this.odc[message.command](context.args, context.options);
-                    console.log('response', response);
-
                     webview.postMessage({
                         ...message,
                         response: response

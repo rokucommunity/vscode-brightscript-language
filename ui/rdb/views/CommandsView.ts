@@ -25,11 +25,13 @@ class CommandsView {
         return args;
     }
 
-    public processArgToSendToExtension(argType: string, argValue) {
+    public processArgToSendToExtension(argType: string, argValue: string) {
         if (argType == 'boolean') {
             return argValue === 'true'
         } else if (argType == 'array' || argType == 'object') {
             return JSON.parse(argValue);
+        } else if (argType == 'number') {
+            return Number(argValue);
         } else {
             return argValue;
         }
