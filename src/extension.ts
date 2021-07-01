@@ -22,11 +22,20 @@ const EXTENSION_ID = 'RokuCommunity.brightscript';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
-    public rdbOutputChannel: vscode.OutputChannel;
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
 
     public odc?: rta.OnDeviceComponent;
+
+    // register our RDB views
+    private rdbViews = {
+        RDBRegistryView: {
+            class: RDBRegistryViewProvider
+        },
+        RDBCommandsView: {
+            class: RDBCommandsViewProvider
+        }
+    }
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
@@ -44,7 +53,6 @@ export class Extension {
 
         //create channels
         this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-        this.rdbOutputChannel = vscode.window.createOutputChannel('Roku Device Bridge Log');
         this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
         this.debugServerOutputChannel.appendLine('Extension startup');
 
@@ -211,27 +219,7 @@ export class Extension {
         }
     }
 
-    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
-        // TODO handle case where user changes their Roku Device
-        if (!config.injectRdbOnDeviceComponent || this.odc) {
-            return;
-        }
-        // register our RDB views
-        const rdbViews = {
-            RDBRegistryView: {
-                class: RDBRegistryViewProvider
-            },
-            RDBCommandsView: {
-                class: RDBCommandsViewProvider
-            }
-        }
-
-        for (const viewId in rdbViews) {
-            const view = rdbViews[viewId];
-            view.provider = new view.class(context, this.rdbOutputChannel);
-            vscode.window.registerWebviewViewProvider(viewId, view.provider);
-        }
-
+    private setupODC(config: BrightScriptLaunchConfiguration) {
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices:[{
@@ -246,10 +234,24 @@ export class Extension {
             // }
         }
         const device = new rta.RokuDevice(rtaConfig);
-        this.odc = new rta.OnDeviceComponent(device, rtaConfig);
+        return new rta.OnDeviceComponent(device, rtaConfig);
+    }
 
-        for (const viewId in rdbViews) {
-            rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
+        // TODO handle case where user changes their Roku Device
+        if (!config.injectRdbOnDeviceComponent || this.odc) {
+            return;
+        }
+        this.odc = this.setupODC(config);
+
+        for (const viewId in this.rdbViews) {
+            const view = this.rdbViews[viewId];
+            view.provider = new view.class(context);
+            vscode.window.registerWebviewViewProvider(viewId, view.provider);
+        }
+
+        for (const viewId in this.rdbViews) {
+            this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
         }
     }
 

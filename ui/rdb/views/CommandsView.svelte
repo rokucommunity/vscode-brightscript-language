@@ -13,7 +13,7 @@
     let commandResponse = '';
 
     function onCommandChange() {
-        commandArgs = commandsView.convertArgs(selectedCommand.args);
+        commandArgs = commandsView.convertArgs(selectedCommand.args, requestArgsSchema);
         storage.previousCommandName = selectedCommand.name;
         const argValues = storage[`${selectedCommand.name}ArgValues`];
         if(argValues) {
@@ -60,7 +60,7 @@
     // preselect the last used function
     for (const command of commandList) {
         if (command.name === storage.previousCommandName) {
-            commandArgs = commandsView.convertArgs(command.args);
+            commandArgs = commandsView.convertArgs(command.args, requestArgsSchema);
             selectedCommand = command;
             onCommandChange();
         }

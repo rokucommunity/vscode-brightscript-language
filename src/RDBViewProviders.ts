@@ -31,7 +31,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'deleteNodeReferences',
     ]
 
-    constructor(context: vscode.ExtensionContext, private rdbOutputChannel: vscode.OutputChannel) {
+    constructor(context: vscode.ExtensionContext) {
         this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
         context.subscriptions.push(this);
     }
