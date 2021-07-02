@@ -49,7 +49,8 @@
                 "source-map-support/register",
                 "--timeout",
 				"999999",
-                "./src/**/*.spec.ts"
+                "./src/**/*.spec.ts",
+                "./ui/**/*.spec.ts"
             ],
 			"internalConsoleOptions": "openOnSessionStart"
 		}

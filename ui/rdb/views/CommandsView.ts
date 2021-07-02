@@ -1,5 +1,5 @@
 class CommandsView {
-    public convertArgs(inputArgs) {
+    public convertArgs(inputArgs, requestArgsSchema) {
         const args = [];
         for (const key of inputArgs.propertyOrder) {
             let rawArg = inputArgs.properties[key];
