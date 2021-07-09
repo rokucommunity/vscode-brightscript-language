@@ -167,3 +167,7 @@ export class RDBCommandsViewProvider extends RDBBaseViewProvider {
         return `let requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
     }
 }
+
+export class RDBNodeTreeProvider extends RDBBaseViewProvider {
+    protected viewName = 'NodeTreeView';
+}

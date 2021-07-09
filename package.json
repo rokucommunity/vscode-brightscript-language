@@ -164,6 +164,12 @@
                 },
                 {
                     "type": "webview",
+                    "id": "RDBNodeTreeView",
+                    "name": "Node Tree",
+                    "when": "debugType == 'brightscript'"
+                },
+                {
+                    "type": "webview",
                     "id": "RDBRegistryView",
                     "name": "Registry",
                     "when": "debugType == 'brightscript'"

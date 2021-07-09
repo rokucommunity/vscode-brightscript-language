@@ -14,7 +14,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
-import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
+import { RDBCommandsViewProvider, RDBNodeTreeProvider, RDBRegistryViewProvider } from './RDBViewProviders';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 
@@ -29,6 +29,9 @@ export class Extension {
 
     // register our RDB views
     private rdbViews = {
+        RDBNodeTreeView: {
+            class: RDBNodeTreeProvider
+        },
         RDBRegistryView: {
             class: RDBRegistryViewProvider
         },
