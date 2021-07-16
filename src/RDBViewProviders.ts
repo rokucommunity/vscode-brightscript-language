@@ -77,7 +77,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     <base href="${vscode.Uri.file(this.rdbBasePath).with({ scheme: 'vscode-resource' })}/">
                     <script>
                         viewName = '${this.viewName}';
-                        let odcCommands = ['${this.odcCommands.join(`','`)}'];
+                        const odcCommands = ['${this.odcCommands.join(`','`)}'];
                         ${this.additionalScriptContents()}
                     </script>
                     <script defer src="${scriptUri}"></script>
@@ -164,6 +164,6 @@ export class RDBCommandsViewProvider extends RDBBaseViewProvider {
 
     protected additionalScriptContents() {
         const requestArgsPath = path.join(rta.utils.getServerFilesPath(), 'requestArgs.schema.json');
-        return `let requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
+        return `const requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
     }
 }
