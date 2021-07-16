@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "10.19.0"
+          node-version: "12.12.0"
       - run: npm ci
       - run: npm run build
       - run: npm run lint
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "10.19.0"
+          node-version: "12.12.0"
       
       #build package
       - run: npm ci
@@ -75,4 +75,3 @@ jobs:
         #exclude beta release tags
         if: contains(github.ref, '-beta.') == false
         run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}}
-

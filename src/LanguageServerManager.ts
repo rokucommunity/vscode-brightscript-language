@@ -4,7 +4,7 @@ import {
     ServerOptions,
     TransportKind,
     ExecuteCommandParams
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {

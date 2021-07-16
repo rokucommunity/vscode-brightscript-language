@@ -353,7 +353,7 @@ There are several string placeholders you can use when defining your deep link u
 
 - `${host}` - the roku host. This is the `host` property set in your launch configuration. By using `${host}` in the deep link url, it prevents you from needing to update the host twice in your config when you want to change which Roku to debug.
 
-- `${promptForQueryparams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link.
+- `${promptForQueryParams}` - will pop up an input box at debug launch time, asking for the URL-encoded query parameters to pass to the deep link.
 
 - `${promptForDeepLinkUrl}` - if the entire `deepLinkUrl` is set to this, then at debug launch time, an input box will appear asking you to input the full deep link url.
 
@@ -395,8 +395,9 @@ This extension contributes the following settings:
 - `brightscript.output.hyperlinkFormat`: specifies the display format for log output `pkg` link
 - `brightscript.deviceDiscovery.showInfoMessages`: If set to true, an info toast will be shown when a Roku device has been found on the network.
 - `brightscript.deviceDiscovery.enabled`: If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
+- `brightscript.debug.autoRunSgDebugCommands`: Give the ability to run a list of commands on port 8080 of the device at the start of a debug session. Currently there are three supported short hands for the most commonly desired commands. These are: `chanperf` - runs chanperf with a one seconds repeating interval, `fpsdisplay` - turns on the FPS, `logrendezvous` - enables Rendezvous Logging. You can also include and command string in this array and we will attempt to run it for you. For example you could do `chanperf -r 10` or `clear_launch_caches` as another example.
 - `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
-- `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+- `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
 - `brightscript.debug.enableDebugProtocol` - If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
 
 ## Roku Remote Control
@@ -510,7 +511,7 @@ with "ComponentName" editable and cursor inside the block
 
 Typing `<field<tab>` generates
 ```xml
-<field name="name" type="integer" />
+<field id="id" type="integer" />
 ```
 with "name" editable, and the type is a dropdown of possible values
 

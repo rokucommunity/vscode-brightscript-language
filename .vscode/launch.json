@@ -19,12 +19,13 @@
             "type": "node",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/src/debugAdapter.ts",
+            "program": "${workspaceFolder}/dist/debugAdapter.js",
             "args": [
                 "--server=4711"
             ],
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../roku-debug/dist/**/*.js"
             ],
             "stopOnEntry": false
         },
@@ -37,27 +38,27 @@
             "timeout": 120000
         },
         {
-			"name": "Debug Tests",
-			"type": "node",
-			"request": "launch",
-			"cwd": "${workspaceFolder}",
-			"program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
-			"args": [
+            "name": "Debug Tests",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
                 "-r",
                 "ts-node/register",
                 "-r",
                 "source-map-support/register",
                 "--timeout",
-				"999999",
+                "999999",
                 "./src/**/*.spec.ts",
                 "./ui/**/*.spec.ts"
             ],
-			"internalConsoleOptions": "openOnSessionStart"
-		}
+            "internalConsoleOptions": "openOnSessionStart"
+        }
     ],
     "compounds": [
         {
-            "name": "Extension, Debug Server, Language Server",
+            "name": "Extension + Debug Server + Language Server",
             "configurations": [
                 "Extension",
                 "Debug Server",
@@ -65,7 +66,15 @@
             ]
         },
         {
-            "name": "Extension,Language Server",
+            "name": "Extension + Debug Server",
+            "configurations": [
+                "Extension",
+                "Debug Server",
+                "Language Server"
+            ]
+        },
+        {
+            "name": "Extension + Language Server",
             "configurations": [
                 "Extension",
                 "Language Server"

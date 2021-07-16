@@ -4,6 +4,7 @@ import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
+import { SceneGraphDebugCommandController } from 'roku-debug';
 
 export class BrightScriptCommands {
 
@@ -42,9 +43,23 @@ export class BrightScriptCommands {
                 value: ''
             });
             if (stuffUserTyped) {
-                for (let character of stuffUserTyped) {
-                    let commandToSend: string = 'Lit_' + encodeURIComponent(character);
-                    await this.sendRemoteCommand(commandToSend);
+                let fallbackToHttp = true;
+                await this.getRemoteHost();
+                try {
+                    let commandController = new SceneGraphDebugCommandController(this.host);
+                    let response = await commandController.type(stuffUserTyped);
+                    if (!response.error) {
+                        fallbackToHttp = false;
+                    }
+                } catch (error) {
+                    // Let this fallback to the old HTTP based logic
+                }
+
+                if (fallbackToHttp) {
+                    for (let character of stuffUserTyped) {
+                        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
+                        await this.sendRemoteCommand(commandToSend);
+                    }
                 }
             }
             vscode.commands.executeCommand('workbench.action.focusPanel');
