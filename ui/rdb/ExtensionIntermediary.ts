@@ -89,7 +89,7 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
     }
 
-    public async setValueAtKeyPath(args?: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
+    public async setValueAtKeyPath(args?: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.setValueAtKeyPath>>('setValueAtKeyPath', args, options);
     }
 

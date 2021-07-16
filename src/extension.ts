@@ -230,11 +230,13 @@ export class Extension {
                     password: config.password
                 }]
             },
-            // uncomment for debugging
-            // OnDeviceComponent: {
-            //     logLevel: 'verbose',
-            //     serverDebugLogging: true
-            // }
+            OnDeviceComponent: {
+                disableTelnet: true,
+                disableCallOriginationLine: true,
+                // uncomment for debugging
+                // logLevel: 'verbose',
+                // serverDebugLogging: true
+            }
         }
         const device = new rta.RokuDevice(rtaConfig);
         return new rta.OnDeviceComponent(device, rtaConfig);
