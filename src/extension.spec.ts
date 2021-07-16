@@ -106,7 +106,7 @@ describe('extension', () => {
             config = {
                 host: '86.75.30.9',
                 password: 'jenny'
-            }
+            };
             originalRdbViews = extensionInstance.rdbViews;
             extensionInstance.rdbViews = {};
         });

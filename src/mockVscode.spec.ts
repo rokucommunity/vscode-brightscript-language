@@ -56,7 +56,7 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => { return '' },
+        asAbsolutePath: () => { return ''; },
         extensionUri: undefined as Uri,
         extensionPath: '',
         storageUri: undefined as Uri,

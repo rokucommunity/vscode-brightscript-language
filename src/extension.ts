@@ -39,7 +39,7 @@ export class Extension {
         RDBCommandsView: {
             class: RDBCommandsViewProvider
         }
-    }
+    };
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
@@ -255,7 +255,7 @@ export class Extension {
     private setupODC(config: BrightScriptLaunchConfiguration) {
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
-                devices:[{
+                devices: [{
                     host: config.host,
                     password: config.password
                 }]
@@ -265,7 +265,7 @@ export class Extension {
             //     logLevel: 'verbose',
             //     serverDebugLogging: true
             // }
-        }
+        };
         const device = new rta.RokuDevice(rtaConfig);
         return new rta.OnDeviceComponent(device, rtaConfig);
     }

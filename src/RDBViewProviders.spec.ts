@@ -1,3 +1,6 @@
+/* tslint:disable:no-unused-expression */
+/* tslint:disable:no-var-requires */
+
 import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 
