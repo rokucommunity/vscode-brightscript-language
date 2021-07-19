@@ -7,6 +7,11 @@ import * as fs from 'fs';
 import { util } from './util';
 
 export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
+    constructor(context: vscode.ExtensionContext) {
+        this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
+        context.subscriptions.push(this);
+    }
+
     protected abstract viewName: string;
 
     protected view?: vscode.WebviewView;
@@ -29,14 +34,9 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'storeNodeReferences',
         'getNodeReferences',
         'deleteNodeReferences',
-    ]
+    ];
 
-    constructor(context: vscode.ExtensionContext) {
-        this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
-        context.subscriptions.push(this);
-    }
-
-    dispose() {
+    public dispose() {
         this.rdbWatcher?.close();
     }
 
@@ -77,7 +77,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     <base href="${vscode.Uri.file(this.rdbBasePath).with({ scheme: 'vscode-resource' })}/">
                     <script>
                         viewName = '${this.viewName}';
-                        let odcCommands = ['${this.odcCommands.join(`','`)}'];
+                        const odcCommands = ['${this.odcCommands.join(`','`)}'];
                         ${this.additionalScriptContents()}
                     </script>
                     <script defer src="${scriptUri}"></script>
@@ -97,16 +97,16 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         webview.onDidReceiveMessage(async (message) => {
             try {
                 const context = message.context;
-                if(this.odcCommands.includes(message.command)) {
+                if (this.odcCommands.includes(message.command)) {
                     const response = await this.odc[message.command](context.args, context.options);
                     webview.postMessage({
                         ...message,
                         response: response
-                    })
+                    });
                 } else {
                     this.handleViewMessage(message);
                 }
-            } catch(e) {
+            } catch (e) {
                 webview.postMessage({
                     ...message,
                     error: e.message
@@ -134,7 +134,7 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
     protected handleViewMessage(message) {
         switch (message.command) {
             case 'exportRegistry':
-                vscode.window.showSaveDialog({saveLabel: 'Save'}).then(uri => {
+                vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(uri => {
                     vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
                 });
                 return;
@@ -150,7 +150,7 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
         }
     }
 
-    async importContentsToRegistry(uri) {
+    protected async importContentsToRegistry(uri) {
         if (uri && uri[0]) {
             const input = await vscode.workspace.fs.readFile(uri[0]);
             const data = Buffer.from(input).toString('utf8');
@@ -164,7 +164,7 @@ export class RDBCommandsViewProvider extends RDBBaseViewProvider {
 
     protected additionalScriptContents() {
         const requestArgsPath = path.join(rta.utils.getServerFilesPath(), 'requestArgs.schema.json');
-        return `let requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
+        return `const requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
     }
 }
 

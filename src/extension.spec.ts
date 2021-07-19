@@ -80,6 +80,13 @@ describe('extension', () => {
         expect(spy.calledOnce).to.be.true;
     });
 
+    it('registers onDidTerminateDebugSession', async () => {
+        let spy = sinon.spy(vscode.debug, 'onDidTerminateDebugSession');
+        expect(spy.calledOnce).to.be.false;
+        await extension.activate(context);
+        expect(spy.calledOnce).to.be.true;
+    });
+
     it('registers onDidReceiveDebugSessionCustomEvent', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
@@ -99,7 +106,7 @@ describe('extension', () => {
             config = {
                 host: '86.75.30.9',
                 password: 'jenny'
-            }
+            };
             originalRdbViews = extensionInstance.rdbViews;
             extensionInstance.rdbViews = {};
         });

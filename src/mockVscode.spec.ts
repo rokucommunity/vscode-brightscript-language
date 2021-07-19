@@ -8,6 +8,9 @@ afterEach(() => {
 export let vscode = {
     CompletionItem: class { },
     CodeLens: class { },
+    CodeAction: class { },
+    Diagnostic: class { },
+    CallHierarchyItem: class {},
     StatusBarAlignment: {
         Left: 1,
         Right: 2
@@ -24,6 +27,7 @@ export let vscode = {
     debug: {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
+        onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { },
     },
     languages: {
@@ -52,7 +56,7 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => { return '' },
+        asAbsolutePath: () => { return ''; },
         extensionUri: undefined as Uri,
         extensionPath: '',
         storageUri: undefined as Uri,
