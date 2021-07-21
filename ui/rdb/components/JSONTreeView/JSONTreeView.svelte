@@ -37,9 +37,9 @@
 </style>
 
 <ul>
-    {#each keys as key, index}
+    {#each keys as key}
         <JSONNode
-            onValueChange={(e) => onValueChange(key)}
+            onValueChange={() => onValueChange(key)}
             nodeKey={key}
             isParentExpanded={false}
             nodeValue={registryValues[key]} />
