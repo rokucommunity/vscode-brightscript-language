@@ -15,7 +15,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
-import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
+import { RDBCommandsViewProvider, RDBNodeTreeProvider, RDBRegistryViewProvider } from './RDBViewProviders';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';

@@ -1,6 +1,7 @@
 <script lang="ts">
     import type * as rta from 'roku-test-automation';
     import { odc } from '../../ExtensionIntermediary';
+    import ColorField from './ColorField.svelte';
 
     export let nodeTree: rta.ODC.NodeTree;
     export let inspectNode: boolean;
@@ -33,6 +34,12 @@
             value: this.checked
         })
     }
+
+    function handleKeydown(event) {
+        if (event.key === 'Escape') {
+            close();
+        }
+	}
 </script>
 
 <style>
@@ -97,6 +104,7 @@
         padding-top: 3px;
     }
 </style>
+<svelte:window on:keydown={handleKeydown}/>
 <div id="background" />
 <div id="container">
     <div id="header">
@@ -111,8 +119,10 @@
                     <input class="inline" type="checkbox" {id} checked={field.value} on:click={onBooleanFieldClick} />
                 {:else if field.fieldType === 'vector2d'}
                     <input class="inline" {id} value={field.value[0]} size="2" /> <input class="inline" {id} value={field.value[1]} size="2" />
+                {:else if field.fieldType === 'color'}
+                    <ColorField integerColor={field.value} />
                 {:else if field.type === 'roFloat' || field.type === 'roInt'}
-                    <input class="inline" {id} value={field.value} size="2" />
+                    <input class="inline" {id} value={field.value} size="3" />
                 {:else if field.type === 'roAssociativeArray' || field.type === 'roArray' || field.fieldType === 'node'}
                     <textarea {id} value={JSON.stringify(field.value)} rows="2" disabled></textarea>
                 {:else}

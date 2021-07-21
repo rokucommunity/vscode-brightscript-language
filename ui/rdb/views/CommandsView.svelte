@@ -69,7 +69,7 @@
 
 <style>
     #container {
-        margin: 10px 0px;
+        margin: 10px 10px;
     }
 
     label {

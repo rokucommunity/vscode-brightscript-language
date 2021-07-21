@@ -3,17 +3,17 @@
 </script>
 <style>
     .container {
-        display: inline-block;
         cursor: pointer;
         transform: translate(calc(0px - var(--li-identation)), 20%);
-        position: absolute;
+        padding: 2px 6px 5px 0;
+        float: left;
     }
     .arrow {
         transform-origin: 50% 75%;
         position: relative;
         line-height: 1.1em;
         font-size: 0.75em;
-        padding-top: 8px;
+        padding: 0;
         padding-left: 3px;
         transition: 150ms;
         color: var(--arrow-sign);

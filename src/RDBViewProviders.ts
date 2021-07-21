@@ -82,7 +82,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     </script>
                     <script defer src="${scriptUri}"></script>
                 </head>
-                <body></body>
+                <body style="padding: 0"></body>
             </html>`;
     }
 

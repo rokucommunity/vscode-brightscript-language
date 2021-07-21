@@ -26,10 +26,10 @@
 <style>
     li {
         color: rgb(190, 190, 190);
-        padding: 5px;
+        padding: 5px 10px;
     }
 
-    li span {
+    #nodeName {
         color: white;
     }
 
@@ -43,25 +43,32 @@
 
     .expandable {
         padding-left: 12px;
+    }
+
+    #itemContainer {
         cursor: pointer;
     }
 
     ul {
         margin: 0;
         list-style: none;
-        padding-left: 1.2rem;
+        padding: 0;
+        /* margin-left: 10px; */
+        padding-left: 10px;
     }
 </style>
-{#if nodeTree.children.length > 0}
-    <NodeArrow {expanded} on:click={toggleExpand} />
-{/if}
-
-<li class:expandable={hasChildren} on:click={openNode}>
-    <span>{nodeTree.global ? 'Global' : nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+<li>
+    {#if hasChildren}
+        <NodeArrow {expanded} on:click={toggleExpand} />
+    {/if}
+    <div class:expandable={hasChildren} id="itemContainer" on:click={openNode} >
+        <span id="nodeName">{nodeTree.global ? 'Global' : nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+    </div>
 </li>
 {#if expanded}
 <ul>
     {#each nodeTree.children as nodeTree}
+        <!-- Want to prevent global from showing up under scene -->
         {#if !nodeTree.global}
             <svelte:self {nodeTree} />
         {/if}
