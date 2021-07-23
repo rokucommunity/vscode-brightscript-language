@@ -35,6 +35,7 @@
     div {
         display: inline-block;
         padding: 3px 6px;
+        user-select: text;
     }
 </style>
 
