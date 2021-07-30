@@ -61,6 +61,22 @@
         });
     }
 
+    function onStringFieldChange() {
+        odc.setValueAtKeyPath({
+            base: 'nodeRef',
+            keyPath: `${nodeTree.ref}.${this.id}`,
+            value: this.value
+        });
+    }
+
+    function onColorFieldChange() {
+        odc.setValueAtKeyPath({
+            base: 'nodeRef',
+            keyPath: `${nodeTree.ref}.${this.id}`,
+            value: this.value
+        });
+    }
+
     function handleKeydown(event) {
         const key = event.key;
 
@@ -138,6 +154,10 @@
         width: 60px;
     }
 
+    input[type=text] {
+        width: 120px;
+    }
+
     .inline {
         display: inline;
         width: auto;
@@ -161,17 +181,25 @@
         {#each Object.entries(fields) as [id, field]}
             <li>
                 <label for="{id}">{id}:</label>
-                {#if field.type === 'roBoolean'}
-                    <input class="inline" type="checkbox" {id} checked={field.value} on:click={onBooleanFieldClick} />
-                {:else if field.fieldType === 'vector2d'}
+                <!-- {field.type} {field.fieldType} -->
+
+                {#if field.fieldType === 'vector2d'}
                     <input type="number" step={numberInputsStep} {id} value={field.value[0]} on:input={onVector2dFieldChange} />
                     <input type="number" step={numberInputsStep} {id} value={field.value[1]} on:input={onVector2dFieldChange} />
                 {:else if field.fieldType === 'color'}
-                    <ColorField integerColor={field.value} />
+                    <ColorField {id} integerColor={field.value} on:input={onColorFieldChange} />
+                {:else if field.type === 'roBoolean'}
+                    <input class="inline" type="checkbox" {id} checked={field.value} on:click={onBooleanFieldClick} />
                 {:else if field.type === 'roFloat' || field.type === 'roInt'}
                     <input type="number" step={numberInputsStep} {id} value={field.value} on:input={onNumberFieldChange} />
                 {:else if field.type === 'roAssociativeArray' || field.type === 'roArray' || field.fieldType === 'node'}
-                    <textarea {id} value={JSON.stringify(field.value)} rows="2" disabled></textarea>
+                    {#if field.value}
+                        <textarea {id} value={JSON.stringify(field.value)} rows="2" disabled></textarea>
+                    {:else}
+                        Invalid
+                    {/if}
+                {:else if field.type === 'roString' || field.fieldType == 'string'}
+                    <input type="text" class="inline" {id} value={field.value} on:input={onStringFieldChange} />
                 {:else}
                     <textarea {id} value={field.value} rows="2"></textarea>
                 {/if}

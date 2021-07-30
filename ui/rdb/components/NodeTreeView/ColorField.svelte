@@ -1,13 +1,29 @@
-<script lang="ts">
-    export let integerColor: number;
+<svelte:options accessors={true}/>
 
-    let backgroundColor: string;
-    let color: string;
+<script lang="ts">
+    import hexRgb from 'hex-rgb';
+    import { createEventDispatcher } from 'svelte';
+    const dispatch = createEventDispatcher();
+
+    export let id: string; id; // Used to silence the warning that we're not using it
+    export let integerColor: number;
     $: {
-        const rgb = convertIntegerColorToRgb(integerColor);
-        color = rgb.red * 0.299 + rgb.green * 0.587 + rgb.blue * 0.114 > 186 ? '#000000' : '#FFFFFF';
-        backgroundColor = convertRgbToHex(rgb);
+        hexColor = convertRgbToHex(convertIntegerColorToRgb(integerColor));
     }
+
+    export let value = '';
+
+    let hexColor;
+    $: {
+        try {
+            const rgb = hexRgb(hexColor)
+            textColor = rgb.red * 0.299 + rgb.green * 0.587 + rgb.blue * 0.114 * rgb.alpha > 186 ? '#000000' : '#FFFFFF';
+            value = hexColor;
+            dispatch('input');
+        } catch {}
+    }
+
+    let textColor: string;
 
     function convertIntegerColorToRgb(integerColor: number) {
         // Have to convert from signed to unsigned and then convert to binary representation
@@ -35,10 +51,7 @@
     div {
         display: inline-block;
         padding: 3px 6px;
-        user-select: text;
     }
 </style>
 
-<div style="background-color: {backgroundColor}; color: {color};" >
-    {backgroundColor}
-</div>
+<div style="background-color: {hexColor}; color: {textColor};" contenteditable="true" bind:innerHTML={hexColor} />

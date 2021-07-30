@@ -3,20 +3,29 @@
     import {odc} from "../ExtensionIntermediary";
 
     import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
+    import Loader from "../components/Common/Loader.svelte";
 
     window.vscode = acquireVsCodeApi();
 
     import { nodeTreeView } from "./NodeTreeView";
 
-    const storage = window.localStorage;
-
+    let loading = true;
     let rootTree = [] as ODC.NodeTree[];
     let globalNodeTree: ODC.NodeTree;
     let sceneNodeTree: ODC.NodeTree;
     let sceneNodeRef: number;
-    (async () => {
+    let focusedNode = -1;
+
+    refresh();
+
+    async function refresh() {
+        loading = true;
+        rootTree = [];
+        globalNodeTree = undefined;
+        sceneNodeTree = undefined;
+
         const result = await odc.storeNodeReferences();
-        console.log(result);
+        // console.log(result);
         for (const nodeTree of result.flatTree) {
             if (nodeTree.global) {
                 globalNodeTree = nodeTree;
@@ -28,7 +37,20 @@
         }
 
         rootTree = result.rootTree;
-    })();
+        loading = false;
+    }
+
+    async function showFocusedNode() {
+        await refresh();
+        // Won't fire again if the value didn't actually change so it won't expand the children out without this
+        focusedNode = -1;
+        const {ref} = await odc.getFocusedNode({includeRef: true});
+        focusedNode = ref;
+    }
+
+    function openSettings() {
+
+    }
 </script>
 
 <style>
@@ -63,20 +85,44 @@
     #otherRoots:not(:empty)::after {
         margin-left: .75em;
     }
+
+    button {
+        padding: 0 5px;
+        font-size: 10px;
+        color: #FFFFFF;
+        background-color: #121a21;
+        border: none;
+        margin: 0;
+        cursor: pointer;
+        outline: none;
+    }
+
+    button:hover {
+        background-color: #143758;
+    }
 </style>
-<ul>
-    {#if globalNodeTree}
-        <NodeBranchView nodeTree={globalNodeTree} />
-    {/if}
-
-    {#if sceneNodeTree}
-        <NodeBranchView nodeTree={sceneNodeTree} expanded={true} />
-    {/if}
-
-    <div id="otherRoots">Unparented Roots</div>
-    {#each rootTree as nodeTree}
-        {#if nodeTree.ref !== sceneNodeRef}
-            <NodeBranchView {nodeTree} />
+<div>
+    <button on:click={showFocusedNode}>{'\u2316'}</button>
+    <button on:click={refresh}>{'\u27F3'}</button>
+    <button on:click={openSettings}>{'\u29C9'}</button>
+</div>
+{#if loading}
+    <Loader />
+{:else}
+    <ul>
+        {#if globalNodeTree}
+            <NodeBranchView nodeTree={globalNodeTree} />
         {/if}
-    {/each}
-</ul>
+
+        {#if sceneNodeTree}
+            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={sceneNodeTree} expanded={true} />
+        {/if}
+
+        <div id="otherRoots">Unparented Roots</div>
+        {#each rootTree as nodeTree}
+            {#if nodeTree.ref !== sceneNodeRef}
+                <NodeBranchView {nodeTree} />
+            {/if}
+        {/each}
+    </ul>
+{/if}
