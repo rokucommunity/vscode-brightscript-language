@@ -50,7 +50,7 @@
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brighterscript": "^0.40.1",
-        "brighterscript-formatter": "^1.6.0",
+        "brighterscript-formatter": "^1.6.2",
         "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
