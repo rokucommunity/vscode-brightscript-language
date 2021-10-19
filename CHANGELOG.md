@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.23.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.3...v2.23.0) - 2021-09-17
+### Added
+ - Initial RDB implementation ([#317](https://github.com/rokucommunity/vscode-brightscript-language/pull/317))
+### Fixed
+ - deploy crashes when target Roku doesn't have an installed channel (roku-deploy#65)
+### Changed
+ - updated to [brighterscript@0.40.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0401---2021-09-17) which includes roku-deploy@3.4.2
+ - updated to [roku-deploy@3.4.2](https://https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#342---2021-09-17)
+ - updated to [brighterscript-formatter@1.6.2](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#162---2021-09-17)
+
+
+
 ## [2.22.3] - 2021-06-28
 [2.22.3]: https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.2...v2.22.3
 ### Fixed
