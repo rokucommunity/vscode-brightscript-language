@@ -8,7 +8,7 @@ import { util } from './util';
 
 export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
-        this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
+        this.rdbBasePath = path.join(context.extensionPath, 'dist', 'ui', 'rdb');
         context.subscriptions.push(this);
     }
 
@@ -58,7 +58,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         if (util.isExtensionHostRunning()) {
             // If we're developing we want to add a watcher to allow hot reload :)
             // Index.js always gets updated so don't have to worry about observing the css file
-            this.rdbWatcher = chokidar.watch(`${this.rdbBasePath}/index.js`);
+            this.rdbWatcher = chokidar.watch(path.join(this.rdbBasePath, 'index.js'));
             this.rdbWatcher.on('change', () => {
                 // We have to change this to get it to update so we store it first and set it back after
                 const html = this.view.webview.html;
@@ -125,6 +125,12 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
             ]
         };
         webview.html = this.getHtmlForWebview();
+    }
+
+    public applicationRedeployed() {
+        this.view?.webview.postMessage({
+            name: 'applicationRedeployed'
+        });
     }
 }
 

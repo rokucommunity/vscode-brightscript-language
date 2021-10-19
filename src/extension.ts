@@ -256,6 +256,12 @@ export class Extension {
     }
 
     private setupODC(config: BrightScriptLaunchConfiguration) {
+        const rtaConfig = this.getRtaConfig(config);
+        const device = new rta.RokuDevice(rtaConfig);
+        return new rta.OnDeviceComponent(device, rtaConfig);
+    }
+
+    private getRtaConfig(config: BrightScriptLaunchConfiguration) {
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
@@ -271,25 +277,31 @@ export class Extension {
                 // serverDebugLogging: true
             }
         }
-        const device = new rta.RokuDevice(rtaConfig);
-        return new rta.OnDeviceComponent(device, rtaConfig);
+        return rtaConfig;
     }
 
     private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
-        // TODO handle case where user changes their Roku Device
-        if (!config.injectRdbOnDeviceComponent || this.odc) {
+        if (!config.injectRdbOnDeviceComponent) {
             return;
         }
-        this.odc = this.setupODC(config);
 
-        for (const viewId in this.rdbViews) {
-            const view = this.rdbViews[viewId];
-            view.provider = new view.class(context);
-            vscode.window.registerWebviewViewProvider(viewId, view.provider);
-        }
+        if(this.odc) {
+            this.odc.device = new rta.RokuDevice(this.getRtaConfig(config));
 
-        for (const viewId in this.rdbViews) {
-            this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+            for (const viewId in this.rdbViews) {
+                this.rdbViews[viewId].provider.applicationRedeployed();
+            }
+        } else {
+            for (const viewId in this.rdbViews) {
+                const view = this.rdbViews[viewId];
+                view.provider = new view.class(context);
+                vscode.window.registerWebviewViewProvider(viewId, view.provider);
+            }
+
+            this.odc = this.setupODC(config);
+            for (const viewId in this.rdbViews) {
+                this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+            }
         }
     }
 

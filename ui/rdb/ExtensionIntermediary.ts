@@ -1,11 +1,16 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
 
+type ObserverCallback = (message) => void;
+
 class ExtensionIntermediary {
     private inflightRequests = {};
+    private observedEvents = {} as {
+        [key: string]: ObserverCallback[]
+    };
     private observed = false;
 
-    private setupObserver() {
+    private setupExtensionMessageObserver() {
         this.observed = true;
         window.addEventListener("message", (event) => {
             const message = event.data;
@@ -13,13 +18,22 @@ class ExtensionIntermediary {
             if (request) {
                 delete this.inflightRequests[message.id];
                 request.callback(message);
+            } else {
+                if (message.name) {
+                    const listeners = this.observedEvents[message.name];
+                    if (listeners) {
+                        for (const listener of listeners) {
+                            listener(message);
+                        }
+                    }
+                }
             }
         });
     }
 
     public async sendMessage<T>(command: string, context = {}) {
         if(!this.observed) {
-            this.setupObserver();
+            this.setupExtensionMessageObserver();
         }
         const requestId = this.randomStringGenerator();
 
@@ -43,6 +57,14 @@ class ExtensionIntermediary {
             }
             vscode.postMessage(message);
         });
+    }
+
+    public observeEvent(name: string, callback: ObserverCallback) {
+        if (!this.observedEvents[name]) {
+            this.observedEvents[name] = [];
+        }
+
+        this.observedEvents[name].push(callback);
     }
 
     private randomStringGenerator(length: number = 7) {

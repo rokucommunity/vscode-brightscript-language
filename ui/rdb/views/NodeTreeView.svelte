@@ -1,42 +1,59 @@
 <script lang="ts">
     import type {ODC} from 'roku-test-automation';
-    import {odc} from "../ExtensionIntermediary";
+    import {odc, intermediary} from "../ExtensionIntermediary";
 
     import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
+    import Settings from "../components/NodeTreeView/Settings.svelte";
     import Loader from "../components/Common/Loader.svelte";
+    import { utils } from '../utils';
+    import NodeCountByType from '../components/NodeTreeView/NodeCountByType.svelte';
 
     window.vscode = acquireVsCodeApi();
 
-    import { nodeTreeView } from "./NodeTreeView";
-
     let loading = true;
+    let error;
+    let showSettings = false;
+    let totalNodeCount = 0;
+    let showNodeCountByType = false;
+    let nodeCountByType = {} as {
+        [key: string]: number
+    };
     let rootTree = [] as ODC.NodeTree[];
-    let globalNodeTree: ODC.NodeTree;
-    let sceneNodeTree: ODC.NodeTree;
-    let sceneNodeRef: number;
+
+    const globalNodeTree = {
+        subtype: 'Global Node',
+        id: '',
+        ref: 0,
+        children: [],
+        parentRef: -1
+    } as ODC.NodeTree;
+
     let focusedNode = -1;
 
+    intermediary.observeEvent('applicationRedeployed', (message) => {
+        refresh();
+    })
     refresh();
 
     async function refresh() {
         loading = true;
         rootTree = [];
-        globalNodeTree = undefined;
-        sceneNodeTree = undefined;
 
-        const result = await odc.storeNodeReferences();
-        // console.log(result);
-        for (const nodeTree of result.flatTree) {
-            if (nodeTree.global) {
-                globalNodeTree = nodeTree;
-                // We can get the scene node because global will always have Scene as its parent
-                sceneNodeRef = nodeTree.parentRef;
-                sceneNodeTree = result.flatTree[sceneNodeRef];
-                break;
-            }
+        try {
+            const result = await odc.storeNodeReferences({
+                includeNodeCountInfo: !!window.localStorage.includeNodeCountInfo,
+                includeArrayGridChildren: !!window.localStorage.includeArrayGridChildren
+            });
+            utils.debugLog(`Store node references took ${result.timeTaken}ms`);
+
+            rootTree = result.rootTree;
+            totalNodeCount = result.totalNodes ?? 0;
+            nodeCountByType = result.nodeCountByType;
+            error = null;
+        } catch (e) {
+            error = e;
         }
 
-        rootTree = result.rootTree;
         loading = false;
     }
 
@@ -49,80 +66,121 @@
     }
 
     function openSettings() {
+        showSettings = true;
+    }
 
+    function openNodeCountByType() {
+        showNodeCountByType = true;
     }
 </script>
 
 <style>
-    ul {
-        margin: 0;
-        list-style: none;
-        padding: 0;
+    #container {
+        --headerHeight: 18px;
+    }
+
+    #header {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 100;
+        height: var(--headerHeight);
         background-color: #121a21;
-        user-select: none;
     }
 
-    #otherRoots {
-        display: flex;
-        align-items: center;
-        text-align: center;
-        font-size: 14px;
-        margin: 5px 0;
-        color: white;
-    }
-
-    #otherRoots::before,
-    #otherRoots::after {
-        content: '';
-        flex: 1;
-        border-bottom: 2px solid rgb(190, 190, 190);
-    }
-
-    #otherRoots:not(:empty)::before {
-        margin-right: .75em;
-    }
-
-    #otherRoots:not(:empty)::after {
-        margin-left: .75em;
-    }
-
-    button {
+    #header button {
         padding: 0 5px;
-        font-size: 10px;
+        font-size: 12px;
         color: #FFFFFF;
         background-color: #121a21;
         border: none;
         margin: 0;
         cursor: pointer;
         outline: none;
+        float: left;
     }
 
-    button:hover {
+    #header button#settings {
+        font-size: 15px;
+    }
+
+    #header button:hover {
         background-color: #143758;
     }
+
+    #nodeTree {
+        list-style: none;
+        padding: 0;
+        margin: var(--headerHeight) 0 0;
+        background-color: #121a21;
+        user-select: none;
+    }
+
+    #errorMessage {
+        font-weight: bold;
+        color: rgb(216, 71, 71);
+        padding: 10px;
+    }
+
+    #errorHelp {
+        padding: 0 10px 10px;
+    }
+
+    .codeSnippet {
+        color: orange;
+        font-weight: bold;
+    }
+
+    #nodeCountDetails {
+        display: inline-block;
+
+        padding-left: 10px;
+    }
+
+    #nodeCountNumber {
+        color: #FFFFFF;
+        text-decoration: underline;
+        cursor: pointer;
+    }
 </style>
-<div>
-    <button on:click={showFocusedNode}>{'\u2316'}</button>
-    <button on:click={refresh}>{'\u27F3'}</button>
-    <button on:click={openSettings}>{'\u29C9'}</button>
-</div>
-{#if loading}
-    <Loader />
-{:else}
-    <ul>
-        {#if globalNodeTree}
-            <NodeBranchView nodeTree={globalNodeTree} />
-        {/if}
 
-        {#if sceneNodeTree}
-            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={sceneNodeTree} expanded={true} />
-        {/if}
+<div id="container">
+    {#if showSettings}
+        <Settings bind:showSettings={showSettings} />
+    {/if}
+    {#if showNodeCountByType}
+        <NodeCountByType bind:showNodeCountByType={showNodeCountByType} bind:nodeCountByType={nodeCountByType} />
+    {/if}
+    {#if loading}
+        <Loader />
+    {:else if error}
+        <div id="errorMessage">{error}</div>
+        <div id="errorHelp">
+            If you are seeing this, please make sure you have the on device component running. This requires that both the files are included in the build and that the component is initialized. The easiest way to do this is:
+            <ul>
+                <li>Include the following comment in either your Scene or main.brs file <span class="codeSnippet">' vscode_rdb_on_device_component_entry</span></li>
+                <li>Make sure your launch.json configuration has <span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
+            </ul>
+            The extension can copy the files automatically for you so there's no need to handle that part. If you are still having issues even with these steps, check to make sure you're seeing this line in your device logs <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
+            <p><button on:click={refresh}>Retry</button></p>
+        </div>
 
-        <div id="otherRoots">Unparented Roots</div>
-        {#each rootTree as nodeTree}
-            {#if nodeTree.ref !== sceneNodeRef}
-                <NodeBranchView {nodeTree} />
+    {:else}
+        <div id="header">
+            <button title="Show Focused Node" on:click={showFocusedNode}>{'\u2316'}</button>
+            <button title="Refresh" on:click={refresh}>{'\u27F3'}</button>
+            <button id="settings" title="Settings" on:click={openSettings}>{'\u2699'}</button>
+            {#if totalNodeCount > 0}
+                <div id="nodeCountDetails">
+                    Nodes: <span id="nodeCountNumber" on:click={openNodeCountByType}>{totalNodeCount}</span>
+                </div>
             {/if}
-        {/each}
-    </ul>
-{/if}
+        </div>
+
+        <ul id="nodeTree">
+            <NodeBranchView nodeTree={globalNodeTree} />
+            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={rootTree[0]} expanded={true} />
+        </ul>
+    {/if}
+</div>

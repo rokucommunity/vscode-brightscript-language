@@ -6,6 +6,21 @@
     export let nodeTree: rta.ODC.NodeTree;
     export let inspectNode: boolean;
 
+    let scrollX: number;
+    let scrollY: number;
+    $: {
+        if (inspectNode) {
+            scrollX = document.documentElement.scrollLeft
+            scrollY = document.documentElement.scrollTop
+            document.documentElement.scrollTo(0, 0);
+        }
+    }
+
+    function close() {
+        document.documentElement.scrollTo(scrollX, scrollY);
+        inspectNode = false;
+    }
+
     let numberInputsStep = 0.1;
 
     let fields = {} as {
@@ -24,10 +39,6 @@
         const node = result.nodes[nodeTree.ref];
         fields = node.fields;
     })();
-
-    function close() {
-        inspectNode = false;
-    }
 
     function onBooleanFieldClick() {
         odc.setValueAtKeyPath({
@@ -107,17 +118,15 @@
         top: 0;
         left: 0;
         right: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 99;
+        bottom: 0;
+        z-index: 100;
     }
-
     #container {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        z-index: 100;
+        z-index: 101;
     }
 
     #header {
@@ -155,7 +164,7 @@
     }
 
     input[type=text] {
-        width: 120px;
+        width: 160px;
     }
 
     .inline {
@@ -164,10 +173,16 @@
     }
 
     #closeButton {
-        font-size:small;
+        font-size: small;
         float: right;
         cursor: pointer;
         padding-top: 3px;
+    }
+
+    .moveCursor {
+        font-size: 15px;
+        padding-left: 8px;
+        cursor: move;
     }
 </style>
 <svelte:window on:keydown={handleKeydown} on:keyup={handleKeyup}/>
@@ -184,8 +199,10 @@
                 <!-- {field.type} {field.fieldType} -->
 
                 {#if field.fieldType === 'vector2d'}
+                <span style="display: inline-block;">
                     <input type="number" step={numberInputsStep} {id} value={field.value[0]} on:input={onVector2dFieldChange} />
-                    <input type="number" step={numberInputsStep} {id} value={field.value[1]} on:input={onVector2dFieldChange} />
+                    <input type="number" step={numberInputsStep} {id} value={field.value[1]} on:input={onVector2dFieldChange} /><span class="moveCursor">&#10021;</span>
+                </span>
                 {:else if field.fieldType === 'color'}
                     <ColorField {id} integerColor={field.value} on:input={onColorFieldChange} />
                 {:else if field.type === 'roBoolean'}
@@ -194,7 +211,7 @@
                     <input type="number" step={numberInputsStep} {id} value={field.value} on:input={onNumberFieldChange} />
                 {:else if field.type === 'roAssociativeArray' || field.type === 'roArray' || field.fieldType === 'node'}
                     {#if field.value}
-                        <textarea {id} value={JSON.stringify(field.value)} rows="2" disabled></textarea>
+                        <textarea {id} value={JSON.stringify(field.value, null, 4)} rows="{field.fieldType === 'node' ? 5 : 2}" disabled></textarea>
                     {:else}
                         Invalid
                     {/if}

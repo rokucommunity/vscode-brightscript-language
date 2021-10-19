@@ -10,6 +10,8 @@
 
     export let nodeTree: ODC.NodeTree;
 
+    let self: Element;
+
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
     export let expanded = !!storage[expandedStorageKey];
     $:{
@@ -20,17 +22,26 @@
         }
     }
 
+    let selected = false;
     export let focusedNode = -1;
     $:{
         if (nodeTree.ref === focusedNode) {
             selected = true;
+            if (!(window as any).previouslySelected) {
+                document.documentElement.scrollTo(self.getBoundingClientRect().left, self.getBoundingClientRect().top);
+            }
+
+
             dispatch('childExpanded');
+        } else {
+            selected = false;
         }
+
     }
 
     $:hasChildren = nodeTree.children.length > 0;
 
-    let selected = false;
+
     let inspectNode = false;
 
     function toggleExpand() {
@@ -84,7 +95,6 @@
         margin: 0;
         list-style: none;
         padding: 0;
-        /* margin-left: 10px; */
         padding-left: 10px;
     }
 
@@ -97,20 +107,17 @@
         background-color: #00509f;
     }
 </style>
-<li class:selected>
+<li bind:this={self} class:selected>
     {#if hasChildren}
         <NodeArrow {expanded} on:click={toggleExpand} />
     {/if}
     <div class:expandable={hasChildren} id="itemContainer" on:click={openNode} >
-        <span class="nodeName">{nodeTree.global ? 'Global' : nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+        <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
     </div>
 </li>
 <ul class:hide={!expanded}>
     {#each nodeTree.children as nodeTree}
-        <!-- Want to prevent global from showing up under scene -->
-        {#if !nodeTree.global}
-            <svelte:self on:childExpanded={onChildExpanded} {nodeTree} {focusedNode} />
-        {/if}
+        <svelte:self on:childExpanded={onChildExpanded} {nodeTree} {focusedNode} />
     {/each}
 </ul>
 
