@@ -595,7 +595,7 @@ You only need to install local copies of projects you actually want to work on. 
 
 View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
-You can also chat with us [on slack](http://tiny.cc/nrdf0y). (We're in the #vscode-bs-lang-ext channel).
+You can also chat with us [on slack](https://join.slack.com/t/rokudevelopers/shared_invite/zt-4vw7rg6v-NH46oY7hTktpRIBM_zGvwA). (We're in the #vscode-bs-lang-ext channel).
 
 ## Changelog
 
