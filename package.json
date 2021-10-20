@@ -123,6 +123,7 @@
         "source-map-support": "^0.5.16",
         "ts-mocha": "^7.0.0",
         "ts-node": "^8.9.1",
+        "tslib": "^2.3.1",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
         "typescript": "^3.8.3",
