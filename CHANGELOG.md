@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.23.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.0...v2.23.1) - 2021-10-27
+### Changed
+ - updated to [roku-debug@0.8.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#085---2021-01-27) 
+    - add additional logging to the "BrightScript Debug Server" output panel
+    - fixed bug with boxed primitives for telnet debugger ([roku-debug#36](https://github.com/rokucommunity/roku-debug/pull/36))
+    - send stdio lines as separate debug events which fixes focus bug in the output panel. ([roku-debug#51](https://github.com/rokucommunity/roku-debug/pull/51))
+    - retain newlines in log output after tracker preprocessing ([roku-debug#50](https://github.com/rokucommunity/roku-debug/pull/50))
+ - updated to [roku-deploy@3.5.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#350---2021-10-27)
+    - includes ability to use negated non-rootDir top-level patterns in the files array ([roku-deploy#78](https://github.com/rokucommunity/roku-deploy/pull/78))
+ - updated to [brighterscript@0.41.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0413---2021-10-27)
+    -  Allow diagnostic non-numeric disable code comments ([brighterscript#463](https://github.com/rokucommunity/brighterscript/pull/463))
+ - updated to [brighterscript-formatter@1.6.3](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#163---2021-10-27)
+### Fixed
+ - syntax highlighting issue related to `if` keyword that looked like a function call ([#331](https://github.com/rokucommunity/vscode-brightscript-language/pull/331))
+ - `throw` keyword colorization ([#330](https://github.com/rokucommunity/vscode-brightscript-language/pull/330))
+
+
+
 ## [2.23.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.3...v2.23.0) - 2021-09-17
 ### Added
  - Initial RDB implementation ([#317](https://github.com/rokucommunity/vscode-brightscript-language/pull/317))
@@ -13,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - deploy crashes when target Roku doesn't have an installed channel (roku-deploy#65)
 ### Changed
  - updated to [brighterscript@0.40.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0401---2021-09-17) which includes roku-deploy@3.4.2
- - updated to [roku-deploy@3.4.2](https://https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#342---2021-09-17)
+ - updated to [roku-deploy@3.4.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#342---2021-09-17)
  - updated to [brighterscript-formatter@1.6.2](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#162---2021-09-17)
 
 
