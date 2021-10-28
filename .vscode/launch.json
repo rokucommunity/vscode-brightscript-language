@@ -11,7 +11,11 @@
                 "--extensionDevelopmentPath=${workspaceFolder}"
             ],
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript-formatter/dist/**/*.js",
+                "${workspaceFolder}/../roku-debug/dist/**/*.js",
+                "${workspaceFolder}/../roku-deploy/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript/dist/**/*.js"
             ]
         },
         {
@@ -25,7 +29,8 @@
             ],
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js",
-                "${workspaceFolder}/../roku-debug/dist/**/*.js"
+                "${workspaceFolder}/../roku-debug/dist/**/*.js",
+                "${workspaceFolder}/../roku-deploy/dist/**/*.js"
             ],
             "stopOnEntry": false
         },
@@ -35,7 +40,12 @@
             "request": "attach",
             "port": 6009,
             "restart": true,
-            "timeout": 120000
+            "timeout": 120000,
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript/dist/**/*.js",
+                "${workspaceFolder}/../roku-deploy/dist/**/*.js"
+            ],
         },
         {
             "name": "Debug Tests",
@@ -69,8 +79,7 @@
             "name": "Extension + Debug Server",
             "configurations": [
                 "Extension",
-                "Debug Server",
-                "Language Server"
+                "Debug Server"
             ]
         },
         {
