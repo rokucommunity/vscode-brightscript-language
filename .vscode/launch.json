@@ -19,6 +19,25 @@
             ]
         },
         {
+            "name": "Extension (PWA)",
+            "type": "pwa-extensionHost",
+            "debugWebWorkerHost": true,
+            "request": "launch",
+            "preLaunchTask": "svelte-watch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionDevelopmentKind=web"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript-formatter/dist/**/*.js",
+                "${workspaceFolder}/../roku-debug/dist/**/*.js",
+                "${workspaceFolder}/../roku-deploy/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript/dist/**/*.js"
+            ]
+        },
+        {
             "name": "Debug Server",
             "type": "node",
             "request": "launch",
