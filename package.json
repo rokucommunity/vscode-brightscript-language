@@ -133,6 +133,7 @@
         "yargs": "^16.2.0"
     },
     "main": "./dist/extension",
+    "browser": "./dist/extension-web",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
