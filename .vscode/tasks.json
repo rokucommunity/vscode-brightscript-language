@@ -85,7 +85,7 @@
             "type": "npm",
             "label": "build",
             "script": "build",
-            "dependsOn": "clean",
+            // "dependsOn": "clean",
             "problemMatcher": [],
             "group": {
                 "kind": "build",

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as prettyBytes from 'pretty-bytes';
+import prettyBytes from 'pretty-bytes';
 import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';

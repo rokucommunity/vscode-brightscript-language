@@ -2,7 +2,7 @@ import * as backoff from 'backoff';
 import { EventEmitter } from 'events';
 import * as xmlParser from 'fast-xml-parser';
 import * as http from 'http';
-import * as NodeCache from 'node-cache';
+import NodeCache from 'node-cache';
 import { Client as Client, SsdpHeaders } from 'node-ssdp';
 import * as url from 'url';
 import * as vscode from 'vscode';

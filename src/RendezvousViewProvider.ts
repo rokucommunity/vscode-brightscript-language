@@ -1,4 +1,4 @@
-import * as arraySort from 'array-sort';
+import arraySort from 'array-sort';
 import * as vscode from 'vscode';
 
 import { RendezvousHistory } from 'roku-debug';
@@ -90,7 +90,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                 result = arraySort(Object.keys(treeElement.occurrences).map((key) => {
                     if (treeElement.occurrences[key].totalTime > 0) {
                         let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement.occurrences[key];
-                        let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
+                        let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3)} s`;
 
                         // create the command used to open the file
                         let command = {
@@ -124,7 +124,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      * Used to get the data for a give TreeItem from the tree of RendezvousHistory
      * @param element for which the data was requested
      */
-    private getTreeElementHistoryData(element: RendezvousTreeItem): {[key: string]: any} {
+    private getTreeElementHistoryData(element: RendezvousTreeItem): { [key: string]: any } {
         if (element.details.type === 'lineInfo') {
 
             // return the line item info
