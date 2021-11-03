@@ -1,6 +1,6 @@
 import { Uri, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-import { extension } from '../extension';
+import { extension } from '../extension-node';
 import { util } from '../util';
 import * as path from 'path';
 import * as querystring from 'querystring';

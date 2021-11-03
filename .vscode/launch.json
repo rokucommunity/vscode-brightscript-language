@@ -23,7 +23,7 @@
             "type": "pwa-extensionHost",
             "debugWebWorkerHost": true,
             "request": "launch",
-            "preLaunchTask": "svelte-watch",
+            "preLaunchTask": "npm: watch-web",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",

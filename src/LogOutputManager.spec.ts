@@ -21,6 +21,7 @@ import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
 import { SymbolInformationRepository } from './SymbolInformationRepository';
+import { OutputChannel } from 'vscode';
 const itParam = require('mocha-param');
 
 describe('LogOutputManager ', () => {
@@ -34,7 +35,7 @@ describe('LogOutputManager ', () => {
     let declarationProviderMock;
 
     beforeEach(() => {
-        const outputChannel = new vscode.OutputChannel();
+        const outputChannel = new vscode.OutputChannel() as unknown as OutputChannel;
         const debugCollection = new vscode.DebugCollection();
         const logDocumentLinkProvider = new LogDocumentLinkProvider();
         const declarationProvider = new DeclarationProvider();

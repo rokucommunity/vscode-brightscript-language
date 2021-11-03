@@ -1,10 +1,8 @@
-import * as vscode from 'vscode';
-
-import { DiagnosticCollection } from 'vscode';
-
-import { BrightScriptDebugCompileError } from 'roku-debug';
-import { DeclarationProvider } from './DeclarationProvider';
-import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+import type { DiagnosticCollection, OutputChannel } from 'vscode';
+import type { BrightScriptDebugCompileError } from 'roku-debug';
+import type { DeclarationProvider } from './DeclarationProvider';
+import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+import { commands, languages, window, workspace, Uri, Range, Position, DiagnosticSeverity, Diagnostic } from 'vscode';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
 import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
@@ -20,17 +18,17 @@ export class LogLine {
 export class LogOutputManager {
 
     constructor(
-        outputChannel,
+        outputChannel: OutputChannel,
         context,
         docLinkProvider,
         private declarationProvider: DeclarationProvider
     ) {
-        this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
+        this.collection = languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
 
         this.loadConfigSettings();
-        vscode.workspace.onDidChangeConfiguration((e) => {
+        workspace.onDidChangeConfiguration((e) => {
             this.loadConfigSettings();
         });
 
@@ -49,15 +47,15 @@ export class LogOutputManager {
         this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
         this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
+        subscriptions.push(commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
         }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearLogOutput', () => {
+        subscriptions.push(commands.registerCommand('extension.brightscript.clearLogOutput', () => {
             this.clearOutput();
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputIncludeFilter', async () => {
-            let entryText: string = await vscode.window.showInputBox({
+        subscriptions.push(commands.registerCommand('extension.brightscript.setOutputIncludeFilter', async () => {
+            let entryText: string = await window.showInputBox({
                 placeHolder: 'Enter log include regex',
                 value: this.includeRegex ? this.includeRegex.source : ''
             });
@@ -66,8 +64,8 @@ export class LogOutputManager {
             }
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputLogLevelFilter', async () => {
-            let entryText: string = await vscode.window.showInputBox({
+        subscriptions.push(commands.registerCommand('extension.brightscript.setOutputLogLevelFilter', async () => {
+            let entryText: string = await window.showInputBox({
                 placeHolder: 'Enter log level regex',
                 value: this.logLevelRegex ? this.logLevelRegex.source : ''
             });
@@ -76,8 +74,8 @@ export class LogOutputManager {
             }
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.setOutputExcludeFilter', async () => {
-            let entryText: string = await vscode.window.showInputBox({
+        subscriptions.push(commands.registerCommand('extension.brightscript.setOutputExcludeFilter', async () => {
+            let entryText: string = await window.showInputBox({
                 placeHolder: 'Enter log exclude regex',
                 value: this.excludeRegex ? this.excludeRegex.source : ''
             });
@@ -105,7 +103,7 @@ export class LogOutputManager {
     public isClearingConsoleOnChannelStart: boolean;
     public hyperlinkFormat: string;
     private collection: DiagnosticCollection;
-    private outputChannel: vscode.OutputChannel;
+    private outputChannel: OutputChannel;
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
     private debugEndRegex: RegExp;
@@ -119,7 +117,7 @@ export class LogOutputManager {
     }
 
     private loadConfigSettings() {
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let config: any = workspace.getConfiguration('brightscript') || {};
         this.includeStackTraces = (config.output || {}).includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
@@ -144,7 +142,7 @@ export class LogOutputManager {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
-                vscode.commands.executeCommand('workbench.action.focusPanel');
+                commands.executeCommand('workbench.action.focusPanel');
                 this.outputChannel.show();
             }
             if (this.isClearingOutputOnLaunch) {
@@ -172,21 +170,21 @@ export class LogOutputManager {
     public async addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {
 
         //TODO get the actual folder
-        let documentUri: vscode.Uri;
-        let uri = vscode.Uri.file(path);
-        let doc = await vscode.workspace.openTextDocument(uri); // calls back
+        let documentUri: Uri;
+        let uri = Uri.file(path);
+        let doc = await workspace.openTextDocument(uri); // calls back
         if (doc !== undefined) {
             documentUri = doc.uri;
         }
         // console.log("got " + documentUri);
 
         //debug crap - for some reason - using this URI works - using the one from the path does not :()
-        // const document = vscode.window.activeTextEditor.document;
+        // const document = window.activeTextEditor.document;
         // const currentDocumentUri = document.uri;
         // console.log("currentDocumentUri " + currentDocumentUri);
         if (documentUri !== undefined) {
             {
-                let diagnostics: vscode.Diagnostic[] = [];
+                let diagnostics: Diagnostic[] = [];
                 compileErrors.forEach((compileError) => {
 
                     const path: string = compileError.path;
@@ -199,8 +197,8 @@ export class LogOutputManager {
                     diagnostics.push({
                         code: '',
                         message: message,
-                        range: new vscode.Range(new vscode.Position(lineNumber, charStart), new vscode.Position(lineNumber, charEnd)),
-                        severity: vscode.DiagnosticSeverity.Error,
+                        range: new Range(new Position(lineNumber, charStart), new Position(lineNumber, charEnd)),
+                        severity: DiagnosticSeverity.Error,
                         source: source
                     });
                 });

@@ -3,7 +3,7 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 let Module = require('module');
-import * as extension from './extension';
+import * as extension from './extension-node';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { brightScriptCommands } from './BrightScriptCommands';
 import { LanguageServerManager, languageServerManager } from './LanguageServerManager';

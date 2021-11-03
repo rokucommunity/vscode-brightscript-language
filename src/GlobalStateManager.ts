@@ -1,7 +1,8 @@
-import * as vscode from 'vscode';
+import type { ExtensionContext } from "vscode";
+
 export class GlobalStateManager {
     constructor(
-        private context: vscode.ExtensionContext
+        private context: ExtensionContext
     ) { }
 
     private keys = {

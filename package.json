@@ -17,6 +17,8 @@
         "vscode": "^1.52.0",
         "node": "^12.12.0"
     },
+    "main": "./dist/extension-node",
+    "browser": "./dist/extension-web",
     "repository": {
         "type": "git",
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language"
@@ -26,7 +28,7 @@
     },
     "scripts": {
         "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
-        "vscode:prepublish": "npm run build",
+        "vscode:prepublish": "npm run build && npm run package-web",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
         "lint": "tslint \"./src/**/*.ts\"",
@@ -44,7 +46,10 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "validate": "svelte-check",
         "svelte-build": "rollup -c",
-        "svelte-watch": "rollup -c -w"
+        "svelte-watch": "rollup -c -w",
+        "watch-web": "webpack --watch",
+        "compile-web": "webpack",
+        "package-web": "webpack --mode production --devtool hidden-source-map"
     },
     "dependencies": {
         "array-sort": "^1.0.0",
@@ -105,6 +110,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.42.0",
+        "@types/webpack-env": "^1.16.3",
         "chai": "^4.2.0",
         "chalk": "^4.0.0",
         "changelog-parser": "^2.8.0",
@@ -121,6 +127,7 @@
         "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.16",
+        "ts-loader": "^9.2.6",
         "ts-mocha": "^7.0.0",
         "ts-node": "^8.9.1",
         "tslib": "^2.3.1",
@@ -130,10 +137,10 @@
         "typescript-json-schema": "^0.50.1",
         "vsce": "^1.81.1",
         "vscode-debugadapter-testsupport": "1.33.0",
+        "webpack": "^5.61.0",
+        "webpack-cli": "^4.9.1",
         "yargs": "^16.2.0"
     },
-    "main": "./dist/extension",
-    "browser": "./dist/extension-web",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",

@@ -20,7 +20,30 @@
             },
             "isBackground": true,
             "problemMatcher": "$tsc-watch"
-        }, {
+        },
+        {
+            "type": "npm",
+            "script": "compile-web",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$ts-webpack",
+                "$tslint-webpack"
+            ]
+        },
+        {
+            "type": "npm",
+            "script": "watch-web",
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": [
+                "$ts-webpack-watch",
+                "$tslint-webpack-watch"
+            ]
+        },
+        {
             "label": "svelte-watch",
             "type": "shell",
             "command": "npm",
@@ -36,20 +59,25 @@
                 "panel": "shared"
             },
             "isBackground": true,
-            "problemMatcher": [{
-                "pattern": {
-                    "regexp": "^\\[!\\]"
+            "problemMatcher": [
+                {
+                    "pattern": {
+                        "regexp": "^\\[!\\]"
+                    },
+                    "severity": "error"
                 },
-                "severity": "error"
-            }, {
-                "base": "$tsc-watch",
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
-                    "endsPattern": "waiting for changes..."
-                },
-            }],
-            "dependsOn": ["watch"]
+                {
+                    "base": "$tsc-watch",
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
+                        "endsPattern": "waiting for changes..."
+                    },
+                }
+            ],
+            "dependsOn": [
+                "watch"
+            ]
         },
         {
             "label": "test",
