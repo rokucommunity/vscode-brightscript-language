@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.24.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.1...v2.24.0) - 2021-11-04
+### Added
+ - limited support for running the extension in vscode for web. Currently only the syntax hightlighter works. ([#333](https://github.com/rokucommunity/vscode-brightscript-language/pull/333))
+### Fixed
+ - updated to [roku-debug@0.8.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#086---2021-11-04) 
+    - telnet debugger to work better with RokuOS 10.5 and `run_as_process=1` projects, as well as some better detection of the `Brightscript Debugger>` prompt.
+    - fix ECP commands that would fail when using a hostname instead of an ip address.
+ - updated to [roku-deploy@3.5.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#352---2021-11-02)
+
+
+
 ## [2.23.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.0...v2.23.1) - 2021-10-27
 ### Changed
  - updated to [roku-debug@0.8.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#085---2021-01-27) 
