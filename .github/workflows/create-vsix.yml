@@ -1,14 +1,10 @@
 name: create-vsix
 on:
-  #triggered manually or by other repos
   workflow_dispatch:
     inputs:
       branch:
-        description: 'The branch name which should be used to build the vsix'
+        description: "The branch name which should be used to build the vsix"
         required: true
-  #triggered by PRs to this repo
-  pull_request:
-    types: [labeled, unlabeled, synchronize]
 jobs:
   create-vsix:
     runs-on: ubuntu-18.04
@@ -18,15 +14,7 @@ jobs:
         with:
           node-version: "14.16.1"
       - run: npm ci
-
-      - name: Set branch from ref
-        if: github.head_ref
-        run: echo "BRANCH=${{ github.head_ref }}" >> $GITHUB_ENV
-      - name: Set branch from inputs
-        if: github.event.inputs.branch
-        run: echo "BRANCH=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
-
-      - run: node scripts/create-vsix.js ${{ env.BRANCH }}
+      - run: node scripts/create-vsix.js ${{ github.event.inputs.branch }}
       - uses: actions/upload-artifact@v2
         with:
           name: vscode-brightscript-language.vsix
