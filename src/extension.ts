@@ -287,9 +287,4 @@ export class Extension {
             this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
         }
     }
-
-}
-export const extension = new Extension();
-export function activate(context: vscode.ExtensionContext) {
-    extension.activate(context);
 }

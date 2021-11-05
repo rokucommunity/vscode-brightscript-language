@@ -8,6 +8,8 @@
         "name": "Bronley Plumb",
         "email": "bronley@gmail.com"
     },
+    "main": "./dist/index",
+    "browser": "./dist/extension-web",
     "icon": "images/icon.png",
     "license": "MIT",
     "keywords": [
@@ -27,7 +29,7 @@
     "scripts": {
         "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
         "vscode:prepublish": "npm run build",
-        "build": "esbuild ./src/extension.ts --bundle --sourcemap --minify --outfile=dist/index.js --external:vscode --external:brighterscript --external:fsevents --format=cjs --platform=node ",
+        "build": "node ./esbuild.js",
         "watch": "npm run build -- --watch",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build-old": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
@@ -135,8 +137,6 @@
         "vscode-debugadapter-testsupport": "1.33.0",
         "yargs": "^16.2.0"
     },
-    "main": "./dist/extension",
-    "browser": "./dist/extension-web",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",

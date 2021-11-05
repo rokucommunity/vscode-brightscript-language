@@ -29,8 +29,8 @@ export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
         this.embeddedBscInfo = {
-            path: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
-            version: require('brighterscript/package.json').version
+            path: EMBEDDED_BRIGHTERSCRIPT_PATH,
+            version: EMBEDDED_BRIGHTERSCRIPT_VERSION
         };
         //default to the embedded bsc version
         this.selectedBscInfo = this.embeddedBscInfo;
