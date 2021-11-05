@@ -1,25 +1,18 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
-import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
 import { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
-
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { config } from 'process';
 
 let sinon = createSandbox();
 let c: any;
 let Module = require('module');
-let cwd = s`${path.dirname(__dirname)}`;
+const cwd = s`${path.dirname(__dirname)}`;
 const rootDir = s`${cwd}/rootDir`;
-
-let commandsMock;
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -56,7 +49,7 @@ describe('BrightScriptConfigurationProvider', () => {
         let existingConfigDefaults;
         beforeEach(() => {
             folder = <any>{
-                uri: Uri.parse('file:/some/project')
+                uri: Uri.parse('file:/' + rootDir)
             };
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
 
@@ -74,10 +67,10 @@ describe('BrightScriptConfigurationProvider', () => {
             (configProvider as any).configDefaults = existingConfigDefaults;
         });
 
-        it('handles loading declared values from .env files', async () => {
+        it.only('handles loading declared values from .env files', async () => {
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
-                expect(s`${filePath}`).to.equal(s`/some/project/.env`);
+                expect(s`${filePath}`).to.equal(s`some/project/.env`);
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
             sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));

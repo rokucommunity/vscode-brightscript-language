@@ -51,7 +51,7 @@ export class LanguageServerInfoCommand {
                         detail: bscPath
                     });
                 }
-            } finally { }
+            } catch { }
         });
         let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` });
         if (selection) {

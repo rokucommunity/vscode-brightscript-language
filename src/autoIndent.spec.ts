@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs-extra';
-import * as glob from 'glob';
+import glob from 'glob';
 import { expect } from 'chai';
 
 interface IndentationRulesJSON {

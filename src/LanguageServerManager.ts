@@ -30,7 +30,7 @@ export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
         this.embeddedBscInfo = {
-            path: './dist/brighterscript.js',
+            path: './brighterscript.js',
             version: embeddedBrighterscriptVersion
         };
         //default to the embedded bsc version

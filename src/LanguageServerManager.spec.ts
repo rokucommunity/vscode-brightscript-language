@@ -14,9 +14,10 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import URI from 'vscode-uri';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
-
 const Module = require('module');
 const sinon = createSandbox();
+
+const cwd = s`${__dirname}/../`;
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -113,7 +114,7 @@ describe('extension', () => {
     });
 
     describe('getBsdkPath', () => {
-        const embeddedPath = path.resolve(s`${__dirname}/../node_modules/brighterscript`);
+        const embeddedPath = 'brighterscript.js';
 
         function setConfig(filePath: string, settings: any) {
             if (filePath.endsWith('.code-workspace')) {
