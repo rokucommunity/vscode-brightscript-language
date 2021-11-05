@@ -47,7 +47,7 @@
             "presentation": {
                 "group": "watch",
                 "echo": true,
-                "reveal": "silent",
+                "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },

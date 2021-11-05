@@ -1,4 +1,5 @@
 const esbuild = require('esbuild')
+const fsExtra = require('fs-extra');
 
 const plugin = {
     name: 'dummy-loader',
@@ -15,23 +16,28 @@ const plugin = {
 }
 
 esbuild.build({
-    entryPoints: ['./src/index.ts', './src/LanguageServerRunner.ts'],
+    entryPoints: ['./src/extension.ts', './src/extension-web.ts', './src/LanguageServerRunner.ts', './node_modules/brighterscript/dist/index.js'],
     bundle: true,
     sourcemap: true,
+    splitting: true,
     watch: process.argv.includes('--watch'),
-    minify: true,
+    minify: process.argv.includes('--minify'),
+    mainFields: ['module', 'main'],
+    entryNames: '[name]',
     outdir: 'dist',
-    define: {
-        EMBEDDED_BRIGHTERSCRIPT_PATH: '"dist/index.js"',
-        EMBEDDED_BRIGHTERSCRIPT_VERSION: `"${require('brighterscript/package.json').version}"`
-    },
     external: [
         'vscode'
     ],
-    format: 'cjs',
+    format: 'esm',
     platform: 'node',
     logLevel: 'info',
     plugins: [
         plugin
     ]
+}).then(() => {
+    fsExtra.outputFileSync('dist/brighterscript.js',
+        fsExtra.readFileSync('dist/index.js').toString().replace('=index.js.map', '=brighterscript.js.map')
+    );
+    fsExtra.removeSync('dist/index.js');
+    fsExtra.renameSync('dist/index.js.map', 'dist/brightscript.js.map')
 }).catch((e) => console.error(e));

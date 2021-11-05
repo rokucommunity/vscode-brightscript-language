@@ -8,7 +8,7 @@
         "name": "Bronley Plumb",
         "email": "bronley@gmail.com"
     },
-    "main": "./dist/index",
+    "main": "./dist/extension",
     "browser": "./dist/extension-web",
     "icon": "images/icon.png",
     "license": "MIT",
@@ -28,8 +28,8 @@
     },
     "scripts": {
         "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
-        "vscode:prepublish": "npm run build",
-        "build": "node ./esbuild.js",
+        "vscode:prepublish": "npm run build -- --minify",
+        "build": "rimraf dist && node ./esbuild.js",
         "watch": "npm run build -- --watch",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build-old": "npm run copy-schema && tsc -p ./ && npm run svelte-build",

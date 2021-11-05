@@ -24,13 +24,14 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
+const embeddedBrighterscriptVersion = require('brighterscript/package.json').version
 
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
         this.embeddedBscInfo = {
-            path: EMBEDDED_BRIGHTERSCRIPT_PATH,
-            version: EMBEDDED_BRIGHTERSCRIPT_VERSION
+            path: './dist/brighterscript.js',
+            version: embeddedBrighterscriptVersion
         };
         //default to the embedded bsc version
         this.selectedBscInfo = this.embeddedBscInfo;
@@ -284,13 +285,18 @@ export class LanguageServerManager {
         if (bsdkPath !== this.selectedBscInfo.path) {
             await this.disableLanguageServer();
         }
-
         //try to load the package version.
         try {
-            this.selectedBscInfo = {
-                path: bsdkPath,
-                version: require(`${bsdkPath}/package.json`).version
-            };
+            if (bsdkPath === this.embeddedBscInfo.path) {
+                this.selectedBscInfo = {
+                    ...this.embeddedBscInfo
+                }
+            } else {
+                this.selectedBscInfo = {
+                    path: bsdkPath,
+                    version: require(`${bsdkPath}/package.json`).version
+                };
+            }
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup

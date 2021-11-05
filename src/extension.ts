@@ -288,3 +288,9 @@ export class Extension {
         }
     }
 }
+
+export const extension = new Extension();
+//export the default `activate` function called by vscode to activate our extension
+export function activate(context: vscode.ExtensionContext) {
+    extension.activate(context);
+}
