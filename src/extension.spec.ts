@@ -5,7 +5,7 @@ import { createSandbox } from 'sinon';
 let Module = require('module');
 import * as extension from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
-import { brightScriptCommands } from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 import { LanguageServerManager, languageServerManager } from './LanguageServerManager';
 import * as rta from 'roku-test-automation';
 
@@ -68,7 +68,7 @@ describe('extension', () => {
     });
 
     it('registers all commands', async () => {
-        let stub = sinon.stub(brightScriptCommands, 'registerCommands').callsFake(() => { });
+        let stub = sinon.stub(BrightScriptCommands.prototype, 'registerCommands').callsFake(() => { });
         await extension.activate(context);
         expect(stub.callCount).to.equal(1);
     });

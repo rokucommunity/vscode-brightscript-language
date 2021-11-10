@@ -6,7 +6,9 @@ export class GlobalStateManager {
 
     private keys = {
         lastRunExtensionVersion: 'lastRunExtensionVersion',
-        lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion'
+        lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion',
+        remoteHost: 'remoteHost',
+        remotePassword: 'remotePassword'
     };
 
     public get lastRunExtensionVersion() {
@@ -21,6 +23,20 @@ export class GlobalStateManager {
     }
     public set lastSeenReleaseNotesVersion(value: string) {
         this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
+    }
+
+    public get remoteHost() {
+        return this.context.workspaceState.get(this.keys.remoteHost);
+    }
+    public set remoteHost(value: string) {
+        this.context.workspaceState.update(this.keys.remoteHost, value);
+    }
+
+    public get remotePassword() {
+        return this.context.workspaceState.get(this.keys.remotePassword);
+    }
+    public set remotePassword(value: string) {
+        this.context.workspaceState.update(this.keys.remotePassword, value);
     }
 
     /**

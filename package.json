@@ -1353,6 +1353,12 @@
                     "description": "IP address of the roku to remotely control",
                     "scope": "resource"
                 },
+                "brightscript.remoteControl.password": {
+                    "type": "string",
+                    "default": "${promptForPassword}",
+                    "description": "Password for roku developer account",
+                    "scope": "resource"
+                },
                 "brightscript.configFile": {
                     "type": "string",
                     "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
@@ -1769,6 +1775,11 @@
                 "command": "extension.brightscript.languageServer.info",
                 "title": "View BrighterScript LanguageServer Info",
                 "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.deleteDevChannel",
+                "title": "Delete dev channel",
+                "category": "Brightscript"
             }
         ],
         "keybindings": [

@@ -14,12 +14,15 @@ import * as vscode from 'vscode';
 
 import { LaunchConfiguration, fileUtils } from 'roku-debug';
 import { util } from './util';
+import { GlobalStateManager } from './GlobalStateManager';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
-    public constructor(context: ExtensionContext, activeDeviceManager: any) {
-        this.context = context;
-        this.activeDeviceManager = activeDeviceManager;
+    public constructor(
+        private context: ExtensionContext,
+        private activeDeviceManager: any,
+        private globalStateManager: GlobalStateManager
+    ) {
 
         this.configDefaults = {
             type: 'brightscript',
@@ -53,9 +56,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
         });
     }
-
-    public context: ExtensionContext;
-    public activeDeviceManager: any;
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
@@ -340,7 +340,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    public async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         let showInputBox = false;
 
         if (config.host.trim() === '${promptForHost}' || (config.deepLinkUrl && config.deepLinkUrl.indexOf('${promptForHost}') > -1)) {
@@ -403,7 +403,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (!config.host) {
             throw new Error('Debug session terminated: host is required.');
         } else {
-            await this.context.workspaceState.update('remoteHost', config.host);
+            this.globalStateManager.remoteHost = config.host;
         }
 
         return config;
@@ -413,12 +413,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
      * @param config  current config object
      */
-    private async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
+    public async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
             config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
+            } else {
+                this.globalStateManager.remotePassword = config.password;
             }
         }
 

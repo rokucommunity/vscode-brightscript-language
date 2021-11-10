@@ -12,6 +12,7 @@ import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import { config } from 'process';
+import { GlobalStateManager } from './GlobalStateManager';
 
 let sinon = createSandbox();
 let c: any;
@@ -43,7 +44,7 @@ beforeEach(() => {
     let activeDeviceManager = {
         getActiveDevices: () => []
     };
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, {} as GlobalStateManager);
     c = configProvider;
 });
 afterEach(() => {

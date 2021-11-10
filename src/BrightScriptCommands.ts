@@ -5,24 +5,27 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { SceneGraphDebugCommandController } from 'roku-debug';
+import * as rokuDeploy from 'roku-deploy';
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 
 export class BrightScriptCommands {
-
-    constructor() {
+    constructor(
+        private context: vscode.ExtensionContext,
+        private debugConfigProvider: BrightScriptDebugConfigurationProvider,
+        private globalStateManager: GlobalStateManager
+    ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
 
     private fileUtils: BrightScriptFileUtils;
-    private context: vscode.ExtensionContext;
     private host: string;
+    private password: string;
 
-    public registerCommands(context: vscode.ExtensionContext) {
-        this.context = context;
+    public registerCommands() {
+        brighterScriptPreviewCommand.register(this.context);
+        languageServerInfoCommand.register(this.context);
 
-        brighterScriptPreviewCommand.register(context);
-        languageServerInfoCommand.register(context);
-
-        let subscriptions = context.subscriptions;
+        let subscriptions = this.context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', () => {
             this.onToggleXml();
@@ -63,6 +66,10 @@ export class BrightScriptCommands {
                 }
             }
             vscode.commands.executeCommand('workbench.action.focusPanel');
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.deleteDevChannel', () => {
+            this.deleteDevChannel();
         }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', () => {
@@ -144,6 +151,25 @@ export class BrightScriptCommands {
         }
     }
 
+    public async deleteDevChannel() {
+        await this.getRemoteHost();
+        await this.getRemotePassword();
+        try {
+            await rokuDeploy.deleteInstalledChannel({
+                host: this.host,
+                password: this.password
+            });
+            vscode.window.showInformationMessage(`dev channel deleted from ${this.host}`);
+        } catch (e) {
+            if (e.message.toLowerCase() === 'delete failed: no such file or directory.') {
+                vscode.window.showInformationMessage(`no dev channel to delete on ${this.host}`)
+            } else {
+                console.error(e);
+                vscode.window.showErrorMessage(e.message);
+            }
+        }
+    }
+
     public async sendRemoteCommand(key: string) {
         await this.getRemoteHost();
         if (this.host) {
@@ -160,25 +186,33 @@ export class BrightScriptCommands {
         }
     }
 
-    public async getRemoteHost() {
-        this.host = await this.context.workspaceState.get('remoteHost');
+    private async getRemoteHost() {
+        this.host = await this.globalStateManager.remoteHost;
+
         if (!this.host) {
-            let config = await vscode.workspace.getConfiguration('brightscript.remoteControl', null);
-            this.host = config.get('host');
-            if (this.host === '${promptForHost}') {
-                this.host = await vscode.window.showInputBox({
-                    placeHolder: 'The IP address of your Roku device',
-                    value: ''
-                });
-            }
+            const config = await this.debugConfigProvider.processHostParameter({
+                host: await vscode.workspace.getConfiguration('brightscript.remoteControl', null)?.get('host')
+            } as any);
+            this.host = config?.host;
         }
         if (!this.host) {
             throw new Error('Can\'t send command: host is required.');
         } else {
-            await this.context.workspaceState.update('remoteHost', this.host);
+            this.globalStateManager.remoteHost = this.host;
         }
     }
 
-}
+    private async getRemotePassword() {
+        if (!this.password) {
+            this.password = (await this.debugConfigProvider.processPasswordParameter({
+                password: await vscode.workspace.getConfiguration('brightscript.remoteControl', null)?.get('password')
+            } as any))?.password;
+        }
 
-export const brightScriptCommands = new BrightScriptCommands();
+        if (!this.password) {
+            throw new Error('Can\'t send command: host is required.');
+        } else {
+            this.globalStateManager.remotePassword = this.password;
+        }
+    }
+}

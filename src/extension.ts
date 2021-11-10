@@ -6,7 +6,7 @@ import { env, extensions } from 'vscode';
 import * as rta from 'roku-test-automation';
 
 import { ActiveDeviceManager } from './ActiveDeviceManager';
-import { brightScriptCommands } from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import { BrightScriptDebugConfigurationProvider, BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
@@ -28,6 +28,8 @@ export class Extension {
     public debugServerOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
+    private debugConfigurationProvider: BrightScriptDebugConfigurationProvider;
+    private brightScriptCommands: BrightScriptCommands;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -43,15 +45,17 @@ export class Extension {
 
     public async activate(context: vscode.ExtensionContext) {
         this.globalStateManager = new GlobalStateManager(context);
+        let activeDeviceManager = new ActiveDeviceManager();
+
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+        this.debugConfigurationProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.globalStateManager);
 
         var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
         var currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
-
-        let activeDeviceManager = new ActiveDeviceManager();
+        this.brightScriptCommands = new BrightScriptCommands(context, this.debugConfigurationProvider, this.globalStateManager)
 
         const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
@@ -95,9 +99,8 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);
         context.subscriptions.push(
-            vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
+            vscode.debug.registerDebugConfigurationProvider('brightscript', this.debugConfigurationProvider)
         );
 
         //register a link provider for this extension's "BrightScript Log" output
@@ -158,7 +161,7 @@ export class Extension {
         });
 
         //register all commands for this extension
-        brightScriptCommands.registerCommands(context);
+        this.brightScriptCommands.registerCommands();
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
         vscode.debug.onDidStartDebugSession((e) => {
