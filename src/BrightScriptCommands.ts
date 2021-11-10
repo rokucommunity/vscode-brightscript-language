@@ -203,6 +203,7 @@ export class BrightScriptCommands {
     }
 
     private async getRemotePassword() {
+        this.password = this.globalStateManager.remotePassword;
         if (!this.password) {
             this.password = (await this.debugConfigProvider.processPasswordParameter({
                 password: await vscode.workspace.getConfiguration('brightscript.remoteControl', null)?.get('password')
