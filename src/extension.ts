@@ -55,7 +55,7 @@ export class Extension {
         var currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
-        this.brightScriptCommands = new BrightScriptCommands(context, this.debugConfigurationProvider, this.globalStateManager)
+        this.brightScriptCommands = new BrightScriptCommands(context, this.debugConfigurationProvider, this.globalStateManager);
 
         const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);

@@ -162,7 +162,7 @@ export class BrightScriptCommands {
             vscode.window.showInformationMessage(`dev channel deleted from ${this.host}`);
         } catch (e) {
             if (e.message.toLowerCase() === 'delete failed: no such file or directory.') {
-                vscode.window.showInformationMessage(`no dev channel to delete on ${this.host}`)
+                vscode.window.showInformationMessage(`no dev channel to delete on ${this.host}`);
             } else {
                 console.error(e);
                 vscode.window.showErrorMessage(e.message);
