@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.24.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.0...v2.24.1) - 2021-11-11
+### Changed
+ - updated to [roku-debug@0.8.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#087---2021-11-11) 
+   - Don't delete dev channel during launch, as this clears the registry. ([roku-debug#58](https://github.com/rokucommunity/roku-debug/pull/58))
+
+
+
 ## [2.24.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.1...v2.24.0) - 2021-11-04
 ### Added
  - limited support for running the extension in vscode for web. Currently only the syntax hightlighter works. ([#333](https://github.com/rokucommunity/vscode-brightscript-language/pull/333))
@@ -19,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.23.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.0...v2.23.1) - 2021-10-27
 ### Changed
- - updated to [roku-debug@0.8.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#085---2021-01-27) 
+ - updated to [roku-debug@0.8.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#085---2021-10-27) 
     - add additional logging to the "BrightScript Debug Server" output panel
     - fixed bug with boxed primitives for telnet debugger ([roku-debug#36](https://github.com/rokucommunity/roku-debug/pull/36))
     - send stdio lines as separate debug events which fixes focus bug in the output panel. ([roku-debug#51](https://github.com/rokucommunity/roku-debug/pull/51))
