@@ -25,7 +25,7 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
