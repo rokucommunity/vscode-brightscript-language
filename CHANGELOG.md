@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.24.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.1...v2.24.2) - 2021-11-23
+### Changed
+ - updated to [brighterscript@0.41.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0415---2021-11-23)
+### Fixed
+ - critical crash in language server whenever a local variable had the same name as a javascript object function on the prototype (stuch as `constructor`). ([brighterscript#469](https://github.com/rokucommunity/brighterscript/pull/469))
+
+
+
 ## [2.24.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.0...v2.24.1) - 2021-11-11
 ### Changed
  - updated to [roku-debug@0.8.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#087---2021-11-11) 
