@@ -546,6 +546,20 @@
                             "enableDebugProtocol": {
                                 "type": "boolean",
                                 "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
+                            },
+                            "logLevel": {
+                                "type": "string",
+                                "enum": [
+                                    "off",
+                                    "error",
+                                    "warn",
+                                    "log",
+                                    "info",
+                                    "debug",
+                                    "trace"
+                                ],
+                                "default": "log",
+                                "description": "The level of logging that should be done during a debug session."
                             }
                         }
                     }
