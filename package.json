@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.24.0",
+    "version": "2.24.2",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,7 +25,7 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
@@ -49,7 +49,7 @@
     "dependencies": {
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.41.3",
+        "brighterscript": "^0.41.5",
         "brighterscript-formatter": "^1.6.3",
         "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
@@ -74,7 +74,7 @@
         "q": "^1.5.1",
         "replace-in-file": "^4.1.0",
         "replace-last": "^1.2.6",
-        "roku-debug": "^0.8.6",
+        "roku-debug": "^0.8.7",
         "roku-deploy": "^3.5.2",
         "roku-test-automation": "^1.1.1",
         "semver": "^7.1.3",
