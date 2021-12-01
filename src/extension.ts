@@ -4,7 +4,9 @@ import { window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import { env, extensions } from 'vscode';
 import * as rta from 'roku-test-automation';
-
+import * as path from 'path';
+import * as fsExtra from 'fs-extra';
+import { util } from './util';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { brightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
@@ -25,7 +27,10 @@ const EXTENSION_ID = 'RokuCommunity.brightscript';
 export class Extension {
     public outputChannel: vscode.OutputChannel;
     public sceneGraphDebugChannel: vscode.OutputChannel;
-    public debugServerOutputChannel: vscode.OutputChannel;
+    /**
+     * Output channel where all the extension logs should be written (includes roku-debug, vscode-brightscript-language, etc...)
+     */
+    public extensionOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
 
@@ -58,9 +63,9 @@ export class Extension {
 
         //create channels
         this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-        this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands Log');
-        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
-        this.debugServerOutputChannel.appendLine('Extension startup');
+        this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands');
+        this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        this.extensionOutputChannel.appendLine('Extension startup');
 
         let docLinkProvider = new LogDocumentLinkProvider();
 
@@ -131,7 +136,7 @@ export class Extension {
                 this.setupRDB(context, config);
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
-                this.debugServerOutputChannel.appendLine(e.body);
+                this.extensionOutputChannel.appendLine(e.body);
 
             } else if (e.event === 'BSRendezvousEvent') {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
@@ -200,6 +205,21 @@ export class Extension {
 
         this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
         await languageServerPromise;
+    }
+
+    /**
+     * Writes text to a logfile if enabled
+     */
+    private writeExtensionLog(text: string) {
+        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get('extensionLogfilePath') as string | undefined;
+        if (extensionLogfilePath) {
+            //replace the ${workspaceFolder} variable with the path to the first workspace
+            extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
+            fsExtra.ensureDirSync(
+                path.dirname(extensionLogfilePath)
+            );
+            fsExtra.appendFileSync(extensionLogfilePath, text);
+        }
     }
 
     public async showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExtensionVersion: string) {

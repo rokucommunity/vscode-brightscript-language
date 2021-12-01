@@ -1492,6 +1492,11 @@
                     "type": "string",
                     "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
                     "scope": "resource"
+                },
+                "brightscript.extensionLogfilePath": {
+                    "type": "string",
+                    "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
+                    "scope": "resource"
                 }
             }
         },

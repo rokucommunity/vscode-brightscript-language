@@ -171,6 +171,32 @@ class Util {
     public isExtensionHostRunning() {
         return process.argv.includes('--type=extensionHost');
     }
+
+    /**
+     * Wraps a function and calls a callback before calling the original function
+     */
+    public wrap<T, K extends keyof T>(subject: T, name: K, callback) {
+        const fn = subject[name] as any;
+        (subject as any)[name] = (...args) => {
+            callback(...args);
+            fn.call(subject, ...args);
+        };
+    }
+
+    /**
+     * Creates an output channel but wraps the `append` and `appendLine`
+     * functions so a function can be called with their values
+     */
+    public createOutputChannel(name: string, interceptor: (value: string) => void) {
+        const channel = vscode.window.createOutputChannel(name);
+        this.wrap(channel, 'append', interceptor);
+        this.wrap(channel, 'appendLine', (line: string) => {
+            if (line) {
+                interceptor(line + '\n');
+            }
+        });
+        return channel;
+    }
 }
 
 const util = new Util();
