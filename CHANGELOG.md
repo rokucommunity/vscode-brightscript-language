@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.25.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.2...v2.25.0) - 2021-12-17
+### Changed
+ - updated to [roku-debug@0.9.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#090---2021-12-17) 
+    - Adds many new log messages at various debug levels. ([roku-debug#61](https://github.com/rokucommunity/roku-debug/pull/61))
+    - Ability to inspect node children through the `[[children]]` virtual property ([#57](https://github.com/rokucommunity/roku-debug/pull/57))
+    - `[[length]]` virtual property for all variables that support it.  ([#57](https://github.com/rokucommunity/roku-debug/pull/57))
+ - add `logLevel` launch configuration variable ([roku-debug#61](https://github.com/rokucommunity/roku-debug/pull/61))
+ - rename `SceneGraph Debug Commands Log` output panel to `SceneGraph Debug Commands`  ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+ - rename `BrightScript Debug Server` output panel to `BrightScript Extension` for wider usage. ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+### Fixed
+ - add `brightscript.extensionLogfilePath` setting to specify an output file for debug logs ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+ - several telnet debugging issues related to the 10.5 Roku OS release.([roku-debug#57](https://github.com/rokucommunity/roku-debug/pull/57))
+
+
+
 ## [2.24.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.1...v2.24.2) - 2021-11-23
 ### Changed
  - updated to [brighterscript@0.41.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0415---2021-11-23)

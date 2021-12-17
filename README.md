@@ -399,6 +399,7 @@ This extension contributes the following settings:
 - `brightscript.debug.raleTrackerTaskFileLocation`: This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 - `brightscript.debug.enableSourceMaps`: Defaults to true. if set to false, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
 - `brightscript.debug.enableDebugProtocol` - If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
+- `brightscript.extensionLogfilePath` - File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. `${workspaceFolder}` is supported and will point to the first workspace found.
 
 ## Roku Remote Control
 
