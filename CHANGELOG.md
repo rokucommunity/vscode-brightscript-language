@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.25.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.0...v2.25.1) - 2022-01-05
+### Changed
+ - updated to [brighterscript@0.41.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0416---2022-01-05)
+    - fixed issue in the transpiled output of the null coalescing operator where plain variable references are not properly passed into the function. ([brighterscript#474](https://github.com/rokucommunity/brighterscript/pull/474))
+ - updated to [brighterscript-formatter@1.6.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#164---2022-01-05)
+    - fixed formatting issue with ternary operator and square brace in the consequent ([brighterscript-formatter#44](https://github.com/rokucommunity/brighterscript-formatter/pull/44))
+ - updated to [roku-debug@0.9.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#091---2022-01-05)
+    - fixed issue where `"consoleOutput": "full"` shows no output when `enableDebugProtocol === true`. ([roku-debug#65](https://github.com/rokucommunity/roku-debug/pull/65))
+
+
+
 ## [2.25.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.2...v2.25.0) - 2021-12-17
 ### Changed
  - updated to [roku-debug@0.9.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#090---2021-12-17) 
