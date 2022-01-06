@@ -669,10 +669,6 @@
         "snippets": [
             {
                 "language": "brightscript",
-                "path": "./snippets.json"
-            },
-            {
-                "language": "brightscript",
                 "path": "./snippets/brightscript.json"
             },
             {
