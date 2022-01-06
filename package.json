@@ -672,7 +672,11 @@
                 "path": "./snippets/brightscript.json"
             },
             {
-                "language": "brightscript",
+                "language": "brighterscript",
+                "path": "./snippets/brightscript.json"
+            },
+            {
+                "language": "brighterscript",
                 "path": "./snippets/brighterscript.json"
             },
             {
