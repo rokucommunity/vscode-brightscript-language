@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.25.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.1...v2.25.2) - 2022-01-12
+### Fixed
+ - updated to [roku-debug@0.9.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#092---2022-01-12)
+    - fixed bug with telnet debug session related to fire-and-forget commands like `step`, `continue`, etc. This was causing the debug session to stall frequently. ([roku-debug#64](https://github.com/rokucommunity/roku-debug/pull/64))
+    - combine telnet output that was split due to buffer sizes ([roku-debug#64](https://github.com/rokucommunity/roku-debug/pull/64))
+
+
+
 ## [2.25.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.0...v2.25.1) - 2022-01-05
 ### Changed
  - updated to [brighterscript@0.41.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0416---2022-01-05)
