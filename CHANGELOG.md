@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.25.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.2...v2.25.3) - 2022-01-14
+### Changed
+ - updated to [brighterscript-formatter@1.6.5](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#165---2022-01-14)
+ - Removed all interface snippets introduced in Adding Completion Items #105 that were partially removed a while ago. These should all be handled by the language server as we add better type tracking support. ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+ - Don't show brighterscript-specific snippets in BrightScript files ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+### Fixed
+ - formatting indentation bug with `interface` statements ([brighterscript-formatter#45](https://github.com/rokucommunity/brighterscript-formatter/pull/45))
+ - syntax highlighting for interface statements ([#351](https://github.com/rokucommunity/vscode-brightscript-language/pull/351))
+ - Add brightscript and brighterscript snippets to BrighterScript files (they were missing for some reason) ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+
+
+
 ## [2.25.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.1...v2.25.2) - 2022-01-12
 ### Fixed
  - updated to [roku-debug@0.9.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#092---2022-01-12)
