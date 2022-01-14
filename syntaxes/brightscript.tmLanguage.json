@@ -452,7 +452,7 @@
             "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next|throw)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:(?<!\\.)(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
+            "match": "(?i:(?<!\\.)\\b(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
             "name": "keyword.control.brs"
         },
         "try_catch": {
