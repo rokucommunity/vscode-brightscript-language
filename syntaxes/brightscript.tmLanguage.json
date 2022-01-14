@@ -94,6 +94,9 @@
                     "include": "#function_call"
                 },
                 {
+                    "include": "#interface_declaration"
+                },
+                {
                     "include": "#storage_types"
                 },
                 {
@@ -125,9 +128,6 @@
                 },
                 {
                     "include": "#annotation"
-                },
-                {
-                    "include": "#annotation_parameterless"
                 }
             ]
         },
@@ -307,6 +307,16 @@
                 }
             ]
         },
+        "comment": {
+            "patterns": [
+                {
+                    "include": "#rem_comment"
+                },
+                {
+                    "include": "#apostrophe_comment"
+                }
+            ]
+        },
         "rem_comment": {
             "captures": {
                 "1": {
@@ -434,6 +444,69 @@
             },
             "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
         },
+        "interface_declaration": {
+            "name": "meta.interface.brs",
+            "begin": "(?i)\\b(interface)[\\s\\t]+([a-zA-Z0-9_]+)\\b",
+            "beginCaptures": {
+                "1": {
+                    "name": "storage.type.interface.brs"
+                },
+                "2": {
+                    "name": "entity.name.type.interface.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#comment"
+                },
+                {
+                    "include": "#annotation"
+                },
+                {
+                    "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))?",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.object.property.brs"
+                        },
+                        "2": {
+                            "name": "keyword.control.as.brs"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#type_expression"
+                        }
+                    ],
+                    "end": "\r?\n"
+                }
+            ],
+            "end": "(?i)(end[\\s\\t]*interface)",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.interface.brs"
+                }
+            }
+        },
+        "type_expression": {
+            "patterns": [
+                {
+                    "match": "(?i)(boolean|integer|longinteger|float|double|string)",
+                    "captures": {
+                        "1": {
+                            "name": "storage.type.brs"
+                        }
+                    }
+                },
+                {
+                    "match": "(?i)\\b([a-z0-9_]+)",
+                    "captures": {
+                        "1": {
+                            "name": "support.type.brs entity.name.type.brs"
+                        }
+                    }
+                }
+            ]
+        },
         "literal": {
             "patterns": [
                 {
@@ -452,7 +525,7 @@
             "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next|throw)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
-            "match": "(?i:(?<!\\.)\\b(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
+            "match": "(?i:(?<!\\.)(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
             "name": "keyword.control.brs"
         },
         "try_catch": {
@@ -533,42 +606,46 @@
             "match": "('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)",
             "name": "keyword.preprocessor.brs"
         },
-        "annotation_parameterless": {
-            "match": "^(i?\\s*(@)\\s*([a-zA-Z0-9_]+))",
-            "captures": {
-                "1": {
-                    "name": "punctuation.decorator.brs"
-                },
-                "2": {
-                    "name": "entity.name.function.brs meta.function-call.brs"
-                }
-            }
-        },
         "annotation": {
-            "name": "meta.decorator.brs",
-            "begin": "(@)\\s*([a-zA-Z0-9_]+)\\s*(\\()",
-            "beginCaptures": {
-                "1": {
-                    "name": "punctuation.decorator.brs"
-                },
-                "2": {
-                    "name": "entity.name.function.brs meta.function-call.brs"
-                },
-                "3": {
-                    "name": "meta.brace.round.brs"
-                }
-            },
             "patterns": [
                 {
-                    "include": "#entire_language"
+                    "match": "^\\s*(@)\\s*([a-zA-Z0-9_]+)",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.decorator.brs"
+                        },
+                        "2": {
+                            "name": "entity.name.function.brs meta.function-call.brs"
+                        }
+                    }
+                },
+                {
+                    "name": "meta.decorator.brs",
+                    "begin": "(@)\\s*([a-zA-Z0-9_]+)\\s*(\\()",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.decorator.brs"
+                        },
+                        "2": {
+                            "name": "entity.name.function.brs meta.function-call.brs"
+                        },
+                        "3": {
+                            "name": "meta.brace.round.brs"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#entire_language"
+                        }
+                    ],
+                    "end": "(\\))",
+                    "endCaptures": {
+                        "1": {
+                            "name": "meta.brace.round.brs"
+                        }
+                    }
                 }
-            ],
-            "end": "(\\))",
-            "endCaptures": {
-                "1": {
-                    "name": "meta.brace.round.brs"
-                }
-            }
+            ]
         }
     }
 }
