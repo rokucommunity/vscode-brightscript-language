@@ -146,8 +146,13 @@ class RokuFinder extends EventEmitter {
                         // The whole response has been received.
                         let info = xmlParser.parse(data);
                         const device = this.parseAddress(LOCATION);
-                        device.deviceInfo = info['device-info'];
-                        this.emit('found', device);
+
+                        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+                        let includeNonDeveloperDevices = (config.includeNonDeveloperDevices || {}).includeNonDeveloperDevices;
+                        if (includeNonDeveloperDevices || info['device-info']['developer-enabled']) {
+                            device.deviceInfo = info['device-info'];
+                            this.emit('found', device);
+                        }
                     });
                 });
             }
