@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.26.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.26.0...v2.26.1) - 2022-01-28
+### Changed
+ - updated to [brighterscript@0.43.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0431---2022-01-28)
+    - fix crash when hovering over global functions ([brighterscript#497](https://github.com/rokucommunity/brighterscript/pull/497))
+
+
+
 ## [2.26.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.3...v2.26.0) - 2022-01-28
 ### Added
  - ability to filter out devices with developer mode off ([#353](https://github.com/rokucommunity/vscode-brightscript-language/pull/353))
