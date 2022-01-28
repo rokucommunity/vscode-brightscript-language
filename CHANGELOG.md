@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - updated to [brighterscript@0.43.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0430---2022-01-28). Since last update:
     - show function documentation when hovering over functions. ([brighterscript#495](https://github.com/rokucommunity/brighterscript/pull/495))
-    - bug preventing code to come after an interface statement. ([brighterscript#493](https://github.com/rokucommunity/brighterscript/pull/4
+    - bug preventing code to come after an interface statement.  ([brighterscript#493](https://github.com/rokucommunity/brighterscript/pull/493))
     - bug in global function parameter checking that was not properly enforcing optional/required status for parameters. ([brighterscript#479](https://github.com/rokucommunity/brighterscript/pull/479))
  - updated to [brighterscript-formatter@1.6.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#166---2022-01-28)
     - properly formats an interface that includes subs and functions ([brighterscript-formatter#46](https://github.com/rokucommunity/brighterscript-formatter/pull/46))
