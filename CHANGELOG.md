@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.26.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.3...v2.26.0) - 2022-01-28
+### Added
+ - ability to filter out devices with developer mode off ([#353](https://github.com/rokucommunity/vscode-brightscript-language/pull/353))
+### Changed
+ - updated to [brighterscript@0.43.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0430---2022-01-28). Since last update:
+    - show function documentation when hovering over functions. ([brighterscript#495](https://github.com/rokucommunity/brighterscript/pull/495))
+    - bug preventing code to come after an interface statement. ([brighterscript#493](https://github.com/rokucommunity/brighterscript/pull/4
+    - bug in global function parameter checking that was not properly enforcing optional/required status for parameters. ([brighterscript#479](https://github.com/rokucommunity/brighterscript/pull/479))
+ - updated to [brighterscript-formatter@1.6.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#166---2022-01-28)
+    - properly formats an interface that includes subs and functions ([brighterscript-formatter#46](https://github.com/rokucommunity/brighterscript-formatter/pull/46))
+    - adds better support for appropriate whitespace between minus and numbers/identifiers ([brighterscript-formatter#47](https://github.com/rokucommunity/brighterscript-formatter/pull/47))
+ - updated to [roku-debug@0.9.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#093---2022-01-28) which uses brighterscript@0.43.0
+
+
 ## [2.25.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.2...v2.25.3) - 2022-01-14
 ### Changed
  - updated to [brighterscript-formatter@1.6.5](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#165---2022-01-14)
