@@ -6,7 +6,7 @@ let Module = require('module');
 import * as extension from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { brightScriptCommands } from './BrightScriptCommands';
-import { LanguageServerManager, languageServerManager } from './LanguageServerManager';
+import { languageServerManager } from './LanguageServerManager';
 import * as rta from 'roku-test-automation';
 
 const sinon = createSandbox();
