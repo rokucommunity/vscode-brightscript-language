@@ -43,7 +43,7 @@ beforeEach(() => {
     let activeDeviceManager = {
         getActiveDevices: () => []
     };
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
+    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null);
     c = configProvider;
 });
 afterEach(() => {

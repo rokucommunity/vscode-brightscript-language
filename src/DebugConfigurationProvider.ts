@@ -11,13 +11,17 @@ import {
     WorkspaceFolder,
 } from 'vscode';
 import * as vscode from 'vscode';
-
 import { LaunchConfiguration, fileUtils } from 'roku-debug';
 import { util } from './util';
+import { TelemetryManager } from './managers/TelemetryManager';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
-    public constructor(context: ExtensionContext, activeDeviceManager: any) {
+    public constructor(
+        private context: ExtensionContext,
+        private activeDeviceManager: any,
+        private telemetryManager: TelemetryManager
+    ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
 
@@ -54,9 +58,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         });
     }
 
-    public context: ExtensionContext;
-    public activeDeviceManager: any;
-
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
     public util = util;
@@ -69,6 +70,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
+        this.telemetryManager?.sendStartDebugSessionEvent(config);
+
         //force a specific staging folder path because sometimes this conflicts with bsconfig.json
         config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
 

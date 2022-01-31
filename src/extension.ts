@@ -21,7 +21,7 @@ import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProvi
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
-import { AnalyticsManager } from './managers/AnalyticsManager';
+import { TelemetryManager } from './managers/TelemetryManager';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -34,7 +34,7 @@ export class Extension {
     public extensionOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
-    private analyticsManager: AnalyticsManager;
+    private telemetryManager: TelemetryManager;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -58,13 +58,13 @@ export class Extension {
 
         //initialize the analytics manager
         context.subscriptions.push(
-            this.analyticsManager = new AnalyticsManager(
-                currentExtensionVersion,
-                EXTENSION_ID
-            )
+            this.telemetryManager = new TelemetryManager({
+                extensionId: EXTENSION_ID,
+                extensionVersion: currentExtensionVersion
+            })
         );
 
-        this.analyticsManager.sendExtensionStartupEvent();
+        this.telemetryManager.sendStartupEvent();
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
@@ -113,7 +113,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
