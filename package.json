@@ -47,6 +47,7 @@
         "svelte-watch": "rollup -c -w"
     },
     "dependencies": {
+        "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
         "brighterscript": "^0.43.1",

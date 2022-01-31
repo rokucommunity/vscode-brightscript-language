@@ -6,11 +6,19 @@ afterEach(() => {
 });
 
 export let vscode = {
+    env: {
+        //disable all telemetry reporting during unit tests
+        telemetryConfiguration: {
+            isUsageEnabled: false,
+            isErrorsEnabled: false,
+            isCrashEnabled: false
+        }
+    },
     CompletionItem: class { },
     CodeLens: class { },
     CodeAction: class { },
     Diagnostic: class { },
-    CallHierarchyItem: class {},
+    CallHierarchyItem: class { },
     StatusBarAlignment: {
         Left: 1,
         Right: 2
