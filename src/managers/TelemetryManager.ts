@@ -28,17 +28,26 @@ export class TelemetryManager implements Disposable {
 
     public sendStartDebugSessionEvent(event: BrightScriptLaunchConfiguration & { preLaunchTask: string }) {
         this.reporter.sendTelemetryEvent('startDebugSession', {
-            enableDebugProtocol: event.enableDebugProtocol?.toString(),
-            retainDeploymentArchive: event.retainDeploymentArchive?.toString(),
-            retainStagingFolder: event.retainStagingFolder?.toString(),
-            isFilesDefined: event.files ? 'true' : 'false',
-            isPreLaunchTaskDefined: event.preLaunchTask ? 'true' : 'false',
-            isComponentLibrariesDefined: event.componentLibraries ? 'true' : 'false',
-            isDeepLinkUrlDefined: event.deepLinkUrl ? 'true' : 'false',
-            injectRaleTrackerTask: event.injectRaleTrackerTask?.toString(),
-            isStagingFolderPathDefined: event.stagingFolderPath ? 'true' : 'false'
+            enableDebugProtocol: boolToString(event.enableDebugProtocol),
+            retainDeploymentArchive: boolToString(event.retainDeploymentArchive),
+            retainStagingFolder: boolToString(event.retainStagingFolder),
+            injectRaleTrackerTask: boolToString(event.injectRaleTrackerTask),
+            isFilesDefined: isDefined(event.files),
+            isPreLaunchTaskDefined: isDefined(event.preLaunchTask),
+            isComponentLibrariesDefined: isDefined(event.componentLibraries),
+            isDeepLinkUrlDefined: isDefined(event.deepLinkUrl),
+            isStagingFolderPathDefined: isDefined(event.stagingFolderPath)
         });
     }
 
+
     private reporter: TelemetryReporter;
+}
+
+function boolToString(value: boolean | undefined) {
+    return value?.toString() ?? 'undefined';
+}
+
+function isDefined(value: any) {
+    return value ? 'true' : 'false';
 }
