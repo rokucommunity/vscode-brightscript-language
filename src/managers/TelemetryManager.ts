@@ -1,6 +1,6 @@
-import TelemetryReporter from "@vscode/extension-telemetry";
-import type { Disposable } from "vscode";
-import { BrightScriptLaunchConfiguration } from "../DebugConfigurationProvider";
+import TelemetryReporter from '@vscode/extension-telemetry';
+import type { Disposable } from 'vscode';
+import { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -15,7 +15,7 @@ export class TelemetryManager implements Disposable {
         this.reporter = new TelemetryReporter(this.options.extensionId, this.options.extensionVersion, this.options.applicationInsightsKey ?? APP_INSIGHTS_KEY);
     }
 
-    dispose() {
+    public dispose() {
         return this.reporter.dispose();
     }
 
@@ -39,7 +39,6 @@ export class TelemetryManager implements Disposable {
             isStagingFolderPathDefined: isDefined(event.stagingFolderPath)
         });
     }
-
 
     private reporter: TelemetryReporter;
 }
