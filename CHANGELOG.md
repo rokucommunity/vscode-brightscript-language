@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.27.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.0...v2.27.1) - 2022-02-01
+### Changed
+ - updated to [brighterscript-formatter@1.6.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#167---2022-02-01)
+### Fixed
+ - formatting bug that was incorrectly removing whitespace between certain characters. ([brighterscript-formatter#49](https://github.com/rokucommunity/brighterscript-formatter/pull/49))
+
+
+
 ## [2.27.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.26.1...v2.27.0) - 2022-01-31
 ### Added
  - start tracking anonymized telemetry data to give visibility into real-world usage of the extension and its features. ([#354](https://github.com/rokucommunity/vscode-brightscript-language/pull/354))
