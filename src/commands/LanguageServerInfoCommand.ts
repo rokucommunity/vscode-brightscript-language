@@ -11,13 +11,21 @@ export class LanguageServerInfoCommand {
 
         context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
-                label: `Select BrighterScript Version`,
+                label: `Change Selected BrighterScript Version`,
                 description: `(current v${languageServerManager.selectedBscInfo.version})`,
                 command: this.selectBrighterScriptVersion.bind(this)
+            }, {
+                label: `Restart BrighterScript Language Server`,
+                description: ``,
+                command: this.restartLanguageServer.bind(this)
             }];
             let selection = await vscode.window.showQuickPick(commands, { placeHolder: `BrighterScript Project Info` });
             await selection?.command();
         }));
+    }
+
+    private restartLanguageServer() {
+        vscode.commands.executeCommand('extension.brightscript.languageServer.restart');
     }
 
     /**
