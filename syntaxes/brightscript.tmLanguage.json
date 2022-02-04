@@ -34,6 +34,9 @@
                     "include": "#namespace_declaration"
                 },
                 {
+                    "include": "#enum_declaration"
+                },
+                {
                     "include": "#end_namespace"
                 },
                 {
