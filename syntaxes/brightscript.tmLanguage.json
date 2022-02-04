@@ -446,7 +446,7 @@
         },
         "interface_declaration": {
             "name": "meta.interface.brs",
-            "begin": "(?i)\\b(interface)[\\s\\t]+([a-zA-Z0-9_]+)\\b",
+            "begin": "(?i)\\b[\\s\\t]*(interface)[\\s\\t]+([a-zA-Z0-9_]+)\\b",
             "beginCaptures": {
                 "1": {
                     "name": "storage.type.interface.brs"
@@ -480,7 +480,7 @@
                     "end": "\r?\n"
                 }
             ],
-            "end": "(?i)(end[\\s\\t]*interface)",
+            "end": "(?i)[\\s\\t]*(end[\\s\\t]*interface)",
             "endCaptures": {
                 "1": {
                     "name": "storage.type.interface.brs"
