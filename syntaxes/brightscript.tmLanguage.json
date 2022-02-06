@@ -34,6 +34,9 @@
                     "include": "#namespace_declaration"
                 },
                 {
+                    "include": "#enum_declaration"
+                },
+                {
                     "include": "#end_namespace"
                 },
                 {
@@ -495,6 +498,49 @@
             "endCaptures": {
                 "1": {
                     "name": "storage.type.interface.brs"
+                }
+            }
+        },
+        "enum_declaration": {
+            "name": "meta.enum.declaration.brs",
+            "begin": "(?i)\\b(enum)[ \\t]+([a-zA-Z0-9_]+)\\b",
+            "beginCaptures": {
+                "1": {
+                    "name": "storage.type.enum.brs"
+                },
+                "2": {
+                    "name": "entity.name.type.enum.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#comment"
+                },
+                {
+                    "include": "#annotation"
+                },
+                {
+                    "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[ \\t]*(=))?",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.object.enummember.brs"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.brs"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#primitive_literal_expression"
+                        }
+                    ],
+                    "end": "\r?\n"
+                }
+            ],
+            "end": "(?i)[ \\t]+(end[ \\t]*enum)",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.enum.brs"
                 }
             }
         },
