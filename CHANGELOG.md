@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.27.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.1...v2.27.2) - 2022-02-08
+### Changed
+ - updated to [brighterscript@0.44.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0440---2022-02-08)
+    - fixed bug in hover showing required params as optional and optional params as required ([brighterscript#501](https://github.com/rokucommunity/brighterscript/pull/501))  
+    - show plugin transpile modifications in the `getTranspiledFile` callback (used for "show preview" functionality in vscode) ([brighterscript#502](https://github.com/rokucommunity/brighterscript/pull/502))
+
+
+
 ## [2.27.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.0...v2.27.1) - 2022-02-01
 ### Changed
  - updated to [brighterscript-formatter@1.6.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#167---2022-02-01)
