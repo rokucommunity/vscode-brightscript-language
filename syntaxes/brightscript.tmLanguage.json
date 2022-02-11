@@ -537,7 +537,7 @@
                     "end": "\r?\n"
                 }
             ],
-            "end": "(?i)[ \\t]?(end[ \\t]*enum)",
+            "end": "(?i)[ \\t]*(end[ \\t]*enum)",
             "endCaptures": {
                 "1": {
                     "name": "storage.type.enum.brs"
