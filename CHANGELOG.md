@@ -4,9 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.28.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.2...v2.28.0) - 2022-02-11
+### Changed
+ - updated to [brighterscript@0.45.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0450---2022-02-11)
+    - `enum` language feature ([BrighterScript#484](https://github.com/rokucommunity/brighterscript/pull/484))
+ - updated to [brighterscript-formatter@1.6.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#168---2022-02-11)
+    - adds enum indentation support
+### Fixed
+ - fixed bug with indented enum syntax highlighting
+ - bug with namespace, interface, and enum indentation rules
+
 
 
 ## [2.27.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.1...v2.27.2) - 2022-02-08
+### Added
+ - enum syntax highlighting ([#359](https://github.com/rokucommunity/vscode-brightscript-language/pull/359))
 ### Changed
  - updated to [brighterscript@0.44.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0440---2022-02-08)
     - fixed bug in hover showing required params as optional and optional params as required ([brighterscript#501](https://github.com/rokucommunity/brighterscript/pull/501))  
