@@ -1,7 +1,6 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
 
-<<<<<<< HEAD
 type ObserverCallback = (message) => void;
 
 class ExtensionIntermediary {
@@ -12,13 +11,6 @@ class ExtensionIntermediary {
     private observed = false;
 
     private setupExtensionMessageObserver() {
-=======
-class ExtensionIntermediary {
-    private inflightRequests = {};
-    private observed = false;
-
-    private setupObserver() {
->>>>>>> upstream/master
         this.observed = true;
         window.addEventListener("message", (event) => {
             const message = event.data;
@@ -26,7 +18,6 @@ class ExtensionIntermediary {
             if (request) {
                 delete this.inflightRequests[message.id];
                 request.callback(message);
-<<<<<<< HEAD
             } else {
                 if (message.name) {
                     const listeners = this.observedEvents[message.name];
@@ -36,19 +27,13 @@ class ExtensionIntermediary {
                         }
                     }
                 }
-=======
->>>>>>> upstream/master
             }
         });
     }
 
     public async sendMessage<T>(command: string, context = {}) {
         if(!this.observed) {
-<<<<<<< HEAD
             this.setupExtensionMessageObserver();
-=======
-            this.setupObserver();
->>>>>>> upstream/master
         }
         const requestId = this.randomStringGenerator();
 
@@ -74,7 +59,6 @@ class ExtensionIntermediary {
         });
     }
 
-<<<<<<< HEAD
     public observeEvent(name: string, callback: ObserverCallback) {
         if (!this.observedEvents[name]) {
             this.observedEvents[name] = [];
@@ -83,8 +67,6 @@ class ExtensionIntermediary {
         this.observedEvents[name].push(callback);
     }
 
-=======
->>>>>>> upstream/master
     private randomStringGenerator(length: number = 7) {
 		const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 		return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
@@ -129,11 +111,7 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
     }
 
-<<<<<<< HEAD
     public async setValueAtKeyPath(args?: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
-=======
-    public async setValueAtKeyPath(args?: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
->>>>>>> upstream/master
         return this.sendOdcMessage<ReturnType<typeof rta.odc.setValueAtKeyPath>>('setValueAtKeyPath', args, options);
     }
 
