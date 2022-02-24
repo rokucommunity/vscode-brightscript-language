@@ -74,4 +74,4 @@ jobs:
       - name: Publish to OpenVSX registry
         #exclude beta release tags
         if: contains(github.ref, '-beta.') == false
-        run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}}
+        run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}} --debug
