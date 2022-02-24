@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [2.28.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.0...v2.28.1) - 2022-02-24
+### Changed
+ - updated to [brighterscript@0.45.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0452---2022-02-24)
+    - fixed significant memory leak [brighterscript#527](https://github.com/rokucommunity/brighterscript/pull/527)
+ - updated to [brighterscript-formatter@1.6.9](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#169---2022-02-24)
+ - updated to [roku-deploy@3.5.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#353---2022-02-16)
+ - updated to [roku-debug@0.9.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#094---2022-02-24) 
+
+
+
 ## [2.28.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.2...v2.28.0) - 2022-02-11
 ### Changed
  - updated to [brighterscript@0.45.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0450---2022-02-11)
