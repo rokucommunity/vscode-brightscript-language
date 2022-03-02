@@ -1,18 +1,23 @@
 {
 	"folders": [
 		{
+            "name": "⚡vscode-brightscript-language",
 			"path": "."
 		},
 		{
+            "name": "🐛roku-debug",
 			"path": "..\\roku-debug"
 		},
 		{
+            "name": "⛎roku-deploy",
 			"path": "..\\roku-deploy"
 		},
 		{
+            "name": "⭕brighterscript",
 			"path": "..\\brighterscript"
 		},
 		{
+            "name": "➰brighterscript-formatter",
 			"path": "..\\brighterscript-formatter"
 		}
 	],
