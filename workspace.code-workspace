@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "..\\roku-debug"
+		},
+		{
+			"path": "..\\roku-deploy"
+		},
+		{
+			"path": "..\\brighterscript"
+		},
+		{
+			"path": "..\\brighterscript-formatter"
+		}
+	],
+    "settings": {}
+}
