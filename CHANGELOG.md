@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.29.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.1...v2.29.0) - 2022-03-08
+### Changed
+ - updated to [brighterscript@0.45.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0454---2022-03-08)
+    - fixed bug calculating parse time. ([brighterscript#532](https://github.com/rokucommunity/brighterscript/pull/532))
+ - updated to [roku-debug@0.10.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0100---2022-03-08) 
+    - added support for roku debug protocol v3.0.0
+    - support for eval/execute functionality over the debug protocol(v3.0.0+) from the debug console
+    - Changed: running `print` statements in the debug console now runs an actual print statement. To do variable evaluation, simply type the name of the variable.
+
+
+
 ## [2.28.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.0...v2.28.1) - 2022-02-24
 ### Changed
  - updated to [brighterscript@0.45.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0452---2022-02-24)
