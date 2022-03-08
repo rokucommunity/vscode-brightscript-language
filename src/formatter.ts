@@ -10,7 +10,6 @@ import {
     TextEdit,
     window, workspace,
 } from 'vscode';
-import * as eol from 'eol';
 import * as vscode from 'vscode';
 
 export class Formatter implements DocumentRangeFormattingEditProvider {
@@ -47,7 +46,7 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
         }
     }
     private getEditChunks(document: TextDocument, formattedText: string, range: Range) {
-        let lines = eol.split(formattedText);
+        let lines = formattedText?.split(/\r?\n/g);
         //make an edit per line of the doc
         let edits: TextEdit[] = [];
         for (let lineNumber = range.start.line; lineNumber <= range.end.line; lineNumber++) {
