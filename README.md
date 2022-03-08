@@ -552,24 +552,26 @@ If you would like to disable telemetry tracking, you can follow [these instructi
 
 The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug] project. To get up and running, do the following:
 
-### The easy way
-In a terminal, execute 
-```bash
-npm run install-local
-```
+### Setting up a local development environment
+1. install [Node.js](https://nodejs.org/en/) version 14 or higher and the latest version of [Visual Studio Code](https://code.visualstudio.com/)
+2. clone the repository: 
+    ```bash
+    git clone https://github.com/rokucommunity/vscode-brightscript-language.git
+    cd vscode-brightscript-language
+    ```
+3. download, install, and link the source code for required RokuCommunity npm tools
+    ```bash
+    npm install && npm run install-local
+    ```
 
-This will do the following automatically for you:
- - Clone any missing repositories at the same folder level as this project.
- - Install and build each dependency
- - Update this project's `package.json` to point to the local projects using a relative file scheme (i.e. `"roku-deploy": "file:../roku-deploy"`)
- - delete each dependency's folder in this project's node_modules folder to prevent conflicts.
- - run `npm install` in the root of this project.
-
- To undo these changes, run 
- ```bash
- npm run uninstall-local
- ```
-
+    This will do the following automatically for you:
+    - Clones any missing repositories at the same folder level as this project. ([roku-debug](https://github.com/RokuCommunity/roku-debug), [roku-deploy](https://github.com/RokuCommunity/roku-deploy), [BrighterScript](https://github.com/RokuCommunity/brighterscript), [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter), etc...).
+    - Installs each project's dependencies and transpiles the code
+    - in vscode-brightscript-language, replaces each package from npm with the local version 
+    - runs `npm install` in the root of this project to link them all together
+4. open the `workspace.code-workspace` workspace in vscode, located at the root of `vscode-brightscript-language` repository
+![image](https://user-images.githubusercontent.com/2544493/156795464-101b6eaf-9435-4ff1-98bc-d99dbe05b92e.png)
+5. 
 
 ### The manual way
 You only need to install local copies of projects you actually want to work on. You can leave the others as npm modules. This workflow will show the process of installing all projects.
