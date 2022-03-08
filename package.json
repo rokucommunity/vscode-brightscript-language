@@ -32,7 +32,7 @@
         "lint": "tslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "test": "nyc mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "ts-mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
+        "test:nocover": "mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -121,9 +121,8 @@
         "rollup-plugin-svelte": "^7.0.0",
         "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
-        "source-map-support": "^0.5.16",
-        "ts-mocha": "^7.0.0",
-        "ts-node": "^8.9.1",
+        "source-map-support": "^0.5.21",
+        "ts-node": "^10.7.0",
         "tslib": "^2.3.1",
         "tslint": "^5.11.0",
         "tslint-eslint-rules": "^5.4.0",
@@ -1913,6 +1912,17 @@
                 "src"
             ]
         }
+    },
+    "mocha": {
+        "spec": "src/**/*.spec.ts",
+        "require": [
+            "source-map-support/register",
+            "ts-node/register"
+        ],
+        "fullTrace": true,
+        "watchExtensions": [
+            "ts"
+        ]
     },
     "nyc": {
         "include": [
