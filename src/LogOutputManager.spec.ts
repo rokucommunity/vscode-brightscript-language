@@ -1,5 +1,6 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
+/* tslint:disable:no-string-literal */
 import { assert } from 'chai';
 import * as sinon from 'sinon';
 let Module = require('module');
