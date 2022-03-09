@@ -1,5 +1,6 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
+/* tslint:disable:no-string-literal */
 import { assert } from 'chai';
 import * as sinon from 'sinon';
 let Module = require('module');
@@ -468,7 +469,7 @@ describe('LogOutputManager ', () => {
                     logOutputManager.setIncludeFilter(params.includeFilter);
                     logOutputManager.setExcludeFilter(params.excludeFilter);
                     logOutputManager.setLevelFilter(params.levelFilter);
-                    assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+                    assert.equal(logOutputManager['shouldLineBeShown'](logLine), params.expected);
                 });
         });
         describe('non-mustinclude items true scenarios', () => {
@@ -488,7 +489,7 @@ describe('LogOutputManager ', () => {
                     logOutputManager.setIncludeFilter(params.includeFilter);
                     logOutputManager.setExcludeFilter(params.excludeFilter);
                     logOutputManager.setLevelFilter(params.levelFilter);
-                    assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+                    assert.equal(logOutputManager['shouldLineBeShown'](logLine), params.expected);
                 });
         });
         describe('non-must include items false scenarios', () => {
@@ -518,7 +519,7 @@ describe('LogOutputManager ', () => {
                     logOutputManager.setIncludeFilter(params.includeFilter);
                     logOutputManager.setExcludeFilter(params.excludeFilter);
                     logOutputManager.setLevelFilter(params.levelFilter);
-                    assert.equal(logOutputManager.matchesFilter(logLine), params.expected);
+                    assert.equal(logOutputManager['shouldLineBeShown'](logLine), params.expected);
                 });
         });
     });
