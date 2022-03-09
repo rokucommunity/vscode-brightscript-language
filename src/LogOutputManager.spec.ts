@@ -1,8 +1,9 @@
 /* tslint:disable:no-unused-expression */
 /* tslint:disable:no-var-requires */
 /* tslint:disable:no-string-literal */
-import { assert } from 'chai';
-import * as sinon from 'sinon';
+import { assert, expect } from 'chai';
+import { createSandbox } from 'sinon';
+const sinon = createSandbox();
 let Module = require('module');
 
 import { vscode } from './mockVscode.spec';
@@ -35,6 +36,7 @@ describe('LogOutputManager ', () => {
     let declarationProviderMock;
 
     beforeEach(() => {
+        sinon.restore();
         const outputChannel = new vscode.OutputChannel();
         const debugCollection = new vscode.DebugCollection();
         const logDocumentLinkProvider = new LogDocumentLinkProvider();
@@ -51,10 +53,7 @@ describe('LogOutputManager ', () => {
     });
 
     afterEach(() => {
-        outputChannelMock.restore();
-        languagesMock.restore();
-        collectionMock.restore();
-        logOutputManagerMock.restore();
+        sinon.restore();
     });
 
     it('tests onDidStartDebugSession clear flag', () => {
@@ -231,23 +230,18 @@ describe('LogOutputManager ', () => {
         });
     });
 
-    describe('tests getFilename', () => {
-        describe('mustInclude items', () => {
-            let params = [
-                { text: 'pkg:/file.xml', expected: 'file' },
-                { text: 'pkg:/path/file.xml', expected: 'file' },
-                { text: 'pkg:/path/path2/file.xml', expected: 'file' },
-                { text: 'pkg:/file.brs', expected: 'file' },
-                { text: 'pkg:/path/file.brs', expected: 'file' },
-                { text: 'pkg:/path/path2/file.brs', expected: 'file' },
-                { text: 'path/file.brs', expected: 'file' },
-                { text: 'path/path2/file.brs', expected: 'file' },
-                { text: 'file.brs', expected: 'file' },
-                { text: 'pkg:/file.other', expected: 'file.other' },
-            ];
-            itParam('lf ${value.text} if {$value.expected}', params, (param) => {
-                assert.equal(logOutputManager.getFilename(param.text), param.expected);
-            });
+    describe('getFilename', () => {
+        it('works', () => {
+            expect(logOutputManager.getFilename('pkg:/file.xml')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/path/file.xml')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/path/path2/file.xml')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/path/file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/path/path2/file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('path/file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('path/path2/file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('file.brs')).to.eql('file');
+            expect(logOutputManager.getFilename('pkg:/file.other')).to.eql('file.other');
         });
     });
 
@@ -279,7 +273,7 @@ describe('LogOutputManager ', () => {
                 { configSetting: 'Filename', text: 'pkg:/path/file.brs(20)' },
                 { configSetting: 'Filename', text: 'pkg:/path/path2/file.brs(20)' },
             ];
-            itParam('lf ${value.configSetting} if {$value.text} ', params, (param) => {
+            itParam('lf ${value.configSetting} if ${value.text} ', params, (param) => {
                 logOutputManager.hyperlinkFormat = param.configSetting;
                 declarationProviderMock.expects('getFunctionBeforeLine').returns({ name: 'methodName' });
                 logDocumentLinkProviderMock.expects('convertPkgPathToFsPath').returns({ name: 'filesystem/file.brs' });
