@@ -239,7 +239,7 @@ export class LogOutputManager {
             if (line) {
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
-                if (this.shouldKeepLine(logLine)) {
+                if (this.shouldLineBeShown(logLine)) {
                     this.allLogLines.push(logLine);
                     this.addLogLineToOutput(logLine);
                     this.writeLogLineToLogfile(logLine.text);
@@ -256,7 +256,7 @@ export class LogOutputManager {
 
     public addLogLineToOutput(logLine: LogLine) {
         const logLineNumber = this.displayedLogLines.length;
-        if (this.shouldKeepLine(logLine)) {
+        if (this.shouldLineBeShown(logLine)) {
             this.displayedLogLines.push(logLine);
             let match = this.pkgRegex.exec(logLine.text);
             if (match) {
@@ -327,24 +327,25 @@ export class LogOutputManager {
         return method ? method.name : null;
     }
 
-    public shouldKeepLine(logLine: LogLine): boolean {
-
-        return (
-            logLine.isMustInclude ||
-            (
-                (
-                    (
-                        !this.logLevelRegex || this.logLevelRegex.test(logLine.text)
-                    )
-                ) &&
-                (
-                    !this.includeRegex || this.includeRegex.test(logLine.text)
-                )
-            )
-        ) &&
-            (
-                !this.excludeRegex || !this.excludeRegex.test(logLine.text)
-            );
+    private shouldLineBeShown(logLine: LogLine): boolean {
+        //filter excluded lines
+        if (this.excludeRegex?.test(logLine.text)) {
+            return false;
+        }
+        //once past the exclude filter, always keep "mustInclude" lines
+        if (logLine.isMustInclude) {
+            return true;
+        }
+        //throw out lines that don't match the logLevelRegex (if we have one)
+        if (this.logLevelRegex && !this.logLevelRegex.test(logLine.text)) {
+            return false;
+        }
+        //throw out lines that don't match the includeRegex (if we have one)
+        if (this.includeRegex && !this.includeRegex.test(logLine.text)) {
+            return false;
+        }
+        //all other log entries should be kept
+        return true;
     }
 
     public clearOutput(): any {
@@ -377,7 +378,7 @@ export class LogOutputManager {
 
         for (let i = 0; i < this.allLogLines.length - 1; i++) {
             let logLine = this.allLogLines[i];
-            if (this.shouldKeepLine(logLine)) {
+            if (this.shouldLineBeShown(logLine)) {
                 this.addLogLineToOutput(logLine);
             }
         }
