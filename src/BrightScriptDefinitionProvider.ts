@@ -1,4 +1,4 @@
-import {
+import type {
     CancellationToken,
     Definition,
     DefinitionProvider,
@@ -6,7 +6,7 @@ import {
     TextDocument
 } from 'vscode';
 
-import { DefinitionRepository } from './DefinitionRepository';
+import type { DefinitionRepository } from './DefinitionRepository';
 
 export default class BrightScriptDefinitionProvider implements DefinitionProvider {
 

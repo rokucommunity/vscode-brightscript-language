@@ -1,15 +1,15 @@
 import TelemetryReporter from '@vscode/extension-telemetry';
 import type { Disposable } from 'vscode';
-import { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
 export class TelemetryManager implements Disposable {
     public constructor(
         public options: {
-            extensionId: string,
-            extensionVersion: string,
-            applicationInsightsKey?: string
+            extensionId: string;
+            extensionVersion: string;
+            applicationInsightsKey?: string;
         }
     ) {
         this.reporter = new TelemetryReporter(this.options.extensionId, this.options.extensionVersion, this.options.applicationInsightsKey ?? APP_INSIGHTS_KEY);

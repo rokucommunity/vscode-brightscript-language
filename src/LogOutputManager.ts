@@ -1,13 +1,11 @@
 import * as vscode from 'vscode';
-
-import { DiagnosticCollection } from 'vscode';
-
-import { BrightScriptDebugCompileError } from 'roku-debug';
-import { DeclarationProvider } from './DeclarationProvider';
-import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+import type { DiagnosticCollection } from 'vscode';
+import type { BrightScriptDebugCompileError } from 'roku-debug';
+import type { DeclarationProvider } from './DeclarationProvider';
+import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
-import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class LogLine {
     constructor(
@@ -46,8 +44,8 @@ export class LogOutputManager {
          *  - at line LINE of file pkg:/path/file.brs - this case can arise when the device reports various scenegraph errors such as fields not present, or texture size issues, etc
          */
         this.pkgRegex = /(?:\s*at line (\d*) of file )*(?:(pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))*/;
-        this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
-        this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.debugStartRegex = /BrightScript Micro Debugger\./ig;
+        this.debugEndRegex = /Brightscript Debugger>/ig;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -96,7 +94,7 @@ export class LogOutputManager {
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
     private pkgRegex: RegExp;
-    private isNextBreakpointSkipped: boolean = false;
+    private isNextBreakpointSkipped = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
     public launchConfig: BrightScriptLaunchConfiguration;
@@ -131,7 +129,7 @@ export class LogOutputManager {
         this.launchConfig = launchConfig;
     }
 
-    public onDidReceiveDebugSessionCustomEvent(e: { event: string, body?: any }) {
+    public async onDidReceiveDebugSessionCustomEvent(e: { event: string; body?: any }) {
         if (e.event === 'BSRendezvousEvent' || e.event === 'BSChanperfEvent') {
             // No need to handle rendezvous type events
             return;
@@ -144,7 +142,7 @@ export class LogOutputManager {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
-                vscode.commands.executeCommand('workbench.action.focusPanel');
+                await vscode.commands.executeCommand('workbench.action.focusPanel');
                 this.outputChannel.show();
             }
             if (this.isClearingOutputOnLaunch) {
@@ -152,18 +150,18 @@ export class LogOutputManager {
             }
         } else if (e.body && Array.isArray(e.body)) {
             let errorsByPath = {};
-            e.body.forEach((compileError: { path?: string }) => {
+            for (const compileError of e.body) {
                 if (compileError.path) {
                     if (!errorsByPath[compileError.path]) {
                         errorsByPath[compileError.path] = [];
                     }
                     errorsByPath[compileError.path].push(compileError);
                 }
-            });
+            }
             for (const path in errorsByPath) {
                 if (errorsByPath.hasOwnProperty(path)) {
                     const errors = errorsByPath[path];
-                    this.addDiagnosticForError(path, errors);
+                    await this.addDiagnosticForError(path, errors);
                 }
             }
         }
@@ -185,45 +183,43 @@ export class LogOutputManager {
         // const currentDocumentUri = document.uri;
         // console.log("currentDocumentUri " + currentDocumentUri);
         if (documentUri !== undefined) {
-            {
-                let diagnostics: vscode.Diagnostic[] = [];
-                compileErrors.forEach((compileError) => {
+            let diagnostics: vscode.Diagnostic[] = [];
+            for (const compileError of compileErrors) {
 
-                    const path: string = compileError.path;
-                    const message: string = compileError.message;
-                    const source: string = compileError.errorText;
-                    const lineNumber: number = compileError.lineNumber;
-                    const charStart: number = compileError.charStart;
-                    const charEnd: number = compileError.charEnd;
+                const path: string = compileError.path;
+                const message: string = compileError.message;
+                const source: string = compileError.errorText;
+                const lineNumber: number = compileError.lineNumber;
+                const charStart: number = compileError.charStart;
+                const charEnd: number = compileError.charEnd;
 
-                    diagnostics.push({
-                        code: '',
-                        message: message,
-                        range: new vscode.Range(new vscode.Position(lineNumber, charStart), new vscode.Position(lineNumber, charEnd)),
-                        severity: vscode.DiagnosticSeverity.Error,
-                        source: source
-                    });
+                diagnostics.push({
+                    code: '',
+                    message: message,
+                    range: new vscode.Range(new vscode.Position(lineNumber, charStart), new vscode.Position(lineNumber, charEnd)),
+                    severity: vscode.DiagnosticSeverity.Error,
+                    source: source
                 });
-                this.collection.set(documentUri, diagnostics);
             }
+            this.collection.set(documentUri, diagnostics);
         }
     }
 
     /**
      * Log output methods
      */
-    public appendLine(lineText: string, mustInclude: boolean = false): void {
-        let lines = lineText.split('\n');
-        lines.forEach((line) => {
+    public appendLine(lineText: string, mustInclude = false): void {
+        let lines = lineText.split(/\r?\n/g);
+        for (let line of lines) {
             if (line !== '') {
                 if (!this.includeStackTraces) {
                     // filter out debugger noise
-                    if (line.match(this.debugStartRegex)) {
+                    if (this.debugStartRegex.exec(line)) {
                         console.log('start MicroDebugger block');
                         this.isInMicroDebugger = true;
                         this.isNextBreakpointSkipped = false;
                         line = 'Pausing for a breakpoint...';
-                    } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                    } else if (this.isInMicroDebugger && (this.debugEndRegex.exec(line))) {
                         console.log('ended MicroDebugger block');
                         this.isInMicroDebugger = false;
                         if (this.isNextBreakpointSkipped) {
@@ -249,7 +245,7 @@ export class LogOutputManager {
                     this.writeLogLineToLogfile(logLine.text);
                 }
             }
-        });
+        }
     }
 
     public writeLogLineToLogfile(text: string) {

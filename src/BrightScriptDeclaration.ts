@@ -1,10 +1,12 @@
-import {
-    Location,
+import type {
     Position,
     Range,
-    SymbolKind,
-    TextDocument,
     Uri
+} from 'vscode';
+import {
+    Location,
+    SymbolKind,
+    TextDocument
 } from 'vscode';
 import * as vscode from 'vscode';
 
@@ -24,14 +26,10 @@ export class BrightScriptDeclaration {
         return new BrightScriptDeclaration(documentName, vscode.SymbolKind.File, undefined, [], new vscode.Range(0, 0, 0, 0), new vscode.Range(0, 0, 0, 0), uri);
     }
 
-    get isGlobal(): boolean {
-        return true;
-        // TODO add scope
-        // return this.container === undefined;
-    }
+    readonly isGlobal = true;
 
     get containerName(): string | undefined {
-        return this.container && this.container.name;
+        return this.container?.name;
     }
 
     public visible(position: Position): boolean {

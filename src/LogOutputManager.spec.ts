@@ -1,8 +1,6 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
-/* tslint:disable:no-string-literal */
 import { assert, expect } from 'chai';
-import Sinon, { createSandbox } from 'sinon';
+import type Sinon from 'sinon';
+import { createSandbox } from 'sinon';
 const sinon = createSandbox();
 let Module = require('module');
 
@@ -71,50 +69,50 @@ describe('LogOutputManager ', () => {
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - clear flag', () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - clear flag', async () => {
         collectionMock.expects('clear').once();
         logOutputManager.isClearingOutputOnLaunch = true;
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - no clear flag', () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - no clear flag', async () => {
         collectionMock.expects('clear').never();
         logOutputManager.isClearingOutputOnLaunch = false;
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLogOutputEvent', () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - BSLogOutputEvent', async () => {
         outputChannelMock.expects('appendLine').once();
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent', body: 'test1' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent', body: 'test1' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - error - empty', () => {
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: [] });
+    it('tests onDidReceiveDebugSessionCustomEvent - error - empty', async () => {
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: [] });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - error - undefined', () => {
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '' });
+    it('tests onDidReceiveDebugSessionCustomEvent - error - undefined', async () => {
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - errors', () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - errors', async () => {
         logOutputManagerMock.expects('addDiagnosticForError').once();
         let compileErrors = [{ path: 'path1', message: 'message1' }];
-        logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: compileErrors });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: compileErrors });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();

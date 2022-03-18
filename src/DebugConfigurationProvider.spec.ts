@@ -1,10 +1,9 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
+/* eslint-disable no-template-curly-in-string */
 import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
-import { WorkspaceFolder } from 'vscode';
+import type { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
 
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
@@ -36,7 +35,9 @@ let configProvider: BrightScriptDebugConfigurationProvider;
 beforeEach(() => {
     let context = {
         workspaceState: {
-            update: () => { return Promise.resolve(); }
+            update: () => {
+                return Promise.resolve();
+            }
         }
     };
 
@@ -80,7 +81,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(s`${filePath}`).to.equal(s`/some/project/.env`);
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns({});
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -99,7 +100,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('USERNAME=bob'));
             });
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns({});
             let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -113,7 +114,7 @@ describe('BrightScriptConfigurationProvider', () => {
         it('throws on missing .env file', async () => {
             sinon.restore();
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns({});
 
             try {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
@@ -129,7 +130,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBrsConfig').returns({});
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');
@@ -176,55 +177,60 @@ describe('BrightScriptConfigurationProvider', () => {
     describe('processLogfilePath', () => {
         let tmpPath = `${rootDir}/.tmp`;
         beforeEach(() => {
-            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+            try {
+                fsExtra.emptyDirSync(tmpPath);
+            } catch (e) { }
         });
         afterEach(() => {
-            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+            try {
+                fsExtra.emptyDirSync(tmpPath);
+            } catch (e) { }
         });
         let workspaceFolder = <any>{
             uri: { fsPath: tmpPath }
         };
-        it('does nothing when prop is falsey', () => {
-            expect(configProvider.processLogfilePath(undefined, undefined)).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{}).logfilePath).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: null }).logfilePath).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: '' }).logfilePath).not.to.be.ok;
+        it('does nothing when prop is falsey', async () => {
+            expect(await configProvider.processLogfilePath(undefined, undefined)).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{})).logfilePath).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: null })).logfilePath).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: '' })).logfilePath).not.to.be.ok;
             //it trims all whitespace too
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: ' \n\t' }).logfilePath.trim()).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: ' \n\t' })).logfilePath.trim()).not.to.be.ok;
         });
 
-        it('replaces workspaceFolder', () => {
-            expect(configProvider.processLogfilePath(workspaceFolder, <any>{
+        it('replaces workspaceFolder', async () => {
+            const value = await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: '${workspaceFolder}/logfile.log'
-            }).logfilePath).to.equal(s`${tmpPath}/logfile.log`);
+            });
+            expect(value.logfilePath).to.equal(s`${tmpPath}/logfile.log`);
         });
 
-        it('should create the directory path and file', () => {
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+        it('should create the directory path and file', async () => {
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/a/b/c/brs.log`
             });
             expect(fsExtra.pathExistsSync(s`${tmpPath}/a/b/c/brs.log`)).to.be.true;
         });
 
-        it('should not delete the files in the log folder if it already exists', () => {
+        it('should not delete the files in the log folder if it already exists', async () => {
             fsExtra.writeFileSync(`${tmpPath}/test.txt`, '');
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/brs.log`
             });
             expect(fsExtra.pathExistsSync(s`${tmpPath}/test.txt`)).to.be.true;
         });
 
-        it('should not re-create the logfile if it already exists', () => {
+        it('should not re-create the logfile if it already exists', async () => {
             fsExtra.writeFileSync(`${tmpPath}/brs.log`, 'test contents');
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/brs.log`
             });
             expect(fsExtra.readFileSync(`${tmpPath}/brs.log`).toString()).equals('test contents');
         });
 
-        it('throws when creating the directory path and file when invalid characters are encountered', () => {
+        it('throws when creating the directory path and file when invalid characters are encountered', async () => {
             try {
-                configProvider.processLogfilePath(workspaceFolder, <any>{
+                await configProvider.processLogfilePath(workspaceFolder, <any>{
                     logfilePath: s`${tmpPath}/ZZZ/brs.log`.replace('ZZZ', '<>')
                 });
                 expect(true, 'Should have thrown').to.be.false;

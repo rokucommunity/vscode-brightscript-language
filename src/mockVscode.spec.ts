@@ -36,7 +36,7 @@ export let vscode = {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
-        onDidReceiveDebugSessionCustomEvent: () => { },
+        onDidReceiveDebugSessionCustomEvent: () => { }
     },
     languages: {
         registerDefinitionProvider: () => { },
@@ -64,7 +64,9 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => { return ''; },
+        asAbsolutePath: () => {
+            return '';
+        },
         extensionUri: undefined as Uri,
         extensionPath: '',
         storageUri: undefined as Uri,
@@ -159,18 +161,10 @@ export let vscode = {
         }
     },
     DeclarationProvider: class {
-        public onDidChange = () => {
-
-        }
-        public onDidDelete = () => {
-
-        }
-        public onDidReset = () => {
-
-        }
-        public sync = () => {
-
-        }
+        public onDidChange = () => { };
+        public onDidDelete = () => { };
+        public onDidReset = () => { };
+        public sync = () => { };
     },
     OutputChannel: class {
         public clear() { }
@@ -190,12 +184,12 @@ export let vscode = {
         private character: number;
     },
     ParameterInformation: class {
-        constructor(label: string, documentation?: string | any) {
+        constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
         private label: string;
-        private documentation: string | any | undefined;
+        private documentation: any;
     },
     SignatureHelp: class {
         constructor() {
@@ -206,12 +200,12 @@ export let vscode = {
         private activeSignature: number;
     },
     SignatureInformation: class {
-        constructor(label: string, documentation?: string | any) {
+        constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
         private label: string;
-        private documentation: string | any | undefined;
+        private documentation: any;
     },
     Range: class {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
@@ -261,7 +255,9 @@ export let vscode = {
 
         private text: any;
         private fileName: string;
-        public getText() { return this.text; }
+        public getText() {
+            return this.text;
+        }
         public getWordRangeAtPosition() {
             //returns a dummy range (because honestly we should be mocking this in a real test...)
             return undefined;
@@ -303,7 +299,7 @@ export let vscode = {
     Uri: {
         file: (src: string) => {
             return {
-                with: ({ }) => {
+                with: () => {
                     return {};
                 }
             };
@@ -321,7 +317,9 @@ export let vscode = {
 export let vscodeLanguageClient = {
     LanguageClient: class {
         public start() { }
-        public onReady() { return Promise.resolve<any>(null); }
+        public onReady() {
+            return Promise.resolve<any>(null);
+        }
         public onNotification() { }
     },
     TransportKind: {

@@ -1,15 +1,17 @@
-import {
+import type {
     CancellationToken,
+    SignatureHelpProvider,
+    TextDocument
+} from 'vscode';
+import {
     ParameterInformation,
     Position,
     Range,
     SignatureHelp,
-    SignatureHelpProvider,
-    SignatureInformation,
-    TextDocument
+    SignatureInformation
 } from 'vscode';
 
-import { DefinitionRepository } from './DefinitionRepository';
+import type { DefinitionRepository } from './DefinitionRepository';
 
 export default class BrightScriptSignatureHelpProvider implements SignatureHelpProvider {
 
@@ -19,9 +21,8 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
 
     public definitionRepo: DefinitionRepository;
 
-    public async provideSignatureHelp(document: TextDocument, position: Position, token: CancellationToken): Promise<SignatureHelp> {
-        //TODO - use AST/Parse tree e.g. bright https://github.com/RokuRoad/bright
-        //get the position of a symbol to our left
+    public provideSignatureHelp(document: TextDocument, position: Position, token: CancellationToken): SignatureHelp {
+        //TODO - use AST/Parse tree to get the position of a symbol to our left
         //1. get first bracket to our left, - then get the symbol before that..
         //really crude crappy parser..
         //TODO this is whack - it's not even LTR ugh..
@@ -77,7 +78,7 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
 
             let params: ParameterInformation[] = [];
             let paramNames: string[] = [];
-            definition.value.params.forEach((param) => {
+            for (const param of definition.value.params) {
                 let paramName: string = param.trim();
                 let infoText = '';
                 let infoIndex = param.indexOf('=');
@@ -94,7 +95,7 @@ export default class BrightScriptSignatureHelpProvider implements SignatureHelpP
                 }
                 paramNames.push(paramName);
                 params.push(new ParameterInformation(paramName, infoText));
-            });
+            }
             let signatureInfo = new SignatureInformation(definition.value.name + '(' + paramNames.join(', ') + ')');
             signatureInfo.parameters = params;
 

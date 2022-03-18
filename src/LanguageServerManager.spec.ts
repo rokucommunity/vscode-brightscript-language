@@ -1,14 +1,10 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
-/* tslint:disable:no-string-literal */
 import { createSandbox } from 'sinon';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { LanguageServerManager } from './LanguageServerManager';
 import { expect } from 'chai';
 import { DefinitionRepository } from './DefinitionRepository';
 import { DeclarationProvider } from './DeclarationProvider';
-import { ExtensionContext } from 'vscode';
-import Uri from 'vscode-uri';
+import type { ExtensionContext } from 'vscode';
 import * as path from 'path';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
@@ -60,28 +56,28 @@ describe('extension', () => {
         fsExtra.removeSync(tempDir);
     });
 
-    it('registers referenceProvider', async () => {
+    it('registers referenceProvider', () => {
         let spy = sinon.spy(vscode.languages, 'registerReferenceProvider');
         expect(spy.calledOnce).to.be.false;
         languageServerManager['enableSimpleProviders']();
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers signatureHelpProvider', async () => {
+    it('registers signatureHelpProvider', () => {
         let spy = sinon.spy(vscode.languages, 'registerSignatureHelpProvider');
         expect(spy.calledOnce).to.be.false;
         languageServerManager['enableSimpleProviders']();
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers workspace symbol provider', async () => {
+    it('registers workspace symbol provider', () => {
         let spy = sinon.spy(vscode.languages, 'registerWorkspaceSymbolProvider');
         expect(spy.calledOnce).to.be.false;
         languageServerManager['enableSimpleProviders']();
         expect(spy.calledOnce).to.be.true;
     });
 
-    it('registers document symbol provider', async () => {
+    it('registers document symbol provider', () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentSymbolProvider');
         expect(spy.calledOnce).to.be.false;
         languageServerManager['enableSimpleProviders']();
@@ -91,7 +87,7 @@ describe('extension', () => {
     describe('enableLanguageServer', () => {
         it('properly handles runtime exception', async () => {
             languageServerManager['client'] = {} as any;
-            sinon.stub(languageServerManager as any, 'ready').callsFake(async () => {
+            sinon.stub(languageServerManager as any, 'ready').callsFake(() => {
                 throw new Error('failed for test');
             });
             let error: Error;
@@ -133,7 +129,7 @@ describe('extension', () => {
         });
 
         it('returns embedded version when in a workspace and no settings exist', async () => {
-            vscode.workspace.workspaceFile = Uri.file(s`${tempDir}/workspace.code-workspace`);
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/workspace.code-workspace`);
             fsExtra.outputFileSync(vscode.workspace.workspaceFile.fsPath, '');
 
             expect(
@@ -154,7 +150,7 @@ describe('extension', () => {
         });
 
         it('returns embedded version when in a workspace and "embedded" value exists', async () => {
-            vscode.workspace.workspaceFile = Uri.file(s`${tempDir}/workspace.code-workspace`);
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/workspace.code-workspace`);
             setConfig(vscode.workspace.workspaceFile.fsPath, {
                 'brightscript.bsdk': 'embedded'
             });
@@ -180,7 +176,7 @@ describe('extension', () => {
         });
 
         it('returns value from worksapce when specified', async () => {
-            vscode.workspace.workspaceFile = Uri.file(s`${tempDir}/workspace.code-workspace`);
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/workspace.code-workspace`);
 
             setConfig(vscode.workspace.workspaceFile.fsPath, {
                 'brightscript.bsdk': 'relative/path'
@@ -215,7 +211,7 @@ describe('extension', () => {
         });
 
         it('returns folder version when in a workspace but no workspace version exists', async () => {
-            vscode.workspace.workspaceFile = Uri.file(s`${tempDir}/workspace.code-workspace`);
+            vscode.workspace.workspaceFile = URI.file(s`${tempDir}/workspace.code-workspace`);
 
             vscode.workspace.workspaceFolders.push({
                 index: 0,

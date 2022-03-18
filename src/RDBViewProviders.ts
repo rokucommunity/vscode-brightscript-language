@@ -33,11 +33,11 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'writeRegistry',
         'storeNodeReferences',
         'getNodeReferences',
-        'deleteNodeReferences',
+        'deleteNodeReferences'
     ];
 
     public dispose() {
-        this.rdbWatcher?.close();
+        void this.rdbWatcher?.close();
     }
 
     public setOnDeviceComponent(odc: rta.OnDeviceComponent) {
@@ -45,9 +45,9 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         this.onOnDeviceComponentReady();
     }
 
-    protected onOnDeviceComponentReady() {}
+    protected onOnDeviceComponentReady() { }
 
-    protected handleViewMessage(message) {}
+    protected handleViewMessage(message) { }
 
     /** Adds ability to add additional script contents to the main webview html */
     protected additionalScriptContents() {
@@ -89,7 +89,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
     public resolveWebviewView(
         view: vscode.WebviewView,
         context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken,
+        _token: vscode.CancellationToken
     ) {
         this.view = view;
         const webview = view.webview;
@@ -99,7 +99,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                 const context = message.context;
                 if (this.odcCommands.includes(message.command)) {
                     const response = await this.odc[message.command](context.args, context.options);
-                    webview.postMessage({
+                    await webview.postMessage({
                         ...message,
                         response: response
                     });
@@ -107,7 +107,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     this.handleViewMessage(message);
                 }
             } catch (e) {
-                webview.postMessage({
+                await webview.postMessage({
                     ...message,
                     error: e.message
                 });
@@ -131,11 +131,11 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
 export class RDBRegistryViewProvider extends RDBBaseViewProvider {
     protected viewName = 'RegistryView';
 
-    protected handleViewMessage(message) {
+    protected async handleViewMessage(message) {
         switch (message.command) {
             case 'exportRegistry':
-                vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(uri => {
-                    vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
+                await vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(async (uri) => {
+                    await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(message.content), 'utf8'));
                 });
                 return;
             case 'importRegistry':
@@ -145,16 +145,15 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
                     canSelectFiles: true,
                     canSelectFolders: false
                 };
-                vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
-                return;
+                await vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
         }
     }
 
     protected async importContentsToRegistry(uri) {
-        if (uri && uri[0]) {
+        if (uri?.[0]) {
             const input = await vscode.workspace.fs.readFile(uri[0]);
             const data = Buffer.from(input).toString('utf8');
-            this.view?.webview.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
+            await this.view?.webview.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
         }
     }
 }
