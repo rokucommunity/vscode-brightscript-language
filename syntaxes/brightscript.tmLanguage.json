@@ -220,6 +220,7 @@
             }
         },
         "class_methods": {
+            "name": "meta.method.declaration.brs",
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
@@ -234,7 +235,7 @@
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[ \\t]+)(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
         "class_fields": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
@@ -441,19 +442,19 @@
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[ \\t]+)(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
         "end_function": {
-            "name": "keyword.declaration.function",
+            "name": "keyword.declaration.function.brs",
             "match": "(?i)[ \\t]*end\\s*(sub|function)"
         },
         "inline_function_declaration": {
             "captures": {
                 "1": {
-                    "name": "keyword.declaration.function"
+                    "name": "keyword.declaration.function.brs"
                 },
                 "2": {
-                    "name": "keyword.declaration.function"
+                    "name": "keyword.declaration.function.brs"
                 }
             },
             "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("

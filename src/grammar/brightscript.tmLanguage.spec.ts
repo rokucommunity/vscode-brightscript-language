@@ -15,6 +15,20 @@ describe('brightscript.tmlanguage.json', () => {
             '        ^^^^ constant.language.boolean.true.brs
         `);
     });
+
+    it('handles `as Function` parameters properly', async () => {
+        await testGrammar(`
+             function getStyle(builderFunc as Function, processorFunc as Function) as object
+            '^^^^^^^^ keyword.declaration.function.brs
+            '         ^^^^^^^ entity.name.function.brs
+            '                              ^^ keyword.control.brs
+            '                                 ^^^^^^^^ storage.type.brs
+            '                                           ^^^^^^^^^^^^^ entity.name.variable.local.brs
+            '                                                            ^^^^^^^^ storage.type.brs
+            end function
+            '^^^^^^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
 });
 
 const registries = new Cache();
