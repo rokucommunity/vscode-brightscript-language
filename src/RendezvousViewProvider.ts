@@ -253,12 +253,10 @@ class RendezvousFileTreeItem extends vscode.TreeItem {
         super(key.split('/').pop(), collapsibleState);
     }
 
-    // @ts-expect-error 2611
     get tooltip(): string {
         return `${this.key}`;
     }
 
-    // @ts-expect-error 2611
     get description(): string {
         return `hitCount: ${this.details.hitCount - this.details.zeroCostHitCount} | totalTime: ${this.details.totalTime.toFixed(3)} s`;
     }
