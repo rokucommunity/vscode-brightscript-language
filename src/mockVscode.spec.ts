@@ -79,7 +79,7 @@ export let vscode = {
         logUri: undefined as Uri,
         logPath: '',
         extensionMode: 2
-    } as ExtensionContext,
+    } as unknown as ExtensionContext,
     workspace: {
         workspaceFolders: [] as WorkspaceFolder[],
         workspaceFile: undefined as Uri,
