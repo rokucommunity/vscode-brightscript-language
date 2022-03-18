@@ -108,6 +108,7 @@ module.exports = {
         'github/array-foreach': 'error',
         'guard-for-in': 'off',
         'id-length': 'off',
+        'no-multi-assign': ['error', { 'ignoreNonDeclaration': true }],
         'indent': 'off',
         'init-declarations': 'off',
         'line-comment-position': 'off',
@@ -145,11 +146,13 @@ module.exports = {
         'no-prototype-builtins': 'off',
         'no-shadow': 'off',
         'no-sync': 'off',
+        'no-template-curly-in-string': 'off',
         'no-ternary': 'off',
         'no-undefined': 'off',
         'no-underscore-dangle': 'off',
         'no-unneeded-ternary': 'off',
         'no-useless-escape': 'off',
+        'no-void': 'off',
         'no-warning-comments': 'off',
         'object-property-newline': 'off',
         'object-shorthand': [
@@ -189,6 +192,7 @@ module.exports = {
     {
         files: ['*.spec.ts'],
         rules: {
+            '@typescript-eslint/no-extraneous-class': 'off',
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-call': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -197,8 +201,13 @@ module.exports = {
             '@typescript-eslint/no-unused-vars': 'off',
             '@typescript-eslint/no-unused-vars-experimental': 'off',
             '@typescript-eslint/dot-notation': 'off',
+            '@typescript-eslint/no-require-imports': 'off',
             '@typescript-eslint/no-unsafe-argument': 'off',
+            '@typescript-eslint/no-var-requires': 'off',
+            'prefer-rest-params': 'off',
             'github/array-foreach': 'off',
+            'func-names': 'off',
+            'func-name-matching': 'off',
             'new-cap': 'off',
             'no-shadow': 'off',
             'no-void': 'off'

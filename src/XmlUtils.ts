@@ -1,15 +1,17 @@
-import {
+import type {
     CancellationToken,
-    Position,
-    Range,
     TextDocument
+} from 'vscode';
+import {
+    Position,
+    Range
 } from 'vscode';
 
 export enum XmlWordType {
     Illegal = -1,
     Tag = 0,
     AttributeValue = 1,
-    Attribute = 2,
+    Attribute = 2
 }
 export class XmlUtils {
     public getXmlWordType(document: TextDocument, position: Position, token: CancellationToken): XmlWordType {
@@ -39,6 +41,8 @@ export class XmlUtils {
             case XmlWordType.AttributeValue:
                 return this.getTextWithOffsets(document, position, /[^\s\"]+/);
                 break;
+            default:
+                break;
         }
     }
 
@@ -60,7 +64,7 @@ export class XmlUtils {
         }
         // TODO: This detection is very limited, only if the char before the word is ' or "
         let rangeBefore = new Range(wordStart.line, wordStart.character - 1, wordStart.line, wordStart.character);
-        if (document.getText(rangeBefore).match(/'|"/)) {
+        if (/'|"/.exec(document.getText(rangeBefore))) {
             return true;
         }
         return false;

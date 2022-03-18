@@ -172,7 +172,7 @@ class Util {
     /**
      * Get a debounce function that runs a separate debounce for every unique key provided
      */
-    public keyedDebounce(key: string, fn: () => void, waitMilliseconds: number) {
+    public keyedDebounce<T>(key: string, fn: () => T, waitMilliseconds: number) {
         if (!this.debounceByKey[key]) {
             this.debounceByKey[key] = debounce(fn, waitMilliseconds);
         }

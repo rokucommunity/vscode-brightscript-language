@@ -1,5 +1,3 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 let Module = require('module');
@@ -117,12 +115,12 @@ describe('extension', () => {
         });
 
         describe('setupODC', () => {
-            it('sets up the underlying RokuDevice instance', async () => {
+            it('sets up the underlying RokuDevice instance', () => {
                 const odc = extensionInstance.setupODC(config);
                 expect(odc.device).to.be.instanceOf(rta.RokuDevice);
             });
 
-            it('has the correct config values passed from the extension', async () => {
+            it('has the correct config values passed from the extension', () => {
                 const odc = extensionInstance.setupODC(config);
                 const deviceConfig = odc.device.getCurrentDeviceConfig();
                 expect(deviceConfig.host).to.equal(config.host);
@@ -131,21 +129,21 @@ describe('extension', () => {
         });
 
         describe('setupRDB', () => {
-            it('calls setupODC to create the odc instance if enabled', async () => {
+            it('calls setupODC to create the odc instance if enabled', () => {
                 config.injectRdbOnDeviceComponent = true;
                 const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
                 extensionInstance.setupRDB(context, config);
                 expect(spy.calledOnce).to.be.true;
             });
 
-            it('does not call setupODC if not enabled', async () => {
+            it('does not call setupODC if not enabled', () => {
                 config.injectRdbOnDeviceComponent = false;
                 const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
                 extensionInstance.setupRDB(context, config);
                 expect(spy.calledOnce).to.be.false;
             });
 
-            it('initializes RDB views and calls registerWebviewViewProvider for each', async () => {
+            it('initializes RDB views and calls registerWebviewViewProvider for each', () => {
                 config.injectRdbOnDeviceComponent = true;
                 extensionInstance.rdbViews = originalRdbViews;
                 sinon.stub(extensionInstance, 'setupODC').returns({});

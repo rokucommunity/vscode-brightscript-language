@@ -1,6 +1,3 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
-
 import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 
@@ -31,9 +28,9 @@ beforeEach(() => {
             onDidReceiveMessage: (cb) => {
                 callback = cb;
             },
-            postMessage: (message) => {}
+            postMessage: (message) => { }
         },
-        show: () => {}
+        show: () => { }
     };
 });
 afterEach(() => {
@@ -44,7 +41,7 @@ describe('RDBRegistryViewProvider', () => {
     describe('handleViewMessage', () => {
         const provider = new RDBRegistryViewProvider(vscode.context);
 
-        it('Shows the save prompt for exportRegistry command', async () => {
+        it('Shows the save prompt for exportRegistry command', () => {
             const spy = sinon.spy(vscode.window, 'showSaveDialog');
             (provider as any).handleViewMessage({
                 command: 'exportRegistry',
@@ -53,7 +50,7 @@ describe('RDBRegistryViewProvider', () => {
             expect(spy.calledOnce).to.be.true;
         });
 
-        it('Shows the open dialog for importRegistry command', async () => {
+        it('Shows the open dialog for importRegistry command', () => {
             const spy = sinon.spy(vscode.window, 'showOpenDialog');
             (provider as any).handleViewMessage({
                 command: 'importRegistry',
@@ -68,14 +65,14 @@ describe('RDBCommandsViewProvider', () => {
     describe('getHtmlForWebview', () => {
         const provider = new RDBCommandsViewProvider(vscode.context) as any;
 
-        it('includes the contents of additionalScriptContents', async () => {
+        it('includes the contents of additionalScriptContents', () => {
             const html = provider.getHtmlForWebview();
             expect(html).to.contain(provider.additionalScriptContents());
         });
     });
 
     describe('resolveWebviewView', () => {
-        it('sets up observer to handle messages from the ui', async () => {
+        it('sets up observer to handle messages from the ui', () => {
             const provider = new RDBCommandsViewProvider(vscode.context) as any;
             provider.resolveWebviewView(view, {}, {});
 

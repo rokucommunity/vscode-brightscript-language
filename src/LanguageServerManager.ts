@@ -1,26 +1,27 @@
-import {
-    LanguageClient,
+import type {
     LanguageClientOptions,
     ServerOptions,
-    TransportKind,
     ExecuteCommandParams
+} from 'vscode-languageclient/node';
+import {
+    LanguageClient,
+    TransportKind
 } from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
 import * as path from 'path';
+import type { Disposable } from 'vscode';
 import {
-    Disposable,
     window,
-    workspace,
+    workspace
 } from 'vscode';
-import { CustomCommands } from 'brighterscript';
-import { CodeWithSourceMap } from 'source-map';
-import { Deferred } from 'brighterscript';
+import { CustomCommands, Deferred } from 'brighterscript';
+import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
 import { BrightScriptWorkspaceSymbolProvider, SymbolInformationRepository } from './SymbolInformationRepository';
 import { BrightScriptDocumentSymbolProvider } from './BrightScriptDocumentSymbolProvider';
 import { BrightScriptReferenceProvider } from './BrightScriptReferenceProvider';
 import BrightScriptSignatureHelpProvider from './BrightScriptSignatureHelpProvider';
-import { DefinitionRepository } from './DefinitionRepository';
+import type { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
@@ -30,6 +31,7 @@ export class LanguageServerManager {
         this.deferred = new Deferred();
         this.embeddedBscInfo = {
             path: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
+            // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
             version: require('brighterscript/package.json').version
         };
         //default to the embedded bsc version
@@ -54,8 +56,8 @@ export class LanguageServerManager {
         this.definitionRepository = definitionRepository;
 
         //dynamically enable or disable the language server based on user settings
-        vscode.workspace.onDidChangeConfiguration((configuration) => {
-            this.syncVersionAndTryRun();
+        vscode.workspace.onDidChangeConfiguration(async (configuration) => {
+            await this.syncVersionAndTryRun();
         });
         await this.syncVersionAndTryRun();
     }
@@ -92,7 +94,7 @@ export class LanguageServerManager {
 
             //if we already have a language server, nothing more needs to be done
             if (this.client) {
-                return this.ready();
+                return await this.ready();
             }
             this.refreshDeferred();
 
@@ -157,7 +159,7 @@ export class LanguageServerManager {
             await this.client.onReady();
 
             this.client.onNotification('critical-failure', (message) => {
-                window.showErrorMessage(message);
+                void window.showErrorMessage(message);
             });
 
             //update the statusbar with build statuses
@@ -175,13 +177,14 @@ export class LanguageServerManager {
             this.deferred.resolve(true);
         } catch (e) {
             console.error(e);
-            this.client?.stop?.();
+            void this.client?.stop?.();
             delete this.client;
 
             this.refreshDeferred();
 
             this.deferred.reject(e);
         }
+        return this.ready();
     }
 
     private updateStatusbar(tooltip: string, color?: string) {
@@ -234,7 +237,7 @@ export class LanguageServerManager {
                 vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(this.declarationProvider)),
                 vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(this.declarationProvider, symbolInformationRepository)),
                 vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider()),
-                vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(this.definitionRepository), '(', ','),
+                vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(this.definitionRepository), '(', ',')
             );
 
             this.context.subscriptions.push(...this.simpleSubscriptions);
@@ -258,8 +261,8 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        var settings = vscode.workspace.getConfiguration('brightscript');
-        var value = settings.enableLanguageServer === false ? false : true;
+        let settings = vscode.workspace.getConfiguration('brightscript');
+        let value = settings.enableLanguageServer === false ? false : true;
         return value;
     }
 
@@ -289,12 +292,13 @@ export class LanguageServerManager {
         try {
             this.selectedBscInfo = {
                 path: bsdkPath,
+                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
                 version: require(`${bsdkPath}/package.json`).version
             };
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup
-            vscode.window.showErrorMessage(`Can't find language sever at "${bsdkPath}". Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            await vscode.window.showErrorMessage(`Can't find language sever at "${bsdkPath}". Using embedded version v${this.embeddedBscInfo.version} instead.`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
@@ -339,7 +343,7 @@ export class LanguageServerManager {
             return values[0];
         } else {
             //there were multiple versions. make the user pick which to use
-            return await languageServerInfoCommand.selectBrighterScriptVersion();
+            return languageServerInfoCommand.selectBrighterScriptVersion();
         }
     }
 
