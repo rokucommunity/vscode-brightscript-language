@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.29.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.0...v2.29.1) - 2022-03-18
+### Changed
+ - updated to [roku-debug@0.10.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0101---2022-03-17)
+ - updated to [brighterscript@0.45.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0456---2022-03-17)
+ - updated to [brighterscript-formatter@1.6.10](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1610---2022-03-17)
+ - updated to [roku-deploy@3.5.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#354---2022-03-17)
+### Fixed
+ - speed issues when zipping project during launch ([roku-deploy#86](https://github.com/rokucommunity/roku-deploy/pull/86))
+
+
+
 ## [2.29.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.1...v2.29.0) - 2022-03-08
 ### Changed
  - updated to [brighterscript@0.45.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0454---2022-03-08)
