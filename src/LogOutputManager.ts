@@ -264,7 +264,14 @@ export class LogOutputManager {
                 const path = isFilePath ? match[3] : 'pkg:/' + match[3];
                 let lineNumber = match[1] ? Number(match[1]) : undefined;
                 if (!lineNumber) {
-                    lineNumber = isFilePath ? Number(match[7]) : Number(match[5]);
+                    if (isFilePath) {
+                        lineNumber = Number(match[7]);
+                        if (isNaN(lineNumber)) {
+                            lineNumber = Number(match[5]);
+                        }
+                    } else {
+                        lineNumber = Number(match[5]);
+                    }
                 }
 
                 const filename = this.getFilename(path);

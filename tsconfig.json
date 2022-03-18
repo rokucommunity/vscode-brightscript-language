@@ -15,5 +15,8 @@
         "noUnusedParameters": false,
         "allowSyntheticDefaultImports": true
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*"],
+    "ts-node": {
+        "transpileOnly": true
+    }
 }
