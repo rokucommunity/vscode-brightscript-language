@@ -19,14 +19,44 @@ describe('brightscript.tmlanguage.json', () => {
     it('handles `as Function` parameters properly', async () => {
         await testGrammar(`
              function getStyle(builderFunc as Function, processorFunc as Function) as object
-            '^^^^^^^^ keyword.declaration.function.brs
+            '^^^^^^^^ storage.type.function.brs
             '         ^^^^^^^ entity.name.function.brs
-            '                              ^^ keyword.control.brs
-            '                                 ^^^^^^^^ storage.type.brs
-            '                                           ^^^^^^^^^^^^^ entity.name.variable.local.brs
-            '                                                            ^^^^^^^^ storage.type.brs
-            end function
-            '^^^^^^^^^^^^ keyword.declaration.function.brs
+            '                 ^ punctuation.definition.parameters.begin.brs
+            '                  ^^^^^^^^^^^ variable.parameter.brs
+            '                              ^^ keyword.control.as.brs
+            '                                 ^^^^^^^^  entity.name.type.brs
+            '                                           ^^^^^^^^^^^^^ variable.parameter.brs
+            '                                                            ^^^^^^^^ entity.name.type.brs
+            '                                                                    ^ punctuation.definition.parameters.end.brs
+             end function
+            '^^^^^^^^^^^^ storage.type.function.brs
+        `);
+    });
+
+    it('handles `anonymous functions` parameters properly', async () => {
+        await testGrammar(`
+            sub main()
+                 callback = function(builderFunc as Function)
+                '^^^^^^^^ entity.name.variable.local.brs
+                '           ^^^^^^^^ storage.type.function.brs
+                '                    ^^^^^^^^^^^ variable.parameter.brs
+                '                                ^^ keyword.control.as.brs
+                '                                   ^^^^^^^^ entity.name.type.brs
+                 end function
+                '^^^^^^^^^^^^ storage.type.function.brs
+            end sub
+        `);
+    });
+
+    it('handles various function declarations', async () => {
+        await testGrammar(`
+             sub write()
+            '^^^ storage.type.function.brs
+            '    ^^^^^ entity.name.function.brs
+            '         ^ punctuation.definition.parameters.begin.brs
+            '          ^ punctuation.definition.parameters.end.brs
+             end sub
+            '^^^^^^^ storage.type.function.brs
         `);
     });
 });
