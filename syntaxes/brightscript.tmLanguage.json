@@ -25,6 +25,9 @@
                     "include": "#class_method"
                 },
                 {
+                    "include": "#typecast_expression"
+                },
+                {
                     "include": "#if_with_paren"
                 },
                 {
@@ -246,15 +249,22 @@
             }
         },
         "class_field": {
-            "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
-            "captures": {
+            "name": "meta.definition.property.brs meta.field.declaration.brs",
+            "beginPattern": "(?i)(public|protected|private)\\s+([a-z0-9_]+)\\s*",
+            "beginCaptures": {
                 "1": {
                     "name": "storage.modifier.brs"
                 },
                 "2": {
                     "name": "variable.object.property.brs"
                 }
-            }
+            },
+            "patterns": [
+                {
+                    "include": "#typecast_expression"
+                }
+            ],
+            "endPattern": "$"
         },
         "end_class": {
             "match": "(?i:\\s*(end\\s*class))",
@@ -283,6 +293,20 @@
                     "name": "keyword.preprocessor.else.brs"
                 }
             ]
+        },
+        "typecast_expression": {
+            "begin": "(?i)(?<![\\._a-z0-9])(as)(?=\\s+[_a-z0-9])",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword.control.as.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#type_expression"
+                }
+            ],
+            "end": "$"
         },
         "object_properties": {
             "match": "(?i:\\b\\.((?:[a-z0-9_])*)(?!\\s*\\()\\b)",
