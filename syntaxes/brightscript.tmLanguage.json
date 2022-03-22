@@ -22,6 +22,9 @@
                     "include": "#function_expression"
                 },
                 {
+                    "include": "#class_method"
+                },
+                {
                     "include": "#if_with_paren"
                 },
                 {
@@ -46,10 +49,7 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#class_methods"
-                },
-                {
-                    "include": "#class_fields"
+                    "include": "#class_field"
                 },
                 {
                     "include": "#class_declaration"
@@ -89,9 +89,6 @@
                 },
                 {
                     "include": "#primitive_literal_expression"
-                },
-                {
-                    "include": "#end_function"
                 },
                 {
                     "include": "#function_call"
@@ -219,9 +216,10 @@
                 }
             }
         },
-        "class_methods": {
+        "class_method": {
             "name": "meta.method.declaration.brs",
-            "captures": {
+            "begin": "(?i)(?:(public|protected|private)\\s+)?(?:(override)\\s+)?(sub|function)\\s+([a-z_][a-z0-9_]+)",
+            "beginCaptures": {
                 "1": {
                     "name": "storage.modifier.brs"
                 },
@@ -229,15 +227,25 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "storage.type.function.brs"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[ \\t]+)(?:\\s+([a-z_][a-z0-9_]*))?)"
+            "patterns": [
+                {
+                    "include": "#function_body"
+                }
+            ],
+            "end": "(?i)\\b\\s*(end\\s+(?:sub|function))",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.function.brs"
+                }
+            }
         },
-        "class_fields": {
+        "class_field": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
             "captures": {
                 "1": {
@@ -430,7 +438,7 @@
         },
         "function_declaration": {
             "name": "meta.function.brs",
-            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(function|sub)\\s+([_[:alpha:]][_$[:alnum:]]*)\\s*",
+            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(function|sub)\\s+([_[:alpha:]][_[:alnum:]]*)\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "storage.type.function.brs"
