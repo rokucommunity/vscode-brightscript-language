@@ -10,9 +10,75 @@ describe('brightscript.tmlanguage.json', () => {
     it('bool assignment', async () => {
         await testGrammar(`
              thing = true
-            '^^^^^ entity.name.variable.local.brs
-            '      ^ keyword.operator.brs
             '        ^^^^ constant.language.boolean.true.brs
+            '      ^ keyword.operator.brs
+            '^^^^^ entity.name.variable.local.brs
+        `);
+    });
+
+    it('handles `as Function` parameters properly', async () => {
+        await testGrammar(`
+             function getStyle(builderFunc as Function, processorFunc as Function) as object
+            '                                                                    ^ punctuation.definition.parameters.end.brs
+            '                                                            ^^^^^^^^ entity.name.type.brs
+            '                                           ^^^^^^^^^^^^^ variable.parameter.brs
+            '                                 ^^^^^^^^  entity.name.type.brs
+            '                              ^^ keyword.control.as.brs
+            '                  ^^^^^^^^^^^ variable.parameter.brs
+            '                 ^ punctuation.definition.parameters.begin.brs
+            '         ^^^^^^^ entity.name.function.brs
+            '^^^^^^^^ storage.type.function.brs
+
+             end function
+            '^^^^^^^^^^^^ storage.type.function.brs
+        `);
+    });
+
+    it('handles `anonymous functions` parameters properly', async () => {
+        await testGrammar(`
+            sub main()
+                 callback = function(builderFunc as Function)
+                '                                   ^^^^^^^^ entity.name.type.brs
+                '                                ^^ keyword.control.as.brs
+                '                    ^^^^^^^^^^^ variable.parameter.brs
+                '           ^^^^^^^^ storage.type.function.brs
+                '^^^^^^^^ entity.name.variable.local.brs
+
+                 end function
+                '^^^^^^^^^^^^ storage.type.function.brs
+            end sub
+        `);
+    });
+
+    it('handles various function declarations', async () => {
+        await testGrammar(`
+             sub write()
+            '          ^ punctuation.definition.parameters.end.brs
+            '         ^ punctuation.definition.parameters.begin.brs
+            '    ^^^^^ entity.name.function.brs
+            '^^^ storage.type.function.brs
+
+             end sub
+            '^^^^^^^ storage.type.function.brs
+        `);
+    });
+
+    it('colorizes class fields properly', async () => {
+        //TODO the properties have the wrong scope...this should get fixed when we improve the class textmate scope flow
+        await testGrammar(`
+            class Person
+                 firstName
+                '^^^^^^^^^ entity.name.variable.local.brs
+
+                 lastName as string
+                '            ^^^^^^ support.type.primitive.brs
+                '         ^^ keyword.control.as.brs
+                '^^^^^^^^ entity.name.variable.local.brs
+
+                 age as integer
+                '    ^^ keyword.control.as.brs
+                '^^^ entity.name.variable.local.brs
+            end class
         `);
     });
 });
