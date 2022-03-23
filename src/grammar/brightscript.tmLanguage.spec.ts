@@ -16,7 +16,7 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    it('handles `as Function` parameters properly', async () => {
+    it.skip('handles `as Function` parameters properly', async () => {
         await testGrammar(`
              function getStyle(builderFunc as Function, processorFunc as Function) as object
             '                                                                    ^ punctuation.definition.parameters.end.brs
@@ -34,7 +34,7 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    it('handles `anonymous functions` parameters properly', async () => {
+    it.skip('handles `anonymous functions` parameters properly', async () => {
         await testGrammar(`
             sub main()
                  callback = function(builderFunc as Function)
@@ -50,7 +50,7 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    it('handles various function declarations', async () => {
+    it.skip('handles various function declarations', async () => {
         await testGrammar(`
              sub write()
             '          ^ punctuation.definition.parameters.end.brs
@@ -63,7 +63,7 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    it('colorizes class fields properly', async () => {
+    it.skip('colorizes class fields properly', async () => {
         //TODO the properties have the wrong scope...this should get fixed when we improve the class textmate scope flow
         await testGrammar(`
             class Person
