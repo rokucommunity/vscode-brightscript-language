@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.29.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.2...v2.29.3) - 2022-03-23
+### Fixed
+ - reverted syntax highlighting introduced in v2.29.2. 
+
+
+
 ## [2.29.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.1...v2.29.2) - 2022-03-22
 ### Fixed
  - better function, method, and type syntax highlighting. ([#371](https://github.com/rokucommunity/vscode-brightscript-language/pull/371))
