@@ -16,18 +16,6 @@
         "entire_language": {
             "patterns": [
                 {
-                    "include": "#function_declaration"
-                },
-                {
-                    "include": "#function_expression"
-                },
-                {
-                    "include": "#class_method"
-                },
-                {
-                    "include": "#typecast_expression"
-                },
-                {
                     "include": "#if_with_paren"
                 },
                 {
@@ -52,7 +40,10 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#class_field"
+                    "include": "#class_methods"
+                },
+                {
+                    "include": "#class_fields"
                 },
                 {
                     "include": "#class_declaration"
@@ -92,6 +83,15 @@
                 },
                 {
                     "include": "#primitive_literal_expression"
+                },
+                {
+                    "include": "#function_declaration"
+                },
+                {
+                    "include": "#inline_function_declaration"
+                },
+                {
+                    "include": "#end_function"
                 },
                 {
                     "include": "#function_call"
@@ -219,10 +219,8 @@
                 }
             }
         },
-        "class_method": {
-            "name": "meta.method.declaration.brs",
-            "begin": "(?i)(?:(public|protected|private)\\s+)?(?:(override)\\s+)?(sub|function)\\s+([a-z_][a-z0-9_]+)",
-            "beginCaptures": {
+        "class_methods": {
+            "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
                 },
@@ -230,41 +228,24 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "storage.type.function.brs"
+                    "name": "keyword.declaration.function.brs"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
                 }
             },
-            "patterns": [
-                {
-                    "include": "#function_body"
-                }
-            ],
-            "end": "(?i)\\b\\s*(end\\s+(?:sub|function))",
-            "endCaptures": {
-                "1": {
-                    "name": "storage.type.function.brs"
-                }
-            }
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
-        "class_field": {
-            "name": "meta.definition.property.brs meta.field.declaration.brs",
-            "beginPattern": "(?i)(public|protected|private)\\s+([a-z0-9_]+)\\s*",
-            "beginCaptures": {
+        "class_fields": {
+            "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
+            "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
                 },
                 "2": {
                     "name": "variable.object.property.brs"
                 }
-            },
-            "patterns": [
-                {
-                    "include": "#typecast_expression"
-                }
-            ],
-            "endPattern": "$"
+            }
         },
         "end_class": {
             "match": "(?i:\\s*(end\\s*class))",
@@ -293,20 +274,6 @@
                     "name": "keyword.preprocessor.else.brs"
                 }
             ]
-        },
-        "typecast_expression": {
-            "begin": "(?i)(?<![\\._a-z0-9])(as)(?=\\s+[_a-z0-9])",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword.control.as.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#type_expression"
-                }
-            ],
-            "end": "$"
         },
         "object_properties": {
             "match": "(?i:\\b\\.((?:[a-z0-9_])*)(?!\\s*\\()\\b)",
@@ -452,7 +419,6 @@
             }
         },
         "function_call": {
-            "name": "meta.function-call.brs",
             "captures": {
                 "1": {
                     "name": "entity.name.function.brs"
@@ -461,137 +427,36 @@
             "match": "(?i:\\b([a-z_][a-z0-9_]*)\\s*\\()"
         },
         "function_declaration": {
-            "name": "meta.function.brs",
-            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(function|sub)\\s+([_[:alpha:]][_[:alnum:]]*)\\s*",
-            "beginCaptures": {
+            "captures": {
                 "1": {
-                    "name": "storage.type.function.brs"
+                    "name": "storage.modifier.brs"
                 },
                 "2": {
-                    "name": "meta.definition.function.brs entity.name.function.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#function_body"
-                }
-            ],
-            "end": "(?i)\\b\\s*(end\\s+(?:sub|function))",
-            "endCaptures": {
-                "1": {
-                    "name": "storage.type.function.brs"
-                }
-            }
-        },
-        "function_expression": {
-            "name": "meta.function.expression.brs",
-            "begin": "(?i)(?<![_[:alnum:]\\.])(function|sub)\\s*(?=\\()\\s*",
-            "beginCaptures": {
-                "1": {
-                    "name": "storage.type.function.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#function_body"
-                }
-            ],
-            "end": "(?i)\\b\\s*(end\\s+(?:sub|function))",
-            "endCaptures": {
-                "1": {
-                    "name": "storage.type.function.brs"
-                }
-            }
-        },
-        "function_body": {
-            "patterns": [
-                {
-                    "include": "#function_parameters"
+                    "name": "storage.modifier.brs"
                 },
-                {
-                    "include": "#function_return_type"
+                "3": {
+                    "name": "keyword.declaration.function.brs"
                 },
-                {
-                    "include": "#entire_language"
-                }
-            ]
-        },
-        "function_parameters": {
-            "name": "meta.parameters.brs",
-            "begin": "\\(",
-            "beginCaptures": {
-                "0": {
-                    "name": "punctuation.definition.parameters.begin.brs"
+                "4": {
+                    "name": "entity.name.function.brs"
                 }
             },
-            "end": "\\)",
-            "endCaptures": {
-                "0": {
-                    "name": "punctuation.definition.parameters.end.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#function_parameter_name"
-                },
-                {
-                    "include": "#function_parameter_value_assignment"
-                },
-                {
-                    "include": "#function_parameter_type_assignment"
-                },
-                {
-                    "name": "punctuation.separator.parameter.brs",
-                    "match": ","
-                }
-            ]
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
-        "function_parameter_name": {
-            "name": "variable.parameter.brs",
-            "match": "[_[:alpha:]][_[:alnum:]]*"
+        "end_function": {
+            "name": "keyword.declaration.function",
+            "match": "(?i)[ \\t]*end\\s*(sub|function)"
         },
-        "function_parameter_value_assignment": {
-            "begin": "\\s*(=)\\s*",
-            "beginCaptures": {
+        "inline_function_declaration": {
+            "captures": {
                 "1": {
-                    "name": "keyword.operator.assignment.brs"
+                    "name": "keyword.declaration.function"
+                },
+                "2": {
+                    "name": "keyword.declaration.function"
                 }
             },
-            "patterns": [
-                {
-                    "include": "#entire_language"
-                }
-            ],
-            "end": "(?i)(?=,|\\)|(\\sas))"
-        },
-        "function_parameter_type_assignment": {
-            "begin": "\\s*(as)\\s*",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword.control.as.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#type_expression"
-                }
-            ],
-            "end": "(?=,|\\))"
-        },
-        "function_return_type": {
-            "name": "meta.return.type.brs",
-            "begin": "(?i)(?<=\\))\\s*(as)(?=\\s*\\S)",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword.control.as.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#type_expression"
-                }
-            ],
-            "end": "(?=\\r?\\n)"
+            "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
         },
         "interface_declaration": {
             "name": "meta.interface.brs",
@@ -685,7 +550,7 @@
                     "match": "(?i)(boolean|integer|longinteger|float|double|string)",
                     "captures": {
                         "1": {
-                            "name": "support.type.primitive.brs"
+                            "name": "storage.type.brs"
                         }
                     }
                 },
@@ -706,7 +571,7 @@
                     "name": "keyword.control.brs"
                 }
             },
-            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end(?!\\s*(?:function|sub))|each|next|throw)(?!(\\s*:)|[\\d\\w_]))"
+            "match": "(?i:[^\\.\\w\\\"](then|stop|run|end|each|next|throw)(?!(\\s*:)|[\\d\\w_]))"
         },
         "program_statements": {
             "match": "(?i:(?<!\\.)(if|else\\s*if|else|print|library|while|for\\s+each|for|end\\s*for|exit\\s+for|end\\s*while|exit\\s*while|end\\s*if|to|step|in|goto|rem|as)\\b)",
