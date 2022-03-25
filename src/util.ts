@@ -208,6 +208,15 @@ class Util {
         });
         return channel;
     }
+
+    /**
+     * Get a promise that resolves after the given number of milliseconds.
+     */
+    public sleep(milliseconds: number) {
+        return new Promise((resolve) => {
+            setTimeout(resolve, milliseconds);
+        });
+    }
 }
 
 const util = new Util();

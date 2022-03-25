@@ -5,6 +5,7 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { SceneGraphDebugCommandController } from 'roku-debug';
+import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 
 export class BrightScriptCommands {
 
@@ -45,15 +46,17 @@ export class BrightScriptCommands {
             if (stuffUserTyped) {
                 let fallbackToHttp = true;
                 await this.getRemoteHost();
-                try {
-                    let commandController = new SceneGraphDebugCommandController(this.host);
-                    let response = await commandController.type(stuffUserTyped);
-                    if (!response.error) {
-                        fallbackToHttp = false;
-                    }
-                } catch (error) {
-                    // Let this fallback to the old HTTP based logic
-                }
+                //TODO fix SceneGraphDebugCommandController to not timeout so quickly
+                // try {
+                //     let commandController = new SceneGraphDebugCommandController(this.host);
+                //     let response = await commandController.type(stuffUserTyped);
+                //     if (!response.error) {
+                //         fallbackToHttp = false;
+                //     }
+                // } catch (error) {
+                //     console.error(error);
+                //     // Let this fallback to the old HTTP based logic
+                // }
 
                 if (fallbackToHttp) {
                     for (let character of stuffUserTyped) {
@@ -179,6 +182,9 @@ export class BrightScriptCommands {
             throw new Error('Can\'t send command: host is required.');
         } else {
             await this.context.workspaceState.update('remoteHost', this.host);
+        }
+        if (this.host) {
+            this.host = await rokuDebugUtil.dnsLookup(this.host);
         }
     }
 
