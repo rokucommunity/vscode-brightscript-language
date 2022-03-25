@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.29.4](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.3...v2.29.4) - 2022-03-25
+### Changed
+ - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0102---2022-03-25)
+    - fixed bug with protocol step command killing the app ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+    - fixed event flow on protocol debugger startup ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+    - fixed bug cleaning up packet lengths for v3 ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+ - updated to [brighterscript@0.46.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0460---2022-03-24)
+    - refactored try-catch statement to make the expressions and bodies easier to access via plugins. ([brighterscript#514](https://github.com/rokucommunity/brighterscript/pull/514))
+
+
+
 ## [2.29.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.2...v2.29.3) - 2022-03-23
 ### Fixed
  - reverted syntax highlighting introduced in v2.29.2. 
