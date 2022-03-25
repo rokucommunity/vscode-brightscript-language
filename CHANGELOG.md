@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - fixed bug cleaning up packet lengths for v3 ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
  - updated to [brighterscript@0.46.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0460---2022-03-24)
     - refactored try-catch statement to make the expressions and bodies easier to access via plugins. ([brighterscript#514](https://github.com/rokucommunity/brighterscript/pull/514))
+### Fixed
+ - sendRemoteText command no longer times out when sending large text. ([#373](https://github.com/rokucommunity/vscode-brightscript-language/pull/373))
 
 
 
