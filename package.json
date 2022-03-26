@@ -1501,6 +1501,18 @@
                     "type": "string",
                     "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
                     "scope": "resource"
+                },
+                "brightscript.sendRemoteTextHistory.limit": {
+                    "type": "number",
+                    "default": 30,
+                    "description": "Sets the maximum number of 'extension.brightscript.sendRemoteText' commands to remember for future use",
+                    "scope": "application"
+                },
+                "brightscript.sendRemoteTextHistory.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true, the extension will not save the history for 'extension.brightscript.sendRemoteText' commands",
+                    "scope": "resource"
                 }
             }
         },

@@ -5,6 +5,7 @@ import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { SceneGraphDebugCommandController } from 'roku-debug';
+import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 
 export class BrightScriptCommands {
@@ -39,11 +40,19 @@ export class BrightScriptCommands {
         }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
-            let stuffUserTyped: string = await vscode.window.showInputBox({
-                placeHolder: 'Press enter to send all typed characters to the Roku',
-                value: ''
+            let items: vscode.QuickPickItem[] = [];
+            for (const item of new GlobalStateManager(this.context).sendRemoteTextHistory) {
+                items.push({ label: item });
+            }
+
+            const stuffUserTyped = await util.showQuickPickInputBox({
+                placeholder: 'Press enter to send all typed characters to the Roku',
+                items: items
             });
+            console.log('userInput', stuffUserTyped);
+
             if (stuffUserTyped) {
+                new GlobalStateManager(this.context).addTextHistory(stuffUserTyped);
                 let fallbackToHttp = true;
                 await this.getRemoteHost();
                 //TODO fix SceneGraphDebugCommandController to not timeout so quickly
