@@ -141,6 +141,14 @@
         "onCommand:extension.brightscript.pressInstantReplayButton",
         "onCommand:extension.brightscript.pressSearchButton",
         "onCommand:extension.brightscript.pressEnterButton",
+        "onCommand:extension.brightscript.pressFindRemote",
+        "onCommand:extension.brightscript.pressVolumeDown",
+        "onCommand:extension.brightscript.pressVolumeMute",
+        "onCommand:extension.brightscript.pressVolumeUp",
+        "onCommand:extension.brightscript.pressPowerOff",
+        "onCommand:extension.brightscript.pressChannelUp",
+        "onCommand:extension.brightscript.pressChannelDown",
+        "onCommand:extension.brightscript.changeTvInput",
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
         "onCommand:brighterscript.showPreviewToSide"
@@ -1740,6 +1748,47 @@
             {
                 "command": "extension.brightscript.pressEnterButton",
                 "title": "Press the Enter button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressFindRemote",
+                "title": "Press the FindRemote button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressVolumeDown",
+                "title": "Press the VolumeDown button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressVolumeMute",
+                "title": "Press the VolumeMute button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressVolumeUp",
+                "title": "Press the VolumeUp button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressPowerOff",
+                "title": "Press the PowerOff button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressChannelUp",
+                "title": "Press the ChannelUp button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressChannelDown",
+                "title": "Press the ChannelDown button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.changeTvInput",
+                "title": "Provides a list of possible inputs to change to",
+                "shortTitle": "Change TV Input",
                 "category": "Brightscript"
             },
             {

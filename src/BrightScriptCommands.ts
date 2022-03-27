@@ -140,6 +140,49 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand('Enter');
         });
 
+        this.registerCommand('pressFindRemote', async () => {
+            await this.sendRemoteCommand('FindRemote');
+        });
+
+        this.registerCommand('pressVolumeDown', async () => {
+            await this.sendRemoteCommand('VolumeDown');
+        });
+
+        this.registerCommand('pressVolumeMute', async () => {
+            await this.sendRemoteCommand('VolumeMute');
+        });
+
+        this.registerCommand('pressVolumeUp', async () => {
+            await this.sendRemoteCommand('FindVolumeUp');
+        });
+
+        this.registerCommand('pressPowerOff', async () => {
+            await this.sendRemoteCommand('PowerOff');
+        });
+
+        this.registerCommand('pressChannelUp', async () => {
+            await this.sendRemoteCommand('ChannelUp');
+        });
+
+        this.registerCommand('pressChannelDown', async () => {
+            await this.sendRemoteCommand('ChannelDown');
+        });
+
+        this.registerCommand('changeTvInput', async () => {
+            const selectedInput = await vscode.window.showQuickPick([
+                'InputHDMI1',
+                'InputHDMI2',
+                'InputHDMI3',
+                'InputHDMI4',
+                'InputAV1',
+                'InputTuner'
+            ]);
+
+            if (selectedInput) {
+                await this.sendRemoteCommand(selectedInput);
+            }
+        });
+
         this.registerKeyboardInputs();
     }
 
