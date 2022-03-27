@@ -212,6 +212,392 @@
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
                 }
+            ],
+            "commandPalette": [
+                {
+                    "command": "extension.brightscript.sendAscii+SPACE",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+TAB",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+!",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+\"",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+#",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+$",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+%",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+&",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+'",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+(",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+)",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+*",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii++",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+,",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+-",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+.",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+/",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+0",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+1",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+2",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+3",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+4",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+5",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+6",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+7",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+8",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+9",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+:",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+;",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+<",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+=",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+>",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+?",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+@",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+A",
+                    "when": "false"
+                },
+                {
+                   "command": "extension.brightscript.sendAscii+B",
+                   "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+C",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+D",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+E",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+F",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+G",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+H",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+I",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+J",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+K",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+L",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+M",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+N",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+O",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+P",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+Q",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+R",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+S",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+T",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+U",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+V",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+W",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+X",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+Y",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+Z",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+[",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+\\",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+]",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+^",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+_",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+`",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+a",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+b",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+c",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+d",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+e",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+f",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+g",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+h",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+i",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+j",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+k",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+l",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+m",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+n",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+o",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+p",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+q",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+r",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+s",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+t",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+u",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+v",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+w",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+x",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+y",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+z",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+{",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+|",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+}",
+                    "when": "false"
+                },
+                {
+                    "command": "extension.brightscript.sendAscii+~",
+                    "when": "false"
+                }
             ]
         },
         "breakpoints": [
