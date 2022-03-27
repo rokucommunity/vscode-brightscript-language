@@ -24,22 +24,20 @@ export class BrightScriptCommands {
         brighterScriptPreviewCommand.register(context);
         languageServerInfoCommand.register(context);
 
-        let subscriptions = context.subscriptions;
-
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', async () => {
+        this.registerCommand('toggleXML', async () => {
             await this.onToggleXml();
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearGlobalState', async () => {
+        this.registerCommand('clearGlobalState', async () => {
             new GlobalStateManager(this.context).clear();
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteCommand', async (key: string) => {
+        this.registerCommand('sendRemoteCommand', async (key: string) => {
             await this.sendRemoteCommand(key);
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
+        this.registerCommand('sendRemoteText', async () => {
             let items: vscode.QuickPickItem[] = [];
             for (const item of new GlobalStateManager(this.context).sendRemoteTextHistory) {
                 items.push({ label: item });
@@ -69,50 +67,61 @@ export class BrightScriptCommands {
 
                 if (fallbackToHttp) {
                     for (let character of stuffUserTyped) {
-                        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
-                        await this.sendRemoteCommand(commandToSend);
+                        await this.sendAsciiToDevice(character);
                     }
                 }
             }
             await vscode.commands.executeCommand('workbench.action.focusPanel');
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', async () => {
+
+        this.registerCommand('pressBackButton', async () => {
             await this.sendRemoteCommand('Back');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackspaceButton', async () => {
+        });
+
+        this.registerCommand('pressBackspaceButton', async () => {
             await this.sendRemoteCommand('Backspace');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressHomeButton', async () => {
+        });
+
+        this.registerCommand('pressHomeButton', async () => {
             await this.sendRemoteCommand('Home');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressUpButton', async () => {
+        });
+
+        this.registerCommand('pressUpButton', async () => {
             await this.sendRemoteCommand('Up');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressDownButton', async () => {
+        });
+
+        this.registerCommand('pressDownButton', async () => {
             await this.sendRemoteCommand('Down');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressRightButton', async () => {
+        });
+
+        this.registerCommand('pressRightButton', async () => {
             await this.sendRemoteCommand('Right');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressLeftButton', async () => {
+        });
+
+        this.registerCommand('pressLeftButton', async () => {
             await this.sendRemoteCommand('Left');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressSelectButton', async () => {
+        });
+
+        this.registerCommand('pressSelectButton', async () => {
             await this.sendRemoteCommand('Select');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressPlayButton', async () => {
+        });
+
+        this.registerCommand('pressPlayButton', async () => {
             await this.sendRemoteCommand('Play');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressRevButton', async () => {
+        });
+
+        this.registerCommand('pressRevButton', async () => {
             await this.sendRemoteCommand('Rev');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressFwdButton', async () => {
+        });
+
+        this.registerCommand('pressFwdButton', async () => {
             await this.sendRemoteCommand('Fwd');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressStarButton', async () => {
+        });
+
+        this.registerCommand('pressStarButton', async () => {
             await this.sendRemoteCommand('Info');
-        }));
+        });
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {
@@ -197,6 +206,14 @@ export class BrightScriptCommands {
         }
     }
 
+    private registerCommand(name: string, callback: (...args: any[]) => any, thisArg?: any) {
+        this.context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.' + name, callback, thisArg));
+    }
+
+    private async sendAsciiToDevice(character: string) {
+        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
+        await this.sendRemoteCommand(commandToSend);
+    }
 }
 
 export const brightScriptCommands = new BrightScriptCommands();
