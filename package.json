@@ -154,7 +154,20 @@
         "onCommand:brighterscript.showPreviewToSide"
     ],
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [{
+                "id": "vscode-brightscript-language",
+                "title": "BrightScript Language",
+                "icon": "images/icon.png"
+            }]
+        },
         "views": {
+            "vscode-brightscript-language": [
+                {
+                    "id": "onlineDevices",
+                    "name": "Devices"
+                }
+            ],
             "debug": [
                 {
                     "id": "rendezvousView",
