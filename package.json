@@ -172,8 +172,7 @@
                 {
                     "id": "rendezvousView",
                     "name": "Rendezvous",
-                    "when": "debugType == 'brightscript'",
-                    "group": "Rendezvous"
+                    "when": "debugType == 'brightscript'"
                 },
                 {
                     "type": "webview",
@@ -200,17 +199,17 @@
             "view/title": [
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortMethod",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
                 },
                 {
                     "command": "extension.brightscript.rendezvous.toggleSortDirection",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
                 },
                 {
                     "command": "extension.brightscript.rendezvous.clearHistory",
-                    "when": "debugType == 'brightscript'",
+                    "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
                 }
             ]
