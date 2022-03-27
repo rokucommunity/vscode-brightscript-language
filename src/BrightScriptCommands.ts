@@ -122,6 +122,18 @@ export class BrightScriptCommands {
         this.registerCommand('pressStarButton', async () => {
             await this.sendRemoteCommand('Info');
         });
+
+        this.registerCommand('pressInstantReplayButton', async () => {
+            await this.sendRemoteCommand('InstantReplay');
+        });
+
+        this.registerCommand('pressSearchButton', async () => {
+            await this.sendRemoteCommand('Search');
+        });
+
+        this.registerCommand('pressEnterButton', async () => {
+            await this.sendRemoteCommand('Enter');
+        });
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {

@@ -137,6 +137,9 @@
         "onCommand:extension.brightscript.pressRevButton",
         "onCommand:extension.brightscript.pressFwdButton",
         "onCommand:extension.brightscript.pressStarButton",
+        "onCommand:extension.brightscript.pressInstantReplayButton",
+        "onCommand:extension.brightscript.pressSearchButton",
+        "onCommand:extension.brightscript.pressEnterButton",
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
         "onCommand:brighterscript.showPreviewToSide"
@@ -1716,6 +1719,21 @@
             {
                 "command": "extension.brightscript.pressStarButton",
                 "title": "Press the Star button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressInstantReplayButton",
+                "title": "Press the Instant Replay button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressSearchButton",
+                "title": "Press the Search button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressEnterButton",
+                "title": "Press the Enter button on the Roku remote",
                 "category": "Brightscript"
             },
             {
