@@ -7,6 +7,7 @@ import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand'
 import { SceneGraphDebugCommandController } from 'roku-debug';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
+import { VSCodeContext } from './VscodeContext';
 
 export class BrightScriptCommands {
 
@@ -74,6 +75,10 @@ export class BrightScriptCommands {
             await vscode.commands.executeCommand('workbench.action.focusPanel');
         });
 
+        this.registerCommand('toggleRemoteControlMode', async () => {
+            let currentMode = VSCodeContext.get('brightscript.remoteControlMode');
+            await VSCodeContext.set('brightscript.remoteControlMode', !(currentMode));
+        });
 
         this.registerCommand('pressBackButton', async () => {
             await this.sendRemoteCommand('Back');
@@ -134,6 +139,35 @@ export class BrightScriptCommands {
         this.registerCommand('pressEnterButton', async () => {
             await this.sendRemoteCommand('Enter');
         });
+
+        this.registerKeyboardInputs();
+    }
+
+    /**
+     * Registers all the commands for a-z, A-Z, 0-9, and all the primary character such as !, @, #, ', ", etc...
+     */
+    private registerKeyboardInputs() {
+        // Create the primary ascii character list
+        const asciiTable = Array.from(Array(95)).map((e, i) => i + 32);
+        let asciiList = asciiTable.map((x) => String.fromCharCode(x));
+        // Add any that where not cleanly in the range above such as TAB
+        asciiList.push(...['\t']);
+
+        const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
+        for (let character of asciiList) {
+            // Escape if needed
+            let escapeCharacter = (character === '\\' || character === '\'') ? '\\' : '';
+
+            // Create the callback function with the correct ascii value in the function body to be called later
+            const dynamicFunction = new AsyncFunction('', `await this.sendAsciiToDevice('${escapeCharacter}${character}');`).bind(this);
+
+            // Convert SPACE and TAB so the commands are more readable for the user if the decide to bind them to something different
+            character = character === ' ' ? 'SPACE' : character;
+            character = character === '\t' ? 'TAB' : character;
+
+            // Register the command
+            this.registerCommand('sendAscii+' + character, dynamicFunction);
+        }
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {

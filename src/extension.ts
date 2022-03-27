@@ -29,6 +29,7 @@ import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
+import { VSCodeContext } from './VscodeContext';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -56,6 +57,7 @@ export class Extension {
     };
 
     public async activate(context: vscode.ExtensionContext) {
+        await VSCodeContext.set('brightscript.remoteControlMode', false);
         this.globalStateManager = new GlobalStateManager(context);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
