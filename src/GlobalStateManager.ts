@@ -61,7 +61,6 @@ export class GlobalStateManager {
             // Add the the start of the array so that the history is most resent to oldest
             history.unshift(value);
 
-            history.length = Math.min(history.length, this.remoteTextHistoryLimit);
             this.sendRemoteTextHistory = history;
         }
     }
