@@ -74,7 +74,10 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             if (this.rendezvousHistory) {
                 // There are no tree view items so we should be creating file tree items
                 return arraySort(Object.keys(this.rendezvousHistory.occurrences).map((key) => {
-                    return new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
+                    let fileTreeItem = new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
+                    fileTreeItem.tooltip = fileTreeItem.key;
+                    fileTreeItem.description = `hitCount: ${fileTreeItem.details.hitCount - fileTreeItem.details.zeroCostHitCount} | totalTime: ${fileTreeItem.details.totalTime.toFixed(3)} s`;
+                    return fileTreeItem;
                 }), this.activeFilter);
             } else {
                 return [];
@@ -247,14 +250,6 @@ class RendezvousFileTreeItem extends vscode.TreeItem {
         public readonly details: any
     ) {
         super(key.split('/').pop(), collapsibleState);
-    }
-
-    get tooltip(): string {
-        return `${this.key}`;
-    }
-
-    get description(): string {
-        return `hitCount: ${this.details.hitCount - this.details.zeroCostHitCount} | totalTime: ${this.details.totalTime.toFixed(3)} s`;
     }
 }
 
