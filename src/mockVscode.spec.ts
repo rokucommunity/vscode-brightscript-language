@@ -25,9 +25,10 @@ export let vscode = {
     },
     extensions: {
         getExtension: () => {
+            let packageContents = require('../package.json');
             return {
                 packageJSON: {
-                    version: undefined
+                    ...packageContents
                 }
             };
         }
