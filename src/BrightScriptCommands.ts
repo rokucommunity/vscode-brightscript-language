@@ -190,26 +190,28 @@ export class BrightScriptCommands {
      * Registers all the commands for a-z, A-Z, 0-9, and all the primary character such as !, @, #, ', ", etc...
      */
     private registerKeyboardInputs() {
-        // Create the primary ascii character list
-        const asciiTable = Array.from(Array(95)).map((e, i) => i + 32);
-        let asciiList = asciiTable.map((x) => String.fromCharCode(x));
-        // Add any that where not cleanly in the range above such as TAB
-        asciiList.push(...['\t']);
+        // Get all the keybindings from our package.json
+        const extension = vscode.extensions.getExtension('RokuCommunity.brightscript');
+        const keybindings = (extension.packageJSON.contributes.keybindings as Array<{
+            key: string;
+            command: string;
+            when: string;
+            args: any;
+        }>);
 
-        const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
-        for (let character of asciiList) {
-            // Escape if needed
-            let escapeCharacter = (character === '\\' || character === '\'') ? '\\' : '';
+        for (let keybinding of keybindings) {
+            // Find every keybinding that is related to sending text charterers to the device
+            if (keybinding.command.includes('.sendAscii+')) {
 
-            // Create the callback function with the correct ascii value in the function body to be called later
-            const dynamicFunction = new AsyncFunction('', `await this.sendAsciiToDevice('${escapeCharacter}${character}');`).bind(this);
+                if (!keybinding.args) {
+                    throw new Error(`Can not register command: ${keybinding.command}. Missing Arguments.`);
+                }
 
-            // Convert SPACE and TAB so the commands are more readable for the user if the decide to bind them to something different
-            character = character === ' ' ? 'SPACE' : character;
-            character = character === '\t' ? 'TAB' : character;
-
-            // Register the command
-            this.registerCommand('sendAscii+' + character, dynamicFunction);
+                // Dynamically register the the command defined in the keybinding
+                this.registerCommand(keybinding.command, async (character: string) => {
+                    await this.sendAsciiToDevice(character);
+                });
+            }
         }
     }
 
@@ -296,7 +298,9 @@ export class BrightScriptCommands {
     }
 
     private registerCommand(name: string, callback: (...args: any[]) => any, thisArg?: any) {
-        this.context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.' + name, callback, thisArg));
+        const prefix = 'extension.brightscript.';
+        const commandName = name.startsWith(prefix) ? name : prefix + name;
+        this.context.subscriptions.push(vscode.commands.registerCommand(commandName, callback, thisArg));
     }
 
     private async sendAsciiToDevice(character: string) {
