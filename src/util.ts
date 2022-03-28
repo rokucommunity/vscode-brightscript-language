@@ -195,6 +195,27 @@ class Util {
     }
 
     /**
+     * Decode HTML entities like &nbsp; &#39; to its original character
+     */
+    public decodeHtmlEntities(encodedString: string) {
+        let translateRegex = /&(nbsp|amp|quot|lt|gt);/g;
+        let translate = {
+            'nbsp': ' ',
+            'amp': '&',
+            'quot': '"',
+            'lt': '<',
+            'gt': '>'
+        };
+
+        return encodedString.replace(translateRegex, (match, entity) => {
+            return translate[entity];
+        }).replace(/&#(\d+);/gi, (match, numStr) => {
+            let num = parseInt(numStr, 10);
+            return String.fromCharCode(num);
+        });
+    }
+
+    /**
      * Creates an output channel but wraps the `append` and `appendLine`
      * functions so a function can be called with their values
      */

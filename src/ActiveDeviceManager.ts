@@ -6,6 +6,7 @@ import * as NodeCache from 'node-cache';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client } from 'node-ssdp';
 import { URL } from 'url';
+import { util } from './util';
 import * as vscode from 'vscode';
 
 const DEFAULT_TIMEOUT = 10000;
@@ -150,6 +151,13 @@ class RokuFinder extends EventEmitter {
                     resp.on('end', () => {
                         // The whole response has been received.
                         let info = xmlParser.parse(data);
+                        for (const key in info['device-info']) {
+                            let value = info['device-info'][key];
+                            if (typeof value === 'string') {
+                                // Clean up the string results to make them more readable
+                                info['device-info'][key] = util.decodeHtmlEntities(value);
+                            }
+                        }
 
                         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
                         let includeNonDeveloperDevices = (config.includeNonDeveloperDevices || {}).includeNonDeveloperDevices;
