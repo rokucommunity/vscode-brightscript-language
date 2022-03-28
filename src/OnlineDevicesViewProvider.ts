@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
+import { resourceLimits } from 'worker_threads';
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(context: vscode.ExtensionContext, private activeDeviceManager: ActiveDeviceManager) {
         this.devices = [];
         this.activeDeviceManager.on('foundDevice', (newDeviceId: string, newDevice: RokuDeviceDetails) => {
-            if (!this.devices.find(device => device.id === newDeviceId)) {
+            if (!this.findDeviceById(newDeviceId)) {
                 // Add the device to the list
                 this.devices.push(newDevice);
                 this._onDidChangeTreeData.fire(null);
@@ -75,7 +76,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     element.details[property].toString()
                 );
 
-                // Prepare te copt to clipboard command
+                // Prepare the copy to clipboard command
                 treeItem.tooltip = 'Copy to clipboard';
                 treeItem.command = {
                     command: 'brightscript.extension.copyToClipboard',
@@ -84,6 +85,25 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 };
                 result.push(treeItem);
             }
+
+            const device = this.findDeviceById(element.key);
+            let openWebpageItem = new DeviceInfoTreeItem(
+                'Open device web portal',
+                element,
+                vscode.TreeItemCollapsibleState.None,
+                '',
+                device.ip
+            );
+
+            // Prepare the open url command
+            openWebpageItem.tooltip = 'Open';
+            openWebpageItem.command = {
+                command: 'brightscript.extension.openUrl',
+                title: 'Open',
+                arguments: [`http://${device.ip}`]
+            };
+
+            result.unshift(openWebpageItem);
 
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future
@@ -123,6 +143,10 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
+
+    private findDeviceById(deviceId: string): RokuDeviceDetails {
+        return this.devices.find(device => device.id === deviceId);
+    }
 }
 
 
