@@ -1,99 +1,40 @@
 import * as vscode from 'vscode';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import * as semver from 'semver';
+import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(context: vscode.ExtensionContext, private activeDeviceManager: ActiveDeviceManager) {
-        this.devices = [{
-            'location': 'http://192.168.8.174:8060',
-            'ip': '192.168.8.174',
-            'deviceInfo': {
-                'udn': '1234568',
-                'serial-number': '1234568',
-                'device-id': '1234568',
-                'advertising-id': '1234568',
-                'vendor-name': 'Roku',
-                'model-name': 'Roku Ultra',
-                'model-number': '4660X',
-                'model-region': 'US',
-                'is-tv': false,
-                'is-stick': false,
-                'ui-resolution': '1080p',
-                'supports-ethernet': true,
-                'wifi-mac': '1234568',
-                'wifi-driver': 'realtek',
-                'has-wifi-extender': false,
-                'has-wifi-5G-support': true,
-                'can-use-wifi-extender': true,
-                'ethernet-mac': '1234568',
-                'network-type': 'wifi',
-                'network-name': 'network',
-                'friendly-device-name': 'Roku Ultra (CA)',
-                'friendly-model-name': 'Roku Ultra',
-                'default-device-name': 'Roku Ultra - 1234568',
-                'user-device-name': 'Roku Ultra (CA)',
-                'user-device-location': 'Office',
-                'build-number': '46C.00E04157A',
-                'software-version': '11.0.0',
-                'software-build': 4157,
-                'secure-device': true,
-                'language': 'en',
-                'country': 'US',
-                'locale': 'en_US',
-                'time-zone-auto': true,
-                'time-zone': 'Canada/Atlantic',
-                'time-zone-name': 'Canada/Atlantic',
-                'time-zone-tz': 'America/Halifax',
-                'time-zone-offset': -180,
-                'clock-format': '12-hour',
-                'uptime': 92316,
-                'power-mode': 'PowerOn',
-                'supports-suspend': false,
-                'supports-find-remote': true,
-                'find-remote-is-possible': true,
-                'supports-audio-guide': true,
-                'supports-rva': true,
-                'developer-enabled': true,
-                'keyed-developer-id': '1234568',
-                'search-enabled': true,
-                'search-channels-enabled': true,
-                'voice-search-enabled': true,
-                'notifications-enabled': true,
-                'notifications-first-use': false,
-                'supports-private-listening': true,
-                'headphones-connected': false,
-                'supports-audio-settings': false,
-                'supports-ecs-textedit': true,
-                'supports-ecs-microphone': true,
-                'supports-wake-on-wlan': false,
-                'supports-airplay': true,
-                'has-play-on-roku': true,
-                'has-mobile-screensaver': true,
-                'support-url': 'roku.com/support',
-                'grandcentral-version': '7.0.59',
-                'trc-version': 3,
-                'trc-channel-version': '6.0.15',
-                'davinci-version': '2.8.20',
-                'av-sync-calibration-enabled': 2
+        this.devices = [];
+        this.activeDeviceManager.on('foundDevice', (newDeviceId: string, newDevice: RokuDeviceDetails) => {
+            if (!this.devices.find(device => device.id === newDeviceId)) {
+                this.devices.push(newDevice);
+                this._onDidChangeTreeData.fire(null);
+            } else {
+                const foundIndex = this.devices.findIndex(device => device.id === newDeviceId);
+                this.devices[foundIndex] = newDevice;
             }
-        }];
+        });
+
+        this.activeDeviceManager.on('expiredDevice', (deviceId: string, device: RokuDeviceDetails) => {
+            const foundIndex = this.devices.findIndex(x => x.id === deviceId);
+            this.devices.splice(foundIndex, 1);
+            this._onDidChangeTreeData.fire(null);
+        });
     }
 
-    private devices;
+    private devices: Array<RokuDeviceDetails>;
 
-    private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
-    public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
-
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return element;
-    }
-
-    getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
+    getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
-                let items: vscode.TreeItem[] = [];
+                let items: DeviceTreeItem[] = [];
                 for (const device of this.devices) {
-                    let treeItem = new vscode.TreeItem(device.deviceInfo['user-device-name'] + ' - ' + device.deviceInfo['serial-number'], vscode.TreeItemCollapsibleState.Collapsed);
-                    treeItem.id = device.deviceInfo['device-id'];
+                    let treeItem = new DeviceTreeItem(
+                        device.deviceInfo['user-device-name'] + ' - ' + device.deviceInfo['serial-number'],
+                        vscode.TreeItemCollapsibleState.Collapsed,
+                        device.id,
+                        device.deviceInfo
+                    );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
                     items.push(treeItem);
                 }
@@ -101,9 +42,17 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             } else {
                 return [];
             }
-        } else {
-            let result: vscode.TreeItem[] = [];
-            let device = this.devices.find(device => device.deviceInfo['device-id'] === element.id);
+        } else if (element instanceof DeviceTreeItem) {
+            let result: Array<DeviceInfoTreeItem> = [];
+
+            for (let property in element.details) {
+                let treeItem = new DeviceInfoTreeItem(
+                    property,
+                    element,
+                    vscode.TreeItemCollapsibleState.None,
+                    property,
+                    element.details[property].toString()
+                );
 
             for (let property in device.deviceInfo) {
                 let treeItem = new vscode.TreeItem(property);
@@ -112,16 +61,68 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 result.push(treeItem);
             }
 
-            console.log(element);
+            if (semver.satisfies(element.details['software-version'], '>=11')) {
+                // TODO: add ECP system hooks here in the future
+            }
             return result;
         }
     }
 
-    // getParent?(element: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem> {
-    //     throw new Error('Method not implemented.');
-    // }
+    /**
+     * Called by VS Code to get a given element.
+     * Currently we don't modify this element so it is just returned back.
+     * @param element the requested element
+     */
+    getParent?(element: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<vscode.TreeItem> {
+        return element?.parent;
+    }
 
-    // resolveTreeItem?(item: vscode.TreeItem, element: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem> {
-    //     throw new Error('Method not implemented.');
-    // }
+    /**
+     * Called by VS Code to get a tree item for a given element.
+     * Currently we don't modify this element so it is just returned back.
+     * @param element the requested element
+     */
+    getTreeItem(element: vscode.TreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        return element;
+    }
+
+    /**
+     * Called by VS Code to resolve tool tips when not populated.
+     * Currently we don't modify this element so it is just returned back.
+     * @param element the requested element
+     */
+    resolveTreeItem?(item: vscode.TreeItem, element: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem> {
+        return element;
+    }
+
+    private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
+    public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
+}
+
+
+class DeviceTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly key: string,
+        public readonly details?: any,
+        public command?: vscode.Command
+    ) {
+        super(label, collapsibleState);
+    }
+
+    public readonly parent = null;
+}
+class DeviceInfoTreeItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly parent: DeviceTreeItem,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly key: string,
+        public readonly description: string,
+        public readonly details?: any,
+        public command?: vscode.Command
+    ) {
+        super(label, collapsibleState);
+    }
 }
