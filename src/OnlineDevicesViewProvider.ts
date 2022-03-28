@@ -64,7 +64,6 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     } else {
                         treeItem.iconPath = icons.setTopBox;
                     }
-                    console.log(treeItem.iconPath);
                     items.push(treeItem);
                 }
 
