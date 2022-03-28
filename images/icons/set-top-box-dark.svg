@@ -8,7 +8,7 @@
    version="1.1"
    id="svg5"
    inkscape:version="1.1.2 (b8e25be833, 2022-02-05)"
-   sodipodi:docname="set-top-box-light.svg"
+   sodipodi:docname="set-top-box-dark.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -24,7 +24,7 @@
      inkscape:document-units="mm"
      showgrid="true"
      inkscape:zoom="1.8101934"
-     inkscape:cx="164.89951"
+     inkscape:cx="165.17572"
      inkscape:cy="133.96359"
      inkscape:window-width="1920"
      inkscape:window-height="1018"
@@ -113,20 +113,20 @@
      inkscape:groupmode="layer"
      id="layer1">
     <rect
-       style="fill:none;stroke:#ffffff;stroke-width:2.12132;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;fill-opacity:0;stroke:#ffffff;stroke-width:2.12132;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect1372"
        width="23.812489"
        height="7.9374948"
        x="59.531261"
        y="62.177078" />
     <path
-       style="fill:none;stroke:#ffffff;stroke-width:3.48355;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:50;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       style="fill:none;stroke:#ffffff;stroke-width:6;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:50;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
        d="M 3.0691859,47.525402 C 3.7337448,44.450884 17.197917,34.395833 17.197917,34.395833 h 67.46875 c 0,0 12.591549,10.637265 12.839824,13.300207"
        id="path8213"
        sodipodi:nodetypes="cccc" />
     <path
        id="rect2035"
-       style="fill:none;stroke:#ffffff;stroke-width:4.33227;stroke-linecap:round;stroke-miterlimit:50"
+       style="fill:none;fill-opacity:0;stroke:#ffffff;stroke-width:6;stroke-linecap:round;stroke-miterlimit:50;stroke-dasharray:none;stroke-opacity:1"
        d="m 27.78125,43.65625 h 45.25 c 27.64584,0 25,-2.412431 25,20.505678 0,11.360146 -11.15,20.505678 -25,20.505678 h -45.25 c -13.85,0 -24.9999997,-9.145532 -24.9999997,-20.505678 0,-22.918109 -2.6458333,-20.505678 24.9999997,-20.505678 z"
        sodipodi:nodetypes="sssssss" />
   </g>
