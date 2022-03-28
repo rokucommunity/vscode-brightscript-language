@@ -111,7 +111,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     }
 
     /**
-     * Called by VS Code to get a give element.
+     * Called by VS Code to get a given element.
      * Currently we don't modify this element so it is just returned back.
      * @param element the requested element
      */
