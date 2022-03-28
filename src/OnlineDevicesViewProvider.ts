@@ -7,15 +7,18 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         this.devices = [];
         this.activeDeviceManager.on('foundDevice', (newDeviceId: string, newDevice: RokuDeviceDetails) => {
             if (!this.devices.find(device => device.id === newDeviceId)) {
+                // Add the device to the list
                 this.devices.push(newDevice);
                 this._onDidChangeTreeData.fire(null);
             } else {
+                // Update the device
                 const foundIndex = this.devices.findIndex(device => device.id === newDeviceId);
                 this.devices[foundIndex] = newDevice;
             }
         });
 
         this.activeDeviceManager.on('expiredDevice', (deviceId: string, device: RokuDeviceDetails) => {
+            // Remove the device from the list
             const foundIndex = this.devices.findIndex(x => x.id === deviceId);
             this.devices.splice(foundIndex, 1);
             this._onDidChangeTreeData.fire(null);
@@ -27,8 +30,21 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
+                // Process the root level devices in order by id
+                let devices = this.devices.sort((a, b) => {
+                    if (a.id < b.id) {
+                        return -1;
+                    }
+                    if (a.id > b.id) {
+                        return 1;
+                    }
+                    // ids must be equal
+                    return 0;
+                });
+
                 let items: DeviceTreeItem[] = [];
-                for (const device of this.devices) {
+                for (const device of devices) {
+                    // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
                         device.deviceInfo['user-device-name'] + ' - ' + device.deviceInfo['serial-number'],
                         vscode.TreeItemCollapsibleState.Collapsed,
@@ -38,14 +54,19 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
                     items.push(treeItem);
                 }
+
+                // Return the created root items
                 return items;
             } else {
+                // No devices
                 return [];
             }
         } else if (element instanceof DeviceTreeItem) {
+            // Process the details of a device
             let result: Array<DeviceInfoTreeItem> = [];
 
             for (let property in element.details) {
+                // Create a tree item for every detail property on the device
                 let treeItem = new DeviceInfoTreeItem(
                     property,
                     element,
@@ -54,6 +75,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     element.details[property].toString()
                 );
 
+                // Prepare te copt to clipboard command
                 treeItem.tooltip = 'Copy to clipboard';
                 treeItem.command = {
                     command: 'brightscript.extension.copyToClipboard',
@@ -66,6 +88,8 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future
             }
+
+            // Return the device details
             return result;
         }
     }
