@@ -5,7 +5,7 @@ export class GlobalStateManager {
         private context: vscode.ExtensionContext
     ) {
         this.updateFromVsCodeConfiguration();
-        vscode.workspace.onDidChangeConfiguration(this.updateFromVsCodeConfiguration);
+        vscode.workspace.onDidChangeConfiguration(() => this.updateFromVsCodeConfiguration());
     }
 
     private keys = {

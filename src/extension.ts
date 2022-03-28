@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
-import { brightScriptCommands } from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
@@ -30,7 +30,7 @@ import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
-import { VSCodeContext } from './VscodeContext';
+import { RemoteControlManager } from './managers/RemoteControlManager';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -44,6 +44,8 @@ export class Extension {
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
     private telemetryManager: TelemetryManager;
+    private remoteControlManager: RemoteControlManager;
+    private brightScriptCommands: BrightScriptCommands;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -59,8 +61,9 @@ export class Extension {
 
     public async activate(context: vscode.ExtensionContext) {
         this.registerGeneralCommands(context);
+        this.remoteControlManager = new RemoteControlManager(context);
+        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, context);
 
-        await VSCodeContext.set('brightscript.remoteControlMode', false);
         this.globalStateManager = new GlobalStateManager(context);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
@@ -192,7 +195,7 @@ export class Extension {
         });
 
         //register all commands for this extension
-        brightScriptCommands.registerCommands(context);
+        this.brightScriptCommands.registerCommands();
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
         vscode.debug.onDidStartDebugSession((e) => {

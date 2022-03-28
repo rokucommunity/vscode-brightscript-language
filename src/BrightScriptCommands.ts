@@ -4,26 +4,26 @@ import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
-import { SceneGraphDebugCommandController } from 'roku-debug';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
-import { VSCodeContext } from './VscodeContext';
+import type { RemoteControlManager } from './managers/RemoteControlManager';
 
 export class BrightScriptCommands {
 
-    constructor() {
+    constructor(
+        private remoteControlManager: RemoteControlManager,
+        private context: vscode.ExtensionContext
+    ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
 
     private fileUtils: BrightScriptFileUtils;
-    private context: vscode.ExtensionContext;
     private host: string;
 
-    public registerCommands(context: vscode.ExtensionContext) {
-        this.context = context;
+    public registerCommands() {
 
-        brighterScriptPreviewCommand.register(context);
-        languageServerInfoCommand.register(context);
+        brighterScriptPreviewCommand.register(this.context);
+        languageServerInfoCommand.register(this.context);
 
         this.registerCommand('toggleXML', async () => {
             await this.onToggleXml();
@@ -75,9 +75,16 @@ export class BrightScriptCommands {
             await vscode.commands.executeCommand('workbench.action.focusPanel');
         });
 
-        this.registerCommand('toggleRemoteControlMode', async () => {
-            let currentMode = VSCodeContext.get('brightscript.remoteControlMode');
-            await VSCodeContext.set('brightscript.remoteControlMode', !(currentMode));
+        this.registerCommand('toggleRemoteControlMode', () => {
+            return this.remoteControlManager.toggleRemoteControlMode();
+        });
+
+        this.registerCommand('enableRemoteControlMode', () => {
+            return this.remoteControlManager.setRemoteControlMode(true);
+        });
+
+        this.registerCommand('disableRemoteControlMode', () => {
+            return this.remoteControlManager.setRemoteControlMode(false);
         });
 
         this.registerCommand('pressBackButton', async () => {
@@ -200,7 +207,7 @@ export class BrightScriptCommands {
         }>);
 
         for (let keybinding of keybindings) {
-            // Find every keybinding that is related to sending text charterers to the device
+            // Find every keybinding that is related to sending text characters to the device
             if (keybinding.command.includes('.sendAscii+')) {
 
                 if (!keybinding.args) {
@@ -308,5 +315,3 @@ export class BrightScriptCommands {
         await this.sendRemoteCommand(commandToSend);
     }
 }
-
-export const brightScriptCommands = new BrightScriptCommands();

@@ -4,10 +4,10 @@ type ContextValue = boolean | string;
 
 /**
  * Wrapper around VS Code's `setContext`.
- * The API call takes several milliseconds to seconds to complete,
+ * The API call can take up to several seconds to complete,
  * so let's cache the values and only call the API when necessary.
  */
-class Context {
+class VSCodeContextManager {
     private readonly cache: Map<string, ContextValue> = new Map();
 
     public async set(key: string, value: ContextValue): Promise<void> {
@@ -19,9 +19,9 @@ class Context {
         }
     }
 
-    public get(key: string): ContextValue | undefined {
-        return this.cache.get(key);
+    public get<T extends ContextValue>(key: string, defaultValue?: T): T | undefined {
+        return this.cache.get(key) as T ?? defaultValue;
     }
 }
 
-export const VSCodeContext = new Context();
+export const vscodeContextManager = new VSCodeContextManager();

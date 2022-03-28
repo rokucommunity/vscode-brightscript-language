@@ -58,7 +58,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
                     if (device.deviceInfo?.['is-stick']) {
                         treeItem.iconPath = icons.streamingStick;
-                    } else if (device.deviceInfo?.['is-tv']) {
+                    } else if (device.deviceInfo?.['is-tv'] || devices.indexOf(device) === 0) {
                         treeItem.iconPath = icons.tv;
                         //fall back to settop box in all other cases
                     } else {
