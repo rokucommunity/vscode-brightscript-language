@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
+import { icons } from './icons';
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(
@@ -55,16 +56,13 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                         device.deviceInfo
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
-                    if (device.deviceInfo['model-name'].toLowerCase().includes('stick')) {
-                        treeItem.iconPath = {
-                            light: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'streaming-stick-light.svg'),
-                            dark: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'streaming-stick-dark.svg')
-                        };
+                    if (device.deviceInfo?.['is-stick']) {
+                        treeItem.iconPath = icons.streamingStick;
+                    } else if (device.deviceInfo?.['is-tv']) {
+                        treeItem.iconPath = icons.tv;
+                        //fall back to settop box in all other cases
                     } else {
-                        treeItem.iconPath = {
-                            light: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'set-top-box-light.svg'),
-                            dark: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'set-top-box-dark.svg')
-                        };
+                        treeItem.iconPath = icons.setTopBox;
                     }
                     console.log(treeItem.iconPath);
                     items.push(treeItem);

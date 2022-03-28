@@ -158,7 +158,7 @@
             "activitybar": [{
                 "id": "vscode-brightscript-language",
                 "title": "BrightScript Language",
-                "icon": "images/icon.png"
+                "icon": "images/icons/logo.svg"
             }]
         },
         "views": {
@@ -1863,8 +1863,8 @@
                 "title": "Preview Transpiled code to the Side",
                 "category": "BrighterScript",
                 "icon": {
-                    "light": "./images/preview-right-light.svg",
-                    "dark": "./images/preview-right-dark.svg"
+                    "light": "./images/icons/preview-right-light.svg",
+                    "dark": "./images/icons/preview-right-dark.svg"
                 }
             },
             {
