@@ -54,10 +54,12 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     element.details[property].toString()
                 );
 
-            for (let property in device.deviceInfo) {
-                let treeItem = new vscode.TreeItem(property);
-                treeItem.description = device.deviceInfo[property].toString();
-                treeItem.id = property + '|' + element.id;
+                treeItem.tooltip = 'Copy to clipboard';
+                treeItem.command = {
+                    command: 'brightscript.extension.copyToClipboard',
+                    title: 'Copy To Clipboard',
+                    arguments: [element.details[property].toString()]
+                };
                 result.push(treeItem);
             }
 
