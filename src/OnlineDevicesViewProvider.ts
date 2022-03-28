@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
-import { resourceLimits } from 'worker_threads';
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    constructor(context: vscode.ExtensionContext, private activeDeviceManager: ActiveDeviceManager) {
+    constructor(
+        private context: vscode.ExtensionContext,
+        private activeDeviceManager: ActiveDeviceManager
+    ) {
         this.devices = [];
         this.activeDeviceManager.on('foundDevice', (newDeviceId: string, newDevice: RokuDeviceDetails) => {
             if (!this.findDeviceById(newDeviceId)) {
@@ -53,6 +55,18 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                         device.deviceInfo
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
+                    if (device.deviceInfo['model-name'].toLowerCase().includes('stick')) {
+                        treeItem.iconPath = {
+                            light: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'streaming-stick-light.svg'),
+                            dark: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'streaming-stick-dark.svg')
+                        };
+                    } else {
+                        treeItem.iconPath = {
+                            light: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'set-top-box-light.svg'),
+                            dark: vscode.Uri.joinPath(this.context.extensionUri, 'images', 'set-top-box-dark.svg')
+                        };
+                    }
+                    console.log(treeItem.iconPath);
                     items.push(treeItem);
                 }
 
