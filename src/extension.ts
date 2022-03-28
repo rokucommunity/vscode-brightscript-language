@@ -245,6 +245,14 @@ export class Extension {
                 await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
             }
         }));
+
+        context.subscriptions.push(vscode.commands.registerCommand('brightscript.extension.openUrl', async (url: string) => {
+            try {
+                await vscode.env.openExternal(vscode.Uri.parse(url));
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+            }
+        }));
     }
 
     /**
