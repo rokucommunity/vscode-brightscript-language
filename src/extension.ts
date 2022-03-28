@@ -58,6 +58,8 @@ export class Extension {
     };
 
     public async activate(context: vscode.ExtensionContext) {
+        this.registerGeneralCommands(context);
+
         await VSCodeContext.set('brightscript.remoteControlMode', false);
         this.globalStateManager = new GlobalStateManager(context);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -232,6 +234,17 @@ export class Extension {
 
         await this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
         await languageServerPromise;
+    }
+
+    private registerGeneralCommands(context: vscode.ExtensionContext) {
+        context.subscriptions.push(vscode.commands.registerCommand('brightscript.extension.copyToClipboard', async (value: string) => {
+            try {
+                await vscode.env.clipboard.writeText(value);
+                await vscode.window.showInformationMessage(`Copied to clipboard: ${value}`);
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
+            }
+        }));
     }
 
     /**
