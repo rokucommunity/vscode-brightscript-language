@@ -13,11 +13,11 @@ To do this you need a few simple things:
   - This can be added anywhere in the channel including source files but it must be on or after the call to `screen.show()`
 - Set the `injectRaleTrackerTask` value to true in `launch.json`. For example:
 
-```json
-{
-  "type": "brightscript",
-  "rootDir": "${workspaceFolder}/dist",
-  "host": "192.168.1.2",
-  "injectRaleTrackerTask": true
-}
-```
+    ```json
+    {
+    "type": "brightscript",
+    "rootDir": "${workspaceFolder}/dist",
+    "host": "192.168.1.2",
+    "injectRaleTrackerTask": true
+    }
+    ```
