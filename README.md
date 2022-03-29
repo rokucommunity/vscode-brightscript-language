@@ -17,9 +17,9 @@ The popular BrightScript plugin for [VSCode](https://code.visualstudio.com/) use
 ## Notable features
 The extension is packed with features, but here are some highlights:
  - Full debugger support including breakpoints, variable inspection, and more
- - Integrated telnet console and [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
+ - Integrated telnet logs and interactive console
  - client-side syntax checking powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server
- - code formatting, symbol naviation, and [much more](features.html)
+ - syntax highlighting, code formatting, symbol navigation, and [much more](https://rokucommunity.github.io/vscode-brightscript-language/features.html)
 
 ## Documentation
 View the documentation at https://rokucommunity.github.io/vscode-brightscript-language
