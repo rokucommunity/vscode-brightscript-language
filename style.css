@@ -37,6 +37,7 @@ a {
 
 #content {
     padding: 30px;
+    width: 100%;
     overflow: auto;
 }
 
