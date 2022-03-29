@@ -17,6 +17,7 @@ View the documentation at https://rokucommunity.github.io/vscode-brightscript-la
 If you're upgrading from version 1 of the extension, please review [these changes](ReleaseNotes.md#2.0.0)
 
 ## Contributing
+View the [contributing guide](https://rokucommunity.github.io/vscode-brightscript-language/contributing.html)
 
 ## Changelog
 
