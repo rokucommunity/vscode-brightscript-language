@@ -71,6 +71,7 @@ a {
     display: flex;
     flex-direction: row;
     height: calc(100% - 50px);
+    position:relative;
 }
 
 #sidebar {
@@ -115,4 +116,44 @@ code {
 
 pre code {
     background-color: #f6f8fa !important;
+}
+
+.nav-left-area {
+    display: flex;
+    align-items: center;
+}
+
+.hamburger {
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    display: none;
+}
+
+.hamburger span {
+    display: block;
+    width: 33px;
+    height: 4px;
+    margin-bottom: 5px;
+    position: relative;
+
+    background: #cdcdcd;
+    border-radius: 3px;
+}
+
+@media only screen and (max-width: 900px) {
+    .hamburger {
+        display: inline;
+    }
+
+    #sidebar {
+        display: none;
+        position: absolute;
+        background-color: white;
+        box-shadow:1px 13px 13px 9px #000000bf;
+    }
+
+    #sidebar.open {
+        display: block;
+    }
 }
