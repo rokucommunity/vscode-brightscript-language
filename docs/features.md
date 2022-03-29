@@ -5,7 +5,9 @@ priority: 2
 
 - Debugging support - Set breakpoints, launch and debug your source code running on the Roku device all from within VSCode
 
-    <img src="https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif" style="max-width: 100%; max-height: 100%"/>
+    <a href="https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif" target="_blank">
+        <img src="https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif" />
+    </a>
 
 - Automatic Rendezvous tracking when `logrendezvous` is enabled on the Roku. See [here](https://developer.roku.com/docs/developer-program/debugging/debugging-channels.md#scenegraph-debug-server-port-8080-commands) for information on how to enable rendezvous logging your Roku.
 - Real time code validation

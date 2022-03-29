@@ -72,7 +72,7 @@ a {
     display: flex;
     flex-direction: row;
     height: calc(100% - 50px);
-    position:relative;
+    position: relative;
 }
 
 #sidebar {
@@ -142,6 +142,11 @@ pre code {
     border-radius: 3px;
 }
 
+img {
+    max-width: 50%;
+    max-height: 50%;
+}
+
 @media only screen and (max-width: 900px) {
     .hamburger {
         display: inline;
@@ -151,10 +156,15 @@ pre code {
         display: none;
         position: absolute;
         background-color: white;
-        box-shadow:1px 13px 13px 9px #000000bf;
+        box-shadow: 1px 13px 13px 9px #000000bf;
     }
 
     #sidebar.open {
         display: block;
+    }
+
+    img {
+        max-width: 100%;
+        max-height: 100%;
     }
 }
