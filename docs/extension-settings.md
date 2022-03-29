@@ -34,9 +34,16 @@ specifies the display format for log output `pkg` link
 If set to true, an info toast will be shown when a Roku device has been found on the network.
 ### brightscript.deviceDiscovery.enabled
 If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
+### brightscript.debug.autoRunSgDebugCommands
+Give the ability to run a list of commands on port 8080 of the device at the start of a debug session. Currently there are three supported short hands for the most commonly desired commands. These are: 
+ - `chanperf` - runs chanperf with a one seconds repeating interval
+ - `fpsdisplay` - turns on the FPS
+ - `logrendezvous` - enables Rendezvous Logging. You can also include and command string in this array and we will attempt to run it for you. For example you could do `chanperf -r 10` or `clear_launch_caches` as another example.
 ### brightscript.debug.raleTrackerTaskFileLocation
 This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 ### brightscript.debug.enableSourceMaps
-Defaults to true. if set to false, then the debugger falls back to using line offets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+Defaults to `true`. if set to `false`, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
 ### brightscript.debug.enableDebugProtocol
 If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
+### brightscript.extensionLogfilePath
+File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. `${workspaceFolder}` is supported and will point to the first workspace found.

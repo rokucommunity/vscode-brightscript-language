@@ -1,0 +1,21 @@
+name: create-vsix
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "The branch name which should be used to build the vsix"
+        required: true
+jobs:
+  create-vsix:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: "14.16.1"
+      - run: npm ci
+      - run: node scripts/create-vsix.js ${{ github.event.inputs.branch }}
+      - uses: actions/upload-artifact@v2
+        with:
+          name: vscode-brightscript-language.vsix
+          path: .vsix-building/vscode-brightscript-language/*.vsix

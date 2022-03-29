@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.19.0",
+    "version": "2.29.4",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -14,8 +14,8 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.30.0",
-        "node": "^7.9.0"
+        "vscode": "^1.52.0",
+        "node": "^12.12.0"
     },
     "repository": {
         "type": "git",
@@ -25,14 +25,14 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
-        "build": "npm run copy-schema && tsc -p ./",
-        "lint": "tslint \"./src/**/*.ts\"",
+        "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
+        "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
-        "test": "nyc mocha \"src/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "ts-mocha \"src/**/*.spec.ts\" --full-trace",
+        "test": "nyc mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace --bail",
+        "test:nocover": "mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -43,82 +43,83 @@
         "install-pull-local": "node scripts/install-local.js --pull",
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
-        "watch-docs": "npm run build-docs -- --watch"
+        "watch-docs": "npm run build-docs -- --watch",
+        "validate": "svelte-check",
+        "svelte-build": "rollup -c",
+        "svelte-watch": "rollup -c -w"
     },
     "dependencies": {
+        "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.37.4",
-        "brighterscript-formatter": "^1.6.0",
+        "brighterscript": "^0.46.0",
+        "brighterscript-formatter": "^1.6.10",
+        "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
-        "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
-        "find-in-files": "^0.5.0",
         "fs-extra": "^7.0.1",
         "get-port": "^5.0.0",
         "glob": "^7.1.3",
-        "hoek": "^6.1.2",
         "iconv-lite": "0.4.24",
-        "merge-source-map": "^1.1.0",
-        "micromatch": "^3.1.10",
-        "natural-orderby": "^2.0.3",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
-        "p-event": "^4.1.0",
-        "path": "^0.12.7",
         "pretty-bytes": "^5.6.0",
-        "q": "^1.5.1",
-        "replace-in-file": "^4.1.0",
-        "replace-last": "^1.2.6",
-        "roku-debug": "^0.7.0",
-        "roku-deploy": "^3.2.4",
+        "roku-debug": "^0.10.2",
+        "roku-deploy": "^3.5.4",
+        "roku-test-automation": "^1.1.1",
         "semver": "^7.1.3",
-        "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
-        "vscode-debugadapter": "1.33.0",
-        "vscode-debugprotocol": "1.33.0",
-        "vscode-languageclient": "^4.1.4",
-        "vscode-languageserver": "^4.1.3",
+        "svelte": "^3.37.0",
+        "svelte-preprocess": "^4.7.0",
+        "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6"
     },
     "devDependencies": {
         "@deboxsoft/cpx": "^1.5.0",
+        "@rollup/plugin-commonjs": "^16.0.0",
+        "@rollup/plugin-node-resolve": "^10.0.0",
+        "@rollup/plugin-typescript": "^6.0.0",
+        "@tsconfig/svelte": "^1.0.10",
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/glob": "^7.1.1",
         "@types/mocha": "^7.0.2",
-        "@types/mock-fs": "^4.10.0",
-        "@types/node": "11.9.1",
+        "@types/node": "^12.12.0",
         "@types/node-ssdp": "^3.3.0",
-        "@types/q": "^1.5.1",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.30.0",
+        "@types/vscode": "^1.42.0",
+        "@typescript-eslint/eslint-plugin": "^5.14.0",
+        "@typescript-eslint/parser": "^5.14.0",
         "chai": "^4.2.0",
-        "chalk": "^4.0.0",
+        "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
         "coveralls": "^3.0.11",
-        "mocha": "^8.3.2",
-        "mocha-param": "^2.0.0",
-        "mock-fs": "^4.10.3",
+        "eslint": "^8.10.0",
+        "eslint-plugin-github": "^4.3.5",
+        "eslint-plugin-no-only-tests": "^2.6.0",
+        "mocha": "^9.1.3",
         "nyc": "^15.0.0",
-        "ovsx": "0.1.0-next.e000fdb",
+        "ovsx": "^0.3.0",
         "rimraf": "^3.0.0",
+        "rollup": "^2.3.4",
+        "rollup-plugin-css-only": "^3.0.0",
+        "rollup-plugin-svelte": "^7.0.0",
+        "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
-        "source-map-support": "^0.5.16",
-        "statigen": "^0.3.0",
-        "ts-mocha": "^7.0.0",
-        "ts-node": "^8.9.1",
-        "tslint": "^5.11.0",
-        "tslint-eslint-rules": "^5.4.0",
+        "source-map-support": "^0.5.21",
+        "ts-node": "^10.7.0",
+        "tslib": "^2.3.1",
         "typescript": "^3.8.3",
-        "vsce": "^1.81.1",
-        "vscode-debugadapter-testsupport": "1.33.0",
+        "typescript-json-schema": "^0.50.1",
+        "vsce": "^2.6.7",
+        "vscode-tmgrammar-test": "^0.0.11",
         "yargs": "^16.2.0"
     },
     "main": "./dist/extension",
+    "browser": "./dist/extension-web",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
@@ -150,6 +151,18 @@
                     "name": "Rendezvous",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
+                },
+                {
+                    "type": "webview",
+                    "id": "RDBRegistryView",
+                    "name": "Registry",
+                    "when": "debugType == 'brightscript'"
+                },
+                {
+                    "type": "webview",
+                    "id": "RDBCommandsView",
+                    "name": "Commands",
+                    "when": "debugType == 'brightscript'"
                 }
             ]
         },
@@ -358,6 +371,38 @@
                                     }
                                 }
                             },
+                            "autoRunSgDebugCommands": {
+                                "type": "array",
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                            "enum": [
+                                                "chanperf"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                            "enum": [
+                                                "fpsdisplay"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                            "enum": [
+                                                "logrendezvous"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Custom SGDebug command that will be run on port 8080"
+                                        }
+                                    ]
+                                }
+                            },
                             "outDir": {
                                 "type": "string",
                                 "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
@@ -487,6 +532,20 @@
                             "enableDebugProtocol": {
                                 "type": "boolean",
                                 "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
+                            },
+                            "logLevel": {
+                                "type": "string",
+                                "enum": [
+                                    "off",
+                                    "error",
+                                    "warn",
+                                    "log",
+                                    "info",
+                                    "debug",
+                                    "trace"
+                                ],
+                                "default": "log",
+                                "description": "The level of logging that should be done during a debug session."
                             }
                         }
                     }
@@ -596,14 +655,14 @@
         "snippets": [
             {
                 "language": "brightscript",
-                "path": "./snippets.json"
-            },
-            {
-                "language": "brightscript",
                 "path": "./snippets/brightscript.json"
             },
             {
-                "language": "brightscript",
+                "language": "brighterscript",
+                "path": "./snippets/brightscript.json"
+            },
+            {
+                "language": "brighterscript",
                 "path": "./snippets/brighterscript.json"
             },
             {
@@ -1351,16 +1410,48 @@
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                     "scope": "resource"
                 },
-                "brightscript.rokuAdvancedLayoutEditor.trackerTaskFileLocation": {
-                    "type": "string",
-                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
-                    "deprecationMessage": "Deprecated. Use brightscript.debug.raleTrackerTaskFileLocation instead",
+                "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
                     "scope": "resource"
                 },
                 "brightscript.debug.raleTrackerTaskFileLocation": {
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
                     "scope": "resource"
+                },
+                "brightscript.debug.autoRunSgDebugCommands": {
+                    "type": "array",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                "enum": [
+                                    "chanperf"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                "enum": [
+                                    "fpsdisplay"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                "enum": [
+                                    "logrendezvous"
+                                ]
+                            },
+                            {
+                                "type": "string",
+                                "description": "Custom SGDebug command that will be run on port 8080"
+                            }
+                        ]
+                    }
                 },
                 "brightscript.debug.enableDebugProtocol": {
                     "type": "boolean",
@@ -1388,17 +1479,154 @@
                 "brightscript.focusOutputPanelOnStartup": {
                     "type": "boolean",
                     "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
+                    "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
                     "default": false,
+                    "scope": "resource"
+                },
+                "brightscript.outputPanelStartupBehavior": {
+                    "type": "string",
+                    "description": "Used to configure if the 'BrightScript Log' output channel will be shown, shown and be focused, or nothing happens as soon as this extension is initialized",
+                    "enum": [
+                        "show",
+                        "focus",
+                        "nothing"
+                    ],
+                    "default": "nothing",
                     "scope": "resource"
                 },
                 "brightscript.bsdk": {
                     "type": "string",
                     "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
                     "scope": "resource"
+                },
+                "brightscript.extensionLogfilePath": {
+                    "type": "string",
+                    "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
+                    "scope": "resource"
                 }
             }
         },
         "commands": [
+            {
+                "command": "extension.brightscript.bsprofPause",
+                "title": "bsprof-pause - Pause BS profiling",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.bsprofResume",
+                "title": "bsprof-resume - Resume BS profiling",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.bsprofStatus",
+                "title": "bsprof-status - Get BS profiling status",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.chanperf",
+                "title": "chanperf - Show channel CPU and memory usage",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.chanperfChangeInterval",
+                "title": "chanperf - Change how often to show channel CPU and memory usage",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.clearLaunchCaches",
+                "title": "clear_launch_caches - Clear all caches that can affect channel launch time",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.fpsDisplay",
+                "title": "fps_display - Display onscreen graphics statistics",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.free",
+                "title": "free - Return the output of the free(1) command",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.genkey",
+                "title": "genkey - Generate a new developer key",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.loadedTextures",
+                "title": "loaded_textures - Show loaded textures",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.logrendezvous",
+                "title": "logrendezvous - Turn Rendezvous Logging on or off",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.plugins",
+                "title": "plugins - Show list of all installed plugins",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.r2d2bitmaps",
+                "title": "r2d2_bitmaps - Enumerate R2D2 bitmaps",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.removePlugin",
+                "title": "remove_plugin - Remove a plugin from the account and device",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgnodesAll",
+                "title": "sgnodes all - Logs every existing node created by the currently running channel",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgnodesRoots",
+                "title": "sgnodes roots - Logs every existing node without a parent created by the currently running channel",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgnodesNodeId",
+                "title": "sgnodes node_ID - Logs node(s) with an id field matching the supplied node_ID",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgperfStart",
+                "title": "sgperf start - Enables tracking of basic node operation performance metrics",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgperfStop",
+                "title": "sgperf stop - Disabled tracking of basic node operation performance metrics",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgperfClear",
+                "title": "sgperf clear - Resets basic node operation performance metrics",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.sgperfReport",
+                "title": "sgperf report - Logs the current node operation performance metrics",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.showkey",
+                "title": "showkey - Show the current developer key.",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.press",
+                "title": "press - Simulate a list of keypress'",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.custom8080Command",
+                "title": "custom - Enter any command string to be run on port 8080'",
+                "category": "Brightscript Debug"
+            },
             {
                 "command": "extension.brightscript.clearGlobalState",
                 "title": "Clear Global State",
@@ -1671,9 +1899,21 @@
             ]
         }
     },
+    "mocha": {
+        "spec": "src/**/*.spec.ts",
+        "require": [
+            "source-map-support/register",
+            "ts-node/register"
+        ],
+        "fullTrace": true,
+        "watchExtensions": [
+            "ts"
+        ]
+    },
     "nyc": {
         "include": [
-            "src/**/!(*.spec).ts"
+            "src/**/!(*.spec).ts",
+            "ui/**/!(*.spec).ts"
         ],
         "extension": [
             ".ts"
