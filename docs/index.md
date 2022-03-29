@@ -13,5 +13,4 @@ The extension is packed with features, but here are some highlights:
  - Full debugger support including breakpoints, variable inspection, and more
  - Integrated telnet console and [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
  - client-side syntax checking powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server
- - Syntax highlighting, code formatting, symbol naviation, and [many more](features.html)
-
+ - code formatting, symbol naviation, and [much more](features.html)
