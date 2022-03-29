@@ -12,11 +12,11 @@ jobs:
         with:
           node-version: "14.19.0"
       - run: npm install
-      - run: npm run build
+      - run: npm run build-docs
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@3.7.1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
-          FOLDER: build-docs
+          FOLDER: ./tmp/docs
           CLEAN: true # Automatically remove deleted files from the deploy branch
