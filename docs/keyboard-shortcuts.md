@@ -1,5 +1,5 @@
 ---
-priority: 2
+priority: 4
 ---
 # Keyboard shortcuts
 
