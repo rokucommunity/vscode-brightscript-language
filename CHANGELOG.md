@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.30.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.4...v2.30.0) - 2022-03-30
+### Added
+ - Add bsc problem matchers. (`$bsc`, `$bsc-watch`, `$bsc-watch-silent`) ([#376](https://github.com/rokucommunity/vscode-brightscript-language/pull/376))
+
+
+
 ## [2.29.4](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.3...v2.29.4) - 2022-03-25
 ### Changed
  - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0102---2022-03-25)
