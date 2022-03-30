@@ -1887,6 +1887,78 @@
                 "mac": "cmd+ctrl+x",
                 "command": "extension.brightscript.setOutputExcludeFilter"
             }
+        ],
+        "problemPatterns": [
+            {
+                "name": "bsc",
+                "regexp": "^(.+?):(\\d+):(\\d+)(?:-(\\d+):(\\d+))?\\s*-\\s*(error|warning|info|hint)\\s+([a-zA-Z_\\-\\d]+):\\s*(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "endLine": 4,
+                "endColumn": 5,
+                "severity": 6,
+                "code": 7,
+                "message": 8
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "bsc",
+                "label": "BrighterScript problems",
+                "owner": "brightscript",
+                "source": "brightscript",
+                "applyTo": "allDocuments",
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "pattern": "$bsc"
+            },
+            {
+                "name": "bsc-watch",
+                "label": "BrighterScript problems (watch mode)",
+                "owner": "brightscript",
+                "source": "brs",
+                "applyTo": "allDocuments",
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "pattern": "$bsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                    },
+                    "endsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                    }
+                }
+            },
+            {
+                "name": "bsc-watch-silent",
+                "label": "BrighterScript problems (watch mode) but don't emit any diagnostics",
+                "owner": "brightscript",
+                "source": "brs",
+                "applyTo": "allDocuments",
+                "pattern": {
+                    "regexp": "^neverMatchThisPattern_likeSeriously,weShouldNeverMatchAnything$"
+                },
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                    },
+                    "endsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                    }
+                }
+            }
         ]
     },
     "watch": {
