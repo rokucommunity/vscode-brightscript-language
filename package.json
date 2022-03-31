@@ -200,8 +200,8 @@
         ],
         "debuggers": [
             {
-                "type": "brightscript",
                 "label": "BrightScript Debug",
+                "type": "brightscript",
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {
@@ -550,9 +550,9 @@
                 },
                 "initialConfigurations": [
                     {
+                        "name": "BrightScript Debug: Launch",
                         "type": "brightscript",
                         "request": "launch",
-                        "name": "BrightScript Debug: Launch",
                         "stopOnEntry": false,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
@@ -566,9 +566,9 @@
                         "label": "BrightScript Debug: Launch",
                         "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
                         "body": {
+                            "name": "BrightScript Debug: Launch",
                             "type": "brightscript",
                             "request": "launch",
-                            "name": "BrightScript Debug: Launch",
                             "stopOnEntry": false,
                             "host": "${promptForHost}",
                             "password": "${promptForPassword}",
