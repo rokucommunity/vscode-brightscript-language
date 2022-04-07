@@ -120,8 +120,7 @@ Here is a sample `launch.json` file where your roku project lives at the root of
       "name": "BrightScript Debug: Launch",
       "host": "192.168.1.17",
       "password": "password",
-      "rootDir": "${workspaceFolder}",
-      "stopOnEntry": false
+      "rootDir": "${workspaceFolder}"
     }
   ]
 }

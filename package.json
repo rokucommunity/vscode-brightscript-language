@@ -408,7 +408,7 @@
                             },
                             "stopOnEntry": {
                                 "type": "boolean",
-                                "description": "Have the debugger break on on the first line of the program after launch.",
+                                "description": "Should the debugger stop on the first line of the program after launch.",
                                 "default": false
                             },
                             "retainStagingFolder": {

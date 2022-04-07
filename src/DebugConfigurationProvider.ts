@@ -203,12 +203,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
         config.autoRunSgDebugCommands = config.autoRunSgDebugCommands ? config.autoRunSgDebugCommands : this.configDefaults.autoRunSgDebugCommands;
         config.request = config.request ? config.request : this.configDefaults.request;
-        config.stopOnEntry = config.stopOnEntry ? config.stopOnEntry : this.configDefaults.stopOnEntry;
+        config.stopOnEntry = config.stopOnEntry ?? this.configDefaults.stopOnEntry;
         config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
         config.injectRdbOnDeviceComponent = config.injectRdbOnDeviceComponent === true ? true : this.configDefaults.injectRdbOnDeviceComponent;
-        config.retainStagingFolder = config.retainStagingFolder === true ? true : this.configDefaults.retainStagingFolder;
+        config.retainStagingFolder = config.retainStagingFolder ?? this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
