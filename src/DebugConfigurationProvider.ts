@@ -87,7 +87,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config = await this.processHostParameter(config);
         config = await this.processPasswordParameter(config);
         config = await this.processDeepLinkUrlParameter(config);
-        config = this.processLogfilePath(folder, config);
+        config = await this.processLogfilePath(folder, config);
 
         await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
