@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.30.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.0...v2.30.1) - 2022-04-07
+### Changed
+ - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0104---2022-04-07)
+    - fixed stability issues when restarting an existing debug session ([#74](https://github.com/rokucommunity/roku-debug/pull/74))
+    - fixed issue where the `type` and `keys` commands would time out. ([#73](https://github.com/rokucommunity/roku-debug/pull/73))
+    - possible fix for [#72](https://github.com/rokucommunity/roku-debug/issues/72) ([#73](https://github.com/rokucommunity/roku-debug/pull/73))
+ - updated to [brighterscript@0.47.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0472---2022-04-07)
+    - fixed enum transpile bug for binary expressions ([#559](https://github.com/rokucommunity/brighterscript/pull/559))
+    - added missing `require` entry to `bsconfig.schema.json` ([#560](https://github.com/rokucommunity/brighterscript/pull/560))
+    - don't add trailing commas in transpiled output for array and aa literals ([#556](https://github.com/rokucommunity/brighterscript/pull/556))
+    - retain quote char when transpiling xml attributes ([#552](https://github.com/rokucommunity/brighterscript/pull/552))
+    - add `require` flag to allow loading external node modules as part of the build process (useful for things like `ts-node/register`). ([#550](https://github.com/rokucommunity/brighterscript/pull/550), [#551](https://github.com/rokucommunity/brighterscript/pull/551))
+ - updated to [brighterscript-formatter@1.6.11](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1611---2022-04-07)
+### Fixed
+ - empty `host` and `password` fields for new launch configuration
+ - standardized the default value for `retainStagingFolder` and `stopOnEntry` launch options
+
+
+
 ## [2.30.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.4...v2.30.0) - 2022-03-30
 ### Added
  - Add bsc problem matchers. (`$bsc`, `$bsc-watch`, `$bsc-watch-silent`) ([#376](https://github.com/rokucommunity/vscode-brightscript-language/pull/376))
