@@ -553,12 +553,9 @@
                         "name": "BrightScript Debug: Launch",
                         "type": "brightscript",
                         "request": "launch",
-                        "stopOnEntry": false,
                         "host": "${promptForHost}",
                         "password": "${promptForPassword}",
-                        "rootDir": "${workspaceFolder}",
-                        "enableDebuggerAutoRecovery": false,
-                        "stopDebuggerOnAppExit": false
+                        "rootDir": "${workspaceFolder}"
                     }
                 ],
                 "configurationSnippets": [
@@ -569,12 +566,9 @@
                             "name": "BrightScript Debug: Launch",
                             "type": "brightscript",
                             "request": "launch",
-                            "stopOnEntry": false,
-                            "host": "${promptForHost}",
-                            "password": "${promptForPassword}",
-                            "rootDir": "^\"\\${workspaceFolder}\"",
-                            "enableDebuggerAutoRecovery": false,
-                            "stopDebuggerOnAppExit": false
+                            "host": "^\"\\${promptForHost}\"",
+                            "password": "^\"\\${promptForPassword}\"",
+                            "rootDir": "^\"\\${workspaceFolder}\""
                         }
                     }
                 ]
