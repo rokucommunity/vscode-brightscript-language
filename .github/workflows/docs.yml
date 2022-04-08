@@ -2,7 +2,7 @@ name: publish-docs
 on:
   push:
     branches:
-      - 'docs-website' #TODO make this "master"
+      - 'master'
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
