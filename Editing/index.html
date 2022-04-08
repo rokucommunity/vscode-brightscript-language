@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="../Debugging/advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="../Debugging/bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="../Debugging/source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="../Debugging/special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -239,21 +239,17 @@
         </div>
         <div id="content">
             <a href="#setup"><h1 id="setup">Setup</h1></a><a href="#standard"><h2 id="standard">Standard</h2></a><p>Your project must be structured in the way that Roku expects, which looks something like this:</p>
-<ul>
-<li>manifest</li>
-<li>components/<ul>
-<li>HomeScene.brs</li>
-<li>HomeScene.xml</li>
-</ul>
-</li>
-<li>source/<ul>
-<li>main.brs</li>
-</ul>
-</li>
-</ul>
+<pre><code class="language-graphql">./workspaceFolder/
+  ├─ manifest
+  ├─ components/
+  │ ├─ HomeScene.brs
+  │ └─ HomeScene.xml
+  └─ source/
+    └─ main.brs
+</code></pre>
 <a href="#subdirectory"><h2 id="subdirectory">Subdirectory</h2></a><p>If your project lives in a subdirectory, you will need to create a <code>bsconfig.json</code> file at the root of your project, and reference your subdirectory like such:</p>
 <pre><code class="language-json">{
-    &quot;rootDir&quot;: &quot;./someSubdir&quot;
+  &quot;rootDir&quot;: &quot;./someSubdir&quot;
 }
 </code></pre>
 <p>This project relies heavily on the <a href="https://github.com/rokucommunity/brighterscript">brighterscript</a> project for language server support. See <a href="https://github.com/rokucommunity/brighterscript#bsconfigjson-options">this link</a> to view the <code>bsconfig.json</code> options.</p>

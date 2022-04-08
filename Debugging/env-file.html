@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -242,16 +242,16 @@
 <pre><code class="language-json">//launch.json
 
 {
-    &quot;version&quot;: &quot;0.2.0&quot;,
-    &quot;configurations&quot;: [
-        {
-            ...
-            &quot;envFile&quot;: &quot;${workspaceFolder}/.env&quot;,
-            &quot;username&quot;: &quot;${env:ROKU_USERNAME}&quot;,
-            &quot;password&quot;: &quot;${env:ROKU_PASSWORD}&quot;
-            ...
-        }
-    ]
+  &quot;version&quot;: &quot;0.2.0&quot;,
+  &quot;configurations&quot;: [
+    {
+      ...
+      &quot;envFile&quot;: &quot;${workspaceFolder}/.env&quot;,
+      &quot;username&quot;: &quot;${env:ROKU_USERNAME}&quot;,
+      &quot;password&quot;: &quot;${env:ROKU_PASSWORD}&quot;
+      ...
+    }
+  ]
 }
 </code></pre>
 <pre><code class="language-bash"># .env

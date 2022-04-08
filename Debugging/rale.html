@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -241,25 +241,22 @@
             <a href="#rale-support"><h1 id="rale-support">RALE Support</h1></a><p>The extension can automatically inject the <code>TrackerTask.xml</code> and the code snippet required to start the tracker task.
 To do this you need a few simple things:</p>
 <ul>
-<li><p>In your VS Code user settings add the <code>brightscript.debug.raleTrackerTaskFileLocation</code> setting. (See <a href="#Extension-Settings">Extension Settings</a> for more information)</p>
-</li>
-<li><p>Add the entry point comment <code>&#39; vscode_rale_tracker_entry</code> to your code.</p>
-<ul>
+<li>In your VS Code user settings add the <code>brightscript.debug.raleTrackerTaskFileLocation</code> setting. (See <a href="#Extension-Settings">Extension Settings</a> for more information)</li>
+<li>Add the entry point comment <code>&#39; vscode_rale_tracker_entry</code> to your code.<ul>
 <li>This is optional as you can still include the the code to create the tracker task yourself.</li>
 <li>We recommend adding it to the end of your <code>screen.show()</code> call. For example: <code>screen.show() &#39; vscode_rale_tracker_entry</code></li>
 <li>This can be added anywhere in the channel including source files but it must be on or after the call to <code>screen.show()</code></li>
 </ul>
 </li>
-<li><p>Set the <code>injectRaleTrackerTask</code> value to true in <code>launch.json</code>. For example:</p>
+<li>Set the <code>injectRaleTrackerTask</code> value to true in <code>launch.json</code>. For example:</li>
+</ul>
 <pre><code class="language-json">{
-&quot;type&quot;: &quot;brightscript&quot;,
-&quot;rootDir&quot;: &quot;${workspaceFolder}/dist&quot;,
-&quot;host&quot;: &quot;192.168.1.2&quot;,
-&quot;injectRaleTrackerTask&quot;: true
+  &quot;type&quot;: &quot;brightscript&quot;,
+  &quot;rootDir&quot;: &quot;${workspaceFolder}/dist&quot;,
+  &quot;host&quot;: &quot;192.168.1.2&quot;,
+  &quot;injectRaleTrackerTask&quot;: true
 }
 </code></pre>
-</li>
-</ul>
             <div id="footer"></div>
         </div>
     </div>

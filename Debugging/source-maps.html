@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -241,35 +241,30 @@
             <a href="#sourcemaps"><h1 id="sourcemaps">SourceMaps</h1></a><p>The extension has full support for <a href="https://developer.mozilla.org/en-US/docs/Tools/Debugger/How_to/Use_a_source_map">source maps</a>. Which means that if your preprocessor has source map support then the extension will correctly translate breakpoints from source files into compiled locations and will translate compiled locations back to source locations. In this situation, you would want to set up your launch config like this:</p>
 <pre><code class="language-javascript">//.vscode/launch.json
 {
-    &quot;version&quot;: &quot;0.2.0&quot;,
-    &quot;configurations&quot;: [{
-        //this is where your preprocessor puts the final code (including source maps)
-        &quot;rootDir&quot;: &quot;${workspaceFolder}/dist&quot;,
-        // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
-        &quot;preLaunchTask&quot;: &quot;your-build-task-here&quot;,
-        //...other launch args
-    }]
+  &quot;version&quot;: &quot;0.2.0&quot;,
+  &quot;configurations&quot;: [
+    {
+      //this is where your preprocessor puts the final code (including source maps)
+      &quot;rootDir&quot;: &quot;${workspaceFolder}/dist&quot;,
+      // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
+      &quot;preLaunchTask&quot;: &quot;your-build-task-here&quot;,
+      //...other launch args
+    }
+  ]
 }
 </code></pre>
 <p>Your dist folder would look something like this after running your preprocessor.</p>
-<ul>
-<li>${workspaceFolder}/dist/<ul>
-<li>manifest</li>
-<li>source/<ul>
-<li>main.brs</li>
-<li>main.brs.map</li>
-</ul>
-</li>
-<li>components/<ul>
-<li>component1.xml</li>
-<li>component1.xml.map</li>
-<li>component1.brs</li>
-<li>component1.brs.map</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
+<pre><code class="language-graphql">./${workspaceFolder}/dist/
+  ├─ manifest
+  ├─ source/
+  │ ├─ main.brs
+  │ └─ main.brs.map
+  └─ components/
+    ├─ component1.xml
+    ├─ component1.xml.map
+    ├─ component1.brs
+    └─ component1.brs.map
+</code></pre>
             <div id="footer"></div>
         </div>
     </div>

@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -249,58 +249,48 @@
 </li>
 <li><code>componentLibrariesPort</code>: Port to access component libraries. Default: <code>8080</code>s</li>
 </ul>
-<a href="#example"><h2 id="example">Example:</h2></a><ul>
-<li>.vscode<ul>
-<li>launch.json</li>
-</ul>
-</li>
-<li>manifest</li>
-<li>components/<ul>
-<li>HomeScene.brs</li>
-<li>HomeScene.xml</li>
-</ul>
-</li>
-<li>source/<ul>
-<li>main.brs</li>
-</ul>
-</li>
-<li>customLibrary<ul>
-<li>manifest</li>
-<li>components/<ul>
-<li>CustomButton.brs</li>
-<li>CustomButton.xml</li>
-<li>CustomTextInput.brs</li>
-<li>CustomTextInput.xml</li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
+<a href="#example"><h2 id="example">Example:</h2></a><pre><code class="language-graphql">./project/
+  ├─ .vscode
+  │  ├─ launch.json
+  ├─ manifest
+  ├─ components/
+  │  ├─ HomeScene.brs
+  │  └─ HomeScene.xml
+  ├─ source/
+  │ └─ main.brs
+  └─ customLibrary/
+    ├─ manifest
+    └─ components/
+      ├─ CustomButton.brs
+      ├─ CustomButton.xml
+      ├─ CustomTextInput.brs
+      └─ CustomTextInput.xml
+</code></pre>
 <p>Here&#39;s a sample launch.json for this scenario:</p>
 <pre><code class="language-json">{
-    &quot;version&quot;: &quot;0.2.0&quot;,
-    &quot;configurations&quot;: [
+  &quot;version&quot;: &quot;0.2.0&quot;,
+  &quot;configurations&quot;: [
+    {
+      &quot;type&quot;: &quot;brightscript&quot;,
+      ...
+      &quot;rootDir&quot;: &quot;${workspaceFolder}&quot;,
+      &quot;files&quot;: [
+        &quot;manifest&quot;,
+        &quot;source/**/*.*&quot;,
+        &quot;components/**/*.*&quot;
+      ],
+      &quot;componentLibraries&quot;: [
         {
-            &quot;type&quot;: &quot;brightscript&quot;,
-            ...
-            &quot;rootDir&quot;: &quot;${workspaceFolder}&quot;,
-            &quot;files&quot;: [
-                &quot;manifest&quot;,
-                &quot;source/**/*.*&quot;,
-                &quot;components/**/*.*&quot;
-            ],
-            &quot;componentLibraries&quot;: [
-                {
-                    &quot;rootDir&quot;: &quot;${workspaceFolder}/customLibrary/&quot;,
-                    &quot;outFile&quot;: &quot;customLibrary.zip&quot;,
-                    &quot;files&quot;: [
-                        &quot;manifest&quot;,
-                        &quot;components/**/*.*&quot;
-                    ]
-                }
-            ]
+          &quot;rootDir&quot;: &quot;${workspaceFolder}/customLibrary/&quot;,
+          &quot;outFile&quot;: &quot;customLibrary.zip&quot;,
+          &quot;files&quot;: [
+            &quot;manifest&quot;,
+            &quot;components/**/*.*&quot;
+          ]
         }
-    ]
+      ]
+    }
+  ]
 }
 </code></pre>
             <div id="footer"></div>

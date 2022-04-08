@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Special Cases
+        BrightScript VSCode Extension
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="../style.css" />
@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -238,28 +238,22 @@
             
         </div>
         <div id="content">
-            <a href="#special-cases"><h1 id="special-cases">Special Cases</h1></a><a href="#debug-source-files-with-custom-build-process"><h2 id="debug-source-files-with-custom-build-process">Debug source files with Custom build process</h2></a><p>If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory&#39;s versions of the files.</p>
+            <a href="#advanced-project-setup"><h1 id="advanced-project-setup">Advanced Project Setup</h1></a><a href="#debug-source-files-with-custom-build-process"><h2 id="debug-source-files-with-custom-build-process">Debug source files with Custom build process</h2></a><p>If you have a build process that moves files from a source directory to an output directory, by default you will need to place breakpoints in the output directory&#39;s versions of the files.</p>
 <p><strong>IF</strong> your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode&#39;s task system, and you can build your code, then launch and debug your code with ease.</p>
 <p><strong>Example:</strong></p>
-<ul>
-<li>src/<ul>
-<li>main.brs</li>
-<li>language.brs</li>
-<li>manifest</li>
-</ul>
-</li>
-<li>languages/<ul>
-<li>english.brs</li>
-<li>french.brs</li>
-</ul>
-</li>
-<li>dist/<ul>
-<li>main.brs</li>
-<li>language.brs</li>
-<li>manifest</li>
-</ul>
-</li>
-</ul>
+<pre><code class="language-graphql">./Root_Workspace_Folder/
+  ├─ src/
+  │ ├─ main.brs
+  │ ├─ language.brs
+  │ └─ manifest
+  ├─ languages/
+  │ ├─ english.brs
+  │ └─ french.brs
+  └─ dist/
+    ├─ main.brs
+    ├─ language.brs
+    └─ manifest
+</code></pre>
 <p>Here&#39;s a sample launch.json for this scenario:</p>
 <pre><code class="language-json">{
   &quot;version&quot;: &quot;0.2.0&quot;,
@@ -289,7 +283,7 @@
         &quot;${workspaceFolder}/../ProjectC&quot;
       ],
       &quot;preLaunchTask&quot;: &quot;your-build-task-here&quot;
-      //...
+      ...
     }
   ]
 }

@@ -96,6 +96,14 @@
                 <div class="children">
                     
             
+            <a class="entry" href="Debugging/advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
             <a class="entry" href="Debugging/bs-const.html">bs_const</a>
             
             
@@ -145,14 +153,6 @@
                     
             
             <a class="entry" href="Debugging/source-maps.html">SourceMaps</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
-            <a class="entry" href="Debugging/special-cases.html">Special Cases</a>
             
             
                 </div>
@@ -238,8 +238,8 @@
             
         </div>
         <div id="content">
-            <a href="#contributing"><h1 id="contributing">Contributing</h1></a><p>The majority of this extension&#39;s language feature support depends on the <a href="https://github.com/RokuCommunity/brighterscript">BrighterScript</a> project, which contributes the language server. The debugging functionality comes from the [roku-debug](<a href="https://github.com/RokuCommunity/roku-debug%5D">https://github.com/RokuCommunity/roku-debug]</a> project. To get up and running, do the following:</p>
-<a href="#the-easy-way"><h3 id="the-easy-way">The easy way</h3></a><p>In a terminal, execute </p>
+            <a href="#contributing"><h1 id="contributing">Contributing</h1></a><p>The majority of this extension&#39;s language feature support depends on the <a href="https://github.com/RokuCommunity/brighterscript">BrighterScript</a> project, which contributes the language server. The debugging functionality comes from the <a href="https://github.com/RokuCommunity/roku-debug">roku-debug</a> project. To get up and running, do the following:</p>
+<a href="#the-easy-way"><h3 id="the-easy-way">The easy way</h3></a><p>In a terminal, execute</p>
 <pre><code class="language-bash">npm run install-local
 </code></pre>
 <p>This will do the following automatically for you:</p>
@@ -250,7 +250,7 @@
 <li>delete each dependency&#39;s folder in this project&#39;s node_modules folder to prevent conflicts.</li>
 <li>run <code>npm install</code> in the root of this project.</li>
 </ul>
-<p> To undo these changes, run </p>
+<p> To undo these changes, run</p>
 <pre><code class="language-bash">npm run uninstall-local
 </code></pre>
 <a href="#the-manual-way"><h3 id="the-manual-way">The manual way</h3></a><p>You only need to install local copies of projects you actually want to work on. You can leave the others as npm modules. This workflow will show the process of installing all projects.</p>
@@ -263,7 +263,7 @@
 <li><a href="https://github.com/RokuCommunity/roku-deploy">roku-deploy</a></li>
 </ul>
 </li>
-<li><p>Inside each of the cloned repositories, run  </p>
+<li><p>Inside each of the cloned repositories, run</p>
 <pre><code class="language-bash">npm install &amp;&amp; npm run build
 </code></pre>
 </li>
@@ -271,14 +271,14 @@
 </li>
 <li><p>Open <code>vscode-brightscript-language/package.json</code> and edit the <code>dependencies</code>to look like this:</p>
 <pre><code class="language-js">{
-    &quot;dependencies&quot;: {
-        //...
-        &quot;brighterscript&quot;: &quot;file:../brighterscript&quot;,
-        &quot;brighterscript-formatter&quot;: &quot;file:../brighterscript-formatter&quot;,
-        &quot;roku-debug&quot;: &quot;file:../roku-debug&quot;,
-        &quot;roku-deploy&quot;: &quot;file:../roku-debug&quot;,
-        //...
-    }
+  &quot;dependencies&quot;: {
+    //...
+    &quot;brighterscript&quot;: &quot;file:../brighterscript&quot;,
+    &quot;brighterscript-formatter&quot;: &quot;file:../brighterscript-formatter&quot;,
+    &quot;roku-debug&quot;: &quot;file:../roku-debug&quot;,
+    &quot;roku-deploy&quot;: &quot;file:../roku-debug&quot;,
+    //...
+  }
 }
 </code></pre>
 </li>
