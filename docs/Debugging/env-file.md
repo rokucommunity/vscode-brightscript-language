@@ -6,16 +6,16 @@ If you change your `launch.json` settings regularly, or don't want to check cert
 //launch.json
 
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            ...
-            "envFile": "${workspaceFolder}/.env",
-            "username": "${env:ROKU_USERNAME}",
-            "password": "${env:ROKU_PASSWORD}"
-            ...
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      ...
+      "envFile": "${workspaceFolder}/.env",
+      "username": "${env:ROKU_USERNAME}",
+      "password": "${env:ROKU_PASSWORD}"
+      ...
+    }
+  ]
 }
 ```
 

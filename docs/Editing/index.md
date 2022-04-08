@@ -5,19 +5,22 @@ priority: 2
 ## Standard
 Your project must be structured in the way that Roku expects, which looks something like this:
 
-- manifest
-- components/
-  - HomeScene.brs
-  - HomeScene.xml
-- source/
-  - main.brs
+```graphql
+./workspaceFolder/
+  ├─ manifest
+  ├─ components/
+  │ ├─ HomeScene.brs
+  │ └─ HomeScene.xml
+  └─ source/
+    └─ main.brs
+```
 
 ## Subdirectory
 If your project lives in a subdirectory, you will need to create a `bsconfig.json` file at the root of your project, and reference your subdirectory like such:
 
 ```json
 {
-    "rootDir": "./someSubdir"
+  "rootDir": "./someSubdir"
 }
 ```
 

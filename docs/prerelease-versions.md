@@ -5,7 +5,10 @@ You can occasionally find pre-release versions of this extension under the [GitH
 
 1. Download `.vsix` file for version of the extension you want from [the releases page](https://github.com/RokuCommunity/vscode-brightscript-language/releases);
 2. Open Visual Studio Code and click the "extensions" tab.
-3. Choose "Install from VSIX..." ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
+3. Choose "Install from VSIX..."
+
+    ![image](https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png)
+
 4. Select the file you downloaded from step 1.
 
 ## Reinstalling store version of the extension

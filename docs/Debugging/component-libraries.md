@@ -14,50 +14,52 @@ If you are working on custom component libraries you can define them in the laun
 - `componentLibrariesPort`: Port to access component libraries. Default: `8080`s
 
 ## Example:
-
-- .vscode
-  - launch.json
-- manifest
-- components/
-  - HomeScene.brs
-  - HomeScene.xml
-- source/
-  - main.brs
-- customLibrary
-  - manifest
-  - components/
-    - CustomButton.brs
-    - CustomButton.xml
-    - CustomTextInput.brs
-    - CustomTextInput.xml
+```graphql
+./project/
+  ├─ .vscode
+  │  ├─ launch.json
+  ├─ manifest
+  ├─ components/
+  │  ├─ HomeScene.brs
+  │  └─ HomeScene.xml
+  ├─ source/
+  │ └─ main.brs
+  └─ customLibrary/
+    ├─ manifest
+    └─ components/
+      ├─ CustomButton.brs
+      ├─ CustomButton.xml
+      ├─ CustomTextInput.brs
+      └─ CustomTextInput.xml
+```
 
 Here's a sample launch.json for this scenario:
 
 ```json
 {
-    "version": "0.2.0",
-    "configurations": [
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "brightscript",
+      ...
+      "rootDir": "${workspaceFolder}",
+      "files": [
+        "manifest",
+        "source/**/*.*",
+        "components/**/*.*"
+      ],
+      "componentLibraries": [
         {
-            "type": "brightscript",
-            ...
-            "rootDir": "${workspaceFolder}",
-            "files": [
-                "manifest",
-                "source/**/*.*",
-                "components/**/*.*"
-            ],
-            "componentLibraries": [
-                {
-                    "rootDir": "${workspaceFolder}/customLibrary/",
-                    "outFile": "customLibrary.zip",
-                    "files": [
-                        "manifest",
-                        "components/**/*.*"
-                    ]
-                }
-            ]
+          "rootDir": "${workspaceFolder}/customLibrary/",
+          "outFile": "customLibrary.zip",
+          "files": [
+            "manifest",
+            "components/**/*.*"
+          ]
         }
-    ]
+      ]
+    }
+  ]
 }
 
 ```

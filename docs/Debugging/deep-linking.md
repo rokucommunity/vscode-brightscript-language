@@ -10,7 +10,7 @@ You can launch a debug session with a deep link by setting the `deepLinkUrl` pro
   "type": "brightscript",
   "rootDir": "${workspaceFolder}/dist",
   "host": "192.168.1.2",
-    "deepLinkUrl": "http://${host}:8060/launch/dev?contentId=loganLucky123&mediaType=movie"
+  "deepLinkUrl": "http://${host}:8060/launch/dev?contentId=loganLucky123&mediaType=movie"
 }
 ```
 

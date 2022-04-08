@@ -28,29 +28,31 @@ If your BrightScript project is located in a subdirectory of the workspace, you 
 
 For example, if you have this structure:
 
-- Root Workspace Folder/
-  - Images/
-  - Roku App/
-    - manifest
-    - components/
-      - HomeScene.brs
-      - HomeScene.xml
-    - source/
-      - main.brs
+```graphql
+./Root_Workspace_Folder/
+  └─ Roku App/
+    ├─ manifest
+    ├─ images/
+    ├─ components/
+    │  ├─ HomeScene.brs
+    │  └─ HomeScene.xml
+    └─ source/
+      └─ main.brs
+```
 
 then you would need change `rootDir` in your launch config to look like this:
 
 ```json
 
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            ...
-            "rootDir": "${workspaceFolder}/Roku App",
-            ...
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+        ...
+        "rootDir": "${workspaceFolder}/Roku App",
+        ...
+    }
+  ]
 }
 ```
 

@@ -3,10 +3,10 @@ priority: 1001
 ---
 # Contributing
 
-The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug] project. To get up and running, do the following:
+The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug) project. To get up and running, do the following:
 
 ### The easy way
-In a terminal, execute 
+In a terminal, execute
 ```bash
 npm run install-local
 ```
@@ -18,7 +18,7 @@ This will do the following automatically for you:
  - delete each dependency's folder in this project's node_modules folder to prevent conflicts.
  - run `npm install` in the root of this project.
 
- To undo these changes, run 
+ To undo these changes, run
  ```bash
  npm run uninstall-local
  ```
@@ -33,7 +33,7 @@ You only need to install local copies of projects you actually want to work on. 
     - [roku-debug](https://github.com/RokuCommunity/roku-debug)
     - [roku-deploy](https://github.com/RokuCommunity/roku-deploy)
 
- 1. Inside each of the cloned repositories, run  
+ 1. Inside each of the cloned repositories, run
      ```bash
      npm install && npm run build
      ```
@@ -42,21 +42,21 @@ You only need to install local copies of projects you actually want to work on. 
 
     ```js
     {
-        "dependencies": {
-            //...
-            "brighterscript": "file:../brighterscript",
-            "brighterscript-formatter": "file:../brighterscript-formatter",
-            "roku-debug": "file:../roku-debug",
-            "roku-deploy": "file:../roku-debug",
-            //...
-        }
+      "dependencies": {
+        //...
+        "brighterscript": "file:../brighterscript",
+        "brighterscript-formatter": "file:../brighterscript-formatter",
+        "roku-debug": "file:../roku-debug",
+        "roku-deploy": "file:../roku-debug",
+        //...
+      }
     }
     ```
 
  1. In the `vscode-brightscript-language` folder
     ```bash
     npm install && npm run build
-    ``` 
+    ```
  1. You're all set! Open the `vscode-brightscript-language` folder in vscode to start debugging. 
 
 View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.

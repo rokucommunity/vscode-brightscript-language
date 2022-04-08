@@ -1,7 +1,4 @@
----
-title: Special Cases
----
-# Special Cases
+# Advanced Project Setup
 
 ## Debug source files with Custom build process
 
@@ -11,17 +8,20 @@ If you have a build process that moves files from a source directory to an outpu
 
 **Example:**
 
-- src/
-  - main.brs
-  - language.brs
-  - manifest
-- languages/
-  - english.brs
-  - french.brs
-- dist/
-  - main.brs
-  - language.brs
-  - manifest
+```graphql
+./Root_Workspace_Folder/
+  ├─ src/
+  │ ├─ main.brs
+  │ ├─ language.brs
+  │ └─ manifest
+  ├─ languages/
+  │ ├─ english.brs
+  │ └─ french.brs
+  └─ dist/
+    ├─ main.brs
+    ├─ language.brs
+    └─ manifest
+```
 
 Here's a sample launch.json for this scenario:
 
@@ -59,7 +59,7 @@ If you have a custom build process that pulls in files from multiple source dire
         "${workspaceFolder}/../ProjectC"
       ],
       "preLaunchTask": "your-build-task-here"
-      //...
+      ...
     }
   ]
 }

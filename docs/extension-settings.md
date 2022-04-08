@@ -3,7 +3,7 @@ priority: 4
 ---
 # Extension Settings
 
-This extension contributes the following settings:  
+This extension contributes the following settings:
 
 <br/>
 
@@ -35,7 +35,7 @@ If set to true, an info toast will be shown when a Roku device has been found on
 ### brightscript.deviceDiscovery.enabled
 If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
 ### brightscript.debug.autoRunSgDebugCommands
-Give the ability to run a list of commands on port 8080 of the device at the start of a debug session. Currently there are three supported short hands for the most commonly desired commands. These are: 
+Give the ability to run a list of commands on port 8080 of the device at the start of a debug session. Currently there are three supported short hands for the most commonly desired commands. These are:
  - `chanperf` - runs chanperf with a one seconds repeating interval
  - `fpsdisplay` - turns on the FPS
  - `logrendezvous` - enables Rendezvous Logging. You can also include and command string in this array and we will attempt to run it for you. For example you could do `chanperf -r 10` or `clear_launch_caches` as another example.

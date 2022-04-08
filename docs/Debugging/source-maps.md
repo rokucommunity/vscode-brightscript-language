@@ -5,26 +5,31 @@ The extension has full support for [source maps](https://developer.mozilla.org/e
 ```javascript
 //.vscode/launch.json
 {
-    "version": "0.2.0",
-    "configurations": [{
-        //this is where your preprocessor puts the final code (including source maps)
-        "rootDir": "${workspaceFolder}/dist",
-        // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
-        "preLaunchTask": "your-build-task-here",
-        //...other launch args
-    }]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      //this is where your preprocessor puts the final code (including source maps)
+      "rootDir": "${workspaceFolder}/dist",
+      // run your preprocessor which writes the final code to `${workspaceFolder}/dist` (including source maps)
+      "preLaunchTask": "your-build-task-here",
+      //...other launch args
+    }
+  ]
 }
 ```
 
 Your dist folder would look something like this after running your preprocessor.
 
-- \${workspaceFolder}/dist/
-  - manifest
-  - source/
-    - main.brs
-    - main.brs.map
-  - components/
-    - component1.xml
-    - component1.xml.map
-    - component1.brs
-    - component1.brs.map
+
+```graphql
+./${workspaceFolder}/dist/
+  ├─ manifest
+  ├─ source/
+  │ ├─ main.brs
+  │ └─ main.brs.map
+  └─ components/
+    ├─ component1.xml
+    ├─ component1.xml.map
+    ├─ component1.brs
+    └─ component1.brs.map
+```
