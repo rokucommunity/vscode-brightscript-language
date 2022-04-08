@@ -6,7 +6,7 @@ import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCo
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
-import type { RemoteControlManager } from './managers/RemoteControlManager';
+import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 
 export class BrightScriptCommands {
 
@@ -75,16 +75,16 @@ export class BrightScriptCommands {
             await vscode.commands.executeCommand('workbench.action.focusPanel');
         });
 
-        this.registerCommand('toggleRemoteControlMode', () => {
-            return this.remoteControlManager.toggleRemoteControlMode();
+        this.registerCommand('toggleRemoteControlMode', (initiator: RemoteControlModeInitiator) => {
+            return this.remoteControlManager.toggleRemoteControlMode(initiator);
         });
 
         this.registerCommand('enableRemoteControlMode', () => {
-            return this.remoteControlManager.setRemoteControlMode(true);
+            return this.remoteControlManager.setRemoteControlMode(true, 'command');
         });
 
         this.registerCommand('disableRemoteControlMode', () => {
-            return this.remoteControlManager.setRemoteControlMode(false);
+            return this.remoteControlManager.setRemoteControlMode(false, 'command');
         });
 
         this.registerCommand('pressBackButton', async () => {

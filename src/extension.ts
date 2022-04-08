@@ -61,8 +61,7 @@ export class Extension {
 
     public async activate(context: vscode.ExtensionContext) {
         this.registerGeneralCommands(context);
-        this.remoteControlManager = new RemoteControlManager(context);
-        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, context);
+
 
         this.globalStateManager = new GlobalStateManager(context);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -80,6 +79,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
+
+        this.remoteControlManager = new RemoteControlManager(context, this.telemetryManager);
+        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;

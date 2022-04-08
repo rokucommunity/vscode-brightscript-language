@@ -88,7 +88,7 @@
         "@types/node-ssdp": "^3.3.0",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
-        "@types/vscode": "^1.42.0",
+        "@types/vscode": "^1.53.0",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
         "chai": "^4.2.0",
@@ -157,11 +157,13 @@
     ],
     "contributes": {
         "viewsContainers": {
-            "activitybar": [{
-                "id": "vscode-brightscript-language",
-                "title": "BrightScript Language",
-                "icon": "images/icons/logo.svg"
-            }]
+            "activitybar": [
+                {
+                    "id": "vscode-brightscript-language",
+                    "title": "BrightScript Language",
+                    "icon": "images/icons/logo.svg"
+                }
+            ]
         },
         "views": {
             "vscode-brightscript-language": [
@@ -215,8 +217,7 @@
                     "group": "Rendezvous"
                 }
             ],
-            "commandPalette": [
-            ]
+            "commandPalette": []
         },
         "breakpoints": [
             {
