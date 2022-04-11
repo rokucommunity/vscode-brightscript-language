@@ -14,7 +14,7 @@ Under the hood, the language server is powered by the [Brighterscript](https://g
 
 The language server is still fairly new, and we expect there to be bugs. If you encounter errors for valid syntax, please file an issue. You can disable errors for a specific line by adding a comment above the erraneous line (full instructions [here](https://github.com/rokucommunity/brighterscript#ignore-errors-and-warnings-on-a-per-line-basis)). For example:
 
-```BrightScript
+```vb
 'bs:disable-next-line
 someLineWithError()
 ```

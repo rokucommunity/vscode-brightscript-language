@@ -8,4 +8,5 @@ coverage
 *.vsix
 brsconfig.schema.json
 .history
+.tmp
 .vsix-building
