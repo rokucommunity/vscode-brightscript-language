@@ -1911,6 +1911,23 @@
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.doNothing",
+                "key": "ctrl+Delete",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+Delete",
+                "mac": "option+Delete",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+Delete",
+                "mac": "cmd+Delete",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressHomeButton",
                 "key": "Home",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
@@ -1926,13 +1943,65 @@
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.pressBackspaceButton",
+                "key": "ctrl+Backspace",
+                "mac": "cmd+Backspace",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+Backspace",
+                "mac": "option+Backspace",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+Backspace",
+                "mac": "ctrl+Backspace",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressUpButton",
                 "key": "up",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.doNothing",
+                "key": "ctrl+up",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+up",
+                "mac": "option+up",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+up",
+                "mac": "cmd+up",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressDownButton",
                 "key": "down",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "ctrl+down",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+down",
+                "mac": "option+down",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+down",
+                "mac": "cmd+down",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -1947,12 +2016,30 @@
             },
             {
                 "command": "extension.brightscript.pressSelectButton",
+                "key": "Enter",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressPlayButton",
                 "key": "ctrl+Enter",
                 "mac": "cmd+Enter",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressPlayButton",
+                "key": "End",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+Enter",
+                "mac": "option+Enter",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+Enter",
+                "mac": "ctrl+Enter",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -1964,6 +2051,18 @@
                 "command": "extension.brightscript.pressRevButton",
                 "key": "ctrl+left",
                 "mac": "cmd+left",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+left",
+                "mac": "option+left",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+left",
+                "mac": "ctrl+left",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -1980,6 +2079,18 @@
                 "command": "extension.brightscript.pressFwdButton",
                 "key": "ctrl+right",
                 "mac": "cmd+right",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "alt+right",
+                "mac": "option+right",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.doNothing",
+                "key": "win+right",
+                "mac": "ctrl+right",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -2597,7 +2708,7 @@
             {
                 "command": "extension.brightscript.clearLogOutput",
                 "key": "ctrl+alt+k",
-                "mac": "ctrl+alt+k"
+                "mac": "ctrl+option+k"
             },
             {
                 "command": "extension.brightscript.setOutputLogLevelFilter",
