@@ -8,7 +8,7 @@ export class RemoteControlManager {
         private telemetryManager: TelemetryManager
     ) {
         this.remoteControlStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-        void this.setRemoteControlMode(false, undefined);
+        void this.setRemoteControlMode(true, undefined);
     }
 
     private default = {
@@ -52,8 +52,8 @@ export class RemoteControlManager {
             this.telemetryManager.sendSetRemoteControlModeEvent(isEnabled, initiator);
         }
         await vscodeContextManager.set('brightscript.isRemoteControlMode', isEnabled);
-        const oppositeAction = isEnabled ? 'Disable' : 'Enable';
-        this.remoteControlStatusBarItem.text = `$(radio-tower) ${oppositeAction} Remote`;
+        const currentState = isEnabled ? 'enabled' : 'disabled';
+        this.remoteControlStatusBarItem.text = `$(radio-tower) Remote: ${currentState} `;
         //set the initial statusbar colors
         Object.assign(this.remoteControlStatusBarItem, this.colors.default);
         this.remoteControlStatusBarItem.command = {
@@ -61,7 +61,7 @@ export class RemoteControlManager {
             command: 'extension.brightscript.toggleRemoteControlMode',
             arguments: ['statusbar']
         };
-        this.remoteControlStatusBarItem.tooltip = `${oppositeAction} remote control mode`;
+        this.remoteControlStatusBarItem.tooltip = `Roku remote control mode is: ${currentState}`;
         this.remoteControlStatusBarItem.show();
 
         if (isEnabled) {
