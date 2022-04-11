@@ -297,6 +297,7 @@ export let vscode = {
         }
         private value: string;
     },
+    ThemeColor: class { },
     Uri: {
         file: (src: string) => {
             return {
