@@ -5,7 +5,7 @@ This extension adds some basic snippets for Roku development.
 ## Example snippets in .bs/.brs files:
 
 Typing `sub<tab>` generates:
-```brs
+```vb
 sub subName(params)
 
 end sub
@@ -13,7 +13,7 @@ end sub
 with "subName" and "params" editable, and cursor inside the block
 
 Typing `for-each<tab>` generates:
-```brs
+```vb
 for each item in collection
 
 end for

@@ -10,7 +10,7 @@ In addition to disabling an entire class of errors in the `ignoreErrorCodes` arr
 
 Here are some examples:
 
-```brightscript
+```vb
 sub Main()
     'disable errors about invalid syntax here
     'brs:disable-next-line
