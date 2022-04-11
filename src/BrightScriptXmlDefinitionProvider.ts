@@ -1,16 +1,18 @@
 import * as vscode from 'vscode';
 
-import {
+import type {
     CancellationToken,
     Definition,
-    DefinitionProvider, Position,
-    Range, TextDocument
+    DefinitionProvider, Position, TextDocument
+} from 'vscode';
+import {
+    Range
 } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { getExcludeGlob } from './DeclarationProvider';
-import { DefinitionRepository } from './DefinitionRepository';
+import type { DefinitionRepository } from './DefinitionRepository';
 import { XmlUtils, XmlWordType } from './XmlUtils';
 
 export default class BrightScriptXmlDefinitionProvider implements DefinitionProvider {
@@ -42,8 +44,6 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
             case XmlWordType.Tag:
                 definitions = await this.getXmlFileMatchingWord(word);
                 break;
-            case XmlWordType.Attribute:
-                break;
             case XmlWordType.AttributeValue:
                 //TODO - ascertain if this value is from an import tag!
                 if (word.endsWith('.brs')) {
@@ -53,6 +53,8 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
                     //assume it's a symbol in our codebehind file
                     definitions = await this.getBrsSymbolsMatchingWord(document, position, word);
                 }
+                break;
+            default:
                 break;
         }
 
@@ -66,7 +68,7 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
 
         for (const uri of await vscode.workspace.findFiles('**/*.xml', excludes)) {
             let path = uri.path.toLowerCase();
-            if (path.indexOf(word) !== -1 && path.endsWith('.xml')) {
+            if (path.includes(word) && path.endsWith('.xml')) {
                 let definition = BrightScriptDeclaration.fromUri(uri);
                 definitions.push(definition.getLocation());
                 if (path.endsWith(word + '.xml')) {
@@ -86,7 +88,9 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
             let uri = vscode.Uri.file(alternateFilename);
             let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
             if (doc) {
-                Array.from(this.repo.findDefinitionInDocument(doc, word)).forEach((d) => definitions.push(d.getLocation()));
+                for (const d of this.repo.findDefinitionInDocument(doc, word)) {
+                    definitions.push(d.getLocation());
+                }
             }
         }
         return definitions;
@@ -94,7 +98,9 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
 
     private async getSymbolForBrsFile(word: string): Promise<Definition[]> {
         let definitions = [];
-        Array.from(await this.repo.findDefinitionForBrsDocument(word)).forEach((d) => definitions.push(d.getLocation()));
+        for (const def of await this.repo.findDefinitionForBrsDocument(word)) {
+            definitions.push(def.getLocation());
+        }
         return definitions;
     }
 }

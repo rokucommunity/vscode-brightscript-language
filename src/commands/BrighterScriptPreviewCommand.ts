@@ -12,13 +12,6 @@ export const FILE_SCHEME = 'bs-preview';
 export class BrighterScriptPreviewCommand {
     public static SELECTION_SYNC_DELAY = 300;
 
-    /**
-     * Register commands:
-     * - `brighterscript.showPreview`
-     * - `brighterscript.showPreviewToSide`
-     *
-     * Register custom TextDocumentProvider
-     */
     public register(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(vscode.commands.registerCommand('brighterscript.showPreview', async (uri: vscode.Uri) => {
@@ -51,7 +44,7 @@ export class BrighterScriptPreviewCommand {
             if (this.activePreviews[uri.fsPath]) {
 
                 util.keyedDebounce(`sync-preview:${uri.fsPath}`, async () => {
-                    this.syncPreviewLocation(uri);
+                    await this.syncPreviewLocation(uri);
                 }, BrighterScriptPreviewCommand.SELECTION_SYNC_DELAY);
 
                 //this is the preview file
@@ -141,7 +134,7 @@ export class BrighterScriptPreviewCommand {
         let activePreview = this.activePreviews[sourceFsPath];
 
         let previewSelection = activePreview?.previewEditor?.selection;
-        if (activePreview && activePreview.sourceMap && previewSelection) {
+        if (activePreview?.sourceMap && previewSelection) {
             try {
                 let mappedRange = await SourceMapConsumer.with(activePreview.sourceMap, null, (consumer) => {
                     let start = consumer.originalPositionFor({
@@ -197,22 +190,20 @@ export class BrighterScriptPreviewCommand {
         }
     }
 
-    private activePreviews = {} as {
-        [fsPath: string]: {
-            /**
+    private activePreviews = {} as Record<string, {
+        /**
              * The editor this "preview transpiled bs" command was initiated upon.
              */
-            sourceEditor: vscode.TextEditor,
-            /**
+        sourceEditor: vscode.TextEditor;
+        /**
              * The editor that contains the preview doc
              */
-            previewEditor: vscode.TextEditor,
-            /**
+        previewEditor: vscode.TextEditor;
+        /**
              * the latest source map for the preview.
              */
-            sourceMap: any
-        }
-    };
+        sourceMap: any;
+    }>;
 
     /**
      * The handler for the command. Creates a custom URI so we can open it
@@ -222,7 +213,7 @@ export class BrighterScriptPreviewCommand {
         let activePreview: BrighterScriptPreviewCommand['activePreviews'][0];
         let previewDoc: vscode.TextDocument;
         if (!this.activePreviews[uri.fsPath]) {
-            activePreview = this.activePreviews[uri.fsPath] = {} as any;
+            activePreview = (this.activePreviews[uri.fsPath] = {} as any);
             let customUri = this.getBsPreviewUri(uri);
             previewDoc = await vscode.workspace.openTextDocument(customUri);
         } else {

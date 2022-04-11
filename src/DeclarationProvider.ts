@@ -1,15 +1,16 @@
 import * as fs from 'fs-extra';
 import * as iconv from 'iconv-lite';
 import * as vscode from 'vscode';
-
+import type {
+    Event,
+    Uri
+} from 'vscode';
 import {
     Disposable,
-    Event,
     EventEmitter, Location,
     Position,
     Range, SymbolInformation,
-    SymbolKind,
-    Uri
+    SymbolKind
 } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
@@ -20,7 +21,7 @@ import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 // at https://github.com/sasami/vscode-erabasic and hacked it in with some basic changes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export function* iterlines(input: string): IterableIterator<[number, string]> {
+export function *iterlines(input: string): IterableIterator<[number, string]> {
     const lines = input.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
@@ -53,7 +54,7 @@ export class WorkspaceEncoding {
     private getConfiguration(uri: Uri): string {
         const encoding: string = vscode.workspace.getConfiguration('files', uri).get('encoding', 'utf8');
         if (encoding === 'utf8bom') {
-            return 'utf8';  // iconv-lite removes bom by default when decoding, so this is fine
+            return 'utf8'; // iconv-lite removes bom by default when decoding, so this is fine
         }
         return encoding;
     }
@@ -83,10 +84,10 @@ export class DeclarationProvider implements Disposable {
         vscode.workspace.onDidChangeWorkspaceFolders(this.onDidChangeWorkspace, this, subscriptions);
 
         this.disposable = Disposable.from(...subscriptions);
-        this.flush();
+        void this.flush();
     }
     public cache: Map<string, BrightScriptDeclaration[]> = new Map();
-    private fullscan: boolean = true;
+    private fullscan = true;
 
     private dirty: Map<string, Uri> = new Map();
     private fileNamespaces = new Map<Uri, Set<string>>();
@@ -115,7 +116,7 @@ export class DeclarationProvider implements Disposable {
         return this.onDidResetEmitter.event;
     }
 
-    public sync(): Promise<void> {
+    public async sync(): Promise<void> {
         if (this.syncing === undefined) {
             this.syncing = this.flush().then(() => {
                 this.syncing = undefined;
@@ -165,7 +166,7 @@ export class DeclarationProvider implements Disposable {
                 fs.readFile(path, (err, data) => {
                     if (err) {
                         if (typeof err === 'object' && err.code === 'ENOENT') {
-                            resolve();
+                            resolve(null);
                         } else {
                             reject(err);
                         }
@@ -240,7 +241,7 @@ export class DeclarationProvider implements Disposable {
                     container,
                     match[2].split(','),
                     new Range(line, match[0].length - match[1].length - match[2].length - 2, line, match[0].length - 1),
-                    new Range(line, 0, line, text.length),
+                    new Range(line, 0, line, text.length)
                 );
                 symbols.push(currentFunction);
 
@@ -275,7 +276,7 @@ export class DeclarationProvider implements Disposable {
                         container,
                         undefined,
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
-                        new Range(line, 0, line, text.length),
+                        new Range(line, 0, line, text.length)
                     );
                     console.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
@@ -300,7 +301,7 @@ export class DeclarationProvider implements Disposable {
                         container,
                         undefined,
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
-                        new Range(line, 0, line, text.length),
+                        new Range(line, 0, line, text.length)
                     );
                     // console.log('FOUND NAMESPACES ' + namespaceSymbol.name);
                     symbols.push(namespaceSymbol);
@@ -324,7 +325,7 @@ export class DeclarationProvider implements Disposable {
                         container,
                         undefined,
                         new Range(line, match[0].length - match[2].length, line, match[0].length),
-                        new Range(line, 0, line, text.length),
+                        new Range(line, 0, line, text.length)
                     );
                     // console.log('FOUND CLASS ' + classSymbol.name);
                     symbols.push(classSymbol);
@@ -344,7 +345,7 @@ export class DeclarationProvider implements Disposable {
             decl.name,
             decl.kind,
             decl.containerName ? decl.containerName : decl.name,
-            new Location(uri, decl.bodyRange),
+            new Location(uri, decl.bodyRange)
         );
     }
 

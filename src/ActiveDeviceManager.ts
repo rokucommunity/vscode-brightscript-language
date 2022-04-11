@@ -3,7 +3,8 @@ import { EventEmitter } from 'events';
 import * as xmlParser from 'fast-xml-parser';
 import * as http from 'http';
 import * as NodeCache from 'node-cache';
-import { Client as Client, SsdpHeaders } from 'node-ssdp';
+import type { SsdpHeaders } from 'node-ssdp';
+import { Client } from 'node-ssdp';
 import * as url from 'url';
 import * as vscode from 'vscode';
 
@@ -76,7 +77,7 @@ export class ActiveDeviceManager extends EventEmitter {
         });
 
         this.exponentialBackoff.on('ready', (eventNumber, delay) => {
-            this.discoverAll(delay);
+            void this.discoverAll(delay);
             this.exponentialBackoff.backoff();
         });
 
@@ -91,10 +92,10 @@ export class ActiveDeviceManager extends EventEmitter {
             const devices: string[] = [];
 
             finder.on('found', (device) => {
-                if (devices.indexOf(device) === -1) {
+                if (!devices.includes(device)) {
                     if (this.showInfoMessages && this.deviceCache.get(device.deviceInfo['device-id']) === undefined) {
                         // New device found
-                        vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
+                        void vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
                     }
                     this.deviceCache.set(device.deviceInfo['device-id'], device);
                     devices.push(device);
@@ -128,7 +129,7 @@ class RokuFinder extends EventEmitter {
             }
 
             const { ST, LOCATION } = headers;
-            if (ST && LOCATION && ST.indexOf('roku') !== -1) {
+            if (ST && LOCATION && ST.includes('roku')) {
                 http.get(`${LOCATION}/query/device-info`, {
                     headers: {
                         'User-Agent': 'https://github.com/RokuCommunity/vscode-brightscript-language'
@@ -146,8 +147,13 @@ class RokuFinder extends EventEmitter {
                         // The whole response has been received.
                         let info = xmlParser.parse(data);
                         const device = this.parseAddress(LOCATION);
-                        device.deviceInfo = info['device-info'];
-                        this.emit('found', device);
+
+                        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+                        let includeNonDeveloperDevices = (config.includeNonDeveloperDevices || {}).includeNonDeveloperDevices;
+                        if (includeNonDeveloperDevices || info['device-info']['developer-enabled']) {
+                            device.deviceInfo = info['device-info'];
+                            this.emit('found', device);
+                        }
                     });
                 });
             }
@@ -157,13 +163,13 @@ class RokuFinder extends EventEmitter {
     private readonly client: Client;
     private intervalId: NodeJS.Timer | null = null;
     private timeoutId: NodeJS.Timer | null = null;
-    private running: boolean = false;
+    private running = false;
 
     public start(timeout: number) {
         this.running = true;
 
         const search = () => {
-            this.client.search('roku:ecp');
+            void this.client.search('roku:ecp');
         };
 
         const done = () => {
@@ -177,8 +183,8 @@ class RokuFinder extends EventEmitter {
     }
 
     public stop() {
-        clearInterval(this.intervalId!);
-        clearTimeout(this.timeoutId!);
+        clearInterval(this.intervalId);
+        clearTimeout(this.timeoutId);
         this.running = false;
         this.client.stop();
     }

@@ -2,10 +2,9 @@ import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-
 import { util } from './util';
 import BrightscriptFileUtils from './BrightScriptFileUtils';
-import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -68,12 +67,12 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         }
     }
 
-    public fileMaps: { [pkgPath: string]: { src: string; dest: string; pkgPath: string; } };
+    public fileMaps: Record<string, { src: string; dest: string; pkgPath: string }>;
     public customLinks: DocumentLink[];
 
     private launchConfig: BrightScriptLaunchConfiguration;
 
-    public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
+    public provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         return this.customLinks;
     }
 
@@ -83,22 +82,15 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
 
     public addCustomFileLink(customLink: CustomDocumentLink) {
         let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
-        let uri = vscode.Uri.file(customLink.pkgPath);
-        if (customLink.lineNumber) {
-            uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-        }
-
+        let uri = vscode.Uri.parse(`vscode://rokucommunity.brightscript/openFile/${customLink.pkgPath}#${customLink.lineNumber}`);
         this.customLinks.push(new DocumentLink(range, uri));
     }
 
     public addCustomPkgLink(customLink: CustomDocumentLink) {
         let fileMap = this.getFileMap(customLink.pkgPath);
         if (fileMap) {
-            let uri = vscode.Uri.file(fileMap.src);
-            if (customLink.lineNumber) {
-                uri = uri.with({ fragment: customLink.lineNumber.toString().trim() });
-            }
             let range = new Range(new Position(customLink.outputLine, customLink.startChar), new Position(customLink.outputLine, customLink.startChar + customLink.length));
+            let uri = vscode.Uri.parse(`vscode://rokucommunity.brightscript/openFile/${customLink.pkgPath}#${customLink.lineNumber}`);
             this.customLinks.push(new DocumentLink(range, uri));
         } else {
             console.log('could not find matching file for link with path ' + customLink.pkgPath);

@@ -12,6 +12,7 @@
                 "silent"
             ],
             "presentation": {
+                "group": "watch",
                 "echo": true,
                 "reveal": "silent",
                 "focus": false,
@@ -19,6 +20,42 @@
             },
             "isBackground": true,
             "problemMatcher": "$tsc-watch"
+        },
+        {
+            "label": "svelte-watch",
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "run",
+                "svelte-watch"
+            ],
+            "presentation": {
+                "group": "watch",
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "isBackground": true,
+            "problemMatcher": [
+                {
+                    "pattern": {
+                        "regexp": "^\\[!\\]"
+                    },
+                    "severity": "error"
+                },
+                {
+                    "base": "$tsc-watch",
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
+                        "endsPattern": "waiting for changes..."
+                    }
+                }
+            ],
+            "dependsOn": [
+                "watch"
+            ]
         },
         {
             "label": "test",
@@ -48,7 +85,7 @@
             "label": "clean",
             "type": "npm",
             "script": "clean",
-            "problemMatcher": [],
+            "problemMatcher": []
         },
         {
             "type": "npm",
@@ -72,6 +109,15 @@
             "type": "npm",
             "script": "test",
             "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "lint",
+            "problemMatcher": [
+                "$eslint-stylish"
+            ],
+            "label": "npm: lint",
+            "detail": "eslint \"./src/**/*.ts\""
         }
     ]
 }

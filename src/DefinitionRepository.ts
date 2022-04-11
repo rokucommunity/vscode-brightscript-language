@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
-
-import { Location, Position, TextDocument, Uri } from 'vscode';
-
+import type {
+    Location,
+    Position,
+    TextDocument
+} from 'vscode';
+import { Uri } from 'vscode';
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
-import { DeclarationProvider, getExcludeGlob } from './DeclarationProvider';
+import type { DeclarationProvider } from './DeclarationProvider';
+import { getExcludeGlob } from './DeclarationProvider';
 
 export class DefinitionRepository {
 
@@ -29,10 +33,10 @@ export class DefinitionRepository {
         return this.provider.sync();
     }
 
-    public * find(document: TextDocument, position: Position): IterableIterator<Location> {
+    public *find(document: TextDocument, position: Position): IterableIterator<Location> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
 
-        this.sync();
+        void this.sync();
         if (word === undefined) {
             return;
         }
@@ -104,15 +108,15 @@ export class DefinitionRepository {
             .map((d) => d.getLocation());
     }
 
-    public * findDefinition(document: TextDocument, position: Position): IterableIterator<BrightScriptDeclaration> {
+    public *findDefinition(document: TextDocument, position: Position): IterableIterator<BrightScriptDeclaration> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
         let result = yield* this.findDefinitionForWord(document, position, word);
         return result;
     }
     // duplicating some of thisactivate.olympicchanel.com to reduce the risk of introducing nasty performance issues/unwanted behaviour by extending Location
-    public * findDefinitionForWord(document: TextDocument, position: Position, word: string): IterableIterator<BrightScriptDeclaration> {
+    public *findDefinitionForWord(document: TextDocument, position: Position, word: string): IterableIterator<BrightScriptDeclaration> {
 
-        this.sync();
+        void this.sync();
         if (word === undefined) {
             return;
         }
@@ -163,12 +167,12 @@ export class DefinitionRepository {
 
     public async findDefinitionForBrsDocument(name: string): Promise<BrightScriptDeclaration[]> {
         let declarations = [];
-        this.sync();
+        await this.sync();
         const excludes = getExcludeGlob();
         //get usable bit of name
         let fileName = name.replace(/^.*[\\\/]/, '').toLowerCase();
         for (const uri of await vscode.workspace.findFiles('**/*.{brs,bs}', excludes)) {
-            if (uri.path.toLowerCase().indexOf(fileName) !== -1) {
+            if (uri.path.toLowerCase().includes(fileName)) {
                 declarations.push(BrightScriptDeclaration.fromUri(uri));
             }
         }
