@@ -8,7 +8,7 @@ export class RemoteControlManager {
         private telemetryManager: TelemetryManager
     ) {
         this.remoteControlStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-        void this.setRemoteControlMode(true, undefined);
+        void this.setRemoteControlMode(false, undefined);
     }
 
     private default = {
