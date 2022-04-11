@@ -19,14 +19,12 @@ The extension is packed with features, but here are some highlights:
  - Integrated device logs and interactive console (see image below)
  - Catch errors in VSCode with the built in syntax checking. (Powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server)
  - Automatic rendezvous tracking when `logrendezvous` is enabled on the Roku device.
- - Syntax highlighting, code formatting, symbol navigation, and [much more]([features.html](https://rokucommunity.github.io/vscode-brightscript-language/features.html))
+ - Syntax highlighting, code formatting, symbol navigation, and [much more](https://rokucommunity.github.io/vscode-brightscript-language/features.html)
 
 <img src="https://user-images.githubusercontent.com/2544493/78854455-5e08c880-79ef-11ea-8eb4-1f2d74230842.gif"/>
 
 ## Documentation
-For a full list of features and setting please see our complete [documentation site](https://rokucommunity.github.io/vscode-brightscript-language)
-
-Common documents:
+For a full list of features and settings, please see our [documentation website](https://rokucommunity.github.io/vscode-brightscript-language), or click one of the links below.
 
 #### Extension
  - [Features](https://rokucommunity.github.io/vscode-brightscript-language/features.html) - The full list of features provided by [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
