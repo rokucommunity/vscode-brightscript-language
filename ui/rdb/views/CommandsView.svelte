@@ -1,7 +1,8 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
-    import {odc} from "../ExtensionIntermediary";
+    import {odc, intermediary} from "../ExtensionIntermediary";
     import { commandsView } from "./CommandsView";
+    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
 
     const storage = window.localStorage;
 
@@ -65,6 +66,15 @@
             onCommandChange();
         }
     }
+
+    let odcAvailable = true;
+
+    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
+        odcAvailable = message.available;
+    });
+
+    // Required by any view so we can know that the view is ready to receive messages
+    intermediary.sendViewReady();
 </script>
 
 <style>
@@ -90,32 +100,36 @@
         width: 180px;
     }
 </style>
-<div id="container">
-    <label for="command">Command:</label>
-    <!-- svelte-ignore a11y-no-onchange -->
-    <select name="command" bind:value={selectedCommand} on:change={onCommandChange}>
-    {#each commandList as command}
-        <option value="{command}">{command.name}</option>
-    {/each}
-    </select>
+{#if !odcAvailable}
+    <OdcSetupSteps />
+{:else}
+    <div id="container">
+        <label for="command">Command:</label>
+        <!-- svelte-ignore a11y-no-onchange -->
+        <select name="command" bind:value={selectedCommand} on:change={onCommandChange}>
+        {#each commandList as command}
+            <option value="{command}">{command.name}</option>
+        {/each}
+        </select>
 
-    {#each commandArgs as args}
-        <div class="commandOption">
-            <label for="{args.id}" title="{args.description}">{args.id}:</label>
-        {#if args.enum}
-            <select name="{args.id}" title="{args.description}" bind:value={formArgs[args.id]}>
-            {#each args.enum as value}
-                <option>{value}</option>
-            {/each}
-            </select>
-        {:else}
-            <input name="{args.id}" placeholder="{args.type}" title="{args.description}" bind:value={formArgs[args.id]} />
-        {/if}
-        </div>
-    {/each}
-    <br><button on:click={sendCommand}>Send</button>
-    <hr />
-    <pre>
-        {commandResponse}
-    </pre>
-</div>
+        {#each commandArgs as args}
+            <div class="commandOption">
+                <label for="{args.id}" title="{args.description}">{args.id}:</label>
+            {#if args.enum}
+                <select name="{args.id}" title="{args.description}" bind:value={formArgs[args.id]}>
+                {#each args.enum as value}
+                    <option>{value}</option>
+                {/each}
+                </select>
+            {:else}
+                <input name="{args.id}" placeholder="{args.type}" title="{args.description}" bind:value={formArgs[args.id]} />
+            {/if}
+            </div>
+        {/each}
+        <br><button on:click={sendCommand}>Send</button>
+        <hr />
+        <pre>
+            {commandResponse}
+        </pre>
+    </div>
+{/if}

@@ -245,7 +245,9 @@ export class BrighterScriptPreviewCommand {
      * Get the fsPath from the uri. this handles both `file` and `bs-preview` schemes
      */
     private getSourcePathFromPreviewUri(uri: vscode.Uri) {
-        if (uri.scheme === FILE_SCHEME) {
+        if (uri.scheme === 'file') {
+            return uri.fsPath;
+        } else if (uri.scheme === FILE_SCHEME) {
             let parts = querystring.parse(uri.query);
             return parts.fsPath as string;
         } else {

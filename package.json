@@ -63,6 +63,7 @@
         "hex-rgb": "^5.0.0",
         "hoek": "^6.1.2",
         "iconv-lite": "0.4.24",
+        "just-throttle": "^4.0.1",
         "merge-source-map": "^1.1.0",
         "micromatch": "^3.1.10",
         "natural-orderby": "^2.0.3",

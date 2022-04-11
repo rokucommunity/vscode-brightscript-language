@@ -2,17 +2,22 @@
     import type {ODC} from 'roku-test-automation';
     import {odc, intermediary} from "../ExtensionIntermediary";
 
-    import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
     import Settings from "../components/NodeTreeView/Settings.svelte";
     import Loader from "../components/Common/Loader.svelte";
     import { utils } from '../utils';
     import NodeCountByType from '../components/NodeTreeView/NodeCountByType.svelte';
+    import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
+    import NodeDetailView from '../components/NodeTreeView/NodeDetailView.svelte';
+    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
+
 
     window.vscode = acquireVsCodeApi();
 
     let loading = true;
     let error;
     let showSettings = false;
+    let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
+    let inspectNodeSubtype = '';
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as {
@@ -20,20 +25,13 @@
     };
     let rootTree = [] as ODC.NodeTree[];
 
-    const globalNodeTree = {
-        subtype: 'Global Node',
-        id: '',
-        ref: 0,
-        children: [],
-        parentRef: -1
-    } as ODC.NodeTree;
-
     let focusedNode = -1;
 
     intermediary.observeEvent('applicationRedeployed', (message) => {
-        refresh();
-    })
-    refresh();
+        if (odcAvailable) {
+            refresh();
+        }
+    });
 
     async function refresh() {
         loading = true;
@@ -72,6 +70,29 @@
     function openNodeCountByType() {
         showNodeCountByType = true;
     }
+
+    function globalClicked() {
+        inspectNodeBaseKeyPath = {
+            keyPath: ''
+        }
+        inspectNodeSubtype = 'Global';
+    }
+
+    let odcAvailable = true;
+    $: {
+        if (odcAvailable) {
+            refresh();
+        } else {
+            loading = false;
+        }
+    }
+
+    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
+        odcAvailable = message.available;
+    });
+
+    // Required by any view so we can know that the view is ready to receive messages
+    intermediary.sendViewReady();
 </script>
 
 <style>
@@ -143,6 +164,17 @@
         text-decoration: underline;
         cursor: pointer;
     }
+
+    #globalNode {
+        cursor: pointer;
+        color: white;
+        background-color: #1b2631;
+        padding: 5px 10px;
+    }
+
+    #globalNode:hover {
+        background-color: #00509f;
+    }
 </style>
 
 <div id="container">
@@ -152,20 +184,21 @@
     {#if showNodeCountByType}
         <NodeCountByType bind:showNodeCountByType={showNodeCountByType} bind:nodeCountByType={nodeCountByType} />
     {/if}
-    {#if loading}
+    {#if !odcAvailable}
+        <OdcSetupSteps />
+    {:else if loading}
         <Loader />
     {:else if error}
         <div id="errorMessage">{error}</div>
         <div id="errorHelp">
             If you are seeing this, please make sure you have the on device component running. This requires that both the files are included in the build and that the component is initialized. The easiest way to do this is:
             <ul>
-                <li>Include the following comment in either your Scene or main.brs file <span class="codeSnippet">' vscode_rdb_on_device_component_entry</span></li>
-                <li>Make sure your launch.json configuration has <span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
+                <li>Include the following comment in either your Scene or main.brs file<br><span class="codeSnippet">' vscode_rdb_on_device_component_entry</span></li>
+                <li>Make sure your launch.json configuration has<br><span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
             </ul>
             The extension can copy the files automatically for you so there's no need to handle that part. If you are still having issues even with these steps, check to make sure you're seeing this line in your device logs <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
             <p><button on:click={refresh}>Retry</button></p>
         </div>
-
     {:else}
         <div id="header">
             <button title="Show Focused Node" on:click={showFocusedNode}>{'\u2316'}</button>
@@ -179,8 +212,11 @@
         </div>
 
         <ul id="nodeTree">
-            <NodeBranchView nodeTree={globalNodeTree} />
-            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={rootTree[0]} expanded={true} />
+            <li id="globalNode" on:click={globalClicked}>Global Node</li>
+            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={rootTree[0]} bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} bind:inspectNodeSubtype={inspectNodeSubtype} expanded={true} />
         </ul>
+    {/if}
+    {#if inspectNodeBaseKeyPath}
+        <NodeDetailView bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} inspectNodeSubtype={inspectNodeSubtype} />
     {/if}
 </div>

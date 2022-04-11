@@ -11,8 +11,12 @@ class ExtensionIntermediary {
     private observed = false;
 
     private setupExtensionMessageObserver() {
+        if(this.observed) {
+            return;
+        }
         this.observed = true;
-        window.addEventListener("message", (event) => {
+
+        window.addEventListener('message', (event) => {
             const message = event.data;
             const request = this.inflightRequests[message.id];
             if (request) {
@@ -32,9 +36,8 @@ class ExtensionIntermediary {
     }
 
     public async sendMessage<T>(command: string, context = {}) {
-        if(!this.observed) {
-            this.setupExtensionMessageObserver();
-        }
+        this.setupExtensionMessageObserver();
+
         const requestId = this.randomStringGenerator();
 
         return new Promise<T>((resolve, reject) => {
@@ -56,6 +59,15 @@ class ExtensionIntermediary {
                 callback: callback
             }
             vscode.postMessage(message);
+        });
+    }
+
+    public sendViewReady() {
+        this.setupExtensionMessageObserver();
+
+        vscode.postMessage({
+            command: 'viewReady',
+            context: {}
         });
     }
 
@@ -99,6 +111,14 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getValueAtKeyPath>>('getValueAtKeyPath', args, options);
     }
 
+    public async getValuesAtKeyPaths(args?: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValuesAtKeyPaths>>('getValuesAtKeyPaths', args, options);
+    }
+
+    public async getNodesInfoAtKeyPaths(args?: rta.ODC.GetNodesInfoAtKeyPathsArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfoAtKeyPaths>>('getNodesInfoAtKeyPaths', args, options);
+    }
+
     public async hasFocus(args?: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.hasFocus>>('hasFocus', args, options);
     }
@@ -125,10 +145,6 @@ class ODCIntermediary {
 
     public async storeNodeReferences(args?: rta.ODC.StoreNodeReferences, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
-    }
-
-    public async getNodeReferences(args?: rta.ODC.GetNodeReferences, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodeReferences>>('getNodeReferences', args, options);
     }
 
     public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferences, options?: rta.ODC.RequestOptions) {

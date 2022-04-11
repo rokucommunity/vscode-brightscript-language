@@ -272,6 +272,7 @@ export class Extension {
             OnDeviceComponent: {
                 disableTelnet: true,
                 disableCallOriginationLine: true,
+
                 // uncomment for debugging
                 // logLevel: 'verbose',
                 // serverDebugLogging: true
@@ -281,26 +282,29 @@ export class Extension {
     }
 
     private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
+        let sendApplicationRedeployed = false;
         if (!config.injectRdbOnDeviceComponent) {
-            return;
+            this.odc = undefined;
+        } else if (!this.odc) {
+            this.odc = this.setupODC(config);
+        } else {
+            sendApplicationRedeployed = true;
         }
 
-        if(this.odc) {
-            this.odc.device = new rta.RokuDevice(this.getRtaConfig(config));
+        if (config.injectRdbOnDeviceComponent) {
+            this.odc = this.setupODC(config);
+        }
 
-            for (const viewId in this.rdbViews) {
-                this.rdbViews[viewId].provider.applicationRedeployed();
-            }
-        } else {
-            for (const viewId in this.rdbViews) {
-                const view = this.rdbViews[viewId];
+        for (const viewId in this.rdbViews) {
+            const view = this.rdbViews[viewId];
+            if (!view.provider) {
                 view.provider = new view.class(context);
                 vscode.window.registerWebviewViewProvider(viewId, view.provider);
             }
 
-            this.odc = this.setupODC(config);
-            for (const viewId in this.rdbViews) {
-                this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+            this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+            if (sendApplicationRedeployed) {
+                this.rdbViews[viewId].provider.applicationRedeployed();
             }
         }
     }

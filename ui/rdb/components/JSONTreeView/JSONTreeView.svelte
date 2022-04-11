@@ -1,6 +1,6 @@
 <script>
     import JSONNode from "./JSONNode.svelte";
-    import {odc} from "../../ExtensionIntermediary";
+    import { odc } from "../../ExtensionIntermediary";
     export let registryValues;
     const keys = Object.keys(registryValues);
     export let onValueChange = (key) => {

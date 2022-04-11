@@ -1,14 +1,15 @@
 <script lang="ts">
-    import type {ODC} from 'roku-test-automation';
+    import type { ODC } from 'roku-test-automation';
     import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
     import NodeArrow from './NodeArrow.svelte';
-    import NodeDetailView from './NodeDetailView.svelte';
 
     const storage = window.localStorage;
 
     export let nodeTree: ODC.NodeTree;
+    export let inspectNodeSubtype: string;
+    export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
 
     let self: Element;
 
@@ -27,22 +28,16 @@
     $:{
         if (nodeTree.ref === focusedNode) {
             selected = true;
-            if (!(window as any).previouslySelected) {
+            if (self) {
                 document.documentElement.scrollTo(self.getBoundingClientRect().left, self.getBoundingClientRect().top);
             }
-
-
             dispatch('childExpanded');
         } else {
             selected = false;
         }
-
     }
 
     $:hasChildren = nodeTree.children.length > 0;
-
-
-    let inspectNode = false;
 
     function toggleExpand() {
         if (!hasChildren) {
@@ -52,7 +47,11 @@
     }
 
     function openNode() {
-        inspectNode = true;
+        inspectNodeBaseKeyPath = {
+            base: 'nodeRef',
+            keyPath: `${nodeTree.ref}`
+        }
+        inspectNodeSubtype = nodeTree.subtype;
     }
 
     function onChildExpanded() {
@@ -100,7 +99,6 @@
 
     li.selected {
         background-color: #194470;
-
     }
 
     li:hover {
@@ -117,10 +115,6 @@
 </li>
 <ul class:hide={!expanded}>
     {#each nodeTree.children as nodeTree}
-        <svelte:self on:childExpanded={onChildExpanded} {nodeTree} {focusedNode} />
+        <svelte:self on:childExpanded={onChildExpanded} {nodeTree} {focusedNode} bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} bind:inspectNodeSubtype={inspectNodeSubtype} />
     {/each}
 </ul>
-
-{#if inspectNode}
-    <NodeDetailView {nodeTree} bind:inspectNode={inspectNode} />
-{/if}
