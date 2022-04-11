@@ -1902,18 +1902,27 @@
             },
             {
                 "command": "extension.brightscript.pressBackButton",
-                "key": "Backspace",
+                "key": "Escape",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
-                "command": "extension.brightscript.pressBackspaceButton",
-                "key": "win+Backspace",
-                "mac": "cmd+Backspace",
+                "command": "extension.brightscript.pressBackButton",
+                "key": "Delete",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressHomeButton",
-                "key": "Escape",
+                "key": "Home",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressHomeButton",
+                "key": "ctrl+Escape",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressInstantReplayButton",
+                "key": "Backspace",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -1938,38 +1947,71 @@
             },
             {
                 "command": "extension.brightscript.pressSelectButton",
-                "key": "Enter",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressPlayButton",
-                "key": "win+Enter",
+                "key": "ctrl+Enter",
                 "mac": "cmd+Enter",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.pressPlayButton",
+                "key": "MediaPlayPause",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressRevButton",
-                "key": "win+left",
+                "key": "ctrl+left",
                 "mac": "cmd+left",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.pressRevButton",
+                "key": "PageDown",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressRevButton",
+                "key": "MediaTrackPrevious",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressFwdButton",
-                "key": "win+right",
+                "key": "ctrl+right",
                 "mac": "cmd+right",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.pressFwdButton",
+                "key": "PageUp",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressFwdButton",
+                "key": "MediaTrackNext",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressStarButton",
-                "key": "win+8",
+                "key": "ctrl+8",
                 "mac": "cmd+8",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
-                "command": "extension.brightscript.sendRemoteText",
-                "key": "win+k",
-                "mac": "cmd+k",
-                "when": "panelFocus && !inDebugRepl && !findWidgetVisible"
+                "command": "extension.brightscript.pressStarButton",
+                "key": "Insert",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.toggleRemoteControlMode",
+                "key": "ctrl+k",
+                "mac": "cmd+k"
+            },
+            {
+                "command": "extension.brightscript.pressVolumeMute",
+                "key": "AudioVolumeMute",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+SPACE",
