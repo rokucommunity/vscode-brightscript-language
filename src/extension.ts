@@ -258,6 +258,10 @@ export class Extension {
                 await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
             }
         }));
+
+        context.subscriptions.push(vscode.commands.registerCommand('brightscript.extension.showReleaseNotes', () => {
+            this.showReleaseNotes();
+        }));
     }
 
     /**
@@ -299,6 +303,7 @@ export class Extension {
         //List of version numbers that should prompt the ReleaseNotes page.
         //these should be in highest-to-lowest order, because we will launch the highest version
         let versionWhitelist = [
+            '2.31.0',
             '2.0.0'
         ];
         for (let whitelistVersion of versionWhitelist) {
@@ -312,17 +317,26 @@ export class Extension {
             ) {
                 //mark this version as viewed
                 this.globalStateManager.lastSeenReleaseNotesVersion = whitelistVersion;
-                let viewText = 'View Release Notes';
+                let viewText = 'Release Notes';
+                let viewOnWebText = 'View On Github';
                 let response = await window.showInformationMessage(
                     `BrightScript Language v${whitelistVersion} includes significant changes from previous versions. Please take a moment to review the release notes.`,
-                    viewText
+                    viewText,
+                    viewOnWebText
                 );
                 if (response === viewText) {
-                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/ReleaseNotes.md#${whitelistVersion}`));
+                    this.showReleaseNotes();
+                } else if (response === viewOnWebText) {
+                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/docs/Release%20Notes/v${whitelistVersion}.md`));
                 }
                 this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
             }
         }
+    }
+
+    private showReleaseNotes() {
+        const uri = vscode.Uri.file(`${__dirname}/../ReleaseNotes.md`);
+        void vscode.commands.executeCommand('markdown.showPreview', uri, { sideBySide: false });
     }
 
     private setupODC(config: BrightScriptLaunchConfiguration) {
