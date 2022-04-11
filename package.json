@@ -2364,7 +2364,7 @@
             {
                 "key": "`",
                 "command": "extension.brightscript.sendAscii+`",
-                "args": "+`",
+                "args": "`",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -2526,25 +2526,25 @@
             {
                 "key": "shift+[",
                 "command": "extension.brightscript.sendAscii+{",
-                "args": "+{",
+                "args": "{",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "key": "shift+\\",
                 "command": "extension.brightscript.sendAscii+|",
-                "args": "+|",
+                "args": "|",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "key": "shift+]",
                 "command": "extension.brightscript.sendAscii+}",
-                "args": "+}",
+                "args": "}",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
                 "key": "shift+`",
                 "command": "extension.brightscript.sendAscii+~",
-                "args": "+~",
+                "args": "~",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
