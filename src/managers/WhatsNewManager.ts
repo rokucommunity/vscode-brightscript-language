@@ -91,7 +91,7 @@ export class WhatsNewManager {
 
     public showReleaseNotes(version: string = this.notableReleaseVersions[0]) {
         if (this.notableReleaseVersions.includes(version)) {
-            let uri = vscode.Uri.file(`${__dirname}/../../docs/Release Notes/v${version}.md`);
+            let uri = vscode.Uri.file(`${__dirname}/../../docs/release-notes/v${version}.md`);
             uri = uri.with({ scheme: FILE_SCHEME });
             void vscode.commands.executeCommand('markdown.showPreview', uri, { sideBySide: false });
         } else {
