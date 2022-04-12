@@ -4,17 +4,20 @@ import type { TelemetryManager } from './TelemetryManager';
 
 export class RemoteControlManager {
     constructor(
-        private context: vscode.ExtensionContext,
         private telemetryManager: TelemetryManager
     ) {
         this.remoteControlStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-        void this.setRemoteControlMode(false, undefined);
+        void this.setRemoteControlMode(this.isEnabled, undefined);
+
+        //keep the user's button flashing preference in sync
+        vscode.workspace.onDidChangeConfiguration(() => {
+            this.isFlasherAllowedByUser = vscode.workspace.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
+        });
     }
 
-    private default = {
-        color: undefined,
-        backgroundColor: undefined
-    };
+    private isEnabled = false;
+
+    private isFlasherAllowedByUser: boolean;
 
     private colors = {
         default: {
@@ -63,8 +66,8 @@ export class RemoteControlManager {
         };
         this.remoteControlStatusBarItem.tooltip = `Roku remote control mode is: ${currentState}`;
         this.remoteControlStatusBarItem.show();
-
-        if (isEnabled) {
+        this.isEnabled = isEnabled;
+        if (this.isEnabled) {
             this.enableFlasher();
         } else {
             this.disableFlasher?.();
@@ -75,11 +78,20 @@ export class RemoteControlManager {
     public enableFlasher() {
         if (!this.disableFlasher) {
             let colorKey = 'primary';
-            const handle = setInterval(() => {
+
+            const toggleStatusbarColors = () => {
                 colorKey = colorKey === 'primary' ? 'secondary' : 'primary';
                 Object.assign(this.remoteControlStatusBarItem, this.colors[colorKey]);
+            };
+
+            toggleStatusbarColors();
+
+            const handle = setInterval(() => {
+                if (this.isFlasherAllowedByUser) {
+                    toggleStatusbarColors();
+                }
             }, 500);
-            this.remoteControlStatusBarItem.show();
+
             this.disableFlasher = () => {
                 clearInterval(handle);
                 Object.assign(this.remoteControlStatusBarItem, this.colors.default);

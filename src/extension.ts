@@ -80,7 +80,7 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
 
-        this.remoteControlManager = new RemoteControlManager(context, this.telemetryManager);
+        this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, context);
 
         //update the tracked version of the extension

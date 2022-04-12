@@ -16,7 +16,7 @@ Press `ctrl+k` on windows or `cmd+k` on mac.
 ## How it works
 When Remote Control Mode is activated, we enable about 100 key bindings that capture most of the standard US keyboard keys. At this point, you may use your keyboard to send text input, use the arrow keys to send left/right/up/down button presses, etc. Once you're finished, simply disable **remote control mode**.
 
-Here are many of the registered key bindings. You can see the full list in the [package.json](https://github.com/rokucommunity/vscode-brightscript-language/blob/master/package.json) under `keybindings`. 
+Here are many of the registered key bindings. You can see the full list in the [package.json](https://github.com/rokucommunity/vscode-brightscript-language/blob/master/package.json) under `keybindings`.
 
 
 | Keybinding (Windows) | Keybinding (Mac) | Roku Button     | Description                                                                                         |
