@@ -218,6 +218,9 @@ export class BrightScriptCommands {
     }
 
     private registerGeneralCommands() {
+         //a command that does absolutely nothing. It's here to allow us to absorb unsupported keypresses when in **remote control mode**.
+        this.registerCommand('doNothing', () => { });
+
         this.registerCommand('toggleXML', async () => {
             await this.onToggleXml();
         });
