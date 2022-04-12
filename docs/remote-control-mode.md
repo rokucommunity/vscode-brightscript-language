@@ -4,6 +4,7 @@
 ## 
 ### From the status bar
 Click the remote icon in the status bar to toggle remote mode on or off
+
 ![remote-mode](https://user-images.githubusercontent.com/2544493/162752275-e60dea72-cc78-4818-aa99-6c3a354157ce.gif)
 
 ### From the command palette
