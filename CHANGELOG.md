@@ -6,6 +6,235 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.30.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.0...v2.30.1) - 2022-04-07
+### Changed
+ - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0104---2022-04-07)
+    - fixed stability issues when restarting an existing debug session ([#74](https://github.com/rokucommunity/roku-debug/pull/74))
+    - fixed issue where the `type` and `keys` commands would time out. ([#73](https://github.com/rokucommunity/roku-debug/pull/73))
+    - possible fix for [#72](https://github.com/rokucommunity/roku-debug/issues/72) ([#73](https://github.com/rokucommunity/roku-debug/pull/73))
+ - updated to [brighterscript@0.47.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0472---2022-04-07)
+    - fixed enum transpile bug for binary expressions ([#559](https://github.com/rokucommunity/brighterscript/pull/559))
+    - added missing `require` entry to `bsconfig.schema.json` ([#560](https://github.com/rokucommunity/brighterscript/pull/560))
+    - don't add trailing commas in transpiled output for array and aa literals ([#556](https://github.com/rokucommunity/brighterscript/pull/556))
+    - retain quote char when transpiling xml attributes ([#552](https://github.com/rokucommunity/brighterscript/pull/552))
+    - add `require` flag to allow loading external node modules as part of the build process (useful for things like `ts-node/register`). ([#550](https://github.com/rokucommunity/brighterscript/pull/550), [#551](https://github.com/rokucommunity/brighterscript/pull/551))
+ - updated to [brighterscript-formatter@1.6.11](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1611---2022-04-07)
+### Fixed
+ - empty `host` and `password` fields for new launch configuration
+ - standardized the default value for `retainStagingFolder` and `stopOnEntry` launch options
+
+
+
+## [2.30.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.4...v2.30.0) - 2022-03-30
+### Added
+ - Add bsc problem matchers. (`$bsc`, `$bsc-watch`, `$bsc-watch-silent`) ([#376](https://github.com/rokucommunity/vscode-brightscript-language/pull/376))
+
+
+
+## [2.29.4](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.3...v2.29.4) - 2022-03-25
+### Changed
+ - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0102---2022-03-25)
+    - fixed bug with protocol step command killing the app ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+    - fixed event flow on protocol debugger startup ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+    - fixed bug cleaning up packet lengths for v3 ([roku-debug#70](https://github.com/rokucommunity/roku-debug/pull/70))
+ - updated to [brighterscript@0.46.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0460---2022-03-24)
+    - refactored try-catch statement to make the expressions and bodies easier to access via plugins. ([brighterscript#514](https://github.com/rokucommunity/brighterscript/pull/514))
+### Fixed
+ - sendRemoteText command no longer times out when sending large text. ([#373](https://github.com/rokucommunity/vscode-brightscript-language/pull/373))
+
+
+
+## [2.29.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.2...v2.29.3) - 2022-03-23
+### Fixed
+ - reverted syntax highlighting introduced in v2.29.2. 
+
+
+
+## [2.29.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.1...v2.29.2) - 2022-03-22
+### Fixed
+ - better function, method, and type syntax highlighting. ([#371](https://github.com/rokucommunity/vscode-brightscript-language/pull/371))
+
+
+
+## [2.29.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.29.0...v2.29.1) - 2022-03-18
+### Changed
+ - updated to [roku-debug@0.10.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0101---2022-03-17)
+ - updated to [brighterscript@0.45.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0456---2022-03-17)
+ - updated to [brighterscript-formatter@1.6.10](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1610---2022-03-17)
+ - updated to [roku-deploy@3.5.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#354---2022-03-17)
+### Fixed
+ - speed issues when zipping project during launch ([roku-deploy#86](https://github.com/rokucommunity/roku-deploy/pull/86))
+
+
+
+## [2.29.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.1...v2.29.0) - 2022-03-08
+### Changed
+ - updated to [brighterscript@0.45.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0454---2022-03-08)
+    - fixed bug calculating parse time. ([brighterscript#532](https://github.com/rokucommunity/brighterscript/pull/532))
+ - updated to [roku-debug@0.10.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0100---2022-03-08) 
+    - added support for roku debug protocol v3.0.0
+    - support for eval/execute functionality over the debug protocol(v3.0.0+) from the debug console
+    - Changed: running `print` statements in the debug console now runs an actual print statement. To do variable evaluation, simply type the name of the variable.
+
+
+
+## [2.28.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.28.0...v2.28.1) - 2022-02-24
+### Changed
+ - updated to [brighterscript@0.45.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0452---2022-02-24)
+    - fixed significant memory leak [brighterscript#527](https://github.com/rokucommunity/brighterscript/pull/527)
+ - updated to [brighterscript-formatter@1.6.9](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#169---2022-02-24)
+ - updated to [roku-deploy@3.5.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#353---2022-02-16)
+ - updated to [roku-debug@0.9.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#094---2022-02-24) 
+
+
+
+## [2.28.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.2...v2.28.0) - 2022-02-11
+### Changed
+ - updated to [brighterscript@0.45.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0450---2022-02-11)
+    - `enum` language feature ([BrighterScript#484](https://github.com/rokucommunity/brighterscript/pull/484))
+ - updated to [brighterscript-formatter@1.6.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#168---2022-02-11)
+    - adds enum indentation support
+### Fixed
+ - fixed bug with indented enum syntax highlighting
+ - bug with namespace, interface, and enum indentation rules
+
+
+
+## [2.27.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.1...v2.27.2) - 2022-02-08
+### Added
+ - enum syntax highlighting ([#359](https://github.com/rokucommunity/vscode-brightscript-language/pull/359))
+### Changed
+ - updated to [brighterscript@0.44.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0440---2022-02-08)
+    - fixed bug in hover showing required params as optional and optional params as required ([brighterscript#501](https://github.com/rokucommunity/brighterscript/pull/501))  
+    - show plugin transpile modifications in the `getTranspiledFile` callback (used for "show preview" functionality in vscode) ([brighterscript#502](https://github.com/rokucommunity/brighterscript/pull/502))
+
+
+
+## [2.27.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.27.0...v2.27.1) - 2022-02-01
+### Changed
+ - updated to [brighterscript-formatter@1.6.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#167---2022-02-01)
+### Fixed
+ - formatting bug that was incorrectly removing whitespace between certain characters. ([brighterscript-formatter#49](https://github.com/rokucommunity/brighterscript-formatter/pull/49))
+
+
+
+## [2.27.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.26.1...v2.27.0) - 2022-01-31
+### Added
+ - start tracking anonymized telemetry data to give visibility into real-world usage of the extension and its features. ([#354](https://github.com/rokucommunity/vscode-brightscript-language/pull/354))
+
+
+
+## [2.26.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.26.0...v2.26.1) - 2022-01-28
+### Changed
+ - updated to [brighterscript@0.43.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0431---2022-01-28)
+    - fix crash when hovering over global functions ([brighterscript#497](https://github.com/rokucommunity/brighterscript/pull/497))
+
+
+
+## [2.26.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.3...v2.26.0) - 2022-01-28
+### Added
+ - ability to filter out devices with developer mode off ([#353](https://github.com/rokucommunity/vscode-brightscript-language/pull/353))
+### Changed
+ - updated to [brighterscript@0.43.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0430---2022-01-28). Since last update:
+    - show function documentation when hovering over functions. ([brighterscript#495](https://github.com/rokucommunity/brighterscript/pull/495))
+    - bug preventing code to come after an interface statement.  ([brighterscript#493](https://github.com/rokucommunity/brighterscript/pull/493))
+    - bug in global function parameter checking that was not properly enforcing optional/required status for parameters. ([brighterscript#479](https://github.com/rokucommunity/brighterscript/pull/479))
+ - updated to [brighterscript-formatter@1.6.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#166---2022-01-28)
+    - properly formats an interface that includes subs and functions ([brighterscript-formatter#46](https://github.com/rokucommunity/brighterscript-formatter/pull/46))
+    - adds better support for appropriate whitespace between minus and numbers/identifiers ([brighterscript-formatter#47](https://github.com/rokucommunity/brighterscript-formatter/pull/47))
+ - updated to [roku-debug@0.9.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#093---2022-01-28) which uses brighterscript@0.43.0
+
+
+## [2.25.3](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.2...v2.25.3) - 2022-01-14
+### Changed
+ - updated to [brighterscript-formatter@1.6.5](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#165---2022-01-14)
+ - Removed all interface snippets introduced in Adding Completion Items #105 that were partially removed a while ago. These should all be handled by the language server as we add better type tracking support. ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+ - Don't show brighterscript-specific snippets in BrightScript files ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+### Fixed
+ - formatting indentation bug with `interface` statements ([brighterscript-formatter#45](https://github.com/rokucommunity/brighterscript-formatter/pull/45))
+ - syntax highlighting for interface statements ([#351](https://github.com/rokucommunity/vscode-brightscript-language/pull/351))
+ - Add brightscript and brighterscript snippets to BrighterScript files (they were missing for some reason) ([#348](https://github.com/rokucommunity/vscode-brightscript-language/pull/348))
+
+
+
+## [2.25.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.1...v2.25.2) - 2022-01-12
+### Fixed
+ - updated to [roku-debug@0.9.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#092---2022-01-12)
+    - fixed bug with telnet debug session related to fire-and-forget commands like `step`, `continue`, etc. This was causing the debug session to stall frequently. ([roku-debug#64](https://github.com/rokucommunity/roku-debug/pull/64))
+    - combine telnet output that was split due to buffer sizes ([roku-debug#64](https://github.com/rokucommunity/roku-debug/pull/64))
+
+
+
+## [2.25.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.25.0...v2.25.1) - 2022-01-05
+### Changed
+ - updated to [brighterscript@0.41.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0416---2022-01-05)
+    - fixed issue in the transpiled output of the null coalescing operator where plain variable references are not properly passed into the function. ([brighterscript#474](https://github.com/rokucommunity/brighterscript/pull/474))
+ - updated to [brighterscript-formatter@1.6.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#164---2022-01-05)
+    - fixed formatting issue with ternary operator and square brace in the consequent ([brighterscript-formatter#44](https://github.com/rokucommunity/brighterscript-formatter/pull/44))
+ - updated to [roku-debug@0.9.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#091---2022-01-05)
+    - fixed issue where `"consoleOutput": "full"` shows no output when `enableDebugProtocol === true`. ([roku-debug#65](https://github.com/rokucommunity/roku-debug/pull/65))
+
+
+
+## [2.25.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.2...v2.25.0) - 2021-12-17
+### Changed
+ - updated to [roku-debug@0.9.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#090---2021-12-17) 
+    - Adds many new log messages at various debug levels. ([roku-debug#61](https://github.com/rokucommunity/roku-debug/pull/61))
+    - Ability to inspect node children through the `[[children]]` virtual property ([#57](https://github.com/rokucommunity/roku-debug/pull/57))
+    - `[[length]]` virtual property for all variables that support it.  ([#57](https://github.com/rokucommunity/roku-debug/pull/57))
+ - add `logLevel` launch configuration variable ([roku-debug#61](https://github.com/rokucommunity/roku-debug/pull/61))
+ - rename `SceneGraph Debug Commands Log` output panel to `SceneGraph Debug Commands`  ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+ - rename `BrightScript Debug Server` output panel to `BrightScript Extension` for wider usage. ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+### Fixed
+ - add `brightscript.extensionLogfilePath` setting to specify an output file for debug logs ([#342](https://github.com/rokucommunity/vscode-brightscript-language/pull/342))
+ - several telnet debugging issues related to the 10.5 Roku OS release.([roku-debug#57](https://github.com/rokucommunity/roku-debug/pull/57))
+
+
+
+## [2.24.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.1...v2.24.2) - 2021-11-23
+### Changed
+ - updated to [brighterscript@0.41.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0415---2021-11-23)
+### Fixed
+ - critical crash in language server whenever a local variable had the same name as a javascript object function on the prototype (stuch as `constructor`). ([brighterscript#469](https://github.com/rokucommunity/brighterscript/pull/469))
+
+
+
+## [2.24.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.24.0...v2.24.1) - 2021-11-11
+### Changed
+ - updated to [roku-debug@0.8.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#087---2021-11-11) 
+   - Don't delete dev channel during launch, as this clears the registry. ([roku-debug#58](https://github.com/rokucommunity/roku-debug/pull/58))
+
+
+
+## [2.24.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.1...v2.24.0) - 2021-11-04
+### Added
+ - limited support for running the extension in vscode for web. Currently only the syntax hightlighter works. ([#333](https://github.com/rokucommunity/vscode-brightscript-language/pull/333))
+### Fixed
+ - updated to [roku-debug@0.8.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#086---2021-11-04) 
+    - telnet debugger to work better with RokuOS 10.5 and `run_as_process=1` projects, as well as some better detection of the `Brightscript Debugger>` prompt.
+    - fix ECP commands that would fail when using a hostname instead of an ip address.
+ - updated to [roku-deploy@3.5.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#352---2021-11-02)
+
+
+
+## [2.23.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.23.0...v2.23.1) - 2021-10-27
+### Changed
+ - updated to [roku-debug@0.8.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#085---2021-10-27) 
+    - add additional logging to the "BrightScript Debug Server" output panel
+    - fixed bug with boxed primitives for telnet debugger ([roku-debug#36](https://github.com/rokucommunity/roku-debug/pull/36))
+    - send stdio lines as separate debug events which fixes focus bug in the output panel. ([roku-debug#51](https://github.com/rokucommunity/roku-debug/pull/51))
+    - retain newlines in log output after tracker preprocessing ([roku-debug#50](https://github.com/rokucommunity/roku-debug/pull/50))
+ - updated to [roku-deploy@3.5.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#350---2021-10-27)
+    - includes ability to use negated non-rootDir top-level patterns in the files array ([roku-deploy#78](https://github.com/rokucommunity/roku-deploy/pull/78))
+ - updated to [brighterscript@0.41.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0413---2021-10-27)
+    -  Allow diagnostic non-numeric disable code comments ([brighterscript#463](https://github.com/rokucommunity/brighterscript/pull/463))
+ - updated to [brighterscript-formatter@1.6.3](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#163---2021-10-27)
+### Fixed
+ - syntax highlighting issue related to `if` keyword that looked like a function call ([#331](https://github.com/rokucommunity/vscode-brightscript-language/pull/331))
+ - `throw` keyword colorization ([#330](https://github.com/rokucommunity/vscode-brightscript-language/pull/330))
+
+
+
 ## [2.23.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.22.3...v2.23.0) - 2021-09-17
 ### Added
  - Initial RDB implementation ([#317](https://github.com/rokucommunity/vscode-brightscript-language/pull/317))
@@ -13,7 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - deploy crashes when target Roku doesn't have an installed channel (roku-deploy#65)
 ### Changed
  - updated to [brighterscript@0.40.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0401---2021-09-17) which includes roku-deploy@3.4.2
- - updated to [roku-deploy@3.4.2](https://https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#342---2021-09-17)
+ - updated to [roku-deploy@3.4.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#342---2021-09-17)
  - updated to [brighterscript-formatter@1.6.2](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#162---2021-09-17)
 
 

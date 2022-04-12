@@ -1,21 +1,22 @@
-import { Runner, Formatter as BrighterScriptFormatter, FormattingOptions } from 'brighterscript-formatter';
-
-import {
+import type { FormattingOptions } from 'brighterscript-formatter';
+import { Runner, Formatter as BrighterScriptFormatter } from 'brighterscript-formatter';
+import type {
     DocumentRangeFormattingEditProvider,
+    ProviderResult,
+    TextDocument
+} from 'vscode';
+import {
     EndOfLine,
     Position,
-    ProviderResult,
     Range,
-    TextDocument,
     TextEdit,
-    window, workspace,
+    window, workspace
 } from 'vscode';
-import * as eol from 'eol';
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 
 export class Formatter implements DocumentRangeFormattingEditProvider {
 
-    public provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): ProviderResult<TextEdit[]> {
+    public async provideDocumentRangeFormattingEdits(document: TextDocument, range: Range, options: vscode.FormattingOptions): Promise<TextEdit[]> {
 
         //TODO is there anything we can to do to better detect when the same file is used in multiple workspaces?
         //vscode seems to pick the lowest workspace (or perhaps the last workspace?)
@@ -43,11 +44,11 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
 
             return edits;
         } catch (e) {
-            window.showErrorMessage(e.message, e.stack.split('\n')[0]);
+            await window.showErrorMessage(e.message, e.stack.split('\n')[0]);
         }
     }
     private getEditChunks(document: TextDocument, formattedText: string, range: Range) {
-        let lines = eol.split(formattedText);
+        let lines = formattedText?.split(/\r?\n/g);
         //make an edit per line of the doc
         let edits: TextEdit[] = [];
         for (let lineNumber = range.start.line; lineNumber <= range.end.line; lineNumber++) {

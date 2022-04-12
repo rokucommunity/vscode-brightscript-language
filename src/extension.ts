@@ -1,33 +1,48 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
-import { window } from 'vscode';
+import {
+    window,
+    env,
+    extensions
+} from 'vscode';
 import { gte as semverGte } from 'semver';
-import { env, extensions } from 'vscode';
 import * as rta from 'roku-test-automation';
-
+import * as path from 'path';
+import * as fsExtra from 'fs-extra';
+import { util } from './util';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { brightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
-import { BrightScriptDebugConfigurationProvider, BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { DeclarationProvider } from './DeclarationProvider';
 import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
-import { RDBCommandsViewProvider, RDBNodeTreeProvider, RDBRegistryViewProvider } from './RDBViewProviders';
+import {
+    RDBCommandsViewProvider,
+    RDBNodeTreeProvider,
+    RDBRegistryViewProvider
+} from './RDBViewProviders';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
+import { TelemetryManager } from './managers/TelemetryManager';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
     public sceneGraphDebugChannel: vscode.OutputChannel;
-    public debugServerOutputChannel: vscode.OutputChannel;
+    /**
+     * Output channel where all the extension logs should be written (includes roku-debug, vscode-brightscript-language, etc...)
+     */
+    public extensionOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
     private chanperfStatusBar: vscode.StatusBarItem;
+    private telemetryManager: TelemetryManager;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -48,9 +63,20 @@ export class Extension {
         this.globalStateManager = new GlobalStateManager(context);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
-        var previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
+        let previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
 
-        var currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
+        let currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
+
+        //initialize the analytics manager
+        context.subscriptions.push(
+            this.telemetryManager = new TelemetryManager({
+                extensionId: EXTENSION_ID,
+                extensionVersion: currentExtensionVersion
+            })
+        );
+
+        this.telemetryManager.sendStartupEvent();
+
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
 
@@ -61,9 +87,9 @@ export class Extension {
 
         //create channels
         this.outputChannel = vscode.window.createOutputChannel('BrightScript Log');
-        this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands Log');
-        this.debugServerOutputChannel = vscode.window.createOutputChannel('BrightScript Debug Server');
-        this.debugServerOutputChannel.appendLine('Extension startup');
+        this.sceneGraphDebugChannel = vscode.window.createOutputChannel('SceneGraph Debug Commands');
+        this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
+        this.extensionOutputChannel.appendLine('Extension startup');
 
         let docLinkProvider = new LogDocumentLinkProvider();
 
@@ -77,8 +103,8 @@ export class Extension {
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
-        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', () => {
-            vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+        context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
+            await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
@@ -98,7 +124,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
@@ -109,7 +135,7 @@ export class Extension {
         );
 
         vscode.window.registerUriHandler({
-            handleUri: async function(uri: vscode.Uri) {
+            handleUri: async (uri: vscode.Uri) => {
                 if (uri.path.startsWith('/openFile/')) {
                     let docUri = vscode.Uri.file(uri.path.substr(10));
                     let doc = await vscode.workspace.openTextDocument(docUri);
@@ -117,7 +143,7 @@ export class Extension {
                     let editor = vscode.window.activeTextEditor;
                     let lineNumber = Number(uri.fragment) ? Number(uri.fragment) - 1 : 0;
                     editor.selection = new vscode.Selection(lineNumber, 0, lineNumber, 0);
-                    vscode.commands.executeCommand('revealLine', {
+                    await vscode.commands.executeCommand('revealLine', {
                         lineNumber: lineNumber,
                         at: 'center'
                     });
@@ -129,12 +155,12 @@ export class Extension {
         vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
             if (e.event === 'BSLaunchStartEvent') {
                 const config: BrightScriptLaunchConfiguration = e.body;
-                docLinkProvider.setLaunchConfig(config);
+                await docLinkProvider.setLaunchConfig(config);
                 logOutputManager.setLaunchConfig(config);
                 this.setupRDB(context, config);
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
-                this.debugServerOutputChannel.appendLine(e.body);
+                this.extensionOutputChannel.appendLine(e.body);
 
             } else if (e.event === 'BSRendezvousEvent') {
                 rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
@@ -178,8 +204,8 @@ export class Extension {
             }
         });
 
-        vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
-            logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
+        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
+            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
         });
 
         let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
@@ -201,8 +227,23 @@ export class Extension {
         const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
         context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 
-        this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
+        await this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
         await languageServerPromise;
+    }
+
+    /**
+     * Writes text to a logfile if enabled
+     */
+    private writeExtensionLog(text: string) {
+        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        if (extensionLogfilePath) {
+            //replace the ${workspaceFolder} variable with the path to the first workspace
+            extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
+            fsExtra.ensureDirSync(
+                path.dirname(extensionLogfilePath)
+            );
+            fsExtra.appendFileSync(extensionLogfilePath, text);
+        }
     }
 
     public async showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExtensionVersion: string) {
@@ -220,7 +261,7 @@ export class Extension {
                     viewText
                 );
                 if (response === viewText) {
-                    env.openExternal(vscode.Uri.parse('https://github.com/rokucommunity/vscode-brightscript-language/blob/master/Welcome.md'));
+                    void env.openExternal(vscode.Uri.parse('https://github.com/rokucommunity/vscode-brightscript-language/blob/master/Welcome.md'));
                 }
             }
             this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
@@ -248,7 +289,7 @@ export class Extension {
                     viewText
                 );
                 if (response === viewText) {
-                    env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/ReleaseNotes.md#${whitelistVersion}`));
+                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/ReleaseNotes.md#${whitelistVersion}`));
                 }
                 this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
             }
@@ -268,17 +309,15 @@ export class Extension {
                     host: config.host,
                     password: config.password
                 }]
-            },
-            OnDeviceComponent: {
-                disableTelnet: true,
-                disableCallOriginationLine: true,
-
-                // uncomment for debugging
-                // logLevel: 'verbose',
-                // serverDebugLogging: true
             }
-        }
-        return rtaConfig;
+            // uncomment for debugging
+            // OnDeviceComponent: {
+            //     logLevel: 'verbose',
+            //     serverDebugLogging: true
+            // }
+        };
+        const device = new rta.RokuDevice(rtaConfig);
+        return new rta.OnDeviceComponent(device, rtaConfig);
     }
 
     private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
@@ -311,6 +350,6 @@ export class Extension {
 
 }
 export const extension = new Extension();
-export function activate(context: vscode.ExtensionContext) {
-    extension.activate(context);
+export async function activate(context: vscode.ExtensionContext) {
+    await extension.activate(context);
 }

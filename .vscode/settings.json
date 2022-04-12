@@ -20,5 +20,7 @@
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
     "tslint.autoFixOnSave": true,
-    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false
+    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
+    "html.format.unformatted": "wbr,%",
+    "typescript.tsdk": "node_modules\\typescript\\lib"
 }

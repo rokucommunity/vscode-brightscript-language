@@ -1,5 +1,3 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
 import * as sinon from 'sinon';
 let Module = require('module');
 
@@ -92,11 +90,10 @@ describe('BrightScriptSignatureHelpProvider ', () => {
                 let def = { next: nextStub };
                 definitionRepoMock.expects('findDefinition').once().returns(def);
                 let position: any = new vscode.Position(10, 10);
-                provider.provideSignatureHelp(document, position, undefined).then((res) => {
-                    definitionRepoMock.verify();
-                    documentMock.verify();
-                    done();
-                });
+                provider.provideSignatureHelp(document, position, undefined);
+                definitionRepoMock.verify();
+                documentMock.verify();
+                done();
             });
         });
     });

@@ -1,11 +1,13 @@
 import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
 import * as vscode from 'vscode';
-import {
-    Location,
-    Position,
+import type {
     TextDocument,
     Uri
+} from 'vscode';
+import {
+    Location,
+    Position
 } from 'vscode';
 
 import { getExcludeGlob, iterlines, WorkspaceEncoding } from './DeclarationProvider';
@@ -19,7 +21,7 @@ export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
         options: { includeDeclaration: boolean },
         token: vscode.CancellationToken
     ): Promise<vscode.Location[]> {
-        return await this.find(document, position);
+        return this.find(document, position);
     }
 
     private async find(document: TextDocument, position: Position): Promise<Location[]> {
@@ -31,7 +33,7 @@ export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
                 fs.readFile(uri.fsPath, (err, data) => {
                     if (err) {
                         if (typeof err === 'object' && err.code === 'ENOENT') {
-                            resolve();
+                            resolve(undefined);
                         } else {
                             reject(err);
                         }
@@ -54,7 +56,7 @@ export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
         let wordLength = word.length;
         for (const [line, text] of iterlines(input)) {
             let result;
-            while (result = regex.exec(text)) {
+            while ((result = regex.exec(text))) {
                 locations.push(new Location(uri, new Position(line, result.index)));
             }
         }

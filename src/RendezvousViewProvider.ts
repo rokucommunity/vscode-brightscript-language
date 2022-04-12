@@ -1,7 +1,6 @@
 import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
-
-import { RendezvousHistory } from 'roku-debug';
+import type { RendezvousHistory } from 'roku-debug';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -24,14 +23,13 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
         vscode.commands.registerCommand('RendezvousViewProvider.openFile', (resource) => this.openResource(resource));
     }
 
-    // tslint:disable-next-line:variable-name
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
     private activeFilter: any;
     private isUsingSmartSorting: boolean;
     private rendezvousHistory: RendezvousHistory;
-    private sortAscending: boolean = false;
+    private sortAscending = false;
 
     /**
      * Toggles between smart and simple sorting
@@ -90,7 +88,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                 result = arraySort(Object.keys(treeElement.occurrences).map((key) => {
                     if (treeElement.occurrences[key].totalTime > 0) {
                         let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement.occurrences[key];
-                        let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3) } s`;
+                        let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3)} s`;
 
                         // create the command used to open the file
                         let command = {
@@ -104,6 +102,8 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                         };
 
                         return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement.occurrences[key], command);
+                    } else {
+                        return undefined;
                     }
                 }), this.activeFilter);
             }
@@ -124,7 +124,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      * Used to get the data for a give TreeItem from the tree of RendezvousHistory
      * @param element for which the data was requested
      */
-    private getTreeElementHistoryData(element: RendezvousTreeItem): {[key: string]: any} {
+    private getTreeElementHistoryData(element: RendezvousTreeItem): Record<string, any> {
         if (element.details.type === 'lineInfo') {
 
             // return the line item info
@@ -145,7 +145,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             let range = new vscode.Range(new vscode.Position(fileArgs.lineNumber - 1, 0), new vscode.Position(fileArgs.lineNumber - 1, 0));
             await vscode.window.showTextDocument(doc, { preview: false, selection: range });
         } else {
-            vscode.window.showErrorMessage(`Unable to open file for: ${fileArgs.devicePath}`);
+            await vscode.window.showErrorMessage(`Unable to open file for: ${fileArgs.devicePath}`);
         }
     }
 
@@ -159,7 +159,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             return this.handleReverseSort(1);
         }
         return 0;
-    }
+    };
 
     /**
      * Handled sorting the TreeItems by averageTime. Does not use zero cost rendezvous' in the average calculation
@@ -174,7 +174,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             return this.handleReverseSort(1);
         }
         return 0;
-    }
+    };
 
     /**
      * Handled sorting the TreeItems by hitCount. Does not count zero cost rendezvous' in the hitCount calculation
@@ -189,7 +189,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             return this.handleReverseSort(1);
         }
         return 0;
-    }
+    };
 
     /**
      * Prepares a generic simple sort
@@ -204,14 +204,26 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             }
             return 0;
         };
-    }
+    };
 
     /**
      * Will invert the sortResult based on wether we are doing ascending or descending sorting
      * @param sortResult the integer value from a sort function
      */
     private handleReverseSort(sortResult: number): number {
-        return (!this.sortAscending) ? sortResult : (sortResult === 1) ? -1 : (sortResult === -1) ? 1 : sortResult;
+        if (this.sortAscending) {
+            if (sortResult === 1) {
+                return -1;
+            } else {
+                if (sortResult === -1) {
+                    return 1;
+                } else {
+                    return sortResult;
+                }
+            }
+        } else {
+            return sortResult;
+        }
     }
 }
 
@@ -228,9 +240,7 @@ class RendezvousTreeItem extends vscode.TreeItem {
         super(label, collapsibleState);
     }
 
-    get tooltip(): string {
-        return `Click To Open File`;
-    }
+    readonly tooltip = `Click To Open File`;
 }
 
 class RendezvousFileTreeItem extends vscode.TreeItem {

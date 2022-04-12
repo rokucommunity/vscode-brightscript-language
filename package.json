@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.23.0",
+    "version": "2.30.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,14 +25,14 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
-        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous && node scripts/preversion.js",
+        "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
-        "lint": "tslint \"./src/**/*.ts\"",
+        "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "test": "nyc mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "ts-mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
+        "test:nocover": "mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -42,52 +42,38 @@
         "install-local": "node scripts/install-local.js",
         "install-pull-local": "node scripts/install-local.js --pull",
         "uninstall-local": "node scripts/uninstall-local.js",
+        "build-docs": "statigen -s docs -o .tmp/docs",
+        "watch-docs": "npm run build-docs -- --watch",
         "validate": "svelte-check",
         "svelte-build": "rollup -c",
         "svelte-watch": "rollup -c -w"
     },
     "dependencies": {
+        "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.40.1",
-        "brighterscript-formatter": "^1.6.2",
+        "brighterscript": "^0.47.2",
+        "brighterscript-formatter": "^1.6.11",
         "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
-        "eol": "^0.9.1",
         "fast-xml-parser": "^3.12.16",
-        "find-in-files": "^0.5.0",
         "fs-extra": "^7.0.1",
         "get-port": "^5.0.0",
         "glob": "^7.1.3",
-        "hex-rgb": "^5.0.0",
-        "hoek": "^6.1.2",
         "iconv-lite": "0.4.24",
-        "just-throttle": "^4.0.1",
-        "merge-source-map": "^1.1.0",
-        "micromatch": "^3.1.10",
-        "natural-orderby": "^2.0.3",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
-        "p-event": "^4.1.0",
-        "path": "^0.12.7",
         "pretty-bytes": "^5.6.0",
-        "q": "^1.5.1",
-        "replace-in-file": "^4.1.0",
-        "replace-last": "^1.2.6",
-        "roku-debug": "^0.8.4",
-        "roku-deploy": "^3.4.2",
+        "roku-debug": "^0.10.4",
+        "roku-deploy": "^3.5.4",
         "roku-test-automation": "^1.1.1",
         "semver": "^7.1.3",
-        "serialize-error": "^5.0.0",
         "source-map": "^0.7.3",
         "svelte": "^3.37.0",
         "svelte-preprocess": "^4.7.0",
-        "vscode-debugadapter": "1.33.0",
-        "vscode-debugprotocol": "1.33.0",
         "vscode-languageclient": "^7.0.0",
-        "vscode-languageserver": "^4.1.3",
         "vscode-uri": "^1.0.6"
     },
     "devDependencies": {
@@ -100,41 +86,41 @@
         "@types/fs-extra": "^5.0.4",
         "@types/glob": "^7.1.1",
         "@types/mocha": "^7.0.2",
-        "@types/mock-fs": "^4.10.0",
         "@types/node": "^12.12.0",
         "@types/node-ssdp": "^3.3.0",
-        "@types/q": "^1.5.1",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.42.0",
+        "@typescript-eslint/eslint-plugin": "^5.14.0",
+        "@typescript-eslint/parser": "^5.14.0",
         "chai": "^4.2.0",
-        "chalk": "^4.0.0",
+        "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
         "coveralls": "^3.0.11",
-        "mocha": "^7.2.0",
-        "mocha-param": "^2.0.0",
-        "mock-fs": "^4.10.3",
+        "eslint": "^8.10.0",
+        "eslint-plugin-github": "^4.3.5",
+        "eslint-plugin-no-only-tests": "^2.6.0",
+        "mocha": "^9.1.3",
         "nyc": "^15.0.0",
-        "ovsx": "^0.2.0",
+        "ovsx": "^0.3.0",
         "rimraf": "^3.0.0",
         "rollup": "^2.3.4",
         "rollup-plugin-css-only": "^3.0.0",
         "rollup-plugin-svelte": "^7.0.0",
         "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
-        "source-map-support": "^0.5.16",
-        "ts-mocha": "^7.0.0",
-        "ts-node": "^8.9.1",
+        "source-map-support": "^0.5.21",
+        "statigen": "^0.3.1",
+        "ts-node": "^10.7.0",
         "tslib": "^2.3.1",
-        "tslint": "^5.11.0",
-        "tslint-eslint-rules": "^5.4.0",
         "typescript": "^3.8.3",
         "typescript-json-schema": "^0.50.1",
-        "vsce": "^1.81.1",
-        "vscode-debugadapter-testsupport": "1.33.0",
+        "vsce": "^2.6.7",
+        "vscode-tmgrammar-test": "^0.0.11",
         "yargs": "^16.2.0"
     },
     "main": "./dist/extension",
+    "browser": "./dist/extension-web",
     "activationEvents": [
         "onDebug",
         "onLanguage:brightscript",
@@ -224,76 +210,262 @@
                 "language": "brighterscript"
             }
         ],
-        "debuggers": [{
-            "type": "brightscript",
-            "label": "BrightScript Debug",
-            "program": "./dist/debugAdapter.js",
-            "runtime": "node",
-            "configurationAttributes": {
-                "launch": {
-                    "required": [],
-                    "properties": {
-                        "host": {
-                            "type": "string",
-                            "description": "The host or ip address for the target Roku",
-                            "default": "${promptForHost}"
-                        },
-                        "deepLinkUrl": {
-                            "type": "string",
-                            "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
-                            "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
-                        },
-                        "password": {
-                            "type": "string",
-                            "description": "The password for the developer page on the target Roku",
-                            "default": "${promptForPassword}"
-                        },
-                        "rootDir": {
-                            "type": "string",
-                            "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
-                            "default": "${workspaceFolder}"
-                        },
-                        "debugRootDir": {
-                            "type": "string",
-                            "deprecationMessage": "Deprecated. Use sourceDirs instead",
-                            "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
-                            "default": "${workspaceFolder}"
-                        },
-                        "sourceDirs": {
-                            "type": "array",
-                            "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
-                            "default": [
-                                "${workspaceFolder}"
-                            ]
-                        },
-                        "bsConst": {
-                            "type": "object",
-                            "description": "An object of bs_const values to be updated in the manifest before side loading.",
-                            "patternProperties": {
-                                "^[\\w]+$": {
-                                    "type": "boolean",
-                                    "required": true
+        "debuggers": [
+            {
+                "label": "BrightScript Debug",
+                "type": "brightscript",
+                "program": "./dist/debugAdapter.js",
+                "runtime": "node",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [],
+                        "properties": {
+                            "host": {
+                                "type": "string",
+                                "description": "The host or ip address for the target Roku",
+                                "default": "${promptForHost}"
+                            },
+                            "deepLinkUrl": {
+                                "type": "string",
+                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
+                            },
+                            "password": {
+                                "type": "string",
+                                "description": "The password for the developer page on the target Roku",
+                                "default": "${promptForPassword}"
+                            },
+                            "rootDir": {
+                                "type": "string",
+                                "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
+                                "default": "${workspaceFolder}"
+                            },
+                            "debugRootDir": {
+                                "type": "string",
+                                "deprecationMessage": "Deprecated. Use sourceDirs instead",
+                                "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
+                                "default": "${workspaceFolder}"
+                            },
+                            "sourceDirs": {
+                                "type": "array",
+                                "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
+                                "default": [
+                                    "${workspaceFolder}"
+                                ]
+                            },
+                            "bsConst": {
+                                "type": "object",
+                                "description": "An object of bs_const values to be updated in the manifest before side loading.",
+                                "patternProperties": {
+                                    "^[\\w]+$": {
+                                        "type": "boolean",
+                                        "required": true
+                                    }
+                                },
+                                "additionalProperties": false
+                            },
+                            "componentLibrariesPort": {
+                                "type": "number",
+                                "description": "Port to access component libraries.",
+                                "default": 8080
+                            },
+                            "componentLibrariesOutDir": {
+                                "type": "string",
+                                "deprecationMessage": "This no longer user-configurable. This value will be set to \"${outDir}/component-libraries\" by the extension.",
+                                "default": ""
+                            },
+                            "componentLibraries": {
+                                "type": "array",
+                                "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
+                                "default": [
+                                    {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    }
+                                ],
+                                "items": {
+                                    "type": "object",
+                                    "description": "Component Library Schema.",
+                                    "default": {
+                                        "rootDir": "${workspaceFolder}/LibDir/",
+                                        "outFile": "LibName.zip",
+                                        "files": [
+                                            "manifest",
+                                            "source/**/*.*",
+                                            "components/**/*.*",
+                                            "images/**/*.*"
+                                        ]
+                                    },
+                                    "required": [
+                                        "rootDir",
+                                        "outFile",
+                                        "files"
+                                    ],
+                                    "properties": {
+                                        "rootDir": {
+                                            "type": "string",
+                                            "description": "Root directory of source files for this component library.",
+                                            "examples": [
+                                                "${workspaceFolder}/LibDir/"
+                                            ]
+                                        },
+                                        "outFile": {
+                                            "type": "string",
+                                            "description": "A file name and extension used as the static file name for the zip. You can use manifest values in this property such as ${title} to be inferred from the library's manifest file.",
+                                            "default": "",
+                                            "examples": [
+                                                "LibName.zip"
+                                            ],
+                                            "pattern": "^(.*)(\\.zip)$"
+                                        },
+                                        "files": {
+                                            "type": "array",
+                                            "description": "A file path or file glob that should be copied to the  component library zip.",
+                                            "default": [
+                                                "manifest",
+                                                "source/**/*.*",
+                                                "components/**/*.*",
+                                                "assets/**/*.*"
+                                            ],
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "description": "A file path or file glob that should be copied to the component library zip."
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "src": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                    },
+                                                                    {
+                                                                        "type": "array",
+                                                                        "description": "An array of file path or globs",
+                                                                        "items": {
+                                                                            "type": "string",
+                                                                            "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "dest": {
+                                                                "type": "string",
+                                                                "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "src",
+                                                            "dest"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "sourceDirs": {
+                                            "type": "array",
+                                            "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
+                                            "default": [
+                                                "${workspaceFolder}"
+                                            ]
+                                        }
+                                    }
                                 }
                             },
-                            "additionalProperties": false
-                        },
-                        "componentLibrariesPort": {
-                            "type": "number",
-                            "description": "Port to access component libraries.",
-                            "default": 8080
-                        },
-                        "componentLibrariesOutDir": {
-                            "type": "string",
-                            "deprecationMessage": "This no longer user-configurable. This value will be set to \"${outDir}/component-libraries\" by the extension.",
-                            "default": ""
-                        },
-                        "componentLibraries": {
-                            "type": "array",
-                            "description": "An array of file path sets. One for each component library. Each index is an array of file paths, file globs. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples. You must specify a componentLibrariesOutDir to use this.",
-                            "default": [{
-                                "rootDir": "${workspaceFolder}/LibDir/",
-                                "outFile": "LibName.zip",
-                                "files": [
+                            "autoRunSgDebugCommands": {
+                                "type": "array",
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                            "enum": [
+                                                "chanperf"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                            "enum": [
+                                                "fpsdisplay"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                            "enum": [
+                                                "logrendezvous"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Custom SGDebug command that will be run on port 8080"
+                                        }
+                                    ]
+                                }
+                            },
+                            "outDir": {
+                                "type": "string",
+                                "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
+                                "default": "${workspaceFolder}/out"
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Should the debugger stop on the first line of the program after launch.",
+                                "default": false
+                            },
+                            "retainStagingFolder": {
+                                "type": "boolean",
+                                "description": "Prevent the staging folder from being deleted after the deployment package is created.  This is helpful for troubleshooting why your package isn't being created the way you expected.",
+                                "default": false
+                            },
+                            "retainDeploymentArchive": {
+                                "type": "boolean",
+                                "description": "Prevent the deployment package from being deleted after launching a debug session.",
+                                "default": true
+                            },
+                            "enableVariablesPanel": {
+                                "type": "boolean",
+                                "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                                "default": true
+                            },
+                            "envFile": {
+                                "type": "string",
+                                "description": "A path to an environment variables file.",
+                                "default": ".env"
+                            },
+                            "consoleOutput": {
+                                "type": "string",
+                                "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",
+                                "default": "normal",
+                                "enum": [
+                                    "full",
+                                    "normal"
+                                ]
+                            },
+                            "raleTrackerTaskFileLocation": {
+                                "type": "string",
+                                "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                                "scope": "resource"
+                            },
+                            "injectRaleTrackerTask": {
+                                "type": "boolean",
+                                "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
+                                "default": false
+                            },
+                            "files": {
+                                "type": "array",
+                                "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
+                                "default": [
                                     "manifest",
                                     "source/**/*.*",
                                     "components/**/*.*",
@@ -388,6 +560,54 @@
                                         ]
                                     }
                                 }
+                            },
+                            "enableDebuggerAutoRecovery": {
+                                "type": "boolean",
+                                "description": "Enables automatic continue when hitting an incorrect 'break in' breakpoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
+                                "default": true
+                            },
+                            "stopDebuggerOnAppExit": {
+                                "type": "boolean",
+                                "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                                "default": true
+                            },
+                            "enableSourceMaps": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
+                                "scope": "resource"
+                            },
+                            "packagePort": {
+                                "type": "number",
+                                "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 80
+                            },
+                            "remotePort": {
+                                "type": "number",
+                                "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
+                                "default": 8060
+                            },
+                            "logfilePath": {
+                                "type": "string",
+                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
+                            },
+                            "enableDebugProtocol": {
+                                "type": "boolean",
+                                "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
+                            },
+                            "logLevel": {
+                                "type": "string",
+                                "enum": [
+                                    "off",
+                                    "error",
+                                    "warn",
+                                    "log",
+                                    "info",
+                                    "debug",
+                                    "trace"
+                                ],
+                                "default": "log",
+                                "description": "The level of logging that should be done during a debug session."
                             }
                         },
                         "autoRunSgDebugCommands": {
@@ -555,36 +775,35 @@
                             "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                         }
                     }
-                }
-            },
-            "initialConfigurations": [{
-                "type": "brightscript",
-                "request": "launch",
-                "name": "BrightScript Debug: Launch",
-                "stopOnEntry": false,
-                "host": "${promptForHost}",
-                "password": "${promptForPassword}",
-                "rootDir": "${workspaceFolder}",
-                "enableDebuggerAutoRecovery": false,
-                "stopDebuggerOnAppExit": false
-            }],
-            "configurationSnippets": [{
-                "label": "BrightScript Debug: Launch",
-                "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
-                "body": {
-                    "type": "brightscript",
-                    "request": "launch",
-                    "name": "BrightScript Debug: Launch",
-                    "stopOnEntry": false,
-                    "host": "${promptForHost}",
-                    "password": "${promptForPassword}",
-                    "rootDir": "^\"\\${workspaceFolder}\"",
-                    "enableDebuggerAutoRecovery": false,
-                    "stopDebuggerOnAppExit": false
-                }
-            }]
-        }],
-        "languages": [{
+                },
+                "initialConfigurations": [
+                    {
+                        "name": "BrightScript Debug: Launch",
+                        "type": "brightscript",
+                        "request": "launch",
+                        "host": "${promptForHost}",
+                        "password": "${promptForPassword}",
+                        "rootDir": "${workspaceFolder}"
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "BrightScript Debug: Launch",
+                        "description": "Package, deploy and debug a BrightScript project on a remote Roku device",
+                        "body": {
+                            "name": "BrightScript Debug: Launch",
+                            "type": "brightscript",
+                            "request": "launch",
+                            "host": "^\"\\${promptForHost}\"",
+                            "password": "^\"\\${promptForPassword}\"",
+                            "rootDir": "^\"\\${workspaceFolder}\""
+                        }
+                    }
+                ]
+            }
+        ],
+        "languages": [
+            {
                 "id": "jsonc",
                 "filenamePatterns": [
                     "bsconfig.json",
@@ -653,14 +872,14 @@
         ],
         "snippets": [{
                 "language": "brightscript",
-                "path": "./snippets.json"
-            },
-            {
-                "language": "brightscript",
                 "path": "./snippets/brightscript.json"
             },
             {
-                "language": "brightscript",
+                "language": "brighterscript",
+                "path": "./snippets/brightscript.json"
+            },
+            {
+                "language": "brighterscript",
                 "path": "./snippets/brighterscript.json"
             },
             {
@@ -1408,6 +1627,12 @@
                     "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
                     "scope": "resource"
                 },
+                "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
+                    "scope": "resource"
+                },
                 "brightscript.debug.raleTrackerTaskFileLocation": {
                     "type": "string",
                     "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
@@ -1488,6 +1713,11 @@
                 "brightscript.bsdk": {
                     "type": "string",
                     "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                    "scope": "resource"
+                },
+                "brightscript.extensionLogfilePath": {
+                    "type": "string",
+                    "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
                     "scope": "resource"
                 }
             }
@@ -1873,6 +2103,78 @@
                 "mac": "cmd+ctrl+x",
                 "command": "extension.brightscript.setOutputExcludeFilter"
             }
+        ],
+        "problemPatterns": [
+            {
+                "name": "bsc",
+                "regexp": "^(.+?):(\\d+):(\\d+)(?:-(\\d+):(\\d+))?\\s*-\\s*(error|warning|info|hint)\\s+([a-zA-Z_\\-\\d]+):\\s*(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "endLine": 4,
+                "endColumn": 5,
+                "severity": 6,
+                "code": 7,
+                "message": 8
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "bsc",
+                "label": "BrighterScript problems",
+                "owner": "brightscript",
+                "source": "brightscript",
+                "applyTo": "allDocuments",
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "pattern": "$bsc"
+            },
+            {
+                "name": "bsc-watch",
+                "label": "BrighterScript problems (watch mode)",
+                "owner": "brightscript",
+                "source": "brs",
+                "applyTo": "allDocuments",
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "pattern": "$bsc",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                    },
+                    "endsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                    }
+                }
+            },
+            {
+                "name": "bsc-watch-silent",
+                "label": "BrighterScript problems (watch mode) but don't emit any diagnostics",
+                "owner": "brightscript",
+                "source": "brs",
+                "applyTo": "allDocuments",
+                "pattern": {
+                    "regexp": "^neverMatchThisPattern_likeSeriously,weShouldNeverMatchAnything$"
+                },
+                "fileLocation": [
+                    "relative",
+                    "${cwd}"
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                    },
+                    "endsPattern": {
+                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                    }
+                }
+            }
         ]
     },
     "watch": {
@@ -1882,6 +2184,17 @@
                 "src"
             ]
         }
+    },
+    "mocha": {
+        "spec": "src/**/*.spec.ts",
+        "require": [
+            "source-map-support/register",
+            "ts-node/register"
+        ],
+        "fullTrace": true,
+        "watchExtensions": [
+            "ts"
+        ]
     },
     "nyc": {
         "include": [

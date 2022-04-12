@@ -1,11 +1,8 @@
 import * as vscode from 'vscode';
-import { SceneGraphCommandResponse, SceneGraphDebugCommandController } from 'roku-debug';
+import type { SceneGraphCommandResponse } from 'roku-debug';
+import { SceneGraphDebugCommandController } from 'roku-debug';
 
 export class SceneGraphDebugCommands {
-
-    constructor() {
-    }
-
     private outputChannel: vscode.OutputChannel;
     private context: vscode.ExtensionContext;
     private host: string;
@@ -75,7 +72,7 @@ export class SceneGraphDebugCommands {
 
         // TODO: press? likely needs to go in the old area.
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.press', async () => {
-            let keys = await (await vscode.window.showInputBox({ placeHolder: 'comma separated list of keys' })).split(',');
+            let keys = (await vscode.window.showInputBox({ placeHolder: 'comma separated list of keys' })).split(',');
             if (keys.length > 1) {
                 await this.logCommandOutput(async (commandController) => commandController.press(keys));
             }
@@ -145,7 +142,7 @@ export class SceneGraphDebugCommands {
         // The output channel seems to have a limit to the amount of output that can be displayed in a single log.
         // For this reason we split the output into groups of 20 lines and send each group. If we don't do this a lot of
         // the middle of the string gets cut out.
-        let lines = (response?.error ? response?.error.message : response.result.rawResponse).split('\n');
+        let lines = (response?.error?.message ?? response.result.rawResponse).split('\n');
         let lineGroups = this.chunkArray(lines);
 
         // Log the command statement
@@ -174,7 +171,7 @@ export class SceneGraphDebugCommands {
     public async getRemoteHost() {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
-            let config = await vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.host = config.get('host');
             if (this.host === '${promptForHost}') {
                 this.host = await vscode.window.showInputBox({

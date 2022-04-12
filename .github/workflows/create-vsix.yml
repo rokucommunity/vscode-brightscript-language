@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'The branch name which should be used to build the vsix'
+        description: "The branch name which should be used to build the vsix"
         required: true
 jobs:
   create-vsix:
