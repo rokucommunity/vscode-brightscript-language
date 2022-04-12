@@ -1544,6 +1544,11 @@
         },
         "commands": [
             {
+                "command": "brightscript.extension.showReleaseNotes",
+                "title": "Show Release Notes",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.bsprofPause",
                 "title": "bsprof-pause - Pause BS profiling",
                 "category": "Brightscript Debug"

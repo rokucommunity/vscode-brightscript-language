@@ -7,11 +7,13 @@ import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand'
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
+import type { WhatsNewManager } from './managers/WhatsNewManager';
 
 export class BrightScriptCommands {
 
     constructor(
         private remoteControlManager: RemoteControlManager,
+        private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext
     ) {
         this.fileUtils = new BrightScriptFileUtils();
@@ -25,17 +27,7 @@ export class BrightScriptCommands {
         brighterScriptPreviewCommand.register(this.context);
         languageServerInfoCommand.register(this.context);
 
-        //a command that does absolutely nothing. It's here to allow us to absorb unsupported keypresses when in **remote control mode**.
-        this.registerCommand('doNothing', () => { });
-
-        this.registerCommand('toggleXML', async () => {
-            await this.onToggleXml();
-        });
-
-        this.registerCommand('clearGlobalState', async () => {
-            new GlobalStateManager(this.context).clear();
-            await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
-        });
+        this.registerGeneralCommands();
 
         this.registerCommand('sendRemoteCommand', async (key: string) => {
             await this.sendRemoteCommand(key);
@@ -223,6 +215,41 @@ export class BrightScriptCommands {
                 });
             }
         }
+    }
+
+    private registerGeneralCommands() {
+         //a command that does absolutely nothing. It's here to allow us to absorb unsupported keypresses when in **remote control mode**.
+        this.registerCommand('doNothing', () => { });
+
+        this.registerCommand('toggleXML', async () => {
+            await this.onToggleXml();
+        });
+
+        this.registerCommand('clearGlobalState', async () => {
+            new GlobalStateManager(this.context).clear();
+            await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
+        });
+
+        this.registerCommand('copyToClipboard', async (value: string) => {
+            try {
+                await vscode.env.clipboard.writeText(value);
+                await vscode.window.showInformationMessage(`Copied to clipboard: ${value}`);
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
+            }
+        });
+
+        this.registerCommand('openUrl', async (url: string) => {
+            try {
+                await vscode.env.openExternal(vscode.Uri.parse(url));
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+            }
+        });
+
+        this.registerCommand('showReleaseNotes', () => {
+            this.whatsNewManager.showReleaseNotes();
+        });
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {
