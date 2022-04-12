@@ -19,7 +19,7 @@ export class WhatsNewManager {
                 let contents = doc.getText();
                 contents += [
                     `\n\n## Past notable releases`,
-                    `For past releases please see our [Release Notes](https://rokucommunity.github.io/vscode-brightscript-language/Release%20Notes/index.html) page on our documentation website. For a comprehensive list`,
+                    `For past releases please see our [Release Notes](https://rokucommunity.github.io/vscode-brightscript-language/release-notes/index.html) page on our documentation website. For a comprehensive list`,
                     `of all changes for each version see [CHANGELOG.md](https://github.com/rokucommunity/vscode-brightscript-language/blob/master/CHANGELOG.md).\n`
                 ].join('\n');
                 return contents;
@@ -82,7 +82,7 @@ export class WhatsNewManager {
                 if (response === viewText) {
                     this.showReleaseNotes(releaseVersion);
                 } else if (response === viewOnWebText) {
-                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/Release%20Notes/v${releaseVersion}.md`));
+                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/release-notes/v${releaseVersion}.md`));
                 }
                 this.globalStateManager.lastSeenReleaseNotesVersion = this.currentVersion;
             }
