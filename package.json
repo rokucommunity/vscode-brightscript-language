@@ -2112,6 +2112,12 @@
             },
             {
                 "command": "extension.brightscript.pressStarButton",
+                "key": "Ctrl+Shift+8",
+                "mac": "Cmd+Shift+8",
+                "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
+                "command": "extension.brightscript.pressStarButton",
                 "key": "Insert",
                 "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && ! inQuickOpen && brightscript.isRemoteControlMode"
             },
