@@ -32,7 +32,7 @@ Here are many of the registered key bindings. You can see the full list in the [
 | `Escape`             | `Escape`             | Back            |                                                                                                 |
 | `Delete`             | `Delete`             | Back            |                                                                                                 |
 | `Home`               | `Home`               | Home            |                                                                                                 |
-| `Ctrl+Escape`        | `Cmd+Escape`         | Home            |                                                                                                 |
+| `Shift+Escape`       | `Shift+Escape`       | Home            |                                                                                                 |
 | `Backspace`          | `Backspace`          | Instant Replay  | Can also be used to delete the character to the left of the cursor in an input box              |
 | `Ctrl+Backspace`     | `Cmd+Backspace`      | Backspace       | Delete the character to the left of the cursor in an input box                                  |
 | `Ctrl+Enter`         | `Cmd+Enter`          | Play/Pause      |                                                                                                 |
