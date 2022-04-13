@@ -4,46 +4,49 @@ import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
-import { SceneGraphDebugCommandController } from 'roku-debug';
+import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
+import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
+import type { WhatsNewManager } from './managers/WhatsNewManager';
 
 export class BrightScriptCommands {
 
-    constructor() {
+    constructor(
+        private remoteControlManager: RemoteControlManager,
+        private whatsNewManager: WhatsNewManager,
+        private context: vscode.ExtensionContext
+    ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
 
     private fileUtils: BrightScriptFileUtils;
-    private context: vscode.ExtensionContext;
     private host: string;
 
-    public registerCommands(context: vscode.ExtensionContext) {
-        this.context = context;
+    public registerCommands() {
 
-        brighterScriptPreviewCommand.register(context);
-        languageServerInfoCommand.register(context);
+        brighterScriptPreviewCommand.register(this.context);
+        languageServerInfoCommand.register(this.context);
 
-        let subscriptions = context.subscriptions;
+        this.registerGeneralCommands();
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.toggleXML', async () => {
-            await this.onToggleXml();
-        }));
-
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.clearGlobalState', async () => {
-            new GlobalStateManager(this.context).clear();
-            await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
-        }));
-
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteCommand', async (key: string) => {
+        this.registerCommand('sendRemoteCommand', async (key: string) => {
             await this.sendRemoteCommand(key);
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.sendRemoteText', async () => {
-            let stuffUserTyped: string = await vscode.window.showInputBox({
-                placeHolder: 'Press enter to send all typed characters to the Roku',
-                value: ''
+        this.registerCommand('sendRemoteText', async () => {
+            let items: vscode.QuickPickItem[] = [];
+            for (const item of new GlobalStateManager(this.context).sendRemoteTextHistory) {
+                items.push({ label: item });
+            }
+
+            const stuffUserTyped = await util.showQuickPickInputBox({
+                placeholder: 'Press enter to send all typed characters to the Roku',
+                items: items
             });
+            console.log('userInput', stuffUserTyped);
+
             if (stuffUserTyped) {
+                new GlobalStateManager(this.context).addTextHistory(stuffUserTyped);
                 let fallbackToHttp = true;
                 await this.getRemoteHost();
                 //TODO fix SceneGraphDebugCommandController to not timeout so quickly
@@ -60,50 +63,193 @@ export class BrightScriptCommands {
 
                 if (fallbackToHttp) {
                     for (let character of stuffUserTyped) {
-                        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
-                        await this.sendRemoteCommand(commandToSend);
+                        await this.sendAsciiToDevice(character);
                     }
                 }
             }
             await vscode.commands.executeCommand('workbench.action.focusPanel');
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackButton', async () => {
+        this.registerCommand('toggleRemoteControlMode', (initiator: RemoteControlModeInitiator) => {
+            return this.remoteControlManager.toggleRemoteControlMode(initiator);
+        });
+
+        this.registerCommand('enableRemoteControlMode', () => {
+            return this.remoteControlManager.setRemoteControlMode(true, 'command');
+        });
+
+        this.registerCommand('disableRemoteControlMode', () => {
+            return this.remoteControlManager.setRemoteControlMode(false, 'command');
+        });
+
+        this.registerCommand('pressBackButton', async () => {
             await this.sendRemoteCommand('Back');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressBackspaceButton', async () => {
+        });
+
+        this.registerCommand('pressBackspaceButton', async () => {
             await this.sendRemoteCommand('Backspace');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressHomeButton', async () => {
+        });
+
+        this.registerCommand('pressHomeButton', async () => {
             await this.sendRemoteCommand('Home');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressUpButton', async () => {
+        });
+
+        this.registerCommand('pressUpButton', async () => {
             await this.sendRemoteCommand('Up');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressDownButton', async () => {
+        });
+
+        this.registerCommand('pressDownButton', async () => {
             await this.sendRemoteCommand('Down');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressRightButton', async () => {
+        });
+
+        this.registerCommand('pressRightButton', async () => {
             await this.sendRemoteCommand('Right');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressLeftButton', async () => {
+        });
+
+        this.registerCommand('pressLeftButton', async () => {
             await this.sendRemoteCommand('Left');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressSelectButton', async () => {
+        });
+
+        this.registerCommand('pressSelectButton', async () => {
             await this.sendRemoteCommand('Select');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressPlayButton', async () => {
+        });
+
+        this.registerCommand('pressPlayButton', async () => {
             await this.sendRemoteCommand('Play');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressRevButton', async () => {
+        });
+
+        this.registerCommand('pressRevButton', async () => {
             await this.sendRemoteCommand('Rev');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressFwdButton', async () => {
+        });
+
+        this.registerCommand('pressFwdButton', async () => {
             await this.sendRemoteCommand('Fwd');
-        }));
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.pressStarButton', async () => {
+        });
+
+        this.registerCommand('pressStarButton', async () => {
             await this.sendRemoteCommand('Info');
-        }));
+        });
+
+        this.registerCommand('pressInstantReplayButton', async () => {
+            await this.sendRemoteCommand('InstantReplay');
+        });
+
+        this.registerCommand('pressSearchButton', async () => {
+            await this.sendRemoteCommand('Search');
+        });
+
+        this.registerCommand('pressEnterButton', async () => {
+            await this.sendRemoteCommand('Enter');
+        });
+
+        this.registerCommand('pressFindRemote', async () => {
+            await this.sendRemoteCommand('FindRemote');
+        });
+
+        this.registerCommand('pressVolumeDown', async () => {
+            await this.sendRemoteCommand('VolumeDown');
+        });
+
+        this.registerCommand('pressVolumeMute', async () => {
+            await this.sendRemoteCommand('VolumeMute');
+        });
+
+        this.registerCommand('pressVolumeUp', async () => {
+            await this.sendRemoteCommand('FindVolumeUp');
+        });
+
+        this.registerCommand('pressPowerOff', async () => {
+            await this.sendRemoteCommand('PowerOff');
+        });
+
+        this.registerCommand('pressChannelUp', async () => {
+            await this.sendRemoteCommand('ChannelUp');
+        });
+
+        this.registerCommand('pressChannelDown', async () => {
+            await this.sendRemoteCommand('ChannelDown');
+        });
+
+        this.registerCommand('changeTvInput', async () => {
+            const selectedInput = await vscode.window.showQuickPick([
+                'InputHDMI1',
+                'InputHDMI2',
+                'InputHDMI3',
+                'InputHDMI4',
+                'InputAV1',
+                'InputTuner'
+            ]);
+
+            if (selectedInput) {
+                await this.sendRemoteCommand(selectedInput);
+            }
+        });
+
+        this.registerKeyboardInputs();
+    }
+
+    /**
+     * Registers all the commands for a-z, A-Z, 0-9, and all the primary character such as !, @, #, ', ", etc...
+     */
+    private registerKeyboardInputs() {
+        // Get all the keybindings from our package.json
+        const extension = vscode.extensions.getExtension('RokuCommunity.brightscript');
+        const keybindings = (extension.packageJSON.contributes.keybindings as Array<{
+            key: string;
+            command: string;
+            when: string;
+            args: any;
+        }>);
+
+        for (let keybinding of keybindings) {
+            // Find every keybinding that is related to sending text characters to the device
+            if (keybinding.command.includes('.sendAscii+')) {
+
+                if (!keybinding.args) {
+                    throw new Error(`Can not register command: ${keybinding.command}. Missing Arguments.`);
+                }
+
+                // Dynamically register the the command defined in the keybinding
+                this.registerCommand(keybinding.command, async (character: string) => {
+                    await this.sendAsciiToDevice(character);
+                });
+            }
+        }
+    }
+
+    private registerGeneralCommands() {
+        //a command that does absolutely nothing. It's here to allow us to absorb unsupported keypresses when in **remote control mode**.
+        this.registerCommand('doNothing', () => { });
+
+        this.registerCommand('toggleXML', async () => {
+            await this.onToggleXml();
+        });
+
+        this.registerCommand('clearGlobalState', async () => {
+            new GlobalStateManager(this.context).clear();
+            await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
+        });
+
+        this.registerCommand('copyToClipboard', async (value: string) => {
+            try {
+                await vscode.env.clipboard.writeText(value);
+                await vscode.window.showInformationMessage(`Copied to clipboard: ${value}`);
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
+            }
+        });
+
+        this.registerCommand('openUrl', async (url: string) => {
+            try {
+                await vscode.env.openExternal(vscode.Uri.parse(url));
+            } catch (error) {
+                await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+            }
+        });
+
+        this.registerCommand('showReleaseNotes', () => {
+            this.whatsNewManager.showReleaseNotes();
+        });
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {
@@ -188,6 +334,14 @@ export class BrightScriptCommands {
         }
     }
 
-}
+    private registerCommand(name: string, callback: (...args: any[]) => any, thisArg?: any) {
+        const prefix = 'extension.brightscript.';
+        const commandName = name.startsWith(prefix) ? name : prefix + name;
+        this.context.subscriptions.push(vscode.commands.registerCommand(commandName, callback, thisArg));
+    }
 
-export const brightScriptCommands = new BrightScriptCommands();
+    private async sendAsciiToDevice(character: string) {
+        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
+        await this.sendRemoteCommand(commandToSend);
+    }
+}

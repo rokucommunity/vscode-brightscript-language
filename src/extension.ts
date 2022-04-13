@@ -1,17 +1,12 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
-import {
-    window,
-    env,
-    extensions
-} from 'vscode';
-import { gte as semverGte } from 'semver';
+import { extensions } from 'vscode';
 import * as rta from 'roku-test-automation';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
-import { brightScriptCommands } from './BrightScriptCommands';
+import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
@@ -21,6 +16,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
+import { OnlineDevicesViewProvider } from './OnlineDevicesViewProvider';
 import {
     RDBCommandsViewProvider,
     RDBRegistryViewProvider
@@ -29,6 +25,8 @@ import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
+import { RemoteControlManager } from './managers/RemoteControlManager';
+import { WhatsNewManager } from './managers/WhatsNewManager';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -40,8 +38,11 @@ export class Extension {
      */
     public extensionOutputChannel: vscode.OutputChannel;
     public globalStateManager: GlobalStateManager;
+    public whatsNewManager: WhatsNewManager;
     private chanperfStatusBar: vscode.StatusBarItem;
     private telemetryManager: TelemetryManager;
+    private remoteControlManager: RemoteControlManager;
+    private brightScriptCommands: BrightScriptCommands;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -56,12 +57,11 @@ export class Extension {
     };
 
     public async activate(context: vscode.ExtensionContext) {
+        const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
+
         this.globalStateManager = new GlobalStateManager(context);
+        this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-
-        let previousExtensionVersion = this.globalStateManager.lastRunExtensionVersion;
-
-        let currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version;
 
         //initialize the analytics manager
         context.subscriptions.push(
@@ -72,6 +72,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
+
+        this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
+        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, this.whatsNewManager, context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
@@ -98,6 +101,10 @@ export class Extension {
         //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+
+        //register a tree data provider for this extension's "Online Devices" panel
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
+        vscode.window.registerTreeDataProvider('onlineDevices', onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
@@ -183,7 +190,7 @@ export class Extension {
         });
 
         //register all commands for this extension
-        brightScriptCommands.registerCommands(context);
+        this.brightScriptCommands.registerCommands();
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
         vscode.debug.onDidStartDebugSession((e) => {
@@ -223,7 +230,7 @@ export class Extension {
         const xmlSelector = { scheme: 'file', pattern: '**/*.{xml}' };
         context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 
-        await this.showWelcomeOrWhatsNew(previousExtensionVersion, currentExtensionVersion);
+        await this.whatsNewManager.showWelcomeOrWhatsNewIfRequired();
         await languageServerPromise;
     }
 
@@ -239,56 +246,6 @@ export class Extension {
                 path.dirname(extensionLogfilePath)
             );
             fsExtra.appendFileSync(extensionLogfilePath, text);
-        }
-    }
-
-    public async showWelcomeOrWhatsNew(lastRunExtensionVersion: string, currentExtensionVersion: string) {
-        let config = vscode.workspace.getConfiguration('brightscript');
-        let isReleaseNotificationsEnabled = config.get('enableReleaseNotifications') === false ? false : true;
-        //this is the first launch of the extension
-        if (lastRunExtensionVersion === undefined) {
-
-            //if release notifications are enabled
-            //TODO once we have the welcome page content prepared, remove the `&& false` from the condition below
-            if (isReleaseNotificationsEnabled && false) {
-                let viewText = 'View the get started guide';
-                let response = await window.showInformationMessage(
-                    'Thank you for installing the BrightScript VSCode extension. Click the button below to read some tips on how to get the most out of this extension.',
-                    viewText
-                );
-                if (response === viewText) {
-                    void env.openExternal(vscode.Uri.parse('https://github.com/rokucommunity/vscode-brightscript-language/blob/master/Welcome.md'));
-                }
-            }
-            this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
-            return;
-        }
-        //List of version numbers that should prompt the ReleaseNotes page.
-        //these should be in highest-to-lowest order, because we will launch the highest version
-        let versionWhitelist = [
-            '2.0.0'
-        ];
-        for (let whitelistVersion of versionWhitelist) {
-            if (
-                //if the current version is larger than the whitelist version
-                semverGte(whitelistVersion, lastRunExtensionVersion) &&
-                //if the user hasn't seen this popup before
-                this.globalStateManager.lastSeenReleaseNotesVersion !== whitelistVersion &&
-                //if ReleaseNote popups are enabled
-                isReleaseNotificationsEnabled
-            ) {
-                //mark this version as viewed
-                this.globalStateManager.lastSeenReleaseNotesVersion = whitelistVersion;
-                let viewText = 'View Release Notes';
-                let response = await window.showInformationMessage(
-                    `BrightScript Language v${whitelistVersion} includes significant changes from previous versions. Please take a moment to review the release notes.`,
-                    viewText
-                );
-                if (response === viewText) {
-                    void env.openExternal(vscode.Uri.parse(`https://github.com/rokucommunity/vscode-brightscript-language/blob/master/ReleaseNotes.md#${whitelistVersion}`));
-                }
-                this.globalStateManager.lastSeenReleaseNotesVersion = currentExtensionVersion;
-            }
         }
     }
 

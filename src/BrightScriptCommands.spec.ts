@@ -22,7 +22,7 @@ describe('BrightScriptFileUtils ', () => {
     let languagesMock;
 
     beforeEach(() => {
-        commands = new BrightScriptCommands();
+        commands = new BrightScriptCommands({} as any, {} as any, {} as any);
         commandsMock = sinon.mock(commands);
         languagesMock = sinon.mock(vscode.languages);
     });

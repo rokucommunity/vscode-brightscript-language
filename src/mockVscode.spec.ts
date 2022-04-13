@@ -3,6 +3,7 @@ import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, W
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
+    vscode.context.globalState['_data'] = {};
 });
 
 export let vscode = {
@@ -25,9 +26,10 @@ export let vscode = {
     },
     extensions: {
         getExtension: () => {
+            let packageContents = require('../package.json');
             return {
                 packageJSON: {
-                    version: undefined
+                    ...packageContents
                 }
             };
         }
@@ -72,7 +74,15 @@ export let vscode = {
         storageUri: undefined as Uri,
         storagePath: '',
         globalStoragePath: '',
-        globalState: {} as any,
+        globalState: {
+            _data: {},
+            update: function (key: string, value: any) {
+                this._data[key] = value;
+            },
+            get: function (key: string) {
+                return this._data[key];
+            }
+        } as any,
         globalStorageUri: undefined as Uri,
         workspaceState: {} as any,
         environmentVariableCollection: {} as any,
@@ -296,6 +306,7 @@ export let vscode = {
         }
         private value: string;
     },
+    ThemeColor: class { },
     Uri: {
         file: (src: string) => {
             return {
