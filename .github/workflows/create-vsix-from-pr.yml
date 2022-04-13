@@ -8,7 +8,7 @@ jobs:
     steps:
       # Get a bot token so the bot's name shows up on all our actions
       - name: Get Token From roku-ci-token Application
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v1.5.1
         id: generate-token
         with:
           app_id: ${{ secrets.BOT_APP_ID }}
