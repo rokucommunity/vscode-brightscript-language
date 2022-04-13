@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Code formatting
+        v2.0.0
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="../style.css" />
@@ -167,13 +167,13 @@
             
             <div class="folder">
                 
-                <a class="name entry" href="">Editing</a>
+                <a class="name entry" href="../Editing">Editing</a>
                 
                 
                 <div class="children">
                     
             
-            <a class="entry" href="index.html">Setup</a>
+            <a class="entry" href="../Editing/index.html">Setup</a>
             
             
                 </div>
@@ -181,7 +181,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="code-formatting.html">Code formatting</a>
+            <a class="entry" href="../Editing/code-formatting.html">Code formatting</a>
             
             
                 </div>
@@ -189,7 +189,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="error-handling.html">Ignoring Errors and Warnings</a>
+            <a class="entry" href="../Editing/error-handling.html">Ignoring Errors and Warnings</a>
             
             
                 </div>
@@ -197,7 +197,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="snippets.html">Snippets</a>
+            <a class="entry" href="../Editing/snippets.html">Snippets</a>
             
             
                 </div>
@@ -220,13 +220,13 @@
             
             <div class="folder">
                 
-                <a class="name entry" href="../release-notes">Release Notes</a>
+                <a class="name entry" href="">Release Notes</a>
                 
                 
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/v2.31.0.html">v2.31.0</a>
+            <a class="entry" href="v2.31.0.html">v2.31.0</a>
             
             
                 </div>
@@ -234,7 +234,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/v2.0.0.html">v2.0.0</a>
+            <a class="entry" href="v2.0.0.html">v2.0.0</a>
             
             
                 </div>
@@ -242,7 +242,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/index.html">Release Notes</a>
+            <a class="entry" href="index.html">Release Notes</a>
             
             
                 </div>
@@ -283,13 +283,20 @@
             
         </div>
         <div id="content">
-            <a href="#code-formatting"><h1 id="code-formatting">Code formatting</h1></a><p>The extension provides code formatting for BrightScript and BrighterScript files. If you don&#39;t like the default formatter settings, you can customize them in two ways: </p>
-<ol>
-<li><p>Update your user or workspace settings with various <code>brightscript.format.*</code> options (see the <a href="../extension-settings.html">extension settings</a> page for more info).</p>
-</li>
-<li><p>Create a <code>bsfmt.json</code> file at the root of your project. See all of the available <code>bsfmt.json</code> options <a href="https://github.com/rokucommunity/brighterscript-formatter#bsfmtjson-options">here</a>. Please note, if a <code>bsfmt.json</code> file exists, all formatter-related user/workspace settings will be ignored.</p>
-</li>
-</ol>
+            <a href="#release-notes-for-v200"><h1 id="release-notes-for-v200">Release Notes for v2.0.0</h1></a><a href="#roku-deploy"><h3 id="roku-deploy">roku-deploy</h3></a><p>The extension now uses <a href="https://www.npmjs.com/package/roku-deploy/v/3.0.0">roku-deploy version 3</a>, which made some changes to the <code>files</code> array. Standard projects should be unaffected, but more advanced projects may require modifications to their <code>files</code> array. Please take a moment to review the new <code>files</code> specification <a href="https://github.com/rokucommunity/roku-deploy#files-array">here</a>. The most notable changes are:</p>
+<ul>
+<li>Top-level string patterns may not reference files outside of <code>rootDir</code>. (You should use <code>{src;dest}</code> objects to accomplish this)</li>
+<li>Paths to folders will be ignored. If you want to copy a folder and its contents, use the glob syntax (i.e. <code>some_folder/**/*</code>)</li>
+</ul>
+<a href="#the-languageserver"><h3 id="the-languageserver">The LanguageServer</h3></a><p>After being in beta for over a year, we are proud to announce that the language server is now enabled by default in the mainline version of the extension. Standard projects should work automatically, and several alternative project structures should also work with a minimal amount of configuration. (see the <a href="README.md#language-features">README</a> about how customize the language server to your project&#39;s needs).</p>
+<p>Under the hood, the language server is powered by the <a href="https://github.com/rokucommunity/brighterscript">Brighterscript</a> language, which is a superset of BrightScript. Don&#39;t worry, you are not required to write any BrighterScript code, as it works just fine with standard BrightScript.</p>
+<p>The language server is still fairly new, and we expect there to be bugs. If you encounter errors for valid syntax, please file an issue. You can disable errors for a specific line by adding a comment above the erraneous line (full instructions <a href="https://github.com/rokucommunity/brighterscript#ignore-errors-and-warnings-on-a-per-line-basis">here</a>). For example:</p>
+<pre><code class="language-vb">&#39;bs:disable-next-line
+someLineWithError()
+</code></pre>
+<p>The primary motivation for the ignore feature was to provide a stopgap measure to hide incorrectly-thrown errors on legitimate brightscript code due to parser bugs. It is recommended that you only use these comments when absolutely necessary.</p>
+<p>If all else fails, you can completely disable the language server by setting <code>&quot;brightscript.enableLanguageServer&quot;:false</code> in your user/workspace settings.</p>
+<p>Please <a href="https://github.com/rokucommunity/vscode-brightscript-language/issues/new">let us know</a> about any problems you find with the language server.</p>
             <div id="footer"></div>
         </div>
     </div>

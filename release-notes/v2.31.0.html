@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Code formatting
+        v2.31.0
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="../style.css" />
@@ -167,13 +167,13 @@
             
             <div class="folder">
                 
-                <a class="name entry" href="">Editing</a>
+                <a class="name entry" href="../Editing">Editing</a>
                 
                 
                 <div class="children">
                     
             
-            <a class="entry" href="index.html">Setup</a>
+            <a class="entry" href="../Editing/index.html">Setup</a>
             
             
                 </div>
@@ -181,7 +181,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="code-formatting.html">Code formatting</a>
+            <a class="entry" href="../Editing/code-formatting.html">Code formatting</a>
             
             
                 </div>
@@ -189,7 +189,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="error-handling.html">Ignoring Errors and Warnings</a>
+            <a class="entry" href="../Editing/error-handling.html">Ignoring Errors and Warnings</a>
             
             
                 </div>
@@ -197,7 +197,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="snippets.html">Snippets</a>
+            <a class="entry" href="../Editing/snippets.html">Snippets</a>
             
             
                 </div>
@@ -220,13 +220,13 @@
             
             <div class="folder">
                 
-                <a class="name entry" href="../release-notes">Release Notes</a>
+                <a class="name entry" href="">Release Notes</a>
                 
                 
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/v2.31.0.html">v2.31.0</a>
+            <a class="entry" href="v2.31.0.html">v2.31.0</a>
             
             
                 </div>
@@ -234,7 +234,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/v2.0.0.html">v2.0.0</a>
+            <a class="entry" href="v2.0.0.html">v2.0.0</a>
             
             
                 </div>
@@ -242,7 +242,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="../release-notes/index.html">Release Notes</a>
+            <a class="entry" href="index.html">Release Notes</a>
             
             
                 </div>
@@ -283,13 +283,74 @@
             
         </div>
         <div id="content">
-            <a href="#code-formatting"><h1 id="code-formatting">Code formatting</h1></a><p>The extension provides code formatting for BrightScript and BrighterScript files. If you don&#39;t like the default formatter settings, you can customize them in two ways: </p>
-<ol>
-<li><p>Update your user or workspace settings with various <code>brightscript.format.*</code> options (see the <a href="../extension-settings.html">extension settings</a> page for more info).</p>
+            <a href="#release-notes-for-v2310"><h1 id="release-notes-for-v2310">Release Notes for V2.31.0</h1></a><p>In this update we wanted to address some quality of life items and set ourselves up for some future updates. Here is what we changed!</p>
+<a href="#remote-control-emulation"><h2 id="remote-control-emulation">Remote Control Emulation</h2></a><p>Our first try at of emulating the Roku Remote was lacking and inconsistent. This experience was unreliable and could override functionality in these areas. Resulting in.... frustrations....</p>
+<p>We are happy to announce a complete overhaul of this feature. <strong>Remote Control Mode</strong> is now something you can toggle on and off from almost anywhere in VSCode. This implementation is similar in concept to togging in and out of insert mode in VIM.</p>
+<a href="#how-to-use-remote-control-mode"><h3 id="how-to-use-remote-control-mode">How to use Remote Control Mode</h3></a><p>There are tree main ways you can enter and exit this mode:</p>
+<ul>
+<li><p>The command pallet:</p>
+<p> <img src="https://user-images.githubusercontent.com/2544493/162752967-a152dfd7-89a3-4072-aa10-b8d918cd10ff.png" alt="image"></p>
 </li>
-<li><p>Create a <code>bsfmt.json</code> file at the root of your project. See all of the available <code>bsfmt.json</code> options <a href="https://github.com/rokucommunity/brighterscript-formatter#bsfmtjson-options">here</a>. Please note, if a <code>bsfmt.json</code> file exists, all formatter-related user/workspace settings will be ignored.</p>
+<li><p>Status bar:</p>
+<p> <img src="https://user-images.githubusercontent.com/2544493/162752275-e60dea72-cc78-4818-aa99-6c3a354157ce.gif" alt="remote-mode"></p>
 </li>
-</ol>
+<li><p>Keybinding: <code>cmd+k(mac)</code> or <code>ctrl+k(win)</code></p>
+</li>
+</ul>
+<p>When this mode is enabled, most keyboard strokes will be sent to the Roku device as input rather then to your editor. Some notable exceptions include when: the command pallet is open, an input box is open, or you are in other input areas like a search box.</p>
+<p>When this mode is enabled there is also a status bar item that will flash to let you know that <strong>Remote Control Mode</strong> is active. This can be disabled by setting the <code>brightscript.remoteControlMode.enableActiveAnimation</code> user setting to <code>false</code>.</p>
+<a href="#text-input"><h3 id="text-input">Text Input</h3></a><p>One of the biggest changes is support for full text input from the keyboard when in this mode. For example, if you pressed <code>shift+b</code> while <strong>Remote Control Mode</strong> is active we will send <code>B</code> to the device. We support all the single press and shift press ascii characters on the keyboard (excluding the num pad). For example: <code>a-z</code>, <code>A-Z</code>, <code>0-9</code>, and all the primary characters such as <code>!</code>, <code>@</code>, <code>#</code>, <code>&#39;</code>, <code>&quot;</code>, etc...</p>
+<p>For more information on this feature and the updated list of key-binds please see our <a href="https://rokucommunity.github.io/vscode-brightscript-language/remote-control-mode.html">Remote Control Mode</a> documentation.</p>
+<p><strong>Note: We do not support sending alt charters directly from the keyboard.</strong> This can be done via the send <code>sendRemoteText</code> command. See below!</p>
+<a href="#send-text-to-device-history"><h2 id="send-text-to-device-history">Send Text to Device History</h2></a><p>With this update, we now remember the past 30 unique strings previously sent to the device using the <code>extension.brightscript.sendRemoteText</code> command.</p>
+<ul>
+<li>New user settings:<ul>
+<li><code>brightscript.sendRemoteTextHistory.limit</code><ul>
+<li>Sets the maximum number of <code>extension.brightscript.sendRemoteText</code> commands to remember for future use</li>
+<li>This is only available in the user settings. Not available in workspace settings</li>
+</ul>
+</li>
+<li><code>brightscript.sendRemoteTextHistory.enabled</code><ul>
+<li>If <code>false</code>, the extension will not save the history for <code>extension.brightscript.sendRemoteText</code> commands</li>
+<li>This is available in the user and workspace settings</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>You will now be presented a history of commands in addition to the input box. (see below) <p align="center">
+ <img src="https://user-images.githubusercontent.com/9591618/160265598-cb005da1-74bf-466d-83f0-88f6e47a36da.png" />
+ </p></li>
+</ul>
+<a href="#custom-view-in-the-activity-bar"><h2 id="custom-view-in-the-activity-bar">Custom View in the Activity Bar</h2></a><p>We have finally added our own Activity Bar item in VSCode! At this time we display the devices found on the local network (see below). In the future however, we indent to expand on this area. We have ideas for adding a Roku Remote Control UI, adding new device commands, setting your default device for side loading.</p>
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/9591618/162812142-f5d21ca6-7532-49f9-8c9b-29d62b5123e9.png" />
+</p>
+
+<a href="#what-does-this-do-for-you"><h3 id="what-does-this-do-for-you">What does this do for you?</h3></a><ul>
+<li>Shows you all the devices found on the local network</li>
+<li>Devices can be expanded to see more details about the device</li>
+<li>Clicking on a detail item will copy the value to your clipboard</li>
+<li>There is also an item that lets you easily open the web portal for that device</li>
+</ul>
+<a href="#missing-ecp-commands"><h2 id="missing-ecp-commands">Missing ECP commands!</h2></a><p>They were missing before... now they are not! Enjoy!</p>
+<ul>
+<li><code>extension.brightscript.pressInstantReplayButton</code></li>
+<li><code>extension.brightscript.pressEnterButton</code></li>
+<li><code>extension.brightscript.pressFindRemote</code></li>
+<li><code>extension.brightscript.pressVolumeDown</code></li>
+<li><code>extension.brightscript.pressVolumeMute</code></li>
+<li><code>extension.brightscript.pressVolumeUp</code></li>
+<li><code>extension.brightscript.pressPowerOff</code></li>
+<li><code>extension.brightscript.pressChannelUp</code></li>
+<li><code>extension.brightscript.pressChannelDown</code></li>
+<li><code>extension.brightscript.changeTvInput</code></li>
+</ul>
+<a href="#bug-fixes-and-other-changes"><h2 id="bug-fixes-and-other-changes">Bug fixes and other changes</h2></a><ul>
+<li>Fixed an issue where the rendezvous ui commands would show up in the when they shouldn&#39;t</li>
+<li>Rendezvous timing issue (<a href="https://github.com/rokucommunity/vscode-brightscript-language/issues/367">#367</a>)</li>
+<li><code>brightscript.deviceDiscovery.enabled</code> not working properly (<a href="https://github.com/rokucommunity/vscode-brightscript-language/issues/236">#236</a>)</li>
+<li>Added a new <code>brightscript.extension.showReleaseNotes</code> command accessible via the command pallet</li>
+</ul>
             <div id="footer"></div>
         </div>
     </div>

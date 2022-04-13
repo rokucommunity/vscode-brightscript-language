@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Pre-release Versions
+        Remote Control Mode
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="style.css" />
@@ -283,19 +283,167 @@
             
         </div>
         <div id="content">
-            <a href="#pre-release-versions"><h1 id="pre-release-versions">Pre-release Versions</h1></a><p>You can occasionally find pre-release versions of this extension under the <a href="https://github.com/RokuCommunity/vscode-brightscript-language/releases">GitHub Releases</a> page of this project. Unfortunately, Visual Studio Code does not currently support publishing pre-release versions of an extension, so manually installing the <code>.vsix</code> is the next-best option at this point. Here&#39;s how it works.</p>
-<ol>
-<li><p>Download <code>.vsix</code> file for version of the extension you want from <a href="https://github.com/RokuCommunity/vscode-brightscript-language/releases">the releases page</a>;</p>
-</li>
-<li><p>Open Visual Studio Code and click the &quot;extensions&quot; tab.</p>
-</li>
-<li><p>Choose &quot;Install from VSIX...&quot;</p>
-<p> <img src="https://user-images.githubusercontent.com/2544493/52904494-3f4bdf00-31fb-11e9-9a83-ceca294a4d12.png" alt="image"></p>
-</li>
-<li><p>Select the file you downloaded from step 1.</p>
-</li>
-</ol>
-<a href="#reinstalling-store-version-of-the-extension"><h2 id="reinstalling-store-version-of-the-extension">Reinstalling store version of the extension</h2></a><p>This process will REPLACE any existing version of the extension you have installed from the store. So, if you want to go back to using the store version, you need to uninstall the extension completely, and then install the extension through the VSCode store.</p>
+            <a href="#remote-control-mode"><h1 id="remote-control-mode">Remote Control Mode</h1></a><p><strong>Remote Control Mode</strong> is a convenient way to send remote control commands to a Roku entirely from your keyboard in vscode without needing to pick up a physical Roku remote. </p>
+<a href="#"><h2 id=""></h2></a><a href="#from-the-status-bar"><h3 id="from-the-status-bar">From the status bar</h3></a><p>Click the remote icon in the status bar to toggle remote mode on or off</p>
+<p><img src="https://user-images.githubusercontent.com/2544493/162752275-e60dea72-cc78-4818-aa99-6c3a354157ce.gif" alt="remote-mode"></p>
+<a href="#from-the-command-palette"><h3 id="from-the-command-palette">From the command palette</h3></a><p><img src="https://user-images.githubusercontent.com/2544493/162752967-a152dfd7-89a3-4072-aa10-b8d918cd10ff.png" alt="image"></p>
+<a href="#from-the-keyboard"><h3 id="from-the-keyboard">From the keyboard</h3></a><p>Press <code>ctrl+k</code> on windows or <code>cmd+k</code> on mac.</p>
+<a href="#how-it-works"><h2 id="how-it-works">How it works</h2></a><p>When Remote Control Mode is activated, we enable about 100 key bindings that capture most of the standard US keyboard keys. At this point, you may use your keyboard to send text input, use the arrow keys to send left/right/up/down button presses, etc. Once you&#39;re finished, simply disable <strong>remote control mode</strong>.</p>
+<p>Here are many of the registered key bindings. You can see the full list in the <a href="https://github.com/rokucommunity/vscode-brightscript-language/blob/master/package.json">package.json</a> under <code>keybindings</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Keybinding (Windows)</th>
+<th>Keybinding (Mac)</th>
+<th>Roku Button</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Up</code></td>
+<td><code>Up</code></td>
+<td>Up</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Down</code></td>
+<td><code>Down</code></td>
+<td>Down</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Left</code></td>
+<td><code>Left</code></td>
+<td>Left</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Right</code></td>
+<td><code>Right</code></td>
+<td>Right</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Enter</code></td>
+<td><code>Enter</code></td>
+<td>OK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Escape</code></td>
+<td><code>Escape</code></td>
+<td>Back</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td><code>Delete</code></td>
+<td>Back</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Home</code></td>
+<td><code>Home</code></td>
+<td>Home</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Ctrl+Escape</code></td>
+<td><code>Cmd+Escape</code></td>
+<td>Home</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Backspace</code></td>
+<td><code>Backspace</code></td>
+<td>Instant Replay</td>
+<td>Can also be used to delete the character to the left of the cursor in an input box</td>
+</tr>
+<tr>
+<td><code>Ctrl+Backspace</code></td>
+<td><code>Cmd+Backspace</code></td>
+<td>Backspace</td>
+<td>Delete the character to the left of the cursor in an input box</td>
+</tr>
+<tr>
+<td><code>Ctrl+Enter</code></td>
+<td><code>Cmd+Enter</code></td>
+<td>Play/Pause</td>
+<td></td>
+</tr>
+<tr>
+<td><code>End</code></td>
+<td><code>End</code></td>
+<td>Play/Pause</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaPlayPause</code></td>
+<td><code>MediaPlayPause</code></td>
+<td>Play/Pause</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+Left</code></td>
+<td><code>Cmd+Left</code></td>
+<td>Rewind</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PageDown</code></td>
+<td><code>PageDown</code></td>
+<td>Rewind</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaTrackPrevious</code></td>
+<td><code>MediaTrackPrevious</code></td>
+<td>Rewind</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+Right</code></td>
+<td><code>Cmd+Right</code></td>
+<td>Fast Forward</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PageUp</code></td>
+<td><code>PageUp</code></td>
+<td>Fast Forward</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaTrackNext</code></td>
+<td><code>MediaTrackNext</code></td>
+<td>Fast Forward</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+8</code></td>
+<td><code>Cmd+8</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Ctrl+Shift+8</code></td>
+<td><code>Cmd+Shift+8</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Insert</code></td>
+<td><code>Insert</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>AudioVolumeMute</code></td>
+<td><code>AudioVolumeMute</code></td>
+<td>Volume Mute</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+</tbody></table>
             <div id="footer"></div>
         </div>
     </div>
