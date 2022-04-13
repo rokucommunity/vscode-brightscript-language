@@ -90,7 +90,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 // Prepare the copy to clipboard command
                 treeItem.tooltip = 'Copy to clipboard';
                 treeItem.command = {
-                    command: 'brightscript.extension.copyToClipboard',
+                    command: 'extension.brightscript.copyToClipboard',
                     title: 'Copy To Clipboard',
                     arguments: [element.details[property].toString()]
                 };
@@ -109,7 +109,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             // Prepare the open url command
             openWebpageItem.tooltip = 'Open';
             openWebpageItem.command = {
-                command: 'brightscript.extension.openUrl',
+                command: 'extension.brightscript.openUrl',
                 title: 'Open',
                 arguments: [`http://${device.ip}`]
             };
