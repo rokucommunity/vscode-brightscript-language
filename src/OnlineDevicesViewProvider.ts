@@ -98,6 +98,26 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
 
             const device = this.findDeviceById(element.key);
+
+            if (device.deviceInfo['is-tv']) {
+                let changeTvInputItem = new DeviceInfoTreeItem(
+                    'Switch TV Input',
+                    element,
+                    vscode.TreeItemCollapsibleState.None,
+                    '',
+                    'click to change'
+                );
+
+                // Prepare the open url command
+                changeTvInputItem.tooltip = 'Change the current TV input';
+                changeTvInputItem.command = {
+                    command: 'extension.brightscript.changeTvInput',
+                    title: 'Switch TV Input',
+                    arguments: [device.ip]
+                };
+                result.unshift(changeTvInputItem);
+            }
+
             let openWebpageItem = new DeviceInfoTreeItem(
                 'Open device web portal',
                 element,
