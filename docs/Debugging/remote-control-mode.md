@@ -49,3 +49,12 @@ Here are many of the registered key bindings. You can see the full list in the [
 | `Insert`             | `Insert`             | Star            |                                                                                                 |
 | `AudioVolumeMute`    | `AudioVolumeMute`    | Volume Mute     | VSCode does not block this button's system action, so only use this if you're not playing audio | 
 
+## Customizing Keybindings
+You can create your own keybindings by modifying the [keybindings.json](https://code.visualstudio.com/docs/getstarted/keybindings#_advanced-customization) file in vscode. Here's an example entry. Make sure to use the `when` clause from the following example if you want your keyboard shortcuts to be restricted to **Remote Control Mode**.
+```json
+{
+    "key": "Delete",
+    "command": "extension.brightscript.pressBackButton",
+    "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+}
+```
