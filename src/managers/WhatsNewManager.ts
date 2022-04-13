@@ -60,7 +60,8 @@ export class WhatsNewManager {
             return;
         }
 
-        this.globalStateManager.lastSeenReleaseNotesVersion = '0.0.0';
+        //uncomment the following line to test the WhatsNew popup
+        // this.globalStateManager.lastSeenReleaseNotesVersion = '0.0.0';
         for (let releaseVersion of this.notableReleaseVersions) {
             if (
                 //if the current version is larger than the whitelist version
