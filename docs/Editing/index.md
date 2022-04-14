@@ -15,7 +15,7 @@ If your project is structured the way that Roku expects, then the language featu
 
 And here's an example file structure:
 
-```graphql
+```text
 C:/Projects/YourAwesomeApp/
   ├─ manifest
   ├─ images/
@@ -35,7 +35,7 @@ In all other situations, you will need to create a `bsconfig.json` file at the r
 If your project has folders not part of the standard Roku structure, then you will need to specify all of the necessary files in the 
 
 Consider this project that includes a `config/` folder:
-```graphql
+```text
 C:/Projects/YourAwesomeApp/
   ├─ manifest
   ├─ images/
@@ -71,7 +71,7 @@ If your project lives in a subdirectory, you should add a `rootDir` property to 
 
 Consider this project:
 
-```graphql
+```text
 C:/Projects/YourAwesomeApp/
   ├─ docs/
   │ └─ setup.md
@@ -94,7 +94,7 @@ You would have the following `bsconfig.json`:
 ## Subdirectory and Extra Folders
 
 If your code is in a subdirectory and you have extra folders
-```graphql
+```text
 C:/Projects/YourAwesomeApp/
   ├─ docs/
   │ └─ setup.md
