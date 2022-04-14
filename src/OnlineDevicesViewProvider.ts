@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
 import { icons } from './icons';
-
+import { firstBy } from 'thenby';
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(
         private context: vscode.ExtensionContext,
@@ -51,14 +51,14 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
                         return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
                     }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
-                    if (a.id < b.id) {
-                        return -1;
-                    }
-                    if (a.id > b.id) {
-                        return 1;
-                    }
-                    // ids must be equal
-                    return 0;
+                        if (a.id < b.id) {
+                            return -1;
+                        }
+                        if (a.id > b.id) {
+                            return 1;
+                        }
+                        // ids must be equal
+                        return 0;
                     }));
 
                 let items: DeviceTreeItem[] = [];
