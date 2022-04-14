@@ -275,21 +275,97 @@
             
         </div>
         <div id="content">
-            <a href="#setup"><h1 id="setup">Setup</h1></a><a href="#standard"><h2 id="standard">Standard</h2></a><p>Your project must be structured in the way that Roku expects, which looks something like this:</p>
-<pre><code class="language-graphql">./workspaceFolder/
+            <a href="#setup"><h1 id="setup">Setup</h1></a><a href="#standard-projct-structure"><h2 id="standard-projct-structure">Standard Projct Structure</h2></a><p>If your project is structured the way that Roku expects, then the language features will work with no configuration needed. Here are the default file patterns we use to find files:</p>
+<pre><code class="language-javascript">[
+    &quot;source/**/*&quot;,
+    &quot;components/**/*&quot;,
+    &quot;images/**/*&quot;,
+    &quot;manifest&quot;
+]
+</code></pre>
+<p>And here&#39;s an example file structure:</p>
+<pre><code class="language-graphql">C:/Projects/YourAwesomeApp/
   ├─ manifest
+  ├─ images/
+  │ └─ logo.jpeg
   ├─ components/
   │ ├─ HomeScene.brs
   │ └─ HomeScene.xml
   └─ source/
     └─ main.brs
 </code></pre>
-<a href="#subdirectory"><h2 id="subdirectory">Subdirectory</h2></a><p>If your project lives in a subdirectory, you will need to create a <code>bsconfig.json</code> file at the root of your project, and reference your subdirectory like such:</p>
-<pre><code class="language-json">{
-  &quot;rootDir&quot;: &quot;./someSubdir&quot;
+<a href="#bsconfigjson"><h2 id="bsconfigjson">bsconfig.json</h2></a><p>In all other situations, you will need to create a <code>bsconfig.json</code> file at the root of your project. The following sections describe the various settings you can utilize to help VSCode to better understand your project</p>
+<a href="#extra-folders"><h2 id="extra-folders">Extra folders</h2></a><p>If your project has folders not part of the standard Roku structure, then you will need to specify all of the necessary files in the </p>
+<p>Consider this project that includes a <code>config/</code> folder:</p>
+<pre><code class="language-graphql">C:/Projects/YourAwesomeApp/
+  ├─ manifest
+  ├─ images/
+  │ └─ logo.jpeg
+  ├─ components/
+  │ ├─ HomeScene.brs
+  │ └─ HomeScene.xml
+  ├─ source/
+  | └─ main.brs
+  └─ config/
+    ├─ dev.json
+    ├─ test.json
+    └─ prod.json
+</code></pre>
+<p>You would create the following <code>bsconfig.json</code></p>
+<pre><code class="language-javascript">{
+    &quot;files&quot;: [
+        //default entries
+        &quot;source/**/*&quot;,
+        &quot;components/**/*&quot;,
+        &quot;images/**/*&quot;,
+        &quot;manifest&quot;,
+        //your custom entries
+        &quot;config/**/*&quot;
+    ]
 }
 </code></pre>
-<p>This project relies heavily on the <a href="https://github.com/rokucommunity/brighterscript">brighterscript</a> project for language server support. See <a href="https://github.com/rokucommunity/brighterscript#bsconfigjson-options">this link</a> to view the <code>bsconfig.json</code> options.</p>
+<a href="#subdirectory"><h2 id="subdirectory">Subdirectory</h2></a><p>If your project lives in a subdirectory, you should add a <code>rootDir</code> property to the <code>bsconfig.json</code>. </p>
+<p>Consider this project:</p>
+<pre><code class="language-graphql">C:/Projects/YourAwesomeApp/
+  ├─ docs/
+  │ └─ setup.md
+  └─ src/
+    ├─ manifest
+    ├─ components/
+    | └─ HomeScene.xml
+    └─ source/
+      └─ main.brs
+</code></pre>
+<p>You would have the following <code>bsconfig.json</code>:</p>
+<pre><code class="language-javascript">{
+    &quot;rootDir&quot;: &quot;./src&quot;
+}
+</code></pre>
+<a href="#subdirectory-and-extra-folders"><h2 id="subdirectory-and-extra-folders">Subdirectory and Extra Folders</h2></a><p>If your code is in a subdirectory and you have extra folders</p>
+<pre><code class="language-graphql">C:/Projects/YourAwesomeApp/
+  ├─ docs/
+  │ └─ setup.md
+  └─ src/
+    ├─ manifest
+    ├─ components/
+    | └─ HomeScene.xml
+    ├─ source/
+    | └─ main.brs
+    └─ config/
+      ├─ dev.json
+      ├─ test.json
+      └─ prod.json
+</code></pre>
+<p>You would have the following <code>bsconfig.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;rootDir&quot;: &quot;./src&quot;,
+  &quot;files&quot;: [
+      //every file under the `src` folder should be included in the package
+      &quot;**/*&quot;
+  ]
+}
+</code></pre>
+<a href="#additional-options"><h2 id="additional-options">Additional Options</h2></a><p>This project relies heavily on the <a href="https://github.com/rokucommunity/brighterscript">brighterscript</a> project for language server support. See <a href="https://github.com/rokucommunity/brighterscript#bsconfigjson-options">this link</a> to view all of the available <code>bsconfig.json</code> options.</p>
             <div id="footer"></div>
         </div>
     </div>
