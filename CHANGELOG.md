@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - updated to [roku-deploy@3.6.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#360---2022-04-13)
  - updated to [brighterscript-formatter@1.6.12](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1612---2022-04-13)
  - updated to [roku-debug@0.10.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0105---2022-04-13)
+ - removed the `CreateObject` snippet because it's too aggressive
 ### Fixed
  - bug with `brightscript.deviceDiscovery.includeNonDeveloperDevices` setting not working
  - bug with `brightscript.deviceDiscovery.enabled` not working properly ([#236](https://github.com/rokucommunity/vscode-brightscript-language/issues/236))
