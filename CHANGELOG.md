@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - new `extension.brightscript.showReleaseNotes` command accessible via the command pallet
 ### Changed
  - Remove the debug-panel focus-based remote emulation functionality in favor of **Remote Control Mode** ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
- - updated to [brighterscript@0.48.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0480---2022-04-13)
+ - updated to [brighterscript@0.48.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0481---2022-04-14)
     - language support for native BrightScript optional chaining ([#546](https://github.com/rokucommunity/brighterscript/pull/546))
-    - validation for all known `createObject` values and parameters. ([#435](https://github.com/rokucommunity/brighterscript/pull/435))
+    - validation for all known `createObject` values and parameters. ([#435](https://github.com/rokucommunity/brighterscript/pull/435), [#568](https://github.com/rokucommunity/brighterscript/pull/568))
     - for plugin authors: 
         - fixed accuracy issues when parsing the manifest ([#565](https://github.com/rokucommunity/brighterscript/pull/565))
         - add missing statements and expressions to `createVisitor` ([#567](https://github.com/rokucommunity/brighterscript/pull/567))
