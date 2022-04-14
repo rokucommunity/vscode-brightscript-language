@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Roku Remote Control
+        Remote Control Mode
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="../style.css" />
@@ -144,7 +144,7 @@
                 <div class="children">
                     
             
-            <a class="entry" href="roku-remote-control.html">Roku Remote Control</a>
+            <a class="entry" href="remote-control-mode.html">Remote Control Mode</a>
             
             
                 </div>
@@ -255,14 +255,6 @@
                 <div class="children">
                     
             
-            <a class="entry" href="../remote-control-mode.html">Remote Control Mode</a>
-            
-            
-                </div>
-                
-                <div class="children">
-                    
-            
             <a class="entry" href="../telemetry.html">Telemetry</a>
             
             
@@ -283,83 +275,174 @@
             
         </div>
         <div id="content">
-            <a href="#roku-remote-control"><h1 id="roku-remote-control">Roku Remote Control</h1></a><p>You can use your keyboard as a Roku remote by clicking inside the Output or Debug Console panel of VSCode, and then pressing one of the predefined keyboard shortcuts from the table below (make sure the find widget is closed). You can also press <code>win+k (or cmd+k on mac)</code> from inside those same panels to bring up a text box to send text to the Roku device.</p>
-<p>This extension sends key presses to the Roku device through Roku&#39;s <a href="https://sdkdocs.roku.com/display/sdkdoc/External+Control+API#ExternalControlAPI-KeypressKeyValues">External Control API</a>. The 12 standard Roku remote buttons are already included. The keys are mapped using the <code>when</code> clause so it will only send remote commands if the Output or Debug Console Panel has focus (<code>panelFocus</code>) AND the Editor Find widget is NOT visible (<code>!findWidgetVisible</code>).</p>
-<a href="#keyboard-commands"><h2 id="keyboard-commands">Keyboard Commands</h2></a><table>
+            <a href="#remote-control-mode"><h1 id="remote-control-mode">Remote Control Mode</h1></a><p><strong>Remote Control Mode</strong> is a convenient way to send remote control commands to a Roku entirely from your keyboard in vscode without needing to pick up a physical Roku remote. </p>
+<a href="#"><h2 id=""></h2></a><a href="#from-the-status-bar"><h3 id="from-the-status-bar">From the status bar</h3></a><p>Click the remote icon in the status bar to toggle remote mode on or off</p>
+<p><img src="https://user-images.githubusercontent.com/2544493/162752275-e60dea72-cc78-4818-aa99-6c3a354157ce.gif" alt="remote-mode"></p>
+<a href="#from-the-command-palette"><h3 id="from-the-command-palette">From the command palette</h3></a><p><img src="https://user-images.githubusercontent.com/2544493/162752967-a152dfd7-89a3-4072-aa10-b8d918cd10ff.png" alt="image"></p>
+<a href="#from-the-keyboard"><h3 id="from-the-keyboard">From the keyboard</h3></a><p>Press <code>ctrl+k</code> on windows or <code>cmd+k</code> on mac.</p>
+<a href="#how-it-works"><h2 id="how-it-works">How it works</h2></a><p>When Remote Control Mode is activated, we enable about 100 key bindings that capture most of the standard US keyboard keys. At this point, you may use your keyboard to send text input, use the arrow keys to send left/right/up/down button presses, etc. Most keyboard strokes will be sent to the Roku device as input rather then to your editor. Some notable exceptions include when: the command pallet is open, an input box is open, or you are focused on other input areas like a search box. Once you&#39;re finished, simply disable <strong>remote control mode</strong>. </p>
+<p><strong>Remote Control Mode</strong> has support for full text input from the keyboard. For example, if you pressed <code>shift+b</code> while <strong>Remote Control Mode</strong> is active we will send <code>B</code> to the device. We support all the single press and shift press ascii characters on the keyboard (excluding the num pad). For example: <code>a-z</code>, <code>A-Z</code>, <code>0-9</code>, and all the primary symbols such as <code>!</code>, <code>@</code>, <code>#</code>, <code>&#39;</code>, <code>&quot;</code>, etc...</p>
+<p>Here are many of the registered key bindings. You can see the full list in the <a href="https://github.com/rokucommunity/vscode-brightscript-language/blob/master/package.json">package.json</a> under <code>keybindings</code>.</p>
+<p><strong>Note: We do not support sending alt charters directly from the keyboard.</strong> This can be done via the <code>extension.brightscript.sendRemoteText</code> command.</p>
+<table>
 <thead>
 <tr>
-<th>Keyboard Key</th>
-<th>Roku Remote Key</th>
-<th>Keybinding Command</th>
+<th>Keybinding (Windows)</th>
+<th>Keybinding (Mac)</th>
+<th>Roku Button</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><code>Backspace</code></td>
-<td>Back Button</td>
-<td><code>extension.brightscript.pressBackButton</code></td>
+<td><code>Up</code></td>
+<td><code>Up</code></td>
+<td>Up</td>
+<td></td>
 </tr>
 <tr>
-<td><code>win+Backspace</code> (or <code>cmd+Backspace</code> on mac)</td>
-<td>Backspace</td>
-<td><code>extension.brightscript.pressBackspaceButton</code></td>
+<td><code>Down</code></td>
+<td><code>Down</code></td>
+<td>Down</td>
+<td></td>
 </tr>
 <tr>
-<td><code>Escape</code></td>
-<td>Home Button</td>
-<td><code>extension.brightscript.pressHomeButton</code></td>
+<td><code>Left</code></td>
+<td><code>Left</code></td>
+<td>Left</td>
+<td></td>
 </tr>
 <tr>
-<td><code>up</code></td>
-<td>Up Button</td>
-<td><code>extension.brightscript.pressUpButton</code></td>
-</tr>
-<tr>
-<td><code>down</code></td>
-<td>Down Button</td>
-<td><code>extension.brightscript.pressDownButton</code></td>
-</tr>
-<tr>
-<td><code>right</code></td>
-<td>Right Button</td>
-<td><code>extension.brightscript.pressRightButton</code></td>
-</tr>
-<tr>
-<td><code>left</code></td>
-<td>Left Button</td>
-<td><code>extension.brightscript.pressLeftButton</code></td>
+<td><code>Right</code></td>
+<td><code>Right</code></td>
+<td>Right</td>
+<td></td>
 </tr>
 <tr>
 <td><code>Enter</code></td>
-<td>Select Button (OK)</td>
-<td><code>extension.brightscript.pressSelectButton</code></td>
+<td><code>Enter</code></td>
+<td>OK</td>
+<td></td>
 </tr>
 <tr>
-<td><code>win+Enter</code> (or <code>cmd+Enter</code> on mac)</td>
-<td>Play Button</td>
-<td><code>extension.brightscript.pressPlayButton</code></td>
+<td><code>Escape</code></td>
+<td><code>Escape</code></td>
+<td>Back</td>
+<td></td>
 </tr>
 <tr>
-<td><code>win+left</code> (or <code>cmd+left</code> on mac)</td>
-<td>Rev Button</td>
-<td><code>extension.brightscript.pressRevButton</code></td>
+<td><code>Delete</code></td>
+<td><code>Delete</code></td>
+<td>Back</td>
+<td></td>
 </tr>
 <tr>
-<td><code>win+right</code> (or <code>cmd+right</code> on mac)</td>
-<td>Fwd Button</td>
-<td><code>extension.brightscript.pressFwdButton</code></td>
+<td><code>Home</code></td>
+<td><code>Home</code></td>
+<td>Home</td>
+<td></td>
 </tr>
 <tr>
-<td><code>win+8</code> (or <code>cmd+8</code> on mac)</td>
-<td>Info Button</td>
-<td><code>extension.brightscript.pressStarButton</code></td>
+<td><code>Shift+Escape</code></td>
+<td><code>Shift+Escape</code></td>
+<td>Home</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Backspace</code></td>
+<td><code>Backspace</code></td>
+<td>Instant Replay</td>
+<td>Can also be used to delete the character to the left of the cursor in an input box</td>
+</tr>
+<tr>
+<td><code>Ctrl+Backspace</code></td>
+<td><code>Cmd+Backspace</code></td>
+<td>Backspace</td>
+<td>Delete the character to the left of the cursor in an input box</td>
+</tr>
+<tr>
+<td><code>Ctrl+Enter</code></td>
+<td><code>Cmd+Enter</code></td>
+<td>Play/Pause</td>
+<td></td>
+</tr>
+<tr>
+<td><code>End</code></td>
+<td><code>End</code></td>
+<td>Play/Pause</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaPlayPause</code></td>
+<td><code>MediaPlayPause</code></td>
+<td>Play/Pause</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+Left</code></td>
+<td><code>Cmd+Left</code></td>
+<td>Rewind</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PageDown</code></td>
+<td><code>PageDown</code></td>
+<td>Rewind</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaTrackPrevious</code></td>
+<td><code>MediaTrackPrevious</code></td>
+<td>Rewind</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+Right</code></td>
+<td><code>Cmd+Right</code></td>
+<td>Fast Forward</td>
+<td></td>
+</tr>
+<tr>
+<td><code>PageUp</code></td>
+<td><code>PageUp</code></td>
+<td>Fast Forward</td>
+<td></td>
+</tr>
+<tr>
+<td><code>MediaTrackNext</code></td>
+<td><code>MediaTrackNext</code></td>
+<td>Fast Forward</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
+</tr>
+<tr>
+<td><code>Ctrl+8</code></td>
+<td><code>Cmd+8</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Ctrl+Shift+8</code></td>
+<td><code>Cmd+Shift+8</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>Insert</code></td>
+<td><code>Insert</code></td>
+<td>Star</td>
+<td></td>
+</tr>
+<tr>
+<td><code>AudioVolumeMute</code></td>
+<td><code>AudioVolumeMute</code></td>
+<td>Volume Mute</td>
+<td>VSCode does not block this button&#39;s system action, so only use this if you&#39;re not playing audio</td>
 </tr>
 </tbody></table>
-<p>You can also create keybindings for any other Roku supported key by adding. Here&#39;s a example entry for <code>keybindings.json</code> of how to create a VSCode keyboard shortcut to send the space key to the Roku:</p>
+<a href="#customizing-keybindings"><h2 id="customizing-keybindings">Customizing Keybindings</h2></a><p>You can create your own keybindings by modifying the <a href="https://code.visualstudio.com/docs/getstarted/keybindings#_advanced-customization">keybindings.json</a> file in vscode. Here&#39;s an example entry. Make sure to use the <code>when</code> clause from the following example if you want your keyboard shortcuts to be restricted to <strong>Remote Control Mode</strong>.</p>
 <pre><code class="language-json">{
-  &quot;key&quot;: &quot;Space&quot;,
-  &quot;command&quot;: &quot;extension.brightscript.sendRemoteCommand&quot;,
-  &quot;args&quot;: &quot;Lit_%20&quot;,
-  &quot;when&quot;: &quot;panelFocus &amp;&amp; !inDebugRepl &amp;&amp; !findWidgetVisible&quot;
+    &quot;key&quot;: &quot;Delete&quot;,
+    &quot;command&quot;: &quot;extension.brightscript.pressBackButton&quot;,
+    &quot;when&quot;: &quot;!searchInputBoxFocus &amp;&amp; !findInputFocussed &amp;&amp; !inCommandsPicker &amp;&amp; !inQuickOpen &amp;&amp; brightscript.isRemoteControlMode&quot;
 }
 </code></pre>
             <div id="footer"></div>
