@@ -55,6 +55,6 @@ You can create your own keybindings by modifying the [keybindings.json](https://
 {
     "key": "Delete",
     "command": "extension.brightscript.pressBackButton",
-    "when": "inputFocus && !editorHasSelection && !editorHoverVisible && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+    "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
 }
 ```
