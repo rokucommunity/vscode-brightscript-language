@@ -160,7 +160,7 @@ class RokuFinder extends EventEmitter {
                         }
 
                         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-                        let includeNonDeveloperDevices = (config.includeNonDeveloperDevices || {}).includeNonDeveloperDevices;
+                        let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
                         if (includeNonDeveloperDevices || info['device-info']['developer-enabled']) {
                             const url = new URL(LOCATION);
                             const device: RokuDeviceDetails = {

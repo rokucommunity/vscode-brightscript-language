@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
 import { icons } from './icons';
-
+import { firstBy } from 'thenby';
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     constructor(
         private context: vscode.ExtensionContext,
@@ -31,20 +31,35 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     private devices: Array<RokuDeviceDetails>;
 
+    private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
+        if (device.deviceInfo['is-stick']) {
+            return 0;
+        }
+        if (device.deviceInfo['is-tv']) {
+            return 2;
+        }
+        return 1;
+    }
+
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
                 // Process the root level devices in order by id
-                let devices = this.devices.sort((a, b) => {
-                    if (a.id < b.id) {
-                        return -1;
-                    }
-                    if (a.id > b.id) {
-                        return 1;
-                    }
-                    // ids must be equal
-                    return 0;
-                });
+
+
+                let devices = this.devices.sort(
+                    firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
+                        return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
+                    }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
+                        if (a.id < b.id) {
+                            return -1;
+                        }
+                        if (a.id > b.id) {
+                            return 1;
+                        }
+                        // ids must be equal
+                        return 0;
+                    }));
 
                 let items: DeviceTreeItem[] = [];
                 for (const device of devices) {
@@ -58,7 +73,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
                     if (device.deviceInfo?.['is-stick']) {
                         treeItem.iconPath = icons.streamingStick;
-                    } else if (device.deviceInfo?.['is-tv'] || devices.indexOf(device) === 0) {
+                    } else if (device.deviceInfo?.['is-tv']) {
                         treeItem.iconPath = icons.tv;
                         //fall back to settop box in all other cases
                     } else {
@@ -90,7 +105,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 // Prepare the copy to clipboard command
                 treeItem.tooltip = 'Copy to clipboard';
                 treeItem.command = {
-                    command: 'brightscript.extension.copyToClipboard',
+                    command: 'extension.brightscript.copyToClipboard',
                     title: 'Copy To Clipboard',
                     arguments: [element.details[property].toString()]
                 };
@@ -98,8 +113,28 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
 
             const device = this.findDeviceById(element.key);
+
+            if (device.deviceInfo['is-tv']) {
+                let changeTvInputItem = new DeviceInfoTreeItem(
+                    '📺 Switch TV Input',
+                    element,
+                    vscode.TreeItemCollapsibleState.None,
+                    '',
+                    'click to change'
+                );
+
+                // Prepare the open url command
+                changeTvInputItem.tooltip = 'Change the current TV input';
+                changeTvInputItem.command = {
+                    command: 'extension.brightscript.changeTvInput',
+                    title: 'Switch TV Input',
+                    arguments: [device.ip]
+                };
+                result.unshift(changeTvInputItem);
+            }
+
             let openWebpageItem = new DeviceInfoTreeItem(
-                'Open device web portal',
+                '🔗 Open device web portal',
                 element,
                 vscode.TreeItemCollapsibleState.None,
                 '',
@@ -109,7 +144,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             // Prepare the open url command
             openWebpageItem.tooltip = 'Open';
             openWebpageItem.command = {
-                command: 'brightscript.extension.openUrl',
+                command: 'extension.brightscript.openUrl',
                 title: 'Open',
                 arguments: [`http://${device.ip}`]
             };

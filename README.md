@@ -39,7 +39,7 @@ For a full list of features and settings, please see our [documentation website]
  - [Basic project setup](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/index.html) - Launching and debugging your local project on a Roku device.
  - [Component Libraries](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/component-libraries.html) - How to define custom component libraries in your `launch.json`
  - [Deeplinking](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/deep-linking.html) - Sending deeplinks from the `launch.json`
- - [Remote control emulation](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/roku-remote-control.html) - How to emulate the Roku remote control
+ - [Remote control emulation](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/remote-control-mode.html) - How to emulate the Roku remote control
  - [Rale](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/rale.html) - Inject Rale into your application without committing the TrackerTask to your repository
  - [BS_Consts](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/bs-const.html) - Changing `bs_const` values from the `launch.json`
  - [Advanced Project Setup](https://rokucommunity.github.io/vscode-brightscript-language/Debugging/advanced-project-setup.html) - Setting up your project with complex use cases such as custom build scripts or source files located in multiple different directories.
