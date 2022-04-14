@@ -101,7 +101,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
             if (device.deviceInfo['is-tv']) {
                 let changeTvInputItem = new DeviceInfoTreeItem(
-                    'Switch TV Input',
+                    '📺 Switch TV Input',
                     element,
                     vscode.TreeItemCollapsibleState.None,
                     '',
@@ -119,7 +119,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
 
             let openWebpageItem = new DeviceInfoTreeItem(
-                'Open device web portal',
+                '🔗 Open device web portal',
                 element,
                 vscode.TreeItemCollapsibleState.None,
                 '',
