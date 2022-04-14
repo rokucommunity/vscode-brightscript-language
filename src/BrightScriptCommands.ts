@@ -170,7 +170,7 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand('ChannelDown');
         });
 
-        this.registerCommand('changeTvInput', async () => {
+        this.registerCommand('changeTvInput', async (host?: string) => {
             const selectedInput = await vscode.window.showQuickPick([
                 'InputHDMI1',
                 'InputHDMI2',
@@ -181,7 +181,7 @@ export class BrightScriptCommands {
             ]);
 
             if (selectedInput) {
-                await this.sendRemoteCommand(selectedInput);
+                await this.sendRemoteCommand(selectedInput, host);
             }
         });
 
@@ -295,10 +295,16 @@ export class BrightScriptCommands {
         }
     }
 
-    public async sendRemoteCommand(key: string) {
-        await this.getRemoteHost();
-        if (this.host) {
-            let clickUrl = `http://${this.host}:8060/keypress/${key}`;
+    public async sendRemoteCommand(key: string, host?: string) {
+        // do we have a temporary override?
+        if (!host) {
+            // Get the long lived host ip
+            await this.getRemoteHost();
+            host = this.host;
+        }
+
+        if (host) {
+            let clickUrl = `http://${host}:8060/keypress/${key}`;
             console.log(`send ${clickUrl}`);
             return new Promise((resolve, reject) => {
                 request.post(clickUrl, (err, response) => {
