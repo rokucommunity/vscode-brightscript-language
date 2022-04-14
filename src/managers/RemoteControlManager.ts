@@ -11,8 +11,13 @@ export class RemoteControlManager {
 
         //keep the user's button flashing preference in sync
         vscode.workspace.onDidChangeConfiguration(() => {
-            this.isFlasherAllowedByUser = vscode.workspace.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
+            this.loadIsFlasherAllowedByUser();
         });
+        this.loadIsFlasherAllowedByUser();
+    }
+
+    private loadIsFlasherAllowedByUser() {
+        this.isFlasherAllowedByUser = vscode.workspace.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
     }
 
     private isEnabled = false;
