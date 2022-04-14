@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.31.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.1...v2.31.0) - 2022-04-13
+## [2.31.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.1...v2.31.0) - 2022-04-14
 ### Added
  - a `BRS` custom view in the Activity Bar ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
  - new **Remote Control Mode** to handle Roku remote emulation. ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
