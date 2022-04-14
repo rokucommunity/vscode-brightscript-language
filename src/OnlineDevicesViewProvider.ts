@@ -31,11 +31,26 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     private devices: Array<RokuDeviceDetails>;
 
+    private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
+        if (device.deviceInfo['is-stick']) {
+            return 0;
+        }
+        if (device.deviceInfo['is-tv']) {
+            return 2;
+        }
+        return 1;
+    }
+
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
                 // Process the root level devices in order by id
-                let devices = this.devices.sort((a, b) => {
+
+
+                let devices = this.devices.sort(
+                    firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
+                        return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
+                    }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
                     if (a.id < b.id) {
                         return -1;
                     }
@@ -44,7 +59,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     }
                     // ids must be equal
                     return 0;
-                });
+                    }));
 
                 let items: DeviceTreeItem[] = [];
                 for (const device of devices) {
