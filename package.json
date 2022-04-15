@@ -1945,6 +1945,12 @@
                 "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
+                "command": "extension.brightscript.pressHomeButton",
+                "key": "Ctrl+Escape",
+                "mac": "Cmd+Escape",
+                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+            },
+            {
                 "command": "extension.brightscript.pressInstantReplayButton",
                 "key": "Backspace",
                 "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
