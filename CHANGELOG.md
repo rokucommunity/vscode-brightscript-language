@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.31.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.31.0...v2.31.1) - 2022-04-18
+### Fixed
+ - Unfocus **remote control mode** statusbar item on click ([#384](https://github.com/rokucommunity/vscode-brightscript-language/pull/384))
+ - Add missing **remote control mode** keybinding `Ctrl+Escape`/`Cmd+Escape` for home press ([#383](https://github.com/rokucommunity/vscode-brightscript-language/pull/383))
+
+
+
 ## [2.31.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.1...v2.31.0) - 2022-04-14
 ### Added
  - a `BRS` custom view in the Activity Bar ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
