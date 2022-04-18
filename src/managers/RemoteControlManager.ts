@@ -52,6 +52,21 @@ export class RemoteControlManager {
     public async toggleRemoteControlMode(initiator: RemoteControlModeInitiator) {
         const currentMode = vscodeContextManager.get<boolean>('brightscript.isRemoteControlMode', false);
         await this.setRemoteControlMode(!currentMode, initiator);
+
+        //remove focus from statusbar item after clicking
+        if (initiator === 'statusbar') {
+            //focus the active text editor (if there is one)
+            if (vscode.window.activeTextEditor?.document) {
+                await vscode.window.showTextDocument(vscode.window.activeTextEditor.document);
+
+                //there's no active text editor. Move focus away from the statusbar item (somehow)
+            } else {
+                //focus the next editor group, then the previous editor group.
+                //This is safe to call when there are no editor groups, so it's a good way to remove focus from the statusbar item
+                await vscode.commands.executeCommand('workbench.action.focusNextGroup');
+                await vscode.commands.executeCommand('workbench.action.focusPreviousGroup');
+            }
+        }
     }
 
     public async setRemoteControlMode(isEnabled: boolean, initiator: RemoteControlModeInitiator) {
