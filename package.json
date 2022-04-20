@@ -61,14 +61,16 @@
         "fs-extra": "^7.0.1",
         "get-port": "^5.0.0",
         "glob": "^7.1.3",
+        "hex-rgb": "^5.0.0",
         "iconv-lite": "0.4.24",
+        "just-throttle": "^4.0.1",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
         "pretty-bytes": "^5.6.0",
         "roku-debug": "^0.10.4",
         "roku-deploy": "^3.5.4",
-        "roku-test-automation": "^1.1.1",
+        "roku-test-automation": "^2.0.0-beta.3",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "svelte": "^3.37.0",
@@ -145,48 +147,44 @@
         "onCommand:brighterscript.showPreviewToSide"
     ],
     "contributes": {
-        "viewsContainers": {
-            "activitybar": [
+        "views": {
+            "debug": [
                 {
-                    "id": "rdb-container",
-                    "title": "RDB",
-                    "icon": "images/RDB.svg"
+                    "id": "rendezvousView",
+                    "name": "Rendezvous",
+                    "when": "debugType == 'brightscript'",
+                    "group": "Rendezvous"
+                },
+                {
+                    "type": "webview",
+                    "id": "RDBNodeTreeView",
+                    "name": "Node Tree",
+                    "when": "debugType == 'brightscript'"
+                },
+                {
+                    "type": "webview",
+                    "id": "RDBRegistryView",
+                    "name": "Registry",
+                    "when": "debugType == 'brightscript'"
+                },
+                {
+                    "type": "webview",
+                    "id": "RDBCommandsView",
+                    "name": "Commands",
+                    "when": "debugType == 'brightscript'"
                 }
             ]
         },
-        "views": {
-            "debug": [{
-                "id": "rendezvousView",
-                "name": "Rendezvous",
-                "when": "debugType == 'brightscript'",
-                "group": "Rendezvous"
-            },
-            {
-                "type": "webview",
-                "id": "RDBNodeTreeView",
-                "name": "Node Tree",
-                "when": "debugType == 'brightscript'"
-            },
-            {
-                "type": "webview",
-                "id": "RDBRegistryView",
-                "name": "Registry",
-                "when": "debugType == 'brightscript'"
-            },
-            {
-                "type": "webview",
-                "id": "RDBCommandsView",
-                "name": "Commands",
-                "when": "debugType == 'brightscript'"
-            }]
-        },
         "menus": {
-            "editor/title": [{
-                "when": "editorLangId == brighterscript && resourceScheme == file",
-                "command": "brighterscript.showPreviewToSide",
-                "group": "navigation"
-            }],
-            "view/title": [{
+            "editor/title": [
+                {
+                    "when": "editorLangId == brighterscript && resourceScheme == file",
+                    "command": "brighterscript.showPreviewToSide",
+                    "group": "navigation"
+                }
+            ],
+            "view/title": [
+                {
                     "command": "extension.brightscript.rendezvous.toggleSortMethod",
                     "when": "debugType == 'brightscript'",
                     "group": "Rendezvous"
@@ -203,7 +201,8 @@
                 }
             ]
         },
-        "breakpoints": [{
+        "breakpoints": [
+            {
                 "language": "brightscript"
             },
             {
@@ -470,95 +469,43 @@
                                     "source/**/*.*",
                                     "components/**/*.*",
                                     "images/**/*.*"
-                                ]
-                            }],
-                            "items": {
-                                "type": "object",
-                                "description": "Component Library Schema.",
-                                "default": {
-                                    "rootDir": "${workspaceFolder}/LibDir/",
-                                    "outFile": "LibName.zip",
-                                    "files": [
-                                        "manifest",
-                                        "source/**/*.*",
-                                        "components/**/*.*",
-                                        "images/**/*.*"
-                                    ]
-                                },
-                                "required": [
-                                    "rootDir",
-                                    "outFile",
-                                    "files"
                                 ],
-                                "properties": {
-                                    "rootDir": {
-                                        "type": "string",
-                                        "description": "Root directory of source files for this component library.",
-                                        "examples": [
-                                            "${workspaceFolder}/LibDir/"
-                                        ]
-                                    },
-                                    "outFile": {
-                                        "type": "string",
-                                        "description": "A file name and extension used as the static file name for the zip. You can use manifest values in this property such as ${title} to be inferred from the library's manifest file.",
-                                        "default": "",
-                                        "examples": [
-                                            "LibName.zip"
-                                        ],
-                                        "pattern": "^(.*)(\\.zip)$"
-                                    },
-                                    "files": {
-                                        "type": "array",
-                                        "description": "A file path or file glob that should be copied to the  component library zip.",
-                                        "default": [
-                                            "manifest",
-                                            "source/**/*.*",
-                                            "components/**/*.*",
-                                            "assets/**/*.*"
-                                        ],
-                                        "items": {
-                                            "anyOf": [{
-                                                    "type": "string",
-                                                    "description": "A file path or file glob that should be copied to the component library zip."
-                                                },
-                                                {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "src": {
-                                                            "anyOf": [{
-                                                                    "type": "string",
-                                                                    "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
-                                                                },
-                                                                {
-                                                                    "type": "array",
-                                                                    "description": "An array of file path or globs",
-                                                                    "items": {
-                                                                        "type": "string",
-                                                                        "description": "A file path or glob pattern of source file(s) to be included in the  component library zip."
-                                                                    }
-                                                                }
-                                                            ]
-                                                        },
-                                                        "dest": {
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string",
+                                            "description": "A file path or file glob that should be copied to the deployment package."
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "src": {
+                                                    "anyOf": [
+                                                        {
                                                             "type": "string",
-                                                            "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
+                                                            "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                        },
+                                                        {
+                                                            "type": "array",
+                                                            "description": "An array of file path or globs",
+                                                            "items": {
+                                                                "type": "string",
+                                                                "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
+                                                            }
                                                         }
-                                                    },
-                                                    "required": [
-                                                        "src",
-                                                        "dest"
                                                     ]
+                                                },
+                                                "dest": {
+                                                    "type": "string",
+                                                    "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
                                                 }
+                                            },
+                                            "required": [
+                                                "src",
+                                                "dest"
                                             ]
                                         }
-                                    },
-                                    "sourceDirs": {
-                                        "type": "array",
-                                        "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
-                                        "default": [
-                                            "${workspaceFolder}"
-                                        ]
-                                    }
+                                    ]
                                 }
                             },
                             "enableDebuggerAutoRecovery": {
@@ -609,170 +556,6 @@
                                 "default": "log",
                                 "description": "The level of logging that should be done during a debug session."
                             }
-                        },
-                        "autoRunSgDebugCommands": {
-                            "type": "array",
-                            "items": {
-                                "anyOf": [{
-                                        "type": "string",
-                                        "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
-                                        "enum": [
-                                            "chanperf"
-                                        ]
-                                    },
-                                    {
-                                        "type": "string",
-                                        "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
-                                        "enum": [
-                                            "fpsdisplay"
-                                        ]
-                                    },
-                                    {
-                                        "type": "string",
-                                        "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
-                                        "enum": [
-                                            "logrendezvous"
-                                        ]
-                                    },
-                                    {
-                                        "type": "string",
-                                        "description": "Custom SGDebug command that will be run on port 8080"
-                                    }
-                                ]
-                            }
-                        },
-                        "outDir": {
-                            "type": "string",
-                            "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
-                            "default": "${workspaceFolder}/out"
-                        },
-                        "stopOnEntry": {
-                            "type": "boolean",
-                            "description": "Have the debugger break on on the first line of the program after launch.",
-                            "default": false
-                        },
-                        "retainStagingFolder": {
-                            "type": "boolean",
-                            "description": "Prevent the staging folder from being deleted after the deployment package is created.  This is helpful for troubleshooting why your package isn't being created the way you expected.",
-                            "default": false
-                        },
-                        "retainDeploymentArchive": {
-                            "type": "boolean",
-                            "description": "Prevent the deployment package from being deleted after launching a debug session.",
-                            "default": true
-                        },
-                        "enableVariablesPanel": {
-                            "type": "boolean",
-                            "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
-                            "default": true
-                        },
-                        "envFile": {
-                            "type": "string",
-                            "description": "A path to an environment variables file.",
-                            "default": ".env"
-                        },
-                        "consoleOutput": {
-                            "type": "string",
-                            "description": "Determines which console output event to listen for. 'full' is every console message (including the ones from the adapter). 'normal' excludes output initiated by the adapter and rendezvous logs if enabled on the device.",
-                            "default": "normal",
-                            "enum": [
-                                "full",
-                                "normal"
-                            ]
-                        },
-                        "raleTrackerTaskFileLocation": {
-                            "type": "string",
-                            "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
-                            "scope": "resource"
-                        },
-                        "injectRaleTrackerTask": {
-                            "type": "boolean",
-                            "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
-                            "default": false
-                        },
-                        "injectRdbOnDeviceComponent": {
-                            "type": "boolean",
-                            "description": "Will inject the OnDeviceComponent used by RDB for RALE like functionality inside of vscode.",
-                            "default": false
-                        },
-                        "files": {
-                            "type": "array",
-                            "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
-                            "default": [
-                                "manifest",
-                                "source/**/*.*",
-                                "components/**/*.*",
-                                "images/**/*.*"
-                            ],
-                            "items": {
-                                "anyOf": [{
-                                        "type": "string",
-                                        "description": "A file path or file glob that should be copied to the deployment package."
-                                    },
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "src": {
-                                                "anyOf": [{
-                                                        "type": "string",
-                                                        "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
-                                                    },
-                                                    {
-                                                        "type": "array",
-                                                        "description": "An array of file path or globs",
-                                                        "items": {
-                                                            "type": "string",
-                                                            "description": "A file path or glob pattern of source file(s) to be included in the deployment package"
-                                                        }
-                                                    }
-                                                ]
-                                            },
-                                            "dest": {
-                                                "type": "string",
-                                                "description": "The destination for the file(s) found in 'src'. If this path is a directory, you must end it in a trailing slash"
-                                            }
-                                        },
-                                        "required": [
-                                            "src",
-                                            "dest"
-                                        ]
-                                    }
-                                ]
-                            }
-                        },
-                        "enableDebuggerAutoRecovery": {
-                            "type": "boolean",
-                            "description": "Enables automatic continue when hitting an incorrect 'break in' breakpoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
-                            "default": true
-                        },
-                        "stopDebuggerOnAppExit": {
-                            "type": "boolean",
-                            "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
-                            "default": true
-                        },
-                        "enableSourceMaps": {
-                            "type": "boolean",
-                            "default": true,
-                            "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
-                            "scope": "resource"
-                        },
-                        "packagePort": {
-                            "type": "number",
-                            "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
-                            "default": 80
-                        },
-                        "remotePort": {
-                            "type": "number",
-                            "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
-                            "default": 8060
-                        },
-                        "logfilePath": {
-                            "type": "string",
-                            "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
-                        },
-                        "enableDebugProtocol": {
-                            "type": "boolean",
-                            "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                         }
                     }
                 },
@@ -850,7 +633,8 @@
                 ]
             }
         ],
-        "jsonValidation": [{
+        "jsonValidation": [
+            {
                 "fileMatch": "*bsconfig.json",
                 "url": "./dist/bsconfig.schema.json"
             },
@@ -859,7 +643,8 @@
                 "url": "./dist/bsconfig.schema.json"
             }
         ],
-        "grammars": [{
+        "grammars": [
+            {
                 "language": "brightscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
@@ -870,7 +655,8 @@
                 "path": "./syntaxes/brightscript.tmLanguage.json"
             }
         ],
-        "snippets": [{
+        "snippets": [
+            {
                 "language": "brightscript",
                 "path": "./snippets/brightscript.json"
             },
@@ -1641,7 +1427,8 @@
                 "brightscript.debug.autoRunSgDebugCommands": {
                     "type": "array",
                     "items": {
-                        "anyOf": [{
+                        "anyOf": [
+                            {
                                 "type": "string",
                                 "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
                                 "enum": [
@@ -1722,7 +1509,8 @@
                 }
             }
         },
-        "commands": [{
+        "commands": [
+            {
                 "command": "extension.brightscript.bsprofPause",
                 "title": "bsprof-pause - Pause BS profiling",
                 "category": "Brightscript Debug"
@@ -1997,7 +1785,8 @@
                 "category": "BrightScript"
             }
         ],
-        "keybindings": [{
+        "keybindings": [
+            {
                 "key": "ctrl+shift+v",
                 "command": "brighterscript.showPreview",
                 "when": "editorLangId == brighterscript"

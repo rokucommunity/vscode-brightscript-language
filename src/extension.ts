@@ -316,8 +316,7 @@ export class Extension {
             //     serverDebugLogging: true
             // }
         };
-        const device = new rta.RokuDevice(rtaConfig);
-        return new rta.OnDeviceComponent(device, rtaConfig);
+        return rtaConfig;
     }
 
     private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
