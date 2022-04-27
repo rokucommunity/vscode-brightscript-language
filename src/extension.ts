@@ -329,10 +329,6 @@ export class Extension {
             sendApplicationRedeployed = true;
         }
 
-        if (config.injectRdbOnDeviceComponent) {
-            this.odc = this.setupODC(config);
-        }
-
         for (const viewId in this.rdbViews) {
             const view = this.rdbViews[viewId];
             if (!view.provider) {

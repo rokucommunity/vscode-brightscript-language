@@ -98,9 +98,7 @@ describe('extension', () => {
         let context;
         let originalRdbViews;
         beforeEach(() => {
-            context = {
-                subscriptions: []
-            };
+            context = { ...vscode.context };
             config = {
                 host: '86.75.30.9',
                 password: 'jenny'

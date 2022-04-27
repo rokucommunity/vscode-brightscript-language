@@ -145,7 +145,7 @@
                 numberInputsStep = 15;
                 break;
         }
-	}
+    }
 
     function handleKeyup(event) {
         const key = event.key;
@@ -290,22 +290,11 @@
         font-weight: bold;
         color: white;
         padding-right: 5px;
-        /* user-select: text; */
     }
-
-    /* input, textarea {
-        width: 100%;
-        box-sizing: border-box;
-        background-color: rgb(220, 220, 220 );
-    } */
 
     input[type=number] {
         width: 50px;
     }
-/*
-    input[type=text] {
-        width: 160px;
-    } */
 
     input[type=checkbox] {
         position: relative;
@@ -339,23 +328,6 @@
         font-weight: bold;
         color: white;
     }
-
-    /* .collectionItems input:not([type=number]) {
-        width: auto;
-        display: inline-block;
-    } */
-
-    /* .editableValue {
-        cursor: pointer;
-        text-decoration: underline;
-    }
-
-    .editableValue:focus {
-        background-color: var(--vscode-editor-foreground);
-        padding: 2px 5px;
-        color: var(--vscode-editor-background);
-        text-decoration: none;
-    } */
 
     button {
         cursor: pointer;

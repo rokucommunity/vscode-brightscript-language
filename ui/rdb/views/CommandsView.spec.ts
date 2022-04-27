@@ -59,19 +59,19 @@ describe('CommandsView', () => {
     describe('convertArgs', () => {
         it('should return as an array with the correct count', () => {
             const result = commandsView.convertArgs(requestArgsSchema.definitions.MatchObject, requestArgsSchema);
-            expect(result.length).to.equal(2);
+            expect(result.length).to.equal(6);
         });
 
         it('should work correctly with direct entries', () => {
             const result = commandsView.convertArgs(requestArgsSchema.definitions.MatchObject, requestArgsSchema);
             const refResult = result[1];
-            expect(refResult.id).to.equal('key');
+            expect(refResult.id).to.equal('keyPath');
             expect(refResult.type).to.equal('string');
         });
 
         it('should work correctly ref entries', () => {
             const result = commandsView.convertArgs(requestArgsSchema.definitions.MatchObject, requestArgsSchema);
-            const refResult = result[0];
+            const refResult = result[3];
             expect(refResult.id).to.equal('base');
             expect(refResult.type).to.equal('string');
         });
