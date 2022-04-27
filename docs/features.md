@@ -24,7 +24,7 @@ priority: 2
 - Find usages (Shift+F12)
 - XML goto definition support which navigates to xml component, code behind function, or brs script import (F12)
 - Method signature help (open bracket, or APPLE/Ctrl + SHIFT + SPACE)
-- Roku remote control from keyboard ([click here](#Roku-Remote-Control) for more information)
+- Roku remote control from keyboard ([click here](./Debugging/remote-control-mode.html) for more information)
 - Brightscript output log (which is searchable and can be colorized with a plugin like [IBM.output-colorizer](https://marketplace.visualstudio.com/items?itemName=IBM.output-colorizer)
 - Navigate to source files (by clicking while holding alt key) referenced as `pkg:/` paths from output log, with various output formats.
   - Configure `brightscript.output.hyperlinkFormat` as follows:

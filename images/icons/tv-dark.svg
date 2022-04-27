@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="100mm"
+   height="100mm"
+   viewBox="0 0 100 100"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.2 (b8e25be833, 2022-02-05)"
+   sodipodi:docname="tv-dark.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="true"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="44.547726"
+     inkscape:cy="193.3937"
+     inkscape:window-width="1920"
+     inkscape:window-height="1018"
+     inkscape:window-x="1913"
+     inkscape:window-y="-6"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     width="100mm"
+     inkscape:snap-global="true">
+    <inkscape:grid
+       type="xygrid"
+       id="grid37" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2">
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect1508"
+       is_visible="true"
+       lpeversion="1"
+       satellites_param="F,0,0,1,0,1.0583333,0,5 @ F,0,0,1,0,1.0583333,0,5 @ F,0,0,1,0,1.0583333,0,5 @ F,0,0,1,0,1.0583333,0,5"
+       unit="px"
+       method="auto"
+       mode="F"
+       radius="4"
+       chamfer_steps="5"
+       flexible="false"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       style="fill:#ffffff;fill-opacity:0.02058824;fill-rule:evenodd;stroke:#ffffff;stroke-width:6;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect152"
+       width="95.25"
+       height="58.208336"
+       x="2.6458333"
+       y="15.875"
+       inkscape:path-effect="#path-effect1508"
+       d="m 3.7041666,15.875 93.1333334,0 a 1.0583333,1.0583333 45 0 1 1.058333,1.058333 l 0,56.09167 A 1.0583333,1.0583333 135 0 1 96.8375,74.083336 H 3.7041666 A 1.0583333,1.0583333 45 0 1 2.6458333,73.025003 l 0,-56.09167 A 1.0583333,1.0583333 135 0 1 3.7041666,15.875 Z"
+       sodipodi:type="rect" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:1.73206;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect1372-3"
+       width="47.625004"
+       height="2.6458333"
+       x="26.458332"
+       y="84.666664" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect1372-3-4"
+       width="5.291667"
+       height="7.9375"
+       x="47.625"
+       y="76.729164" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="15.875"
+       y="34.395832"
+       id="text2867"><tspan
+         id="tspan2865"
+         style="stroke-width:0.264583"
+         sodipodi:role="line" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:38.8056px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="26.431742"
+       y="58.717361"
+       id="text13103"><tspan
+         sodipodi:role="line"
+         id="tspan13101"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:38.8056px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;stroke-width:0.264583;fill:#ffffff;fill-opacity:1"
+         x="26.431742"
+         y="58.717361">TV</tspan></text>
+  </g>
+</svg>

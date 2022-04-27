@@ -74,7 +74,10 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             if (this.rendezvousHistory) {
                 // There are no tree view items so we should be creating file tree items
                 return arraySort(Object.keys(this.rendezvousHistory.occurrences).map((key) => {
-                    return new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
+                    let fileTreeItem = new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
+                    fileTreeItem.tooltip = fileTreeItem.key;
+                    fileTreeItem.description = `hitCount: ${fileTreeItem.details.hitCount - fileTreeItem.details.zeroCostHitCount} | totalTime: ${fileTreeItem.details.totalTime.toFixed(3)} s`;
+                    return fileTreeItem;
                 }), this.activeFilter);
             } else {
                 return [];
@@ -86,25 +89,21 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
             let result: RendezvousTreeItem[];
             if (treeElement.type === 'fileInfo') {
                 result = arraySort(Object.keys(treeElement.occurrences).map((key) => {
-                    if (treeElement.occurrences[key].totalTime > 0) {
-                        let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement.occurrences[key];
-                        let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3)} s`;
+                    let { hitCount, totalTime, clientPath, clientLineNumber } = treeElement.occurrences[key];
+                    let label = `line: ${key} | hitCount: ${hitCount} | totalTime: ${totalTime.toFixed(3)} s | average: ${(totalTime / hitCount).toFixed(3)} s`;
 
-                        // create the command used to open the file
-                        let command = {
-                            command: 'RendezvousViewProvider.openFile',
-                            title: 'Open File',
-                            arguments: [({
-                                path: clientPath,
-                                lineNumber: clientLineNumber,
-                                devicePath: element.key
-                            } as FileArgs)]
-                        };
+                    // create the command used to open the file
+                    let command = {
+                        command: 'RendezvousViewProvider.openFile',
+                        title: 'Open File',
+                        arguments: [({
+                            path: clientPath,
+                            lineNumber: clientLineNumber,
+                            devicePath: element.key
+                        } as FileArgs)]
+                    };
 
-                        return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement.occurrences[key], command);
-                    } else {
-                        return undefined;
-                    }
+                    return new RendezvousTreeItem(label, vscode.TreeItemCollapsibleState.None, element, key, treeElement.occurrences[key], command);
                 }), this.activeFilter);
             }
             return result;
@@ -112,7 +111,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     }
 
     /**
-     * Called by VS Code to get a give element.
+     * Called by VS Code to get a given element.
      * Currently we don't modify this element so it is just returned back.
      * @param element the requested element
      */
@@ -251,14 +250,6 @@ class RendezvousFileTreeItem extends vscode.TreeItem {
         public readonly details: any
     ) {
         super(key.split('/').pop(), collapsibleState);
-    }
-
-    get tooltip(): string {
-        return `${this.key}`;
-    }
-
-    get description(): string {
-        return `hitCount: ${this.details.hitCount - this.details.zeroCostHitCount} | totalTime: ${this.details.totalTime.toFixed(3)} s`;
     }
 }
 

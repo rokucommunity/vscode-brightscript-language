@@ -6,6 +6,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.31.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.31.0...v2.31.1) - 2022-04-18
+### Fixed
+ - Unfocus **remote control mode** statusbar item on click ([#384](https://github.com/rokucommunity/vscode-brightscript-language/pull/384))
+ - Add missing **remote control mode** keybinding `Ctrl+Escape`/`Cmd+Escape` for home press ([#383](https://github.com/rokucommunity/vscode-brightscript-language/pull/383))
+ - enable **remote control mode** telemetry tracking
+
+
+## [2.31.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.1...v2.31.0) - 2022-04-14
+### Added
+ - a `BRS` custom view in the Activity Bar ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
+ - new **Remote Control Mode** to handle Roku remote emulation. ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
+ - history tracking of the last 30 unique values sent by the `extension.brightscript.sendRemoteText` command ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
+ - Many missing ECP commands ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
+ - new `extension.brightscript.showReleaseNotes` command accessible via the command pallet
+### Changed
+ - Remove the debug-panel focus-based remote emulation functionality in favor of **Remote Control Mode** ([#375](https://github.com/rokucommunity/vscode-brightscript-language/pull/375))
+ - updated to [brighterscript@0.48.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0481---2022-04-14)
+    - language support for native BrightScript optional chaining ([#546](https://github.com/rokucommunity/brighterscript/pull/546))
+    - validation for all known `createObject` values and parameters. ([#435](https://github.com/rokucommunity/brighterscript/pull/435), [#568](https://github.com/rokucommunity/brighterscript/pull/568))
+    - for plugin authors: 
+        - fixed accuracy issues when parsing the manifest ([#565](https://github.com/rokucommunity/brighterscript/pull/565))
+        - add missing statements and expressions to `createVisitor` ([#567](https://github.com/rokucommunity/brighterscript/pull/567))
+ - updated to [roku-deploy@3.6.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#360---2022-04-13)
+ - updated to [brighterscript-formatter@1.6.12](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1612---2022-04-13)
+ - updated to [roku-debug@0.10.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0105---2022-04-13)
+ - removed the `CreateObject` snippet because it's too aggressive
+### Fixed
+ - bug with `brightscript.deviceDiscovery.includeNonDeveloperDevices` setting not working
+ - bug with `brightscript.deviceDiscovery.enabled` not working properly ([#236](https://github.com/rokucommunity/vscode-brightscript-language/issues/236))
+ - issue where the rendezvous ui commands would show up in the when they shouldn't
+ - Rendezvous timing issue ([#367](https://github.com/rokucommunity/vscode-brightscript-language/issues/367))
+
+
+
 ## [2.30.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.30.0...v2.30.1) - 2022-04-07
 ### Changed
  - updated to [roku-debug@0.10.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0104---2022-04-07)

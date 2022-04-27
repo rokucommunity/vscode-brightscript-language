@@ -5,7 +5,8 @@ import * as http from 'http';
 import * as NodeCache from 'node-cache';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client } from 'node-ssdp';
-import * as url from 'url';
+import { URL } from 'url';
+import { util } from './util';
 import * as vscode from 'vscode';
 
 const DEFAULT_TIMEOUT = 10000;
@@ -28,6 +29,9 @@ export class ActiveDeviceManager extends EventEmitter {
         });
 
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
+        this.deviceCache.on('expired', (deviceId, device) => {
+            this.emit('expiredDevice', deviceId, device);
+        });
         this.processEnabledState();
     }
 
@@ -91,14 +95,15 @@ export class ActiveDeviceManager extends EventEmitter {
             const finder = new RokuFinder();
             const devices: string[] = [];
 
-            finder.on('found', (device) => {
-                if (!devices.includes(device)) {
-                    if (this.showInfoMessages && this.deviceCache.get(device.deviceInfo['device-id']) === undefined) {
+            finder.on('found', (device: RokuDeviceDetails) => {
+                if (!devices.includes(device.id)) {
+                    if (this.showInfoMessages && this.deviceCache.get(device.id) === undefined) {
                         // New device found
                         void vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
                     }
-                    this.deviceCache.set(device.deviceInfo['device-id'], device);
-                    devices.push(device);
+                    this.deviceCache.set(device.id, device);
+                    devices.push(device.id);
+                    this.emit('foundDevice', device.id, device);
                 }
             });
 
@@ -146,12 +151,24 @@ class RokuFinder extends EventEmitter {
                     resp.on('end', () => {
                         // The whole response has been received.
                         let info = xmlParser.parse(data);
-                        const device = this.parseAddress(LOCATION);
+                        for (const key in info['device-info']) {
+                            let value = info['device-info'][key];
+                            if (typeof value === 'string') {
+                                // Clean up the string results to make them more readable
+                                info['device-info'][key] = util.decodeHtmlEntities(value);
+                            }
+                        }
 
                         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-                        let includeNonDeveloperDevices = (config.includeNonDeveloperDevices || {}).includeNonDeveloperDevices;
+                        let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
                         if (includeNonDeveloperDevices || info['device-info']['developer-enabled']) {
-                            device.deviceInfo = info['device-info'];
+                            const url = new URL(LOCATION);
+                            const device: RokuDeviceDetails = {
+                                location: url.origin,
+                                ip: url.hostname,
+                                id: info['device-info']['device-id'],
+                                deviceInfo: info['device-info']
+                            };
                             this.emit('found', device);
                         }
                     });
@@ -188,11 +205,81 @@ class RokuFinder extends EventEmitter {
         this.running = false;
         this.client.stop();
     }
+}
 
-    private parseAddress(location: string): any {
-        const parts = url.parse(location);
-        parts.path = undefined;
-        parts.pathname = undefined;
-        return { location: url.format(parts), ip: parts.hostname, deviceInfo: {} };
-    }
+export interface RokuDeviceDetails {
+    location: string;
+    id: string;
+    ip: string;
+    deviceInfo: {
+        'udn'?: string;
+        'serial-number'?: string;
+        'device-id'?: string;
+        'advertising-id'?: string;
+        'vendor-name'?: string;
+        'model-name'?: string;
+        'model-number'?: string;
+        'model-region'?: string;
+        'is-tv'?: boolean;
+        'is-stick'?: boolean;
+        'ui-resolution'?: string;
+        'supports-ethernet'?: boolean;
+        'wifi-mac'?: string;
+        'wifi-driver'?: string;
+        'has-wifi-extender'?: boolean;
+        'has-wifi-5G-support'?: boolean;
+        'can-use-wifi-extender'?: boolean;
+        'ethernet-mac'?: string;
+        'network-type'?: string;
+        'network-name'?: string;
+        'friendly-device-name'?: string;
+        'friendly-model-name'?: string;
+        'default-device-name'?: string;
+        'user-device-name'?: string;
+        'user-device-location'?: string;
+        'build-number'?: string;
+        'software-version'?: string;
+        'software-build'?: number;
+        'secure-device'?: boolean;
+        'language'?: string;
+        'country'?: string;
+        'locale'?: string;
+        'time-zone-auto'?: boolean;
+        'time-zone'?: string;
+        'time-zone-name'?: string;
+        'time-zone-tz'?: string;
+        'time-zone-offset'?: number;
+        'clock-format'?: string;
+        'uptime'?: number;
+        'power-mode'?: string;
+        'supports-suspend'?: boolean;
+        'supports-find-remote'?: boolean;
+        'find-remote-is-possible'?: boolean;
+        'supports-audio-guide'?: boolean;
+        'supports-rva'?: boolean;
+        'developer-enabled'?: boolean;
+        'keyed-developer-id'?: string;
+        'search-enabled'?: boolean;
+        'search-channels-enabled'?: boolean;
+        'voice-search-enabled'?: boolean;
+        'notifications-enabled'?: boolean;
+        'notifications-first-use'?: boolean;
+        'supports-private-listening'?: boolean;
+        'headphones-connected'?: boolean;
+        'supports-audio-settings'?: boolean;
+        'supports-ecs-textedit'?: boolean;
+        'supports-ecs-microphone'?: boolean;
+        'supports-wake-on-wlan'?: boolean;
+        'supports-airplay'?: boolean;
+        'has-play-on-roku'?: boolean;
+        'has-mobile-screensaver'?: boolean;
+        'support-url'?: string;
+        'grandcentral-version'?: string;
+        'trc-version'?: number;
+        'trc-channel-version'?: string;
+        'davinci-version'?: string;
+        'av-sync-calibration-enabled'?: number;
+        // Anything nre they might add that we do not know about
+        [key: string]: any;
+    };
 }
