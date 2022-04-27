@@ -5,13 +5,11 @@ type ObserverCallback = (message) => void;
 
 class ExtensionIntermediary {
     private inflightRequests = {};
-    private observedEvents = {} as {
-        [key: string]: ObserverCallback[]
-    };
+    private observedEvents = {} as Record<string, ObserverCallback[]>;
     private observed = false;
 
     private setupExtensionMessageObserver() {
-        if(this.observed) {
+        if (this.observed) {
             return;
         }
         this.observed = true;
@@ -47,7 +45,7 @@ class ExtensionIntermediary {
                 } else {
                     resolve(message.response);
                 }
-			};
+            };
             const message = {
                 id: requestId,
                 command: command,
@@ -57,15 +55,15 @@ class ExtensionIntermediary {
             this.inflightRequests[requestId] = {
                 message: message,
                 callback: callback
-            }
-            vscode.postMessage(message);
+            };
+            window.vscode.postMessage(message);
         });
     }
 
     public sendViewReady() {
         this.setupExtensionMessageObserver();
 
-        vscode.postMessage({
+        window.vscode.postMessage({
             command: 'viewReady',
             context: {}
         });
@@ -79,16 +77,17 @@ class ExtensionIntermediary {
         this.observedEvents[name].push(callback);
     }
 
-    private randomStringGenerator(length: number = 7) {
-		const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
-	}
+    private randomStringGenerator(length = 7) {
+        const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        // eslint-disable-next-line no-bitwise
+        return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
+    }
 }
 
 const intermediary = new ExtensionIntermediary();
 
 class ODCIntermediary {
-    public sendOdcMessage<T>(command: string, args?, options?: rta.ODC.RequestOptions){
+    public sendOdcMessage<T>(command: string, args?, options?: rta.ODC.RequestOptions) {
         return intermediary.sendMessage<T>(command, {
             args: args,
             options: options
@@ -156,4 +155,4 @@ const odc = new ODCIntermediary();
 export {
     odc,
     intermediary
-}
+};

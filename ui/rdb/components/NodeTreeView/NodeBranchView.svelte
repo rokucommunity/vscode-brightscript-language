@@ -1,11 +1,9 @@
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
+    import { utils } from '../../utils';
+    import NodeArrow from './NodeArrow.svelte';
     import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
-
-    import NodeArrow from './NodeArrow.svelte';
-
-    const storage = window.localStorage;
 
     export let nodeTree: ODC.NodeTree;
     export let inspectNodeSubtype: string;
@@ -14,12 +12,12 @@
     let self: Element;
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
-    export let expanded = !!storage[expandedStorageKey];
+    export let expanded = utils.getStorageBoolean(expandedStorageKey);
     $:{
         if (expanded) {
-            storage[expandedStorageKey] = '1';
+            utils.setStorageValue(expandedStorageKey, true);
         } else {
-            storage.removeItem(expandedStorageKey);
+            utils.deleteStorageValue(expandedStorageKey);
         }
     }
 

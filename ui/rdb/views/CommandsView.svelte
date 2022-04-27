@@ -1,10 +1,10 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
+
     import {odc, intermediary} from "../ExtensionIntermediary";
     import { commandsView } from "./CommandsView";
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-
-    const storage = window.localStorage;
+    import { utils } from "../utils";
 
     let commandArgs: any[];
     let selectedCommand;
@@ -15,10 +15,10 @@
 
     function onCommandChange() {
         commandArgs = commandsView.convertArgs(selectedCommand.args, requestArgsSchema);
-        storage.previousCommandName = selectedCommand.name;
-        const argValues = storage[`${selectedCommand.name}ArgValues`];
+        utils.setStorageValue('previousCommandName', selectedCommand.name);
+        const argValues = utils.getStorageValue(`${selectedCommand.name}ArgValues`);
         if(argValues) {
-            formArgs = JSON.parse(argValues);
+            formArgs = argValues;
         } else {
             formArgs = {};
         }
@@ -35,7 +35,7 @@
             processedArgs[key] = commandsView.processArgToSendToExtension(argType, argValue);
         }
 
-        storage[`${selectedCommand.name}ArgValues`] = JSON.stringify(argValuesForCommand);
+        utils.setStorageValue(`${selectedCommand.name}ArgValues`, argValuesForCommand);
 
         try {
             const response = await odc.sendOdcMessage(selectedCommand.name, processedArgs);
@@ -54,13 +54,11 @@
         })
     }
 
-    if (!storage.previousCommandName) {
-        storage.previousCommandName = 'getFocusedNode'
-    }
+    let previousCommandName = utils.getStorageValue('previousCommandName', 'getFocusedNode');
 
     // preselect the last used function
     for (const command of commandList) {
-        if (command.name === storage.previousCommandName) {
+        if (command.name === previousCommandName) {
             commandArgs = commandsView.convertArgs(command.args, requestArgsSchema);
             selectedCommand = command;
             onCommandChange();

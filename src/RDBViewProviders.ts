@@ -36,7 +36,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'setValueAtKeyPath',
         'writeRegistry',
         'storeNodeReferences',
-        'deleteNodeReferences',
+        'deleteNodeReferences'
     ];
 
     public dispose() {
@@ -45,7 +45,6 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
 
     public setOnDeviceComponent(odc?: rta.OnDeviceComponent) {
         this.odc = odc;
-        console.log('odc', odc);
 
         this.postMessage({
             name: 'onDeviceComponentStatus',
@@ -53,15 +52,21 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         });
     }
 
+    protected postMessageCore(message) {
+        this.view?.webview.postMessage(message).then(null, (reason) => {
+            console.log('postMessage failed: ', reason);
+        });
+    }
+
     private postQueuedMessages() {
         for (const queuedMessage of this.queuedMessages) {
-            this.view?.webview.postMessage(queuedMessage);
+            this.postMessageCore(queuedMessage);
         }
     }
 
     protected postMessage(message) {
         if (this.viewReady) {
-            this.view?.webview.postMessage(message);
+            this.postMessageCore(message);
         } else {
             this.queuedMessages.push(message);
         }

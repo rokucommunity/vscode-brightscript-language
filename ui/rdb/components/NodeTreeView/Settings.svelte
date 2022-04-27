@@ -1,23 +1,24 @@
 <script lang="ts">
+    import { utils } from "../../utils";
+
     export let showSettings: boolean;
-    const storage = window.localStorage;
 
-    let enableDebugLogging = storage.enableDebugLogging;
+    let enableDebugLogging = utils.getStorageBoolean('enableDebugLogging');
     $: {
-        storage.enableDebugLogging = enableDebugLogging ? '1' : '';
+        utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
 
-    let includeNodeCountInfo = storage.includeNodeCountInfo;
+    let includeNodeCountInfo = utils.getStorageBoolean('includeNodeCountInfo');
     $: {
-        storage.includeNodeCountInfo = includeNodeCountInfo ? '1' : '';
+        utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
     }
 
-    let includeArrayGridChildren = storage.includeArrayGridChildren;
+    let includeArrayGridChildren = utils.getStorageBoolean('includeArrayGridChildren');
     $: {
         if (includeArrayGridChildren) {
             includeNodeCountInfo = true;
         }
-        storage.includeArrayGridChildren = includeArrayGridChildren ? '1' : '';
+        utils.setStorageValue('includeArrayGridChildren', includeArrayGridChildren);
     }
 
     function close() {
@@ -110,7 +111,7 @@
         <li>
             <label for="includeArrayGridChildren">Include ArrayGrid Children:</label>
             <input class="inline" type="checkbox" id="includeArrayGridChildren" bind:checked={includeArrayGridChildren} />
-            <div class="hint">We can get ArrayGrid(RowList,MarkupGrid,etc) children but this has an extra overhead so is disabled by default</div>
+            <div class="hint">We can get ArrayGrid(RowList,MarkupGrid,etc) children in most cases but this has an extra overhead so is disabled by default</div>
         </li>
     </ul>
 </div>
