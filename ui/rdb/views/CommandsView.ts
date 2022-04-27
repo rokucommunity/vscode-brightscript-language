@@ -1,6 +1,11 @@
+import type { Definition } from 'typescript-json-schema';
+
 class CommandsView {
-    public convertArgs(inputArgs, requestArgsSchema) {
+    public convertArgs(inputArgs, requestArgsSchema: Definition) {
         const args = [];
+        if (!inputArgs) {
+            return args;
+        }
         for (const key of inputArgs.propertyOrder) {
             let rawArg = inputArgs.properties[key];
             // Handles references to other definitions in schema
