@@ -266,12 +266,14 @@ export class Extension {
                     host: config.host,
                     password: config.password
                 }]
+            },
+            OnDeviceComponent: {
+                // uncomment for debugging
+                // logLevel: 'verbose',
+                // serverDebugLogging: true,
+                disableTelnet: true,
+                disableCallOriginationLine: true
             }
-            // uncomment for debugging
-            // OnDeviceComponent: {
-            //     logLevel: 'verbose',
-            //     serverDebugLogging: true
-            // }
         };
         return rtaConfig;
     }
