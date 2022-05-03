@@ -69,11 +69,26 @@ describe('CommandsView', () => {
             expect(refResult.type).to.equal('string');
         });
 
-        it('should work correctly ref entries', () => {
+        it('should work correctly with ref entries', () => {
             const result = commandsView.convertArgs(requestArgsSchema.definitions.MatchObject, requestArgsSchema);
             const refResult = result[3];
             expect(refResult.id).to.equal('base');
             expect(refResult.type).to.equal('string');
+        });
+
+        it('should return an empty array if it is missing propertyOrder or properties', () => {
+            let input;
+            input = {
+                propertyOrder: requestArgsSchema.definitions.MatchObject.propertyOrder
+            };
+            let result = commandsView.convertArgs(input, requestArgsSchema);
+            expect(result).to.be.an.instanceOf(Array);
+
+            input = {
+                properties: requestArgsSchema.definitions.MatchObject.properties
+            };
+            result = commandsView.convertArgs(input, requestArgsSchema);
+            expect(result).to.be.an.instanceOf(Array);
         });
     });
 

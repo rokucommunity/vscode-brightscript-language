@@ -1,12 +1,13 @@
 import type { Definition } from 'typescript-json-schema';
+import { utils } from '../utils';
 
 class CommandsView {
     public convertArgs(inputArgs, requestArgsSchema: Definition) {
         const args = [];
-        if (!inputArgs) {
+        if (!utils.isObjectWithProperty(inputArgs, 'propertyOrder') || !utils.isObjectWithProperty(inputArgs, 'properties')) {
             return args;
         }
-        for (const key of inputArgs.propertyOrder) {
+        for (const key of inputArgs.propertyOrder as any) {
             let rawArg = inputArgs.properties[key];
             // Handles references to other definitions in schema
             if (rawArg.$ref) {

@@ -17,13 +17,17 @@ class Utils {
         return obj.hasOwnProperty(prop);
     }
 
+    private getVscodeApi() {
+        return window.vscode;
+    }
+
     private setupStorage() {
         if (this.storage) {
             return;
         }
 
         this.storage = {};
-        const state = window.vscode.getState();
+        const state = this.getVscodeApi().getState();
         if (state) {
             this.storage = JSON.parse(state);
         }
@@ -50,13 +54,13 @@ class Utils {
     public setStorageValue(key: string, value: AllowedStorageTypes) {
         this.setupStorage();
         this.storage[key] = value;
-        window.vscode.setState(JSON.stringify(this.storage));
+        this.getVscodeApi().setState(JSON.stringify(this.storage));
     }
 
     public deleteStorageValue(key: string) {
         this.setupStorage();
         delete this.storage[key];
-        window.vscode.setState(JSON.stringify(this.storage));
+        this.getVscodeApi().setState(JSON.stringify(this.storage));
     }
 }
 
