@@ -19,12 +19,12 @@ export class ActiveDeviceManager extends EventEmitter {
         this.firstRequestForDevices = true;
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.enabled = (config.deviceDiscovery || {}).enabled;
-        this.showInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        this.enabled = config.deviceDiscovery?.enabled;
+        this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.enabled = (config.deviceDiscovery || {}).enabled;
-            this.showInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+            this.enabled = config.deviceDiscovery?.enabled;
+            this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
             this.processEnabledState();
         });
 
