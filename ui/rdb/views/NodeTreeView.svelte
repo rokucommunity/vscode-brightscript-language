@@ -107,14 +107,14 @@
         left: 0;
         z-index: 100;
         height: var(--headerHeight);
-        background-color: #121a21;
+        background-color:  var(--vscode-sideBar-background);
     }
 
     #header button {
         padding: 0 5px;
-        font-size: 12px;
-        color: #FFFFFF;
-        background-color: #121a21;
+        font-size: 15px;
+        color: inherit;
+        background-color: inherit;
         border: none;
         margin: 0;
         cursor: pointer;
@@ -122,19 +122,16 @@
         float: left;
     }
 
-    #header button#settings {
-        font-size: 15px;
-    }
-
-    #header button:hover {
-        background-color: #143758;
+    #header #refresh{
+        font-size: 12px;
+        margin-top:2px;
     }
 
     #nodeTree {
         list-style: none;
         padding: 0;
         margin: var(--headerHeight) 0 0;
-        background-color: #121a21;
+        background-color: inherit;
         user-select: none;
     }
 
@@ -167,13 +164,12 @@
 
     #globalNode {
         cursor: pointer;
-        color: white;
-        background-color: #1b2631;
         padding: 5px 10px;
     }
 
-    #globalNode:hover {
-        background-color: #00509f;
+    #globalNode:hover{
+        color: var(--vscode-list-hoverForeground);
+        background-color: var(--vscode-list-hoverBackground);
     }
 </style>
 
@@ -202,7 +198,7 @@
     {:else}
         <div id="header">
             <button title="Show Focused Node" on:click={showFocusedNode}>{'\u2316'}</button>
-            <button title="Refresh" on:click={refresh}>{'\u27F3'}</button>
+            <button id="refresh" title="Refresh" on:click={refresh}>{'\u27F3'}</button>
             <button id="settings" title="Settings" on:click={openSettings}>{'\u2699'}</button>
             {#if totalNodeCount > 0}
                 <div id="nodeCountDetails">

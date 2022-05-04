@@ -38,7 +38,7 @@
 
 <style>
     #background {
-        background-color: #1b2631;
+        background-color: var(--vscode-sideBar-background);
         position: fixed;
         top: 0;
         left: 0;
@@ -59,7 +59,6 @@
     #header {
         font-weight: bold;
         font-size: large;
-        color: white;
         padding: 0 10px;
         border-bottom: 2px solid rgb(190, 190, 190);
     }
@@ -73,7 +72,6 @@
 
     label {
         font-weight: bold;
-        color: white;
         padding-right: 5px;
     }
 

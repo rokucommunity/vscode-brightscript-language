@@ -207,7 +207,7 @@
 
 <style>
     #background {
-        background-color: var(--vscode-editor-background);
+        background-color: var(--vscode-sideBar-background);
         position: fixed;
         top: 0;
         left: 0;
@@ -226,7 +226,6 @@
     #header {
         font-weight: bold;
         font-size: large;
-        color: white;
         padding: 3px 10px;
         border-bottom: 2px solid rgb(190, 190, 190);
     }
@@ -234,17 +233,11 @@
     button {
         padding: 2px 5px;
         font-size: 12px;
-        color: #FFFFFF;
-        background-color: #121a21;
         border: none;
         margin: 0;
         cursor: pointer;
         outline: none;
         display: inline-block;
-    }
-
-    button:hover {
-        background-color: #143758;
     }
 
     #refresh {
@@ -264,7 +257,6 @@
 
     #childrenTitle {
         font-weight: bold;
-        color: white;
     }
 
     .childItem {
@@ -288,7 +280,6 @@
 
     label {
         font-weight: bold;
-        color: white;
         padding-right: 5px;
     }
 
@@ -326,7 +317,6 @@
 
     .collectionItems .collectionItemId {
         font-weight: bold;
-        color: white;
     }
 
     button {

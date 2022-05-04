@@ -64,21 +64,21 @@
     }
 
     li {
-        color: rgb(190, 190, 190);
         padding: 5px 10px;
+        /* color: var(--vscode-list-activeSelectionForeground); */
+        /* background-color: var(--vscode-list-activeSelectionBackground); */
     }
 
     .nodeName {
-        color: white;
     }
-
+/*
     li:nth-child(odd) {
-        background-color: #1b2631;
+        background-color: inherit;
     }
 
     li:nth-child(even) {
-        background-color: #151e27;
-    }
+        background-color: inherit;
+    } */
 
     .expandable {
         padding-left: 12px;
@@ -95,12 +95,19 @@
         padding-left: 10px;
     }
 
+    li{
+        border: 1px solid transparent;
+    }
+
     li.selected {
-        background-color: #194470;
+        background-color: inherit;
+        background-color: var(--vscode-list-activeSelection);
+        color: var(--vscode-list-activeSelectionForeground);
     }
 
     li:hover {
-        background-color: #00509f;
+        color: var(--vscode-list-hoverForeground);
+        background-color: var(--vscode-list-hoverBackground);
     }
 </style>
 <li bind:this={self} class:selected>
