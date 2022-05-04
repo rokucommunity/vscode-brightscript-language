@@ -101,8 +101,7 @@
     }
 
     li.selected {
-        background-color: inherit;
-        background-color: var(--vscode-list-activeSelection);
+        background-color: var(--vscode-list-activeSelectionBackground);
         color: var(--vscode-list-activeSelectionForeground);
     }
 
