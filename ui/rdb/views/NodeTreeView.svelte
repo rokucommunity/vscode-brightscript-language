@@ -189,7 +189,7 @@
         <div id="errorHelp">
             If you are seeing this, please make sure you have the on device component running. This requires that both the files are included in the build and that the component is initialized. The easiest way to do this is:
             <ul>
-                <li>Include the following comment in either your Scene or main.brs file<br><span class="codeSnippet">' vscode_rdb_on_device_component_entry</span></li>
+                <li>Include the following comment in either your Scene or main.brs file (if including in main.brs, be sure to add after your roSGScreen screen.show() call)<br><span class="codeSnippet">' vscode_rdb_on_device_component_entry</span><br></li>
                 <li>Make sure your launch.json configuration has<br><span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
             </ul>
             The extension can copy the files automatically for you so there's no need to handle that part. If you are still having issues even with these steps, check to make sure you're seeing this line in your device logs <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
