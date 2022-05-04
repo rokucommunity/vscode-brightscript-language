@@ -61,9 +61,9 @@
 
 <style>
     li {
-        padding: 5px 0px;
+        padding: 5px 10px;
         position: relative;
-        border: 0 solid var(--vscode-tree-indentGuidesStroke);
+        /* border: 0 solid var(--vscode-tree-indentGuidesStroke); */
         border-left-width: 1px;
     }
 
@@ -75,6 +75,9 @@
         bottom: -5px;
         display: none;
         padding-right: 5px;
+        display: none;
+        align-items: center;
+        justify-content: center;
     }
 
     .hide {
@@ -108,20 +111,7 @@
     }
 
     li:hover .actions {
-        display: block;
-    }
-    .actions .button {
-        cursor: pointer;
-        padding: 2px;
-        display: inline-block;
-        min-width: 10px;
-        min-height: 10px;
-        margin-top: 2px;
-    }
-
-    .actions .button:hover {
-        background-color: var(--vscode-toolbar-hoverBackground);
-        border-radius: 5px;
+        display: flex;
     }
 
 </style>
@@ -132,7 +122,7 @@
     <div class:expandable={hasChildren} id="itemContainer">
         <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
         <div class="actions">
-            <span title="Edit" class="button" on:click={openNode}>
+            <span title="Edit" class="icon-button" on:click={openNode}>
                 <Edit />
             </span>
         </div>

@@ -8,7 +8,9 @@
     import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
     import NodeDetailView from '../components/NodeTreeView/NodeDetailView.svelte';
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-
+    import SettingsGear from "svelte-codicons/lib/SettingsGear.svelte";
+    import Issues from "svelte-codicons/lib/Issues.svelte";
+    import Refresh from "svelte-codicons/lib/Refresh.svelte";
 
     window.vscode = acquireVsCodeApi();
 
@@ -109,23 +111,6 @@
         background-color:  var(--vscode-sideBar-background);
     }
 
-    #header button {
-        padding: 0 5px;
-        font-size: 15px;
-        color: inherit;
-        background-color: inherit;
-        border: none;
-        margin: 0;
-        cursor: pointer;
-        outline: none;
-        float: left;
-    }
-
-    #header #refresh{
-        font-size: 12px;
-        margin-top:2px;
-    }
-
     #nodeTree {
         list-style: none;
         padding: 0;
@@ -196,9 +181,15 @@
         </div>
     {:else}
         <div id="header">
-            <button title="Show Focused Node" on:click={showFocusedNode}>{'\u2316'}</button>
-            <button id="refresh" title="Refresh" on:click={refresh}>{'\u27F3'}</button>
-            <button id="settings" title="Settings" on:click={openSettings}>{'\u2699'}</button>
+            <span class="icon-button" title="Show Focused Node" on:click={showFocusedNode}>
+                <Issues />
+            </span>
+            <span class="icon-button" title="Refresh" on:click={refresh}>
+                <Refresh />
+            </span>
+            <span class="icon-button" title="Settings" on:click={openSettings}>
+                <SettingsGear />
+            </span>
             {#if totalNodeCount > 0}
                 <div id="nodeCountDetails">
                     Nodes: <span id="nodeCountNumber" on:click={openNodeCountByType}>{totalNodeCount}</span>
