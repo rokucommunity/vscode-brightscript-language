@@ -86,6 +86,7 @@
 
     #itemContainer {
         cursor: pointer;
+        position: relative;
     }
 
     ul {
@@ -102,13 +103,42 @@
     li:hover {
         background-color: #00509f;
     }
+
+    .buttonContainer {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        margin-top: -8px;
+        display: none;
+    }
+
+    li:hover .buttonContainer {
+        display: block;
+    }
+
+    .buttonContainer button {
+        cursor: pointer;
+        border-radius: 25%;
+        color: #FFFFFF;
+        background-color: #121a21;
+        border: none;
+        padding: 1px 10px;
+        opacity: 0.85;
+    }
+
+    .buttonContainer button:hover {
+        background-color: #143758;
+    }
 </style>
-<li bind:this={self} class:selected>
+<li bind:this={self} class:selected on:click={toggleExpand}>
     {#if hasChildren}
-        <NodeArrow {expanded} on:click={toggleExpand} />
+        <NodeArrow {expanded} />
     {/if}
-    <div class:expandable={hasChildren} id="itemContainer" on:click={openNode} >
+    <div class:expandable={hasChildren} id="itemContainer">
         <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+        <div class="buttonContainer">
+            <button title="Info" class="info" on:click={openNode}>i</button>
+        </div>
     </div>
 </li>
 <ul class:hide={!expanded}>
