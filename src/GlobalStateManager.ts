@@ -19,7 +19,7 @@ export class GlobalStateManager {
     private updateFromVsCodeConfiguration() {
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.remoteTextHistoryLimit = (config.sendRemoteTextHistory || { limit: 30 }).limit;
-        this.remoteTextHistoryEnabled = (config.sendRemoteTextHistory || {}).enabled;
+        this.remoteTextHistoryEnabled = config.sendRemoteTextHistory?.enabled;
     }
 
     public get lastRunExtensionVersion() {

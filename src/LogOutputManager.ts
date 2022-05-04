@@ -118,11 +118,11 @@ export class LogOutputManager {
 
     private loadConfigSettings() {
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.includeStackTraces = (config.output || {}).includeStackTraces;
+        this.includeStackTraces = config.output?.includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
         this.isClearingConsoleOnChannelStart = config?.output?.clearConsoleOnChannelStart === false ? false : true;
-        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+        this.hyperlinkFormat = config.output?.hyperlinkFormat;
     }
 
     public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
