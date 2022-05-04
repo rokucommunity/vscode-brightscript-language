@@ -4,7 +4,7 @@
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
-    import NodeArrow from './NodeArrow.svelte';
+    import Chevron from '../Common/Chevron.svelte';
 
     export let inspectNodeSubtype: string;
     export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
@@ -343,7 +343,8 @@
 
 {#if children.length > 0}
     <div id="childrenContainer">
-        <NodeArrow expanded={childrenExpanded} on:click={toggleChildrenExpanded} /> <div id="childrenTitle">children ({children.length})</div>
+        <Chevron expanded={childrenExpanded} on:click={toggleChildrenExpanded} />
+        <div id="childrenTitle">children ({children.length})</div>
         <div style="clear: both" />
         <div class:hide={!childrenExpanded}>
             {#each children as child, i}

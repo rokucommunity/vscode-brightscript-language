@@ -1,8 +1,9 @@
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
     import { utils } from '../../utils';
-    import NodeArrow from './NodeArrow.svelte';
     import { createEventDispatcher } from 'svelte';
+    import Edit from "svelte-codicons/lib/Edit.svelte";
+    import Chevron from '../Common/Chevron.svelte';
     const dispatch = createEventDispatcher();
 
     export let nodeTree: ODC.NodeTree;
@@ -59,26 +60,26 @@
 </script>
 
 <style>
+    li {
+        padding: 5px 0px;
+        position: relative;
+        border: 0 solid var(--vscode-tree-indentGuidesStroke);
+        border-left-width: 1px;
+    }
+
+    .actions {
+        position: absolute;
+        right: 0;
+        /* keep these in sync with the <li> padding above */
+        top: -5px;
+        bottom: -5px;
+        display: none;
+        padding-right: 5px;
+    }
+
     .hide {
         display: none;
     }
-
-    li {
-        padding: 5px 10px;
-        /* color: var(--vscode-list-activeSelectionForeground); */
-        /* background-color: var(--vscode-list-activeSelectionBackground); */
-    }
-
-    .nodeName {
-    }
-/*
-    li:nth-child(odd) {
-        background-color: inherit;
-    }
-
-    li:nth-child(even) {
-        background-color: inherit;
-    } */
 
     .expandable {
         padding-left: 12px;
@@ -96,10 +97,6 @@
         padding-left: 10px;
     }
 
-    li{
-        border: 1px solid transparent;
-    }
-
     li.selected {
         background-color: var(--vscode-list-activeSelectionBackground);
         color: var(--vscode-list-activeSelectionForeground);
@@ -110,40 +107,34 @@
         background-color: var(--vscode-list-hoverBackground);
     }
 
-    .buttonContainer {
-        position: absolute;
-        right: 0;
-        top: 50%;
-        margin-top: -8px;
-        display: none;
-    }
-
-    li:hover .buttonContainer {
+    li:hover .actions {
         display: block;
     }
-
-    .buttonContainer button {
+    .actions .button {
         cursor: pointer;
-        border-radius: 25%;
-        color: #FFFFFF;
-        background-color: #121a21;
-        border: none;
-        padding: 1px 10px;
-        opacity: 0.85;
+        padding: 2px;
+        display: inline-block;
+        min-width: 10px;
+        min-height: 10px;
+        margin-top: 2px;
     }
 
-    .buttonContainer button:hover {
-        background-color: #143758;
+    .actions .button:hover {
+        background-color: var(--vscode-toolbar-hoverBackground);
+        border-radius: 5px;
     }
+
 </style>
 <li bind:this={self} class:selected on:click={toggleExpand}>
     {#if hasChildren}
-        <NodeArrow {expanded} />
+        <Chevron {expanded} />
     {/if}
     <div class:expandable={hasChildren} id="itemContainer">
         <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
-        <div class="buttonContainer">
-            <button title="Info" class="info" on:click={openNode}>i</button>
+        <div class="actions">
+            <span title="Edit" class="button" on:click={openNode}>
+                <Edit />
+            </span>
         </div>
     </div>
 </li>

@@ -1,7 +1,6 @@
 <script lang="ts">
     import type {ODC} from 'roku-test-automation';
     import {odc, intermediary} from "../ExtensionIntermediary";
-
     import Settings from "../components/NodeTreeView/Settings.svelte";
     import Loader from "../components/Common/Loader.svelte";
     import { utils } from '../utils';
