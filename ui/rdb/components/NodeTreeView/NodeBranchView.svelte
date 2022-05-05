@@ -2,9 +2,9 @@
     import type { ODC } from 'roku-test-automation';
     import { utils } from '../../utils';
     import { createEventDispatcher } from 'svelte';
-    import Edit from "svelte-codicons/lib/Edit.svelte";
+    import Edit from 'svelte-codicons/lib/Edit.svelte';
     import Chevron from '../Common/Chevron.svelte';
-    import DebugBreakpointDataUnverified from "svelte-codicons/lib/DebugBreakpointDataUnverified.svelte";
+    import DebugBreakpointDataUnverified from 'svelte-codicons/lib/DebugBreakpointDataUnverified.svelte';
     const dispatch = createEventDispatcher();
 
     export let nodeTree: ODC.NodeTree;
@@ -13,7 +13,7 @@
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
     export let expanded = utils.getStorageBoolean(expandedStorageKey);
-    $:{
+    $: {
         if (expanded) {
             utils.setStorageValue(expandedStorageKey, true);
         } else {
@@ -23,11 +23,14 @@
 
     let selected = false;
     export let focusedNode = -1;
-    $:{
+    $: {
         if (nodeTree.ref === focusedNode) {
             selected = true;
             if (self) {
-                document.documentElement.scrollTo(self.getBoundingClientRect().left, self.getBoundingClientRect().top);
+                document.documentElement.scrollTo(
+                    self.getBoundingClientRect().left,
+                    self.getBoundingClientRect().top
+                );
             }
             dispatch('childExpanded');
         } else {
@@ -35,7 +38,7 @@
         }
     }
 
-    $:hasChildren = nodeTree.children.length > 0;
+    $: hasChildren = nodeTree.children.length > 0;
 
     function toggleExpand() {
         if (!hasChildren) {
@@ -49,7 +52,7 @@
     }
 
     function onChildExpanded() {
-        expanded = true
+        expanded = true;
         dispatch('childExpanded');
     }
 </script>
@@ -61,7 +64,7 @@
         padding-left: var(--leftGutterPadding);
         cursor: pointer;
         height: 100%;
-        display:flex;
+        display: flex;
     }
 
     .self.selected {
@@ -74,7 +77,7 @@
         background-color: var(--vscode-list-hoverBackground);
     }
 
-    .children{
+    .children {
         position: relative;
     }
 
@@ -95,7 +98,7 @@
         vertical-align: middle;
     }
 
-    .nodeName{
+    .nodeName {
         display: inline-block;
         vertical-align: middle;
     }
@@ -106,26 +109,34 @@
         margin-left: 4px;
         padding-left: 3px;
         border-left: 1px solid var(--vscode-tree-indentGuidesStroke);
-        opacity: .4;
+        opacity: 0.4;
     }
-    .content{
+    .content {
         display: flex;
         padding: 4px 0px;
     }
 </style>
-<div class="self" bind:this={self} class:selected on:click|stopPropagation ={toggleExpand}>
-    {#each {length: depth ?? 0} as _, i}
+
+<div
+    class="self"
+    bind:this={self}
+    class:selected
+    on:click|stopPropagation={toggleExpand}>
+    {#each { length: depth ?? 0 } as _, i}
         <span class="indent-guide">&nbsp;</span>
     {/each}
     <div class="content">
         <span class="item-icon">
             {#if hasChildren}
-                <Chevron {expanded} />
+                <Chevron expanded={expanded} />
             {:else}
                 <DebugBreakpointDataUnverified style="opacity: .2" />
             {/if}
         </span>
-        <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+        <span class="nodeName">
+            {nodeTree.subtype}
+        </span>
+        {#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
     </div>
     <div class="actions">
         <span title="Edit" class="icon-button" on:click={open}>
@@ -135,6 +146,11 @@
 </div>
 <div class="children" class:hide={!expanded}>
     {#each nodeTree.children as nodeTree}
-        <svelte:self on:open on:childExpanded={onChildExpanded} depth={depth + 1} {nodeTree} {focusedNode}/>
+        <svelte:self
+            on:open
+            on:childExpanded={onChildExpanded}
+            depth={depth + 1}
+            nodeTree={nodeTree}
+            focusedNode={focusedNode} />
     {/each}
 </div>

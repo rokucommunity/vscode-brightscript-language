@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { utils } from "../../utils";
+    import { utils } from '../../utils';
 
     export let showSettings: boolean;
 
@@ -13,12 +13,17 @@
         utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
     }
 
-    let includeArrayGridChildren = utils.getStorageBoolean('includeArrayGridChildren');
+    let includeArrayGridChildren = utils.getStorageBoolean(
+        'includeArrayGridChildren'
+    );
     $: {
         if (includeArrayGridChildren) {
             includeNodeCountInfo = true;
         }
-        utils.setStorageValue('includeArrayGridChildren', includeArrayGridChildren);
+        utils.setStorageValue(
+            'includeArrayGridChildren',
+            includeArrayGridChildren
+        );
     }
 
     function close() {
@@ -33,7 +38,7 @@
                 close();
                 break;
         }
-	}
+    }
 </script>
 
 <style>
@@ -89,6 +94,7 @@
         font-size: 9px;
     }
 </style>
+
 <svelte:window on:keydown={handleKeydown} />
 <div id="background" />
 <div id="container">
@@ -99,17 +105,36 @@
     <ul>
         <li>
             <label for="enableDebugLogging">Enable Debug Logging:</label>
-            <input class="inline" type="checkbox" id="enableDebugLogging" bind:checked={enableDebugLogging} />
+            <input
+                class="inline"
+                type="checkbox"
+                id="enableDebugLogging"
+                bind:checked={enableDebugLogging} />
         </li>
         <li>
             <label for="includeNodeCountInfo">Include Node Count:</label>
-            <input class="inline" type="checkbox" id="includeNodeCountInfo" bind:checked={includeNodeCountInfo} />
-            <div class="hint">We can get total and type based count info but this has some overhead so is disabled by default</div>
+            <input
+                class="inline"
+                type="checkbox"
+                id="includeNodeCountInfo"
+                bind:checked={includeNodeCountInfo} />
+            <div class="hint">
+                We can get total and type based count info but this has some
+                overhead so is disabled by default
+            </div>
         </li>
         <li>
-            <label for="includeArrayGridChildren">Include ArrayGrid Children:</label>
-            <input class="inline" type="checkbox" id="includeArrayGridChildren" bind:checked={includeArrayGridChildren} />
-            <div class="hint">We can get ArrayGrid(RowList,MarkupGrid,etc) children in most cases but this has an extra overhead so is disabled by default</div>
+            <label for="includeArrayGridChildren"
+                >Include ArrayGrid Children:</label>
+            <input
+                class="inline"
+                type="checkbox"
+                id="includeArrayGridChildren"
+                bind:checked={includeArrayGridChildren} />
+            <div class="hint">
+                We can get ArrayGrid(RowList,MarkupGrid,etc) children in most
+                cases but this has an extra overhead so is disabled by default
+            </div>
         </li>
     </ul>
 </div>

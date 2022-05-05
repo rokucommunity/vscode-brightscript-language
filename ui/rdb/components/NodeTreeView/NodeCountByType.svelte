@@ -1,7 +1,7 @@
 <script lang="ts">
     export let showNodeCountByType: boolean;
     export let nodeCountByType = {} as {
-        [key: string]: number
+        [key: string]: number;
     };
     function close() {
         showNodeCountByType = false;
@@ -15,7 +15,7 @@
                 close();
                 break;
         }
-	}
+    }
 </script>
 
 <style>
@@ -67,6 +67,7 @@
         padding: 0 5px 10px;
     }
 </style>
+
 <svelte:window on:keydown={handleKeydown} />
 <div id="container">
     <div id="background" />
@@ -78,7 +79,8 @@
     <ul>
         {#each Object.entries(nodeCountByType) as [key, value]}
             <li>
-                <strong>{key}:</strong> {value}
+                <strong>{key}:</strong>
+                {value}
             </li>
         {/each}
     </ul>
