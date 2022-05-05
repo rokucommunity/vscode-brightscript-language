@@ -4,13 +4,12 @@
     import { createEventDispatcher } from 'svelte';
     import Edit from "svelte-codicons/lib/Edit.svelte";
     import Chevron from '../Common/Chevron.svelte';
+    import DebugBreakpointDataUnverified from "svelte-codicons/lib/DebugBreakpointDataUnverified.svelte";
     const dispatch = createEventDispatcher();
 
     export let nodeTree: ODC.NodeTree;
-    export let inspectNodeSubtype: string;
-    export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
-
-    let self: Element;
+    export let depth = 0;
+    let self: HTMLDivElement;
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
     export let expanded = utils.getStorageBoolean(expandedStorageKey);
@@ -45,12 +44,8 @@
         expanded = !expanded;
     }
 
-    function openNode() {
-        inspectNodeBaseKeyPath = {
-            base: 'nodeRef',
-            keyPath: `${nodeTree.ref}`
-        }
-        inspectNodeSubtype = nodeTree.subtype;
+    function open() {
+        dispatch('open', nodeTree);
     }
 
     function onChildExpanded() {
@@ -60,76 +55,86 @@
 </script>
 
 <style>
-    li {
-        padding: 5px 10px;
+    .self {
+        --leftGutterPadding: 15px;
         position: relative;
-        /* border: 0 solid var(--vscode-tree-indentGuidesStroke); */
-        border-left-width: 1px;
-    }
-
-    .actions {
-        position: absolute;
-        right: 0;
-        /* keep these in sync with the <li> padding above */
-        top: -5px;
-        bottom: -5px;
-        display: none;
-        padding-right: 5px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .hide {
-        display: none;
-    }
-
-    .expandable {
-        padding-left: 12px;
-    }
-
-    #itemContainer {
+        padding-left: var(--leftGutterPadding);
         cursor: pointer;
-        position: relative;
+        height: 100%;
+        display:flex;
     }
 
-    ul {
-        margin: 0;
-        list-style: none;
-        padding: 0;
-        padding-left: 10px;
-    }
-
-    li.selected {
+    .self.selected {
         background-color: var(--vscode-list-activeSelectionBackground);
         color: var(--vscode-list-activeSelectionForeground);
     }
 
-    li:hover {
+    .self:hover {
         color: var(--vscode-list-hoverForeground);
         background-color: var(--vscode-list-hoverBackground);
     }
 
-    li:hover .actions {
+    .children{
+        position: relative;
+    }
+
+    .self:hover .actions {
         display: flex;
     }
 
+    .actions {
+        position: absolute;
+        right: 5px;
+        display: none;
+        height: 100%;
+        align-items: center;
+    }
+
+    .item-icon {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .nodeName{
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .indent-guide {
+        display: inline-block;
+        box-sizing: border-box;
+        margin-left: 4px;
+        padding-left: 3px;
+        border-left: 1px solid var(--vscode-tree-indentGuidesStroke);
+        opacity: .4;
+    }
+    .content{
+        display: flex;
+        padding: 4px 0px;
+    }
 </style>
-<li bind:this={self} class:selected on:click={toggleExpand}>
-    {#if hasChildren}
-        <Chevron {expanded} />
-    {/if}
-    <div class:expandable={hasChildren} id="itemContainer">
-        <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
-        <div class="actions">
-            <span title="Edit" class="icon-button" on:click={openNode}>
-                <Edit />
-            </span>
-        </div>
-    </div>
-</li>
-<ul class:hide={!expanded}>
-    {#each nodeTree.children as nodeTree}
-        <svelte:self on:childExpanded={onChildExpanded} {nodeTree} {focusedNode} bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} bind:inspectNodeSubtype={inspectNodeSubtype} />
+<div class="self" bind:this={self} class:selected on:click|stopPropagation ={toggleExpand}>
+    {#each {length: depth ?? 0} as _, i}
+        <span class="indent-guide">&nbsp;</span>
     {/each}
-</ul>
+    <div class="content">
+        <span class="item-icon">
+            {#if hasChildren}
+                <Chevron {expanded} />
+            {:else}
+                <DebugBreakpointDataUnverified style="opacity: .2" />
+            {/if}
+        </span>
+        <span class="nodeName">{nodeTree.subtype}</span>{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+    </div>
+    <div class="actions">
+        <span title="Edit" class="icon-button" on:click={open}>
+            <Edit />
+        </span>
+    </div>
+</div>
+<div class="children" class:hide={!expanded}>
+    {#each nodeTree.children as nodeTree}
+        <svelte:self on:open on:childExpanded={onChildExpanded} depth={depth + 1} {nodeTree} {focusedNode}/>
+    {/each}
+</div>

@@ -13,9 +13,8 @@
     import Refresh from "svelte-codicons/lib/Refresh.svelte";
 
     window.vscode = acquireVsCodeApi();
-
     let loading = true;
-    let error;
+    let error: Error | null;
     let showSettings = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
@@ -25,6 +24,18 @@
         [key: string]: number
     };
     let rootTree = [] as ODC.NodeTree[];
+
+    const globalNode = {
+        id: '',
+        subtype: 'Global',
+        /** This is the reference to the index it was stored at that we can use in later calls. If -1 we don't have one. */
+        ref: -1,
+        /** Same as ref but for the parent  */
+        parentRef: -1,
+        /** Used to determine the position of this node in its parent if applicable */
+        position: 0,
+        children: []
+    }
 
     let focusedNode = -1;
 
@@ -44,8 +55,10 @@
                 includeArrayGridChildren: !!window.localStorage.includeArrayGridChildren
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
-
             rootTree = result.rootTree;
+            //insert the global node to the top of the rootNodes list
+            rootTree.unshift(globalNode);
+
             totalNodeCount = result.totalNodes ?? 0;
             nodeCountByType = result.nodeCountByType;
             error = null;
@@ -72,13 +85,6 @@
         showNodeCountByType = true;
     }
 
-    function globalClicked() {
-        inspectNodeBaseKeyPath = {
-            keyPath: ''
-        }
-        inspectNodeSubtype = 'Global';
-    }
-
     let odcAvailable = true;
     $: {
         if (odcAvailable) {
@@ -94,11 +100,32 @@
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
+
+    function openNode(event: CustomEvent<ODC.NodeTree>) {
+        const node = event.detail;
+        console.log('Edit node: ', node);
+        //if the global node was clicked
+        if(node === globalNode){
+            inspectNodeBaseKeyPath = {
+                keyPath: ''
+            };
+            inspectNodeSubtype = 'Global';
+        } else {
+            inspectNodeBaseKeyPath = {
+                base: 'nodeRef',
+                keyPath: `${node.ref}`
+            };
+            inspectNodeSubtype = node.subtype;
+        }
+    }
 </script>
 
 <style>
     #container {
-        --headerHeight: 18px;
+        --headerHeight: 30px;
+        width: 100%;
+        height: 100%;
+        overflow: scroll;
     }
 
     #header {
@@ -106,17 +133,24 @@
         top: 0;
         right: 0;
         left: 0;
-        z-index: 100;
+        z-index: 1;
         height: var(--headerHeight);
-        background-color:  var(--vscode-sideBar-background);
+        display: flex;
+        align-items: center;
+        background-color: var(--vscode-sideBar-background);
+        box-shadow: rgb(0 0 0 / 36%) 0px 0px 8px 2px
     }
 
     #nodeTree {
-        list-style: none;
         padding: 0;
-        margin: var(--headerHeight) 0 0;
+        position:relative;
+        top: calc(var(--headerHeight) + 5px);
+        left: 0;
+        right: 0;
+        bottom: 0;
         background-color: inherit;
         user-select: none;
+        overflow: auto;
     }
 
     #errorMessage {
@@ -136,7 +170,6 @@
 
     #nodeCountDetails {
         display: inline-block;
-
         padding-left: 10px;
     }
 
@@ -144,16 +177,6 @@
         color: #FFFFFF;
         text-decoration: underline;
         cursor: pointer;
-    }
-
-    #globalNode {
-        cursor: pointer;
-        padding: 5px 10px;
-    }
-
-    #globalNode:hover{
-        color: var(--vscode-list-hoverForeground);
-        background-color: var(--vscode-list-hoverBackground);
     }
 </style>
 
@@ -181,6 +204,7 @@
         </div>
     {:else}
         <div id="header">
+            <div id="drop-shadow-blocker"></div>
             <span class="icon-button" title="Show Focused Node" on:click={showFocusedNode}>
                 <Issues />
             </span>
@@ -197,10 +221,11 @@
             {/if}
         </div>
 
-        <ul id="nodeTree">
-            <li id="globalNode" on:click={globalClicked}>Global Node</li>
-            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={rootTree[0]} bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} bind:inspectNodeSubtype={inspectNodeSubtype} expanded={true} />
-        </ul>
+        <div id="nodeTree">
+            {#each rootTree as rootNode}
+                <NodeBranchView on:open={openNode} bind:focusedNode={focusedNode} nodeTree={rootNode} expanded={true} />
+            {/each}
+        </div>
     {/if}
     {#if inspectNodeBaseKeyPath}
         <NodeDetailView bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} inspectNodeSubtype={inspectNodeSubtype} />
