@@ -53,11 +53,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         };
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        this.showDeviceInfoMessages = config.deviceDiscovery?.showInfoMessages;
 
         vscode.workspace.onDidChangeConfiguration((e) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+            this.showDeviceInfoMessages = config.deviceDiscovery?.showInfoMessages;
         });
     }
 

@@ -20,6 +20,7 @@ module.exports = {
         'plugin:@typescript-eslint/all'
     ],
     rules: {
+        '@typescript-eslint/parameter-properties': 'off',
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/consistent-type-assertions': 'off',
         '@typescript-eslint/explicit-function-return-type': 'off',
