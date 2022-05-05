@@ -1,29 +1,39 @@
 <script lang="ts">
-    import type {ODC} from 'roku-test-automation';
-    import {odc, intermediary} from "../ExtensionIntermediary";
-
-    import Settings from "../components/NodeTreeView/Settings.svelte";
-    import Loader from "../components/Common/Loader.svelte";
+    import type { ODC } from 'roku-test-automation';
+    import { odc, intermediary } from '../ExtensionIntermediary';
+    import Settings from '../components/NodeTreeView/Settings.svelte';
+    import Loader from '../components/Common/Loader.svelte';
     import { utils } from '../utils';
     import NodeCountByType from '../components/NodeTreeView/NodeCountByType.svelte';
-    import NodeBranchView from "../components/NodeTreeView/NodeBranchView.svelte";
+    import NodeBranchView from '../components/NodeTreeView/NodeBranchView.svelte';
     import NodeDetailView from '../components/NodeTreeView/NodeDetailView.svelte';
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-
+    import SettingsGear from 'svelte-codicons/lib/SettingsGear.svelte';
+    import Issues from 'svelte-codicons/lib/Issues.svelte';
+    import Refresh from 'svelte-codicons/lib/Refresh.svelte';
 
     window.vscode = acquireVsCodeApi();
-
     let loading = true;
-    let error;
+    let error: Error | null;
     let showSettings = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
     let totalNodeCount = 0;
     let showNodeCountByType = false;
-    let nodeCountByType = {} as {
-        [key: string]: number
-    };
+    let nodeCountByType = {} as Record<string, number>;
     let rootTree = [] as ODC.NodeTree[];
+
+    const globalNode = {
+        id: '',
+        subtype: 'Global',
+        /** This is the reference to the index it was stored at that we can use in later calls. If -1 we don't have one. */
+        ref: -1,
+        /** Same as ref but for the parent  */
+        parentRef: -1,
+        /** Used to determine the position of this node in its parent if applicable */
+        position: 0,
+        children: []
+    };
 
     let focusedNode = -1;
 
@@ -39,12 +49,16 @@
 
         try {
             const result = await odc.storeNodeReferences({
-                includeNodeCountInfo: !!window.localStorage.includeNodeCountInfo,
-                includeArrayGridChildren: !!window.localStorage.includeArrayGridChildren
+                includeNodeCountInfo:
+                    !!window.localStorage.includeNodeCountInfo,
+                includeArrayGridChildren:
+                    !!window.localStorage.includeArrayGridChildren
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
-
             rootTree = result.rootTree;
+            //insert the global node to the top of the rootNodes list
+            rootTree.unshift(globalNode);
+
             totalNodeCount = result.totalNodes ?? 0;
             nodeCountByType = result.nodeCountByType;
             error = null;
@@ -59,7 +73,7 @@
         await refresh();
         // Won't fire again if the value didn't actually change so it won't expand the children out without this
         focusedNode = -1;
-        const {ref} = await odc.getFocusedNode({includeRef: true});
+        const { ref } = await odc.getFocusedNode({ includeRef: true });
         focusedNode = ref;
     }
 
@@ -69,13 +83,6 @@
 
     function openNodeCountByType() {
         showNodeCountByType = true;
-    }
-
-    function globalClicked() {
-        inspectNodeBaseKeyPath = {
-            keyPath: ''
-        }
-        inspectNodeSubtype = 'Global';
     }
 
     let odcAvailable = true;
@@ -93,11 +100,32 @@
 
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
+
+    function openNode(event: CustomEvent<ODC.NodeTree>) {
+        const node = event.detail;
+        console.log('Edit node: ', node);
+        //if the global node was clicked
+        if (node === globalNode) {
+            inspectNodeBaseKeyPath = {
+                keyPath: ''
+            };
+            inspectNodeSubtype = 'Global';
+        } else {
+            inspectNodeBaseKeyPath = {
+                base: 'nodeRef',
+                keyPath: `${node.ref}`
+            };
+            inspectNodeSubtype = node.subtype;
+        }
+    }
 </script>
 
 <style>
     #container {
-        --headerHeight: 18px;
+        --headerHeight: 30px;
+        width: 100%;
+        height: 100%;
+        overflow: scroll;
     }
 
     #header {
@@ -105,34 +133,24 @@
         top: 0;
         right: 0;
         left: 0;
-        z-index: 100;
+        z-index: 1;
         height: var(--headerHeight);
-        background-color:  var(--vscode-sideBar-background);
-    }
-
-    #header button {
-        padding: 0 5px;
-        font-size: 15px;
-        color: inherit;
-        background-color: inherit;
-        border: none;
-        margin: 0;
-        cursor: pointer;
-        outline: none;
-        float: left;
-    }
-
-    #header #refresh{
-        font-size: 12px;
-        margin-top:2px;
+        display: flex;
+        align-items: center;
+        background-color: var(--vscode-sideBar-background);
+        box-shadow: rgb(0 0 0 / 36%) 0px 0px 8px 2px;
     }
 
     #nodeTree {
-        list-style: none;
         padding: 0;
-        margin: var(--headerHeight) 0 0;
+        position: relative;
+        top: calc(var(--headerHeight) + 5px);
+        left: 0;
+        right: 0;
+        bottom: 0;
         background-color: inherit;
         user-select: none;
+        overflow: auto;
     }
 
     #errorMessage {
@@ -152,33 +170,22 @@
 
     #nodeCountDetails {
         display: inline-block;
-
         padding-left: 10px;
     }
 
     #nodeCountNumber {
-        color: #FFFFFF;
+        color: #ffffff;
         text-decoration: underline;
         cursor: pointer;
-    }
-
-    #globalNode {
-        cursor: pointer;
-        padding: 5px 10px;
-    }
-
-    #globalNode:hover{
-        color: var(--vscode-list-hoverForeground);
-        background-color: var(--vscode-list-hoverBackground);
     }
 </style>
 
 <div id="container">
     {#if showSettings}
-        <Settings bind:showSettings={showSettings} />
+        <Settings bind:showSettings />
     {/if}
     {#if showNodeCountByType}
-        <NodeCountByType bind:showNodeCountByType={showNodeCountByType} bind:nodeCountByType={nodeCountByType} />
+        <NodeCountByType bind:showNodeCountByType bind:nodeCountByType />
     {/if}
     {#if !odcAvailable}
         <OdcSetupSteps />
@@ -187,32 +194,66 @@
     {:else if error}
         <div id="errorMessage">{error}</div>
         <div id="errorHelp">
-            If you are seeing this, please make sure you have the on device component running. This requires that both the files are included in the build and that the component is initialized. The easiest way to do this is:
+            If you are seeing this, please make sure you have the on device
+            component running. This requires that both the files are included in
+            the build and that the component is initialized. The easiest way to
+            do this is:
             <ul>
-                <li>Include the following comment in either your Scene or main.brs file (if including in main.brs, be sure to add after your roSGScreen screen.show() call)<br><span class="codeSnippet">' vscode_rdb_on_device_component_entry</span><br></li>
-                <li>Make sure your launch.json configuration has<br><span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
+                <li
+                    >Include the following comment in either your Scene or
+                    main.brs file (if including in main.brs, be sure to add
+                    after your roSGScreen screen.show() call)<br /><span
+                        class="codeSnippet"
+                        >' vscode_rdb_on_device_component_entry</span
+                    ><br /></li>
+                <li
+                    >Make sure your launch.json configuration has<br /><span
+                        class="codeSnippet"
+                        >"injectRdbOnDeviceComponent": true</span> included in it</li>
             </ul>
-            The extension can copy the files automatically for you so there's no need to handle that part. If you are still having issues even with these steps, check to make sure you're seeing this line in your device logs <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
+            The extension can copy the files automatically for you so there's no
+            need to handle that part. If you are still having issues even with these
+            steps, check to make sure you're seeing this line in your device logs
+            <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
             <p><button on:click={refresh}>Retry</button></p>
         </div>
     {:else}
         <div id="header">
-            <button title="Show Focused Node" on:click={showFocusedNode}>{'\u2316'}</button>
-            <button id="refresh" title="Refresh" on:click={refresh}>{'\u27F3'}</button>
-            <button id="settings" title="Settings" on:click={openSettings}>{'\u2699'}</button>
+            <div id="drop-shadow-blocker" />
+            <span
+                class="icon-button"
+                title="Show Focused Node"
+                on:click={showFocusedNode}>
+                <Issues />
+            </span>
+            <span class="icon-button" title="Refresh" on:click={refresh}>
+                <Refresh />
+            </span>
+            <span class="icon-button" title="Settings" on:click={openSettings}>
+                <SettingsGear />
+            </span>
             {#if totalNodeCount > 0}
                 <div id="nodeCountDetails">
-                    Nodes: <span id="nodeCountNumber" on:click={openNodeCountByType}>{totalNodeCount}</span>
+                    Nodes: <span
+                        id="nodeCountNumber"
+                        on:click={openNodeCountByType}>{totalNodeCount}</span>
                 </div>
             {/if}
         </div>
 
-        <ul id="nodeTree">
-            <li id="globalNode" on:click={globalClicked}>Global Node</li>
-            <NodeBranchView bind:focusedNode={focusedNode} nodeTree={rootTree[0]} bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} bind:inspectNodeSubtype={inspectNodeSubtype} expanded={true} />
-        </ul>
+        <div id="nodeTree">
+            {#each rootTree as rootNode}
+                <NodeBranchView
+                    on:open={openNode}
+                    bind:focusedNode
+                    nodeTree={rootNode}
+                    expanded={true} />
+            {/each}
+        </div>
     {/if}
     {#if inspectNodeBaseKeyPath}
-        <NodeDetailView bind:inspectNodeBaseKeyPath={inspectNodeBaseKeyPath} inspectNodeSubtype={inspectNodeSubtype} />
+        <NodeDetailView
+            bind:inspectNodeBaseKeyPath
+            inspectNodeSubtype={inspectNodeSubtype} />
     {/if}
 </div>

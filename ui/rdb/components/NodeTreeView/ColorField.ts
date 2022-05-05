@@ -18,7 +18,7 @@ class ColorField {
         return byte.toString(16).padStart(2, '0').toUpperCase();
     }
 
-    convertRgbToHex(rgb: ReturnType<typeof this.convertIntegerColorToRgb>) {
+    convertRgbToHex(rgb: ReturnType<typeof ColorField.prototype.convertIntegerColorToRgb>) {
         return `#${this.convertHexPart(rgb.red)}${this.convertHexPart(rgb.green)}${this.convertHexPart(rgb.blue)}${this.convertHexPart(rgb.alpha)}`;
     }
 }

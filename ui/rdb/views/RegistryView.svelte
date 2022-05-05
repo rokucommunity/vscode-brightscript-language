@@ -1,11 +1,10 @@
-
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
-    import {odc, intermediary} from "../ExtensionIntermediary";
-    import JSONTreeView from "../components/JSONTreeView/JSONTreeView.svelte";
-    import { registryView } from "./RegistryView";
+    import { odc, intermediary } from '../ExtensionIntermediary';
+    import JSONTreeView from '../components/JSONTreeView/JSONTreeView.svelte';
+    import { registryView } from './RegistryView';
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import Loader from "../components/Common/Loader.svelte";
+    import Loader from '../components/Common/Loader.svelte';
 
     let loading = true;
 
@@ -19,7 +18,7 @@
 
     function exportRegistry() {
         intermediary.sendMessage('exportRegistry', {
-            content: registryValues,
+            content: registryValues
         });
     }
 
@@ -36,16 +35,15 @@
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
+
 {#if !odcAvailable}
     <OdcSetupSteps />
 {:else if loading}
     <Loader />
-{:else}
-    {#if Object.keys(registryValues).length > 0}
-        <div>
-            <button on:click={exportRegistry}>Export</button>
-            <button on:click={importRegistry}>Import</button>
-        </div>
-        <JSONTreeView {registryValues} />
-    {/if}
+{:else if Object.keys(registryValues).length > 0}
+    <div>
+        <button on:click={exportRegistry}>Export</button>
+        <button on:click={importRegistry}>Import</button>
+    </div>
+    <JSONTreeView registryValues={registryValues} />
 {/if}
