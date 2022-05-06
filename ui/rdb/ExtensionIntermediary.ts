@@ -1,8 +1,6 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
 
-type ObserverCallback = (message) => void;
-
 class ExtensionIntermediary {
     private inflightRequests = {};
     private observedEvents = {} as Record<string, ObserverCallback[]>;
@@ -150,6 +148,8 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
     }
 }
+
+type ObserverCallback = (message) => void;
 
 const odc = new ODCIntermediary();
 export {
