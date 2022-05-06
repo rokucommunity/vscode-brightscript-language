@@ -3,7 +3,7 @@ import type * as rta from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
-    private observedEvents = {} as Record<string, ObserverCallback[]>;
+    private observedEvents = new Map<string, ObserverCallback[]>();
     private observed = false;
 
     private setupExtensionMessageObserver() {
@@ -20,7 +20,7 @@ class ExtensionIntermediary {
                 request.callback(message);
             } else {
                 if (message.name) {
-                    const listeners = this.observedEvents[message.name];
+                    const listeners = this.observedEvents.get(message.name);
                     if (listeners) {
                         for (const listener of listeners) {
                             listener(message);
@@ -68,11 +68,13 @@ class ExtensionIntermediary {
     }
 
     public observeEvent(name: string, callback: ObserverCallback) {
-        if (!this.observedEvents[name]) {
-            this.observedEvents[name] = [];
+        let observedEvent = this.observedEvents.get(name);
+        if (!observedEvent) {
+            observedEvent = [];
         }
 
-        this.observedEvents[name].push(callback);
+        observedEvent.push(callback);
+        this.observedEvents.set(name, observedEvent);
     }
 
     private generateRandomString(length = 7) {
