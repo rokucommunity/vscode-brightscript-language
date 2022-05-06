@@ -43,6 +43,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         void this.rdbWatcher?.close();
     }
 
+    // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
     public setOnDeviceComponent(odc?: rta.OnDeviceComponent) {
         this.odc = odc;
 
