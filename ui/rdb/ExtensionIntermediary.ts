@@ -36,7 +36,7 @@ class ExtensionIntermediary {
     public async sendMessage<T>(command: string, context = {}) {
         this.setupExtensionMessageObserver();
 
-        const requestId = this.randomStringGenerator();
+        const requestId = this.generateRandomString();
 
         return new Promise<T>((resolve, reject) => {
             const callback = (message) => {
@@ -77,7 +77,7 @@ class ExtensionIntermediary {
         this.observedEvents[name].push(callback);
     }
 
-    private randomStringGenerator(length = 7) {
+    private generateRandomString(length = 7) {
         const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
         // eslint-disable-next-line no-bitwise
         return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
