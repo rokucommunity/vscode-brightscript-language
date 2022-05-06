@@ -123,6 +123,9 @@
         "vscode-tmgrammar-test": "^0.0.11",
         "yargs": "^16.2.0"
     },
+    "optionalDependencies": {
+        "fsevents": "~2.3.2"
+    },
     "main": "./dist/extension",
     "browser": "./dist/extension-web",
     "activationEvents": [
