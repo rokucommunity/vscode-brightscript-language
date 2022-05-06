@@ -105,17 +105,15 @@
             </VscodeCheckbox>
         </li>
         <li>
-            <div class="title">Include Node Count</div>
+            <div class="title">Include Node Counts</div>
             <VscodeCheckbox bind:value={includeNodeCountInfo}>
-                We can get total and type based count info but this has some
-                overhead so is disabled by default</VscodeCheckbox>
+                Load the total and type-based node counts. (Disabled by default to improve performance)</VscodeCheckbox>
         </li>
         <li>
             <div class="title">Include ArrayGrid Children</div>
             <VscodeCheckbox bind:value={includeArrayGridChildren}>
                 Load ArrayGrid (RowList, MarkupGrid, etc) children when
-                possible. This has a performance impact so it's disabled by
-                default.
+                possible. (Disabled by default to improve performance)
             </VscodeCheckbox>
         </li>
     </ul>
