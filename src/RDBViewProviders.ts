@@ -15,7 +15,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
     protected abstract viewName: string;
 
     protected view?: vscode.WebviewView;
-    protected odc?: rta.OnDeviceComponent;
+    protected onDeviceComponent?: rta.OnDeviceComponent;
     protected rdbBasePath: string;
     private rdbWatcher: chokidar.FSWatcher;
     private viewReady = false;
@@ -44,12 +44,12 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
     }
 
     // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
-    public setOnDeviceComponent(odc?: rta.OnDeviceComponent) {
-        this.odc = odc;
+    public setOnDeviceComponent(onDeviceComponent?: rta.OnDeviceComponent) {
+        this.onDeviceComponent = onDeviceComponent;
 
         this.postMessage({
             name: 'onDeviceComponentStatus',
-            available: odc ? true : false
+            available: onDeviceComponent ? true : false
         });
     }
 
@@ -84,7 +84,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     this.viewReady = true;
                     this.postQueuedMessages();
                 } else if (this.odcCommands.includes(command)) {
-                    const response = await this.odc[command](context.args, context.options);
+                    const response = await this.onDeviceComponent[command](context.args, context.options);
                     this.postMessage({
                         ...message,
                         response: response
