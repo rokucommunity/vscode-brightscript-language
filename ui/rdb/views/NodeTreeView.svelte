@@ -181,7 +181,7 @@
 </style>
 
 <div id="container">
-    {#if showSettings}
+    {#if showSettings || true}
         <Settings bind:showSettings />
     {/if}
     {#if showNodeCountByType}

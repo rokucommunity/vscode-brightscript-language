@@ -1,9 +1,9 @@
 <script lang="ts">
     import { utils } from '../../utils';
-
+    import VscodeCheckbox from '../vscode-ui-toolkit/VscodeCheckbox.svelte';
     export let showSettings: boolean;
 
-    let enableDebugLogging = utils.getStorageBoolean('enableDebugLogging');
+    let enableDebugLogging = true; //utils.getStorageBoolean('enableDebugLogging');
     $: {
         utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
@@ -75,11 +75,6 @@
         padding-top: 3px;
     }
 
-    label {
-        font-weight: bold;
-        padding-right: 5px;
-    }
-
     ul {
         margin: 5px;
         list-style: none;
@@ -90,8 +85,8 @@
         padding: 0 5px 10px;
     }
 
-    .hint {
-        font-size: 9px;
+    .title {
+        font-weight: bold;
     }
 </style>
 
@@ -104,37 +99,24 @@
     </div>
     <ul>
         <li>
-            <label for="enableDebugLogging">Enable Debug Logging:</label>
-            <input
-                class="inline"
-                type="checkbox"
-                id="enableDebugLogging"
-                bind:checked={enableDebugLogging} />
+            <div class="title">Debug Logging</div>
+            <VscodeCheckbox bind:value={enableDebugLogging}>
+                Enable debug logging
+            </VscodeCheckbox>
         </li>
         <li>
-            <label for="includeNodeCountInfo">Include Node Count:</label>
-            <input
-                class="inline"
-                type="checkbox"
-                id="includeNodeCountInfo"
-                bind:checked={includeNodeCountInfo} />
-            <div class="hint">
+            <div class="title">Include Node Count</div>
+            <VscodeCheckbox bind:value={includeNodeCountInfo}>
                 We can get total and type based count info but this has some
-                overhead so is disabled by default
-            </div>
+                overhead so is disabled by default</VscodeCheckbox>
         </li>
         <li>
-            <label for="includeArrayGridChildren"
-                >Include ArrayGrid Children:</label>
-            <input
-                class="inline"
-                type="checkbox"
-                id="includeArrayGridChildren"
-                bind:checked={includeArrayGridChildren} />
-            <div class="hint">
-                We can get ArrayGrid(RowList,MarkupGrid,etc) children in most
-                cases but this has an extra overhead so is disabled by default
-            </div>
+            <div class="title">Include ArrayGrid Children</div>
+            <VscodeCheckbox bind:value={includeArrayGridChildren}>
+                Load ArrayGrid (RowList, MarkupGrid, etc) children when
+                possible. This has a performance impact so it's disabled by
+                default.
+            </VscodeCheckbox>
         </li>
     </ul>
 </div>
