@@ -496,6 +496,11 @@
                                 "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
                                 "default": false
                             },
+                            "injectRdbOnDeviceComponent": {
+                                "type": "boolean",
+                                "description": "Will inject the OnDeviceComponent used by RDB for RALE like functionality inside of the extension",
+                                "default": false
+                            },
                             "files": {
                                 "type": "array",
                                 "description": "An array of file paths, file globs, or {src:string;dest:string} objects that will be copied into the deployment package. This will override the defaults, so if specified, you must provide ALL files. See https://npmjs.com/roku-deploy for examples.",
