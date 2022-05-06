@@ -21,7 +21,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
     private viewReady = false;
     private queuedMessages = [];
 
-    private odcCommands = [
+    private odcCommands: Array<keyof rta.OnDeviceComponent> = [
         'callFunc',
         'deleteEntireRegistry',
         'deleteRegistrySections',
