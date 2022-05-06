@@ -53,7 +53,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         });
     }
 
-    protected postMessageCore(message) {
+    protected postMessage(message) {
         this.view?.webview.postMessage(message).then(null, (reason) => {
             console.log('postMessage failed: ', reason);
         });
@@ -61,13 +61,13 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
 
     private postQueuedMessages() {
         for (const queuedMessage of this.queuedMessages) {
-            this.postMessageCore(queuedMessage);
+            this.postMessage(queuedMessage);
         }
     }
 
-    protected postMessage(message) {
+    protected postOrQueueMessage(message) {
         if (this.viewReady) {
-            this.postMessageCore(message);
+            this.postMessage(message);
         } else {
             this.queuedMessages.push(message);
         }
