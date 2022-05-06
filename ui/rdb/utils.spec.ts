@@ -57,13 +57,13 @@ describe('RDB utils', () => {
             });
         });
 
-        describe('getStorageBoolean', () => {
+        describe('getStorageBooleanValue', () => {
             it('should return the stored value if it is a boolean', () => {
                 const storage = {
                     myValue: true
                 };
                 getStateReturn = JSON.stringify(storage);
-                const result = utils.getStorageBoolean('myValue');
+                const result = utils.getStorageBooleanValue('myValue');
                 expect(result).to.equal(storage.myValue);
             });
 
@@ -72,7 +72,7 @@ describe('RDB utils', () => {
                     myValue: 'notABoolean'
                 };
                 getStateReturn = JSON.stringify(storage);
-                const result = utils.getStorageBoolean('myValue', true);
+                const result = utils.getStorageBooleanValue('myValue', true);
                 expect(result).to.equal(true);
             });
         });

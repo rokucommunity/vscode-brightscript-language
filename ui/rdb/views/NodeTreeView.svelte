@@ -49,10 +49,8 @@
 
         try {
             const result = await odc.storeNodeReferences({
-                includeNodeCountInfo:
-                    !!window.localStorage.includeNodeCountInfo,
-                includeArrayGridChildren:
-                    !!window.localStorage.includeArrayGridChildren
+                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo'),
+                includeArrayGridChildren: utils.getStorageBooleanValue('includeNodeCountInfo')
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree;

@@ -4,7 +4,7 @@ class Utils {
     private storage: Record<string, AllowedStorageTypes>;
 
     public debugLog(...args) {
-        if (this.getStorageBoolean('enableDebugLogging')) {
+        if (this.getStorageBooleanValue('enableDebugLogging')) {
             console.log(...args);
         }
     }
@@ -42,7 +42,7 @@ class Utils {
         }
     }
 
-    public getStorageBoolean(key: string, defaultValue = false) {
+    public getStorageBooleanValue(key: string, defaultValue = false) {
         const value = this.getStorageValue(key);
         if (typeof value === 'boolean') {
             return value;
