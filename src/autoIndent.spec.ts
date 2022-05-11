@@ -13,10 +13,6 @@ interface LanguageConfigurationJSON {
 describe('Language auto-indent rules', () => {
     const config: LanguageConfigurationJSON = JSON.parse(readFileSync(`${__dirname}/../language-configuration.json`).toString());
 
-    it('indents AA literals', () => {
-        expectIndentToEqual(undent``);
-    });
-
     it('indents function with body', () => {
         expectIndentToEqual(undent`
             function autoIndent1(arg as Object) as void
