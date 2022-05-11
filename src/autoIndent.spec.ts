@@ -10,7 +10,7 @@ interface LanguageConfigurationJSON {
     indentationRules: IndentationRulesJSON;
 }
 
-describe.only('Language auto-indent rules', () => {
+describe('Language auto-indent rules', () => {
     const config: LanguageConfigurationJSON = JSON.parse(readFileSync(`${__dirname}/../language-configuration.json`).toString());
 
     it('indents AA literals', () => {
