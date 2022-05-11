@@ -275,9 +275,19 @@
             
         </div>
         <div id="content">
-            <a href="#contributing"><h1 id="contributing">Contributing</h1></a><p>The majority of this extension&#39;s language feature support depends on the <a href="https://github.com/RokuCommunity/brighterscript">BrighterScript</a> project, which contributes the language server. The debugging functionality comes from the <a href="https://github.com/RokuCommunity/roku-debug">roku-debug</a> project. To get up and running, do the following:</p>
+            <a href="#contributing"><h1 id="contributing">Contributing</h1></a><p>This extension depends on several other RokuCommunity projects.</p>
+<ul>
+<li><a href="https://github.com/RokuCommunity/brighterscript">BrighterScript</a> - provides the language server and much of the realtime valdation you see when editing code.</li>
+<li><a href="https://github.com/RokuCommunity/roku-debug">roku-debug</a> - Provides all the debug session functionality (like connecting via telnet, setting breakpoints, etc)</li>
+<li><a href="https://github.com/RokuCommunity/roku-deploy">roku-deploy</a> - Handles the packaging of roku projects and other device tasks (like sending keyboard commands to the device)</li>
+<li><a href="https://github.com/RokuCommunity/brighterscript-formatter">brighterscript-formatter</a> - Used to format code when the &quot;Format Document&quot; command is run in vscode.</li>
+</ul>
+<p>Wiring all of these up manually is a bit tedious, so we provide a simple way to quickly get started:</p>
 <a href="#the-easy-way"><h3 id="the-easy-way">The easy way</h3></a><p>In a terminal, execute</p>
-<pre><code class="language-bash">npm run install-local
+<pre><code class="language-bash">git clone https://github.com/rokucommunity/vscode-brightscript-language
+cd vscode-brightscript-language
+npm i
+npm run install-local
 </code></pre>
 <p>This will do the following automatically for you:</p>
 <ul>
