@@ -236,15 +236,6 @@
             },
             "patterns": [
                 {
-                    "include": "#annotation"
-                },
-                {
-                    "include": "#field"
-                },
-                {
-                    "include": "#method"
-                },
-                {
                     "include": "#entire_language"
                 }
             ]
