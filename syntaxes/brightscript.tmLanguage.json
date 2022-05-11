@@ -19,6 +19,9 @@
                     "include": "#if_with_paren"
                 },
                 {
+                    "include": "#component_statement"
+                },
+                {
                     "include": "#apostrophe_comment"
                 },
                 {
@@ -40,10 +43,10 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#class_methods"
+                    "include": "#method"
                 },
                 {
-                    "include": "#class_fields"
+                    "include": "#field"
                 },
                 {
                     "include": "#class_declaration"
@@ -202,8 +205,52 @@
                 }
             }
         },
+        "component_statement": {
+            "name": "meta.component.brs",
+            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(component)\\s+(?:([a-z0-9_]+)|(\".*?\"))(?:\\s+(extends)(?:\\s+(?:([a-z0-9_]+)|(\".*?\")))?)?\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "storage.type.component.brs"
+                },
+                "2": {
+                    "name": "entity.name.type.component.brs"
+                },
+                "3": {
+                    "name": "string.quoted.double.brs"
+                },
+                "4": {
+                    "name": "storage.modifier.extends.brs"
+                },
+                "5": {
+                    "name": "entity.name.type.component.brs"
+                },
+                "6": {
+                    "name": "string.quoted.double.brs"
+                }
+            },
+            "end": "(?i)(?<![_[:alnum:]])(?<!\\.)\\s*(end\\s*component)",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.component.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#annotation"
+                },
+                {
+                    "include": "#field"
+                },
+                {
+                    "include": "#method"
+                },
+                {
+                    "include": "#entire_language"
+                }
+            ]
+        },
         "class_declaration": {
-            "match": "(?i:(class)\\s+([a-z0-9_]+)(?:\\s+(extends)(?:\\s([a-z0-9_]+))?)?)",
+            "match": "(?i:(class)\\s+([a-z0-9_]+)(?:\\s+(extends)(?:\\s+([a-z0-9_]+))?)?)",
             "captures": {
                 "1": {
                     "name": "keyword.other.class.brs"
@@ -219,7 +266,7 @@
                 }
             }
         },
-        "class_methods": {
+        "method": {
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
@@ -236,7 +283,7 @@
             },
             "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
-        "class_fields": {
+        "field": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
             "captures": {
                 "1": {
