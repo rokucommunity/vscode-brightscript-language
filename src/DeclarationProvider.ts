@@ -1,6 +1,8 @@
 import * as fs from 'fs-extra';
 import * as iconv from 'iconv-lite';
 import * as vscode from 'vscode';
+import * as path from 'path';
+
 import type {
     Event,
     Uri
@@ -14,6 +16,7 @@ import {
 } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
+import { util } from './util';
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CREDIT WHERE CREDIT IS DUE
@@ -187,6 +190,12 @@ export class DeclarationProvider implements Disposable {
     }
 
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
+        const uriPath = util.normalizeFileScheme(uri.toString());
+        const outDir = util.normalizeFileScheme(path.join(vscode.workspace.getWorkspaceFolder(uri).uri.toString(), 'out'));
+        if (uriPath.startsWith(outDir)) {
+            return;
+        }
+
         const container = BrightScriptDeclaration.fromUri(uri);
         const symbols: BrightScriptDeclaration[] = [];
         let currentFunction: BrightScriptDeclaration;
