@@ -1586,7 +1586,7 @@
                 "properties": {
                     "brightscript.enableLanguageServer": {
                         "type": "boolean",
-                        "description": "Enable experimental language support, which includes things like syntax checking smarter intellisense.",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
                         "default": true,
                         "scope": "resource"
                     }
