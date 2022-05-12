@@ -699,7 +699,6 @@
             {
                 "id": "textEditor",
                 "title": "Text Editor",
-                "order": 1,
                 "properties": {
                     "brightscript.format.formatIndent": {
                         "type": "boolean",
@@ -1379,7 +1378,6 @@
             {
                 "id": "config",
                 "title": "Launch Config",
-                "order": 2,
                 "properties": {
                     "brightscript.remoteControl.host": {
                         "type": "string",
@@ -1397,7 +1395,6 @@
             {
                 "id": "terminalOutput",
                 "title": "Terminal Output",
-                "order": 3,
                 "properties": {
                     "brightscript.output.includeStackTraces": {
                         "type": "boolean",
@@ -1462,7 +1459,6 @@
             {
                 "id": "networkDeviceDiscovery",
                 "title": "Network And Device Discovery",
-                "order": 4,
                 "properties": {
                     "brightscript.deviceDiscovery.showInfoMessages": {
                         "type": "boolean",
@@ -1487,7 +1483,6 @@
             {
                 "id": "debug",
                 "title": "Debugging",
-                "order": 5,
                 "properties": {
                     "brightscript.debug.raleTrackerTaskFileLocation": {
                         "type": "string",
@@ -1577,7 +1572,6 @@
             {
                 "id": "brighterscript",
                 "title": "Brighterscript",
-                "order": 6,
                 "properties": {
                     "brightscript.bsdk": {
                         "type": "string",
@@ -1589,7 +1583,6 @@
             {
                 "id": "experimental",
                 "title": "Experimental",
-                "order": 7,
                 "properties": {
                     "brightscript.enableLanguageServer": {
                         "type": "boolean",
