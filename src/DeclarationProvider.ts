@@ -192,6 +192,8 @@ export class DeclarationProvider implements Disposable {
     public readDeclarations(uri: Uri, input: string): BrightScriptDeclaration[] {
         const uriPath = util.normalizeFileScheme(uri.toString());
         const outDir = util.normalizeFileScheme(path.join(vscode.workspace.getWorkspaceFolder(uri).uri.toString(), 'out'));
+
+        // Prevents results in the out directory from being returned
         if (uriPath.startsWith(outDir)) {
             return;
         }
