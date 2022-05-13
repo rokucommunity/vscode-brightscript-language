@@ -1376,23 +1376,12 @@
                 }
             },
             {
-                "id": "config",
-                "title": "Launch Config",
-                "properties": {
-                    "brightscript.configFile": {
-                        "type": "string",
-                        "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
-                        "scope": "resource"
-                    }
-                }
-            },
-            {
                 "id": "projectSettings",
                 "title": "Project Settings",
                 "properties": {
                     "brightscript.configFile": {
                         "type": "string",
-                        "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
+                        "description": "Path to the bsconfig.json for this project. This is an absolute path, or a path relative to ${workspaceFolder}.",
                         "scope": "resource"
                     },
                     "brightscript.bsdk": {
@@ -1443,7 +1432,7 @@
                             "Hidden"
                         ],
                         "default": "FilenameAndFunction",
-                        "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n Filename KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n FilenameAndFunction KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n Short #1 [INFO] retrieving videos for category id 23 \n  Hidden [INFO] retrieving videos for category id 23",
+                        "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n (Full) pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n (Filename) KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n (FilenameAndFunction) KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n (Short) #1 [INFO] retrieving videos for category id 23 \n (Hidden) [INFO] retrieving videos for category id 23",
                         "scope": "resource"
                     },
                     "brightscript.output.includeStackTraces": {
