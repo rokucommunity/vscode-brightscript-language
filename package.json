@@ -697,8 +697,8 @@
         ],
         "configuration": [
             {
-                "id": "textEditor",
-                "title": "Text Editor",
+                "id": "formatting",
+                "title": "Formatting",
                 "properties": {
                     "brightscript.format.formatIndent": {
                         "type": "boolean",
@@ -1379,12 +1379,6 @@
                 "id": "config",
                 "title": "Launch Config",
                 "properties": {
-                    "brightscript.remoteControl.host": {
-                        "type": "string",
-                        "default": "${promptForHost}",
-                        "description": "IP address of the roku to remotely control",
-                        "scope": "resource"
-                    },
                     "brightscript.configFile": {
                         "type": "string",
                         "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
@@ -1393,19 +1387,35 @@
                 }
             },
             {
-                "id": "terminalOutput",
-                "title": "Terminal Output",
+                "id": "projectSettings",
+                "title": "Project Settings",
                 "properties": {
-                    "brightscript.output.includeStackTraces": {
-                        "type": "boolean",
-                        "default": true,
-                        "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
+                    "brightscript.configFile": {
+                        "type": "string",
+                        "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
                         "scope": "resource"
                     },
-                    "brightscript.output.focusOnLaunch": {
+                    "brightscript.bsdk": {
+                        "type": "string",
+                        "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                        "scope": "resource"
+                    },
+                    "brightscript.enableLanguageServer": {
+                        "type": "boolean",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
+                        "default": true,
+                        "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "debugLogging",
+                "title": "Debug Logging",
+                "properties": {
+                    "brightscript.output.clearConsoleOnChannelStart": {
                         "type": "boolean",
                         "default": true,
-                        "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                        "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
                         "scope": "resource"
                     },
                     "brightscript.output.clearOnLaunch": {
@@ -1414,10 +1424,10 @@
                         "description": "If set to true, will clear the brightscript log when launching.",
                         "scope": "resource"
                     },
-                    "brightscript.output.clearConsoleOnChannelStart": {
+                    "brightscript.output.focusOnLaunch": {
                         "type": "boolean",
                         "default": true,
-                        "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
+                        "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
                         "scope": "resource"
                     },
                     "brightscript.output.hyperlinkFormat": {
@@ -1436,11 +1446,10 @@
                         "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n Filename KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n FilenameAndFunction KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n Short #1 [INFO] retrieving videos for category id 23 \n  Hidden [INFO] retrieving videos for category id 23",
                         "scope": "resource"
                     },
-                    "brightscript.focusOutputPanelOnStartup": {
+                    "brightscript.output.includeStackTraces": {
                         "type": "boolean",
-                        "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
-                        "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
-                        "default": false,
+                        "default": true,
+                        "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
                         "scope": "resource"
                     },
                     "brightscript.outputPanelStartupBehavior": {
@@ -1453,12 +1462,19 @@
                         ],
                         "default": "nothing",
                         "scope": "resource"
+                    },
+                    "brightscript.focusOutputPanelOnStartup": {
+                        "type": "boolean",
+                        "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
+                        "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
+                        "default": false,
+                        "scope": "resource"
                     }
                 }
             },
             {
-                "id": "networkDeviceDiscovery",
-                "title": "Network And Device Discovery",
+                "id": "deviceDiscovery",
+                "title": "Device Discovery",
                 "properties": {
                     "brightscript.deviceDiscovery.showInfoMessages": {
                         "type": "boolean",
@@ -1537,28 +1553,23 @@
                         "type": "string",
                         "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
                         "scope": "resource"
-                    },
-                    "brightscript.extensionLogfilePath": {
-                        "type": "string",
-                        "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
-                        "scope": "resource"
                     }
                 }
             },
             {
-                "id": "brightscript.deviceControl",
+                "id": "deviceControl",
                 "title": "Device Control (ECP)",
                 "properties": {
+                    "brightscript.remoteControl.host": {
+                        "type": "string",
+                        "default": "${promptForHost}",
+                        "description": "IP address of the roku to remotely control",
+                        "scope": "resource"
+                    },
                     "brightscript.sendRemoteTextHistory.enabled": {
                         "type": "boolean",
                         "default": true,
                         "description": "If true, the extension will not save the history for 'extension.brightscript.sendRemoteText' commands",
-                        "scope": "resource"
-                    },
-                    "brightscript.remoteControlMode.enableActiveAnimation": {
-                        "type": "boolean",
-                        "default": true,
-                        "description": "Enables or disables visual animations related to the remote control mode button",
                         "scope": "resource"
                     },
                     "brightscript.sendRemoteTextHistory.limit": {
@@ -1566,28 +1577,22 @@
                         "default": 30,
                         "description": "Sets the maximum number of 'extension.brightscript.sendRemoteText' commands to remember for future use",
                         "scope": "application"
-                    }
-                }
-            },
-            {
-                "id": "brighterscript",
-                "title": "Brighterscript",
-                "properties": {
-                    "brightscript.bsdk": {
-                        "type": "string",
-                        "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                    },
+                    "brightscript.remoteControlMode.enableActiveAnimation": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enables or disables visual animations related to the remote control mode button",
                         "scope": "resource"
                     }
                 }
             },
             {
-                "id": "experimental",
-                "title": "Experimental",
+                "id": "miscellaneous",
+                "title": "Miscellaneous",
                 "properties": {
-                    "brightscript.enableLanguageServer": {
-                        "type": "boolean",
-                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
-                        "default": true,
+                    "brightscript.extensionLogfilePath": {
+                        "type": "string",
+                        "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
                         "scope": "resource"
                     }
                 }
