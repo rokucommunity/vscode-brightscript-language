@@ -81,6 +81,7 @@
         "@rollup/plugin-node-resolve": "^10.0.0",
         "@rollup/plugin-typescript": "^6.0.0",
         "@tsconfig/svelte": "^1.0.10",
+        "@types/backoff": "^2.5.2",
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/glob": "^7.1.1",
@@ -173,7 +174,7 @@
         "views": {
             "vscode-brightscript-language": [
                 {
-                    "id": "onlineDevices",
+                    "id": "onlineDevicesView",
                     "name": "Devices"
                 }
             ],
@@ -220,6 +221,11 @@
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.refreshDeviceList",
+                    "when": "view == onlineDevicesView",
+                    "group": "navigation"
                 }
             ],
             "commandPalette": []
@@ -1927,6 +1933,12 @@
                     "light": "./images/icons/preview-right-light.svg",
                     "dark": "./images/icons/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.refreshDeviceList",
+                "title": "Refresh",
+                "category": "BrighterScript",
+                "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",

@@ -72,14 +72,19 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
+        let activeDeviceManager = new ActiveDeviceManager();
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, this.whatsNewManager, context);
+        this.brightScriptCommands = new BrightScriptCommands(
+            this.remoteControlManager,
+            this.whatsNewManager,
+            context,
+            activeDeviceManager
+        );
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
 
-        let activeDeviceManager = new ActiveDeviceManager();
 
         const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
@@ -104,7 +109,7 @@ export class Extension {
 
         //register a tree data provider for this extension's "Online Devices" panel
         let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
-        vscode.window.registerTreeDataProvider('onlineDevices', onlineDevicesViewProvider);
+        vscode.window.registerTreeDataProvider('onlineDevicesView', onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
