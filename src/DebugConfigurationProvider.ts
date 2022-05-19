@@ -40,6 +40,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             retainDeploymentArchive: true,
             injectRaleTrackerTask: false,
             injectRdbOnDeviceComponent: false,
+            disableScreenSaver: true,
             retainStagingFolder: false,
             enableVariablesPanel: true,
             enableDebuggerAutoRecovery: false,
@@ -208,6 +209,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
         config.injectRdbOnDeviceComponent = config.injectRdbOnDeviceComponent === true ? true : this.configDefaults.injectRdbOnDeviceComponent;
+        config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
         config.retainStagingFolder = config.retainStagingFolder ?? this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
@@ -517,4 +519,9 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * A path to an environment variables file which will be used to augment the launch config
      */
     envFile?: string;
+
+    /**
+     * If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.
+     */
+    disableScreenSaver?: boolean;
 }
