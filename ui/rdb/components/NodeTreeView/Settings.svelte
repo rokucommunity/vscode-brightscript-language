@@ -3,17 +3,17 @@
     import VscodeCheckbox from '../vscode-ui-toolkit/VscodeCheckbox.svelte';
     export let showSettings: boolean;
 
-    let enableDebugLogging = true; //utils.getStorageBoolean('enableDebugLogging');
+    let enableDebugLogging = utils.getStorageBooleanValue('enableDebugLogging');
     $: {
         utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
 
-    let includeNodeCountInfo = utils.getStorageBoolean('includeNodeCountInfo');
+    let includeNodeCountInfo = utils.getStorageBooleanValue('includeNodeCountInfo');
     $: {
         utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
     }
 
-    let includeArrayGridChildren = utils.getStorageBoolean(
+    let includeArrayGridChildren = utils.getStorageBooleanValue(
         'includeArrayGridChildren'
     );
     $: {
