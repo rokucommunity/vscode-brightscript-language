@@ -77,7 +77,7 @@
         showNodeCountByType = true;
     }
 
-    let odcAvailable = true;
+    let odcAvailable = false;
     $: {
         if (odcAvailable) {
             refresh();
@@ -178,10 +178,10 @@
     {#if showNodeCountByType}
         <NodeCountByType bind:showNodeCountByType bind:nodeCountByType />
     {/if}
-    {#if !odcAvailable}
-        <OdcSetupSteps />
-    {:else if loading}
+    {#if loading}
         <Loader />
+    {:else if !odcAvailable}
+        <OdcSetupSteps />
     {:else if error}
         <div id="errorMessage">{error}</div>
         <div id="errorHelp">
