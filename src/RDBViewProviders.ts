@@ -78,10 +78,11 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
             try {
                 const context = message.context;
                 const command = message.command;
-                console.log('command', command);
 
                 if (command === 'viewReady') {
                     this.viewReady = true;
+                    // Always post back the ODC status so we make sure the client doesn't miss it if it got refreshed
+                    this.setOnDeviceComponent(this.onDeviceComponent);
                     this.postQueuedMessages();
                 } else if (this.odcCommands.includes(command)) {
                     const response = await this.onDeviceComponent[command](context.args, context.options);
@@ -158,12 +159,6 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
             ]
         };
         webview.html = this.getHtmlForWebview();
-    }
-
-    public applicationRedeployed() {
-        this.postMessage({
-            name: 'applicationRedeployed'
-        });
     }
 }
 

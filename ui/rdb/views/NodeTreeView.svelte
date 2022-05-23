@@ -37,12 +37,6 @@
 
     let focusedNode = -1;
 
-    intermediary.observeEvent('applicationRedeployed', (message) => {
-        if (odcAvailable) {
-            refresh();
-        }
-    });
-
     async function refresh() {
         loading = true;
         rootTree = [];

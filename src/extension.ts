@@ -164,7 +164,11 @@ export class Extension {
                 const config: BrightScriptLaunchConfiguration = e.body;
                 await docLinkProvider.setLaunchConfig(config);
                 logOutputManager.setLaunchConfig(config);
-                this.setupRDB(context, config);
+                this.registerWebViewProviders(context);
+            } else if (e.event === 'BSChannelPublishedEvent') {
+                const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
+                this.setupRDBViewProviders(config);
+                await this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
                 this.extensionOutputChannel.appendLine(e.body);
@@ -278,27 +282,25 @@ export class Extension {
         return rtaConfig;
     }
 
-    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
-        let sendApplicationRedeployed = false;
-        if (!config.injectRdbOnDeviceComponent) {
-            this.odc = undefined;
-        } else if (!this.odc) {
-            this.odc = this.setupODC(config);
-        } else {
-            sendApplicationRedeployed = true;
-        }
-
+    private registerWebViewProviders(context) {
         for (const viewId in this.rdbViews) {
             const view = this.rdbViews[viewId];
             if (!view.provider) {
                 view.provider = new view.class(context);
                 vscode.window.registerWebviewViewProvider(viewId, view.provider);
             }
+        }
+    }
 
+    private setupRDBViewProviders(config: BrightScriptLaunchConfiguration) {
+        if (!config.injectRdbOnDeviceComponent) {
+            this.odc = undefined;
+        } else {
+            this.odc = this.setupODC(config);
+        }
+
+        for (const viewId in this.rdbViews) {
             this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
-            if (sendApplicationRedeployed) {
-                this.rdbViews[viewId].provider.applicationRedeployed();
-            }
         }
     }
 
