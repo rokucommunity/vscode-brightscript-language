@@ -32,16 +32,15 @@
         position: fixed;
         width: 100%;
         height: var(--headerHeight);
-        background-color: #121a21;
+        background-color: var(--vscode-sideBar-background);
         font-weight: bold;
         font-size: large;
-        color: white;
         padding: 0 10px;
         border-bottom: 2px solid rgb(190, 190, 190);
     }
 
     #background {
-        background-color: #1b2631;
+        background-color: var(--vscode-sideBar-background);
         position: absolute;
         top: 0;
         left: 0;

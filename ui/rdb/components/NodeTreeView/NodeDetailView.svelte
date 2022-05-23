@@ -250,7 +250,7 @@
     }
 
     #childrenContainer {
-        background-color: #151e27;
+        background-color: #00000010;
         padding: 3px 10px;
         border-bottom: 2px solid rgb(190, 190, 190);
     }
@@ -354,9 +354,10 @@
 
     {#if children.length > 0}
         <div id="childrenContainer">
-            <Chevron
-                expanded={childrenExpanded}
-                on:click={toggleChildrenExpanded} />
+            <span on:click={toggleChildrenExpanded}>
+                <Chevron
+                expanded={childrenExpanded} />
+            </span>
             <div id="childrenTitle">children ({children.length})</div>
             <div style="clear: both" />
             <div class:hide={!childrenExpanded}>

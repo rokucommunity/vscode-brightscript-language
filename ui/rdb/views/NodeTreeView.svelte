@@ -166,7 +166,6 @@
     }
 
     #nodeCountNumber {
-        color: #ffffff;
         text-decoration: underline;
         cursor: pointer;
     }
