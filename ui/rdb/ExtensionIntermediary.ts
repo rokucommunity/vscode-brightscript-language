@@ -142,11 +142,11 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
     }
 
-    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferences, options?: rta.ODC.RequestOptions) {
+    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
     }
 
-    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferences, options?: rta.ODC.RequestOptions) {
+    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
     }
 }

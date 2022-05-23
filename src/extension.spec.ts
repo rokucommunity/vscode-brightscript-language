@@ -126,28 +126,28 @@ describe('extension', () => {
             });
         });
 
-        describe('setupRDB', () => {
+        describe('registerWebViewProviders', () => {
+            it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
+                extensionInstance.rdbViews = originalRdbViews;
+                const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
+                extensionInstance.registerWebViewProviders(context);
+                expect(spy.callCount).to.equal(Object.keys(originalRdbViews).length);
+            });
+        });
+
+        describe('setupRDBViewProviders', () => {
             it('calls setupODC to create the odc instance if enabled', () => {
                 config.injectRdbOnDeviceComponent = true;
                 const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                extensionInstance.setupRDB(context, config);
+                extensionInstance.setupRDBViewProviders(config);
                 expect(spy.calledOnce).to.be.true;
             });
 
             it('does not call setupODC if not enabled', () => {
                 config.injectRdbOnDeviceComponent = false;
                 const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                extensionInstance.setupRDB(context, config);
+                extensionInstance.setupRDBViewProviders(config);
                 expect(spy.calledOnce).to.be.false;
-            });
-
-            it('initializes RDB views and calls registerWebviewViewProvider for each', () => {
-                config.injectRdbOnDeviceComponent = true;
-                extensionInstance.rdbViews = originalRdbViews;
-                sinon.stub(extensionInstance, 'setupODC').returns({});
-                const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-                extensionInstance.setupRDB(context, config);
-                expect(spy.callCount).to.equal(Object.keys(originalRdbViews).length);
             });
         });
     });
