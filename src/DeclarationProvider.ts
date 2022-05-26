@@ -94,9 +94,13 @@ export class DeclarationProvider implements Disposable {
 
     private dirty: Map<string, Uri> = new Map();
     private fileNamespaces = new Map<Uri, Set<string>>();
+    private fileInterfaces = new Map<Uri, Set<string>>();
+    private fileEnums = new Map<Uri, Set<string>>();
     private fileClasses = new Map<Uri, Set<string>>();
     private allNamespaces = new Map<string, BrightScriptDeclaration>();
     private allClasses = new Map<string, BrightScriptDeclaration>();
+    private allEnums = new Map<string, BrightScriptDeclaration>();
+    private allInterfaces = new Map<string, BrightScriptDeclaration>();
 
     private syncing: Promise<void>;
     private encoding: WorkspaceEncoding = new WorkspaceEncoding();
@@ -216,6 +220,28 @@ export class DeclarationProvider implements Disposable {
         }
         this.fileNamespaces.delete(uri);
 
+        let oldEnums = this.fileEnums.get(uri);
+        if (oldEnums) {
+            for (let key of oldEnums.keys()) {
+                let ns = this.allEnums.get(key);
+                if (ns && ns.uri === uri) {
+                    this.allEnums.delete(key);
+                }
+            }
+        }
+        this.fileEnums.delete(uri);
+
+        let oldInterfaces = this.fileInterfaces.get(uri);
+        if (oldInterfaces) {
+            for (let key of oldInterfaces.keys()) {
+                let ns = this.allInterfaces.get(key);
+                if (ns && ns.uri === uri) {
+                    this.allInterfaces.delete(key);
+                }
+            }
+        }
+        this.fileInterfaces.delete(uri);
+
         let oldClasses = this.fileClasses.get(uri);
         if (oldClasses) {
 
@@ -232,6 +258,10 @@ export class DeclarationProvider implements Disposable {
         let classes = new Set<string>();
         let namespaceSymbol: BrightScriptDeclaration | null;
         let classSymbol: BrightScriptDeclaration | null;
+        let enums = new Set<string>();
+        let interfaces = new Set<string>();
+        let interfaceSymbol: BrightScriptDeclaration | null;
+        let enumSymbol: BrightScriptDeclaration | null;
 
         for (const [line, text] of iterlines(input)) {
             // console.log("" + line + ": " + text);
@@ -325,6 +355,30 @@ export class DeclarationProvider implements Disposable {
                 namespaceSymbol = null;
             }
 
+            //start enum declaration
+            match = /^(?: |\t)*enum(?: |\t)*([a-z|\.|_]*).*$/i.exec(text);
+            if (match !== null) {
+                const name = match[1].trim();
+                if (name) {
+                    enumSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Enum,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[1].length, line, match[0].length),
+                        new Range(line, 0, line, text.length)
+                    );
+                    // console.log('FOUND enumS ' + enumSymbol.name);
+                    symbols.push(enumSymbol);
+                    enums.add(name.toLowerCase());
+                }
+            }
+            //end enum declaration
+            match = /^(?: |\t)*end enum.*$/i.exec(text);
+            if (match !== null && enumSymbol) {
+                enumSymbol = null;
+            }
+
             //start class declaration
             match = /(?:(class)\s+([a-z_][a-z0-9_]*))\s*(?:extends\s*([a-z_][a-z0-9_]+))*$/i.exec(text);
             if (match !== null) {
@@ -341,6 +395,24 @@ export class DeclarationProvider implements Disposable {
                     // console.log('FOUND CLASS ' + classSymbol.name);
                     symbols.push(classSymbol);
                     classes.add(name.toLowerCase());
+                }
+            }
+            //start interface declaration
+            match = /(?:(interface)\s+([a-z_][a-z0-9_]*))\s*(?:extends\s*([a-z_][a-z0-9_]+))*$/i.exec(text);
+            if (match !== null) {
+                const name = match[2].trim();
+                if (name) {
+                    interfaceSymbol = new BrightScriptDeclaration(
+                        name,
+                        SymbolKind.Interface,
+                        container,
+                        undefined,
+                        new Range(line, match[0].length - match[2].length, line, match[0].length),
+                        new Range(line, 0, line, text.length)
+                    );
+                    // console.log('FOUND interface ' + interfaceSymbol.name);
+                    symbols.push(interfaceSymbol);
+                    interfaces.add(name.toLowerCase());
                 }
             }
 
