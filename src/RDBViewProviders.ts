@@ -8,23 +8,27 @@ import { util } from './util';
 
 export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
-        this.rdbBasePath = context.extensionPath + '/dist/ui/rdb';
+        this.rdbBasePath = path.join(context.extensionPath, 'dist', 'ui', 'rdb');
         context.subscriptions.push(this);
     }
 
     protected abstract viewName: string;
 
     protected view?: vscode.WebviewView;
-    protected odc?: rta.OnDeviceComponent;
+    protected onDeviceComponent?: rta.OnDeviceComponent;
     protected rdbBasePath: string;
     private rdbWatcher: chokidar.FSWatcher;
+    private viewReady = false;
+    private queuedMessages = [];
 
-    private odcCommands = [
+    private odcCommands: Array<keyof rta.OnDeviceComponent> = [
         'callFunc',
         'deleteEntireRegistry',
         'deleteRegistrySections',
         'getFocusedNode',
         'getValueAtKeyPath',
+        'getValuesAtKeyPaths',
+        'getNodesInfoAtKeyPaths',
         'hasFocus',
         'isInFocusChain',
         'observeField',
@@ -32,7 +36,6 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         'setValueAtKeyPath',
         'writeRegistry',
         'storeNodeReferences',
-        'getNodeReferences',
         'deleteNodeReferences'
     ];
 
@@ -40,12 +43,64 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         void this.rdbWatcher?.close();
     }
 
-    public setOnDeviceComponent(odc: rta.OnDeviceComponent) {
-        this.odc = odc;
-        this.onOnDeviceComponentReady();
+    // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
+    public setOnDeviceComponent(onDeviceComponent?: rta.OnDeviceComponent) {
+        this.onDeviceComponent = onDeviceComponent;
+
+        this.postMessage({
+            name: 'onDeviceComponentStatus',
+            available: onDeviceComponent ? true : false
+        });
     }
 
-    protected onOnDeviceComponentReady() { }
+    protected postMessage(message) {
+        this.view?.webview.postMessage(message).then(null, (reason) => {
+            console.log('postMessage failed: ', reason);
+        });
+    }
+
+    private postQueuedMessages() {
+        for (const queuedMessage of this.queuedMessages) {
+            this.postMessage(queuedMessage);
+        }
+    }
+
+    protected postOrQueueMessage(message) {
+        if (this.viewReady) {
+            this.postMessage(message);
+        } else {
+            this.queuedMessages.push(message);
+        }
+    }
+
+    private setupViewMessageObserver(webview: vscode.Webview) {
+        webview.onDidReceiveMessage(async (message) => {
+            try {
+                const context = message.context;
+                const command = message.command;
+
+                if (command === 'viewReady') {
+                    this.viewReady = true;
+                    // Always post back the ODC status so we make sure the client doesn't miss it if it got refreshed
+                    this.setOnDeviceComponent(this.onDeviceComponent);
+                    this.postQueuedMessages();
+                } else if (this.odcCommands.includes(command)) {
+                    const response = await this.onDeviceComponent[command](context.args, context.options);
+                    this.postMessage({
+                        ...message,
+                        response: response
+                    });
+                } else {
+                    this.handleViewMessage(message);
+                }
+            } catch (e) {
+                this.postMessage({
+                    ...message,
+                    error: e.message
+                });
+            }
+        });
+    }
 
     protected handleViewMessage(message) { }
 
@@ -58,7 +113,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
         if (util.isExtensionHostRunning()) {
             // If we're developing we want to add a watcher to allow hot reload :)
             // Index.js always gets updated so don't have to worry about observing the css file
-            this.rdbWatcher = chokidar.watch(`${this.rdbBasePath}/index.js`);
+            this.rdbWatcher = chokidar.watch(path.join(this.rdbBasePath, 'index.js'));
             this.rdbWatcher.on('change', () => {
                 // We have to change this to get it to update so we store it first and set it back after
                 const html = this.view.webview.html;
@@ -82,7 +137,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
                     </script>
                     <script defer src="${scriptUri}"></script>
                 </head>
-                <body></body>
+                <body style="padding: 0"></body>
             </html>`;
     }
 
@@ -93,28 +148,7 @@ export abstract class RDBBaseViewProvider implements vscode.WebviewViewProvider,
     ) {
         this.view = view;
         const webview = view.webview;
-
-        webview.onDidReceiveMessage(async (message) => {
-            try {
-                const context = message.context;
-                if (this.odcCommands.includes(message.command)) {
-                    const response = await this.odc[message.command](context.args, context.options);
-                    await webview.postMessage({
-                        ...message,
-                        response: response
-                    });
-                } else {
-                    this.handleViewMessage(message);
-                }
-            } catch (e) {
-                await webview.postMessage({
-                    ...message,
-                    error: e.message
-                });
-            }
-        });
-
-        view.show(true);
+        this.setupViewMessageObserver(webview);
 
         webview.options = {
             // Allow scripts in the webview
@@ -153,7 +187,7 @@ export class RDBRegistryViewProvider extends RDBBaseViewProvider {
         if (uri?.[0]) {
             const input = await vscode.workspace.fs.readFile(uri[0]);
             const data = Buffer.from(input).toString('utf8');
-            await this.view?.webview.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
+            this.postMessage({ type: 'readRegistry', values: JSON.parse(data) });
         }
     }
 }
@@ -165,4 +199,8 @@ export class RDBCommandsViewProvider extends RDBBaseViewProvider {
         const requestArgsPath = path.join(rta.utils.getServerFilesPath(), 'requestArgs.schema.json');
         return `const requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')}`;
     }
+}
+
+export class SceneGraphInspectorViewProvider extends RDBBaseViewProvider {
+    protected viewName = 'SceneGraphInspectorPanel';
 }

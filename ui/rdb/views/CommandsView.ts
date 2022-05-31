@@ -1,16 +1,24 @@
+import type { Definition } from 'typescript-json-schema';
+import { utils } from '../utils';
+
 class CommandsView {
-    public convertArgs(inputArgs, requestArgsSchema) {
+    public convertArgs(inputArgs, requestArgsSchema: Definition) {
         const args = [];
-        for (const key of inputArgs.propertyOrder) {
+        if (!utils.isObjectWithProperty(inputArgs, 'propertyOrder') || !utils.isObjectWithProperty(inputArgs, 'properties')) {
+            return args;
+        }
+        for (const key of inputArgs.propertyOrder as any) {
             let rawArg = inputArgs.properties[key];
             // Handles references to other definitions in schema
-            if (rawArg['$ref']) {
-                const refParts = rawArg['$ref'].split("/");
+            if (rawArg.$ref) {
+                const refParts = rawArg.$ref.split('/');
                 let rawArgRef = requestArgsSchema;
 
                 for (const key of refParts) {
                     // Skip first entry
-                    if (key === '#') continue;
+                    if (key === '#') {
+                        continue;
+                    }
                     rawArgRef = rawArgRef[key];
                 }
                 for (const key in rawArgRef) {
@@ -26,11 +34,11 @@ class CommandsView {
     }
 
     public processArgToSendToExtension(argType: string, argValue: string) {
-        if (argType == 'boolean') {
-            return argValue === 'true'
-        } else if (argType == 'array' || argType == 'object') {
+        if (argType === 'boolean') {
+            return argValue === 'true';
+        } else if (argType === 'array' || argType === 'object') {
             return JSON.parse(argValue);
-        } else if (argType == 'number') {
+        } else if (argType === 'number') {
             return Number(argValue);
         } else {
             return argValue;
@@ -42,4 +50,4 @@ const commandsView = new CommandsView();
 
 export {
     commandsView
-}
+};

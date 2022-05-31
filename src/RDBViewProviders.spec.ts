@@ -15,7 +15,6 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { CustomDocumentLink, LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
 
 let sinon: sinonImport.SinonSandbox;

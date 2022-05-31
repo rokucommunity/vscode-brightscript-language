@@ -137,7 +137,6 @@ export class DeclarationProvider implements Disposable {
     }
 
     private onDidChangeFile(uri: Uri) {
-        console.log('onDidChangeFile ' + uri.path);
         const excludes = getExcludeGlob();
         this.dirty.set(uri.fsPath, uri);
     }
@@ -148,7 +147,6 @@ export class DeclarationProvider implements Disposable {
     }
 
     private onDidChangeWorkspace() {
-        console.log('onDidChangeWorkspace 33');
         this.fullscan = true;
         this.dirty.clear();
         this.encoding.reset();

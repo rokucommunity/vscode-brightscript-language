@@ -1,8 +1,20 @@
-import {Definition} from 'typescript-json-schema';
+import type { Definition } from 'typescript-json-schema';
 
 declare global {
-    declare var acquireVsCodeApi: Function;
-    declare var vscode;
-    declare var requestArgsSchema: Definition;
-    declare var odcCommands: string[];
+    declare const acquireVsCodeApi: <T = unknown>() => {
+        getState: () => T;
+        setState: (data: T) => void;
+        postMessage: (msg: unknown) => void;
+    };
+
+    interface Window {
+        vscode: {
+            getState: () => T;
+            setState: (data: T) => void;
+            postMessage: (msg: unknown) => void;
+        };
+    }
+
+    declare const requestArgsSchema: Definition;
+    declare const odcCommands: string[];
 }

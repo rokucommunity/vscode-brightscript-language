@@ -3,25 +3,38 @@ import type * as rta from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
+    private observedEvents = new Map<string, ObserverCallback[]>();
     private observed = false;
 
-    private setupObserver() {
+    private setupExtensionMessageObserver() {
+        if (this.observed) {
+            return;
+        }
         this.observed = true;
-        window.addEventListener("message", (event) => {
+
+        window.addEventListener('message', (event) => {
             const message = event.data;
             const request = this.inflightRequests[message.id];
             if (request) {
                 delete this.inflightRequests[message.id];
                 request.callback(message);
+            } else {
+                if (message.name) {
+                    const listeners = this.observedEvents.get(message.name);
+                    if (listeners) {
+                        for (const listener of listeners) {
+                            listener(message);
+                        }
+                    }
+                }
             }
         });
     }
 
     public async sendMessage<T>(command: string, context = {}) {
-        if(!this.observed) {
-            this.setupObserver();
-        }
-        const requestId = this.randomStringGenerator();
+        this.setupExtensionMessageObserver();
+
+        const requestId = this.generateRandomString();
 
         return new Promise<T>((resolve, reject) => {
             const callback = (message) => {
@@ -30,7 +43,7 @@ class ExtensionIntermediary {
                 } else {
                     resolve(message.response);
                 }
-			};
+            };
             const message = {
                 id: requestId,
                 command: command,
@@ -40,21 +53,41 @@ class ExtensionIntermediary {
             this.inflightRequests[requestId] = {
                 message: message,
                 callback: callback
-            }
-            vscode.postMessage(message);
+            };
+            window.vscode.postMessage(message);
         });
     }
 
-    private randomStringGenerator(length: number = 7) {
-		const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
-	}
+    public sendViewReady() {
+        this.setupExtensionMessageObserver();
+
+        window.vscode.postMessage({
+            command: 'viewReady',
+            context: {}
+        });
+    }
+
+    public observeEvent(name: string, callback: ObserverCallback) {
+        let observedEvent = this.observedEvents.get(name);
+        if (!observedEvent) {
+            observedEvent = [];
+        }
+
+        observedEvent.push(callback);
+        this.observedEvents.set(name, observedEvent);
+    }
+
+    private generateRandomString(length = 7) {
+        const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        // eslint-disable-next-line no-bitwise
+        return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
+    }
 }
 
 const intermediary = new ExtensionIntermediary();
 
 class ODCIntermediary {
-    public sendOdcMessage<T>(command: string, args?, options?: rta.ODC.RequestOptions){
+    public sendOdcMessage<T>(command: string, args?, options?: rta.ODC.RequestOptions) {
         return intermediary.sendMessage<T>(command, {
             args: args,
             options: options
@@ -77,6 +110,14 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getValueAtKeyPath>>('getValueAtKeyPath', args, options);
     }
 
+    public async getValuesAtKeyPaths(args?: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValuesAtKeyPaths>>('getValuesAtKeyPaths', args, options);
+    }
+
+    public async getNodesInfoAtKeyPaths(args?: rta.ODC.GetNodesInfoAtKeyPathsArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfoAtKeyPaths>>('getNodesInfoAtKeyPaths', args, options);
+    }
+
     public async hasFocus(args?: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.hasFocus>>('hasFocus', args, options);
     }
@@ -89,7 +130,7 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
     }
 
-    public async setValueAtKeyPath(args?: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
+    public async setValueAtKeyPath(args?: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.setValueAtKeyPath>>('setValueAtKeyPath', args, options);
     }
 
@@ -101,21 +142,19 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
     }
 
-    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferences, options?: rta.ODC.RequestOptions) {
+    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
     }
 
-    public async getNodeReferences(args?: rta.ODC.GetNodeReferences, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodeReferences>>('getNodeReferences', args, options);
-    }
-
-    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferences, options?: rta.ODC.RequestOptions) {
+    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
     }
 }
+
+type ObserverCallback = (message) => void;
 
 const odc = new ODCIntermediary();
 export {
     odc,
     intermediary
-}
+};

@@ -11,7 +11,7 @@ const production = !process.env.ROLLUP_WATCH;
 export default {
     input: 'ui/rdb/index.ts',
     output: {
-        dir: "dist/ui/rdb",
+        dir: 'dist/ui/rdb',
         sourcemap: true,
         format: 'iife',
         name: 'app'
@@ -27,7 +27,7 @@ export default {
             preprocess: autoPreprocess()
         }),
         typescript({
-            tsconfig: "./ui/tsconfig.json",
+            tsconfig: './ui/tsconfig.json',
             sourceMap: true
         }),
 

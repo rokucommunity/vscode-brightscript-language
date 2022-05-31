@@ -19,6 +19,7 @@ import { RendezvousViewProvider } from './RendezvousViewProvider';
 import { OnlineDevicesViewProvider } from './OnlineDevicesViewProvider';
 import {
     RDBCommandsViewProvider,
+    SceneGraphInspectorViewProvider,
     RDBRegistryViewProvider
 } from './RDBViewProviders';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
@@ -48,6 +49,9 @@ export class Extension {
 
     // register our RDB views
     private rdbViews = {
+        SceneGraphInspector: {
+            class: SceneGraphInspectorViewProvider
+        },
         RDBRegistryView: {
             class: RDBRegistryViewProvider
         },
@@ -165,7 +169,11 @@ export class Extension {
                 const config: BrightScriptLaunchConfiguration = e.body;
                 await docLinkProvider.setLaunchConfig(config);
                 logOutputManager.setLaunchConfig(config);
-                this.setupRDB(context, config);
+                this.registerWebViewProviders(context);
+            } else if (e.event === 'BSChannelPublishedEvent') {
+                const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
+                this.setupRDBViewProviders(config);
+                await this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
                 this.extensionOutputChannel.appendLine(e.body);
@@ -255,34 +263,45 @@ export class Extension {
     }
 
     private setupODC(config: BrightScriptLaunchConfiguration) {
+        const rtaConfig = this.getRtaConfig(config);
+        const device = new rta.RokuDevice(rtaConfig);
+        return new rta.OnDeviceComponent(device, rtaConfig);
+    }
+
+    private getRtaConfig(config: BrightScriptLaunchConfiguration) {
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
                     host: config.host,
                     password: config.password
                 }]
+            },
+            OnDeviceComponent: {
+                // uncomment for debugging
+                // logLevel: 'verbose',
+                // serverDebugLogging: true,
+                disableTelnet: true,
+                disableCallOriginationLine: true
             }
-            // uncomment for debugging
-            // OnDeviceComponent: {
-            //     logLevel: 'verbose',
-            //     serverDebugLogging: true
-            // }
         };
-        const device = new rta.RokuDevice(rtaConfig);
-        return new rta.OnDeviceComponent(device, rtaConfig);
+        return rtaConfig;
     }
 
-    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
-        // TODO handle case where user changes their Roku Device
-        if (!config.injectRdbOnDeviceComponent || this.odc) {
-            return;
-        }
-        this.odc = this.setupODC(config);
-
+    private registerWebViewProviders(context) {
         for (const viewId in this.rdbViews) {
             const view = this.rdbViews[viewId];
-            view.provider = new view.class(context);
-            vscode.window.registerWebviewViewProvider(viewId, view.provider);
+            if (!view.provider) {
+                view.provider = new view.class(context);
+                vscode.window.registerWebviewViewProvider(viewId, view.provider);
+            }
+        }
+    }
+
+    private setupRDBViewProviders(config: BrightScriptLaunchConfiguration) {
+        if (!config.injectRdbOnDeviceComponent) {
+            this.odc = undefined;
+        } else {
+            this.odc = this.setupODC(config);
         }
 
         for (const viewId in this.rdbViews) {
