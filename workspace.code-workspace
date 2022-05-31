@@ -6,19 +6,19 @@
 		},
 		{
             "name": "🐛roku-debug",
-			"path": "..\\roku-debug"
+			"path": "../roku-debug"
 		},
 		{
             "name": "⛎roku-deploy",
-			"path": "..\\roku-deploy"
+			"path": "../roku-deploy"
 		},
 		{
             "name": "⭕brighterscript",
-			"path": "..\\brighterscript"
+			"path": "../brighterscript"
 		},
 		{
             "name": "➰brighterscript-formatter",
-			"path": "..\\brighterscript-formatter"
+			"path": "../brighterscript-formatter"
 		}
 	],
     "settings": {}

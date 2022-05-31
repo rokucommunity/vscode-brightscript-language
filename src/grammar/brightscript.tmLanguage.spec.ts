@@ -16,6 +16,30 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('component statements', async () => {
+        await testGrammar(`
+             component MyButton
+            '          ^^^^^^^^ entity.name.type.component.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+            '^^^^^^^^^^^^^ storage.type.component.brs
+
+             component MyButton extends Button
+            '                           ^^^^^^ entity.name.type.component.brs
+            '                   ^^^^^^^ storage.modifier.extends.brs
+            '          ^^^^^^^^ entity.name.type.component.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+
+             component "MyButton" extends "Button"
+            '                             ^^^^^^^^ string.quoted.double.brs
+            '                     ^^^^^^^ storage.modifier.extends.brs
+            '          ^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+        `);
+    });
+
     it.skip('handles `as Function` parameters properly', async () => {
         await testGrammar(`
              function getStyle(builderFunc as Function, processorFunc as Function) as object

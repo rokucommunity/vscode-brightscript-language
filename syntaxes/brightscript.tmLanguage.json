@@ -19,6 +19,9 @@
                     "include": "#if_with_paren"
                 },
                 {
+                    "include": "#component_statement"
+                },
+                {
                     "include": "#apostrophe_comment"
                 },
                 {
@@ -40,10 +43,10 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#class_methods"
+                    "include": "#method"
                 },
                 {
-                    "include": "#class_fields"
+                    "include": "#field"
                 },
                 {
                     "include": "#class_declaration"
@@ -202,8 +205,43 @@
                 }
             }
         },
+        "component_statement": {
+            "name": "meta.component.brs",
+            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(component)\\s+(?:([a-z0-9_]+)|(\".*?\"))(?:\\s+(extends)(?:\\s+(?:([a-z0-9_]+)|(\".*?\")))?)?\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "storage.type.component.brs"
+                },
+                "2": {
+                    "name": "entity.name.type.component.brs"
+                },
+                "3": {
+                    "name": "string.quoted.double.brs"
+                },
+                "4": {
+                    "name": "storage.modifier.extends.brs"
+                },
+                "5": {
+                    "name": "entity.name.type.component.brs"
+                },
+                "6": {
+                    "name": "string.quoted.double.brs"
+                }
+            },
+            "end": "(?i)(?<![_[:alnum:]])(?<!\\.)\\s*(end\\s*component)",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.component.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#entire_language"
+                }
+            ]
+        },
         "class_declaration": {
-            "match": "(?i:(class)\\s+([a-z0-9_]+)(?:\\s+(extends)(?:\\s([a-z0-9_]+))?)?)",
+            "match": "(?i:(class)\\s+([a-z0-9_]+)(?:\\s+(extends)(?:\\s+([a-z0-9_]+))?)?)",
             "captures": {
                 "1": {
                     "name": "keyword.other.class.brs"
@@ -219,7 +257,7 @@
                 }
             }
         },
-        "class_methods": {
+        "method": {
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
@@ -236,7 +274,7 @@
             },
             "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
         },
-        "class_fields": {
+        "field": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
             "captures": {
                 "1": {
@@ -629,7 +667,7 @@
             "name": "support.function.component.brs"
         },
         "class_roku_builtin": {
-            "match": "(?i:\\bro(R(ss(Parser|Article)|e(sourceManager|ctangle|ad(File|WriteFile)|gistry(Section)?))|G(pio(Button|ControlPort)|lobal)|XML(Element|List)|MessagePort|AppInfo|Array|AssociativeArray|AudioGuide|AudioMetadata|AudioPlayer|AudioResource|Bitmap|Boolean|ByteArray|CaptionRenderer|ChannelStore|CodeRegistrationScreen|Compositor|DataGramSocket|DateTime|DeviceInfo|Double|EVPCipher|EVPDigest|FileSystem|Float|Font|FontMetrics|FontRegistry|Function|GridScreen|HdmiStatus|HMAC|HttpAgent|ImageCanvas|ImageMetadata|Input|Int|Invalid|KeyboardScreen|List|ListScreen|Localization|LongInteger|MessageDialog|MessagePort|Microphone|OneLineDialog|ParagraphScreen|Path|PinEntryDialog|PosterScreen|ProgramGuide|Regex|Region|Registry|RegistrySection|RSA|Screen|SearchHistory|SearchScreen|SlideShow|SocketAddress|SpringboardScreen|Sprite|StreamSocket|String|SystemLog|TextScreen|TextToSpeech|TextureManager|TextureRequest|Timespan|Tuner|UrlTransfer|VideoPlayer|VideoScreen|XMLElement|XMLList|SGScreen|SGNode|SGNodeEvent|SGScreenEvent|AudioPlayerEvent|CaptionRendererEvent|CECStatusEvent|ChannelStoreEvent|CodeRegistrationScreenEvent|DeviceInfoEvent|FileSystemEvent|GridScreenEvent|HdmiHotPlugEvent|HdmiStatusEvent|ImageCanvasEvent|InputEvent|KeyboardScreenEvent|ListScreenEvent|MessageDialogEvent|MicrophoneEvent|OneLineDialogEvent|ParagraphScreenEvent|PinEntryDialogEvent|PosterScreenEvent|SearchScreenEvent|SlideShowEvent|SocketEvent|SpringboardScreenEvent|SystemLogEvent|TextScreenEvent|TextToSpeechEvent|TextureRequestEvent|TunerEvent|UniversalControlEvent|UrlEvent|VideoPlayerEvent|VideoScreenEvent|B(yteArray|oolean|r(Sub|ightPackage))|S(ystemTime|t(orageInfo|ring( )?)|erialPort( )?)|NetworkConfiguration|C(ontrol(Down( )?|Up|Port)|ecInterface|lockWidget|reateFile)|T(imer|ouchScreen( )?|ext(Field|Widget))|I(RRemote( )?|n(t|valid)|mage(Player|Widget))|D(eviceInfo( )?|at(eTime|agram(Receiver|Sender)))|Url(Transfer|Event)|Video(Mode|Input|Player|Event)|Keyboard(Press( )?| )?|Quadravox(Button( )?|SNS5( )?)|Float|List|A(ssociativeArray|udio(Player|Event)|ppendFile|rray))\\b)",
+            "match": "(?i:\\bro(R(ss(Parser|Article)|e(sourceManager|ctangle|ad(File|WriteFile)|gistry(Section)?))|G(pio(Button|ControlPort)|lobal)|XML(Element|List)|MessagePort|AppInfo|Array|AssociativeArray|AudioGuide|AudioMetadata|AudioPlayer|AudioResource|Bitmap|Boolean|ByteArray|CaptionRenderer|ChannelStore|CodeRegistrationScreen|Compositor|DataGramSocket|DateTime|DeviceInfo|Double|IntrinsicDouble|EVPCipher|EVPDigest|FileSystem|Float|Font|FontMetrics|FontRegistry|Function|GridScreen|HdmiStatus|HMAC|HttpAgent|ImageCanvas|ImageMetadata|Input|Int|Invalid|KeyboardScreen|List|ListScreen|Localization|LongInteger|MessageDialog|MessagePort|Microphone|OneLineDialog|ParagraphScreen|Path|PinEntryDialog|PosterScreen|ProgramGuide|Regex|Region|Registry|RegistrySection|RSA|Screen|SearchHistory|SearchScreen|SlideShow|SocketAddress|SpringboardScreen|Sprite|StreamSocket|String|SystemLog|TextScreen|TextToSpeech|TextureManager|TextureRequest|Timespan|Tuner|UrlTransfer|VideoPlayer|VideoScreen|XMLElement|XMLList|SGScreen|SGNode|SGNodeEvent|SGScreenEvent|AudioPlayerEvent|CaptionRendererEvent|CECStatusEvent|ChannelStoreEvent|CodeRegistrationScreenEvent|DeviceInfoEvent|FileSystemEvent|GridScreenEvent|HdmiHotPlugEvent|HdmiStatusEvent|ImageCanvasEvent|InputEvent|KeyboardScreenEvent|ListScreenEvent|MessageDialogEvent|MicrophoneEvent|OneLineDialogEvent|ParagraphScreenEvent|PinEntryDialogEvent|PosterScreenEvent|SearchScreenEvent|SlideShowEvent|SocketEvent|SpringboardScreenEvent|SystemLogEvent|TextScreenEvent|TextToSpeechEvent|TextureRequestEvent|TunerEvent|UniversalControlEvent|UrlEvent|VideoPlayerEvent|VideoScreenEvent|B(yteArray|oolean|r(Sub|ightPackage))|S(ystemTime|t(orageInfo|ring( )?)|erialPort( )?)|NetworkConfiguration|C(ontrol(Down( )?|Up|Port)|ecInterface|lockWidget|reateFile)|T(imer|ouchScreen( )?|ext(Field|Widget))|I(RRemote( )?|n(t|valid)|mage(Player|Widget))|D(eviceInfo( )?|at(eTime|agram(Receiver|Sender)))|Url(Transfer|Event)|Video(Mode|Input|Player|Event)|Keyboard(Press( )?| )?|Quadravox(Button( )?|SNS5( )?)|Float|List|A(ssociativeArray|udio(Player|Event)|ppendFile|rray))\\b)",
             "name": "support.class.brs"
         },
         "region_comment": {
