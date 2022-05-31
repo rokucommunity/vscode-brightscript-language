@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.32.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.31.1...v2.32.0) - 2022-05-31
+### Added
+ - new SceneGraph Inspector panel to view/manage all on-device SceneGraph nodes right in vscode. ([#386](https://github.com/rokucommunity/vscode-brightscript-language/pull/386))
+ - syntax coloring for experimental `ComponentStatement` brighterscript feature ([#389](https://github.com/rokucommunity/vscode-brightscript-language/pull/389))
+ - subdivisions to VSCode Extension Settings ([#390](https://github.com/rokucommunity/vscode-brightscript-language/pull/390))
+ - refresh button in the devices panel ([#392](https://github.com/rokucommunity/vscode-brightscript-language/pull/392))
+ - support for `enum` and `interface` lookup ([#398](https://github.com/rokucommunity/vscode-brightscript-language/pull/398))
+### Changed
+ - updated to [brighterscript@0.51.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0514---2022-05-31). Notable changes since v0.48.1:
+    - allow interfaces and enums as function param types ([#580](https://github.com/rokucommunity/brighterscript/pull/580))
+    - Transpile files added by plugins after start of transpile cycle ([#578](https://github.com/rokucommunity/brighterscript/pull/578))
+    - Fix semantic tokens for enums in if statements ([#584](https://github.com/rokucommunity/brighterscript/pull/584))
+    - Fix language server cwd issue with multi-root workspaces ([#592](https://github.com/rokucommunity/brighterscript/pull/592))
+    - `allowBrighterScriptInBrightScript` config option to allow brighterscript features to be included in BrightScript files, and force those files to be transpiled ([#573](https://github.com/rokucommunity/brighterscript/pull/573))
+    - allow enums and interfaces as function return types ([#601](https://github.com/rokucommunity/brighterscript/pull/601))
+    - allow enums and interfaces as class field types ([#602](https://github.com/rokucommunity/brighterscript/pull/602))
+    - add hover for namespace functions ([#606](https://github.com/rokucommunity/brighterscript/pull/606))
+ - updated to [roku-debug@0.12.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0122---2022-05-31). Notable changes since 0.10.5:
+    - fix RDB path bug on windows ([#76](https://github.com/rokucommunity/roku-debug/pull/76))
+    - add `brightScriptConsolePort` option. Utilize `remotePort` in more places ([#79](https://github.com/rokucommunity/roku-debug/pull/79))
+    - fix crash during rendezvous tracking ([#82](https://github.com/rokucommunity/roku-debug/pull/82))
+    - fix line number and thread hopping issues ([#86](https://github.com/rokucommunity/roku-debug/pull/86))
+ - updated to [roku-deploy@3.7.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#370---2022-05-23)
+### Fixed
+ - Excludes the out directory from readDeclarations function ([#391](https://github.com/rokucommunity/vscode-brightscript-language/pull/391))
+ - `roIntrinsicDouble` syntax highlighting color ([#395](https://github.com/rokucommunity/vscode-brightscript-language/pull/395))
+
+
+
 ## [2.31.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.31.0...v2.31.1) - 2022-04-18
 ### Fixed
  - Unfocus **remote control mode** statusbar item on click ([#384](https://github.com/rokucommunity/vscode-brightscript-language/pull/384))
