@@ -190,16 +190,6 @@
         currentYInput = undefined;
     }
 
-    function onEditableCollectionItemValueChange() {
-        // TODO: Disabling until we update RTA setValueAtKeyPath
-        return;
-        odc.setValueAtKeyPath({
-            base: inspectNodeBaseKeyPath.base,
-            keyPath: `${inspectNodeBaseKeyPath.keyPath}.${this.id}`,
-            value: this.textContent
-        });
-    }
-
     function toggleShowingBraceOrBracketContent() {
         this.nextElementSibling.classList.toggle('hide');
     }
@@ -440,15 +430,28 @@
                                         on:click={onNodeClicked}
                                         >{item.subtype} &#x1F50D;</button
                                     ><!--
+                                -->{:else if typeof item === 'boolean'}
+                                    <input
+                                        type="checkbox"
+                                        id="{id}.{collectionItemId}"
+                                        checked={item}
+                                        on:click={onBooleanFieldClick} /><!--
                                 -->{:else if typeof item === 'object'}
                                     {JSON.stringify(
                                         item
                                     )}<!--
+                                -->{:else if typeof item === 'number'}
+                                <input
+                                    type="number"
+                                    class="inline"
+                                    id="{id}.{collectionItemId}"
+                                    value={item} /><!--
                                 -->{:else}
                                     <input
                                         type="text"
-                                        id={id}
-                                        value={item} /><!--
+                                        id="{id}.{collectionItemId}"
+                                        value={item}
+                                        on:input={onStringFieldChange} /><!--
                                 -->{/if}{#if Object.entries(field.value).pop()[0] !== collectionItemId},&nbsp;{/if}
                             </div>
                         {/each}
@@ -489,7 +492,8 @@
                                     type="text"
                                     id="{id}.{collectionItemId}"
                                     value={item}
-                                    size={item.length} /><!--
+                                    size={item.length}
+                                    on:input={onStringFieldChange} /><!--
                             -->{/if}{#if collectionItemId + 1 < field.value.length},&nbsp;{/if}
                         </div>
                     {/each}
