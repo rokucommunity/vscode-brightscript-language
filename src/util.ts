@@ -60,6 +60,14 @@ class Util {
     }
 
     /**
+     * Normalizes the file path to only have one forward slash
+     * @param filePath
+     */
+    public normalizeFileScheme(filePath: string): string {
+        return filePath.replace(/^file:[\/\\]*/, 'file:/');
+    }
+
+    /**
      * Gets any leading scheme in the file path
      * @param filePath
      */

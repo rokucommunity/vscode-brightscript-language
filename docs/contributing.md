@@ -3,11 +3,21 @@ priority: 1001
 ---
 # Contributing
 
-The majority of this extension's language feature support depends on the [BrighterScript](https://github.com/RokuCommunity/brighterscript) project, which contributes the language server. The debugging functionality comes from the [roku-debug](https://github.com/RokuCommunity/roku-debug) project. To get up and running, do the following:
+This extension depends on several other RokuCommunity projects.
+ - [BrighterScript](https://github.com/RokuCommunity/brighterscript) - provides the language server and much of the realtime valdation you see when editing code.
+ - [roku-debug](https://github.com/RokuCommunity/roku-debug) - Provides all the debug session functionality (like connecting via telnet, setting breakpoints, etc)
+ - [roku-deploy](https://github.com/RokuCommunity/roku-deploy) - Handles the packaging of roku projects and other device tasks (like sending keyboard commands to the device)
+ - [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter) - Used to format code when the "Format Document" command is run in vscode.
+
+
+Wiring all of these up manually is a bit tedious, so we provide a simple way to quickly get started:
 
 ### The easy way
 In a terminal, execute
 ```bash
+git clone https://github.com/rokucommunity/vscode-brightscript-language
+cd vscode-brightscript-language
+npm i
 npm run install-local
 ```
 

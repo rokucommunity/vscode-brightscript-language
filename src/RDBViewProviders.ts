@@ -201,6 +201,6 @@ export class RDBCommandsViewProvider extends RDBBaseViewProvider {
     }
 }
 
-export class RDBNodeTreeProvider extends RDBBaseViewProvider {
-    protected viewName = 'NodeTreeView';
+export class SceneGraphInspectorViewProvider extends RDBBaseViewProvider {
+    protected viewName = 'SceneGraphInspectorPanel';
 }

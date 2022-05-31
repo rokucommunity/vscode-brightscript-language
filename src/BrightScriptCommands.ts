@@ -8,13 +8,15 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
+import type { ActiveDeviceManager } from './ActiveDeviceManager';
 
 export class BrightScriptCommands {
 
     constructor(
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
-        private context: vscode.ExtensionContext
+        private context: vscode.ExtensionContext,
+        private activeDeviceManager: ActiveDeviceManager
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
@@ -31,6 +33,11 @@ export class BrightScriptCommands {
 
         this.registerCommand('sendRemoteCommand', async (key: string) => {
             await this.sendRemoteCommand(key);
+        });
+
+        //the "Refresh" button in the Devices list
+        this.registerCommand('refreshDeviceList', (key: string) => {
+            this.activeDeviceManager.refresh();
         });
 
         this.registerCommand('sendRemoteText', async () => {

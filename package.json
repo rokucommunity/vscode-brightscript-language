@@ -83,6 +83,7 @@
         "@rollup/plugin-node-resolve": "^10.0.0",
         "@rollup/plugin-typescript": "^6.0.0",
         "@tsconfig/svelte": "^1.0.10",
+        "@types/backoff": "^2.5.2",
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
         "@types/glob": "^7.1.1",
@@ -112,7 +113,7 @@
         "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.21",
-        "statigen": "^0.4.3",
+        "statigen": "^0.4.4",
         "svelte": "^3.47.0",
         "svelte-codicons": "^0.7.1",
         "svelte-preprocess": "^4.10.5",
@@ -120,6 +121,7 @@
         "tslib": "^2.3.1",
         "typescript": "^3.8.3",
         "typescript-json-schema": "^0.50.1",
+        "undent": "^0.1.0",
         "vsce": "^2.6.7",
         "vscode-tmgrammar-test": "^0.0.11",
         "yargs": "^16.2.0"
@@ -179,7 +181,7 @@
         "views": {
             "vscode-brightscript-language": [
                 {
-                    "id": "onlineDevices",
+                    "id": "onlineDevicesView",
                     "name": "Devices"
                 }
             ],
@@ -191,8 +193,8 @@
                 },
                 {
                     "type": "webview",
-                    "id": "RDBNodeTreeView",
-                    "name": "Node Tree",
+                    "id": "SceneGraphInspector",
+                    "name": "SceneGraph Inspector",
                     "when": "debugType == 'brightscript'"
                 },
                 {
@@ -232,6 +234,11 @@
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "Rendezvous"
+                },
+                {
+                    "command": "extension.brightscript.refreshDeviceList",
+                    "when": "view == onlineDevicesView",
+                    "group": "navigation"
                 }
             ],
             "commandPalette": []
@@ -718,860 +725,898 @@
                 "path": "./snippets/xml.json"
             }
         ],
-        "configuration": {
-            "type": "object",
-            "title": "BrightScript configuration",
-            "properties": {
-                "brightscript.format.formatIndent": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If true, lines are indented based on what they are nested inside of. If false, all leading whitespace is left alone.",
-                    "scope": "resource"
-                },
-                "brightscript.format.keywordCase": {
-                    "type": "string",
-                    "enum": [
-                        "lower",
-                        "upper",
-                        "title",
-                        "original"
-                    ],
-                    "default": "lower",
-                    "description": "Replaces all keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
-                    "scope": "resource"
-                },
-                "brightscript.format.typeCase": {
-                    "type": "string",
-                    "enum": [
-                        "lower",
-                        "upper",
-                        "title",
-                        "original"
-                    ],
-                    "default": "lower",
-                    "description": "Replaces all type keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
-                    "scope": "resource"
-                },
-                "brightscript.format.compositeKeywords": {
-                    "type": "string",
-                    "enum": [
-                        "split",
-                        "combine",
-                        "original"
-                    ],
-                    "default": "split",
-                    "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
-                    "scope": "resource"
-                },
-                "brightscript.format.removeTrailingWhiteSpace": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Removes all trailing whitespace at the end of each line.",
-                    "scope": "resource"
-                },
-                "brightscript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "if true, ensure exactly 1 space after leading and before trailing curly braces. If false, REMOVE all whitespace after leading and before trailing curly braces (excluding beginning-of-line indentation spacing)",
-                    "scope": "resource"
-                },
-                "brightscript.format.formatMultiLineObjectsAndArrays": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "if true, insert newlines and indents for multi-line objects and arrays.",
-                    "scope": "resource"
-                },
-                "brightscript.format.keywordCaseOverride": {
-                    "type": "object",
-                    "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
-                    "properties": {
-                        "endfunction": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
+        "configuration": [
+            {
+                "id": "formatting",
+                "title": "Formatting",
+                "properties": {
+                    "brightscript.format.formatIndent": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, lines are indented based on what they are nested inside of. If false, all leading whitespace is left alone.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.keywordCase": {
+                        "type": "string",
+                        "enum": [
+                            "lower",
+                            "upper",
+                            "title",
+                            "original"
+                        ],
+                        "default": "lower",
+                        "description": "Replaces all keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.typeCase": {
+                        "type": "string",
+                        "enum": [
+                            "lower",
+                            "upper",
+                            "title",
+                            "original"
+                        ],
+                        "default": "lower",
+                        "description": "Replaces all type keywords with the upper or lower case settings specified. `\"original\"` means they are not modified at all.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.compositeKeywords": {
+                        "type": "string",
+                        "enum": [
+                            "split",
+                            "combine",
+                            "original"
+                        ],
+                        "default": "split",
+                        "description": "Forces all composite keywords (i.e. 'elseif', 'endwhile', etc...) to be consistent. If 'split', they are split into their alternatives ('else if', 'end while'). If 'combine', they are combined ('elseif', 'endwhile'). If null, they are not modified.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.removeTrailingWhiteSpace": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Removes all trailing whitespace at the end of each line.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "if true, ensure exactly 1 space after leading and before trailing curly braces. If false, REMOVE all whitespace after leading and before trailing curly braces (excluding beginning-of-line indentation spacing)",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.formatMultiLineObjectsAndArrays": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "if true, insert newlines and indents for multi-line objects and arrays.",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.keywordCaseOverride": {
+                        "type": "object",
+                        "description": "Allows overriding case at the individual keyword level.\nExample {\"string\": \"title\"} would make string always lower case regardless of keywordCase",
+                        "properties": {
+                            "endfunction": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endif": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endsub": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endwhile": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "exitwhile": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "exitfor": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endfor": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "elseif": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "#elseif": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "#endif": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endclass": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "endnamespace": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "and": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "eval": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "if": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "then": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "else": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "for": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "to": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "step": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "exit": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "each": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "while": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "function": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "sub": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "as": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "return": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "print": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "goto": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "dim": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "stop": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "void": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "boolean": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "integer": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "longinteger": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "float": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "double": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "string": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "object": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "interface": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "invalid": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "dynamic": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "or": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "let": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "next": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "not": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "#if": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "#else": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "#const": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "class": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "namespace": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "import": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            }
                         },
-                        "endif": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "endsub": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "endwhile": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "exitwhile": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "exitfor": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "endfor": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "elseif": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "#elseif": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "#endif": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "endclass": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "endnamespace": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "and": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "eval": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "if": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "then": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "else": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "for": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "to": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "step": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "exit": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "each": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "while": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "function": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "sub": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "as": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "return": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "print": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "goto": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "dim": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "stop": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "void": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "boolean": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "integer": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "longinteger": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "float": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "double": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "string": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "object": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "interface": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "invalid": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "dynamic": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "or": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "let": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "next": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "not": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "#if": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "#else": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "#const": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "class": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "namespace": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "import": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
+                        "scope": "resource"
+                    },
+                    "brightscript.format.typeCaseOverride": {
+                        "type": "object",
+                        "description": " Provides a way to override type keyword case at the individual TokenType level. Types are defined as keywords that are preceeded by an `as` token.",
+                        "properties": {
+                            "boolean": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "double": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "dynamic": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "float": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "function": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "integer": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "invalid": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "longinteger": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "object": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "string": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            },
+                            "void": {
+                                "type": "string",
+                                "enum": [
+                                    "lower",
+                                    "upper",
+                                    "title",
+                                    "original"
+                                ]
+                            }
+                        }
+                    },
+                    "brightscript.format.formatInteriorWhitespace": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, all whitespace between items is reduced to exactly 1 space character,and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.insertSpaceBeforeFunctionParenthesis": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.insertSpaceBetweenEmptyCurlyBraces": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.insertSpaceBetweenAssociativeArrayLiteralKeyAndColon": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.formatSingleLineCommentType": {
+                        "type": "string",
+                        "description": "Forces all single-line comments to use the same style",
+                        "enum": [
+                            "singlequote",
+                            "rem",
+                            "original"
+                        ],
+                        "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "projectSettings",
+                "title": "Project Settings",
+                "properties": {
+                    "brightscript.configFile": {
+                        "type": "string",
+                        "description": "Path to the bsconfig.json for this project. This is an absolute path, or a path relative to ${workspaceFolder}.",
+                        "scope": "resource"
+                    },
+                    "brightscript.bsdk": {
+                        "type": "string",
+                        "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
+                        "scope": "resource"
+                    },
+                    "brightscript.enableLanguageServer": {
+                        "type": "boolean",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
+                        "default": true,
+                        "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "debugLogging",
+                "title": "Debug Logging",
+                "properties": {
+                    "brightscript.output.clearConsoleOnChannelStart": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
+                        "scope": "resource"
+                    },
+                    "brightscript.output.clearOnLaunch": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, will clear the brightscript log when launching.",
+                        "scope": "resource"
+                    },
+                    "brightscript.output.focusOnLaunch": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
+                        "scope": "resource"
+                    },
+                    "brightscript.output.hyperlinkFormat": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "Full",
+                            "Filename",
+                            "FilenameAndFunction",
+                            "Short",
+                            "Hidden"
+                        ],
+                        "default": "FilenameAndFunction",
+                        "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n (Full) pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n (Filename) KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n (FilenameAndFunction) KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n (Short) #1 [INFO] retrieving videos for category id 23 \n (Hidden) [INFO] retrieving videos for category id 23",
+                        "scope": "resource"
+                    },
+                    "brightscript.output.includeStackTraces": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
+                        "scope": "resource"
+                    },
+                    "brightscript.outputPanelStartupBehavior": {
+                        "type": "string",
+                        "description": "Used to configure if the 'BrightScript Log' output channel will be shown, shown and be focused, or nothing happens as soon as this extension is initialized",
+                        "enum": [
+                            "show",
+                            "focus",
+                            "nothing"
+                        ],
+                        "default": "nothing",
+                        "scope": "resource"
+                    },
+                    "brightscript.focusOutputPanelOnStartup": {
+                        "type": "boolean",
+                        "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
+                        "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
+                        "default": false,
+                        "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "deviceDiscovery",
+                "title": "Device Discovery",
+                "properties": {
+                    "brightscript.deviceDiscovery.showInfoMessages": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, an info toast will be shown when a Roku device has been found on the network.",
+                        "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
+                        "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
+                        "scope": "resource"
+                    }
+                }
+            },
+            {
+                "id": "debug",
+                "title": "Debugging",
+                "properties": {
+                    "brightscript.debug.raleTrackerTaskFileLocation": {
+                        "type": "string",
+                        "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.autoRunSgDebugCommands": {
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
+                                    "enum": [
+                                        "chanperf"
+                                    ]
+                                },
+                                {
+                                    "type": "string",
+                                    "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
+                                    "enum": [
+                                        "fpsdisplay"
+                                    ]
+                                },
+                                {
+                                    "type": "string",
+                                    "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
+                                    "enum": [
+                                        "logrendezvous"
+                                    ]
+                                },
+                                {
+                                    "type": "string",
+                                    "description": "Custom SGDebug command that will be run on port 8080"
+                                }
                             ]
                         }
                     },
-                    "scope": "resource"
-                },
-                "brightscript.format.typeCaseOverride": {
-                    "type": "object",
-                    "description": " Provides a way to override type keyword case at the individual TokenType level. Types are defined as keywords that are preceeded by an `as` token.",
-                    "properties": {
-                        "boolean": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "double": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "dynamic": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "float": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "function": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "integer": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "invalid": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "longinteger": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "object": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "string": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        },
-                        "void": {
-                            "type": "string",
-                            "enum": [
-                                "lower",
-                                "upper",
-                                "title",
-                                "original"
-                            ]
-                        }
+                    "brightscript.debug.enableDebugProtocol": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.enableSourceMaps": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.logfilePath": {
+                        "type": "string",
+                        "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
+                        "scope": "resource"
                     }
-                },
-                "brightscript.format.formatInteriorWhitespace": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If true, all whitespace between items is reduced to exactly 1 space character,and certain keywords and operators are padded with whitespace (i.e. `1+1` becomes `1 + 1`)",
-                    "scope": "resource"
-                },
-                "brightscript.format.insertSpaceBeforeFunctionParenthesis": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If true, a space is inserted to the left of an opening function declaration parenthesis. (i.e. `function main ()` or `function ()`). If false, all spacing is removed (i.e. `function main()` or `function()`).",
-                    "scope": "resource"
-                },
-                "brightscript.format.insertSpaceBetweenEmptyCurlyBraces": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)",
-                    "scope": "resource"
-                },
-                "brightscript.format.insertSpaceBetweenAssociativeArrayLiteralKeyAndColon": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
-                    "scope": "resource"
-                },
-                "brightscript.format.formatSingleLineCommentType": {
-                    "type": "string",
-                    "description": "Forces all single-line comments to use the same style",
-                    "enum": [
-                        "singlequote",
-                        "rem",
-                        "original"
-                    ],
-                    "scope": "resource"
-                },
-                "brightscript.remoteControl.host": {
-                    "type": "string",
-                    "default": "${promptForHost}",
-                    "description": "IP address of the roku to remotely control",
-                    "scope": "resource"
-                },
-                "brightscript.configFile": {
-                    "type": "string",
-                    "description": "Path to the brsconfig.json for this project. This is an absolute path, or a path relative to the workspace root.",
-                    "scope": "resource"
-                },
-                "brightscript.output.includeStackTraces": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case.",
-                    "scope": "resource"
-                },
-                "brightscript.output.focusOnLaunch": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, focus on the brightscript log when launching, which is convenient for controlling your roku with the extension's remote control keys.",
-                    "scope": "resource"
-                },
-                "brightscript.output.clearOnLaunch": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, will clear the brightscript log when launching.",
-                    "scope": "resource"
-                },
-                "brightscript.output.clearConsoleOnChannelStart": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, will clear the  brightscript log after connecting to the Roku channel after launching.",
-                    "scope": "resource"
-                },
-                "brightscript.output.hyperlinkFormat": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "enum": [
-                        "Full",
-                        "Filename",
-                        "FilenameAndFunction",
-                        "Short",
-                        "Hidden"
-                    ],
-                    "default": "FilenameAndFunction",
-                    "description": "Determines the format of roku hyperlinks in the output panel. For example, given pkg:/components/KeyLogTester.brs(24:0)  The hyperlink will appear as follows: \n  Full pkg:/components/KeyLogTester.brs(24:0) [INFO] retrieving videos for category id 23 \n Filename KeyLogTester.brs(24) [INFO] retrieving videos for category id 23 \n FilenameAndFunction KeyLogTester.getVideos(24) [INFO] retrieving videos for category id 23 \n Short #1 [INFO] retrieving videos for category id 23 \n  Hidden [INFO] retrieving videos for category id 23",
-                    "scope": "resource"
-                },
-                "brightscript.deviceDiscovery.showInfoMessages": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, an info toast will be shown when a Roku device has been found on the network.",
-                    "scope": "resource"
-                },
-                "brightscript.deviceDiscovery.enabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the ${promptForHost} option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.",
-                    "scope": "resource"
-                },
-                "brightscript.deviceDiscovery.includeNonDeveloperDevices": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
-                    "scope": "resource"
-                },
-                "brightscript.debug.raleTrackerTaskFileLocation": {
-                    "type": "string",
-                    "description": "This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session.",
-                    "scope": "resource"
-                },
-                "brightscript.debug.autoRunSgDebugCommands": {
-                    "type": "array",
-                    "items": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "description": "Enables running the 'chanperf' command with a 1 second reporting interval at the start of a debug session.",
-                                "enum": [
-                                    "chanperf"
-                                ]
-                            },
-                            {
-                                "type": "string",
-                                "description": "Enables running of the 'fps_display 1' command at the start of a debug session.",
-                                "enum": [
-                                    "fpsdisplay"
-                                ]
-                            },
-                            {
-                                "type": "string",
-                                "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
-                                "enum": [
-                                    "logrendezvous"
-                                ]
-                            },
-                            {
-                                "type": "string",
-                                "description": "Custom SGDebug command that will be run on port 8080"
-                            }
-                        ]
+                }
+            },
+            {
+                "id": "deviceControl",
+                "title": "Device Control (ECP)",
+                "properties": {
+                    "brightscript.remoteControl.host": {
+                        "type": "string",
+                        "default": "${promptForHost}",
+                        "description": "IP address of the roku to remotely control",
+                        "scope": "resource"
+                    },
+                    "brightscript.sendRemoteTextHistory.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, the extension will not save the history for 'extension.brightscript.sendRemoteText' commands",
+                        "scope": "resource"
+                    },
+                    "brightscript.sendRemoteTextHistory.limit": {
+                        "type": "number",
+                        "default": 30,
+                        "description": "Sets the maximum number of 'extension.brightscript.sendRemoteText' commands to remember for future use",
+                        "scope": "application"
+                    },
+                    "brightscript.remoteControlMode.enableActiveAnimation": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enables or disables visual animations related to the remote control mode button",
+                        "scope": "resource"
                     }
-                },
-                "brightscript.debug.enableDebugProtocol": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
-                    "scope": "resource"
-                },
-                "brightscript.debug.enableSourceMaps": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
-                    "scope": "resource"
-                },
-                "brightscript.debug.logfilePath": {
-                    "type": "string",
-                    "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
-                    "scope": "resource"
-                },
-                "brightscript.enableLanguageServer": {
-                    "type": "boolean",
-                    "description": "Enable experimental language support, which includes things like syntax checking smarter intellisense.",
-                    "default": true,
-                    "scope": "resource"
-                },
-                "brightscript.focusOutputPanelOnStartup": {
-                    "type": "boolean",
-                    "description": "If enabled, the 'BrightScript Log' output channel will be focused as soon as this extension is initialized",
-                    "deprecationMessage": "Deprecated. Use 'outputPanelStartupBehavior' instead",
-                    "default": false,
-                    "scope": "resource"
-                },
-                "brightscript.outputPanelStartupBehavior": {
-                    "type": "string",
-                    "description": "Used to configure if the 'BrightScript Log' output channel will be shown, shown and be focused, or nothing happens as soon as this extension is initialized",
-                    "enum": [
-                        "show",
-                        "focus",
-                        "nothing"
-                    ],
-                    "default": "nothing",
-                    "scope": "resource"
-                },
-                "brightscript.bsdk": {
-                    "type": "string",
-                    "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
-                    "scope": "resource"
-                },
-                "brightscript.extensionLogfilePath": {
-                    "type": "string",
-                    "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
-                    "scope": "resource"
-                },
-                "brightscript.sendRemoteTextHistory.limit": {
-                    "type": "number",
-                    "default": 30,
-                    "description": "Sets the maximum number of 'extension.brightscript.sendRemoteText' commands to remember for future use",
-                    "scope": "application"
-                },
-                "brightscript.sendRemoteTextHistory.enabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "If true, the extension will not save the history for 'extension.brightscript.sendRemoteText' commands",
-                    "scope": "resource"
-                },
-                "brightscript.remoteControlMode.enableActiveAnimation": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Enables or disables visual animations related to the remote control mode button",
-                    "scope": "resource"
+                }
+            },
+            {
+                "id": "miscellaneous",
+                "title": "Miscellaneous",
+                "properties": {
+                    "brightscript.extensionLogfilePath": {
+                        "type": "string",
+                        "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
+                        "scope": "resource"
+                    }
                 }
             }
-        },
+        ],
         "commands": [
             {
                 "command": "extension.brightscript.showReleaseNotes",
@@ -1911,6 +1956,12 @@
                     "light": "./images/icons/preview-right-light.svg",
                     "dark": "./images/icons/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.refreshDeviceList",
+                "title": "Refresh",
+                "category": "BrighterScript",
+                "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",

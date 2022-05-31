@@ -29,7 +29,8 @@ export class ActiveDeviceManager extends EventEmitter {
         });
 
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
-        this.deviceCache.on('expired', (deviceId, device) => {
+        //anytime a device leaves the cache (either expired or manually deleted)
+        this.deviceCache.on('del', (deviceId, device) => {
             this.emit('expiredDevice', deviceId, device);
         });
         this.processEnabledState();
@@ -54,10 +55,18 @@ export class ActiveDeviceManager extends EventEmitter {
         return this.deviceCache.getStats();
     }
 
+    /**
+     * Clear the list and re-scan the whole network for devices
+     */
+    public refresh() {
+        this.stop();
+        this.start();
+    }
+
     // Will ether stop or start the watching process based on the running state and user settings
     private processEnabledState() {
         if (this.enabled && !this.isRunning) {
-            this.findDevices();
+            this.start();
         } else if (!this.enabled && this.isRunning) {
             this.stop();
         }
@@ -68,25 +77,34 @@ export class ActiveDeviceManager extends EventEmitter {
             this.exponentialBackoff.reset();
         }
 
+        this.deviceCache.del(
+            this.deviceCache.keys()
+        );
         this.deviceCache.flushAll();
         this.isRunning = false;
     }
 
-    // Begin searching and watching for devices
-    private findDevices() {
-        this.exponentialBackoff = backoff.exponential({
-            randomisationFactor: 0,
-            initialDelay: 1000,
-            maxDelay: 30000
-        });
+    /**
+     * Begin searching and watching for devices
+     */
+    private start() {
+        if (!this.isRunning) {
+            this.exponentialBackoff = backoff.exponential({
+                randomisationFactor: 0,
+                initialDelay: 2000,
+                maxDelay: 60000
+            });
 
-        this.exponentialBackoff.on('ready', (eventNumber, delay) => {
-            void this.discoverAll(delay);
+            void this.discoverAll(1000);
+
+            this.exponentialBackoff.on('ready', (eventNumber, delay) => {
+                void this.discoverAll(delay);
+                this.exponentialBackoff.backoff();
+            });
+
             this.exponentialBackoff.backoff();
-        });
-
-        this.exponentialBackoff.backoff();
-        this.isRunning = true;
+            this.isRunning = true;
+        }
     }
 
     // Discover all Roku devices on the network and watch for new ones that connect
