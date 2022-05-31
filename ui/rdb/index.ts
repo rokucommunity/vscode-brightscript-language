@@ -1,24 +1,20 @@
+/* eslint-disable object-shorthand */
 import RegistryView from './views/RegistryView.svelte';
 import CommandsView from './views/CommandsView.svelte';
-import NodeTreeView from './views/NodeTreeView.svelte';
+import SceneGraphInspectorPanel from './views/SceneGraphInspectorPanel.svelte';
 import './style.css';
-//have to "export" this to prevent svelte from tree-shaking it
+//export this to prevent svelte from tree-shaking it
 export * from '@vscode/webview-ui-toolkit/dist/toolkit';
-declare const viewName; // Provided by ViewProviders
-let view;
+// Provided by ViewProviders
+declare const viewName;
 
-switch (viewName) {
-    case 'RegistryView':
-        view = RegistryView;
-        break;
-    case 'CommandsView':
-        view = CommandsView;
-        break;
-    case 'NodeTreeView':
-        view = NodeTreeView;
-        break;
-}
-const app = new view({
+const views = {
+    RegistryView,
+    CommandsView,
+    SceneGraphInspectorPanel
+};
+
+const app = new views[viewName]({
     target: document.body
 });
 export { app };

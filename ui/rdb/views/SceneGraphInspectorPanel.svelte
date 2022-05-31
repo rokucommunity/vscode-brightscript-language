@@ -1,12 +1,12 @@
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../ExtensionIntermediary';
-    import Settings from '../components/NodeTreeView/Settings.svelte';
+    import Settings from '../components/SceneGraphInspectorPanel/Settings.svelte';
     import Loader from '../components/Common/Loader.svelte';
     import { utils } from '../utils';
-    import NodeCountByType from '../components/NodeTreeView/NodeCountByType.svelte';
-    import NodeBranchView from '../components/NodeTreeView/NodeBranchView.svelte';
-    import NodeDetailView from '../components/NodeTreeView/NodeDetailView.svelte';
+    import NodeCountByType from '../components/SceneGraphInspectorPanel/NodeCountByType.svelte';
+    import NodeBranchView from '../components/SceneGraphInspectorPanel/NodeBranchView.svelte';
+    import NodeDetailView from '../components/SceneGraphInspectorPanel/NodeDetailView.svelte';
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
     import SettingsGear from 'svelte-codicons/lib/SettingsGear.svelte';
     import Issues from 'svelte-codicons/lib/Issues.svelte';

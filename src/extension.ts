@@ -19,7 +19,7 @@ import { RendezvousViewProvider } from './RendezvousViewProvider';
 import { OnlineDevicesViewProvider } from './OnlineDevicesViewProvider';
 import {
     RDBCommandsViewProvider,
-    RDBNodeTreeProvider,
+    SceneGraphInspectorViewProvider,
     RDBRegistryViewProvider
 } from './RDBViewProviders';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
@@ -49,8 +49,8 @@ export class Extension {
 
     // register our RDB views
     private rdbViews = {
-        RDBNodeTreeView: {
-            class: RDBNodeTreeProvider
+        SceneGraphInspector: {
+            class: SceneGraphInspectorViewProvider
         },
         RDBRegistryView: {
             class: RDBRegistryViewProvider

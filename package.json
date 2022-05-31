@@ -193,8 +193,8 @@
                 },
                 {
                     "type": "webview",
-                    "id": "RDBNodeTreeView",
-                    "name": "Node Tree",
+                    "id": "SceneGraphInspector",
+                    "name": "SceneGraph Inspector",
                     "when": "debugType == 'brightscript'"
                 },
                 {
