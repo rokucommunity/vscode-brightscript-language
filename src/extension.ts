@@ -172,8 +172,14 @@ export class Extension {
                 this.registerWebViewProviders(context);
             } else if (e.event === 'BSChannelPublishedEvent') {
                 const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
-                this.setupRDBViewProviders(config);
-                await this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
+                if (!config.injectRdbOnDeviceComponent) {
+                    void this.odc?.shutdown();
+                    this.odc = undefined;
+                } else {
+                    this.odc = this.setupODC(config);
+                }
+                this.setupRDBViewProviders();
+                void this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
                 //write debug server log statements to the DebugServer output channel
             } else if (e.event === 'BSDebugServerLogOutputEvent') {
                 this.extensionOutputChannel.appendLine(e.body);
@@ -264,11 +270,12 @@ export class Extension {
 
     private setupODC(config: BrightScriptLaunchConfiguration) {
         const rtaConfig = this.getRtaConfig(config);
-        const device = new rta.RokuDevice(rtaConfig);
-        return new rta.OnDeviceComponent(device, rtaConfig);
+        rta.odc.setConfig(rtaConfig);
+        return rta.odc;
     }
 
     private getRtaConfig(config: BrightScriptLaunchConfiguration) {
+        const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
@@ -277,11 +284,11 @@ export class Extension {
                 }]
             },
             OnDeviceComponent: {
-                // uncomment for debugging
-                // logLevel: 'verbose',
-                // serverDebugLogging: true,
+                logLevel: enableDebugging ? 'verbose' : null,
+                serverDebugLogging: enableDebugging,
                 disableTelnet: true,
-                disableCallOriginationLine: true
+                disableCallOriginationLine: true,
+                callbackListenPort: config.rdbCallbackPort
             }
         };
         return rtaConfig;
@@ -297,13 +304,7 @@ export class Extension {
         }
     }
 
-    private setupRDBViewProviders(config: BrightScriptLaunchConfiguration) {
-        if (!config.injectRdbOnDeviceComponent) {
-            this.odc = undefined;
-        } else {
-            this.odc = this.setupODC(config);
-        }
-
+    private setupRDBViewProviders() {
         for (const viewId in this.rdbViews) {
             this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
         }
