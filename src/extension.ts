@@ -165,7 +165,7 @@ export class Extension {
 
         //give the launch config to the link provider any time we launch the app
         vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
-            return this.debugSessionCustomEventHandler(e, docLinkProvider, logOutputManager, rendezvousViewProvider);
+            return this.debugSessionCustomEventHandler(e, context, docLinkProvider, logOutputManager, rendezvousViewProvider);
         });
 
         //register all commands for this extension
@@ -213,7 +213,7 @@ export class Extension {
         await languageServerPromise;
     }
 
-    private async debugSessionCustomEventHandler (e: vscode.DebugSessionCustomEvent, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+    private async debugSessionCustomEventHandler (e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
         if (e.event === 'BSLaunchStartEvent') {
             const config: BrightScriptLaunchConfiguration = e.body;
             await docLinkProvider.setLaunchConfig(config);
