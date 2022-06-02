@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.32.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.32.0...v2.32.1) - 2022-06-02
+### Fixed
+ - allow user-specified RDB port ([#401](https://github.com/rokucommunity/vscode-brightscript-language/pull/401))
+ - prevent RDB-related "port already in use" error after the first debug session ([#401](https://github.com/rokucommunity/vscode-brightscript-language/pull/401))
+
+
+
 ## [2.32.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.31.1...v2.32.0) - 2022-05-31
 ### Added
  - new SceneGraph Inspector panel to view/manage all on-device SceneGraph nodes right in vscode. ([#386](https://github.com/rokucommunity/vscode-brightscript-language/pull/386))
