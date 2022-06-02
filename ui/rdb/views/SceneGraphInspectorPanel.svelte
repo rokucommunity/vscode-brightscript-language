@@ -95,7 +95,6 @@
 
     function openNode(event: CustomEvent<ODC.NodeTree>) {
         const node = event.detail;
-        console.log('Edit node: ', node);
         //if the global node was clicked
         if (node === globalNode) {
             inspectNodeBaseKeyPath = {
