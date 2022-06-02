@@ -6,6 +6,7 @@ import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
 import * as rta from 'roku-test-automation';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 const sinon = createSandbox();
 
@@ -94,7 +95,7 @@ describe('extension', () => {
 
     describe('RDB', () => {
         const extensionInstance = extension.extension as any;
-        const config = {} as any;
+        const config = {} as BrightScriptLaunchConfiguration;
         let context;
         let originalRdbViews;
         beforeEach(() => {
@@ -141,10 +142,6 @@ describe('extension', () => {
                         launchConfiguration: config
                     }
                 };
-
-                afterEach(() => {
-                    sinon.restore();
-                });
 
                 it('calls setupODC to create the odc instance if enabled', () => {
                     config.injectRdbOnDeviceComponent = true;
