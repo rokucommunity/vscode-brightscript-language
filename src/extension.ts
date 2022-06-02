@@ -164,48 +164,8 @@ export class Extension {
         });
 
         //give the launch config to the link provider any time we launch the app
-        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
-            if (e.event === 'BSLaunchStartEvent') {
-                const config: BrightScriptLaunchConfiguration = e.body;
-                await docLinkProvider.setLaunchConfig(config);
-                logOutputManager.setLaunchConfig(config);
-                this.registerWebViewProviders(context);
-            } else if (e.event === 'BSChannelPublishedEvent') {
-                const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
-                if (!config.injectRdbOnDeviceComponent) {
-                    void this.odc?.shutdown();
-                    this.odc = undefined;
-                } else {
-                    this.odc = this.setupODC(config);
-                }
-                this.setupRDBViewProviders();
-                void this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
-                //write debug server log statements to the DebugServer output channel
-            } else if (e.event === 'BSDebugServerLogOutputEvent') {
-                this.extensionOutputChannel.appendLine(e.body);
-
-            } else if (e.event === 'BSRendezvousEvent') {
-                rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
-
-            } else if (e.event === 'BSChanperfEvent') {
-                if (!e.body.error) {
-                    this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
-                } else {
-                    this.chanperfStatusBar.text = e.body.error.message;
-                }
-
-                this.chanperfStatusBar.show();
-
-            } else if (!e.event) {
-                if (e.body[0]) {
-                    // open the first file with a compile error
-                    let uri = vscode.Uri.file(e.body[0].path);
-                    let doc = await vscode.workspace.openTextDocument(uri);
-                    let line = (e.body[0].lineNumber - 1 > -1) ? e.body[0].lineNumber - 1 : 0;
-                    let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
-                    await vscode.window.showTextDocument(doc, { preview: false, selection: range });
-                }
-            }
+        vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+            return this.debugSessionCustomEventHandler(e, docLinkProvider, logOutputManager, rendezvousViewProvider);
         });
 
         //register all commands for this extension
@@ -253,6 +213,50 @@ export class Extension {
         await languageServerPromise;
     }
 
+    private async debugSessionCustomEventHandler (e: vscode.DebugSessionCustomEvent, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+        if (e.event === 'BSLaunchStartEvent') {
+            const config: BrightScriptLaunchConfiguration = e.body;
+            await docLinkProvider.setLaunchConfig(config);
+            logOutputManager.setLaunchConfig(config);
+            this.registerWebViewProviders(context);
+        } else if (e.event === 'BSChannelPublishedEvent') {
+            const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
+            if (!config.injectRdbOnDeviceComponent) {
+                void this.odc?.shutdown();
+                this.odc = undefined;
+            } else {
+                this.odc = this.setupODC(config);
+            }
+            this.setupRDBViewProviders();
+            void this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
+            //write debug server log statements to the DebugServer output channel
+        } else if (e.event === 'BSDebugServerLogOutputEvent') {
+            this.extensionOutputChannel.appendLine(e.body);
+
+        } else if (e.event === 'BSRendezvousEvent') {
+            rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
+
+        } else if (e.event === 'BSChanperfEvent') {
+            if (!e.body.error) {
+                this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
+            } else {
+                this.chanperfStatusBar.text = e.body.error.message;
+            }
+
+            this.chanperfStatusBar.show();
+
+        } else if (!e.event) {
+            if (e.body[0]) {
+                // open the first file with a compile error
+                let uri = vscode.Uri.file(e.body[0].path);
+                let doc = await vscode.workspace.openTextDocument(uri);
+                let line = (e.body[0].lineNumber - 1 > -1) ? e.body[0].lineNumber - 1 : 0;
+                let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
+                await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+            }
+        }
+    }
+
     /**
      * Writes text to a logfile if enabled
      */
@@ -284,7 +288,7 @@ export class Extension {
                 }]
             },
             OnDeviceComponent: {
-                logLevel: enableDebugging ? 'verbose' : null,
+                logLevel: enableDebugging ? 'verbose' : undefined,
                 serverDebugLogging: enableDebugging,
                 disableTelnet: true,
                 disableCallOriginationLine: true,
