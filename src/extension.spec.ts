@@ -146,14 +146,14 @@ describe('extension', () => {
                 it('calls setupODC to create the odc instance if enabled', () => {
                     config.injectRdbOnDeviceComponent = true;
                     const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {});
+                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
                     expect(spy.calledOnce).to.be.true;
                 });
 
                 it('does not call setupODC if not enabled', () => {
                     config.injectRdbOnDeviceComponent = false;
                     const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {});
+                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
                     expect(spy.calledOnce).to.be.false;
                 });
             });
