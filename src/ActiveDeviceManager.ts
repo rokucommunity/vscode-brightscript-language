@@ -126,12 +126,10 @@ export class ActiveDeviceManager extends EventEmitter {
             });
 
             finder.on('timeout', () => {
-                if (devices.length > 0) {
-                    // debug('found Roku devices at %o after %dms', addresses, elapsedTime());
-                    resolve(devices);
-                } else {
-                    reject(new Error(`Could not find any Roku devices after ${timeout / 1000} seconds`));
+                if (devices.length === 0) {
+                    console.info(`Could not find any Roku devices after ${timeout / 1000} seconds`);
                 }
+                resolve(devices);
             });
 
             finder.start(timeout);
