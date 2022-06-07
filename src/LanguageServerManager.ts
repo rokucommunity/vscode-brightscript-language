@@ -114,7 +114,8 @@ export class LanguageServerManager {
 
             //give the runner the specific version of bsc to run
             const args = [
-                this.selectedBscInfo.path
+                this.selectedBscInfo.path,
+                (this.context.extensionMode === vscode.ExtensionMode.Development).toString()
             ];
             // If the extension is launched in debug mode then the debug server options are used
             // Otherwise the run options are used
