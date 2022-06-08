@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.33.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.32.1...v2.33.0) - 2022-06-08
+### Changed
+ - updated to [brighterscript@0.52.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0520---2022-06-08). Notable changes since v0.451.4:
+    - update LanguageServer to load projects based on bsconfig.json presence ([brighterscript#613](https://github.com/rokucommunity/brighterscript/pull/613))
+ - updated to [roku-debug@0.12.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0130---2022-06-08). Notable changes since 0.12.2:
+    - add support for dynamic breakpoints when using Debug Protocol ([roku-debug#84](https://github.com/rokucommunity/roku-debug/pull/84))
+    - fix crash when RAF files show up in stacktrace ([roku-debug#88](https://github.com/rokucommunity/roku-debug/pull/88))
+ - updated to [roku-deploy@3.7.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#371---2022-06-08)
+### Fixed
+ - don't show error messages when 0 Roku devices are found in the active device manager ([#406](https://github.com/rokucommunity/vscode-brightscript-language/pull/406))
+ - delay the language server 1.5 seconds when running in dev mode to help with language server debugging ([#405](https://github.com/rokucommunity/vscode-brightscript-language/pull/405))
+ - add missing RDP parameter ([#403](https://github.com/rokucommunity/vscode-brightscript-language/pull/403))
+
+
+
 ## [2.32.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.32.0...v2.32.1) - 2022-06-02
 ### Fixed
  - allow user-specified RDB port ([#401](https://github.com/rokucommunity/vscode-brightscript-language/pull/401))
