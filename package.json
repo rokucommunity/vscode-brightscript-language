@@ -68,7 +68,7 @@
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.13.0",
+        "roku-debug": "^0.13.1",
         "roku-deploy": "^3.7.1",
         "roku-test-automation": "2.0.0-beta.5",
         "semver": "^7.1.3",
