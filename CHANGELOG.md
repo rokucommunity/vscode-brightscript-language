@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.33.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.33.1...v2.33.2) - 2022-06-13
+### Changed
+ - updated to [brighterscript@0.52.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0522---2022-06-13). Notable changes since v0.52.0:
+    - fixed transpile crash when file was changed by a plugin in beforeTranspile events ([brighterscript#627](https://github.com/rokucommunity/brighterscript/pull/627))
+    - fixed bug in transpile preview custom command that wasn't returning the result ([brighterscript#626](https://github.com/rokucommunity/brighterscript/pull/626))
+    - add missing range on interface statement, causing transpile crashes ([brighterscript#623](https://github.com/rokucommunity/brighterscript/pull/623))
+    - transpile enum values in binary expressions ([brighterscript#622](https://github.com/rokucommunity/brighterscript/pull/622))
+    - detect class circular extends ([brighterscript#619](https://github.com/rokucommunity/brighterscript/pull/619))
+    - improve namespace/enum/class semantic token detection (better syntax highlighting) ([brighterscript#621](https://github.com/rokucommunity/brighterscript/pull/#621))
+
+
+
 ## [2.33.1](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.33.0...v2.33.1) - 2022-06-09
 ### Changed
  - updated to [roku-debug@0.13.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0131---2022-06-09).
@@ -15,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.33.0](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.32.1...v2.33.0) - 2022-06-08
 ### Changed
- - updated to [brighterscript@0.52.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0520---2022-06-08). Notable changes since v0.451.4:
+ - updated to [brighterscript@0.52.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0520---2022-06-08). Notable changes since v0.51.4:
     - update LanguageServer to load projects based on bsconfig.json presence ([brighterscript#613](https://github.com/rokucommunity/brighterscript/pull/613))
  - updated to [roku-debug@0.13.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0130---2022-06-08). Notable changes since 0.12.2:
     - add support for dynamic breakpoints when using Debug Protocol ([roku-debug#84](https://github.com/rokucommunity/roku-debug/pull/84))
