@@ -8,9 +8,7 @@
     import NodeBranchView from '../components/SceneGraphInspectorPanel/NodeBranchView.svelte';
     import NodeDetailView from '../components/SceneGraphInspectorPanel/NodeDetailView.svelte';
     import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import SettingsGear from 'svelte-codicons/lib/SettingsGear.svelte';
-    import Issues from 'svelte-codicons/lib/Issues.svelte';
-    import Refresh from 'svelte-codicons/lib/Refresh.svelte';
+    import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
     let loading = true;
@@ -39,6 +37,7 @@
 
     async function refresh() {
         loading = true;
+        inspectNodeBaseKeyPath = null;
         rootTree = [];
 
         try {
@@ -78,16 +77,14 @@
     }
 
     let odcAvailable = false;
-    $: {
+
+    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
+        odcAvailable = message.available;
         if (odcAvailable) {
             refresh();
         } else {
             loading = false;
         }
-    }
-
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
     });
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -141,7 +138,7 @@
         bottom: 0;
         background-color: inherit;
         user-select: none;
-        overflow: auto;
+        min-height: 100%;
     }
 
     #errorMessage {
