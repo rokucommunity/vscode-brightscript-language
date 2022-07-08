@@ -498,7 +498,7 @@
                         </div>
                     {/each}
                     <strong>]</strong>
-                {:else if field.fieldType === 'node'}
+                {:else if field.type === 'roSGNode' || field.fieldType === 'node'}
                     <button id={id} on:click={onNodeClicked}
                         >{field.value.subtype} &#x1F50D;</button>
                 {:else if field.type === 'roString' || field.fieldType == 'string'}
