@@ -135,7 +135,6 @@ export class LogOutputManager {
             return;
         }
 
-        console.log('received event ' + e.event);
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
         } else if (e.event === 'BSLaunchStartEvent') {
