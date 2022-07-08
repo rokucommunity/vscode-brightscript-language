@@ -156,12 +156,15 @@
 
     function onResetValueButtonClicked() {
         const elements = [];
+        // Find the elements we want to reset based on their relationship to the reset button
         for (const child of this.parentElement.children) {
             if (child.classList.contains('fieldValue')) {
                 elements.push(child);
             };
         }
+
         if (elements.length === 1) {
+            // If we got one then it's a standard value
             const element = elements[0]
             const id = element.id;
             let eventType = 'input';
@@ -174,11 +177,14 @@
             // Have to manually trigger the observer
             element.dispatchEvent(new Event(eventType));
         } else if (elements.length === 2) {
+            // If we got two then it's for vector2d field and so we have to update both inputs
             const xElement = elements[0];
             const yElement = elements[1];
             xElement.value = fields[xElement.id].value[0];
             yElement.value = fields[yElement.id].value[1];
             xElement.dispatchEvent(new Event('input'));
+        } else {
+            console.log('Reset value button was clicked but could not find value to reset')
         }
     }
 
