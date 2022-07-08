@@ -14,6 +14,7 @@
     let self: HTMLDivElement;
     let nodeInfoElement: HTMLDivElement;
     let nodeFieldsCache: ODC.NodeRepresentation?;
+    let showNodeInfo = false;
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
     export let expanded = utils.getStorageBooleanValue(expandedStorageKey);
@@ -59,7 +60,7 @@
     function startNodeInfoTimeout() {
         stopNodeInfoTimeout();
         nodeInfoHideTimeout = setTimeout(async () => {
-            nodeInfoElement.classList.add('hide');
+            showNodeInfo = false
         }, 100);
     }
 
@@ -69,7 +70,7 @@
 
     function onEditButtonMouseEnter() {
         stopNodeInfoTimeout()
-        nodeInfoElement.classList.remove('hide');
+        showNodeInfo = true
     }
 
     function onEditButtonMouseLeave() {
@@ -314,7 +315,8 @@
         </span>
     </div>
     <div
-        class="nodeInfo hide"
+        class:hide={!showNodeInfo}
+        class="nodeInfo"
         on:mouseenter={onNodeInfoMouseEnter}
         on:mouseleave={onNodeInfoMouseLeave}
         bind:this={nodeInfoElement}>
