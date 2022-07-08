@@ -116,7 +116,6 @@
             value: value,
         }
         odc.setValueAtKeyPath(args);
-        utils.storeChangedFieldEntry(args);
     }
 
     function onNodeClicked() {
