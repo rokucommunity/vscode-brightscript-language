@@ -430,7 +430,7 @@
         },
         "storage_types": {
             "comment": "Included 'dim' because it didn't warrant its own matcher",
-            "match": "(?i:\\b(boolean|integer|longinteger|float|double|string|object|function|sub|interface|dynamic|brsub|dim)\\b)",
+            "match": "(?i:\\b(boolean|integer|longinteger|float|double|string|object|function|sub|interface|dynamic|brsub|dim|const)\\b)",
             "captures": {
                 "1": {
                     "name": "storage.type.brs"
