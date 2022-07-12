@@ -98,7 +98,7 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.readRegistry>>('readRegistry', args, options);
     }
 
-    public async writeRegistry(args?: rta.ODC.WriteRegistryArgs, options?: rta.ODC.RequestOptions) {
+    public async writeRegistry(args: rta.ODC.WriteRegistryArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.writeRegistry>>('writeRegistry', args, options);
     }
 
@@ -106,35 +106,35 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getFocusedNode>>('getFocusedNode', args, options);
     }
 
-    public async getValueAtKeyPath(args?: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
+    public async getValueAtKeyPath(args: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getValueAtKeyPath>>('getValueAtKeyPath', args, options);
     }
 
-    public async getValuesAtKeyPaths(args?: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
+    public async getValuesAtKeyPaths(args: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getValuesAtKeyPaths>>('getValuesAtKeyPaths', args, options);
     }
 
-    public async getNodesInfoAtKeyPaths(args?: rta.ODC.GetNodesInfoAtKeyPathsArgs, options?: rta.ODC.RequestOptions) {
+    public async getNodesInfoAtKeyPaths(args: rta.ODC.GetNodesInfoAtKeyPathsArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfoAtKeyPaths>>('getNodesInfoAtKeyPaths', args, options);
     }
 
-    public async hasFocus(args?: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
+    public async hasFocus(args: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.hasFocus>>('hasFocus', args, options);
     }
 
-    public async isInFocusChain(args?: rta.ODC.IsInFocusChainArgs, options?: rta.ODC.RequestOptions) {
+    public async isInFocusChain(args: rta.ODC.IsInFocusChainArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.isInFocusChain>>('isInFocusChain', args, options);
     }
 
-    public async observeField(args?: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
+    public async observeField(args: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
     }
 
-    public async setValueAtKeyPath(args?: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
+    public async setValueAtKeyPath(args: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.setValueAtKeyPath>>('setValueAtKeyPath', args, options);
     }
 
-    public async deleteRegistrySections(args?: rta.ODC.DeleteRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {
+    public async deleteRegistrySections(args: rta.ODC.DeleteRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteRegistrySections>>('deleteRegistrySections', args, options);
     }
 
@@ -142,11 +142,11 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
     }
 
-    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
+    public async storeNodeReferences(args: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
     }
 
-    public async deleteNodeReferences(args?: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
+    public async deleteNodeReferences(args: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
     }
 }
