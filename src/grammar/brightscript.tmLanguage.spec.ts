@@ -71,6 +71,23 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('highlights regex literals', async () => {
+        await testGrammar(`
+             /test(?>something)(?|asdf)/gmixsuXUAJ
+            '                           ^^^^^^^^^^ string.regexp.brs keyword.other.brs
+            '                          ^ string.regexp.brs punctuation.definition.string.end.brs
+            '                         ^ meta.group.assertion.regexp
+            '                     ^^^^ meta.group.assertion.regexp
+            '                   ^^ meta.assertion.look-behind.regexp
+            '                  ^ meta.group.assertion.regexp
+            '                 ^ meta.group.regexp
+            '        ^^^^^^^^^ string.regexp.brs meta.group.regexp
+            '      ^^ punctuation.definition.group.no-capture.regexp
+            '     ^ meta.group.regexp
+            '^^^^^ string.regexp.brs
+        `);
+    });
+
     it.skip('handles `as Function` parameters properly', async () => {
         await testGrammar(`
              function getStyle(builderFunc as Function, processorFunc as Function) as object
