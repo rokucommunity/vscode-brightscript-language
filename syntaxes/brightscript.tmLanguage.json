@@ -168,7 +168,7 @@
             }
         },
         "import_statement": {
-            "match": "(?i:(import)\\s(\".*\"))",
+            "match": "(?i:(import)\\s*(\".*\"))",
             "captures": {
                 "1": {
                     "name": "keyword.control.import.brs"

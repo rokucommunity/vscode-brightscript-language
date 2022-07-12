@@ -7,6 +7,20 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('allows 0+ space after import keyword', async () => {
+        await testGrammar(`
+             import"something.brs"
+            '      ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+             import "something.brs"
+            '       ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+             import    "something.brs"
+            '          ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+        `);
+    });
+
     it('colors the const keyword', async () => {
         await testGrammar(`
              const API_KEY = true
