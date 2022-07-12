@@ -134,20 +134,20 @@
         "regex": {
 			"patterns": [
 				{
-					"name": "string.regexp.ts",
+					"name": "string.regexp.brs",
 					"begin": "(?<!\\+\\+|--|})(?<=[=(:,\\[?+!]|^return|[^\\._$[:alnum:]]return|^case|[^\\._$[:alnum:]]case|=>|&&|\\|\\||\\*\\/)\\s*(\\/)(?![\\/*])(?=(?:[^\\/\\\\\\[\\()]|\\\\.|\\[([^\\]\\\\]|\\\\.)+\\]|\\(([^\\)\\\\]|\\\\.)+\\))+\\/([gmixsuXUAJ]+|(?![\\/\\*])|(?=\\/\\*))(?!\\s*[a-zA-Z0-9_$]))",
 					"beginCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.begin.ts"
+							"name": "punctuation.definition.string.begin.brs"
 						}
 					},
 					"end": "(/)([gmixsuXUAJ]*)",
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.ts"
+							"name": "punctuation.definition.string.end.brs"
 						},
 						"2": {
-							"name": "keyword.other.ts"
+							"name": "keyword.other.brs"
 						}
 					},
 					"patterns": [
@@ -157,20 +157,20 @@
 					]
 				},
 				{
-					"name": "string.regexp.ts",
+					"name": "string.regexp.brs",
 					"begin": "((?<![_$[:alnum:])\\]]|\\+\\+|--|}|\\*\\/)|((?<=^return|[^\\._$[:alnum:]]return|^case|[^\\._$[:alnum:]]case))\\s*)\\/(?![\\/*])(?=(?:[^\\/\\\\\\[]|\\\\.|\\[([^\\]\\\\]|\\\\.)*\\])+\\/([gmixsuXUAJ]+|(?![\\/\\*])|(?=\\/\\*))(?!\\s*[a-zA-Z0-9_$]))",
 					"beginCaptures": {
 						"0": {
-							"name": "punctuation.definition.string.begin.ts"
+							"name": "punctuation.definition.string.begin.brs"
 						}
 					},
 					"end": "(/)([gmixsuXUAJ]*)",
 					"endCaptures": {
 						"1": {
-							"name": "punctuation.definition.string.end.ts"
+							"name": "punctuation.definition.string.end.brs"
 						},
 						"2": {
-							"name": "keyword.other.ts"
+							"name": "keyword.other.brs"
 						}
 					},
 					"patterns": [
