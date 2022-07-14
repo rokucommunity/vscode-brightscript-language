@@ -46,7 +46,8 @@
         "watch-docs": "npm run build-docs -- --watch",
         "validate": "svelte-check",
         "svelte-build": "rollup -c",
-        "svelte-watch": "rollup -c -w"
+        "svelte-watch": "rollup -c -w",
+        "releases": "ts-node scripts/releases.ts"
     },
     "dependencies": {
         "@vscode/extension-telemetry": "^0.4.7",
@@ -93,6 +94,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.53.0",
+        "@types/yargs": "^17.0.10",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
         "@vscode/webview-ui-toolkit": "^1.0.0",
@@ -119,7 +121,7 @@
         "svelte-preprocess": "^4.10.5",
         "ts-node": "^10.7.0",
         "tslib": "^2.3.1",
-        "typescript": "^3.8.3",
+        "typescript": "^4.7.4",
         "typescript-json-schema": "^0.50.1",
         "undent": "^0.1.0",
         "vsce": "^2.6.7",
