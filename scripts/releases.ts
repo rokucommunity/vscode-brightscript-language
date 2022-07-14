@@ -5,6 +5,8 @@ import { execSync, exec } from 'child_process';
 import * as chalk from 'chalk';
 import * as semver from 'semver';
 import * as prompt from 'prompt';
+import latestVersion from 'latest-version';
+import * as terminalOverwrite from 'terminal-overwrite';
 
 class Runner {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
@@ -115,13 +117,55 @@ class Runner {
             return;
         }
         //get the latest version from the changelog. that's what we'll use for the `npm version` call
-        const [, version] = /##\s*\[(.*?)\]/.exec(
+        const [, targetVersion] = /##\s*\[(.*?)\]/.exec(
             fsExtra.readFileSync(changelogPath).toString()
         ) ?? [];
-        if (!semver.valid(version)) {
-            throw new Error(`Invalid version "${version}"`);
+        if (!semver.valid(targetVersion)) {
+            throw new Error(`Invalid version "${targetVersion}"`);
         }
-        this.log(project, `Executing "npm version ${version}`);
+        this.log(project, `Executing "npm version ${targetVersion}"`);
+        execSync(`npm version ${targetVersion}`, { cwd: project.dir });
+
+        this.log(project, 'pushing release to github');
+        execSync('git push origin master --tags', { cwd: project.dir });
+
+        //wait for the npm package to show up in the registry, then move on to the next project
+        await this.waitForLatestVersion(project, targetVersion);
+    }
+
+    private async waitForLatestVersion(project: Project, targetVersion: string) {
+        let isFinished;
+        const interval = 15 * 1000;
+        const initialDelay = (60 * 1000) - interval;
+        setTimeout(() => {
+            const handle = setInterval(() => {
+                void latestVersion(project.name).then((result) => {
+                    if (result === targetVersion) {
+                        isFinished = true;
+                        clearInterval(handle);
+                    }
+                });
+            }, interval * 0);
+            //publishing takes several minutes, so don't start monitoring for a little while...
+        }, initialDelay * 0);
+        const startTime = Date.now();
+        while (true) {
+            await this.sleep(1000);
+            if (isFinished) {
+                break;
+            }
+            const totalSeconds = Math.round((Date.now() - startTime) / 1000) + 's';
+            terminalOverwrite(`${chalk.green(project.name)}: Waiting for npm to publish package (${totalSeconds})`);
+        }
+        terminalOverwrite(`${chalk.green(project.name)}: package successfully published to npm`);
+    }
+
+    private sleep(timeout: number) {
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, timeout);
+        });
     }
 
     private installDependencies(project: Project) {
@@ -131,7 +175,7 @@ class Runner {
             for (const dependency of dependencies) {
                 dependency.currentVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
-                execSync(`npm install ${dependency.name}@latest`, { cwd: project.dir });
+                execSync(`npm install ${dependency.name}@latest`, { cwd: project.dir, stdio: 'inherit' });
 
                 dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
