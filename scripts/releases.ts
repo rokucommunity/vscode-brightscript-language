@@ -60,6 +60,10 @@ class Runner {
         return date;
     }
 
+    private escapeRegExp(expString: string) {
+        return expString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    }
+
     private async doRelease(project: Project, lastTag: string) {
         const [month, day, year] = new Date().toLocaleDateString().split('/');
 
@@ -74,7 +78,7 @@ class Runner {
         }
 
         const lines = [
-            '', '', '',
+            '', '', '', '',
             `## [UNRELEASED](${project.repositoryUrl}/compare/${lastTag}...UNRELEASED) - ${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
             `### Changed`
         ];
@@ -93,6 +97,7 @@ class Runner {
                     `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
                     `Notable changes since ${dependency.currentVersion}:`
                 ].join(''));
+                //TODO we should actually find the dependency version from the previous RELEASE, not just since the last version bump.
                 for (const commit of this.getCommitLogs(dependencyProject.name, dependency.currentVersion, dependency.newVersion)) {
                     lines.push(`     - ${commit.message} (${getReflink(dependencyProject, commit, true)})`);
                 }
@@ -110,8 +115,8 @@ class Runner {
             marker + lines.join(eolChar)
         );
         fsExtra.outputFileSync(changelogPath, changelog);
-        this.log(project, 'Changelog:', changelogPath);
-        const input = await prompt.get({ name: 'value', description: 'Review and modify the changelog. Type "skip" to skip releasing this project, or press enter to continue' });
+        console.log('\nChangelog: ', chalk.yellow(changelogPath));
+        const input = await prompt.get({ name: 'value', description: 'Review and edit the changelog (link shown above). Once finished, press enter to continue, or type "skip" to skip releasing this project' });
         if (input.value?.toString()?.toLowerCase() === 'skip') {
             this.log(project, 'Skipping release');
             return;
@@ -123,11 +128,15 @@ class Runner {
         if (!semver.valid(targetVersion)) {
             throw new Error(`Invalid version "${targetVersion}"`);
         }
+
+        this.log(project, 'Committing changelog');
+        execSync(`git add -A && git commit -m "Update changelog for v${targetVersion}"`, { cwd: project.dir, stdio: 'inherit' });
+
         this.log(project, `Executing "npm version ${targetVersion}"`);
-        execSync(`npm version ${targetVersion}`, { cwd: project.dir });
+        execSync(`npm version ${targetVersion}`, { cwd: project.dir, stdio: 'inherit' });
 
         this.log(project, 'pushing release to github');
-        execSync('git push origin master --tags', { cwd: project.dir });
+        execSync('git push origin master --tags', { cwd: project.dir, stdio: 'inherit' });
 
         //wait for the npm package to show up in the registry, then move on to the next project
         await this.waitForLatestVersion(project, targetVersion);
@@ -145,9 +154,9 @@ class Runner {
                         clearInterval(handle);
                     }
                 });
-            }, interval * 0);
+            }, interval);
             //publishing takes several minutes, so don't start monitoring for a little while...
-        }, initialDelay * 0);
+        }, initialDelay);
         const startTime = Date.now();
         while (true) {
             await this.sleep(1000);
@@ -271,7 +280,7 @@ class Runner {
         project.dir = s`${this.tempDir}/${repoName}`;
         if (fsExtra.pathExistsSync(project.dir)) {
             console.log('Resetting git repo', project.dir);
-            execSync(`git reset --hard && git clean -f -d && git checkout master && git pull && git fetch --tags`, { cwd: project.dir });
+            execSync(`git reset --hard && git clean -f -d && git checkout master && git pull && git fetch --tags`, { cwd: project.dir, stdio: 'inherit' });
         } else {
             console.log(`Cloning ${url}`);
             execSync(`git clone "${url}" "${project.dir}"`);
