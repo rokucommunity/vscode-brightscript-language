@@ -73,6 +73,9 @@
                     "include": "#keyword_logical_operator"
                 },
                 {
+                    "include": "#function_call"
+                },
+                {
                     "include": "#object_properties"
                 },
                 {
@@ -98,9 +101,6 @@
                 },
                 {
                     "include": "#end_function"
-                },
-                {
-                    "include": "#function_call"
                 },
                 {
                     "include": "#interface_declaration"
@@ -525,7 +525,7 @@
             ]
         },
         "object_properties": {
-            "match": "(?i:\\b\\.((?:[a-z0-9_])*)(?!\\s*\\()\\b)",
+            "match": "(?i:(?<=\\.)([a-z0-9_][a-z0-9_\\$%!#&]*))",
             "captures": {
                 "1": {
                     "name": "variable.other.object.property.brs"
@@ -534,7 +534,7 @@
         },
         "identifiers_with_type_designators": {
             "name": "entity.name.variable.local.brs",
-            "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#])"
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)[\\$%!#&])"
         },
         "primitive_literal_expression": {
             "patterns": [
@@ -673,7 +673,7 @@
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:\\b([a-z_][a-z0-9_]*)\\s*\\()"
+            "match": "(?i:\\b([a-z_][a-z0-9_]*)[ \\t]*(?=\\())"
         },
         "function_declaration": {
             "captures": {
