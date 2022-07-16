@@ -7,6 +7,7 @@ import * as semver from 'semver';
 import * as prompt from 'prompt';
 import latestVersion from 'latest-version';
 import * as terminalOverwrite from 'terminal-overwrite';
+import * as notifier from 'node-notifier';
 
 class Runner {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
@@ -38,12 +39,13 @@ class Runner {
 
     private async processProject(project: Project) {
         const lastTag = this.getLastTag(project.dir);
+        const latestReleaseVersion = lastTag.replace(/^v/, '');
         this.log(project, `Last release was ${lastTag}`);
 
         this.log(project, 'installing npm packages');
         execSync(`npm install`, { cwd: project.dir });
 
-        this.installDependencies(project);
+        this.installDependencies(project, latestReleaseVersion);
 
         this.computeChanges(project, lastTag);
 
@@ -54,14 +56,13 @@ class Runner {
         await this.doRelease(project, lastTag);
     }
 
+    /**
+     * Find the year-month-day of the specified release from git logs
+     */
     private getVersionDate(cwd: string, version: string) {
         const logOutput = execSync('git log --tags --simplify-by-decoration --pretty="format:%ci %d"', { cwd: cwd }).toString();
-        const [, date] = new RegExp(String.raw`(\d+-\d+-\d+).*\(tag:\s*v${version.replace('.', '\\.')}\)`).exec(logOutput) ?? [];
+        const [, date] = new RegExp(String.raw`(\d+-\d+-\d+).*?tag:[ \t]*v${version.replace('.', '\\.')}`, 'gmi').exec(logOutput) ?? [];
         return date;
-    }
-
-    private escapeRegExp(expString: string) {
-        return expString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
     }
 
     private async doRelease(project: Project, lastTag: string) {
@@ -89,16 +90,15 @@ class Runner {
 
         //build changelog entries for each new dependency
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
-            if (dependency.currentVersion !== dependency.newVersion) {
+            if (dependency.previousReleaseVersion !== dependency.newVersion) {
                 const dependencyProject = this.getProject(dependency.name);
                 lines.push([
                     ` - upgrade to [${dependency.name}@${dependency.newVersion}]`,
                     `(${dependencyProject.repositoryUrl}/blob/master/CHANGELOG.md#`,
                     `${dependency.newVersion.replace(/\./g, '')}---${this.getVersionDate(dependencyProject.dir, dependency.newVersion)}). `,
-                    `Notable changes since ${dependency.currentVersion}:`
+                    `Notable changes since ${dependency.previousReleaseVersion}:`
                 ].join(''));
-                //TODO we should actually find the dependency version from the previous RELEASE, not just since the last version bump.
-                for (const commit of this.getCommitLogs(dependencyProject.name, dependency.currentVersion, dependency.newVersion)) {
+                for (const commit of this.getCommitLogs(dependencyProject.name, dependency.previousReleaseVersion, dependency.newVersion)) {
                     lines.push(`     - ${commit.message} (${getReflink(dependencyProject, commit, true)})`);
                 }
             }
@@ -116,6 +116,12 @@ class Runner {
         );
         fsExtra.outputFileSync(changelogPath, changelog);
         console.log('\nChangelog: ', chalk.yellow(changelogPath));
+        try {
+            notifier.notify({
+                title: 'RokuCommunity Release Managager',
+                message: `Please review the changelog for ${project.name}`
+            });
+        } catch { }
         const input = await prompt.get({ name: 'value', description: 'Review and edit the changelog (link shown above). Once finished, press enter to continue, or type "skip" to skip releasing this project' });
         if (input.value?.toString()?.toLowerCase() === 'skip') {
             this.log(project, 'Skipping release');
@@ -177,25 +183,36 @@ class Runner {
         });
     }
 
-    private installDependencies(project: Project) {
+    /**
+     * read the dependency version from the specified release commit
+     */
+    private getDependencyVersionFromRelease(project: Project, releaseVersion: string, packageName: string, dependencyType: 'dependencies' | 'devDependencies') {
+        const output = execSync(`git show v${releaseVersion}:package.json`, { cwd: project.dir }).toString();
+        const packageJson = JSON.parse(output);
+        const version = packageJson?.[dependencyType][packageName];
+        return /\d+\.\d+\.\d+/.exec(version)?.[0] as string;
+    }
+
+    private installDependencies(project: Project, latestReleaseVersion: string) {
         this.log(project, 'installing', project.dependencies.length, 'dependencies and', project.devDependencies.length, 'devDependencies');
 
-        const install = (dependencies: typeof project.dependencies, flags?: string) => {
-            for (const dependency of dependencies) {
-                dependency.currentVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
+        const install = (project: Project, dependencyType: 'dependencies' | 'devDependencies', flags?: string) => {
+            for (const dependency of project[dependencyType]) {
+                dependency.previousReleaseVersion = this.getDependencyVersionFromRelease(project, latestReleaseVersion, dependency.name, dependencyType);
+                const currentVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
                 execSync(`npm install ${dependency.name}@latest`, { cwd: project.dir, stdio: 'inherit' });
 
                 dependency.newVersion = fsExtra.readJsonSync(s`${project.dir}/node_modules/${dependency.name}/package.json`).version;
 
-                if (dependency.newVersion !== dependency.currentVersion) {
-                    this.log(project, `Updated ${chalk.green(dependency.name)} from ${chalk.yellow(dependency.currentVersion)} to ${chalk.yellow(dependency.newVersion)}`);
+                if (dependency.newVersion !== currentVersion) {
+                    this.log(project, `Updated ${chalk.green(dependency.name)} from ${chalk.yellow(currentVersion)} to ${chalk.yellow(dependency.newVersion)}`);
                 }
             }
         };
 
-        install(project.dependencies);
-        install(project.devDependencies, '--save-dev');
+        install(project, 'dependencies');
+        install(project, 'devDependencies', '--save-dev');
     }
 
     private computeChanges(project: Project, lastTag: string) {
@@ -205,9 +222,9 @@ class Runner {
         //get commits from any changed dependencies
         for (const dependency of [...project.dependencies, ...project.devDependencies]) {
             //the dependency has changed
-            if (dependency.currentVersion !== dependency.newVersion) {
+            if (dependency.previousReleaseVersion !== dependency.newVersion) {
                 project.changes.push(
-                    ...this.getCommitLogs(dependency.name, dependency.currentVersion, dependency.newVersion)
+                    ...this.getCommitLogs(dependency.name, dependency.previousReleaseVersion, dependency.newVersion)
                 );
             }
         }
@@ -259,9 +276,11 @@ class Runner {
                 .map(x => x.trim())
                 //only keep valid version tags
                 .filter(x => semver.valid(x))
+                //exclude prerelease versions
+                .filter(x => !semver.prerelease(x))
         ).reverse();
-        //return the first non-prerelease version
-        return allTags.find(x => !semver.prerelease(x))!;
+
+        return allTags[0];
     }
 
     private log(project: Project, ...messages: any[]) {
@@ -354,12 +373,12 @@ class Runner {
             dir: s`${this.tempDir}/${repoName}`,
             dependencies: project.dependencies?.map(d => ({
                 name: d,
-                currentVersion: undefined as any,
+                previousReleaseVersion: undefined as any,
                 newVersion: undefined as any
             })) ?? [],
             devDependencies: project.devDependencies?.map(d => ({
                 name: d,
-                currentVersion: undefined as any,
+                previousReleaseVersion: undefined as any,
                 newVersion: undefined as any
             })) ?? [],
             repositoryUrl: (project as any).repositoryUrl ?? `https://github.com/rokucommunity/${repoName}`,
@@ -378,12 +397,12 @@ interface Project {
     dir: string;
     dependencies: Array<{
         name: string;
-        currentVersion: string;
+        previousReleaseVersion: string;
         newVersion: string;
     }>;
     devDependencies: Array<{
         name: string;
-        currentVersion: string;
+        previousReleaseVersion: string;
         newVersion: string;
     }>;
     groups?: string[];
