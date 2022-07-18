@@ -1,3 +1,7 @@
+/**
+ * This script automates the releases of all the RokuCommunity projects.
+ * You must have push and tag access to the repositories to use this script.
+ */
 import * as yargs from 'yargs';
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
@@ -13,7 +17,7 @@ class Runner {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
     public async run(options: { groups: string[]; projects: string[] }) {
         console.log('Creating tempDir', this.tempDir);
-        fsExtra.ensureDirSync(this.tempDir);
+        fsExtra.emptyDirSync(this.tempDir);
 
         options.groups ??= [];
 
@@ -297,13 +301,8 @@ class Runner {
 
         //clone the project
         project.dir = s`${this.tempDir}/${repoName}`;
-        if (fsExtra.pathExistsSync(project.dir)) {
-            console.log('Resetting git repo', project.dir);
-            execSync(`git reset --hard && git clean -f -d && git checkout master && git pull && git fetch --tags`, { cwd: project.dir, stdio: 'inherit' });
-        } else {
-            console.log(`Cloning ${url}`);
-            execSync(`git clone "${url}" "${project.dir}"`);
-        }
+        console.log(`Cloning ${url}`);
+        execSync(`git clone "${url}" "${project.dir}"`);
     }
 
     private projects: Project[] = [{
