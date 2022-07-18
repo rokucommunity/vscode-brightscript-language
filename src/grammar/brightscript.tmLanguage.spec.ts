@@ -21,6 +21,17 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('matches functions and properties in a chain', async () => {
+        await testGrammar(`
+             m.a().beta().c.delta = true
+            '               ^^^^^ variable.other.object.property.brs
+            '             ^ variable.other.object.property.brs
+            '      ^^^^ entity.name.function.brs
+            '  ^ entity.name.function.brs
+            '^ keyword.other.this.brs
+        `);
+    });
+
     it('colors the const keyword', async () => {
         await testGrammar(`
              const API_KEY = true

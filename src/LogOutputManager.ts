@@ -137,6 +137,8 @@ export class LogOutputManager {
 
         if (e.event === 'BSLogOutputEvent') {
             this.appendLine(e.body);
+        } else if (e.event === 'BSPopupMessageEvent') {
+            this.showMessage(e.body.message, e.body.severity);
         } else if (e.event === 'BSLaunchStartEvent') {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
@@ -164,6 +166,15 @@ export class LogOutputManager {
                 }
             }
         }
+    }
+
+    private showMessage(message: string, severity: string) {
+        const methods = {
+            error: vscode.window.showErrorMessage,
+            info: vscode.window.showInformationMessage,
+            warn: vscode.window.showWarningMessage
+        };
+        methods[severity](message);
     }
 
     public async addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {

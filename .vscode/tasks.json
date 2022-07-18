@@ -58,8 +58,8 @@
             ]
         },
         {
-            "type": "shell",
             "label": "test",
+            "type": "shell",
             "command": "npm run test:nocover --silent",
             "presentation": {
                 "focus": true,
