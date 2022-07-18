@@ -121,13 +121,13 @@ class Runner {
         fsExtra.outputFileSync(changelogPath, changelog);
         try {
             notifier.notify({
-                title: 'RokuCommunity Release Managager',
+                title: `${project.name}: ready to release`,
                 message: `Please review the changelog for ${project.name}`
             });
         } catch { }
         let targetVersion = '';
         while (true) {
-            console.log('\nChangelog: ', chalk.yellow(changelogPath));
+            console.log('\nChangelog for ', chalk.green(project.name), ': ', chalk.yellow(changelogPath));
             const input = await prompt.get({
                 properties: {
                     action: {
