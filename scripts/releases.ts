@@ -119,24 +119,41 @@ class Runner {
             marker + lines.join(eolChar)
         );
         fsExtra.outputFileSync(changelogPath, changelog);
-        console.log('\nChangelog: ', chalk.yellow(changelogPath));
         try {
             notifier.notify({
                 title: 'RokuCommunity Release Managager',
                 message: `Please review the changelog for ${project.name}`
             });
         } catch { }
-        const input = await prompt.get({ name: 'value', description: 'Review and edit the changelog (link shown above). Once finished, press enter to continue, or type "skip" to skip releasing this project' });
-        if (input.value?.toString()?.toLowerCase() === 'skip') {
-            this.log(project, 'Skipping release');
-            return;
-        }
-        //get the latest version from the changelog. that's what we'll use for the `npm version` call
-        const [, targetVersion] = /##\s*\[(.*?)\]/.exec(
-            fsExtra.readFileSync(changelogPath).toString()
-        ) ?? [];
-        if (!semver.valid(targetVersion)) {
-            throw new Error(`Invalid version "${targetVersion}"`);
+        let targetVersion = '';
+        while (true) {
+            console.log('\nChangelog: ', chalk.yellow(changelogPath));
+            const input = await prompt.get({
+                properties: {
+                    action: {
+                        description: 'Review and edit the changelog (link shown above). Type "continue" to continue, or "skip" to skip this release.',
+                        pattern: /^(s|skip|c|continue)$/i,
+                        required: true
+                    }
+                }
+            });
+            const inputText = input.action?.toString()?.toLowerCase();
+            if (inputText === 'skip') {
+                this.log(project, 'Skipping release');
+                return;
+            } else if (inputText === 'c' || inputText === 'continue') {
+                //get the latest version from the changelog. that's what we'll use for the `npm version` call
+                [, targetVersion] = /##\s*\[(.*?)\]/.exec(
+                    fsExtra.readFileSync(changelogPath).toString()
+                ) ?? [];
+                if (!semver.valid(targetVersion)) {
+                    console.error(`Invalid version "${targetVersion}"`);
+                } else {
+                    break;
+                }
+            } else {
+                console.error('Invalid input. Please enter a valid action');
+            }
         }
 
         this.log(project, 'Committing changelog');
