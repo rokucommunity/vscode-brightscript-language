@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.34.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.33.2...2.34.0) - 2022-07-18
+### Added
+ - support showing popups from debug sessions ([#407](https://github.com/rokucommunity/vscode-brightscript-language/pull/407))
+ - syntax highlighting for regex literals ([#408](https://github.com/rokucommunity/vscode-brightscript-language/pull/408))
+ - syntax highlighting support for the new `const` keyword ([#412](https://github.com/rokucommunity/vscode-brightscript-language/pull/412))
+### Changed
+ - upgrade to [roku-debug@0.14.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0141---2022-07-16). Notable changes since 0.13.1:
+     - case-sensitivity in getVariables protocol request ([roku-debug#91](https://github.com/rokucommunity/roku-debug/pull/91))
+     - Show error when cannot resolve hostname ([roku-debug#90](https://github.com/rokucommunity/roku-debug/pull/90))
+ - upgrade to [brighterscript@0.53.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0531---2022-07-15). Notable changes since 0.52.2:
+     - support codeactions at the edges of tokens. ([brighterscript#642](https://github.com/rokucommunity/brighterscript/pull/642))
+     - fix nested namespace import codeActions bug. ([brighterscript#641](https://github.com/rokucommunity/brighterscript/pull/641))
+     - new Language Feature: Constants ([brighterscript#632](https://github.com/rokucommunity/brighterscript/pull/632))
+     - flag invalid top level statements ([brighterscript#638](https://github.com/rokucommunity/brighterscript/pull/638))
+     - flag usage of undefined variables ([brighterscript#631](https://github.com/rokucommunity/brighterscript/pull/631))
+     - better project detection by language server ([brighterscript#633](https://github.com/rokucommunity/brighterscript/pull/633))
+     - fix bug with class transpile in watch mode ([brighterscript#630](https://github.com/rokucommunity/brighterscript/pull/630))
+     - send program-triggered validate() diagnostics to language client ([brighterscript#629](https://github.com/rokucommunity/brighterscript/pull/629))
+     - emit before/after programTranspile plugin events during file transpile preview ([brighterscript#628](https://github.com/rokucommunity/brighterscript/pull/628))
+ - upgrade to [brighterscript-formatter@1.6.13](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1613---2022-07-16). Notable changes since 1.6.12:
+     - Fix import statement formatting. ([brighterscript-formatter#55](https://github.com/rokucommunity/brighterscript-formatter/pull/55))
+### Fixed
+ - property and call syntax highlighting ([#414](https://github.com/rokucommunity/vscode-brightscript-language/pull/414))
+ - import statement syntax highlighting. ([#413](https://github.com/rokucommunity/vscode-brightscript-language/pull/413))
+ - Rdb improvements ([#410](https://github.com/rokucommunity/vscode-brightscript-language/pull/410))
+
+
+
 ## [2.33.2](https://github.com/RokuCommunity/vscode-brightscript-language/compare/v2.33.1...v2.33.2) - 2022-06-13
 ### Changed
  - updated to [brighterscript@0.52.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0522---2022-06-13). Notable changes since v0.52.0:
