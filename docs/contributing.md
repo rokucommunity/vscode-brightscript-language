@@ -72,3 +72,22 @@ You only need to install local copies of projects you actually want to work on. 
 View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
 
 You can also chat with us [on slack](https://join.slack.com/t/rokudevelopers/shared_invite/zt-4vw7rg6v-NH46oY7hTktpRIBM_zGvwA). (We're in the #vscode-bs-lang-ext channel).
+
+## Releases (Project Admins)
+If you need to deploy a release of any of the RokuCommunity projects, you can do the following:
+1. clone the vscode-brightscript-language project
+    ```bash
+    git clone https://github.com/rokucommunity/vscode-brightscript-language
+    cd vscode-brightscript-language
+    ```
+2. Run the `releases` npm script and follow the prompts
+    ```bash
+    npm run releases
+    ```
+3. For every changed project, you'll see a prompt to edit the changelog. 
+![image](https://user-images.githubusercontent.com/2544493/179513388-fc044859-8c5e-49a2-853c-9e17ca689a80.png)
+    - Change `UNRELEASED` to the semantic version you want to use, save the changelog, then back in the terminal press enter on your keyboard to initialize the release.
+    ![image](https://user-images.githubusercontent.com/2544493/179513898-452b8ff3-f01b-4828-b3b0-d00e0c0a31ed.png)
+    - Delete delete any lines from the changelog that aren't overly important to the user (as changelogs should be for humans), since this process populates the changelog with every commit to the master branch for the current project and all commits to changed RokuCommunity dependencies. 
+
+

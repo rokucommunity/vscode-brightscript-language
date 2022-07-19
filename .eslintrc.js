@@ -189,8 +189,14 @@ module.exports = {
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/prefer-enum-initializers': 'off'
         }
-    },
-    {
+    }, {
+        files: ['scripts/**/*.ts'],
+        rules: {
+            '@typescript-eslint/no-non-null-assertion': 'off',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+            'no-inner-declarations': 'off'
+        }
+    }, {
         files: ['*.spec.ts'],
         rules: {
             '@typescript-eslint/no-extraneous-class': 'off',
