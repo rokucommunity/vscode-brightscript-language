@@ -13,25 +13,18 @@ This extension depends on several other RokuCommunity projects.
 Wiring all of these up manually is a bit tedious, so we provide a simple way to quickly get started:
 
 ### The easy way
-In a terminal, execute
+In a terminal, you can execute the following commands to get completely up and running.
 ```bash
-git clone https://github.com/rokucommunity/vscode-brightscript-language
-cd vscode-brightscript-language
-npm i
-npm run install-local
+mkdir RokuCommunity && cd RokuCommunity && git clone https://github.com/rokucommunity/vscode-brightscript-language && cd vscode-brightscript-language && npm run install-local
 ```
 
 This will do the following automatically for you:
- - Clone any missing repositories at the same folder level as this project.
+ - create a dedicated `RokuCommunity/` folder to keep these related projects
+ - Clone all necessary repositories at the same folder level
  - Install and build each dependency
  - Update this project's `package.json` to point to the local projects using a relative file scheme (i.e. `"roku-deploy": "file:../roku-deploy"`)
  - delete each dependency's folder in this project's node_modules folder to prevent conflicts.
  - run `npm install` in the root of this project.
-
- To undo these changes, run
- ```bash
- npm run uninstall-local
- ```
 
 
 ### The manual way
