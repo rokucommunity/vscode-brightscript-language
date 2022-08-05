@@ -1,5 +1,5 @@
 import svelte from 'rollup-plugin-svelte';
-import resolve from '@rollup/plugin-node-resolve';
+import nodeResolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import { terser } from 'rollup-plugin-terser';
 import autoPreprocess from 'svelte-preprocess';
@@ -20,15 +20,12 @@ export default {
         css({
             output: 'bundle.css'
         }),
+
         svelte({
             compilerOptions: {
                 dev: !production
             },
             preprocess: autoPreprocess()
-        }),
-        typescript({
-            tsconfig: './tsconfig.json',
-            sourceMap: true
         }),
 
         // If you have external dependencies installed from
@@ -36,11 +33,17 @@ export default {
         // some cases you'll need additional configuration -
         // consult the documentation for details:
         // https://github.com/rollup/plugins/tree/master/packages/commonjs
-        resolve({
+        nodeResolve({
             browser: true,
             dedupe: ['svelte']
         }),
+
         commonjs(),
+
+        typescript({
+            tsconfig: './tsconfig.json',
+            sourceMap: true
+        }),
 
         // If we're building for production (npm run build
         // instead of npm run dev), minify
