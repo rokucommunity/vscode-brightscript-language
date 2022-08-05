@@ -9,9 +9,9 @@ import css from 'rollup-plugin-css-only';
 const production = !process.env.ROLLUP_WATCH;
 
 export default {
-    input: 'ui/index.ts',
+    input: 'src/index.ts',
     output: {
-        dir: 'dist/ui',
+        dir: '../dist/webViews',
         sourcemap: true,
         format: 'iife',
         name: 'app'
@@ -27,7 +27,7 @@ export default {
             preprocess: autoPreprocess()
         }),
         typescript({
-            tsconfig: './ui/tsconfig.json',
+            tsconfig: './tsconfig.json',
             sourceMap: true
         }),
 

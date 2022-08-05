@@ -6,7 +6,7 @@ import { util } from './util';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
-        this.uiBasePath = path.join(context.extensionPath, 'dist', 'ui');
+        this.uiBasePath = path.join(context.extensionPath, 'dist', 'webViews');
         context.subscriptions.push(this);
     }
 
