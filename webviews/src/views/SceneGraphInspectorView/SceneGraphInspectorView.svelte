@@ -1,13 +1,13 @@
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
-    import Settings from './Settings.svelte';
+    import SettingsPage from './SettingsPage.svelte';
     import Loader from '../../shared/Loader.svelte';
     import { utils } from '../../utils';
-    import NodeCountByType from './NodeCountByType.svelte';
-    import NodeBranchView from './NodeBranchView.svelte';
-    import NodeDetailView from './NodeDetailView.svelte';
-    import OdcSetupSteps from '../../shared/ODCSetupSteps.svelte';
+    import NodeCountByTypePage from './NodeCountByTypePage.svelte';
+    import NodeBranchPage from './NodeBranchPage.svelte';
+    import NodeDetailPage from './NodeDetailPage.svelte';
+    import OdcSetupStepsPage from '../../shared/OdcSetupStepsPage.svelte';
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
@@ -169,15 +169,15 @@
 
 <div id="container">
     {#if showSettings}
-        <Settings bind:showSettings />
+        <SettingsPage bind:showSettings />
     {/if}
     {#if showNodeCountByType}
-        <NodeCountByType bind:showNodeCountByType bind:nodeCountByType />
+        <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType />
     {/if}
     {#if loading}
         <Loader />
     {:else if !odcAvailable}
-        <OdcSetupSteps />
+        <OdcSetupStepsPage />
     {:else if error}
         <div id="errorMessage">{error}</div>
         <div id="errorHelp">
@@ -230,7 +230,7 @@
 
         <div id="nodeTree">
             {#each rootTree as rootNode}
-                <NodeBranchView
+                <NodeBranchPage
                     on:open={openNode}
                     bind:focusedNode
                     nodeTree={rootNode}
@@ -239,7 +239,7 @@
         </div>
     {/if}
     {#if inspectNodeBaseKeyPath}
-        <NodeDetailView
+        <NodeDetailPage
             bind:inspectNodeBaseKeyPath
             inspectNodeSubtype={inspectNodeSubtype} />
     {/if}

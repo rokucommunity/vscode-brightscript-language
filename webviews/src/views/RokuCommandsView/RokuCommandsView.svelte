@@ -2,8 +2,8 @@
     window.vscode = acquireVsCodeApi();
 
     import { odc, intermediary } from '../../ExtensionIntermediary';
-    import { commandsPanel } from './CommandsPanel';
-    import OdcSetupSteps from '../../shared/ODCSetupSteps.svelte';
+    import { commandsView } from './RokuCommandsView';
+    import OdcSetupSteps from '../../shared/OdcSetupStepsPage.svelte';
     import { utils } from '../../utils';
 
     let commandArgs: any[];
@@ -14,7 +14,7 @@
     let commandResponse = '';
 
     function onCommandChange() {
-        commandArgs = commandsPanel.convertArgs(
+        commandArgs = commandsView.convertArgs(
             selectedCommand.args,
             requestArgsSchema
         );
@@ -37,7 +37,7 @@
             let argValue = formArgs[key];
             argValuesForCommand[key] = argValue;
             const argType = selectedCommand.args.properties[key].type;
-            processedArgs[key] = commandsPanel.processArgToSendToExtension(
+            processedArgs[key] = commandsView.processArgToSendToExtension(
                 argType,
                 argValue
             );
@@ -80,7 +80,7 @@
     // preselect the last used function
     for (const command of commandList) {
         if (command.name === previousCommandName) {
-            commandArgs = commandsPanel.convertArgs(
+            commandArgs = commandsView.convertArgs(
                 command.args,
                 requestArgsSchema
             );

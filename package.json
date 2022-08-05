@@ -200,21 +200,21 @@
                     "when": "debugType == 'brightscript'"
                 },
                 {
-                    "type": "webview",
-                    "id": "SceneGraphInspector",
+                    "id": "sceneGraphInspectorView",
                     "name": "SceneGraph Inspector",
+                    "type": "webview",
                     "when": "debugType == 'brightscript'"
                 },
                 {
+                    "id": "rokuRegistryView",
+                    "name": "Roku Registry",
                     "type": "webview",
-                    "id": "RDBRegistryPanel",
-                    "name": "Registry",
                     "when": "debugType == 'brightscript'"
                 },
                 {
+                    "id": "rokuCommandsView",
+                    "name": "Roku Commands",
                     "type": "webview",
-                    "id": "RDBCommandsPanel",
-                    "name": "Commands",
                     "when": "debugType == 'brightscript'"
                 }
             ]

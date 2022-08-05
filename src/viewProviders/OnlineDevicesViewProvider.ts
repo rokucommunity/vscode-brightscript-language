@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
-import { icons } from './icons';
+import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
+import { icons } from '../icons';
 import { firstBy } from 'thenby';
+
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+
+    public readonly id = 'onlineDevicesView';
+
     constructor(
         private context: vscode.ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager
@@ -28,6 +32,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             this._onDidChangeTreeData.fire(null);
         });
     }
+
 
     private devices: Array<RokuDeviceDetails>;
 

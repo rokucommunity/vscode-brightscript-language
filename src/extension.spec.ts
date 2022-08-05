@@ -94,7 +94,7 @@ describe('extension', () => {
     });
 
     describe('RDB', () => {
-        const extensionInstance = extension.extension as any;
+        const extensionInstance = extension.extension;
         const config = {} as BrightScriptLaunchConfiguration;
         let context;
         let originalRdbViews;

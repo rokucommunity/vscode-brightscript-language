@@ -1,13 +1,13 @@
 import { expect } from 'chai';
-import { registryPanel } from './RegistryPanel';
+import { registryView } from './RokuRegistryView';
 
-describe('RegistryPanel', () => {
+describe('RegistryView', () => {
     describe('formatValues', () => {
         it('should convert json into an object with the correct correct values', () => {
             const input = {
                 a: '{"b": 1}'
             };
-            const result = registryPanel.formatValues(input);
+            const result = registryView.formatValues(input);
             expect(result.a.b).to.equal(1);
         });
 
@@ -17,7 +17,7 @@ describe('RegistryPanel', () => {
                     b: '{"c": 1}'
                 }
             };
-            const result = registryPanel.formatValues(input);
+            const result = registryView.formatValues(input);
             expect(result.a.b.c).to.equal(1);
         });
 
@@ -27,7 +27,7 @@ describe('RegistryPanel', () => {
                     b: 1
                 }
             };
-            const result = registryPanel.formatValues(input);
+            const result = registryView.formatValues(input);
             expect(result.a.b).to.equal(input.a.b);
         });
     });
