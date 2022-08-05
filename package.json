@@ -208,13 +208,13 @@
                 },
                 {
                     "type": "webview",
-                    "id": "RDBRegistryView",
+                    "id": "RDBRegistryPanel",
                     "name": "Registry",
                     "when": "debugType == 'brightscript'"
                 },
                 {
                     "type": "webview",
-                    "id": "RDBCommandsView",
+                    "id": "RDBCommandsPanel",
                     "name": "Commands",
                     "when": "debugType == 'brightscript'"
                 }

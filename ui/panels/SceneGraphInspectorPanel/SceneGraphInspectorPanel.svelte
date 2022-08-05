@@ -1,13 +1,13 @@
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
-    import { odc, intermediary } from '../ExtensionIntermediary';
-    import Settings from '../components/SceneGraphInspectorPanel/Settings.svelte';
-    import Loader from '../components/Common/Loader.svelte';
-    import { utils } from '../utils';
-    import NodeCountByType from '../components/SceneGraphInspectorPanel/NodeCountByType.svelte';
-    import NodeBranchView from '../components/SceneGraphInspectorPanel/NodeBranchView.svelte';
-    import NodeDetailView from '../components/SceneGraphInspectorPanel/NodeDetailView.svelte';
-    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import Settings from './Settings.svelte';
+    import Loader from '../../shared/Loader.svelte';
+    import { utils } from '../../utils';
+    import NodeCountByType from './NodeCountByType.svelte';
+    import NodeBranchView from './NodeBranchView.svelte';
+    import NodeDetailView from './NodeDetailView.svelte';
+    import OdcSetupSteps from '../../shared/ODCSetupSteps.svelte';
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();

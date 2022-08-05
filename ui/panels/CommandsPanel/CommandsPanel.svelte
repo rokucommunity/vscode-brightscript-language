@@ -1,10 +1,10 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
 
-    import { odc, intermediary } from '../ExtensionIntermediary';
-    import { commandsView } from './CommandsView';
-    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import { utils } from '../utils';
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { commandsPanel } from './CommandsPanel';
+    import OdcSetupSteps from '../../shared/ODCSetupSteps.svelte';
+    import { utils } from '../../utils';
 
     let commandArgs: any[];
     let selectedCommand;
@@ -14,7 +14,7 @@
     let commandResponse = '';
 
     function onCommandChange() {
-        commandArgs = commandsView.convertArgs(
+        commandArgs = commandsPanel.convertArgs(
             selectedCommand.args,
             requestArgsSchema
         );
@@ -37,7 +37,7 @@
             let argValue = formArgs[key];
             argValuesForCommand[key] = argValue;
             const argType = selectedCommand.args.properties[key].type;
-            processedArgs[key] = commandsView.processArgToSendToExtension(
+            processedArgs[key] = commandsPanel.processArgToSendToExtension(
                 argType,
                 argValue
             );
@@ -80,7 +80,7 @@
     // preselect the last used function
     for (const command of commandList) {
         if (command.name === previousCommandName) {
-            commandArgs = commandsView.convertArgs(
+            commandArgs = commandsPanel.convertArgs(
                 command.args,
                 requestArgsSchema
             );

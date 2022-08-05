@@ -9,9 +9,9 @@ import css from 'rollup-plugin-css-only';
 const production = !process.env.ROLLUP_WATCH;
 
 export default {
-    input: 'ui/rdb/index.ts',
+    input: 'ui/index.ts',
     output: {
-        dir: 'dist/ui/rdb',
+        dir: 'dist/ui',
         sourcemap: true,
         format: 'iife',
         name: 'app'

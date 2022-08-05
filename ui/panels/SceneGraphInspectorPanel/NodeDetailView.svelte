@@ -5,7 +5,7 @@
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
     import type { ChangedFieldEntry } from '../../ChangedFieldEntry';
-    import Chevron from '../Common/Chevron.svelte';
+    import Chevron from '../../shared/Chevron.svelte';
     import { Refresh, Discard, ChromeClose, Move } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;

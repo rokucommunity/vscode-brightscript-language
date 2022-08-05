@@ -1,10 +1,10 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
-    import { odc, intermediary } from '../ExtensionIntermediary';
-    import JSONTreeView from '../components/JSONTreeView/JSONTreeView.svelte';
-    import { registryView } from './RegistryView';
-    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import Loader from '../components/Common/Loader.svelte';
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import JSONTreeView from './JSONTreeView/JSONTreeView.svelte';
+    import { registryPanel } from './RegistryPanel';
+    import OdcSetupSteps from '../../shared/ODCSetupSteps.svelte';
+    import Loader from '../../shared/Loader.svelte';
 
     let loading = true;
 
@@ -12,7 +12,7 @@
     (async () => {
         loading = true;
         const result = await odc.readRegistry();
-        registryValues = registryView.formatValues(result.values);
+        registryValues = registryPanel.formatValues(result.values);
         loading = false;
     })();
 

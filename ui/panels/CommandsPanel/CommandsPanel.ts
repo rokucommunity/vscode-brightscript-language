@@ -1,7 +1,7 @@
 import type { Definition } from 'typescript-json-schema';
-import { utils } from '../utils';
+import { utils } from '../../utils';
 
-class CommandsView {
+class CommandsPanel {
     public convertArgs(inputArgs, requestArgsSchema: Definition) {
         const args = [];
         if (!utils.isObjectWithProperty(inputArgs, 'propertyOrder') || !utils.isObjectWithProperty(inputArgs, 'properties')) {
@@ -46,8 +46,8 @@ class CommandsView {
     }
 }
 
-const commandsView = new CommandsView();
+const commandsPanel = new CommandsPanel();
 
 export {
-    commandsView
+    commandsPanel
 };

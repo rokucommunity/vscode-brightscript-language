@@ -15,7 +15,7 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-import { RDBCommandsViewProvider, RDBRegistryViewProvider } from './RDBViewProviders';
+import { RDBCommandsPanelProvider, RDBRegistryPanelProvider } from './RDBViewProviders';
 
 let sinon: sinonImport.SinonSandbox;
 let view;
@@ -36,22 +36,22 @@ afterEach(() => {
     sinon.restore();
 });
 
-describe('RDBRegistryViewProvider', () => {
+describe('RDBRegistryPanelProvider', () => {
     describe('handleViewMessage', () => {
-        const provider = new RDBRegistryViewProvider(vscode.context);
+        const provider = new RDBRegistryPanelProvider(vscode.context);
 
-        it('Shows the save prompt for exportRegistry command', () => {
+        it('Shows the save prompt for exportRegistry command', async () => {
             const spy = sinon.spy(vscode.window, 'showSaveDialog');
-            (provider as any).handleViewMessage({
+            await (provider as any).handleViewMessage({
                 command: 'exportRegistry',
                 content: '{}'
             });
             expect(spy.calledOnce).to.be.true;
         });
 
-        it('Shows the open dialog for importRegistry command', () => {
+        it('Shows the open dialog for importRegistry command', async () => {
             const spy = sinon.spy(vscode.window, 'showOpenDialog');
-            (provider as any).handleViewMessage({
+            await (provider as any).handleViewMessage({
                 command: 'importRegistry',
                 context: {}
             });
@@ -60,9 +60,9 @@ describe('RDBRegistryViewProvider', () => {
     });
 });
 
-describe('RDBCommandsViewProvider', () => {
+describe('RDBCommandsPanelProvider', () => {
     describe('getHtmlForWebview', () => {
-        const provider = new RDBCommandsViewProvider(vscode.context) as any;
+        const provider = new RDBCommandsPanelProvider(vscode.context) as any;
 
         it('includes the contents of additionalScriptContents', () => {
             const html = provider.getHtmlForWebview();
@@ -72,7 +72,7 @@ describe('RDBCommandsViewProvider', () => {
 
     describe('resolveWebviewView', () => {
         it('sets up observer to handle messages from the ui', () => {
-            const provider = new RDBCommandsViewProvider(vscode.context) as any;
+            const provider = new RDBCommandsPanelProvider(vscode.context) as any;
             provider.resolveWebviewView(view, {}, {});
 
             expect(typeof callback).to.equal('function');

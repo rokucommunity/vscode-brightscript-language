@@ -1,4 +1,4 @@
-class RegistryView {
+class RegistryPanel {
     public formatValues(values) {
         let input = values;
         // eslint-disable-next-line array-callback-return
@@ -19,8 +19,8 @@ class RegistryView {
     }
 }
 
-const registryView = new RegistryView();
+const registryPanel = new RegistryPanel();
 
 export {
-    registryView
+    registryPanel
 };

@@ -119,6 +119,9 @@ export let vscode = {
         findFiles: (include, exclude) => {
             return [];
         },
+        fs: {
+            writeFile: (uri, buffer) => { }
+        },
         registerTextDocumentContentProvider: () => { },
         onDidChangeTextDocument: () => { },
         onDidCloseTextDocument: () => { }

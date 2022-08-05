@@ -18,9 +18,9 @@ import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './RendezvousViewProvider';
 import { OnlineDevicesViewProvider } from './OnlineDevicesViewProvider';
 import {
-    RDBCommandsViewProvider,
+    RDBCommandsPanelProvider,
     SceneGraphInspectorViewProvider,
-    RDBRegistryViewProvider
+    RDBRegistryPanelProvider
 } from './RDBViewProviders';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
@@ -52,11 +52,11 @@ export class Extension {
         SceneGraphInspector: {
             class: SceneGraphInspectorViewProvider
         },
-        RDBRegistryView: {
-            class: RDBRegistryViewProvider
+        RDBRegistryPanel: {
+            class: RDBRegistryPanelProvider
         },
-        RDBCommandsView: {
-            class: RDBCommandsViewProvider
+        RDBCommandsPanel: {
+            class: RDBCommandsPanelProvider
         }
     };
 
