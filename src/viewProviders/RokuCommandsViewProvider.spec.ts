@@ -38,7 +38,9 @@ describe('RokuCommandsViewProvider', () => {
 
         it('includes the contents of additionalScriptContents', () => {
             const html = provider.getHtmlForWebview();
-            expect(html).to.contain(provider.additionalScriptContents());
+            for (const line of provider.additionalScriptContents()) {
+                expect(html).to.contain(line);
+            }
         });
     });
 
