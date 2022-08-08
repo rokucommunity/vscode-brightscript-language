@@ -13,7 +13,8 @@
         "preserveConstEnums": true,
         "strictNullChecks": false,
         "noUnusedParameters": false,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true
     },
     "include": [
         "src/**/*"

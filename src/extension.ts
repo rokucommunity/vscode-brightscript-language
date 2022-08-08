@@ -15,7 +15,7 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-import { RendezvousViewProvider } from './ViewProviders/RendezvousViewProvider';
+import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
 import { OnlineDevicesViewProvider } from './viewProviders/OnlineDevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
