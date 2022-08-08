@@ -44,8 +44,8 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
         "watch-docs": "npm run build-docs -- --watch",
-        "svelte-build": "cd webViews && rollup --config ./rollup.config.js && cd ..",
-        "svelte-watch": "cd webViews && rollup --config ./rollup.config.js --watch",
+        "svelte-build": "cd ./webViews && rollup --config ./rollup.config.js && cd ..",
+        "svelte-watch": "cd ./webViews && rollup --config ./rollup.config.js --watch",
         "releases": "ts-node scripts/releases.ts"
     },
     "dependencies": {
