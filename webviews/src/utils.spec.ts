@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { utils } from './utils';
 import * as sinonImport from 'sinon';
 
-describe('RDB utils', () => {
+describe('Rdb utils', () => {
     describe('isObjectWithProperty', () => {
         it('should return true if the property exist', () => {
             const result = utils.isObjectWithProperty({

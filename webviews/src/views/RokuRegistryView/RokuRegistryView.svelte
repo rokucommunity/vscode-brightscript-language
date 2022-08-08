@@ -1,10 +1,10 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
-    import { odc, intermediary } from '../ExtensionIntermediary';
-    import JSONTreeView from '../components/JSONTreeView/JSONTreeView.svelte';
-    import { registryView } from './RegistryView';
-    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import Loader from '../components/Common/Loader.svelte';
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import JSONTreePage from './JSONTreePage/JSONTreePage.svelte';
+    import { registryView } from './RokuRegistryView';
+    import OdcSetupStepsPage from '../../shared/OdcSetupStepsPage.svelte';
+    import Loader from '../../shared/Loader.svelte';
 
     let loading = true;
 
@@ -37,7 +37,7 @@
 </script>
 
 {#if !odcAvailable}
-    <OdcSetupSteps />
+    <OdcSetupStepsPage />
 {:else if loading}
     <Loader />
 {:else if Object.keys(registryValues).length > 0}
@@ -45,5 +45,5 @@
         <button on:click={exportRegistry}>Export</button>
         <button on:click={importRegistry}>Import</button>
     </div>
-    <JSONTreeView registryValues={registryValues} />
+    <JSONTreePage registryValues={registryValues} />
 {/if}

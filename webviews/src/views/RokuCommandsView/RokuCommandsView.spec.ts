@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { commandsView } from './CommandsView';
+import { commandsView } from './RokuCommandsView';
 
-describe('CommandsView', () => {
+describe('commandsView', () => {
     const requestArgsSchema = {
         'definitions': {
             'MatchObject': {

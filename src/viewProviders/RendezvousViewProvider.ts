@@ -4,6 +4,8 @@ import type { RendezvousHistory } from 'roku-debug';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
+    public readonly id = 'rendezvousView';
+
     constructor(context: vscode.ExtensionContext) {
         this.toggleSmartSorting();
 

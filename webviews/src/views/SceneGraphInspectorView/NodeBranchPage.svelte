@@ -3,10 +3,10 @@
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
-    import Loader from '../../components/Common/Loader.svelte';
+    import Loader from '../../shared/Loader.svelte';
     import { createEventDispatcher } from 'svelte';
     import { Edit, Eye, EyeClosed, DebugBreakpointDataUnverified, Move } from 'svelte-codicons';
-    import Chevron from '../Common/Chevron.svelte';
+    import Chevron from '../../shared/Chevron.svelte';
     const dispatch = createEventDispatcher();
 
     export let nodeTree: ODC.NodeTree;

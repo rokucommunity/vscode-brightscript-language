@@ -31,8 +31,8 @@
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
         "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
-        "test": "nyc mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "mocha \"src/**/*.spec.ts\" \"ui/**/*.spec.ts\" --full-trace",
+        "test": "nyc mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace --bail",
+        "test:nocover": "mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -44,9 +44,8 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
         "watch-docs": "npm run build-docs -- --watch",
-        "validate": "svelte-check",
-        "svelte-build": "rollup -c",
-        "svelte-watch": "rollup -c -w",
+        "svelte-build": "cd ./webviews && rollup --config ./rollup.config.js && cd ..",
+        "svelte-watch": "cd ./webviews && rollup --config ./rollup.config.js --watch",
         "releases": "ts-node scripts/releases.ts"
     },
     "dependencies": {
@@ -201,21 +200,21 @@
                     "when": "debugType == 'brightscript'"
                 },
                 {
-                    "type": "webview",
-                    "id": "SceneGraphInspector",
+                    "id": "sceneGraphInspectorView",
                     "name": "SceneGraph Inspector",
+                    "type": "webview",
                     "when": "debugType == 'brightscript'"
                 },
                 {
+                    "id": "rokuRegistryView",
+                    "name": "Roku Registry",
                     "type": "webview",
-                    "id": "RDBRegistryView",
-                    "name": "Registry",
                     "when": "debugType == 'brightscript'"
                 },
                 {
+                    "id": "rokuCommandsView",
+                    "name": "Roku Commands",
                     "type": "webview",
-                    "id": "RDBCommandsView",
-                    "name": "Commands",
                     "when": "debugType == 'brightscript'"
                 }
             ]
@@ -2927,7 +2926,7 @@
     "nyc": {
         "include": [
             "src/**/!(*.spec).ts",
-            "ui/**/!(*.spec).ts"
+            "webviews/**/!(*.spec).ts"
         ],
         "extension": [
             ".ts"

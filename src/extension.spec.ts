@@ -97,18 +97,18 @@ describe('extension', () => {
         const extensionInstance = extension.extension as any;
         const config = {} as BrightScriptLaunchConfiguration;
         let context;
-        let originalRdbViews;
+        let originalWebviews;
         beforeEach(() => {
             context = { ...vscode.context };
             config.host = '86.75.30.9';
             config.password = 'jenny';
-            originalRdbViews = extensionInstance.rdbViews;
-            extensionInstance.rdbViews = {};
+            originalWebviews = extensionInstance.webviews;
+            extensionInstance.webviews = {};
         });
 
         afterEach(() => {
             extensionInstance.odc = undefined;
-            extensionInstance.rdbViews = originalRdbViews;
+            extensionInstance.webviews = originalWebviews;
         });
 
         describe('setupODC', () => {
@@ -127,10 +127,10 @@ describe('extension', () => {
 
         describe('registerWebViewProviders', () => {
             it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
-                extensionInstance.rdbViews = originalRdbViews;
+                extensionInstance.webviews = originalWebviews;
                 const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
                 extensionInstance.registerWebViewProviders(context);
-                expect(spy.callCount).to.equal(Object.keys(originalRdbViews).length);
+                expect(spy.callCount).to.equal(Object.keys(originalWebviews).length);
             });
         });
 

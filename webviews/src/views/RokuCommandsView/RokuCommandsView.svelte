@@ -1,10 +1,10 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
 
-    import { odc, intermediary } from '../ExtensionIntermediary';
-    import { commandsView } from './CommandsView';
-    import OdcSetupSteps from '../components/Common/ODCSetupSteps.svelte';
-    import { utils } from '../utils';
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { commandsView } from './RokuCommandsView';
+    import OdcSetupSteps from '../../shared/OdcSetupStepsPage.svelte';
+    import { utils } from '../../utils';
 
     let commandArgs: any[];
     let selectedCommand;

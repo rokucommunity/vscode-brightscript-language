@@ -1,6 +1,6 @@
 <script lang="ts">
     import { utils } from '../../utils';
-    import VscodeCheckbox from '../vscode-ui-toolkit/VscodeCheckbox.svelte';
+    import VscodeCheckbox from '../../shared/vscode-ui-toolkit/VscodeCheckbox.svelte';
     export let showSettings: boolean;
 
     let enableDebugLogging = utils.getStorageBooleanValue('enableDebugLogging');

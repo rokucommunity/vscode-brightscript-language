@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { registryView } from './RegistryView';
+import { registryView } from './RokuRegistryView';
 
 describe('RegistryView', () => {
     describe('formatValues', () => {

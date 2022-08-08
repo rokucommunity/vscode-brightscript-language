@@ -1,5 +1,5 @@
 import type { Definition } from 'typescript-json-schema';
-import { utils } from '../utils';
+import { utils } from '../../utils';
 
 class CommandsView {
     public convertArgs(inputArgs, requestArgsSchema: Definition) {

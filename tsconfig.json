@@ -13,9 +13,12 @@
         "preserveConstEnums": true,
         "strictNullChecks": false,
         "noUnusedParameters": false,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true
     },
-    "include": ["src/**/*"],
+    "include": [
+        "src/**/*"
+    ],
     "ts-node": {
         "transpileOnly": true
     }
