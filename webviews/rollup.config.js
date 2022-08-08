@@ -11,7 +11,7 @@ const production = !process.env.ROLLUP_WATCH;
 export default {
     input: 'src/index.ts',
     output: {
-        dir: '../dist/webViews',
+        dir: '../dist/webviews',
         sourcemap: true,
         format: 'iife',
         name: 'app'

@@ -31,8 +31,8 @@
         "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
         "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
-        "test": "nyc mocha \"src/**/*.spec.ts\" \"webViews/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "mocha \"src/**/*.spec.ts\" \"webViews/**/*.spec.ts\" --full-trace",
+        "test": "nyc mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace --bail",
+        "test:nocover": "mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -44,8 +44,8 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
         "watch-docs": "npm run build-docs -- --watch",
-        "svelte-build": "cd ./webViews && rollup --config ./rollup.config.js && cd ..",
-        "svelte-watch": "cd ./webViews && rollup --config ./rollup.config.js --watch",
+        "svelte-build": "cd ./webviews && rollup --config ./rollup.config.js && cd ..",
+        "svelte-watch": "cd ./webviews && rollup --config ./rollup.config.js --watch",
         "releases": "ts-node scripts/releases.ts"
     },
     "dependencies": {
@@ -2926,7 +2926,7 @@
     "nyc": {
         "include": [
             "src/**/!(*.spec).ts",
-            "webViews/**/!(*.spec).ts"
+            "webviews/**/!(*.spec).ts"
         ],
         "extension": [
             ".ts"
