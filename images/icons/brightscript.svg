@@ -22,7 +22,7 @@
      showgrid="false"
      inkscape:zoom="26.09375"
      inkscape:cx="16"
-     inkscape:cy="16.11497"
+     inkscape:cy="16"
      inkscape:window-width="1920"
      inkscape:window-height="1018"
      inkscape:window-x="1913"
@@ -35,26 +35,14 @@
   </sodipodi:namedview>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:20.5788px;line-height:1.25;font-family:Roboto;-inkscape-font-specification:'Roboto, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#9f75c0;fill-opacity:1;stroke:none;stroke-width:1.02894"
-     x="-0.93626046"
-     y="23.402901"
-     id="text4146-1"
-     transform="scale(1.0095029,0.99058655)"><tspan
-       sodipodi:role="line"
-       id="tspan4144-2"
-       x="-0.93626046"
-       y="23.402901"
-       style="fill:#9f75c0;fill-opacity:1;stroke-width:1.02894">BrS</tspan></text>
-  <text
-     xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:8px;line-height:1.25;font-family:Roboto;-inkscape-font-specification:'Roboto, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#9f75c0;fill-opacity:1;stroke:none;stroke-width:1.02894"
-     x="18.140873"
-     y="21.281321"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:19.0314px;line-height:1.25;font-family:Roboto;-inkscape-font-specification:'Roboto, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#5499b8;fill-opacity:1;stroke:none;stroke-width:0.951571"
+     x="7.1882892"
+     y="20.861814"
      id="text4146-1-5"
-     transform="scale(1.0095029,0.99058655)"><tspan
+     transform="scale(0.93359572,1.0711274)"><tspan
        sodipodi:role="line"
-       id="tspan4144-2-0"
-       x="18.140873"
-       y="21.281321"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:8px;font-family:Roboto;-inkscape-font-specification:'Roboto, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#9f75c0;fill-opacity:1;stroke-width:1.02894" /></text>
+       id="tspan4144-2-2"
+       x="7.1882892"
+       y="20.861814"
+       style="fill:#9f75c0;fill-opacity:1;stroke-width:0.951571">brs</tspan></text>
 </svg>
