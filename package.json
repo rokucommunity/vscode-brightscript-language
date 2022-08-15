@@ -667,7 +667,11 @@
                 "aliases": [
                     "BrightScript"
                 ],
-                "configuration": "./language-configuration.json"
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./images/icons/brightscript.svg",
+                    "dark": "./images/icons/brightscript.svg"
+                }
             },
             {
                 "id": "brighterscript",
@@ -677,7 +681,11 @@
                 "aliases": [
                     "BrighterScript"
                 ],
-                "configuration": "./language-configuration.json"
+                "configuration": "./language-configuration.json",
+                "icon": {
+                    "light": "./images/icons/brighterscript.svg",
+                    "dark": "./images/icons/brighterscript.svg"
+                }
             },
             {
                 "id": "Log",
