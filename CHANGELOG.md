@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.34.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.0...2.34.1) - 2022-08-15
+### Changed
+ - Add .bs and .brs file icon support ([#422](https://github.com/rokucommunity/vscode-brightscript-language/pull/422))
+ - WebView restructuring ([#421](https://github.com/rokucommunity/vscode-brightscript-language/pull/421))
+ - Add activation events for device panel ([#418](https://github.com/rokucommunity/vscode-brightscript-language/pull/418))
+ - upgrade to [roku-debug@0.14.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0142---2022-08-12). Notable changes since 0.14.1:
+     - Support complib breakpoints on 11.5.0 ([roku-debug#96](https://github.com/rokucommunity/roku-debug/pull/96))
+     - Disable thread hopping workaround >= protocol v3.1.0 ([roku-debug#95](https://github.com/rokucommunity/roku-debug/pull/95))
+     - Upload zip and connect to protocol socket in parallel ([roku-debug#94](https://github.com/rokucommunity/roku-debug/pull/94))
+ - upgrade to [brighterscript@0.55.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0552---2022-08-15). Notable changes since 0.53.1:
+     - Dedupe code completions in components ([brighterscript#664](https://github.com/rokucommunity/brighterscript/pull/664))
+     - Fix scope-specific diagnostic grouping issue ([brighterscript#660](https://github.com/rokucommunity/brighterscript/pull/660))
+     - Fix typescript error for ast parent setting ([brighterscript#659](https://github.com/rokucommunity/brighterscript/pull/659))
+     - Fix missing constant references ([brighterscript#658](https://github.com/rokucommunity/brighterscript/pull/658))
+     - Link all brs AST nodes to parent onFileValidate ([brighterscript#650](https://github.com/rokucommunity/brighterscript/pull/650))
+     - Add a `toJSON` function to SymbolTable ([brighterscript#655](https://github.com/rokucommunity/brighterscript/pull/655))
+     - Performance boost: better function sorting during validation ([brighterscript#651](https://github.com/rokucommunity/brighterscript/pull/651))
+     - Add semantic token color for consts ([brighterscript#654](https://github.com/rokucommunity/brighterscript/pull/654))
+     - Add go-to-definition support for const statements ([brighterscript#653](https://github.com/rokucommunity/brighterscript/pull/653))
+     - Fix broken plugin imports with custom cwd ([brighterscript#652](https://github.com/rokucommunity/brighterscript/pull/652))
+     - Fix bug in languageserver hover provider ([brighterscript#649](https://github.com/rokucommunity/brighterscript/pull/649))
+     - Add hover for CONST references. ([brighterscript#648](https://github.com/rokucommunity/brighterscript/pull/648))
+     - Allow plugins to contribute completions ([brighterscript#647](https://github.com/rokucommunity/brighterscript/pull/647))
+     - chore: github actions use latest operating systems ([#brighterscript0b3d31a](https://github.com/rokucommunity/brighterscript/commit/0b3d31a))
+     - Plugin support for hover ([brighterscript#393](https://github.com/rokucommunity/brighterscript/pull/393))
+     - Export some vscode interfaces ([brighterscript#644](https://github.com/rokucommunity/brighterscript/pull/644))
+     - Better plugin docs ([brighterscript#643](https://github.com/rokucommunity/brighterscript/pull/643))
+ - upgrade to [brighterscript-formatter@1.6.14](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1614---2022-08-12)
+
+
+
 ## [2.34.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.33.2...2.34.0) - 2022-07-18
 ### Added
  - support showing popups from debug sessions ([#407](https://github.com/rokucommunity/vscode-brightscript-language/pull/407))
