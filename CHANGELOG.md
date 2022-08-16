@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.34.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.1...2.34.2) - 2022-08-15
+### Fixed
+ - converted file svg icons to paths instead of text
+
+
+
 ## [2.34.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.0...2.34.1) - 2022-08-15
 ### Changed
  - Add .bs and .brs file icon support ([#422](https://github.com/rokucommunity/vscode-brightscript-language/pull/422))
