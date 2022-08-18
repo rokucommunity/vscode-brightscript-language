@@ -1,4 +1,3 @@
-import * as path from 'path';
 import { Cache } from 'brighterscript/dist/Cache';
 import { createRegistry, parseGrammarTestCase, runGrammarTestCase } from 'vscode-tmgrammar-test/dist/src/unit/index.js';
 import { getErrorResultText } from './grammerTestHelpers.spec';
@@ -7,6 +6,19 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('uses proper color for variable named `component`', async () => {
+        await testGrammar(`
+            sub main()
+                 for each component in []
+                                   '^^ keyword.control.brs
+                         '^^^^^^^^^ entity.name.variable.local.brs
+                    '^^^^ keyword.control.brs
+                '^^^ keyword.control.brs
+                end for
+            end sub
+        `);
+    });
+
     it('allows 0+ space after import keyword', async () => {
         await testGrammar(`
              import"something.brs"
