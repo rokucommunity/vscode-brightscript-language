@@ -419,7 +419,7 @@
         },
         "component_statement": {
             "name": "meta.component.brs",
-            "begin": "(?i)(?<![_[:alnum:]])(?<!\\.)(component)\\s+(?:([a-z0-9_]+)|(\".*?\"))(?:\\s+(extends)(?:\\s+(?:([a-z0-9_]+)|(\".*?\")))?)?\\s*",
+            "begin": "(?i)^[ \t]*(component)\\s+(?:([a-z0-9_]+)|(\".*?\"))(?:\\s+(extends)(?:\\s+(?:([a-z0-9_]+)|(\".*?\")))?)?\\s*",
             "beginCaptures": {
                 "1": {
                     "name": "storage.type.component.brs"
