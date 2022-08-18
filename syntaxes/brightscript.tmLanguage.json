@@ -2,6 +2,7 @@
     "name": "BrightScript",
     "scopeName": "source.brs",
     "fileTypes": [
+        "bs",
         "brs"
     ],
     "uuid": "3194ae45-03ed-40d0-97fa-55bf088ceabb",
