@@ -142,7 +142,10 @@ class RokuFinder extends EventEmitter {
     constructor() {
         super();
 
-        this.client = new Client();
+        this.client = new Client({
+            //Bind sockets to each discovered interface explicitly instead of relying on the system. Might help with issues with multiple NICs.
+            explicitSocketBind: true
+        });
 
         this.client.on('response', (headers: SsdpHeaders) => {
             if (!this.running) {
