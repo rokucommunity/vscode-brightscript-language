@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.35.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.2...2.35.0) - 2022-08-24
+### Changed
+ - upgrade to [roku-debug@0.15.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0150---2022-08-23). Notable changes since 0.14.2:
+     - Fix stopOnEntry bug with deep links. ([roku-debug#100](https://github.com/rokucommunity/roku-debug/pull/100))
+     - Add `invalid` data type support ([roku-debug#99](https://github.com/rokucommunity/roku-debug/pull/99))
+     - Add support for conditional breakpoints ([roku-debug#97](https://github.com/rokucommunity/roku-debug/pull/97))
+ - upgrade to [brighterscript@0.56.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0560---2022-08-23). Notable changes since 0.55.2:
+     - Fix compile crash for scope-less files ([brighterscript#674](https://github.com/rokucommunity/brighterscript/pull/674))
+     - Fix parse error for malformed dim statement ([brighterscript#673](https://github.com/rokucommunity/brighterscript/pull/673))
+     - Add validation for dimmed variables ([brighterscript#672](https://github.com/rokucommunity/brighterscript/pull/672))
+     - Allow const as variable name ([brighterscript#670](https://github.com/rokucommunity/brighterscript/pull/670))
+ - upgrade to [brighterscript-formatter@1.6.15](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1615---2022-08-24)
+### Fixed
+ - improve multi-network-interface device discovery ([#427](https://github.com/rokucommunity/vscode-brightscript-language/pull/427))
+ - component var coloring ([#426](https://github.com/rokucommunity/vscode-brightscript-language/pull/426))
+
+
+
 ## [2.34.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.1...2.34.2) - 2022-08-15
 ### Fixed
  - converted file svg icons to paths instead of text
