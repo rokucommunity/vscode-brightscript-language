@@ -29,7 +29,7 @@ For a full list of features and settings, please see our [documentation website]
 #### Extension
  - [Features](https://rokucommunity.github.io/vscode-brightscript-language/features.html) - The full list of features provided by [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
  - [KeyBindings](https://rokucommunity.github.io/vscode-brightscript-language/keyboard-shortcuts.html) - A full list of pre included keybindings
- - [Extension Settings](https://rokucommunity.github.io/vscode-brightscript-language/extesnion-settings.html) - The full list of possible VS Code settings
+ - [Extension Settings](https://rokucommunity.github.io/vscode-brightscript-language/extension-settings.html) - The full list of possible VS Code settings
 #### Code Editing
  - [Language Server Errors and Warnings](https://rokucommunity.github.io/vscode-brightscript-language/Editing/error-handling.html) - Ways to handle different errors show by the language server
  - [Code formatting](https://rokucommunity.github.io/vscode-brightscript-language/Editing/code-formatting.html) - How to set up code formatting and the different formatting options.
