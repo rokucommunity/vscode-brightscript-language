@@ -135,9 +135,9 @@ describe('extension', () => {
         });
 
         describe('debugSessionCustomEventHandler', () => {
-            describe('BSChannelPublishedEvent', () => {
+            describe('ChannelPublishedEvent', () => {
                 const e = {
-                    event: 'BSChannelPublishedEvent',
+                    event: 'ChannelPublishedEvent',
                     body: {
                         launchConfiguration: config
                     }

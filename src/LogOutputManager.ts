@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagnosticCollection } from 'vscode';
 import type { BrightScriptDebugCompileError } from 'roku-debug';
+import { isChanperfEvent, isCompileFailureEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
@@ -130,16 +131,18 @@ export class LogOutputManager {
     }
 
     public async onDidReceiveDebugSessionCustomEvent(e: { event: string; body?: any }) {
-        if (e.event === 'BSRendezvousEvent' || e.event === 'BSChanperfEvent') {
+        if (isRendezvousEvent(e) || isChanperfEvent(e)) {
             // No need to handle rendezvous type events
             return;
         }
 
-        if (e.event === 'BSLogOutputEvent') {
-            this.appendLine(e.body);
-        } else if (e.event === 'BSPopupMessageEvent') {
+        if (isLogOutputEvent(e)) {
+            this.appendLine(e.body.line);
+
+        } else if (isPopupMessageEvent(e)) {
             this.showMessage(e.body.message, e.body.severity);
-        } else if (e.event === 'BSLaunchStartEvent') {
+
+        } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
@@ -149,9 +152,10 @@ export class LogOutputManager {
             if (this.isClearingOutputOnLaunch) {
                 this.clearOutput();
             }
-        } else if (e.body && Array.isArray(e.body)) {
+
+        } else if (isCompileFailureEvent(e)) {
             let errorsByPath = {};
-            for (const compileError of e.body) {
+            for (const compileError of e.body.compileErrors) {
                 if (compileError.path) {
                     if (!errorsByPath[compileError.path]) {
                         errorsByPath[compileError.path] = [];
