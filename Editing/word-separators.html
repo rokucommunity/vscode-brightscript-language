@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        Ignoring Errors and Warnings
+        Editor word separator
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="../style.css" />
@@ -283,29 +283,17 @@
             
         </div>
         <div id="content">
-            <a href="#ignore-errors-and-warnings-on-a-per-line-basis"><h1 id="ignore-errors-and-warnings-on-a-per-line-basis">Ignore errors and warnings on a per-line basis</h1></a><p>In addition to disabling an entire class of errors in the <code>ignoreErrorCodes</code> array in <code>bsconfig.json</code>, you may also disable errors for a subset of the complier rules within a file with the following comment flags:</p>
-<ul>
-<li><code>brs:disable-next-line</code></li>
-<li><code>brs:disable-next-line: code1 code2 code3</code></li>
-<li><code>brs:disable-line</code></li>
-<li><code>brs:disable-line: code1 code2 code3</code></li>
-</ul>
-<p>Here are some examples:</p>
-<pre><code class="language-vb">sub Main()
-    &#39;disable errors about invalid syntax here
-    &#39;brs:disable-next-line
-    DoSomething(
-
-    DoSomething( &#39;brs:disable-line
-
-    &#39;disable errors about wrong parameter count
-    DoSomething(1,2,3) &#39;brs:disable-next-line
-
-    DoSomething(1,2,3) &#39;brs:disable-next-line:1002
-end sub
-
-sub DoSomething()
-end sub
+            <a href="#editor-word-separator"><h1 id="editor-word-separator">Editor word separator</h1></a><p>By default, VSCode uses <code>$</code>, <code>%</code>, <code>!</code>, <code>#</code> and <code>&amp;</code> as word separators. Because of this, the full name of a strictly typed String 
+(resp. Integer, Float, Double and LongInteger) is not taken as a whole with selection and other word navigation feature. You can 
+edit the word separator value for Brightscript by adding the following setting:</p>
+<pre><code>{
+    &quot;[brightscript]&quot;: {
+        &quot;editor.wordSeparators&quot;: &quot;`~@^*()-=+[{]}\\|;:&#39;\&quot;,.&lt;&gt;/?&quot;
+    },
+    &quot;[brighterscript]&quot;: {
+        &quot;editor.wordSeparators&quot;: &quot;`~@^*()-=+[{]}\\|;:&#39;\&quot;,.&lt;&gt;/?&quot;
+    }
+}
 </code></pre>
             <div id="footer"></div>
         </div>
