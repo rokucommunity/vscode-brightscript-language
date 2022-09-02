@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.35.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.0...2.35.1) - 2022-09-02
+### Changed
+ - Document customizing editor.wordSeparators for trailing type symbols ([#436](https://github.com/rokucommunity/vscode-brightscript-language/pull/436))
+ - upgrade to [roku-deploy@3.8.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#381---2022-09-02). Notable changes since 3.7.1:
+     - Bump moment from 2.29.2 to 2.29.4 ([roku-deploy#98](https://github.com/rokucommunity/roku-deploy/pull/98))
+     - Remotedebug connect early ([roku-deploy#97](https://github.com/rokucommunity/roku-deploy/pull/97))
+     - Better compile error handling ([roku-deploy#96](https://github.com/rokucommunity/roku-deploy/pull/96))
+ - upgrade to [brighterscript@0.57.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0570---2022-09-02). Notable changes since 0.56.0:
+     - Allow `mod` as an aa prop, aa member identifier kinds forced to Identifier ([brighterscript#684](https://github.com/rokucommunity/brighterscript/pull/684))
+     - Improve Roku docs information ([brighterscript#585](https://github.com/rokucommunity/brighterscript/pull/585))
+     - Validate too deep nested files ([brighterscript#680](https://github.com/rokucommunity/brighterscript/pull/680))
+     - Add class method binding docs ([brighterscript#682](https://github.com/rokucommunity/brighterscript/pull/682))
+     - Fix case sensitivity issue with bs_const values ([brighterscript#677](https://github.com/rokucommunity/brighterscript/pull/677))
+ - upgrade to [brighterscript-formatter@1.6.16](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1616---2022-09-02). Notable changes since 1.6.15:
+     - Mod case formatting ([brighterscript-formatter#62](https://github.com/rokucommunity/brighterscript-formatter/pull/62))
+     - Parse all code as brighterscript to improve formatting context ([brighterscript-formatter#61](https://github.com/rokucommunity/brighterscript-formatter/pull/61))
+     - Split formatter into separate processors ([brighterscript-formatter#57](https://github.com/rokucommunity/brighterscript-formatter/pull/57))
+     - Break `process` into smaller functions ([brighterscript-formatter#59](https://github.com/rokucommunity/brighterscript-formatter/pull/59))
+     - Rename `process` to `format` ([brighterscript-formatter#60](https://github.com/rokucommunity/brighterscript-formatter/pull/60))
+
+
+
 ## [2.35.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.2...2.35.0) - 2022-08-24
 ### Changed
  - upgrade to [roku-debug@0.15.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0150---2022-08-23). Notable changes since 0.14.2:
