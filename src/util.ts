@@ -291,6 +291,16 @@ class Util {
             setTimeout(resolve, milliseconds);
         });
     }
+
+    /**
+     * Convert an arbitrary range-like object into a proper vscode.Range instance
+     */
+    public toRange(range: { start: { line: number; character: number }; end: { line: number; character: number } }) {
+        return new vscode.Range(
+            new vscode.Position(range.start.line, range.start.character),
+            new vscode.Position(range.end.line, range.end.character)
+        );
+    }
 }
 
 const util = new Util();

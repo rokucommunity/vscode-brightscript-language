@@ -26,7 +26,7 @@ import { WhatsNewManager } from './managers/WhatsNewManager';
 import { SceneGraphInspectorViewProvider } from './viewProviders/SceneGraphInspectorViewProvider';
 import { RokuCommandsViewProvider } from './viewProviders/RokuCommandsViewProvider';
 import { RokuRegistryViewProvider } from './viewProviders/RokuRegistryViewProvider';
-import { isChannelPublishedEvent, isChanperfEvent, isCompileFailureEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -244,16 +244,17 @@ export class Extension {
 
             this.chanperfStatusBar.show();
 
-        } else if (isCompileFailureEvent(e)) {
-            const compileErrors = e.body?.compileErrors ?? [];
-            if (compileErrors.length > 0) {
-                const firstCompileError = compileErrors[0];
+        } else if (isDiagnosticsEvent(e)) {
+            const diagnostics = e.body?.diagnostics ?? [];
+            const firstDiagnostic = diagnostics[0];
+            if (firstDiagnostic) {
                 // open the first file with a compile error
-                let uri = vscode.Uri.file(firstCompileError.path);
+                let uri = vscode.Uri.file(firstDiagnostic.path);
                 let doc = await vscode.workspace.openTextDocument(uri);
-                let line = (firstCompileError.lineNumber - 1 > -1) ? firstCompileError.lineNumber - 1 : 0;
-                let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
-                await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+                await vscode.window.showTextDocument(doc, {
+                    preview: false,
+                    selection: util.toRange(firstDiagnostic.range)
+                });
             }
         }
     }
