@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.35.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.1...2.35.2) - 2022-09-08
+### Changed
+ - upgrade to [brighterscript@0.57.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0572---2022-09-08). Notable changes since 0.57.0:
+     - Fix brightscript.configFile workspace config bug ([brighterscript#686](https://github.com/rokucommunity/brighterscript/pull/686))
+     - fix(parser): consider namespace function transpiled names ([brighterscript#685](https://github.com/rokucommunity/brighterscript/pull/685))
+
+
+
 ## [2.35.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.0...2.35.1) - 2022-09-02
 ### Changed
  - Document customizing editor.wordSeparators for trailing type symbols ([#436](https://github.com/rokucommunity/vscode-brightscript-language/pull/436))

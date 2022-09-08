@@ -52,7 +52,7 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.57.0",
+        "brighterscript": "^0.57.2",
         "brighterscript-formatter": "^1.6.16",
         "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
