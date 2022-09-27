@@ -1575,7 +1575,8 @@
                                     "description": "Custom SGDebug command that will be run on port 8080"
                                 }
                             ]
-                        }
+                        },
+                        "scope": "resource"
                     },
                     "brightscript.debug.enableDebugProtocol": {
                         "type": "boolean",
@@ -1597,35 +1598,41 @@
                     "brightscript.debug.host": {
                         "type": "string",
                         "description": "The host or ip address for the target Roku",
-                        "default": "${promptForHost}"
+                        "default": "${promptForHost}",
+                        "scope": "resource"
                     },
                     "brightscript.debug.deepLinkUrl": {
                         "type": "string",
                         "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
-                        "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
+                        "default": "http://${host}:8060/launch/dev?${promptForQueryParams}",
+                        "scope": "resource"
                     },
                     "brightscript.debug.password": {
                         "type": "string",
                         "description": "The password for the developer page on the target Roku",
-                        "default": "${promptForPassword}"
+                        "default": "${promptForPassword}",
+                        "scope": "resource"
                     },
                     "brightscript.debug.rootDir": {
                         "type": "string",
                         "description": "The root directory that contains your Roku project. This path should point to the folder containing your manifest file",
-                        "default": "${workspaceFolder}"
+                        "default": "${workspaceFolder}",
+                        "scope": "resource"
                     },
                     "brightscript.debug.debugRootDir": {
                         "type": "string",
                         "deprecationMessage": "Deprecated. Use sourceDirs instead",
                         "description": "If you have a build system, rootDir will point to the build output folder, and this path should point to the actual source folder so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise debugger lines will be out of sync.",
-                        "default": "${workspaceFolder}"
+                        "default": "${workspaceFolder}",
+                        "scope": "resource"
                     },
                     "brightscript.debug.sourceDirs": {
                         "type": "array",
                         "description": "If you have a build system, this array will point to paths of actual source folders so that breakpoints can be set in the source files when debugging. In order for this to work, your build process cannot change line offsets between source files and built files, otherwise, debugger lines will be out of sync.",
                         "default": [
                             "${workspaceFolder}"
-                        ]
+                        ],
+                        "scope": "resource"
                     },
                     "brightscript.debug.bsConst": {
                         "type": "object",
@@ -1636,17 +1643,20 @@
                                 "required": true
                             }
                         },
-                        "additionalProperties": false
+                        "additionalProperties": false,
+                        "scope": "resource"
                     },
                     "brightscript.debug.componentLibrariesPort": {
                         "type": "number",
                         "description": "Port to access component libraries.",
-                        "default": 8080
+                        "default": 8080,
+                        "scope": "resource"
                     },
                     "brightscript.debug.componentLibrariesOutDir": {
                         "type": "string",
                         "deprecationMessage": "This no longer user-configurable. This value will be set to \"${outDir}/component-libraries\" by the extension.",
-                        "default": ""
+                        "default": "",
+                        "scope": "resource"
                     },
                     "brightscript.debug.componentLibraries": {
                         "type": "array",
@@ -1753,37 +1763,44 @@
                                     ]
                                 }
                             }
-                        }
+                        },
+                        "scope": "resource"
                     },
                     "brightscript.debug.outDir": {
                         "type": "string",
                         "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
-                        "default": "${workspaceFolder}/out"
+                        "default": "${workspaceFolder}/out",
+                        "scope": "resource"
                     },
                     "brightscript.debug.stopOnEntry": {
                         "type": "boolean",
                         "description": "Should the debugger stop on the first line of the program after launch.",
-                        "default": false
+                        "default": false,
+                        "scope": "resource"
                     },
                     "brightscript.debug.retainStagingFolder": {
                         "type": "boolean",
                         "description": "Prevent the staging folder from being deleted after the deployment package is created.  This is helpful for troubleshooting why your package isn't being created the way you expected.",
-                        "default": false
+                        "default": false,
+                        "scope": "resource"
                     },
                     "brightscript.debug.retainDeploymentArchive": {
                         "type": "boolean",
                         "description": "Prevent the deployment package from being deleted after launching a debug session.",
-                        "default": true
+                        "default": true,
+                        "scope": "resource"
                     },
                     "brightscript.debug.enableVariablesPanel": {
                         "type": "boolean",
                         "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
-                        "default": true
+                        "default": true,
+                        "scope": "resource"
                     },
                     "brightscript.debug.envFile": {
                         "type": "string",
                         "description": "A path to an environment variables file.",
-                        "default": ".env"
+                        "default": ".env",
+                        "scope": "resource"
                     },
                     "brightscript.debug.consoleOutput": {
                         "type": "string",
@@ -1792,26 +1809,31 @@
                         "enum": [
                             "full",
                             "normal"
-                        ]
+                        ],
+                        "scope": "resource"
                     },
                     "brightscript.debug.injectRaleTrackerTask": {
                         "type": "boolean",
                         "description": "Will inject the Roku Advanced Layout Editor(RALE) TrackerTask into your channel if one is defined in your user settings.",
-                        "default": false
+                        "default": false,
+                        "scope": "resource"
                     },
                     "brightscript.debug.injectRdbOnDeviceComponent": {
                         "type": "boolean",
                         "description": "Will inject the OnDeviceComponent used by RDB for RALE like functionality inside of the extension",
-                        "default": false
+                        "default": false,
+                        "scope": "resource"
                     },
                     "brightscript.debug.disableScreenSaver": {
                         "type": "boolean",
                         "description": "If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.",
-                        "default": true
+                        "default": true,
+                        "scope": "resource"
                     },
                     "brightscript.debug.rdbCallbackPort": {
                         "type": "number",
-                        "description": "By default the OnDeviceComponent tries to find an open callback port on the server. This allows you to set one explicitly"
+                        "description": "By default the OnDeviceComponent tries to find an open callback port on the server. This allows you to set one explicitly",
+                        "scope": "resource"
                     },
                     "brightscript.debug.files": {
                         "type": "array",
@@ -1858,27 +1880,32 @@
                                     ]
                                 }
                             ]
-                        }
+                        },
+                        "scope": "resource"
                     },
                     "brightscript.debug.enableDebuggerAutoRecovery": {
                         "type": "boolean",
                         "description": "Enables automatic continue when hitting an incorrect 'break in' breakpoint, which are produced by a bug in the roku microdebugger, mishandling multiple runloops. This flag will enable you to recover in most cases - wait until the skipping bogus breakpoint messages have all stopped before continuing to use your app, for best results.",
-                        "default": true
+                        "default": true,
+                        "scope": "resource"
                     },
                     "brightscript.debug.stopDebuggerOnAppExit": {
                         "type": "boolean",
                         "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
-                        "default": true
+                        "default": true,
+                        "scope": "resource"
                     },
                     "brightscript.debug.packagePort": {
                         "type": "number",
                         "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
-                        "default": 80
+                        "default": 80,
+                        "scope": "resource"
                     },
                     "brightscript.debug.remotePort": {
                         "type": "number",
                         "description": "The port used for sending remote control commands (like home press or back press). This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
-                        "default": 8060
+                        "default": 8060,
+                        "scope": "resource"
                     },
                     "brightscript.debug.logLevel": {
                         "type": "string",
@@ -1892,7 +1919,8 @@
                             "trace"
                         ],
                         "default": "log",
-                        "description": "The level of logging that should be done during a debug session."
+                        "description": "The level of logging that should be done during a debug session.",
+                        "scope": "resource"
                     }
                 }
             },
