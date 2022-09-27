@@ -600,14 +600,12 @@
                             },
                             "logfilePath": {
                                 "type": "string",
-                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
-                                "scope": "resource"
+                                "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
                             },
                             "enableDebugProtocol": {
                                 "type": "boolean",
                                 "default": false,
-                                "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
-                                "scope": "resource"
+                                "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                             },
                             "logLevel": {
                                 "type": "string",

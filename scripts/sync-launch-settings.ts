@@ -31,6 +31,8 @@ for (const [key, data] of Object.entries(launchProperties)) {
     for (const [dataKey, dataValue] of Object.entries(data)) {
         launchProperty[dataKey] = dataValue;
     }
+    const scope = 'scope';
+    launchProperty[scope] = 'resource';
     const brightscriptDebugKey = 'brightscript.debug.' + key;
     // note: if duplicate keys exist, we overwrite (new source data should be identical anyway)
     newDebugProperties[brightscriptDebugKey] = launchProperty;
