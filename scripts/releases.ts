@@ -21,6 +21,12 @@ class Runner {
 
         options.groups ??= [];
 
+        //clone all projects
+        console.log('Cloning projects');
+        for (const project of this.projects) {
+            this.cloneProject(project);
+        }
+
         const projects = this.projects
             //filter by group
             .filter(x => options.groups.length === 0 || x?.groups?.find(g => options.groups.includes(g)))
@@ -28,12 +34,6 @@ class Runner {
             .filter(x => options.projects.length === 0 || options.projects.includes(x.name));
 
         console.log('Selected projects:', projects.map(x => x.name));
-
-        //clone all projects
-        console.log('Cloning projects');
-        for (const project of projects) {
-            this.cloneProject(project);
-        }
 
         for (const project of projects) {
             console.log('');
@@ -175,7 +175,7 @@ class Runner {
         const initialDelay = (60 * 1000) - interval;
         setTimeout(() => {
             const handle = setInterval(() => {
-                void latestVersion(project.name).then((result) => {
+                void latestVersion(project.npmName).then((result) => {
                     if (result === targetVersion) {
                         isFinished = true;
                         clearInterval(handle);
@@ -357,6 +357,7 @@ class Runner {
         groups: ['vscode']
     }, {
         name: 'bslint',
+        npmName: '@rokucommunity/bslint',
         dependencies: [],
         devDependencies: [
             'brighterscript'
@@ -397,6 +398,7 @@ class Runner {
                 previousReleaseVersion: undefined as any,
                 newVersion: undefined as any
             })) ?? [],
+            npmName: project.npmName ?? project.name,
             repositoryUrl: (project as any).repositoryUrl ?? `https://github.com/rokucommunity/${repoName}`,
             changes: []
         };
@@ -406,6 +408,10 @@ class Runner {
 
 interface Project {
     name: string;
+    /**
+     * The name of the package on npm. Defaults to `project.name`
+     */
+    npmName: string;
     repositoryUrl: string;
     /**
      * The directory where this project is cloned.
