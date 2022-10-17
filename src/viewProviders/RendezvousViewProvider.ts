@@ -1,6 +1,7 @@
 import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
 import type { RendezvousHistory } from 'roku-debug';
+import { isRendezvousEvent } from 'roku-debug';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -58,7 +59,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
      */
     public onDidReceiveDebugSessionCustomEvent(e: any) {
         console.log('received event ' + e.event);
-        if (e.event === 'BSRendezvousEvent') {
+        if (isRendezvousEvent(e)) {
             // What changed?
             // let diff = this.objectDiff(e.body, this.viewedData);
 
