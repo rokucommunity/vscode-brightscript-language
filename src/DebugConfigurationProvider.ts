@@ -74,14 +74,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+
+        // merge user and workspace settings into the config
+        config = this.processUserWorkspaceSettings(config);
+
         //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
         this.telemetryManager?.sendStartDebugSessionEvent(config);
 
         //force a specific staging folder path because sometimes this conflicts with bsconfig.json
         config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
-
-        // Process the different parts of the config
-        config = this.processUserWorkspaceSettings(config);
 
         config = await this.sanitizeConfiguration(config, folder);
         config = await this.processEnvFile(folder, config);
@@ -99,16 +100,33 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * There are several debug-level config values that can be stored in user settings, so get those
      */
     private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration) {
-        //get baseline brightscript.debug user/project settings
-        let userWorkspaceDebugSettings = {
-            enableSourceMaps: true,
-            enableDebugProtocol: false,
-            //merge in all of the brightscript.debug properties
-            ...vscode.workspace.getConfiguration('brightscript.debug') ?? {}
-        };
+        const workspaceConfig = vscode.workspace.getConfiguration('brightscript.debug');
+
+        let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
+
+        //only keep the config values that were explicitly defined in a config file (i.e. exclude default values)
+        for (const key of Object.keys(workspaceConfig)) {
+            const inspection = workspaceConfig.inspect(key);
+            //if the value was explicitly defined by the user in one of the various locations, then keep this value
+            if (
+                inspection.globalValue !== undefined ||
+                inspection.workspaceValue !== undefined ||
+                inspection.globalLanguageValue !== undefined ||
+                inspection.defaultLanguageValue !== undefined ||
+                inspection.workspaceFolderValue !== undefined ||
+                inspection.workspaceLanguageValue !== undefined ||
+                inspection.workspaceFolderLanguageValue !== undefined
+            ) {
+                userWorkspaceSettings[key] = workspaceConfig[key];
+            }
+        }
+
         //merge the user/workspace settings in with the config (the config wins on conflict)
-        config = Object.assign(userWorkspaceDebugSettings, config ?? <any>{});
-        return config;
+        const result = {
+            ...userWorkspaceSettings ?? {},
+            ...config ?? {}
+        };
+        return result;
     }
 
     /**
@@ -116,12 +134,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
-        let defaultFilesArray: FileEntry[] = [
-            'manifest',
-            'source/**/*.*',
-            'components/**/*.*',
-            'images/**/*.*'
-        ];
         let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
 
         //make sure we have an object
@@ -154,10 +166,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             throw new Error('Cannot determine which workspace to use for brightscript debugging');
         }
 
-        //load the brsconfig settings (if available)
-        let brsconfig = this.getBrsConfig(folderUri);
-        if (brsconfig) {
-            config = { ...brsconfig, ...config };
+        //load the bsconfig settings (if available)
+        let bsconfig = this.getBsConfig(folderUri);
+        if (bsconfig) {
+            config = { ...bsconfig, ...config };
         }
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
@@ -219,6 +231,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath = config.logfilePath ?? null;
+        config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
@@ -468,13 +481,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Get the brsConfig file, if available
+     * Get the bsconfig file, if available
      */
-    public getBrsConfig(workspaceFolder: vscode.Uri) {
-        //try to load brsconfig settings
+    public getBsConfig(workspaceFolder: vscode.Uri) {
+        //try to load bsconfig settings
         let settings = vscode.workspace.getConfiguration('brightscript', workspaceFolder);
         let configFilePath = settings.get<string>('configFile');
+        let isDefaultPath = false;
         if (!configFilePath) {
+            isDefaultPath = true;
             configFilePath = 'bsconfig.json';
         }
 
@@ -482,10 +497,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         let workspaceFolderPath = bslangUtil.uriToPath(workspaceFolder.toString());
         configFilePath = path.resolve(workspaceFolderPath, configFilePath);
         try {
-            let brsconfig = bslangUtil.loadConfigFile(configFilePath);
-            return brsconfig;
+            let bsconfig = bslangUtil.loadConfigFile(configFilePath);
+            return bsconfig;
         } catch (e) {
-            console.error(`Could not load brsconfig file at "${configFilePath}`);
+            //only log the error if the user explicitly defined a config path
+            if (!isDefaultPath) {
+                console.error(`Could not load bsconfig file at "${configFilePath}`);
+            }
             return undefined;
         }
     }
