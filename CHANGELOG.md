@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.36.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.0...2.36.1) - 2022-10-18
+### Changed
+ - upgrade to [brighterscript@0.60.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0602---2022-10-18). Notable changes since 0.60.1:
+     - Fix if statement block var bug ([brighterscript#698](https://github.com/rokucommunity/brighterscript/pull/698))
+
+
+
 ## [2.36.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.2...2.36.0) - 2022-10-18
 ### Added
  - all launch configuration settings are avaiable in settings under the `brightscript.debug` key ([#438](https://github.com/rokucommunity/vscode-brightscript-language/pull/438))
