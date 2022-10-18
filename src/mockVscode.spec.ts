@@ -1,4 +1,4 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext } from 'vscode';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration } from 'vscode';
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
@@ -76,10 +76,10 @@ export let vscode = {
         globalStoragePath: '',
         globalState: {
             _data: {},
-            update: function (key: string, value: any) {
+            update: function(key: string, value: any) {
                 this._data[key] = value;
             },
-            get: function (key: string) {
+            get: function(key: string) {
                 return this._data[key];
             }
         } as any,
@@ -111,6 +111,12 @@ export let vscode = {
             return {
                 get: (name: string) => {
                     return this._configuration?.[`${configurationName}.${name}`];
+                },
+                inspect: (name: string) => {
+                    return {
+                        key: name,
+                        globalValue: this._configuration?.[`${configurationName}.${name}`]
+                    } as ReturnType<WorkspaceConfiguration['inspect']>;
                 }
             };
         },

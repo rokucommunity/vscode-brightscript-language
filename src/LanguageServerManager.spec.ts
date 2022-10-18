@@ -242,7 +242,8 @@ describe('extension', () => {
                     value = null;
                 }
                 return {
-                    get: x => value
+                    get: x => value,
+                    inspect: () => ({}) as any
                 };
             });
             vscode.workspace.workspaceFolders.push({
