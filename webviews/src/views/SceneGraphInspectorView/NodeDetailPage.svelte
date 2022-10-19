@@ -14,18 +14,10 @@
     let inspectChildNodeSubtype: string;
     let inspectChildNodeBaseKeyPath: ODC.BaseKeyPath | null;
 
-    let scrollX: number;
-    let scrollY: number;
-
-    scrollX = document.documentElement.scrollLeft;
-    scrollY = document.documentElement.scrollTop;
-    document.documentElement.scrollTo(0, 0);
-
     function close() {
         if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
         }
-        document.documentElement.scrollTo(scrollX, scrollY);
         inspectNodeBaseKeyPath = null;
     }
 
@@ -62,7 +54,7 @@
     }
 
     async function refresh() {
-        const { results } = await odc.getNodesInfoAtKeyPaths({
+        const { results } = await odc.getNodesInfo({
             requests: {
                 request: inspectNodeBaseKeyPath
             }
@@ -76,13 +68,13 @@
     function onBooleanFieldClick() {
         const value = this.checked;
         handleResetValueButtonDisplay(this, value);
-        setValueAtKeyPath(this.id, value);
+        setValue(this.id, value);
     }
 
     function onNumberFieldChange() {
         const value = Number(this.value);
         handleResetValueButtonDisplay(this, value);
-        setValueAtKeyPath(this.id, value);
+        setValue(this.id, value);
     }
 
     function onVector2dFieldChange() {
@@ -94,20 +86,20 @@
             }
         }
         handleResetValueButtonDisplay(this, values);
-        setValueAtKeyPath(id, values);
+        setValue(id, values);
     }
 
     function onStringFieldChange() {
         handleResetValueButtonDisplay(this);
-        setValueAtKeyPath(this.id, this.value);
+        setValue(this.id, this.value);
     }
 
     function onColorFieldChange() {
         handleResetValueButtonDisplay(this);
-        setValueAtKeyPath(this.id, this.value);
+        setValue(this.id, this.value);
     }
 
-    function setValueAtKeyPath(fieldKeyPath: string, value: any) {
+    function setValue(fieldKeyPath: string, value: any) {
         const args: Omit<ChangedFieldEntry, 'ts'> = {
             subtype: inspectNodeSubtype,
             id: fields.id.value,
@@ -115,7 +107,7 @@
             keyPath: `${inspectNodeBaseKeyPath.keyPath}.${fieldKeyPath}`,
             value: value,
         }
-        odc.setValueAtKeyPath(args);
+        odc.setValue(args);
     }
 
     function onNodeClicked() {

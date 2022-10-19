@@ -10,14 +10,14 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         'deleteEntireRegistry',
         'deleteRegistrySections',
         'getFocusedNode',
-        'getValueAtKeyPath',
-        'getValuesAtKeyPaths',
-        'getNodesInfoAtKeyPaths',
+        'getValue',
+        'getValues',
+        'getNodesInfo',
         'hasFocus',
         'isInFocusChain',
         'observeField',
         'readRegistry',
-        'setValueAtKeyPath',
+        'setValue',
         'writeRegistry',
         'storeNodeReferences',
         'deleteNodeReferences'
@@ -52,5 +52,3 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         return false;
     }
 }
-
-

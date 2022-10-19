@@ -285,10 +285,9 @@ export class Extension {
             },
             OnDeviceComponent: {
                 logLevel: enableDebugging ? 'verbose' : undefined,
-                serverDebugLogging: enableDebugging,
+                clientDebugLogging: enableDebugging,
                 disableTelnet: true,
-                disableCallOriginationLine: true,
-                callbackListenPort: config.rdbCallbackPort
+                disableCallOriginationLine: true
             }
         };
         return rtaConfig;
@@ -316,4 +315,3 @@ export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
 }
-

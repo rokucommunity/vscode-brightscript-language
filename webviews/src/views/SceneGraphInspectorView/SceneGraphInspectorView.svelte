@@ -42,8 +42,8 @@
 
         try {
             const result = await odc.storeNodeReferences({
-                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo'),
-                includeArrayGridChildren: utils.getStorageBooleanValue('includeNodeCountInfo')
+                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo', true),
+                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true)
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree;
@@ -64,7 +64,11 @@
         await refresh();
         // Won't fire again if the value didn't actually change so it won't expand the children out without this
         focusedNode = -1;
-        const { ref } = await odc.getFocusedNode({ includeRef: true });
+        const returnFocusedArrayGridChild = utils.getStorageBooleanValue('includeArrayGridChildren', true)
+        const { ref } = await odc.getFocusedNode({
+            includeRef: true,
+            returnFocusedArrayGridChild: returnFocusedArrayGridChild
+        });
         focusedNode = ref;
     }
 
