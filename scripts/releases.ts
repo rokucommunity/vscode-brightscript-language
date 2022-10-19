@@ -21,6 +21,12 @@ class Runner {
 
         options.groups ??= [];
 
+        //clone all projects
+        console.log('Cloning projects');
+        for (const project of this.projects) {
+            this.cloneProject(project);
+        }
+
         const projects = this.projects
             //filter by group
             .filter(x => options.groups.length === 0 || x?.groups?.find(g => options.groups.includes(g)))
@@ -28,12 +34,6 @@ class Runner {
             .filter(x => options.projects.length === 0 || options.projects.includes(x.name));
 
         console.log('Selected projects:', projects.map(x => x.name));
-
-        //clone all projects
-        console.log('Cloning projects');
-        for (const project of projects) {
-            this.cloneProject(project);
-        }
 
         for (const project of projects) {
             console.log('');

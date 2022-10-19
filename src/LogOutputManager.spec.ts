@@ -20,6 +20,9 @@ Module.prototype.require = function hijacked(file) {
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
+import type { BSDebugDiagnostic } from 'roku-debug';
+import { DiagnosticsEvent, LaunchStartEvent, LogOutputEvent } from 'roku-debug';
+import { util } from 'brighterscript';
 
 describe('LogOutputManager ', () => {
     let logOutputManagerMock: Sinon.SinonMock;
@@ -69,34 +72,34 @@ describe('LogOutputManager ', () => {
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - clear flag', async () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - LaunchStartEvent - clear flag', async () => {
         collectionMock.expects('clear').once();
         logOutputManager.isClearingOutputOnLaunch = true;
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'LaunchStartEvent' });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLaunchStartEvent - no clear flag', async () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - LaunchStartEvent - no clear flag', async () => {
         collectionMock.expects('clear').never();
         logOutputManager.isClearingOutputOnLaunch = false;
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLaunchStartEvent' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent(new LaunchStartEvent({} as any));
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
-    it('tests onDidReceiveDebugSessionCustomEvent - BSLogOutputEvent', async () => {
+    it('tests onDidReceiveDebugSessionCustomEvent - LogOutputEvent', async () => {
         outputChannelMock.expects('appendLine').once();
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'BSLogOutputEvent', body: 'test1' });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent(new LogOutputEvent('test 1'));
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - empty', async () => {
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: [] });
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: {} });
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();
@@ -111,8 +114,12 @@ describe('LogOutputManager ', () => {
 
     it('tests onDidReceiveDebugSessionCustomEvent - errors', async () => {
         logOutputManagerMock.expects('addDiagnosticForError').once();
-        let compileErrors = [{ path: 'path1', message: 'message1' }];
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: compileErrors });
+        let compileErrors: BSDebugDiagnostic[] = [{
+            path: 'path1',
+            message: 'message1',
+            range: util.createRange(1, 2, 3, 4)
+        }];
+        await logOutputManager.onDidReceiveDebugSessionCustomEvent(new DiagnosticsEvent(compileErrors));
         outputChannelMock.verify();
         collectionMock.verify();
         logOutputManagerMock.verify();

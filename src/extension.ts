@@ -26,6 +26,7 @@ import { WhatsNewManager } from './managers/WhatsNewManager';
 import { SceneGraphInspectorViewProvider } from './viewProviders/SceneGraphInspectorViewProvider';
 import { RokuCommandsViewProvider } from './viewProviders/RokuCommandsViewProvider';
 import { RokuRegistryViewProvider } from './viewProviders/RokuRegistryViewProvider';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -209,14 +210,15 @@ export class Extension {
         await languageServerPromise;
     }
 
-    private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
-        if (e.event === 'BSLaunchStartEvent') {
-            const config: BrightScriptLaunchConfiguration = e.body;
+    private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+        if (isLaunchStartEvent(e)) {
+            const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
             logOutputManager.setLaunchConfig(config);
             this.registerWebViewProviders(context);
-        } else if (e.event === 'BSChannelPublishedEvent') {
-            const config: BrightScriptLaunchConfiguration = e.body.launchConfiguration;
+
+        } else if (isChannelPublishedEvent(e)) {
+            const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
             if (!config.injectRdbOnDeviceComponent) {
                 void this.odc?.shutdown();
                 this.odc = undefined;
@@ -226,13 +228,14 @@ export class Extension {
             this.setupRdbViewProviders();
             void this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
             //write debug server log statements to the DebugServer output channel
-        } else if (e.event === 'BSDebugServerLogOutputEvent') {
-            this.extensionOutputChannel.appendLine(e.body);
 
-        } else if (e.event === 'BSRendezvousEvent') {
+        } else if (isDebugServerLogOutputEvent(e)) {
+            this.extensionOutputChannel.appendLine(e.body.line);
+
+        } else if (isRendezvousEvent(e)) {
             rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
-        } else if (e.event === 'BSChanperfEvent') {
+        } else if (isChanperfEvent(e)) {
             if (!e.body.error) {
                 this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
             } else {
@@ -241,14 +244,17 @@ export class Extension {
 
             this.chanperfStatusBar.show();
 
-        } else if (!e.event) {
-            if (e.body[0]) {
+        } else if (isDiagnosticsEvent(e)) {
+            const diagnostics = e.body?.diagnostics ?? [];
+            const firstDiagnostic = diagnostics[0];
+            if (firstDiagnostic) {
                 // open the first file with a compile error
-                let uri = vscode.Uri.file(e.body[0].path);
+                let uri = vscode.Uri.file(firstDiagnostic.path);
                 let doc = await vscode.workspace.openTextDocument(uri);
-                let line = (e.body[0].lineNumber - 1 > -1) ? e.body[0].lineNumber - 1 : 0;
-                let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
-                await vscode.window.showTextDocument(doc, { preview: false, selection: range });
+                await vscode.window.showTextDocument(doc, {
+                    preview: false,
+                    selection: util.toRange(firstDiagnostic.range)
+                });
             }
         }
     }

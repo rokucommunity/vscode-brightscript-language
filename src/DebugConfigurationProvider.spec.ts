@@ -81,7 +81,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(s`${filePath}`).to.equal(s`/some/project/.env`);
                 return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
             });
-            sinon.stub(configProvider, 'getBrsConfig').returns({});
+            sinon.stub(configProvider, 'getBsConfig').returns({});
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -100,7 +100,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(filePath).to.equal('/some/project/.env');
                 return Promise.resolve(Buffer.from('USERNAME=bob'));
             });
-            sinon.stub(configProvider, 'getBrsConfig').returns({});
+            sinon.stub(configProvider, 'getBsConfig').returns({});
             let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -114,7 +114,7 @@ describe('BrightScriptConfigurationProvider', () => {
         it('throws on missing .env file', async () => {
             sinon.restore();
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
-            sinon.stub(configProvider, 'getBrsConfig').returns({});
+            sinon.stub(configProvider, 'getBsConfig').returns({});
 
             try {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
@@ -130,7 +130,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
-            sinon.stub(configProvider, 'getBrsConfig').returns({});
+            sinon.stub(configProvider, 'getBsConfig').returns({});
             let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
                 //should load env file from proper place
                 expect(filePath).to.equal('/some/project/.env');

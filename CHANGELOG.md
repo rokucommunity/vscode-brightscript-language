@@ -6,6 +6,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.36.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.0...2.36.1) - 2022-10-18
+### Changed
+ - upgrade to [brighterscript@0.60.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0602---2022-10-18). Notable changes since 0.60.1:
+     - Fix if statement block var bug ([brighterscript#698](https://github.com/rokucommunity/brighterscript/pull/698))
+
+
+
+## [2.36.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.2...2.36.0) - 2022-10-18
+### Added
+ - all launch configuration settings are avaiable in settings under the `brightscript.debug` key ([#438](https://github.com/rokucommunity/vscode-brightscript-language/pull/438))
+### Changed
+ - Handle new custom event structures and names introduced in roku-debug@0.16.0 ([#433](https://github.com/rokucommunity/vscode-brightscript-language/pull/433))
+ - upgrade to [roku-deploy@3.9.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#392---2022-10-03). Notable changes since 3.8.1:
+     - Replace minimatch with picomatch ([roku-deploy#101](https://github.com/rokucommunity/roku-deploy/pull/101))
+     - Sync retainStagingFolder, stagingFolderPath with options. ([roku-deploy#100](https://github.com/rokucommunity/roku-deploy/pull/100))
+     - Add stagingDir and retainStagingDir. ([roku-deploy#99](https://github.com/rokucommunity/roku-deploy/pull/99))
+ - upgrade to [roku-debug@0.16.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0160---2022-10-17). Notable changes since 0.15.0:
+     - fix crash in rendezvous parser for missing files ([roku-debug#108](https://github.com/rokucommunity/roku-debug/pull/108))
+     - emit device diagnostics instead of compile errors ([roku-debug#104](https://github.com/rokucommunity/roku-debug/pull/104))
+     - standardize custom events, add is* helpers ([roku-debug#103](https://github.com/rokucommunity/roku-debug/pull/103))
+     - better debug protocol launch handling ([roku-debug#102](https://github.com/rokucommunity/roku-debug/pull/102))
+ - upgrade to [brighterscript@0.60.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0601---2022-10-18). Notable changes since 0.57.2:
+     - add goto definition for enum statements and enum members ([brighterscript#715](https://github.com/rokucommunity/brighterscript/pull/715))
+     - add jsdoc eslint checking ([brighterscript#717](https://github.com/rokucommunity/brighterscript/pull/717))
+     - add support for nested namespaces ([brighterscript#708](https://github.com/rokucommunity/brighterscript/pull/708))
+     - add an 'isThrowStatement' utility function for plugins ([brighterscript#709](https://github.com/rokucommunity/brighterscript/pull/709))
+     - add support for `pkg:/` paths in `setFile` ([brighterscript#701](https://github.com/rokucommunity/brighterscript/pull/701))
+     - add syntax and transpile support for continue statement ([brighterscript#697](https://github.com/rokucommunity/brighterscript/pull/697))
+     - add AST child searching functionality. ([brighterscript#695](https://github.com/rokucommunity/brighterscript/pull/695))
+     - change: migrate to `stagingDir` away from `stagingFolder` ([brighterscript#706](https://github.com/rokucommunity/brighterscript/pull/706))
+     - change: change `isClassFieldMethod` and `isClassMethodStatement` calls to use `isFieldMethod` and `isMethodStatement` ([brighterscript#694](https://github.com/rokucommunity/brighterscript/pull/694))
+     - change: create common ancestor for Expression and Statement ([brighterscript#693](https://github.com/rokucommunity/brighterscript/pull/693))
+     - change: move file validation into BscPlugin ([brighterscript#688](https://github.com/rokucommunity/brighterscript/pull/688))
+     - fix token location for bs1042 ([brighterscript#719](https://github.com/rokucommunity/brighterscript/pull/719))
+     - fix signature help resolution for callexpressions ([brighterscript#707](https://github.com/rokucommunity/brighterscript/pull/707))
+     - fix transpilation of simple else block with leading comment ([brighterscript#712](https://github.com/rokucommunity/brighterscript/pull/712))
+     - fix enum error for negative values ([brighterscript#703](https://github.com/rokucommunity/brighterscript/pull/703))
+     - fix: finds and includes more deeply embedded expressions ([brighterscript#696](https://github.com/rokucommunity/brighterscript/pull/696))
+     - fix xml parse bug during benchmarking ([#brighterscript0805c1f](https://github.com/rokucommunity/brighterscript/commit/0805c1f))
+     - fix: scope validation performance boost ([brighterscript#656](https://github.com/rokucommunity/brighterscript/pull/656))
+     - fix: error during transpile with duplicate file paths ([brighterscript#691](https://github.com/rokucommunity/brighterscript/pull/691))
+ - upgrade to [brighterscript-formatter@1.6.17](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1617---2022-10-03)
+### Fixed
+ - ignore default user settings not set by user ([#439](https://github.com/rokucommunity/vscode-brightscript-language/pull/439))
+
+
+
 ## [2.35.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.1...2.35.2) - 2022-09-08
 ### Changed
  - upgrade to [brighterscript@0.57.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0572---2022-09-08). Notable changes since 0.57.0:
