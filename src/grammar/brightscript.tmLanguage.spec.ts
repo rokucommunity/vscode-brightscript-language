@@ -5,7 +5,7 @@ import { standardizePath as s } from 'brighterscript';
 
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
-describe.only('brightscript.tmlanguage.json', () => {
+describe('brightscript.tmlanguage.json', () => {
     it('colors strings correctly', async () => {
         await testGrammar(`
             print "hello world", true
