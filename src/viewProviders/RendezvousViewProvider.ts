@@ -55,6 +55,15 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
     }
 
     /**
+     * Clears the local copy of the rendezvous data. The debug session sends all data, so this call won't clear that. if you need to clear that,
+     * call the `rendezvous.clearHistory` command
+     */
+    public clear() {
+        this.rendezvousHistory = undefined;
+        this._onDidChangeTreeData.fire(null);
+    }
+
+    /**
      * Handles the custom events
      */
     public onDidReceiveDebugSessionCustomEvent(e: any) {

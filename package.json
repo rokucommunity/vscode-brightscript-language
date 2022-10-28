@@ -241,7 +241,7 @@
                 {
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
-                    "group": "Rendezvous"
+                    "group": "navigation"
                 },
                 {
                     "command": "extension.brightscript.refreshDeviceList",
@@ -2290,7 +2290,7 @@
                 "command": "extension.brightscript.rendezvous.clearHistory",
                 "title": "Clear History",
                 "category": "Brightscript Rendezvous",
-                "enablement": "debugType == 'brightscript'"
+                "icon": "$(clear-all)"
             },
             {
                 "command": "brighterscript.showPreview",
@@ -2309,19 +2309,19 @@
             {
                 "command": "extension.brightscript.refreshDeviceList",
                 "title": "Refresh",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
-                "category": "BrightScript",
+                "category": "BrighterScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.info",
                 "title": "View BrighterScript LanguageServer Info",
-                "category": "BrightScript"
+                "category": "BrighterScript"
             }
         ],
         "keybindings": [
