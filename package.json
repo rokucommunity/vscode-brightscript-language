@@ -1533,6 +1533,12 @@
                         "default": false,
                         "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
                         "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.concealDeviceInfo": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
+                        "scope": "resource"
                     }
                 }
             },
