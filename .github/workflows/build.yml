@@ -3,7 +3,10 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*
   pull_request:
+
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
