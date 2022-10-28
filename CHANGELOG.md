@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.37.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.1...2.37.0) - 2022-10-28
+### Added
+ - add `brightscript.deviceDiscovery.concealDeviceInfo` option to obscure the device-info ([#443](https://github.com/rokucommunity/vscode-brightscript-language/pull/443))
+### Changed
+ - upgrade to [roku-debug@0.16.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0161---2022-10-28)
+ - upgrade to [brighterscript@0.60.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0604---2022-10-28). Notable changes since 0.60.2:
+     - fix: allow `continue` as local var ([brighterscript#730](https://github.com/rokucommunity/brighterscript/pull/730))
+     - fix: semanticToken request wait until validate finishes ([brighterscript#727](https://github.com/rokucommunity/brighterscript/pull/727))
+     - fix: better parse recovery for unknown function parameter types ([brighterscript#722](https://github.com/rokucommunity/brighterscript/pull/722))
+ - upgrade to [brighterscript-formatter@1.6.19](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1619---2022-10-28)
+### Fixed
+ - allow clearing rendezvous events when a debug session is not running. ([#444](https://github.com/rokucommunity/vscode-brightscript-language/pull/444))
+ - move "clear rendezvous history" button out of a menu and into the title bar of that section ([#444](https://github.com/rokucommunity/vscode-brightscript-language/pull/444))
+
+
+
 ## [2.36.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.0...2.36.1) - 2022-10-18
 ### Changed
  - upgrade to [brighterscript@0.60.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0602---2022-10-18). Notable changes since 0.60.1:
