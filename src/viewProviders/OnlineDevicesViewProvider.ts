@@ -36,10 +36,10 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     }
 
     /**
-     * Should the unique info about a device be scrambled (i.e. randomly modified to protect the data)?
+     * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
-    private get enableDeviceInfoScrambling() {
-        return vscode.workspace.getConfiguration('brightscript.deviceDiscovery').get('scrambleDeviceInfo') === true;
+    private get isConcealDeviceInfoEnabled() {
+        return vscode.workspace.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
     private devices: Array<RokuDeviceDetails>;
@@ -78,7 +78,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 for (const device of devices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
-                        device.deviceInfo['user-device-name'] + ' - ' + this.scrambleString(device.deviceInfo['serial-number']),
+                        device.deviceInfo['user-device-name'] + ' - ' + this.concealString(device.deviceInfo['serial-number']),
                         vscode.TreeItemCollapsibleState.Collapsed,
                         device.id,
                         device.deviceInfo
@@ -105,8 +105,8 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             // Process the details of a device
             let result: Array<DeviceInfoTreeItem> = [];
 
-            //scramble all of these unique keys
-            const details = this.scrambleObject(element.details, ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']);
+            //conceal all of these unique keys
+            const details = this.concealObject(element.details, ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']);
 
             for (let [key, values] of details) {
 
@@ -116,7 +116,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     element,
                     vscode.TreeItemCollapsibleState.None,
                     key,
-                    //if this is one of the properties that need scrambled
+                    //if this is one of the properties that need concealed
                     values.value?.toString()
                 );
 
@@ -212,10 +212,10 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         return this.devices.find(device => device.id === deviceId);
     }
 
-    private scrambleObject(object: Record<string, any>, secretKeys: string[]) {
-        return util.scrambleObject(
+    private concealObject(object: Record<string, any>, secretKeys: string[]) {
+        return util.concealObject(
             object,
-            this.enableDeviceInfoScrambling ? secretKeys : []
+            this.isConcealDeviceInfoEnabled ? secretKeys : []
         );
     }
 
@@ -224,9 +224,9 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
      * Given a string, return a new string with random numbers and letters of the same size.
      * Returns the same value for every input for the lifetime of the current extension uptime
      */
-    private scrambleString(value: string) {
-        if (this.enableDeviceInfoScrambling) {
-            return util.scrambleString(value);
+    private concealString(value: string) {
+        if (this.isConcealDeviceInfoEnabled) {
+            return util.concealString(value);
         } else {
             return value;
         }

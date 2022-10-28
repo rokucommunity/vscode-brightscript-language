@@ -311,9 +311,9 @@ class Util {
     }
 
     /**
-      * Scrambles any of the specified keys across all string properties in the object
+      * Conceals (scrambles/obfuscates) any of the specified keys across all string properties in the object
       */
-    public scrambleObject(object: Record<string, any>, secretKeys: string[]) {
+    public concealObject(object: Record<string, any>, secretKeys: string[]) {
         const result = new Map<string, { value: string; originalValue: string }>();
         const secretValues = Object.entries(object)
             //only keep the non-blank string keys
@@ -338,7 +338,7 @@ class Util {
                         util.escapeRegex(secretValue) ?? /(?!)/,
                         'g'
                     );
-                    entry.value = entry.value.replace(regexp, this.scrambleString(secretValue));
+                    entry.value = entry.value.replace(regexp, this.concealString(secretValue));
                 }
             }
         }
@@ -346,14 +346,14 @@ class Util {
         return result;
     }
 
-    private scrambleCache = new Cache<string, string>();
+    private concealCache = new Cache<string, string>();
 
     /**
      * Given a string, replace the alphanumeric characters with random values.
      * This is useful for things like scrambling a uuid
      */
-    public scrambleString(text: string) {
-        return this.scrambleCache.getOrAdd(text, () => {
+    public concealString(text: string) {
+        return this.concealCache.getOrAdd(text, () => {
             if (this.isNullish(text)) {
                 return text;
             } else {
