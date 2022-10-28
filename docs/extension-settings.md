@@ -36,6 +36,16 @@ specifies the display format for log output `pkg` link
 If set to true, an info toast will be shown when a Roku device has been found on the network.
 ### `brightscript.deviceDiscovery.enabled`
 If set to true, the extension will automatically watch and scan the network for online Roku devices. This can be pared with the `${promptForHost}` option in the launch config to display a list of online Rokus, removing the need to constantly change the host IP in your config files.
+### `brightscript.deviceDiscovery.scrambleDeviceInfo`
+If set to true, the extension will randomize the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos).
+ - `udn`
+ - `device-id`
+ - `advertising-id`
+ - `wifi-mac`
+ - `ethernet-mac`
+ - `serial-number`
+ - `keyed-developer-id`
+
 ### `brightscript.debug.autoRunSgDebugCommands`
 Give the ability to run a list of commands on port 8080 of the device at the start of a debug session. Currently there are three supported short hands for the most commonly desired commands. These are:
  - `chanperf` - runs chanperf with a one seconds repeating interval

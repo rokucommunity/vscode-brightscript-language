@@ -21,10 +21,17 @@ export class ActiveDeviceManager extends EventEmitter {
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
         this.enabled = config.deviceDiscovery?.enabled;
         this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
-        vscode.workspace.onDidChangeConfiguration((e) => {
+        vscode.workspace.onDidChangeConfiguration((event) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
             this.enabled = config.deviceDiscovery?.enabled;
             this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
+
+            //if the `scrambleDeviceInfo` setting was changed, refresh the list
+            if (event.affectsConfiguration('brightscript.deviceDiscovery.scrambleDeviceInfo')) {
+                //stop (which clears the list), and then the `processEnabledState` below will re-start it if enabled
+                this.stop();
+            }
+
             this.processEnabledState();
         });
 

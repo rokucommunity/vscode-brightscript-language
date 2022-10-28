@@ -276,4 +276,56 @@ describe('Util', () => {
             });
         });
     });
+
+    describe('scrambleObject', () => {
+        it('does not scramble anything when no secret keys are provided', () => {
+            expect(
+                [...util.scrambleObject({ alpha: 'a', beta: 'b' }, [])]
+            ).to.eql([
+                ['alpha', { value: 'a', originalValue: 'a' }],
+                ['beta', { value: 'b', originalValue: 'b' }]
+            ]);
+        });
+
+        it('does not crash for unrecognized secret keys', () => {
+            expect(
+                [...util.scrambleObject({ alpha: 'a', beta: 'b' }, [undefined, '', false as unknown as string])]
+            ).to.eql([
+                ['alpha', { value: 'a', originalValue: 'a' }],
+                ['beta', { value: 'b', originalValue: 'b' }]
+            ]);
+        });
+
+        it('does not crash for undefined secret values', () => {
+            expect(
+                [...util.scrambleObject({ alpha: 'a', beta: undefined }, ['beta'])]
+            ).to.eql([
+                ['alpha', { value: 'a', originalValue: 'a' }],
+                ['beta', { value: undefined, originalValue: undefined }]
+            ]);
+        });
+
+        it('ignores blank and empty strings', () => {
+            expect(
+                [...util.scrambleObject({ alpha: 'alpha', beta: '' }, ['beta'])]
+            ).to.eql([
+                ['alpha', { value: 'alpha', originalValue: 'alpha' }],
+                ['beta', { value: '', originalValue: '' }]
+            ]);
+        });
+
+        it('scrambles various value types', () => {
+            //prefill the cache so we always know what it'll contain for this key
+            util['scrambleCache'].set('123', 'abc');
+            util['scrambleCache'].set('456', 'def');
+            expect(
+                [...util.scrambleObject({ alpha: '123', beta: 'beta 123 456', charlie: '456', delta: 123 }, ['alpha', 'charlie'])]
+            ).to.eql([
+                ['alpha', { value: 'abc', originalValue: '123' }],
+                ['beta', { value: 'beta abc def', originalValue: 'beta 123 456' }],
+                ['charlie', { value: 'def', originalValue: '456' }],
+                ['delta', { value: 123, originalValue: 123 }]
+            ]);
+        });
+    });
 });
