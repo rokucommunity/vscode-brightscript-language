@@ -1,13 +1,9 @@
 name: build
 on:
   push:
-    tags:
-      - '*'
     branches:
-      - '*'
+      - master
   pull_request:
-    branches:
-      - '*'
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
