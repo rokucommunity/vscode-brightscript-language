@@ -80,7 +80,7 @@
                 "--timeout",
                 "999999",
                 "./src/**/*.spec.ts",
-                "./ui/**/*.spec.ts"
+                "./webviews/**/*.spec.ts"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }

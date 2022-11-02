@@ -15,18 +15,18 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
-import { RendezvousViewProvider } from './RendezvousViewProvider';
-import { OnlineDevicesViewProvider } from './OnlineDevicesViewProvider';
-import {
-    RDBCommandsViewProvider,
-    RDBRegistryViewProvider
-} from './RDBViewProviders';
+import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
+import { OnlineDevicesViewProvider } from './viewProviders/OnlineDevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
+import { SceneGraphInspectorViewProvider } from './viewProviders/SceneGraphInspectorViewProvider';
+import { RokuCommandsViewProvider } from './viewProviders/RokuCommandsViewProvider';
+import { RokuRegistryViewProvider } from './viewProviders/RokuRegistryViewProvider';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -47,15 +47,16 @@ export class Extension {
 
     public odc?: rta.OnDeviceComponent;
 
-    // register our RDB views
-    private rdbViews = {
-        RDBRegistryView: {
-            class: RDBRegistryViewProvider
-        },
-        RDBCommandsView: {
-            class: RDBCommandsViewProvider
-        }
-    };
+    private webviews = [{
+        constructor: SceneGraphInspectorViewProvider,
+        provider: undefined as SceneGraphInspectorViewProvider
+    }, {
+        constructor: RokuRegistryViewProvider,
+        provider: undefined as RokuRegistryViewProvider
+    }, {
+        constructor: RokuCommandsViewProvider,
+        provider: undefined as RokuCommandsViewProvider
+    }];
 
     public async activate(context: vscode.ExtensionContext) {
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
@@ -74,9 +75,15 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
+        let activeDeviceManager = new ActiveDeviceManager();
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, this.whatsNewManager, this.activeDeviceManager, context);
+        this.brightScriptCommands = new BrightScriptCommands(
+            this.remoteControlManager,
+            this.whatsNewManager,
+            context,
+            activeDeviceManager
+        );
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
@@ -98,16 +105,21 @@ export class Extension {
 
         let languageServerPromise = languageServerManager.init(context, definitionRepo);
 
-        //register a tree data provider for this extension's "RENDEZVOUS" panel in the debug area
+        //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
-        //register a tree data provider for this extension's "Online Devices" panel
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, this.activeDeviceManager);
-        vscode.window.registerTreeDataProvider('onlineDevices', onlineDevicesViewProvider);
+        //register a tree data provider for this extension's "Online Devices" view
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
+        vscode.window.registerTreeDataProvider('onlineDevicesView', onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
-            await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+            try {
+                await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+            } catch { }
+
+            //also clear the local rendezvous list
+            rendezvousViewProvider.clear();
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {
@@ -155,38 +167,8 @@ export class Extension {
         });
 
         //give the launch config to the link provider any time we launch the app
-        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
-            if (e.event === 'BSLaunchStartEvent') {
-                const config: BrightScriptLaunchConfiguration = e.body;
-                await docLinkProvider.setLaunchConfig(config);
-                logOutputManager.setLaunchConfig(config);
-                this.setupRDB(context, config);
-                //write debug server log statements to the DebugServer output channel
-            } else if (e.event === 'BSDebugServerLogOutputEvent') {
-                this.extensionOutputChannel.appendLine(e.body);
-
-            } else if (e.event === 'BSRendezvousEvent') {
-                rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
-
-            } else if (e.event === 'BSChanperfEvent') {
-                if (!e.body.error) {
-                    this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
-                } else {
-                    this.chanperfStatusBar.text = e.body.error.message;
-                }
-
-                this.chanperfStatusBar.show();
-
-            } else if (!e.event) {
-                if (e.body[0]) {
-                    // open the first file with a compile error
-                    let uri = vscode.Uri.file(e.body[0].path);
-                    let doc = await vscode.workspace.openTextDocument(uri);
-                    let line = (e.body[0].lineNumber - 1 > -1) ? e.body[0].lineNumber - 1 : 0;
-                    let range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 0));
-                    await vscode.window.showTextDocument(doc, { preview: false, selection: range });
-                }
-            }
+        vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
+            return this.debugSessionCustomEventHandler(e, context, docLinkProvider, logOutputManager, rendezvousViewProvider);
         });
 
         //register all commands for this extension
@@ -234,6 +216,55 @@ export class Extension {
         await languageServerPromise;
     }
 
+    private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+        if (isLaunchStartEvent(e)) {
+            const config = e.body as BrightScriptLaunchConfiguration;
+            await docLinkProvider.setLaunchConfig(config);
+            logOutputManager.setLaunchConfig(config);
+            this.registerWebViewProviders(context);
+
+        } else if (isChannelPublishedEvent(e)) {
+            const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
+            if (!config.injectRdbOnDeviceComponent) {
+                void this.odc?.shutdown();
+                this.odc = undefined;
+            } else {
+                this.odc = this.setupODC(config);
+            }
+            this.setupRdbViewProviders();
+            void this.odc?.disableScreenSaver({ disableScreensaver: config.disableScreenSaver });
+            //write debug server log statements to the DebugServer output channel
+
+        } else if (isDebugServerLogOutputEvent(e)) {
+            this.extensionOutputChannel.appendLine(e.body.line);
+
+        } else if (isRendezvousEvent(e)) {
+            rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
+
+        } else if (isChanperfEvent(e)) {
+            if (!e.body.error) {
+                this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
+            } else {
+                this.chanperfStatusBar.text = e.body.error.message;
+            }
+
+            this.chanperfStatusBar.show();
+
+        } else if (isDiagnosticsEvent(e)) {
+            const diagnostics = e.body?.diagnostics ?? [];
+            const firstDiagnostic = diagnostics[0];
+            if (firstDiagnostic) {
+                // open the first file with a compile error
+                let uri = vscode.Uri.file(firstDiagnostic.path);
+                let doc = await vscode.workspace.openTextDocument(uri);
+                await vscode.window.showTextDocument(doc, {
+                    preview: false,
+                    selection: util.toRange(firstDiagnostic.range)
+                });
+            }
+        }
+    }
+
     /**
      * Writes text to a logfile if enabled
      */
@@ -250,38 +281,45 @@ export class Extension {
     }
 
     private setupODC(config: BrightScriptLaunchConfiguration) {
+        const rtaConfig = this.getRtaConfig(config);
+        rta.odc.setConfig(rtaConfig);
+        return rta.odc;
+    }
+
+    private getRtaConfig(config: BrightScriptLaunchConfiguration) {
+        const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
         const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
                     host: config.host,
                     password: config.password
                 }]
+            },
+            OnDeviceComponent: {
+                logLevel: enableDebugging ? 'verbose' : undefined,
+                serverDebugLogging: enableDebugging,
+                disableTelnet: true,
+                disableCallOriginationLine: true,
+                callbackListenPort: config.rdbCallbackPort
             }
-            // uncomment for debugging
-            // OnDeviceComponent: {
-            //     logLevel: 'verbose',
-            //     serverDebugLogging: true
-            // }
         };
-        const device = new rta.RokuDevice(rtaConfig);
-        return new rta.OnDeviceComponent(device, rtaConfig);
+        return rtaConfig;
     }
 
-    private setupRDB(context: vscode.ExtensionContext, config: BrightScriptLaunchConfiguration) {
-        // TODO handle case where user changes their Roku Device
-        if (!config.injectRdbOnDeviceComponent || this.odc) {
-            return;
+    private registerWebViewProviders(context) {
+        for (const webview of this.webviews) {
+            if (!webview.provider) {
+                webview.provider = new webview.constructor(context);
+                vscode.window.registerWebviewViewProvider(webview.provider.id, webview.provider);
+            }
         }
-        this.odc = this.setupODC(config);
+    }
 
-        for (const viewId in this.rdbViews) {
-            const view = this.rdbViews[viewId];
-            view.provider = new view.class(context);
-            vscode.window.registerWebviewViewProvider(viewId, view.provider);
-        }
-
-        for (const viewId in this.rdbViews) {
-            this.rdbViews[viewId].provider.setOnDeviceComponent(this.odc);
+    private setupRdbViewProviders() {
+        for (const webview of this.webviews) {
+            if (typeof webview.provider.setOnDeviceComponent === 'function') {
+                webview.provider.setOnDeviceComponent(this.odc);
+            }
         }
     }
 
@@ -290,3 +328,4 @@ export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
 }
+

@@ -1,4 +1,3 @@
-import * as path from 'path';
 import { Cache } from 'brighterscript/dist/Cache';
 import { createRegistry, parseGrammarTestCase, runGrammarTestCase } from 'vscode-tmgrammar-test/dist/src/unit/index.js';
 import { getErrorResultText } from './grammerTestHelpers.spec';
@@ -7,12 +6,108 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('uses proper color for variable named `component`', async () => {
+        await testGrammar(`
+            sub main()
+                 for each component in []
+                                   '^^ keyword.control.brs
+                         '^^^^^^^^^ entity.name.variable.local.brs
+                    '^^^^ keyword.control.brs
+                '^^^ keyword.control.brs
+                end for
+            end sub
+        `);
+    });
+
+    it('allows 0+ space after import keyword', async () => {
+        await testGrammar(`
+             import"something.brs"
+            '      ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+             import "something.brs"
+            '       ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+             import    "something.brs"
+            '          ^^^^^^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^ keyword.control.import.brs
+        `);
+    });
+
+    it('matches functions and properties in a chain', async () => {
+        await testGrammar(`
+             m.a().beta().c.delta = true
+            '               ^^^^^ variable.other.object.property.brs
+            '             ^ variable.other.object.property.brs
+            '      ^^^^ entity.name.function.brs
+            '  ^ entity.name.function.brs
+            '^ keyword.other.this.brs
+        `);
+    });
+
+    it('colors the const keyword', async () => {
+        await testGrammar(`
+             const API_KEY = true
+            '                ^^^^ constant.language.boolean.true.brs
+            '              ^ keyword.operator.brs
+            '      ^^^^^^^ entity.name.variable.local.brs
+            '^^^^^ storage.type.brs
+            namespace Name.Space
+                 const API_URL = "u/r/l"
+                '                ^^^^^^^ string.quoted.double.brs
+                '              ^ keyword.operator.brs
+                '      ^^^^^^^ entity.name.variable.local.brs
+                '^^^^^ storage.type.brs
+            end namespace
+        `);
+    });
+
     it('bool assignment', async () => {
         await testGrammar(`
              thing = true
             '        ^^^^ constant.language.boolean.true.brs
             '      ^ keyword.operator.brs
             '^^^^^ entity.name.variable.local.brs
+        `);
+    });
+
+    it('component statements', async () => {
+        await testGrammar(`
+             component MyButton
+            '          ^^^^^^^^ entity.name.type.component.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+            '^^^^^^^^^^^^^ storage.type.component.brs
+
+             component MyButton extends Button
+            '                           ^^^^^^ entity.name.type.component.brs
+            '                   ^^^^^^^ storage.modifier.extends.brs
+            '          ^^^^^^^^ entity.name.type.component.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+
+             component "MyButton" extends "Button"
+            '                             ^^^^^^^^ string.quoted.double.brs
+            '                     ^^^^^^^ storage.modifier.extends.brs
+            '          ^^^^^^^^^^ string.quoted.double.brs
+            '^^^^^^^^^ storage.type.component.brs
+             end component
+        `);
+    });
+
+    it('highlights regex literals', async () => {
+        await testGrammar(`
+             /test(?>something)(?|asdf)/gmixsuXUAJ
+            '                           ^^^^^^^^^^ string.regexp.brs keyword.other.brs
+            '                          ^ string.regexp.brs punctuation.definition.string.end.brs
+            '                         ^ meta.group.assertion.regexp
+            '                     ^^^^ meta.group.assertion.regexp
+            '                   ^^ meta.assertion.look-behind.regexp
+            '                  ^ meta.group.assertion.regexp
+            '                 ^ meta.group.regexp
+            '        ^^^^^^^^^ string.regexp.brs meta.group.regexp
+            '      ^^ punctuation.definition.group.no-capture.regexp
+            '     ^ meta.group.regexp
+            '^^^^^ string.regexp.brs
         `);
     });
 

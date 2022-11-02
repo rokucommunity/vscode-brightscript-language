@@ -51,10 +51,10 @@ export class TelemetryManager implements Disposable {
      *                  "command" is when it's triggered directly from a vscode command
      */
     public sendSetRemoteControlModeEvent(isEnabled: boolean, initiator: RemoteControlModeInitiator) {
-        // this.reporter.sendTelemetryEvent('setRemoteControlMode', {
-        //     isEnabled: boolToString(isEnabled),
-        //     initiator: initiator
-        // });
+        this.reporter.sendTelemetryEvent('setRemoteControlMode', {
+            isEnabled: boolToString(isEnabled),
+            initiator: initiator
+        });
     }
 
     private reporter: TelemetryReporter;

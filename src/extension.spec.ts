@@ -6,6 +6,7 @@ import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
 import * as rta from 'roku-test-automation';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 const sinon = createSandbox();
 
@@ -94,24 +95,20 @@ describe('extension', () => {
 
     describe('RDB', () => {
         const extensionInstance = extension.extension as any;
-        let config;
+        const config = {} as BrightScriptLaunchConfiguration;
         let context;
-        let originalRdbViews;
+        let originalWebviews;
         beforeEach(() => {
-            context = {
-                subscriptions: []
-            };
-            config = {
-                host: '86.75.30.9',
-                password: 'jenny'
-            };
-            originalRdbViews = extensionInstance.rdbViews;
-            extensionInstance.rdbViews = {};
+            context = { ...vscode.context };
+            config.host = '86.75.30.9';
+            config.password = 'jenny';
+            originalWebviews = extensionInstance.webviews;
+            extensionInstance.webviews = {};
         });
 
         afterEach(() => {
             extensionInstance.odc = undefined;
-            extensionInstance.rdbViews = originalRdbViews;
+            extensionInstance.webviews = originalWebviews;
         });
 
         describe('setupODC', () => {
@@ -128,28 +125,37 @@ describe('extension', () => {
             });
         });
 
-        describe('setupRDB', () => {
-            it('calls setupODC to create the odc instance if enabled', () => {
-                config.injectRdbOnDeviceComponent = true;
-                const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                extensionInstance.setupRDB(context, config);
-                expect(spy.calledOnce).to.be.true;
-            });
-
-            it('does not call setupODC if not enabled', () => {
-                config.injectRdbOnDeviceComponent = false;
-                const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                extensionInstance.setupRDB(context, config);
-                expect(spy.calledOnce).to.be.false;
-            });
-
-            it('initializes RDB views and calls registerWebviewViewProvider for each', () => {
-                config.injectRdbOnDeviceComponent = true;
-                extensionInstance.rdbViews = originalRdbViews;
-                sinon.stub(extensionInstance, 'setupODC').returns({});
+        describe('registerWebViewProviders', () => {
+            it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
+                extensionInstance.webviews = originalWebviews;
                 const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-                extensionInstance.setupRDB(context, config);
-                expect(spy.callCount).to.equal(Object.keys(originalRdbViews).length);
+                extensionInstance.registerWebViewProviders(context);
+                expect(spy.callCount).to.equal(Object.keys(originalWebviews).length);
+            });
+        });
+
+        describe('debugSessionCustomEventHandler', () => {
+            describe('ChannelPublishedEvent', () => {
+                const e = {
+                    event: 'ChannelPublishedEvent',
+                    body: {
+                        launchConfiguration: config
+                    }
+                };
+
+                it('calls setupODC to create the odc instance if enabled', () => {
+                    config.injectRdbOnDeviceComponent = true;
+                    const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
+                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
+                    expect(spy.calledOnce).to.be.true;
+                });
+
+                it('does not call setupODC if not enabled', () => {
+                    config.injectRdbOnDeviceComponent = false;
+                    const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
+                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
+                    expect(spy.calledOnce).to.be.false;
+                });
             });
         });
     });

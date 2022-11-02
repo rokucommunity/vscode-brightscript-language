@@ -60,37 +60,26 @@
         {
             "label": "test",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "test:nocover",
-                "--loglevel",
-                "silent"
-            ],
+            "command": "npm run test:nocover --silent",
+            "presentation": {
+                "focus": true,
+            },
             "group": {
                 "kind": "test",
                 "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": true,
-                "clear": true
             },
             "problemMatcher": []
         },
         {
             "label": "clean",
-            "type": "npm",
-            "script": "clean",
+            "type": "shell",
+            "command": "npm run clean",
             "problemMatcher": []
         },
         {
-            "type": "npm",
             "label": "build",
-            "script": "build",
+            "type": "shell",
+            "command": "npm run build",
             "dependsOn": "clean",
             "problemMatcher": [],
             "group": {
@@ -98,26 +87,9 @@
                 "isDefault": true
             },
             "presentation": {
-                "echo": true,
-                "reveal": "always",
                 "focus": true,
-                "panel": "dedicated",
-                "clear": true
+                "panel": "dedicated"
             }
-        },
-        {
-            "type": "npm",
-            "script": "test",
-            "problemMatcher": []
-        },
-        {
-            "type": "npm",
-            "script": "lint",
-            "problemMatcher": [
-                "$eslint-stylish"
-            ],
-            "label": "npm: lint",
-            "detail": "eslint \"./src/**/*.ts\""
         }
     ]
 }

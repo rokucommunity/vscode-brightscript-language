@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagnosticCollection } from 'vscode';
-import type { BrightScriptDebugCompileError } from 'roku-debug';
+import type { BSDebugDiagnostic } from 'roku-debug';
+import { isChanperfEvent, isDiagnosticsEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
@@ -118,11 +119,11 @@ export class LogOutputManager {
 
     private loadConfigSettings() {
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.includeStackTraces = (config.output || {}).includeStackTraces;
+        this.includeStackTraces = config.output?.includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
         this.isClearingConsoleOnChannelStart = config?.output?.clearConsoleOnChannelStart === false ? false : true;
-        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+        this.hyperlinkFormat = config.output?.hyperlinkFormat;
     }
 
     public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
@@ -130,15 +131,18 @@ export class LogOutputManager {
     }
 
     public async onDidReceiveDebugSessionCustomEvent(e: { event: string; body?: any }) {
-        if (e.event === 'BSRendezvousEvent' || e.event === 'BSChanperfEvent') {
+        if (isRendezvousEvent(e) || isChanperfEvent(e)) {
             // No need to handle rendezvous type events
             return;
         }
 
-        console.log('received event ' + e.event);
-        if (e.event === 'BSLogOutputEvent') {
-            this.appendLine(e.body);
-        } else if (e.event === 'BSLaunchStartEvent') {
+        if (isLogOutputEvent(e)) {
+            this.appendLine(e.body.line);
+
+        } else if (isPopupMessageEvent(e)) {
+            this.showMessage(e.body.message, e.body.severity);
+
+        } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
@@ -148,14 +152,15 @@ export class LogOutputManager {
             if (this.isClearingOutputOnLaunch) {
                 this.clearOutput();
             }
-        } else if (e.body && Array.isArray(e.body)) {
+
+        } else if (isDiagnosticsEvent(e)) {
             let errorsByPath = {};
-            for (const compileError of e.body) {
-                if (compileError.path) {
-                    if (!errorsByPath[compileError.path]) {
-                        errorsByPath[compileError.path] = [];
+            for (const diagnostic of e.body.diagnostics) {
+                if (diagnostic.path) {
+                    if (!errorsByPath[diagnostic.path]) {
+                        errorsByPath[diagnostic.path] = [];
                     }
-                    errorsByPath[compileError.path].push(compileError);
+                    errorsByPath[diagnostic.path].push(diagnostic);
                 }
             }
             for (const path in errorsByPath) {
@@ -167,8 +172,16 @@ export class LogOutputManager {
         }
     }
 
-    public async addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {
+    private showMessage(message: string, severity: string) {
+        const methods = {
+            error: vscode.window.showErrorMessage,
+            info: vscode.window.showInformationMessage,
+            warn: vscode.window.showWarningMessage
+        };
+        methods[severity](message);
+    }
 
+    public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
         //TODO get the actual folder
         let documentUri: vscode.Uri;
         let uri = vscode.Uri.file(path);
@@ -183,25 +196,21 @@ export class LogOutputManager {
         // const currentDocumentUri = document.uri;
         // console.log("currentDocumentUri " + currentDocumentUri);
         if (documentUri !== undefined) {
-            let diagnostics: vscode.Diagnostic[] = [];
-            for (const compileError of compileErrors) {
-
-                const path: string = compileError.path;
-                const message: string = compileError.message;
-                const source: string = compileError.errorText;
-                const lineNumber: number = compileError.lineNumber;
-                const charStart: number = compileError.charStart;
-                const charEnd: number = compileError.charEnd;
-
-                diagnostics.push({
-                    code: '',
-                    message: message,
-                    range: new vscode.Range(new vscode.Position(lineNumber, charStart), new vscode.Position(lineNumber, charEnd)),
-                    severity: vscode.DiagnosticSeverity.Error,
-                    source: source
+            let result: vscode.Diagnostic[] = [];
+            for (const diagnostic of diagnostics) {
+                result.push({
+                    code: diagnostic.code,
+                    message: diagnostic.message,
+                    source: diagnostic.source,
+                    severity: diagnostic.severity,
+                    tags: diagnostic.tags,
+                    range: new vscode.Range(
+                        new vscode.Position(diagnostic.range.start.line, diagnostic.range.start.character),
+                        new vscode.Position(diagnostic.range.end.line, diagnostic.range.end.character)
+                    )
                 });
             }
-            this.collection.set(documentUri, diagnostics);
+            this.collection.set(documentUri, result);
         }
     }
 
