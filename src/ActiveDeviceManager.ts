@@ -37,7 +37,7 @@ export class ActiveDeviceManager extends EventEmitter {
 
     public firstRequestForDevices: boolean;
     public lastUsedDevice: string;
-    private enabled: boolean;
+    public enabled: boolean;
     private showInfoMessages: boolean;
     private deviceCache: NodeCache;
     private exponentialBackoff: any;
@@ -46,7 +46,7 @@ export class ActiveDeviceManager extends EventEmitter {
     // Returns an object will all the active devices by device id
     public getActiveDevices() {
         this.firstRequestForDevices = false;
-        return this.deviceCache.mget(this.deviceCache.keys());
+        return this.deviceCache.mget<Record<string, RokuDeviceDetails>>(this.deviceCache.keys());
     }
 
     // Returns the device cache statistics.

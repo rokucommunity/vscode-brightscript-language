@@ -349,62 +349,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         let showInputBox = false;
 
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.activeDeviceManager.enabled) {
-                if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
-                    let deviceWaitTime = 5000;
-                    if (this.showDeviceInfoMessages) {
-                        await vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
-                    }
-
-                    await util.delay(deviceWaitTime);
-                }
-
-                let activeDevices = this.activeDeviceManager.getActiveDevices();
-
-                if (activeDevices && Object.keys(activeDevices).length) {
-                    let items = [];
-
-                    // Create the Quick Picker option items
-                    for (const key of Object.keys(activeDevices)) {
-                        let device = activeDevices[key];
-                        let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
-
-                        if (this.activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === this.activeDeviceManager.lastUsedDevice) {
-                            items.unshift(itemText);
-                        } else {
-                            items.push(itemText);
-                        }
-                    }
-
-                    // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
-                    let manualIpOption = 'Other';
-                    items.push(manualIpOption);
-
-                    let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
-
-                    if (host === manualIpOption) {
-                        showInputBox = true;
-                    } else if (host) {
-                        let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
-                        let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
-                        if (defaultDeviceName) {
-                            this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
-                        }
-                        config.host = deviceIP;
-                    } else {
-                        // User canceled. Give them one more change to enter an ip
-                        showInputBox = true;
-                    }
-                } else {
-                    showInputBox = true;
-                }
-            } else {
-                showInputBox = true;
-            }
-        }
-
-        if (showInputBox) {
-            config.host = await this.openInputBox('The IP address of your Roku device');
+            config.host = await util.showDeviceQuickPicker(this.activeDeviceManager, true);
+        } else if (showInputBox) {
+            config.host = await util.openInputBox('The IP address of your Roku device');
         }
         // #endregion
 
@@ -425,7 +372,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
-            config.password = await this.openInputBox('The developer account password for your Roku device.');
+            config.password = await util.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
             }
@@ -443,26 +390,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.deepLinkUrl = config.deepLinkUrl.replace('${host}', config.host);
             config.deepLinkUrl = config.deepLinkUrl.replace('${promptForHost}', config.host);
             if (config.deepLinkUrl.includes('${promptForQueryParams}')) {
-                let queryParams = await this.openInputBox('Querystring params for deep link');
+                let queryParams = await util.openInputBox('Querystring params for deep link');
                 config.deepLinkUrl = config.deepLinkUrl.replace('${promptForQueryParams}', queryParams);
             }
             if (config.deepLinkUrl === '${promptForDeepLinkUrl}') {
-                config.deepLinkUrl = await this.openInputBox('Full deep link url');
+                config.deepLinkUrl = await util.openInputBox('Full deep link url');
             }
         }
         return config;
-    }
-
-    /**
-     * Helper to open a vscode input box ui
-     * @param placeHolder placeHolder text
-     * @param value default value
-     */
-    private async openInputBox(placeHolder: string, value = '') {
-        return vscode.window.showInputBox({
-            placeHolder: placeHolder,
-            value: value
-        });
     }
 
     /**

@@ -43,6 +43,7 @@ export class Extension {
     private telemetryManager: TelemetryManager;
     private remoteControlManager: RemoteControlManager;
     private brightScriptCommands: BrightScriptCommands;
+    private activeDeviceManager: ActiveDeviceManager;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -62,6 +63,7 @@ export class Extension {
         this.globalStateManager = new GlobalStateManager(context);
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+        this.activeDeviceManager = new ActiveDeviceManager();
 
         //initialize the analytics manager
         context.subscriptions.push(
@@ -74,12 +76,10 @@ export class Extension {
         this.telemetryManager.sendStartupEvent();
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
-        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, this.whatsNewManager, context);
+        this.brightScriptCommands = new BrightScriptCommands(this.remoteControlManager, this.whatsNewManager, this.activeDeviceManager, context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
-
-        let activeDeviceManager = new ActiveDeviceManager();
 
         const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
@@ -103,7 +103,7 @@ export class Extension {
         vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Online Devices" panel
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, this.activeDeviceManager);
         vscode.window.registerTreeDataProvider('onlineDevices', onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
@@ -127,7 +127,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.activeDeviceManager, this.telemetryManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

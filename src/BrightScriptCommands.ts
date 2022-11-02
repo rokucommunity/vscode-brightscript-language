@@ -8,12 +8,14 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
+import type { ActiveDeviceManager } from './ActiveDeviceManager';
 
 export class BrightScriptCommands {
 
     constructor(
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
+        private activeDeviceManager: ActiveDeviceManager,
         private context: vscode.ExtensionContext
     ) {
         this.fileUtils = new BrightScriptFileUtils();
@@ -249,6 +251,14 @@ export class BrightScriptCommands {
 
         this.registerCommand('showReleaseNotes', () => {
             this.whatsNewManager.showReleaseNotes();
+        });
+
+        this.registerCommand('setPrimaryDevice', async (host?: string) => {
+            if (host) {
+
+            } else {
+                host = await util.showDeviceQuickPicker(this.activeDeviceManager);
+            }
         });
     }
 
