@@ -457,6 +457,13 @@
                                         },
                                         {
                                             "type": "string",
+                                            "description": "Changes the maximum number of brightscript warnings displayed on channel install to zero.",
+                                            "enum": [
+                                                "brightscript_warnings 0"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
                                             "description": "Custom SGDebug command that will be run on port 8080"
                                         }
                                     ]
@@ -1578,6 +1585,13 @@
                                 },
                                 {
                                     "type": "string",
+                                    "description": "Changes the maximum number of brightscript warnings displayed on channel install to zero.",
+                                    "enum": [
+                                        "brightscript_warnings 0"
+                                    ]
+                                },
+                                {
+                                    "type": "string",
                                     "description": "Custom SGDebug command that will be run on port 8080"
                                 }
                             ]
@@ -2091,6 +2105,11 @@
             {
                 "command": "extension.brightscript.press",
                 "title": "press - Simulate a list of keypress'",
+                "category": "Brightscript Debug"
+            },
+            {
+                "command": "extension.brightscript.brightscriptWarnings",
+                "title": "brightscript_warnings - Sets the maximum number of brightscript warnings to be displayed by the device on channel install'",
                 "category": "Brightscript Debug"
             },
             {
