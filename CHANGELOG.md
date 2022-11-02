@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.37.0...2.38.0) - 2022-11-02
+### Changed
+ - Added the `brightscript_warnings` command ([#446](https://github.com/rokucommunity/vscode-brightscript-language/pull/446))
+ - upgrade to [roku-debug@0.17.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0170---2022-11-02). Notable changes since 0.16.1:
+     - Added the `brightscript_warnings` command ([roku-debug#110](https://github.com/rokucommunity/roku-debug/pull/110))
+
+
+
 ## [2.37.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.1...2.37.0) - 2022-10-28
 ### Added
  - add `brightscript.deviceDiscovery.concealDeviceInfo` option to obscure the device-info ([#443](https://github.com/rokucommunity/vscode-brightscript-language/pull/443))
