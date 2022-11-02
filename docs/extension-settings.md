@@ -51,6 +51,7 @@ Give the ability to run a list of commands on port 8080 of the device at the sta
  - `chanperf` - runs chanperf with a one seconds repeating interval
  - `fpsdisplay` - turns on the FPS
  - `logrendezvous` - enables Rendezvous Logging. You can also include and command string in this array and we will attempt to run it for you. For example you could do `chanperf -r 10` or `clear_launch_caches` as another example.
+ - `brightscript_warnings` - Sets the maximum number of brightscript warnings to be displayed by the device on channel install.
 ### `brightscript.debug.raleTrackerTaskFileLocation`
 This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 ### `brightscript.debug.enableSourceMaps`
