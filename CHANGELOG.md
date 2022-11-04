@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.0...2.38.1) - 2022-11-04
+### Changed
+ - upgrade to [brighterscript@0.60.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0605---2022-11-03). Notable changes since 0.60.4:
+     - Cache `getCallableByName` ([brighterscript#739](https://github.com/rokucommunity/brighterscript/pull/739))
+     - Prevent namespaces being used as variables ([brighterscript#738](https://github.com/rokucommunity/brighterscript/pull/738))
+     - Fix crash in `getDefinition` ([brighterscript#734](https://github.com/rokucommunity/brighterscript/pull/734))
+### Fixed
+ - significant performance issue while validating larger projects ([brighterscript#739](https://github.com/rokucommunity/brighterscript/pull/739))
+
+
+
 ## [2.38.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.37.0...2.38.0) - 2022-11-02
 ### Changed
  - Added the `brightscript_warnings` command ([#446](https://github.com/rokucommunity/vscode-brightscript-language/pull/446))
