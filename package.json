@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.36.1",
+    "version": "2.38.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -52,8 +52,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.60.2",
-        "brighterscript-formatter": "^1.6.17",
+        "brighterscript": "^0.60.5",
+        "brighterscript-formatter": "^1.6.19",
         "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -68,7 +68,7 @@
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.16.0",
+        "roku-debug": "^0.17.0",
         "roku-deploy": "^3.9.2",
         "roku-test-automation": "2.0.0-beta.5",
         "semver": "^7.1.3",
@@ -241,7 +241,7 @@
                 {
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
-                    "group": "Rendezvous"
+                    "group": "navigation"
                 },
                 {
                     "command": "extension.brightscript.refreshDeviceList",
@@ -453,6 +453,13 @@
                                             "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
                                             "enum": [
                                                 "logrendezvous"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string",
+                                            "description": "Changes the maximum number of brightscript warnings displayed on channel install to zero.",
+                                            "enum": [
+                                                "brightscript_warnings 0"
                                             ]
                                         },
                                         {
@@ -1533,6 +1540,12 @@
                         "default": false,
                         "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
                         "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.concealDeviceInfo": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
+                        "scope": "resource"
                     }
                 }
             },
@@ -1568,6 +1581,13 @@
                                     "description": "Enables running of the 'logrendezvous on' command at the start of a debug session.",
                                     "enum": [
                                         "logrendezvous"
+                                    ]
+                                },
+                                {
+                                    "type": "string",
+                                    "description": "Changes the maximum number of brightscript warnings displayed on channel install to zero.",
+                                    "enum": [
+                                        "brightscript_warnings 0"
                                     ]
                                 },
                                 {
@@ -2088,6 +2108,11 @@
                 "category": "Brightscript Debug"
             },
             {
+                "command": "extension.brightscript.brightscriptWarnings",
+                "title": "brightscript_warnings - Sets the maximum number of brightscript warnings to be displayed by the device on channel install'",
+                "category": "Brightscript Debug"
+            },
+            {
                 "command": "extension.brightscript.custom8080Command",
                 "title": "custom - Enter any command string to be run on port 8080'",
                 "category": "Brightscript Debug"
@@ -2290,7 +2315,7 @@
                 "command": "extension.brightscript.rendezvous.clearHistory",
                 "title": "Clear History",
                 "category": "Brightscript Rendezvous",
-                "enablement": "debugType == 'brightscript'"
+                "icon": "$(clear-all)"
             },
             {
                 "command": "brighterscript.showPreview",
@@ -2309,19 +2334,19 @@
             {
                 "command": "extension.brightscript.refreshDeviceList",
                 "title": "Refresh",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
-                "category": "BrightScript",
+                "category": "BrighterScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.info",
                 "title": "View BrighterScript LanguageServer Info",
-                "category": "BrightScript"
+                "category": "BrighterScript"
             }
         ],
         "keybindings": [
