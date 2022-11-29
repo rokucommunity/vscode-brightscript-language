@@ -6,13 +6,43 @@
     import ColorField from './ColorField.svelte';
     import type { ChangedFieldEntry } from '../../ChangedFieldEntry';
     import Chevron from '../../shared/Chevron.svelte';
-    import { Refresh, Discard, ChromeClose, Move } from 'svelte-codicons';
+    import { Refresh, Discard, ChromeClose, Move, Key } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
     export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
+    export let flatTree: ODC.NodeTree[] | null;
+    export let inspectNodeNodeTree: ODC.NodeTree | null;
+    $: {
+        const absoluteKeyPathParts = [];
+        let nodeTree = inspectNodeNodeTree;
+        if (inspectNodeNodeTree) {
+            while (nodeTree) {
+                if (nodeTree.id) {
+                    absoluteKeyPathParts.unshift(nodeTree.id);
+                } else if (nodeTree.position >= 0) {
+                    absoluteKeyPathParts.unshift(nodeTree.position);
+                }
 
+                if (nodeTree.parentRef >= 0) {
+                    for (const tree of flatTree) {
+                        if (nodeTree.parentRef === tree.ref) {
+                            nodeTree = tree;
+                            break;
+                        }
+                    }
+                } else {
+                    nodeTree = undefined;
+                }
+            }
+        }
+        inspectNodeAbsoluteKeyPath = absoluteKeyPathParts.join('.');
+    }
+
+    let inspectNodeAbsoluteKeyPath: string;
     let inspectChildNodeSubtype: string;
     let inspectChildNodeBaseKeyPath: ODC.BaseKeyPath | null;
+    let showKeyPathInfo = false;
+
 
     function close() {
         if (autoRefreshInterval) {
@@ -114,7 +144,7 @@
         inspectChildNodeSubtype = this.textContent;
         inspectChildNodeBaseKeyPath = {
             ...inspectNodeBaseKeyPath,
-            keyPath: `${inspectNodeBaseKeyPath.keyPath}.${this.id}`
+            keyPath: inspectNodeBaseKeyPath.keyPath ? inspectNodeBaseKeyPath.keyPath + '.' + this.id : this.id
         };
     }
 
@@ -284,6 +314,12 @@
         display: inline-block;
     }
 
+    #baseKeyPathContainer {
+        padding: 3px 10px;
+        border-bottom: 2px solid rgb(190, 190, 190);
+        word-break: break-all;
+    }
+
     #childrenContainer {
         background-color: #00000010;
         padding: 3px 10px;
@@ -379,6 +415,15 @@
             on:click={refresh}>
             <Refresh />
         </span>
+    {#if inspectNodeAbsoluteKeyPath || (inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath)}
+        <span
+            id="showKeyPathInfo"
+            class="icon-button"
+            title="Show Key Path Info"
+            on:click={(e) => showKeyPathInfo = !showKeyPathInfo}>
+            <Key />
+        </span>
+    {/if}
         <span
             id="closeButton"
             class="icon-button"
@@ -387,6 +432,25 @@
             <ChromeClose />
         </span>
     </div>
+{#if showKeyPathInfo}
+    {#if inspectNodeAbsoluteKeyPath}
+        <div id="baseKeyPathContainer">
+            <b>relative:</b><br>
+            base: '{inspectNodeBaseKeyPath.base}',<br>
+            keyPath: '{inspectNodeBaseKeyPath.keyPath}'<br>
+            <br>
+            <b>absolute:</b><br>
+            base: 'scene',<br>
+            keyPath: '{inspectNodeAbsoluteKeyPath}'
+        </div>
+    {:else if inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath}
+        <div id="baseKeyPathContainer">
+            base: '{inspectNodeBaseKeyPath.base}',<br>
+            keyPath: '{inspectNodeBaseKeyPath.keyPath}'
+        </div>
+    {/if}
+{/if}
+
 
     {#if children.length > 0}
         <div id="childrenContainer">
@@ -435,7 +499,7 @@
                             on:input={onVector2dFieldChange} />
                         {#if id !== 'scale'}
                             <span
-                                class="icon-button moveCursor"
+                                class="icon-button"
                                 on:pointerdown={onMoveNodePositionDown}
                                 on:pointermove={throttle(onMoveNodePosition, 33)}
                                 on:pointerup={onMoveNodePositionUp}>

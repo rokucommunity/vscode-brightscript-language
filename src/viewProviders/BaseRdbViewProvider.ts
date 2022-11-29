@@ -1,4 +1,4 @@
-import type * as rta from 'roku-test-automation';
+import * as rta from 'roku-test-automation';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 
@@ -47,6 +47,24 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
                 response: response
             });
             return true;
+        } else if (command === 'setManualIpAddress') {
+            const onDeviceComponent = rta.odc;
+
+            const rtaConfig: rta.ConfigOptions = {
+                RokuDevice: {
+                    devices: [{
+                        host: context.ipAddress,
+                        password: ''
+                    }]
+                },
+                OnDeviceComponent: {
+                    disableTelnet: true,
+                    disableCallOriginationLine: true
+                }
+            };
+
+            onDeviceComponent.setConfig(rtaConfig);
+            this.setOnDeviceComponent(onDeviceComponent);
         }
 
         return false;

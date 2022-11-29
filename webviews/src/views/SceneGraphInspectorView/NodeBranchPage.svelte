@@ -116,7 +116,7 @@
             base: 'nodeRef',
             keyPath: `${nodeTree.ref}.translation`,
             value: translation
-        });
+        }, {timeout: 300});
     }
 
     async function toggleNodeVisiblity() {
