@@ -383,6 +383,9 @@ class Runner {
             'brighterscript-formatter'
         ],
         groups: ['vscode']
+    }, {
+        name: 'roku-promise',
+        dependencies: []
     }].map(project => {
         const repoName = project.name.split('/').pop();
         return {

@@ -116,7 +116,12 @@ export class Extension {
         this.registerWebviewProviders(context);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
-            await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+            try {
+                await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
+            } catch { }
+
+            //also clear the local rendezvous list
+            rendezvousViewProvider.clear();
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.languageServer.restart', async () => {

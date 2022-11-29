@@ -125,6 +125,18 @@ export class SceneGraphDebugCommands {
             await this.logCommandOutput(async (commandController) => commandController.showkey());
         }));
 
+        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.brightscriptWarnings', async () => {
+            let limit = parseInt(await vscode.window.showInputBox({ placeHolder: '100', validateInput: (value: string) => {
+                if (isNaN(parseInt(value))) {
+                    return 'Input must be a numeric value';
+                }
+            } }));
+
+            if (!isNaN(limit)) {
+                await this.logCommandOutput((commandController) => commandController.brightscriptWarnings(limit));
+            }
+        }));
+
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.custom8080Command', async () => {
             let command = await vscode.window.showInputBox({ placeHolder: 'custom command' });
             if (command) {
