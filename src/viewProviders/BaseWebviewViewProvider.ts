@@ -81,13 +81,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     protected getHtmlForWebview() {
-        if (util.isExtensionHostRunning()) {
-            // If we're developing we want to add a watcher to allow hot reload :)
-            // Index.js always gets updated so don't have to worry about observing the css file
-            this.svelteWatcher = chokidar.watch(this.webviewBasePath + '/**/*');
+        if (util.isExtensionHostRunning() && !this.svelteWatcher) {
+            // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
+            this.svelteWatcher = chokidar.watch('/**/*', {
+                cwd: this.webviewBasePath
+            });
             this.svelteWatcher.on('change', () => {
-                // We have to change this to get it to update so we store it first and set it back after
-                const html = this.view.webview.html;
+                // I think the .html prop is a setter, so we need to blank it out and then set it again to trigger reloads
                 this.view.webview.html = '';
                 this.view.webview.html = this.getIndexHtml();
             });
@@ -99,15 +99,23 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         let html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
         //the data that will be replaced in the index.html
         const data = {
-            scriptUri: vscode.Uri.file(path.join(this.webviewBasePath, 'index.js')).with({ scheme: 'vscode-resource' }),
-            styleUri: vscode.Uri.file(path.join(this.webviewBasePath, 'bundle.css')).with({ scheme: 'vscode-resource' }),
+            viewName: this.id,
             baseHref: vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' }),
             additionalScriptContents: this.additionalScriptContents().join('\n                        ')
         };
-        //replace placeholders with the above data
-        html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
+        /**
+         * replace placeholders in the html, in one of these formats:
+         * <!--{{thing1}}-->
+         * //{{thing2}}
+         * {{thing3}}
+         */
+        html = html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
             const [, , key1, , key2, , key3] = match;
             return data[key1] ?? data[key2] ?? data[key3] ?? match[0];
+        });
+        // remove leading slash for css/js urls so we can make them relative to the baseHref
+        html = html.replace(/((?:href|src)\s*=\s*["'])(\/.*")/g, (...match: string[]) => {
+            return match[1] + match[2]?.replace(/^\/+/, '');
         });
         return html;
     }

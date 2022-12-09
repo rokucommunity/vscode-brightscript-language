@@ -44,8 +44,8 @@
                     "base": "$tsc-watch",
                     "background": {
                         "activeOnStart": true,
-                        "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
-                        "endsPattern": "waiting for changes..."
+                        "beginsPattern": "^build started\\.\\.\\.",
+                        "endsPattern": "^built in \\d+"
                     }
                 }
             ],
