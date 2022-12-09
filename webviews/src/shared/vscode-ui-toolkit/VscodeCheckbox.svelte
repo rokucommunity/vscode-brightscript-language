@@ -16,7 +16,6 @@
     }
 </style>
 
-<!-- svelte-ignore a11y-label-has-associated-control -->
 <label>
     <vscode-checkbox
         checked={value}
