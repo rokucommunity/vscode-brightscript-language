@@ -20,6 +20,9 @@
         "src/**/*"
     ],
     "ts-node": {
-        "transpileOnly": true
+        "transpileOnly": true,
+        "moduleTypes": {
+            "webviews/src/**/*.ts": "cjs"
+        }
     }
 }

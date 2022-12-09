@@ -5,7 +5,7 @@
             "type": "extensionHost",
             "request": "launch",
             "name": "Extension",
-            "preLaunchTask": "svelte-watch",
+            "preLaunchTask": "watch-webviews",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}"
@@ -23,7 +23,7 @@
             "type": "pwa-extensionHost",
             "debugWebWorkerHost": true,
             "request": "launch",
-            "preLaunchTask": "svelte-watch",
+            "preLaunchTask": "watch-webviews",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",

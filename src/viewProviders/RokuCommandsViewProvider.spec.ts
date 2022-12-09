@@ -36,8 +36,8 @@ describe('RokuCommandsViewProvider', () => {
     describe('getHtmlForWebview', () => {
         const provider = new RokuCommandsViewProvider(vscode.context) as any;
 
-        it('includes the contents of additionalScriptContents', () => {
-            const html = provider.getHtmlForWebview();
+        it('includes the contents of additionalScriptContents', async () => {
+            const html = await provider.getHtmlForWebview();
             for (const line of provider.additionalScriptContents()) {
                 expect(html).to.contain(line);
             }

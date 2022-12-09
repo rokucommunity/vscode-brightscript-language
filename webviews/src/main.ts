@@ -3,8 +3,11 @@ import rokuRegistryView from './views/RokuRegistryView/RokuRegistryView.svelte';
 import rokuCommandsView from './views/RokuCommandsView/RokuCommandsView.svelte';
 import sceneGraphInspectorView from './views/SceneGraphInspectorView/SceneGraphInspectorView.svelte';
 import './style.css';
-//export this to prevent svelte from tree-shaking it
-export * from '@vscode/webview-ui-toolkit/dist/toolkit';
+
+//write toolkit to window this to prevent svelte from tree-shaking it
+import * as toolkit from '@vscode/webview-ui-toolkit/dist/toolkit';
+(window as any).___toolkit = toolkit;
+
 // Provided by ViewProviders
 declare const viewName;
 
@@ -18,4 +21,4 @@ const views = {
 const app = new views[viewName]({
     target: document.body
 });
-export { app };
+export default app;
