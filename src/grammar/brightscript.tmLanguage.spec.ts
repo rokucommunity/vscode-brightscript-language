@@ -6,6 +6,25 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors strings correctly', async () => {
+        await testGrammar(`
+            print "hello world", true
+                                '^^^^ constant.language.boolean.true.brs
+                 '^^^^^^^^^^^^^ string.quoted.double.brs
+           '^^^^^ keyword.control.brs
+        `);
+    });
+
+    it('colors strings with escape-looking slash correctly', async () => {
+        //FYI, the escaped backslash char makes the positions weird in this test.
+        await testGrammar(`
+            print "hello world\\", true
+                                 '^^^^ constant.language.boolean.true.brs
+                 '^^^^^^^^^^^^^^ string.quoted.double.brs
+           '^^^^^ keyword.control.brs
+        `);
+    });
+
     it('uses proper color for variable named `component`', async () => {
         await testGrammar(`
             sub main()
