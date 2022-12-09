@@ -3303,12 +3303,11 @@
     "mocha": {
         "spec": [
             "src/**/*.spec.ts",
-            "webviews/{,!(node_modules)/**}/*.spec.ts"
+            "webviews/src/**/*.spec.ts"
         ],
         "require": [
             "source-map-support/register",
-            "ts-node/register",
-            "ts-node/esm"
+            "ts-node/register"
         ],
         "bail": false,
         "fullTrace": true,
