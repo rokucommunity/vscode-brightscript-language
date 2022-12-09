@@ -95,7 +95,6 @@ class ODCIntermediary {
     }
 
     public async readRegistry(args?: rta.ODC.ReadRegistryArgs, options?: rta.ODC.RequestOptions) {
-        debugger;
         return this.sendOdcMessage<ReturnType<typeof rta.odc.readRegistry>>('readRegistry', args, options);
     }
 
