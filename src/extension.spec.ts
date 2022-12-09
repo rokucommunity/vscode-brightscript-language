@@ -24,10 +24,14 @@ Module.prototype.require = function hijacked(file) {
 
 describe('extension', () => {
     let context: any;
+    let originalWebviews;
+    const extensionInstance = extension.extension;
+
     beforeEach(() => {
         sinon.stub(languageServerManager, 'init').returns(Promise.resolve());
 
         context = {
+            extensionPath: '',
             subscriptions: [],
             asAbsolutePath: () => { },
             globalState: {
@@ -39,9 +43,14 @@ describe('extension', () => {
                 }
             }
         };
+
+        originalWebviews = extensionInstance['webviews'];
+        extensionInstance['webviews'] = [];
     });
 
     afterEach(() => {
+        extensionInstance.odc = undefined;
+        extensionInstance['webviews'] = originalWebviews;
         sinon.restore();
     });
 
@@ -94,31 +103,22 @@ describe('extension', () => {
     });
 
     describe('RDB', () => {
-        const extensionInstance = extension.extension as any;
         const config = {} as BrightScriptLaunchConfiguration;
         let context;
-        let originalWebviews;
         beforeEach(() => {
             context = { ...vscode.context };
             config.host = '86.75.30.9';
             config.password = 'jenny';
-            originalWebviews = extensionInstance.webviews;
-            extensionInstance.webviews = {};
-        });
-
-        afterEach(() => {
-            extensionInstance.odc = undefined;
-            extensionInstance.webviews = originalWebviews;
         });
 
         describe('setupODC', () => {
             it('sets up the underlying RokuDevice instance', () => {
-                const odc = extensionInstance.setupODC(config);
+                const odc = extensionInstance['setupODC'](config);
                 expect(odc.device).to.be.instanceOf(rta.RokuDevice);
             });
 
             it('has the correct config values passed from the extension', () => {
-                const odc = extensionInstance.setupODC(config);
+                const odc = extensionInstance['setupODC'](config);
                 const deviceConfig = odc.device.getCurrentDeviceConfig();
                 expect(deviceConfig.host).to.equal(config.host);
                 expect(deviceConfig.password).to.equal(config.password);
@@ -127,9 +127,9 @@ describe('extension', () => {
 
         describe('registerWebViewProviders', () => {
             it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
-                extensionInstance.webviews = originalWebviews;
+                extensionInstance['webviews'] = originalWebviews;
                 const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-                extensionInstance.registerWebViewProviders(context);
+                extensionInstance['registerWebviewProviders'](context);
                 expect(spy.callCount).to.equal(Object.keys(originalWebviews).length);
             });
         });
@@ -143,18 +143,18 @@ describe('extension', () => {
                     }
                 };
 
-                it('calls setupODC to create the odc instance if enabled', () => {
+                it('calls setupODC to create the odc instance if enabled', async () => {
                     config.injectRdbOnDeviceComponent = true;
-                    const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
+                    const spy = sinon.stub(extensionInstance as any, 'setupODC').returns(undefined);
+                    await extensionInstance['debugSessionCustomEventHandler'](e, {} as any, {} as any, {} as any, {} as any);
                     expect(spy.calledOnce).to.be.true;
                 });
 
-                it('does not call setupODC if not enabled', () => {
+                it('does not call setupODC if not enabled', async () => {
                     config.injectRdbOnDeviceComponent = false;
-                    const spy = sinon.stub(extensionInstance, 'setupODC').returns({});
-                    extensionInstance.debugSessionCustomEventHandler(e, {}, {}, {}, {});
-                    expect(spy.calledOnce).to.be.false;
+                    const spy = sinon.stub(extensionInstance as any, 'setupODC').returns(undefined);
+                    await extensionInstance['debugSessionCustomEventHandler'](e, {} as any, {} as any, {} as any, {} as any);
+                    expect(spy.callCount).to.equal(0);
                 });
             });
         });

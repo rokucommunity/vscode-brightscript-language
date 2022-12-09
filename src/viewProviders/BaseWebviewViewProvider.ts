@@ -50,7 +50,6 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     private setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
-                const context = message.context;
                 const command = message.command;
 
                 if (command === 'viewReady') {

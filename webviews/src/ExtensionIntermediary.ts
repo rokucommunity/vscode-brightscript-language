@@ -106,16 +106,16 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getFocusedNode>>('getFocusedNode', args, options);
     }
 
-    public async getValueAtKeyPath(args: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValueAtKeyPath>>('getValueAtKeyPath', args, options);
+    public async getValue(args: rta.ODC.GetValueArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValue>>('getValue', args, options);
     }
 
-    public async getValuesAtKeyPaths(args: rta.ODC.GetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValuesAtKeyPaths>>('getValuesAtKeyPaths', args, options);
+    public async getValues(args: rta.ODC.GetValuesArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValues>>('getValues', args, options);
     }
 
-    public async getNodesInfoAtKeyPaths(args: rta.ODC.GetNodesInfoAtKeyPathsArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfoAtKeyPaths>>('getNodesInfoAtKeyPaths', args, options);
+    public async getNodesInfo(args: rta.ODC.GetNodesInfoArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfo>>('getNodesInfo', args, options);
     }
 
     public async hasFocus(args: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
@@ -130,8 +130,8 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
     }
 
-    public async setValueAtKeyPath(args: rta.ODC.SetValueAtKeyPathArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.setValueAtKeyPath>>('setValueAtKeyPath', args, options);
+    public async setValue(args: rta.ODC.SetValueArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.setValue>>('setValue', args, options);
     }
 
     public async deleteRegistrySections(args: rta.ODC.DeleteRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {

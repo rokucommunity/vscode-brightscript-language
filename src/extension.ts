@@ -112,6 +112,9 @@ export class Extension {
         let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
         vscode.window.registerTreeDataProvider('onlineDevicesView', onlineDevicesViewProvider);
 
+        // register our webview providers
+        this.registerWebviewProviders(context);
+
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
                 await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
@@ -220,7 +223,6 @@ export class Extension {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
             logOutputManager.setLaunchConfig(config);
-            this.registerWebViewProviders(context);
 
         } else if (isChannelPublishedEvent(e)) {
             const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;
@@ -296,16 +298,15 @@ export class Extension {
             },
             OnDeviceComponent: {
                 logLevel: enableDebugging ? 'verbose' : undefined,
-                serverDebugLogging: enableDebugging,
+                clientDebugLogging: enableDebugging,
                 disableTelnet: true,
-                disableCallOriginationLine: true,
-                callbackListenPort: config.rdbCallbackPort
+                disableCallOriginationLine: true
             }
         };
         return rtaConfig;
     }
 
-    private registerWebViewProviders(context) {
+    private registerWebviewProviders(context) {
         for (const webview of this.webviews) {
             if (!webview.provider) {
                 webview.provider = new webview.constructor(context);
@@ -327,4 +328,3 @@ export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
 }
-

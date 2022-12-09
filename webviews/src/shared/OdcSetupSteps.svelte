@@ -1,3 +1,7 @@
+<script lang="ts">
+    import OdcSetManualIpAddress from './OdcSetManualIpAddress.svelte';
+</script>
+
 <style>
     #odcSetupSteps {
         padding: 10px;
@@ -16,4 +20,5 @@
         <li>Make sure your launch.json configuration has<br><span class="codeSnippet">"injectRdbOnDeviceComponent": true</span> included in it</li>
     </ul>
     The extension can copy the files automatically for you so there's no need to handle that part. If you are still having issues even with these steps, check to make sure you're seeing this line in your device logs <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
+    <OdcSetManualIpAddress />
 </div>
