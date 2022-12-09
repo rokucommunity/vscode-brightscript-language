@@ -542,9 +542,4 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.
      */
     disableScreenSaver?: boolean;
-
-    /**
-     * By default the OnDeviceComponent tries to find an open callback port on the server. This allows you to set one explicitly
-     */
-    rdbCallbackPort?: number;
 }

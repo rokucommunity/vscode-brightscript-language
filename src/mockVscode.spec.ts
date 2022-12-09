@@ -126,7 +126,10 @@ export let vscode = {
             return [];
         },
         fs: {
-            writeFile: (uri, buffer) => { }
+            writeFile: (uri, buffer) => { },
+            readFile: (uri) => {
+                return Buffer.alloc(0);
+            }
         },
         registerTextDocumentContentProvider: () => { },
         onDidChangeTextDocument: () => { },

@@ -7,7 +7,7 @@ export class RokuCommandsViewProvider extends BaseRdbViewProvider {
     public readonly id = 'rokuCommandsView';
 
     protected additionalScriptContents() {
-        const requestArgsPath = path.join(rta.utils.getServerFilesPath(), 'requestArgs.schema.json');
+        const requestArgsPath = path.join(rta.utils.getClientFilesPath(), 'requestArgs.schema.json');
 
         return [
             `const requestArgsSchema = ${fs.readFileSync(requestArgsPath, 'utf8')};`,
