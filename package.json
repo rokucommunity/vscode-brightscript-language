@@ -34,8 +34,8 @@
         "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
         "watch-webviews": "cd ./webviews && npm run watch",
-        "test": "nyc mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace",
+        "test": "nyc mocha",
+        "test:nocover": "mocha",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -3301,11 +3301,16 @@
         }
     },
     "mocha": {
-        "spec": "src/**/*.spec.ts",
+        "spec": [
+            "src/**/*.spec.ts",
+            "webviews/{,!(node_modules)/**}/*.spec.ts"
+        ],
         "require": [
             "source-map-support/register",
-            "ts-node/register"
+            "ts-node/register",
+            "ts-node/esm"
         ],
+        "bail": false,
         "fullTrace": true,
         "watchExtensions": [
             "ts"
