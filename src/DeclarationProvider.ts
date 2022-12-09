@@ -24,7 +24,7 @@ import { util } from './util';
 // at https://github.com/sasami/vscode-erabasic and hacked it in with some basic changes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export function *iterlines(input: string): IterableIterator<[number, string]> {
+export function* iterlines(input: string): IterableIterator<[number, string]> {
     const lines = input.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
@@ -89,10 +89,10 @@ export class DeclarationProvider implements Disposable {
         this.disposable = Disposable.from(...subscriptions);
         void this.flush();
     }
-    public cache: Map<string, BrightScriptDeclaration[]> = new Map();
+    public cache = new Map<string, BrightScriptDeclaration[]>();
     private fullscan = true;
 
-    private dirty: Map<string, Uri> = new Map();
+    private dirty = new Map<string, Uri>();
     private fileNamespaces = new Map<Uri, Set<string>>();
     private fileInterfaces = new Map<Uri, Set<string>>();
     private fileEnums = new Map<Uri, Set<string>>();
@@ -107,9 +107,9 @@ export class DeclarationProvider implements Disposable {
 
     private disposable: Disposable;
 
-    private onDidChangeEmitter: EventEmitter<DeclarationChangeEvent> = new EventEmitter();
-    private onDidDeleteEmitter: EventEmitter<DeclarationDeleteEvent> = new EventEmitter();
-    private onDidResetEmitter: EventEmitter<void> = new EventEmitter();
+    private onDidChangeEmitter = new EventEmitter<DeclarationChangeEvent>();
+    private onDidDeleteEmitter = new EventEmitter<DeclarationDeleteEvent>();
+    private onDidResetEmitter = new EventEmitter<void>();
 
     get onDidChange(): Event<DeclarationChangeEvent> {
         return this.onDidChangeEmitter.event;

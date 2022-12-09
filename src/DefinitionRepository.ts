@@ -27,13 +27,13 @@ export class DefinitionRepository {
     }
 
     private declarationProvider: DeclarationProvider;
-    private cache: Map<string, BrightScriptDeclaration[]> = new Map();
+    private cache = new Map<string, BrightScriptDeclaration[]>();
 
     public sync(): Promise<void> {
         return this.provider.sync();
     }
 
-    public *find(document: TextDocument, position: Position): IterableIterator<Location> {
+    public * find(document: TextDocument, position: Position): IterableIterator<Location> {
         const word = this.getWord(document, position).toLowerCase(); //brightscript is not case sensitive!
 
         void this.sync();
@@ -45,7 +45,7 @@ export class DefinitionRepository {
         if (ws === undefined) {
             return;
         }
-        const fresh: Set<string> = new Set([document.uri.fsPath]);
+        const fresh = new Set<string>([document.uri.fsPath]);
         for (const doc of vscode.workspace.textDocuments) {
             if (!doc.isDirty) {
                 continue;
@@ -125,7 +125,7 @@ export class DefinitionRepository {
         if (ws === undefined) {
             return;
         }
-        const fresh: Set<string> = new Set([document.uri.fsPath]);
+        const fresh = new Set<string>([document.uri.fsPath]);
         for (const doc of vscode.workspace.textDocuments) {
             console.log('>>>>>doc ' + doc.uri.path);
 

@@ -216,13 +216,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
         config.autoRunSgDebugCommands = config.autoRunSgDebugCommands ? config.autoRunSgDebugCommands : this.configDefaults.autoRunSgDebugCommands;
         config.request = config.request ? config.request : this.configDefaults.request;
-        config.stopOnEntry = config.stopOnEntry ?? this.configDefaults.stopOnEntry;
+        config.stopOnEntry ??= this.configDefaults.stopOnEntry;
         config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
         config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
         config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
         config.injectRdbOnDeviceComponent = config.injectRdbOnDeviceComponent === true ? true : this.configDefaults.injectRdbOnDeviceComponent;
         config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
-        config.retainStagingFolder = config.retainStagingFolder ?? this.configDefaults.retainStagingFolder;
+        config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
@@ -230,7 +230,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
-        config.logfilePath = config.logfilePath ?? null;
+        config.logfilePath ??= null;
         config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
 
         if (config.request !== 'launch') {

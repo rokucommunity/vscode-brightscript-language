@@ -41,7 +41,7 @@ export class GlobalStateManager {
     }
 
     public set sendRemoteTextHistory(history: string[]) {
-        history = history ?? [];
+        history ??= [];
         // only update the results if the user has the the history enabled
         if (this.remoteTextHistoryEnabled) {
             // limit the number of entries saved to history

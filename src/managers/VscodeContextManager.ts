@@ -8,7 +8,7 @@ type ContextValue = boolean | string;
  * so let's cache the values and only call the API when necessary.
  */
 class VSCodeContextManager {
-    private readonly cache: Map<string, ContextValue> = new Map();
+    private readonly cache = new Map<string, ContextValue>();
 
     public async set(key: string, value: ContextValue): Promise<void> {
         const prev = this.get(key);
