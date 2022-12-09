@@ -40,7 +40,7 @@ export class SymbolInformationRepository {
     }
 
     private declarationProvider: DeclarationProvider;
-    private cache: Map<string, SymbolInformation[]> = new Map();
+    private cache = new Map<string, SymbolInformation[]>();
 
     public sync(): Promise<void> {
         return this.provider.sync();
@@ -51,7 +51,7 @@ export class SymbolInformationRepository {
         if (pattern === undefined) {
             return;
         }
-        const fresh: Set<string> = new Set();
+        const fresh = new Set<string>();
         for (const doc of vscode.workspace.textDocuments) {
             if (!doc.isDirty) {
                 continue;

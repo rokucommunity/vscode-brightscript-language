@@ -15,12 +15,12 @@ export class BrighterScriptPreviewCommand {
     public register(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(vscode.commands.registerCommand('brighterscript.showPreview', async (uri: vscode.Uri) => {
-            uri = uri ?? vscode.window.activeTextEditor.document.uri;
+            uri ??= vscode.window.activeTextEditor.document.uri;
             await this.openPreview(uri, vscode.window.activeTextEditor, false);
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('brighterscript.showPreviewToSide', async (uri: vscode.Uri) => {
-            uri = uri ?? vscode.window.activeTextEditor.document.uri;
+            uri ??= vscode.window.activeTextEditor.document.uri;
             await this.openPreview(uri, vscode.window.activeTextEditor, true);
         }));
 
