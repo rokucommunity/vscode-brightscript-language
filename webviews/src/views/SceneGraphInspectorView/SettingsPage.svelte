@@ -8,14 +8,12 @@
         utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
 
-    let includeNodeCountInfo = utils.getStorageBooleanValue('includeNodeCountInfo');
+    let includeNodeCountInfo = utils.getStorageBooleanValue('includeNodeCountInfo', true);
     $: {
         utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
     }
 
-    let includeArrayGridChildren = utils.getStorageBooleanValue(
-        'includeArrayGridChildren'
-    );
+    let includeArrayGridChildren = utils.getStorageBooleanValue('includeArrayGridChildren', true);
     $: {
         if (includeArrayGridChildren) {
             includeNodeCountInfo = true;

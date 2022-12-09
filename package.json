@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.38.1",
+    "version": "2.38.2",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -25,14 +25,17 @@
         "url": "https://github.com/RokuCommunity/vscode-brightscript-language/issues"
     },
     "scripts": {
+        "postinstall": "cd webviews && npm install",
         "preversion": "npm run build && npm run lint && npm run test && npm run check-extraneous",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
-        "build": "npm run copy-schema && tsc -p ./ && npm run svelte-build",
+        "build": "npm run copy-schema && tsc -p ./ && npm run build-webviews",
+        "build-webviews": "cd ./webviews && npm run build && cd ..",
         "lint": "eslint \"./src/**/*.ts\"",
         "watch": "npm run copy-schema && tsc -w -p ./",
-        "test": "nyc mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace --bail",
-        "test:nocover": "mocha \"src/**/*.spec.ts\" \"webviews/**/*.spec.ts\" --full-trace",
+        "watch-webviews": "cd ./webviews && npm run watch",
+        "test": "nyc mocha",
+        "test:nocover": "mocha",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
         "package": "vsce package",
@@ -44,17 +47,14 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
         "watch-docs": "npm run build-docs -- --watch",
-        "svelte-build": "cd ./webviews && rollup --config ./rollup.config.js && cd ..",
-        "svelte-watch": "cd ./webviews && rollup --config ./rollup.config.js --watch",
         "releases": "ts-node scripts/releases.ts"
     },
     "dependencies": {
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.60.5",
-        "brighterscript-formatter": "^1.6.19",
-        "chokidar": "^3.5.2",
+        "brighterscript": "^0.61.1",
+        "brighterscript-formatter": "^1.6.20",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "fast-xml-parser": "^3.12.16",
@@ -68,9 +68,9 @@
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.17.0",
+        "roku-debug": "^0.17.1",
         "roku-deploy": "^3.9.2",
-        "roku-test-automation": "2.0.0-beta.5",
+        "roku-test-automation": "^2.0.0-beta.9",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "thenby": "^1.3.4",
@@ -79,10 +79,7 @@
     },
     "devDependencies": {
         "@deboxsoft/cpx": "^1.5.0",
-        "@rollup/plugin-commonjs": "^16.0.0",
-        "@rollup/plugin-node-resolve": "^10.0.0",
-        "@rollup/plugin-typescript": "^6.0.0",
-        "@tsconfig/svelte": "^1.0.10",
+        "@parcel/watcher": "^2.0.7",
         "@types/backoff": "^2.5.2",
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",
@@ -97,7 +94,6 @@
         "@types/yargs": "^17.0.10",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
-        "@vscode/webview-ui-toolkit": "^1.0.0",
         "chai": "^4.2.0",
         "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
@@ -112,16 +108,9 @@
         "ovsx": "^0.5.1",
         "prompt": "^1.3.0",
         "rimraf": "^3.0.0",
-        "rollup": "^2.3.4",
-        "rollup-plugin-css-only": "^3.0.0",
-        "rollup-plugin-svelte": "^7.0.0",
-        "rollup-plugin-terser": "^7.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.21",
         "statigen": "^0.4.4",
-        "svelte": "^3.49.0",
-        "svelte-codicons": "^0.7.1",
-        "svelte-preprocess": "^4.10.5",
         "terminal-overwrite": "^2.0.1",
         "ts-node": "^10.7.0",
         "tslib": "^2.3.1",
@@ -202,20 +191,17 @@
                 {
                     "id": "sceneGraphInspectorView",
                     "name": "SceneGraph Inspector",
-                    "type": "webview",
-                    "when": "debugType == 'brightscript'"
+                    "type": "webview"
                 },
                 {
                     "id": "rokuRegistryView",
                     "name": "Roku Registry",
-                    "type": "webview",
-                    "when": "debugType == 'brightscript'"
+                    "type": "webview"
                 },
                 {
                     "id": "rokuCommandsView",
                     "name": "Roku Commands",
-                    "type": "webview",
-                    "when": "debugType == 'brightscript'"
+                    "type": "webview"
                 }
             ]
         },
@@ -246,6 +232,26 @@
                 {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == onlineDevicesView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuRegistry.refreshRegistry",
+                    "when": "view == rokuRegistryView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuRegistry.importRegistry",
+                    "when": "view == rokuRegistryView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuRegistry.exportRegistry",
+                    "when": "view == rokuRegistryView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuRegistry.clearRegistry",
+                    "when": "view == rokuRegistryView",
                     "group": "navigation"
                 }
             ],
@@ -527,10 +533,6 @@
                                 "type": "boolean",
                                 "description": "If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.",
                                 "default": true
-                            },
-                            "rdbCallbackPort": {
-                                "type": "number",
-                                "description": "By default the OnDeviceComponent tries to find an open callback port on the server. This allows you to set one explicitly"
                             },
                             "files": {
                                 "type": "array",
@@ -2338,6 +2340,30 @@
                 "icon": "$(refresh)"
             },
             {
+                "command": "extension.brightscript.rokuRegistry.refreshRegistry",
+                "title": "Refresh Registry",
+                "category": "Roku Registry",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.rokuRegistry.clearRegistry",
+                "title": "Clear Registry",
+                "category": "BrighterScript",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "extension.brightscript.rokuRegistry.importRegistry",
+                "title": "Import Registry",
+                "category": "BrighterScript",
+                "icon": "$(arrow-down)"
+            },
+            {
+                "command": "extension.brightscript.rokuRegistry.exportRegistry",
+                "title": "Export Registry",
+                "category": "BrighterScript",
+                "icon": "$(arrow-up)"
+            },
+            {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
                 "category": "BrighterScript",
@@ -3275,11 +3301,15 @@
         }
     },
     "mocha": {
-        "spec": "src/**/*.spec.ts",
+        "spec": [
+            "src/**/*.spec.ts",
+            "webviews/src/**/*.spec.ts"
+        ],
         "require": [
             "source-map-support/register",
             "ts-node/register"
         ],
+        "bail": false,
         "fullTrace": true,
         "watchExtensions": [
             "ts"

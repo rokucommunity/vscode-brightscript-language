@@ -3,7 +3,7 @@
 
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import { commandsView } from './RokuCommandsView';
-    import OdcSetupSteps from '../../shared/OdcSetupStepsPage.svelte';
+    import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import { utils } from '../../utils';
 
     let commandArgs: any[];

@@ -15,7 +15,16 @@ import * as notifier from 'node-notifier';
 
 class Runner {
     private tempDir = s`${__dirname}/../.tmp/.releases`;
-    public async run(options: { groups: string[]; projects: string[] }) {
+
+    private options: {
+        groups: string[];
+        projects: string[];
+        test: boolean;
+        force: boolean;
+    };
+
+    public async run(options: Runner['options']) {
+        this.options = options;
         console.log('Creating tempDir', this.tempDir);
         fsExtra.emptyDirSync(this.tempDir);
 
@@ -53,11 +62,28 @@ class Runner {
 
         this.computeChanges(project, lastTag);
 
-        if (project.changes.length === 0) {
+        if (!this.options.force && project.changes.length === 0) {
             this.log(project, 'Nothing has changed since last release');
             return;
         }
         await this.doRelease(project, lastTag);
+    }
+
+    /**
+     * Prompt the user for a response, and only accept certain values
+     */
+    private async prompt(message: string, actions: string[]) {
+        const input = await prompt.get({
+            properties: {
+                action: {
+                    description: message,
+                    pattern: new RegExp(`^((${actions.join(')|(')}))$`, 'i'),
+                    required: true
+                }
+            }
+        });
+        const action = input?.action?.toString()?.toLowerCase();
+        return action;
     }
 
     /**
@@ -128,20 +154,14 @@ class Runner {
         let targetVersion = '';
         while (true) {
             console.log('\nChangelog for ', chalk.green(project.name), ': ', chalk.yellow(changelogPath));
-            const input = await prompt.get({
-                properties: {
-                    action: {
-                        description: 'Review and edit the changelog (link shown above). Type "continue" to continue, or "skip" to skip this release.',
-                        pattern: /^(s|skip|c|continue)$/i,
-                        required: true
-                    }
-                }
-            });
-            const inputText = input.action?.toString()?.toLowerCase();
-            if (inputText === 'skip') {
+            const action = await this.prompt(
+                'Review and edit the changelog (link shown above). Type "continue" to continue, or "skip" to skip this release.',
+                ['skip', 'continue']
+            );
+            if (action === 'skip') {
                 this.log(project, 'Skipping release');
                 return;
-            } else if (inputText === 'c' || inputText === 'continue') {
+            } else if (action === 'continue') {
                 //get the latest version from the changelog. that's what we'll use for the `npm version` call
                 [, targetVersion] = /##\s*\[(.*?)\]/.exec(
                     fsExtra.readFileSync(changelogPath).toString()
@@ -159,11 +179,37 @@ class Runner {
         this.log(project, 'Committing changelog');
         execSync(`git add -A && git commit -m "Update changelog for v${targetVersion}"`, { cwd: project.dir, stdio: 'inherit' });
 
-        this.log(project, `Executing "npm version ${targetVersion}"`);
-        execSync(`npm version ${targetVersion}`, { cwd: project.dir, stdio: 'inherit' });
+        //keep trying to run `npm version` until it succeeds, or until the user cancels
+        while (true) {
+            try {
+                this.log(project, `Executing "npm version ${targetVersion}"`);
+                execSync(`npm version ${targetVersion}`, { cwd: project.dir, stdio: 'inherit' });
+                //no exceptions occurred. escape this loop
+                break;
+            } catch {
+                const action = await this.prompt(
+                    `Encountered an exception while versioning "${chalk.green(project.name)}". Fix the issues in "${chalk.green(project.dir)}", then type "retry". Type "skip" to skip this release, or "cancel" to cancel the entire process"`,
+                    ['retry', 'cancel', 'skip']
+                );
+                if (action === 'retry') {
+                    //commit any changes in the directory (so the dev doesn't have to do that manually themselves)
+                    execSync(`git commit --all -m "Fixing issues before release ${targetVersion}"`, { cwd: project.dir, stdio: 'inherit' });
+                    continue;
+                } else if (action === 'cancel') {
+                    throw new Error('Cancelling release');
+                } else if (action === 'skip') {
+                    this.log(project, 'Release skipped');
+                    return;
+                }
+            }
+        }
 
         this.log(project, 'pushing release to github');
-        execSync('git push origin master --tags', { cwd: project.dir, stdio: 'inherit' });
+        if (this.options.test) {
+            this.log(project, 'TEST MODE: skipping command "git push origin master --tags"');
+        } else {
+            execSync('git push origin master --tags', { cwd: project.dir, stdio: 'inherit' });
+        }
 
         //wait for the npm package to show up in the registry, then move on to the next project
         await this.waitForLatestVersion(project, targetVersion);
@@ -173,17 +219,25 @@ class Runner {
         let isFinished;
         const interval = 15 * 1000;
         const initialDelay = (60 * 1000) - interval;
-        setTimeout(() => {
-            const handle = setInterval(() => {
-                void latestVersion(project.npmName).then((result) => {
-                    if (result === targetVersion) {
-                        isFinished = true;
-                        clearInterval(handle);
-                    }
-                });
-            }, interval);
-            //publishing takes several minutes, so don't start monitoring for a little while...
-        }, initialDelay);
+
+        //if in test mode, do a small timeout to simulate waiting for latest version, then mark finished
+        if (this.options.test) {
+            setTimeout(() => {
+                isFinished = true;
+            }, 5000);
+        } else {
+            setTimeout(() => {
+                const handle = setInterval(() => {
+                    void latestVersion(project.npmName).then((result) => {
+                        if (result === targetVersion) {
+                            isFinished = true;
+                            clearInterval(handle);
+                        }
+                    });
+                }, interval);
+                //publishing takes several minutes, so don't start monitoring for a little while...
+            }, initialDelay);
+        }
         const startTime = Date.now();
         while (true) {
             await this.sleep(1000);
@@ -449,6 +503,8 @@ let options = yargs
     .help('help', 'View help information about this tool.')
     .option('groups', { type: 'array', description: 'What project groups should be run. Defaults to every registered project', default: [] })
     .option('projects', { alias: 'project', type: 'array', description: 'What projects should be run. Defaults to every registered project', default: [] })
+    .option('force', { type: 'boolean', description: 'Should releases be forced, even if there were no changes?', default: false })
+    .option('test', { type: 'boolean', description: 'Tests a release but does not actually publish the release.', default: false })
     .argv;
 
 let builder = new Runner();

@@ -25,7 +25,8 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm run test
-      - run: npm run publish-coverage
+      # disable coverage for now (because coveralls is down right now)
+      #- run: npm run publish-coverage
       - run: npm run package
   release:
     #only run this task if a tag starting with 'v' was used to trigger this (i.e. a tagged release)

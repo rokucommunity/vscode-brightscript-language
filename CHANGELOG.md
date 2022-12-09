@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.1...2.38.2) - 2022-12-08
+### Changed
+ - upgrade to [roku-debug@0.17.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0171---2022-12-08). Notable changes since 0.17.0:
+     - Fix npm audit issues. ([#roku-debuge1857c7](https://github.com/rokucommunity/roku-debug/commit/e1857c7))
+     - Fix "continue" repeat bug in protocol adapter ([roku-debug#114](https://github.com/rokucommunity/roku-debug/pull/114))
+     - Fix issue with truncated debugger paths ([roku-debug#113](https://github.com/rokucommunity/roku-debug/pull/113))
+     - Bugfix/do not alter out file path for libraries ([roku-debug#112](https://github.com/rokucommunity/roku-debug/pull/112))
+ - upgrade to [brighterscript@0.61.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0611---2022-12-07). Notable changes since 0.60.5:
+     - Ensure enums and interfaces persist in typedefs ([brighterscript#757](https://github.com/rokucommunity/brighterscript/pull/757))
+     - Throttle transpiling to prevent crashes ([brighterscript#755](https://github.com/rokucommunity/brighterscript/pull/755))
+     - Let users use or discard explicit types ([brighterscript#744](https://github.com/rokucommunity/brighterscript/pull/744))
+     - Fix exception while validating continue statement ([brighterscript#752](https://github.com/rokucommunity/brighterscript/pull/752))
+     - Add missing visitor params for DottedSetStatement ([brighterscript#748](https://github.com/rokucommunity/brighterscript/pull/748))
+     - Flag incorrectly nested statements ([brighterscript#747](https://github.com/rokucommunity/brighterscript/pull/747))
+     - Prevent a double `super` call in subclasses ([brighterscript#740](https://github.com/rokucommunity/brighterscript/pull/740))
+     - Fixes issues with Roku doc scraper and adds missing components ([brighterscript#736](https://github.com/rokucommunity/brighterscript/pull/736))
+ - upgrade to [brighterscript-formatter@1.6.20](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1620---2022-12-08)
+
+
+
 ## [2.38.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.0...2.38.1) - 2022-11-04
 ### Changed
  - upgrade to [brighterscript@0.60.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0605---2022-11-03). Notable changes since 0.60.4:

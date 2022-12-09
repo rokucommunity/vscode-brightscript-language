@@ -22,13 +22,9 @@
             "problemMatcher": "$tsc-watch"
         },
         {
-            "label": "svelte-watch",
+            "label": "watch-webviews",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "svelte-watch"
-            ],
+            "command": "npm run watch-webviews",
             "presentation": {
                 "group": "watch",
                 "echo": true,
@@ -48,8 +44,8 @@
                     "base": "$tsc-watch",
                     "background": {
                         "activeOnStart": true,
-                        "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
-                        "endsPattern": "waiting for changes..."
+                        "beginsPattern": "^build started\\.\\.\\.",
+                        "endsPattern": "^built in \\d+"
                     }
                 }
             ],
