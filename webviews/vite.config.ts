@@ -9,9 +9,6 @@ export default defineConfig({
     build: {
         outDir: '../dist/webviews',
         emptyOutDir: true,
-        minify: false,
-        terserOptions: {
-            mangle: false
-        }
+        minify: false
     }
 });
