@@ -290,7 +290,6 @@
     <div class="actions">
         {#if nodeFieldsCache}
             {#if nodeFieldsCache.translation !== undefined}
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <span
                     title="Move Node Position"
                     class="icon-button"
