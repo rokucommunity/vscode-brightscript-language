@@ -7,7 +7,8 @@
     import NodeCountByTypePage from './NodeCountByTypePage.svelte';
     import NodeBranchPage from './NodeBranchPage.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
-    import OdcSetupStepsPage from '../../shared/OdcSetupStepsPage.svelte';
+    import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
+    import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
@@ -16,10 +17,12 @@
     let showSettings = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
+    let inspectNodeNodeTree: ODC.NodeTree | undefined;
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
     let rootTree = [] as ODC.NodeTree[];
+    let flatTree = [] as ODC.NodeTree[];
 
     const globalNode = {
         id: '',
@@ -29,7 +32,7 @@
         /** Same as ref but for the parent  */
         parentRef: -1,
         /** Used to determine the position of this node in its parent if applicable */
-        position: 0,
+        position: -1,
         children: []
     };
 
@@ -42,11 +45,15 @@
 
         try {
             const result = await odc.storeNodeReferences({
-                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo'),
-                includeArrayGridChildren: utils.getStorageBooleanValue('includeNodeCountInfo')
+                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo', true),
+                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true)
+            }, {
+                timeout: 15000
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree;
+            flatTree = result.flatTree;
+
             //insert the global node to the top of the rootNodes list
             rootTree.unshift(globalNode);
 
@@ -64,7 +71,11 @@
         await refresh();
         // Won't fire again if the value didn't actually change so it won't expand the children out without this
         focusedNode = -1;
-        const { ref } = await odc.getFocusedNode({ includeRef: true });
+        const returnFocusedArrayGridChild = utils.getStorageBooleanValue('includeArrayGridChildren', true)
+        const { ref } = await odc.getFocusedNode({
+            includeRef: true,
+            returnFocusedArrayGridChild: returnFocusedArrayGridChild
+        });
         focusedNode = ref;
     }
 
@@ -91,19 +102,21 @@
     intermediary.sendViewReady();
 
     function openNode(event: CustomEvent<ODC.NodeTree>) {
-        const node = event.detail;
+        const nodeTree = event.detail;
+        inspectNodeNodeTree = nodeTree;
         //if the global node was clicked
-        if (node === globalNode) {
+        if (nodeTree === globalNode) {
             inspectNodeBaseKeyPath = {
+                base: 'global',
                 keyPath: ''
             };
             inspectNodeSubtype = 'Global';
         } else {
             inspectNodeBaseKeyPath = {
                 base: 'nodeRef',
-                keyPath: `${node.ref}`
+                keyPath: `${nodeTree.ref}`
             };
-            inspectNodeSubtype = node.subtype;
+            inspectNodeSubtype = nodeTree.subtype;
         }
     }
 </script>
@@ -177,7 +190,7 @@
     {#if loading}
         <Loader />
     {:else if !odcAvailable}
-        <OdcSetupStepsPage />
+        <OdcSetupSteps />
     {:else if error}
         <div id="errorMessage">{error}</div>
         <div id="errorHelp">
@@ -203,7 +216,9 @@
             steps, check to make sure you're seeing this line in your device logs
             <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
             <p><button on:click={refresh}>Retry</button></p>
+            <OdcSetManualIpAddress />
         </div>
+
     {:else}
         <div id="header">
             <div id="drop-shadow-blocker" />
@@ -241,6 +256,8 @@
     {#if inspectNodeBaseKeyPath}
         <NodeDetailPage
             bind:inspectNodeBaseKeyPath
-            inspectNodeSubtype={inspectNodeSubtype} />
+            inspectNodeSubtype={inspectNodeSubtype}
+            inspectNodeNodeTree={inspectNodeNodeTree}
+            flatTree={flatTree} />
     {/if}
 </div>

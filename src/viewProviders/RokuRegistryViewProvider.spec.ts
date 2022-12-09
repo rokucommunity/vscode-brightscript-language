@@ -34,24 +34,27 @@ afterEach(() => {
 });
 
 describe('RokuRegistryViewProvider', () => {
-    describe('handleViewMessage', () => {
-        const provider = new RokuRegistryViewProvider(vscode.context);
+    const provider = new RokuRegistryViewProvider(vscode.context);
 
-        it('Shows the save prompt for exportRegistry command', async () => {
-            const spy = sinon.spy(vscode.window, 'showSaveDialog');
-            await (provider as any).handleViewMessage({
-                command: 'exportRegistry',
-                content: '{}'
-            });
+    describe('sendRegistryUpdated', () => {
+        it('Triggers postOrQueueMessage to send message to web view that the registry was updated', async () => {
+            const spy = sinon.stub(provider as any, 'postOrQueueMessage');
+            await provider['sendRegistryUpdated']();
             expect(spy.calledOnce).to.be.true;
         });
+    });
 
-        it('Shows the open dialog for importRegistry command', async () => {
-            const spy = sinon.spy(vscode.window, 'showOpenDialog');
-            await (provider as any).handleViewMessage({
-                command: 'importRegistry',
-                context: {}
-            });
+    describe('importContentsToRegistry', () => {
+        it('Does nothing if no uri was passed in', async () => {
+            const spy = sinon.stub(provider as any, 'sendRegistryUpdated');
+            await provider['importContentsToRegistry']([]);
+            expect(spy.callCount).to.equal(0);
+        });
+
+        it('Triggers sendRegistryUpdated if valid uri is called', async () => {
+            const spy = sinon.stub(vscode.workspace.fs, 'readFile').returns(Buffer.from('{}'));
+            sinon.stub(provider as any, 'sendRegistryUpdated');
+            await provider['importContentsToRegistry'](['test.json']);
             expect(spy.calledOnce).to.be.true;
         });
     });
