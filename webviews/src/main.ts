@@ -16,6 +16,6 @@ const views = {
 };
 
 const app = new views[viewName]({
-    target: document.getElementById('app')
+    target: document.body
 });
 export default app;
