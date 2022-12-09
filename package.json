@@ -55,7 +55,6 @@
         "backoff": "^2.5.0",
         "brighterscript": "^0.61.1",
         "brighterscript-formatter": "^1.6.20",
-        "chokidar": "^3.5.2",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "fast-xml-parser": "^3.12.16",
@@ -80,6 +79,7 @@
     },
     "devDependencies": {
         "@deboxsoft/cpx": "^1.5.0",
+        "@parcel/watcher": "^2.0.7",
         "@types/backoff": "^2.5.2",
         "@types/chai": "^4.1.5",
         "@types/fs-extra": "^5.0.4",

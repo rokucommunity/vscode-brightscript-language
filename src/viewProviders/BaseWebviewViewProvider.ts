@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as chokidar from 'chokidar';
 import * as fsExtra from 'fs-extra';
+import type { AsyncSubscription, Event } from '@parcel/watcher';
 
 import { util } from '../util';
 
@@ -19,12 +19,12 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected view?: vscode.WebviewView;
     protected webviewBasePath: string;
-    private svelteWatcher: chokidar.FSWatcher;
+    private outDirWatcher: AsyncSubscription;
     private viewReady = false;
     private queuedMessages = [];
 
     public dispose() {
-        void this.svelteWatcher?.close();
+        void this.outDirWatcher?.unsubscribe();
     }
 
     protected postMessage(message) {
@@ -80,27 +80,35 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return [];
     }
 
-    protected getHtmlForWebview() {
-        if (util.isExtensionHostRunning() && !this.svelteWatcher) {
+    protected async getHtmlForWebview() {
+        if (util.isExtensionHostRunning() && !this.outDirWatcher) {
             // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
-            this.svelteWatcher = chokidar.watch('/**/*', {
-                cwd: this.webviewBasePath
-            });
-            this.svelteWatcher.on('change', () => {
-                // I think the .html prop is a setter, so we need to blank it out and then set it again to trigger reloads
-                this.view.webview.html = '';
-                this.view.webview.html = this.getIndexHtml();
+            // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+            this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
+                //only refresh when the index.html page is changed. Since vite rewrites the file on every cycle, this is enough to know to reload the page
+                if (
+                    events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
+                ) {
+                    this.view.webview.html = '';
+                    this.view.webview.html = this.getIndexHtml();
+                }
             });
         }
         return this.getIndexHtml();
     }
 
     private getIndexHtml() {
-        let html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
+        let html: string;
+        try {
+            html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
+        } catch (e) {
+            console.error(e);
+            html = '<h1>Error loading webview</h1>';
+        }
         //the data that will be replaced in the index.html
         const data = {
             viewName: this.id,
-            baseHref: vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' }),
+            baseHref: vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' }) + '/',
             additionalScriptContents: this.additionalScriptContents().join('\n                        ')
         };
         /**
@@ -120,7 +128,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return html;
     }
 
-    public resolveWebviewView(
+    public async resolveWebviewView(
         view: vscode.WebviewView,
         _context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
@@ -137,6 +145,6 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 vscode.Uri.file(this.webviewBasePath)
             ]
         };
-        webview.html = this.getHtmlForWebview();
+        webview.html = await this.getHtmlForWebview();
     }
 }
