@@ -80,18 +80,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     protected async getHtmlForWebview() {
-        if (util.isExtensionHostRunning() && !this.outDirWatcher) {
-            // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
-            // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-            this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
-                //only refresh when the index.html page is changed. Since vite rewrites the file on every cycle, this is enough to know to reload the page
-                if (
-                    events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
-                ) {
-                    this.view.webview.html = '';
-                    this.view.webview.html = this.getIndexHtml();
-                }
-            });
+        try {
+            if (util.isExtensionHostRunning() && !this.outDirWatcher) {
+                // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
+                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+                this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
+                    //only refresh when the index.html page is changed. Since vite rewrites the file on every cycle, this is enough to know to reload the page
+                    if (
+                        events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
+                    ) {
+                        this.view.webview.html = '';
+                        this.view.webview.html = this.getIndexHtml();
+                    }
+                });
+            }
+        } catch (e) {
+            console.error(e);
         }
         return this.getIndexHtml();
     }
