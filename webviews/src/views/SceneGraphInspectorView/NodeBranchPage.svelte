@@ -13,7 +13,7 @@
     export let depth = 0;
     let self: HTMLDivElement;
     let nodeInfoElement: HTMLDivElement;
-    let nodeFieldsCache: ODC.NodeRepresentation?;
+    let nodeFieldsCache: ODC.NodeRepresentation | undefined;
     let showNodeInfo = false;
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
@@ -290,6 +290,7 @@
     <div class="actions">
         {#if nodeFieldsCache}
             {#if nodeFieldsCache.translation !== undefined}
+                <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <span
                     title="Move Node Position"
                     class="icon-button"

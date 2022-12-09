@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as chokidar from 'chokidar';
+import * as fsExtra from 'fs-extra';
 
 import { util } from '../util';
 
@@ -83,31 +84,32 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         if (util.isExtensionHostRunning()) {
             // If we're developing we want to add a watcher to allow hot reload :)
             // Index.js always gets updated so don't have to worry about observing the css file
-            this.svelteWatcher = chokidar.watch(path.join(this.webviewBasePath, 'index.js'));
+            this.svelteWatcher = chokidar.watch(this.webviewBasePath + '/**/*');
             this.svelteWatcher.on('change', () => {
                 // We have to change this to get it to update so we store it first and set it back after
                 const html = this.view.webview.html;
                 this.view.webview.html = '';
-                this.view.webview.html = html;
+                this.view.webview.html = this.getIndexHtml();
             });
         }
-        const scriptUri = vscode.Uri.file(path.join(this.webviewBasePath, 'index.js')).with({ scheme: 'vscode-resource' });
-        const styleUri = vscode.Uri.file(path.join(this.webviewBasePath, 'bundle.css')).with({ scheme: 'vscode-resource' });
+        return this.getIndexHtml();
+    }
 
-        return `<!DOCTYPE html>
-            <html lang="en">
-                <head>
-                    <meta charset='utf-8'>
-                    <link rel="stylesheet" type="text/css" href="${styleUri}">
-                    <base href="${vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' })}/">
-                    <script>
-                        viewName = '${this.id}';
-                        ${this.additionalScriptContents().join('\n                        ')}
-                    </script>
-                    <script defer src="${scriptUri}"></script>
-                </head>
-                <body style="padding: 0"></body>
-            </html>`;
+    private getIndexHtml() {
+        let html = fsExtra.readFileSync(this.webviewBasePath + '/index.html').toString();
+        //the data that will be replaced in the index.html
+        const data = {
+            scriptUri: vscode.Uri.file(path.join(this.webviewBasePath, 'index.js')).with({ scheme: 'vscode-resource' }),
+            styleUri: vscode.Uri.file(path.join(this.webviewBasePath, 'bundle.css')).with({ scheme: 'vscode-resource' }),
+            baseHref: vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' }),
+            additionalScriptContents: this.additionalScriptContents().join('\n                        ')
+        };
+        //replace placeholders with the above data
+        html.replace(/(\/\/{{(\w+)}})|({{(\w+)}})|(<!--{{(\w+)}})/gm, (...match: string[]) => {
+            const [, , key1, , key2, , key3] = match;
+            return data[key1] ?? data[key2] ?? data[key3] ?? match[0];
+        });
+        return html;
     }
 
     public resolveWebviewView(
