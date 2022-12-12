@@ -5,6 +5,9 @@
 coverage/**/*
 scripts/**
 src/**
+webviews/**
+docs/**
+.tmp/**
 **/*.map
 **/*.spec.js
 developer-guidelines.md
