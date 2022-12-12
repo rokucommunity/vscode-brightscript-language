@@ -2,10 +2,9 @@ import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-
 import { util } from './util';
 import BrightscriptFileUtils from './BrightScriptFileUtils';
-import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class CustomDocumentLink {
     constructor(outputLine: number, startChar: number, length: number, pkgPath: string, lineNumber: number, filename: string) {
@@ -68,12 +67,12 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
         }
     }
 
-    public fileMaps: { [pkgPath: string]: { src: string; dest: string; pkgPath: string; } };
+    public fileMaps: Record<string, { src: string; dest: string; pkgPath: string }>;
     public customLinks: DocumentLink[];
 
     private launchConfig: BrightScriptLaunchConfiguration;
 
-    public async provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
+    public provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         return this.customLinks;
     }
 

@@ -1,11 +1,10 @@
-import {
+import type {
     CancellationToken,
     DocumentSymbolProvider,
     SymbolInformation,
     TextDocument, Uri
 } from 'vscode';
-
-import { DeclarationProvider } from './DeclarationProvider';
+import type { DeclarationProvider } from './DeclarationProvider';
 
 export class BrightScriptDocumentSymbolProvider implements DocumentSymbolProvider {
     constructor(declarationProvider: DeclarationProvider) {
@@ -19,5 +18,4 @@ export class BrightScriptDocumentSymbolProvider implements DocumentSymbolProvide
     public readSymbolInformations(uri: Uri, input: string): SymbolInformation[] {
         return this.declarationProvider.readDeclarations(uri, input).map((d) => this.declarationProvider.declToSymbolInformation(uri, d));
     }
-
 }

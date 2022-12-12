@@ -1,0 +1,86 @@
+---
+priority: 1001
+---
+# Contributing
+
+This extension depends on several other RokuCommunity projects.
+ - [BrighterScript](https://github.com/RokuCommunity/brighterscript) - provides the language server and much of the realtime valdation you see when editing code.
+ - [roku-debug](https://github.com/RokuCommunity/roku-debug) - Provides all the debug session functionality (like connecting via telnet, setting breakpoints, etc)
+ - [roku-deploy](https://github.com/RokuCommunity/roku-deploy) - Handles the packaging of roku projects and other device tasks (like sending keyboard commands to the device)
+ - [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter) - Used to format code when the "Format Document" command is run in vscode.
+
+
+Wiring all of these up manually is a bit tedious, so we provide a simple way to quickly get started:
+
+### The easy way
+In a terminal, you can execute the following commands to get completely up and running.
+```bash
+mkdir RokuCommunity && cd RokuCommunity && git clone https://github.com/rokucommunity/vscode-brightscript-language && cd vscode-brightscript-language && npm run install-local
+```
+
+This will do the following automatically for you:
+ - create a dedicated `RokuCommunity/` folder to keep these related projects
+ - Clone all necessary repositories at the same folder level
+ - Install and build each dependency
+ - Update this project's `package.json` to point to the local projects using a relative file scheme (i.e. `"roku-deploy": "file:../roku-deploy"`)
+ - delete each dependency's folder in this project's node_modules folder to prevent conflicts.
+ - run `npm install` in the root of this project.
+
+
+### The manual way
+You only need to install local copies of projects you actually want to work on. You can leave the others as npm modules. This workflow will show the process of installing all projects.
+
+ 1. Clone the following projects to the parent folder as this project. (i.e. `C:\projects\vscode-brightscript language`, `C:\projects\brighterscript`, etc...)
+    - [brighterscript](https://github.com/RokuCommunity/brighterscript)
+    - [brighterscript-formatter](https://github.com/RokuCommunity/brighterscript-formatter)
+    - [roku-debug](https://github.com/RokuCommunity/roku-debug)
+    - [roku-deploy](https://github.com/RokuCommunity/roku-deploy)
+
+ 1. Inside each of the cloned repositories, run
+     ```bash
+     npm install && npm run build
+     ```
+ 1. In `vscode-brightscript-language/node_modules`, delete any folders matching the above project names
+ 1. Open `vscode-brightscript-language/package.json` and edit the `dependencies`to look like this:
+
+    ```js
+    {
+      "dependencies": {
+        //...
+        "brighterscript": "file:../brighterscript",
+        "brighterscript-formatter": "file:../brighterscript-formatter",
+        "roku-debug": "file:../roku-debug",
+        "roku-deploy": "file:../roku-debug",
+        //...
+      }
+    }
+    ```
+
+ 1. In the `vscode-brightscript-language` folder
+    ```bash
+    npm install && npm run build
+    ```
+ 1. You're all set! Open the `vscode-brightscript-language` folder in vscode to start debugging. 
+
+View our [developer guidelines](https://github.com/RokuCommunity/vscode-brightscript-language/blob/master/developer-guidelines.md) for more information on how to contribute to this extension.
+
+You can also chat with us [on slack](https://join.slack.com/t/rokudevelopers/shared_invite/zt-4vw7rg6v-NH46oY7hTktpRIBM_zGvwA). (We're in the #vscode-bs-lang-ext channel).
+
+## Releases (Project Admins)
+If you need to deploy a release of any of the RokuCommunity projects, you can do the following:
+1. clone the vscode-brightscript-language project
+    ```bash
+    git clone https://github.com/rokucommunity/vscode-brightscript-language
+    cd vscode-brightscript-language
+    ```
+2. Run the `releases` npm script and follow the prompts
+    ```bash
+    npm run releases
+    ```
+3. For every changed project, you'll see a prompt to edit the changelog. 
+![image](https://user-images.githubusercontent.com/2544493/179513388-fc044859-8c5e-49a2-853c-9e17ca689a80.png)
+    - Change `UNRELEASED` to the semantic version you want to use, save the changelog, then back in the terminal press enter on your keyboard to initialize the release.
+    ![image](https://user-images.githubusercontent.com/2544493/179513898-452b8ff3-f01b-4828-b3b0-d00e0c0a31ed.png)
+    - Delete delete any lines from the changelog that aren't overly important to the user (as changelogs should be for humans), since this process populates the changelog with every commit to the master branch for the current project and all commits to changed RokuCommunity dependencies. 
+
+

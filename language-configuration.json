@@ -68,7 +68,7 @@
         }
     },
     "indentationRules": {
-        "increaseIndentPattern": "(((^|[=,(:])\\s*\\b(if|else|elseif|for|while|function|sub|try|catch)\\b((?!\\b(then)\\b).)*)|(\\b(then)\\b\\s*)|({\\s*))$",
-        "decreaseIndentPattern": "^\\s*((\\b(else|elseif|endif|endfor|endwhile|endsub|endfunction|catch|endtry)\\b)|((\\b(end)\\s+(if|for|while|sub|function|try)\\b))|})"
+        "increaseIndentPattern": "(((^|[=,(:])\\s*\\b(if|else|elseif|for|while|function|sub|try|catch|namespace|interface|enum|component)\\b((?!\\b(then)\\b).)*)|(\\b(then)\\b\\s*)|({\\s*))$",
+        "decreaseIndentPattern": "^\\s*((\\b(else|elseif|endif|endfor|endwhile|endsub|endfunction|catch|endtry|endnamespace|endinterface|endenum|endcomponent)\\b)|((\\b(end)\\s+(if|for|while|sub|function|try|namespace|interface|enum|component)\\b))|})"
     }
 }

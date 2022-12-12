@@ -1,18 +1,18 @@
-const esbuild = require('esbuild')
+const esbuild = require('esbuild');
 const fsExtra = require('fs-extra');
 
 class Plugin {
     constructor() {
-        this.name = 'empty-loader'
+        this.name = 'empty-loader';
     }
     setup(build) {
         build.onResolve({ filter: /^chokidar$/ }, args => ({
             path: args.path,
-            namespace: 'empty-loader',
-        }))
+            namespace: 'empty-loader'
+        }));
         build.onLoad({ filter: /.*/, namespace: 'empty-loader' }, () => ({
-            contents: '/*chokidar is not necessary for the language server so we replaced it with an empty object to fix esbuild issues*/\nmodule.exports = {}',
-        }))
+            contents: '/*chokidar is not necessary for the language server so we replaced it with an empty object to fix esbuild issues*/\nmodule.exports = {}'
+        }));
     }
 }
 

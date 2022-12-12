@@ -1,13 +1,12 @@
 import * as vscode from 'vscode';
-
-import { DiagnosticCollection } from 'vscode';
-
-import { BrightScriptDebugCompileError } from 'roku-debug';
-import { DeclarationProvider } from './DeclarationProvider';
-import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
+import type { DiagnosticCollection } from 'vscode';
+import type { BSDebugDiagnostic } from 'roku-debug';
+import { isChanperfEvent, isDiagnosticsEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
+import type { DeclarationProvider } from './DeclarationProvider';
+import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
-import { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 export class LogLine {
     constructor(
@@ -46,8 +45,8 @@ export class LogOutputManager {
          *  - at line LINE of file pkg:/path/file.brs - this case can arise when the device reports various scenegraph errors such as fields not present, or texture size issues, etc
          */
         this.pkgRegex = /(?:\s*at line (\d*) of file )*(?:(pkg:\/|file:\/\/)(.*\.(bs|brs|xml)))[ \t]*(?:(?:(?:\()(\d+)(?:\:(\d+))?\)?)|(?:\:(\d+)?))*/;
-        this.debugStartRegex = new RegExp('BrightScript Micro Debugger\.', 'ig');
-        this.debugEndRegex = new RegExp('Brightscript Debugger>', 'ig');
+        this.debugStartRegex = /BrightScript Micro Debugger\./ig;
+        this.debugEndRegex = /Brightscript Debugger>/ig;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.markLogOutput', () => {
             this.markOutput();
@@ -96,7 +95,7 @@ export class LogOutputManager {
     private logLevelRegex?: RegExp;
     private excludeRegex?: RegExp;
     private pkgRegex: RegExp;
-    private isNextBreakpointSkipped: boolean = false;
+    private isNextBreakpointSkipped = false;
     private includeStackTraces: boolean;
     private isInMicroDebugger: boolean;
     public launchConfig: BrightScriptLaunchConfiguration;
@@ -120,57 +119,69 @@ export class LogOutputManager {
 
     private loadConfigSettings() {
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.includeStackTraces = (config.output || {}).includeStackTraces;
+        this.includeStackTraces = config.output?.includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
         this.isClearingConsoleOnChannelStart = config?.output?.clearConsoleOnChannelStart === false ? false : true;
-        this.hyperlinkFormat = (config.output || {}).hyperlinkFormat;
+        this.hyperlinkFormat = config.output?.hyperlinkFormat;
     }
 
     public setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
         this.launchConfig = launchConfig;
     }
 
-    public onDidReceiveDebugSessionCustomEvent(e: { event: string, body?: any }) {
-        if (e.event === 'BSRendezvousEvent' || e.event === 'BSChanperfEvent') {
+    public async onDidReceiveDebugSessionCustomEvent(e: { event: string; body?: any }) {
+        if (isRendezvousEvent(e) || isChanperfEvent(e)) {
             // No need to handle rendezvous type events
             return;
         }
 
-        console.log('received event ' + e.event);
-        if (e.event === 'BSLogOutputEvent') {
-            this.appendLine(e.body);
-        } else if (e.event === 'BSLaunchStartEvent') {
+        if (isLogOutputEvent(e)) {
+            this.appendLine(e.body.line);
+
+        } else if (isPopupMessageEvent(e)) {
+            this.showMessage(e.body.message, e.body.severity);
+
+        } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
             if (this.isFocusingOutputOnLaunch) {
-                vscode.commands.executeCommand('workbench.action.focusPanel');
+                await vscode.commands.executeCommand('workbench.action.focusPanel');
                 this.outputChannel.show();
             }
             if (this.isClearingOutputOnLaunch) {
                 this.clearOutput();
             }
-        } else if (e.body && Array.isArray(e.body)) {
+
+        } else if (isDiagnosticsEvent(e)) {
             let errorsByPath = {};
-            e.body.forEach((compileError: { path?: string }) => {
-                if (compileError.path) {
-                    if (!errorsByPath[compileError.path]) {
-                        errorsByPath[compileError.path] = [];
+            for (const diagnostic of e.body.diagnostics) {
+                if (diagnostic.path) {
+                    if (!errorsByPath[diagnostic.path]) {
+                        errorsByPath[diagnostic.path] = [];
                     }
-                    errorsByPath[compileError.path].push(compileError);
+                    errorsByPath[diagnostic.path].push(diagnostic);
                 }
-            });
+            }
             for (const path in errorsByPath) {
                 if (errorsByPath.hasOwnProperty(path)) {
                     const errors = errorsByPath[path];
-                    this.addDiagnosticForError(path, errors);
+                    await this.addDiagnosticForError(path, errors);
                 }
             }
         }
     }
 
-    public async addDiagnosticForError(path: string, compileErrors: BrightScriptDebugCompileError[]) {
+    private showMessage(message: string, severity: string) {
+        const methods = {
+            error: vscode.window.showErrorMessage,
+            info: vscode.window.showInformationMessage,
+            warn: vscode.window.showWarningMessage
+        };
+        methods[severity](message);
+    }
 
+    public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
         //TODO get the actual folder
         let documentUri: vscode.Uri;
         let uri = vscode.Uri.file(path);
@@ -185,45 +196,39 @@ export class LogOutputManager {
         // const currentDocumentUri = document.uri;
         // console.log("currentDocumentUri " + currentDocumentUri);
         if (documentUri !== undefined) {
-            {
-                let diagnostics: vscode.Diagnostic[] = [];
-                compileErrors.forEach((compileError) => {
-
-                    const path: string = compileError.path;
-                    const message: string = compileError.message;
-                    const source: string = compileError.errorText;
-                    const lineNumber: number = compileError.lineNumber;
-                    const charStart: number = compileError.charStart;
-                    const charEnd: number = compileError.charEnd;
-
-                    diagnostics.push({
-                        code: '',
-                        message: message,
-                        range: new vscode.Range(new vscode.Position(lineNumber, charStart), new vscode.Position(lineNumber, charEnd)),
-                        severity: vscode.DiagnosticSeverity.Error,
-                        source: source
-                    });
+            let result: vscode.Diagnostic[] = [];
+            for (const diagnostic of diagnostics) {
+                result.push({
+                    code: diagnostic.code,
+                    message: diagnostic.message,
+                    source: diagnostic.source,
+                    severity: diagnostic.severity,
+                    tags: diagnostic.tags,
+                    range: new vscode.Range(
+                        new vscode.Position(diagnostic.range.start.line, diagnostic.range.start.character),
+                        new vscode.Position(diagnostic.range.end.line, diagnostic.range.end.character)
+                    )
                 });
-                this.collection.set(documentUri, diagnostics);
             }
+            this.collection.set(documentUri, result);
         }
     }
 
     /**
      * Log output methods
      */
-    public appendLine(lineText: string, mustInclude: boolean = false): void {
-        let lines = lineText.split('\n');
-        lines.forEach((line) => {
+    public appendLine(lineText: string, mustInclude = false): void {
+        let lines = lineText.split(/\r?\n/g);
+        for (let line of lines) {
             if (line !== '') {
                 if (!this.includeStackTraces) {
                     // filter out debugger noise
-                    if (line.match(this.debugStartRegex)) {
+                    if (this.debugStartRegex.exec(line)) {
                         console.log('start MicroDebugger block');
                         this.isInMicroDebugger = true;
                         this.isNextBreakpointSkipped = false;
                         line = 'Pausing for a breakpoint...';
-                    } else if (this.isInMicroDebugger && line.match(this.debugEndRegex)) {
+                    } else if (this.isInMicroDebugger && (this.debugEndRegex.exec(line))) {
                         console.log('ended MicroDebugger block');
                         this.isInMicroDebugger = false;
                         if (this.isNextBreakpointSkipped) {
@@ -243,13 +248,13 @@ export class LogOutputManager {
             if (line) {
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
-                if (this.matchesFilter(logLine)) {
+                if (this.shouldLineBeShown(logLine)) {
                     this.allLogLines.push(logLine);
                     this.addLogLineToOutput(logLine);
                     this.writeLogLineToLogfile(logLine.text);
                 }
             }
-        });
+        }
     }
 
     public writeLogLineToLogfile(text: string) {
@@ -260,7 +265,7 @@ export class LogOutputManager {
 
     public addLogLineToOutput(logLine: LogLine) {
         const logLineNumber = this.displayedLogLines.length;
-        if (this.matchesFilter(logLine)) {
+        if (this.shouldLineBeShown(logLine)) {
             this.displayedLogLines.push(logLine);
             let match = this.pkgRegex.exec(logLine.text);
             if (match) {
@@ -268,7 +273,14 @@ export class LogOutputManager {
                 const path = isFilePath ? match[3] : 'pkg:/' + match[3];
                 let lineNumber = match[1] ? Number(match[1]) : undefined;
                 if (!lineNumber) {
-                    lineNumber = isFilePath ? Number(match[7]) : Number(match[5]);
+                    if (isFilePath) {
+                        lineNumber = Number(match[7]);
+                        if (isNaN(lineNumber)) {
+                            lineNumber = Number(match[5]);
+                        }
+                    } else {
+                        lineNumber = Number(match[5]);
+                    }
                 }
 
                 const filename = this.getFilename(path);
@@ -331,12 +343,25 @@ export class LogOutputManager {
         return method ? method.name : null;
     }
 
-    public matchesFilter(logLine: LogLine): boolean {
-        return (logLine.isMustInclude || (
-            (!this.logLevelRegex || this.logLevelRegex.test(logLine.text)))
-            && (!this.includeRegex || this.includeRegex.test(logLine.text)))
-            && (!this.excludeRegex || !this.excludeRegex.test(logLine.text)
-            );
+    private shouldLineBeShown(logLine: LogLine): boolean {
+        //filter excluded lines
+        if (this.excludeRegex?.test(logLine.text)) {
+            return false;
+        }
+        //once past the exclude filter, always keep "mustInclude" lines
+        if (logLine.isMustInclude) {
+            return true;
+        }
+        //throw out lines that don't match the logLevelRegex (if we have one)
+        if (this.logLevelRegex && !this.logLevelRegex.test(logLine.text)) {
+            return false;
+        }
+        //throw out lines that don't match the includeRegex (if we have one)
+        if (this.includeRegex && !this.includeRegex.test(logLine.text)) {
+            return false;
+        }
+        //all other log entries should be kept
+        return true;
     }
 
     public clearOutput(): any {
@@ -369,7 +394,7 @@ export class LogOutputManager {
 
         for (let i = 0; i < this.allLogLines.length - 1; i++) {
             let logLine = this.allLogLines[i];
-            if (this.matchesFilter(logLine)) {
+            if (this.shouldLineBeShown(logLine)) {
                 this.addLogLineToOutput(logLine);
             }
         }

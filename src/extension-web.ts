@@ -1,7 +1,15 @@
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 
-export function activate(context: vscode.ExtensionContext) {
+//TODO move this to a common file since it's duplicated in extension.ts
+const EXTENSION_ID = 'RokuCommunity.brightscript';
 
+export class Extension {
+
+    public async activate(context: vscode.ExtensionContext) {
+    }
 }
 
-export function deactivate() { }
+export const extension = new Extension();
+export async function activate(context: vscode.ExtensionContext) {
+    await extension.activate(context);
+}

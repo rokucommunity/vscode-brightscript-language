@@ -1,5 +1,3 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
 import * as sinon from 'sinon';
 let Module = require('module');
 
@@ -24,7 +22,7 @@ describe('BrightScriptFileUtils ', () => {
     let languagesMock;
 
     beforeEach(() => {
-        commands = new BrightScriptCommands();
+        commands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any);
         commandsMock = sinon.mock(commands);
         languagesMock = sinon.mock(vscode.languages);
     });
@@ -38,7 +36,7 @@ describe('BrightScriptFileUtils ', () => {
         it('does nothing when no active document', () => {
             vscode.window.activeTextEditor = undefined;
 
-            commands.onToggleXml();
+            void commands.onToggleXml();
 
             languagesMock.verify();
             commandsMock.verify();
@@ -46,7 +44,7 @@ describe('BrightScriptFileUtils ', () => {
 
         it('tries to ascertain alternate filename', () => {
             vscode.window.activeTextEditor = { document: { fileName: 'notValid.json' } };
-            commands.onToggleXml();
+            void commands.onToggleXml();
 
             languagesMock.verify();
             commandsMock.verify();
@@ -56,7 +54,7 @@ describe('BrightScriptFileUtils ', () => {
             vscode.window.activeTextEditor = { document: { fileName: 'valid.brs' } };
             commandsMock.expects('openFile').once();
 
-            commands.onToggleXml();
+            void commands.onToggleXml();
 
             languagesMock.verify();
             commandsMock.verify();

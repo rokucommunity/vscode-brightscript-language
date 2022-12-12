@@ -37,13 +37,9 @@
             ]
         },
         {
-            "label": "svelte-watch",
+            "label": "watch-webviews",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "svelte-watch"
-            ],
+            "command": "npm run watch-webviews",
             "presentation": {
                 "group": "watch",
                 "echo": true,
@@ -63,9 +59,9 @@
                     "base": "$tsc-watch",
                     "background": {
                         "activeOnStart": true,
-                        "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
-                        "endsPattern": "waiting for changes..."
-                    },
+                        "beginsPattern": "^build started\\.\\.\\.",
+                        "endsPattern": "^built in \\d+"
+                    }
                 }
             ],
             "dependsOn": [
@@ -75,55 +71,36 @@
         {
             "label": "test",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "test:nocover",
-                "--loglevel",
-                "silent"
-            ],
+            "command": "npm run test:nocover --silent",
+            "presentation": {
+                "focus": true,
+            },
             "group": {
                 "kind": "test",
                 "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": true,
-                "clear": true
             },
             "problemMatcher": []
         },
         {
             "label": "clean",
-            "type": "npm",
-            "script": "clean",
-            "problemMatcher": [],
+            "type": "shell",
+            "command": "npm run clean",
+            "problemMatcher": []
         },
         {
-            "type": "npm",
             "label": "build",
-            "script": "build",
-            // "dependsOn": "clean",
+            "type": "shell",
+            "command": "npm run build",
+            "dependsOn": "clean",
             "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "presentation": {
-                "echo": true,
-                "reveal": "always",
                 "focus": true,
-                "panel": "dedicated",
-                "clear": true
+                "panel": "dedicated"
             }
-        },
-        {
-            "type": "npm",
-            "script": "test",
-            "problemMatcher": []
         }
     ]
 }

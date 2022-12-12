@@ -18,7 +18,7 @@ function main() {
         'vscode-brightscript-language',
         hasBranch('vscode-brightscript-language', branch) ? branch : 'master'
     );
-    const buildVersion = `9001.0.0-${branch.replace(/[^a-zA-Z_0-9]/g, '-')}.${Date.now()}`;
+    const buildVersion = `9001.0.0-${branch.replace(/[^a-zA-Z0-9]/g, '-')}.${Date.now()}`;
 
     //bump the version for this build
     changeVersion('vscode-brightscript-language', buildVersion);
