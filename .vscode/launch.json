@@ -73,14 +73,8 @@
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
-                "-r",
-                "ts-node/register",
-                "-r",
-                "source-map-support/register",
                 "--timeout",
-                "999999",
-                "./src/**/*.spec.ts",
-                "./webviews/**/*.spec.ts"
+                "0"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }
