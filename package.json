@@ -28,7 +28,7 @@
     },
     "scripts": {
         "postinstall": "cd webviews && npm install",
-        "preversion": "npm run build && npm run typecheck && npm run lint && npm run test && node scripts/preversion.js",
+        "preversion": "npm run build && npm run typecheck && npm run lint && npm run test",
         "vscode:prepublish": "npm run build",
         "copy-schema": "cpx ./node_modules/brighterscript/bsconfig.schema.json ./dist -L",
         "build": "npm run copy-schema && node ./esbuild.js && npm run build-webviews",
