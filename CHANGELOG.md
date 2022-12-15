@@ -6,7 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.38.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.1...2.38.2) - 2022-12-08
+## [2.38.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.2...v2.38.3) - 2022-12-15
+### Changed
+ - upgrade to [roku-debug@0.17.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0173---2022-12-15). Notable changes since 0.17.1:
+     - Debug protocol breakpoint verification ([roku-debug#117](https://github.com/rokucommunity/roku-debug/pull/117))
+ - upgrade to [brighterscript@0.61.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0612---2022-12-15)
+ - upgrade to [brighterscript-formatter@1.6.22](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1622---2022-12-15). Notable changes since 1.6.20:
+     - Fix continue for ([brighterscript-formatter#65](https://github.com/rokucommunity/brighterscript-formatter/pull/65))
+### Fixed
+ - Make vsix smaller by excluding unneeded files ([#454](https://github.com/rokucommunity/vscode-brightscript-language/pull/454))
+ - Upgrade webview build system ([#450](https://github.com/rokucommunity/vscode-brightscript-language/pull/450))
+ - upgrade roku-test-automation module and update code accordingly ([#440](https://github.com/rokucommunity/vscode-brightscript-language/pull/440))
+
+
+
+## [2.38.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.1...v2.38.2) - 2022-12-08
 ### Changed
  - upgrade to [roku-debug@0.17.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0171---2022-12-08). Notable changes since 0.17.0:
      - Fix npm audit issues. ([#roku-debuge1857c7](https://github.com/rokucommunity/roku-debug/commit/e1857c7))
@@ -26,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.38.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.0...2.38.1) - 2022-11-04
+## [2.38.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.0...v2.38.1) - 2022-11-04
 ### Changed
  - upgrade to [brighterscript@0.60.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0605---2022-11-03). Notable changes since 0.60.4:
      - Cache `getCallableByName` ([brighterscript#739](https://github.com/rokucommunity/brighterscript/pull/739))
@@ -37,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.38.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.37.0...2.38.0) - 2022-11-02
+## [2.38.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.37.0...v2.38.0) - 2022-11-02
 ### Changed
  - Added the `brightscript_warnings` command ([#446](https://github.com/rokucommunity/vscode-brightscript-language/pull/446))
  - upgrade to [roku-debug@0.17.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0170---2022-11-02). Notable changes since 0.16.1:
@@ -45,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.37.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.1...2.37.0) - 2022-10-28
+## [2.37.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.1...v2.37.0) - 2022-10-28
 ### Added
  - add `brightscript.deviceDiscovery.concealDeviceInfo` option to obscure the device-info ([#443](https://github.com/rokucommunity/vscode-brightscript-language/pull/443))
 ### Changed
@@ -61,14 +75,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.36.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.0...2.36.1) - 2022-10-18
+## [2.36.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.36.0...v2.36.1) - 2022-10-18
 ### Changed
  - upgrade to [brighterscript@0.60.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0602---2022-10-18). Notable changes since 0.60.1:
      - Fix if statement block var bug ([brighterscript#698](https://github.com/rokucommunity/brighterscript/pull/698))
 
 
 
-## [2.36.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.2...2.36.0) - 2022-10-18
+## [2.36.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.2...v2.36.0) - 2022-10-18
 ### Added
  - all launch configuration settings are avaiable in settings under the `brightscript.debug` key ([#438](https://github.com/rokucommunity/vscode-brightscript-language/pull/438))
 ### Changed
@@ -108,7 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.35.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.1...2.35.2) - 2022-09-08
+## [2.35.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.1...v2.35.2) - 2022-09-08
 ### Changed
  - upgrade to [brighterscript@0.57.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0572---2022-09-08). Notable changes since 0.57.0:
      - Fix brightscript.configFile workspace config bug ([brighterscript#686](https://github.com/rokucommunity/brighterscript/pull/686))
@@ -116,7 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.35.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.0...2.35.1) - 2022-09-02
+## [2.35.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.35.0...v2.35.1) - 2022-09-02
 ### Changed
  - Document customizing editor.wordSeparators for trailing type symbols ([#436](https://github.com/rokucommunity/vscode-brightscript-language/pull/436))
  - upgrade to [roku-deploy@3.8.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#381---2022-09-02). Notable changes since 3.7.1:
@@ -138,7 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.35.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.2...2.35.0) - 2022-08-24
+## [2.35.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.2...v2.35.0) - 2022-08-24
 ### Changed
  - upgrade to [roku-debug@0.15.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0150---2022-08-23). Notable changes since 0.14.2:
      - Fix stopOnEntry bug with deep links. ([roku-debug#100](https://github.com/rokucommunity/roku-debug/pull/100))
@@ -156,13 +170,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.34.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.1...2.34.2) - 2022-08-15
+## [2.34.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.1...v2.34.2) - 2022-08-15
 ### Fixed
  - converted file svg icons to paths instead of text
 
 
 
-## [2.34.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.0...2.34.1) - 2022-08-15
+## [2.34.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.34.0...v2.34.1) - 2022-08-15
 ### Changed
  - Add .bs and .brs file icon support ([#422](https://github.com/rokucommunity/vscode-brightscript-language/pull/422))
  - WebView restructuring ([#421](https://github.com/rokucommunity/vscode-brightscript-language/pull/421))
@@ -193,7 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.34.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.33.2...2.34.0) - 2022-07-18
+## [2.34.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.33.2...v2.34.0) - 2022-07-18
 ### Added
  - support showing popups from debug sessions ([#407](https://github.com/rokucommunity/vscode-brightscript-language/pull/407))
  - syntax highlighting for regex literals ([#408](https://github.com/rokucommunity/vscode-brightscript-language/pull/408))
