@@ -35,6 +35,9 @@
             dispatch('childExpanded');
             selected = true;
 
+            // Go ahead and expand us as well to speed up digging into children if desired
+            expanded = true
+
             setTimeout(() => {
                 if (self) {
                     const rect = self.getBoundingClientRect()
