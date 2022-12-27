@@ -29,18 +29,22 @@
     let selected = false;
     export let focusedNode = -1;
     $: {
+        // If we are the focused node then we want to scroll down to this node
         if (focusedNode !== -1 && nodeTree.ref === focusedNode) {
+            // We need to expand all the parents before we can calculate how far we need to scroll down
+            dispatch('childExpanded');
             selected = true;
 
-            if (self) {
-                const rect = self.getBoundingClientRect()
-                document.getElementById('container').scrollTo({
-                    left: rect.left,
-                    top: rect.top - 90,
-                    behavior: 'smooth'
-                });
-            }
-            dispatch('childExpanded');
+            setTimeout(() => {
+                if (self) {
+                    const rect = self.getBoundingClientRect()
+                    document.getElementById('container').scrollTo({
+                        left: rect.left,
+                        top: rect.top - 90,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 0);
         } else {
             selected = false;
         }
