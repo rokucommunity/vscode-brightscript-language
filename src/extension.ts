@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as prettyBytes from 'pretty-bytes';
+import prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
 import * as rta from 'roku-test-automation';
 import * as path from 'path';
@@ -322,8 +322,8 @@ export class Extension {
             }
         }
     }
-
 }
+
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);

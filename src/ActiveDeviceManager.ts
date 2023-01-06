@@ -2,7 +2,7 @@ import * as backoff from 'backoff';
 import { EventEmitter } from 'events';
 import * as xmlParser from 'fast-xml-parser';
 import * as http from 'http';
-import * as NodeCache from 'node-cache';
+import NodeCache from 'node-cache';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client } from 'node-ssdp';
 import { URL } from 'url';

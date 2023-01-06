@@ -1,4 +1,4 @@
-import * as arraySort from 'array-sort';
+import arraySort from 'array-sort';
 import * as vscode from 'vscode';
 import type { RendezvousHistory } from 'roku-debug';
 import { isRendezvousEvent } from 'roku-debug';

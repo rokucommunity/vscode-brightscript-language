@@ -25,14 +25,16 @@ import type { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+const embeddedBrighterscriptVersion = require('brighterscript/package.json').version;
 
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
         this.embeddedBscInfo = {
-            path: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
+            path: './brighterscript.js',
             // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-            version: require('brighterscript/package.json').version
+            version: embeddedBrighterscriptVersion
         };
         //default to the embedded bsc version
         this.selectedBscInfo = this.embeddedBscInfo;
@@ -288,7 +290,6 @@ export class LanguageServerManager {
         if (bsdkPath !== this.selectedBscInfo.path) {
             await this.disableLanguageServer();
         }
-
         //try to load the package version.
         try {
             this.selectedBscInfo = {
