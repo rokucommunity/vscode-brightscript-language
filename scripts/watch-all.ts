@@ -34,7 +34,7 @@ const projects = [{
     dependencies: [
         'roku-deploy',
         'brighterscript'
-    ],
+    ]
 }, {
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
@@ -53,7 +53,7 @@ const projects = [{
         path: path.resolve(__dirname, '..', '..', x.name),
         state: 'pending' as 'pending' | 'error' | 'success',
         diagnostics: [] as undefined | ReturnType<typeof getDiagnostics>,
-        firstCompletion: deferred()
+        firstCompletion: deferred() as { resolve: () => void; reject: () => void; resolved: boolean; promise: Promise<any> }
     };
 }).filter(x => {
     return fsExtra.pathExistsSync(x.path);
@@ -69,8 +69,14 @@ function processData(project: Project, source: 'stdout' | 'stderr', data: string
         const [, errorCount] = /Found\s+(\d+)\s+error[s]?\.\s+Watching\s+for\s+file\s+changes/i.exec(line) ?? [];
         if (errorCount === '0') {
             project.state = 'success';
+            if (!project.firstCompletion.resolved) {
+                project.firstCompletion.resolve();
+            }
         } else if (errorCount !== undefined) {
             project.state = 'error';
+            if (!project.firstCompletion.resolved) {
+                project.firstCompletion.resolve();
+            }
         }
 
         //if file changes were detected, clear the diagnostics
@@ -126,7 +132,7 @@ const printStatus = debounce(() => {
         }
         logger.writeLine(`\n[${timestamp()}] Found ${errorCount} errors. Watching for file changes.`);
     }
-});
+}, 100, false);
 
 function getDiagnostics(data: string) {
     return [...data.matchAll(/^([^\s].*)[\(:](\d+)[,:](\d+)(?:\):\s+|\s+-\s+)(error|warning|info)\s+TS(\d+)\s*:\s*(.*)$/gm)].map((match) => {
@@ -143,8 +149,12 @@ function getDiagnostics(data: string) {
 }
 
 
-// eslint-disable-next-line github/array-foreach
-projects.forEach((project) => {
+// eslint-disable-next-line
+projects.forEach(async (project) => {
+    //wait for all dependencies to finish their first run
+    await Promise.all(
+        projects.filter(x => project.dependencies.includes(x.name)).map(x => x.firstCompletion.promise)
+    );
     const watcher = spawn('npm', ['run', 'watch'], {
         cwd: project.path,
         env: { ...process.env },
