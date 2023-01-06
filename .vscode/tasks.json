@@ -2,6 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "watch-all",
+            "type": "shell",
+            "command": "npm run watch-all --loglevel silent",
+            "presentation": {
+                "group": "watch",
+            },
+            "isBackground": true,
+            "problemMatcher": "$tsc-watch"
+        },
+        {
             "label": "watch",
             "type": "shell",
             "command": "npm",
