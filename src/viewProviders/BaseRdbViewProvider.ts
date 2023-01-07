@@ -5,6 +5,7 @@ import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
     protected onDeviceComponent?: rta.OnDeviceComponent;
 
+    // TODO see if we can have this pull from json file instead
     protected odcCommands: Array<keyof rta.OnDeviceComponent> = [
         'callFunc',
         'deleteEntireRegistry',
@@ -20,7 +21,9 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         'setValue',
         'writeRegistry',
         'storeNodeReferences',
-        'deleteNodeReferences'
+        'deleteNodeReferences',
+        'getNodesWithProperties',
+        'findNodesAtLocation'
     ];
 
     // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
@@ -54,17 +57,34 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
                 RokuDevice: {
                     devices: [{
                         host: context.ipAddress,
-                        password: ''
+                        password: context.password
                     }]
                 },
                 OnDeviceComponent: {
                     disableTelnet: true,
-                    disableCallOriginationLine: true
+                    disableCallOriginationLine: true,
+                    clientDebugLogging: false
                 }
             };
 
             onDeviceComponent.setConfig(rtaConfig);
             this.setOnDeviceComponent(onDeviceComponent);
+            return true;
+        } else if (command === 'getScreenshot') {
+            try {
+                const { buffer, format } = await rta.device.getScreenshot();
+
+                // TODO figure out how to handle format doesn't seem to matter
+                this.postMessage({
+                    name: 'screenshotAvailable',
+                    image: `data:image/jpg;base64, ${buffer.toString('base64')}`
+                });
+            } catch (e) {
+                this.postMessage({
+                    name: 'screenshotFailed'
+                });
+            }
+            return true;
         }
 
         return false;

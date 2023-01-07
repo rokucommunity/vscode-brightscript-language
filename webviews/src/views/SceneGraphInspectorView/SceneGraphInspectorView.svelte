@@ -1,3 +1,4 @@
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
@@ -9,12 +10,14 @@
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
-    import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
+    import ScreenshotSelectPage from './ScreenshotSelectPage.svelte';
+    import { SettingsGear, Issues, Refresh, Preview } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
     let loading = true;
     let error: Error | null;
-    let showSettings = false;
+    let showSettingsPage = false;
+    let showScreenshotSelectPage = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
     let inspectNodeNodeTree: ODC.NodeTree | undefined;
@@ -33,7 +36,8 @@
         parentRef: -1,
         /** Used to determine the position of this node in its parent if applicable */
         position: -1,
-        children: []
+        children: [],
+        keyPath: ''
     };
 
     let focusedNode = -1;
@@ -80,7 +84,7 @@
     }
 
     function openSettings() {
-        showSettings = true;
+        showSettingsPage = true;
     }
 
     function openNodeCountByType() {
@@ -181,8 +185,11 @@
 </style>
 
 <div id="container">
-    {#if showSettings}
-        <SettingsPage bind:showSettings />
+    {#if showSettingsPage}
+        <SettingsPage bind:showSettingsPage />
+    {/if}
+    {#if showScreenshotSelectPage}
+        <ScreenshotSelectPage bind:showScreenshotSelectPage />
     {/if}
     {#if showNodeCountByType}
         <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType />
@@ -230,6 +237,9 @@
             </span>
             <span class="icon-button" title="Refresh" on:click={refresh}>
                 <Refresh />
+            </span>
+            <span class="icon-button" title="Screenshot Select" on:click={(e) => showScreenshotSelectPage = true}>
+                <Preview />
             </span>
             <span class="icon-button" title="Settings" on:click={openSettings}>
                 <SettingsGear />

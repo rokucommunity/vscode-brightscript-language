@@ -57,7 +57,9 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     this.onViewReady();
                     this.postQueuedMessages();
                 } else {
-                    await this.handleViewMessage(message);
+                    if (!await this.handleViewMessage(message)) {
+                        console.log('Did not handle message', message);
+                    }
                 }
             } catch (e) {
                 this.postMessage({

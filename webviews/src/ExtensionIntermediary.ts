@@ -126,8 +126,8 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.isInFocusChain>>('isInFocusChain', args, options);
     }
 
-    public async observeField(args: rta.ODC.ObserveFieldArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.observeField>>('observeField', args, options);
+    public async onFieldChangeOnce(args: rta.ODC.OnFieldChangeOnceArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.onFieldChangeOnce>>('onFieldChangeOnce', args, options);
     }
 
     public async setValue(args: rta.ODC.SetValueArgs, options?: rta.ODC.RequestOptions) {
@@ -148,6 +148,14 @@ class ODCIntermediary {
 
     public async deleteNodeReferences(args: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
+    }
+
+    public async getNodesWithProperties(args: rta.ODC.GetNodesWithPropertiesArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>('getNodesWithProperties', args, options);
+    }
+
+    public async findNodesAtLocation(args: rta.ODC.FindNodesAtLocationArgs, options?: rta.ODC.RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>('findNodesAtLocation', args, options);
     }
 }
 
