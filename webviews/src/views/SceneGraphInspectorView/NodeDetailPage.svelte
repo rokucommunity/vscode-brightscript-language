@@ -17,8 +17,24 @@
         let nodeTree = inspectNodeNodeTree;
         if (inspectNodeNodeTree) {
             while (nodeTree) {
-                if (nodeTree.id) {
-                    absoluteKeyPathParts.unshift(nodeTree.id);
+                if (nodeTree.subtype === 'RowListItem') {
+                    // If we encounter a RowListItem then we know we need to modify the keypath structure
+                    const position = absoluteKeyPathParts.shift();
+                    for (const child of nodeTree.children) {
+                        if (child.position === position) {
+                            if (child.subtype === 'MarkupGrid') {
+                                absoluteKeyPathParts.unshift('items');
+                            } else if (child.subtype === 'Group') {
+                                absoluteKeyPathParts.unshift('title');
+                            } else {
+                                console.log('Encountered unexpected subtype ' + child.subtype);
+                            }
+                            break;
+                        }
+                    }
+                    absoluteKeyPathParts.unshift(nodeTree.position);
+                } else if (nodeTree.id) {
+                    absoluteKeyPathParts.unshift('#' + nodeTree.id);
                 } else if (nodeTree.position >= 0) {
                     absoluteKeyPathParts.unshift(nodeTree.position);
                 }

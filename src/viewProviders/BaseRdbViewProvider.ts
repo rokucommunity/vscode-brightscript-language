@@ -15,7 +15,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         'getNodesInfo',
         'hasFocus',
         'isInFocusChain',
-        'observeField',
+        'onFieldChangeOnce',
         'readRegistry',
         'setValue',
         'writeRegistry',
