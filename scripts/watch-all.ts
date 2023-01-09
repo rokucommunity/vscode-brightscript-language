@@ -25,15 +25,16 @@ logger.writeLine(`${timestamp()} Starting compilation in watch mode...`);
 
 //run watch tasks for every related project, in a single output window so we don't have 7 console tabs open
 const projects = [{
-    name: 'roku-deploy'
-}, {
     name: 'brighterscript'
+}, {
+    name: 'roku-deploy'
 }, {
     name: 'roku-debug'
 }, {
     name: 'brighterscript-formatter'
 }, {
-    name: 'vscode-brightscript-language'
+    name: 'vscode-brightscript-language',
+    dependencies: []
 }].map(x => {
     return {
         ...x,
@@ -118,7 +119,7 @@ const printStatus = debounce(() => {
                 }
             }
         }
-        logger.writeLine(`\n[${timestamp()}] Found ${errorCount} errors. Watching for file changes.`);
+        logger.writeLine(`\n[${timestamp()}] Found ${errorCount} errors. Watching for file changes.\n`);
     }
 }, 100, false);
 

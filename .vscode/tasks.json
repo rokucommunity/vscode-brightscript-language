@@ -60,7 +60,7 @@
                 }
             ],
             "dependsOn": [
-                "watch"
+                "watch-all"
             ]
         },
         {
