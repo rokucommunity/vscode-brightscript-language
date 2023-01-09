@@ -27,25 +27,13 @@ logger.writeLine(`${timestamp()} Starting compilation in watch mode...`);
 const projects = [{
     name: 'roku-deploy'
 }, {
-    name: 'brighterscript',
-    dependencies: ['roku-deploy']
+    name: 'brighterscript'
 }, {
-    name: 'roku-debug',
-    dependencies: [
-        'roku-deploy',
-        'brighterscript'
-    ]
+    name: 'roku-debug'
 }, {
-    name: 'brighterscript-formatter',
-    dependencies: ['brighterscript']
+    name: 'brighterscript-formatter'
 }, {
-    name: 'vscode-brightscript-language',
-    dependencies: [
-        'roku-deploy',
-        'brighterscript',
-        'roku-debug',
-        'brighterscript-formatter'
-    ]
+    name: 'vscode-brightscript-language'
 }].map(x => {
     return {
         ...x,

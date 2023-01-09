@@ -54,7 +54,7 @@ describe('Language auto-indent rules', () => {
             endfunction
         `);
     });
-sadf
+
     it('indents AA literals', () => {
         expectIndentToEqual(undent`
             p = {
