@@ -4,6 +4,7 @@ import * as net from 'net';
 import * as url from 'url';
 import { debounce } from 'debounce';
 import * as vscode from 'vscode';
+import type { ActiveDeviceManager } from './ActiveDeviceManager';
 import { Cache } from 'brighterscript/dist/Cache';
 
 class Util {
@@ -237,6 +238,74 @@ class Util {
             }
         });
         return channel;
+    }
+
+    public async showDeviceQuickPicker(activeDeviceManager: ActiveDeviceManager, updateLastUsedDevice = false) {
+        let host: string;
+
+        const config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        const showDeviceInfoMessages = (config.deviceDiscovery || {}).showInfoMessages;
+        if (activeDeviceManager.enabled) {
+            if (activeDeviceManager.firstRequestForDevices && !activeDeviceManager.getCacheStats().keys) {
+                let deviceWaitTime = 5000;
+                if (showDeviceInfoMessages) {
+                    await vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
+                }
+
+                await util.delay(deviceWaitTime);
+            }
+
+            let activeDevices = activeDeviceManager.getActiveDevices();
+
+            if (activeDevices && Object.keys(activeDevices).length) {
+                let items = [];
+
+                // Create the Quick Picker option items
+                for (const key of Object.keys(activeDevices)) {
+                    let device = activeDevices[key];
+                    let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
+
+                    if (activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === activeDeviceManager.lastUsedDevice) {
+                        items.unshift(itemText);
+                    } else {
+                        items.push(itemText);
+                    }
+                }
+
+                // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
+                let manualIpOption = 'Other';
+                items.push(manualIpOption);
+
+                let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
+
+                if (host !== manualIpOption) {
+                    let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
+                    let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
+                    if (defaultDeviceName && updateLastUsedDevice) {
+                        activeDeviceManager.lastUsedDevice = defaultDeviceName;
+                    }
+                    host = deviceIP;
+                }
+            }
+        }
+
+        if (!host) {
+            host = await this.openInputBox('The IP address of your Roku device');
+        }
+
+        return host;
+    }
+
+    /**
+     * Helper to open a vscode input box ui
+     * @param placeHolder placeHolder text
+     * @param value default value
+     */
+    public async openInputBox(placeHolder: string, value = '') {
+        return vscode.window.showInputBox({
+            placeHolder: placeHolder,
+            value: value
+        });
     }
 
     /**

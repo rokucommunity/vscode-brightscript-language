@@ -257,6 +257,14 @@ export class BrightScriptCommands {
         this.registerCommand('showReleaseNotes', () => {
             this.whatsNewManager.showReleaseNotes();
         });
+
+        this.registerCommand('setPrimaryDevice', async (host?: string) => {
+            if (host) {
+
+            } else {
+                host = await util.showDeviceQuickPicker(this.activeDeviceManager);
+            }
+        });
     }
 
     public async openFile(filename: string, range: vscode.Range = null, preview = false): Promise<boolean> {

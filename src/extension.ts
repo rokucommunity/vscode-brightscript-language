@@ -43,6 +43,7 @@ export class Extension {
     private telemetryManager: TelemetryManager;
     private remoteControlManager: RemoteControlManager;
     private brightScriptCommands: BrightScriptCommands;
+    private activeDeviceManager: ActiveDeviceManager;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -63,6 +64,7 @@ export class Extension {
         this.globalStateManager = new GlobalStateManager(context);
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+        this.activeDeviceManager = new ActiveDeviceManager();
 
         //initialize the analytics manager
         context.subscriptions.push(
@@ -85,7 +87,6 @@ export class Extension {
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
-
 
         const declarationProvider = new DeclarationProvider();
         context.subscriptions.push(declarationProvider);
@@ -141,7 +142,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.activeDeviceManager, this.telemetryManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
