@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.3...v2.38.4) - 2023-01-12
+### Changed
+ - upgrade to [roku-deploy@3.9.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#393---2023-01-12)
+ - upgrade to [roku-debug@0.18.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0180---2023-01-12)
+     - Execute command for repl expressions ([roku-debug#119](https://github.com/rokucommunity/roku-debug/pull/119))
+     - Fix inifinite-spin for unloaded vars ([roku-debug#120](https://github.com/rokucommunity/roku-debug/pull/120))
+ - upgrade to [brighterscript@0.61.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0613---2023-01-12). Notable changes since 0.61.2:
+     - Add diagnostic for passing more than 5 arguments to a callFunc ([brighterscript#765](https://github.com/rokucommunity/brighterscript/pull/765))
+ - upgrade to [brighterscript-formatter@1.6.23](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1623---2023-01-12)
+### Fixed
+ - rdb keypaths and focus scrolling ([#455](https://github.com/rokucommunity/vscode-brightscript-language/pull/455))
+
+
+
 ## [2.38.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.2...v2.38.3) - 2022-12-15
 ### Changed
  - upgrade to [roku-debug@0.17.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0173---2022-12-15). Notable changes since 0.17.1:
