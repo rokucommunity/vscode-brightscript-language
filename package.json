@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.38.5",
+    "version": "2.38.6",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -121,7 +121,7 @@
         "typescript": "^4.7.4",
         "typescript-json-schema": "^0.50.1",
         "undent": "^0.1.0",
-        "vsce": "^2.6.7",
+        "vsce": "^2.15.0",
         "vscode-tmgrammar-test": "^0.0.11",
         "yargs": "^16.2.0"
     },
