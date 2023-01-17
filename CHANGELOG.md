@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.5...v2.38.6) - 2023-01-17
+### Changed
+ - replaced vsmarketplace badge url to pass marketplace certification
+
+
+
 ## [2.38.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.4...v2.38.5) - 2023-01-17
 ### Changed
  - nothing changed. the VSCode extension marketplace isn't showing v2.38.4 for some reason, so bump the patch version to force an update
