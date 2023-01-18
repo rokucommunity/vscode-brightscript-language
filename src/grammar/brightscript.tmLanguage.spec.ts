@@ -6,6 +6,26 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors `continue for`', async () => {
+        await testGrammar(`
+            for i = 0 to 10
+                continue for
+                        '^^^ keyword.control.loop.brs
+               '^^^^^^^^ keyword.control.loop.brs
+            end for
+        `);
+    });
+
+    it('colors `continue while`', async () => {
+        await testGrammar(`
+            while true
+                continue while
+                        '^^^^^ keyword.control.loop.brs
+               '^^^^^^^^ keyword.control.loop.brs
+            end for
+        `);
+    });
+
     it('colors strings correctly', async () => {
         await testGrammar(`
             print "hello world", true
