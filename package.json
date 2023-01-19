@@ -504,10 +504,10 @@
                                 "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
                                 "default": true
                             },
-                            "hidePrefixVariables": {
+                            "showHiddenVariables": {
                                 "type": "boolean",
                                 "description": "Hide variables that are prefrixed with a special prefix designated to be hidden",
-                                "default": true
+                                "default": false
                             },
                             "envFile": {
                                 "type": "string",
