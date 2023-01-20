@@ -34,7 +34,12 @@ const projects = [{
     name: 'brighterscript-formatter'
 }, {
     name: 'vscode-brightscript-language',
-    dependencies: []
+    dependencies: [
+        'brighterscript',
+        'roku-deploy',
+        'roku-debug',
+        'brighterscript-formatter'
+    ]
 }].map(x => {
     return {
         ...x,
