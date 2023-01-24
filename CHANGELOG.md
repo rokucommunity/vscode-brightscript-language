@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.6...v2.38.7) - 2023-01-24
+### Changed
+ - upgrade to [roku-debug@0.18.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0181---2023-01-24). Notable changes since 0.18.0:
+     - hide prefixed variables in the debug variable panel ([roku-debug#127](https://github.com/rokucommunity/roku-debug/pull/127))
+     - fix isAssignableExpression to correctly support dotted and indexed set statements ([roku-debug#128](https://github.com/rokucommunity/roku-debug/pull/128))
+### Fixed
+ - `continue` keyword colorization ([#459](https://github.com/rokucommunity/vscode-brightscript-language/pull/459))
+
+
+
 ## [2.38.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.5...v2.38.6) - 2023-01-17
 ### Changed
  - replaced vsmarketplace badge url to pass marketplace certification
