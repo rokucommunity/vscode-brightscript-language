@@ -43,6 +43,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             disableScreenSaver: true,
             retainStagingFolder: false,
             enableVariablesPanel: true,
+            showHiddenVariables: false,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
             autoRunSgDebugCommands: [],
@@ -224,6 +225,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
         config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
+        config.showHiddenVariables = config.showHiddenVariables === true ? true : this.configDefaults.showHiddenVariables;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.files = config.files ? config.files : this.configDefaults.files;
