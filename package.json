@@ -506,7 +506,7 @@
                             },
                             "showHiddenVariables": {
                                 "type": "boolean",
-                                "description": "Hide variables that are prefrixed with a special prefix designated to be hidden",
+                                "description": "Show variables that are prefrixed with a special prefix designated to be hidden",
                                 "default": false
                             },
                             "envFile": {
