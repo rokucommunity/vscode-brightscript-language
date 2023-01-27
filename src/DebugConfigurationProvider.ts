@@ -240,8 +240,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         // Check for the existence of the tracker task file in auto injection is enabled
-        if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
-            await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+        if (config.injectRaleTrackerTask) {
+            if (config.raleTrackerTaskFileLocation.includes('${workspaceFolder}')) {
+                config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
+            }
+            if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+                await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+            }
         }
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
