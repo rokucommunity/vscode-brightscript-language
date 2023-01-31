@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.7...v2.38.8) - 2023-01-31
+### Changed
+ - Allow relative injectRaleTrackerTask ([#462](https://github.com/rokucommunity/vscode-brightscript-language/pull/462))
+ - upgrade to [roku-debug@0.18.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0183---2023-01-31). Notable changes since 0.18.1:
+     - Increase the timeout for debug protocol control ([roku-debug#134](https://github.com/rokucommunity/roku-debug/pull/134))
+     - Fix off-by-1 bug with threads over protocol ([roku-debug#132](https://github.com/rokucommunity/roku-debug/pull/132))
+
+
+
 ## [2.38.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.6...v2.38.7) - 2023-01-24
 ### Changed
  - upgrade to [roku-debug@0.18.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0181---2023-01-24). Notable changes since 0.18.0:
