@@ -10,14 +10,12 @@
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
-    import ScreenshotSelectPage from './ScreenshotSelectPage.svelte';
-    import { SettingsGear, Issues, Refresh, Preview } from 'svelte-codicons';
+    import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
     let loading = true;
     let error: Error | null;
     let showSettingsPage = false;
-    let showScreenshotSelectPage = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
     let inspectNodeNodeTree: ODC.NodeTree | undefined;
@@ -188,9 +186,6 @@
     {#if showSettingsPage}
         <SettingsPage bind:showSettingsPage />
     {/if}
-    {#if showScreenshotSelectPage}
-        <ScreenshotSelectPage bind:showScreenshotSelectPage />
-    {/if}
     {#if showNodeCountByType}
         <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType />
     {/if}
@@ -237,9 +232,6 @@
             </span>
             <span class="icon-button" title="Refresh" on:click={refresh}>
                 <Refresh />
-            </span>
-            <span class="icon-button" title="Screenshot Select" on:click={(e) => showScreenshotSelectPage = true}>
-                <Preview />
             </span>
             <span class="icon-button" title="Settings" on:click={openSettings}>
                 <SettingsGear />
