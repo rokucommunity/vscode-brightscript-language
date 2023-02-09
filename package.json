@@ -2256,6 +2256,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.pressPowerOn",
+                "title": "Press the PowerOn button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressChannelUp",
                 "title": "Press the ChannelUp button on the Roku remote",
                 "category": "Brightscript"
