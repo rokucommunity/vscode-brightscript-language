@@ -34,8 +34,23 @@
         intermediary.setVscodeContext('brightscript.rokuDeviceView.isInspectingNodes', isInspectingNodes);
     }
 
-    let imageWidth = 0
-    let imageHeight = 0
+    // We can't observe the image height directly so we observe the surrounding div instead
+    let screenshotContainerWidth = 0;
+    let screenshotContainerHeight = 0;
+    $: {
+        const screenshot = document.getElementById('screenshot');
+
+        // Need 2nd and 3rd conditions to trigger it to update
+        if (screenshot && screenshotContainerWidth && screenshotContainerHeight) {
+            imageWidth = screenshot.clientWidth;
+            imageHeight = screenshot.clientHeight;
+        }
+    }
+
+    let imageWidth = 0;
+    let imageHeight = 0;
+
+
     let imageSizeAdjust = 1;
     $: {
         if (imageWidth) {
@@ -173,13 +188,11 @@
 
             // IMPROVEMENT in the future we could either do calculations for finding nodes at location locally or switch to only telling SG inspector view to refresh
             // We also want to update the node information to current state
-            const { flatTree, rootTree } = await odc.storeNodeReferences({
+            await odc.storeNodeReferences({
                 includeNodeCountInfo: true,
                 includeArrayGridChildren: true,
                 includeBoundingRectInfo: true
             });
-            console.log('flatTree', flatTree);
-            console.log('rootTree', rootTree);
 
         } else if (name === 'extension.brightscript.rokuDeviceView.pauseScreenshotCapture') {
             enableScreenshotCapture = false;
@@ -257,14 +270,11 @@
     #container {
         width: 100%;
         height: 100%;
-        overflow: scroll;
     }
 
-    /** Scrollbar causes flickering bug but we still want to be able to scroll the contents so we hide it */
-    ::-webkit-scrollbar {
-        width: 0px;
-        height: 0px;
-        background: transparent; /* make scrollbar transparent */
+    img {
+        max-width: 100vw;
+        max-height: 100vh;
     }
 
     #screenshotContainer {
@@ -321,8 +331,8 @@
         id="screenshotContainer"
         class:screenshotOutOfDate="{screenshotOutOfDate}"
         class:isInspectingNodes="{isInspectingNodes}"
-        bind:clientWidth={imageWidth}
-        bind:clientHeight={imageHeight}
+        bind:clientWidth={screenshotContainerWidth}
+        bind:clientHeight={screenshotContainerHeight}
         on:mousemove={onImageMouseMove}
         on:mousedown={onMouseDown}>
         {#if focusedNodeTree}
