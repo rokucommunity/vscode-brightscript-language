@@ -46,11 +46,12 @@
             "args": [
                 "--server=4711"
             ],
+            "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js",
                 "${workspaceFolder}/../roku-debug/dist/**/*.js",
-                "${workspaceFolder}/../roku-deploy/dist/**/*.js"
+                "!**/node_modules/**"
             ],
+            "resolveSourceMapLocations": null,
             "stopOnEntry": false
         },
         {

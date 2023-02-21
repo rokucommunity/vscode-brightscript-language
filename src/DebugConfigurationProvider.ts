@@ -43,6 +43,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             disableScreenSaver: true,
             retainStagingFolder: false,
             enableVariablesPanel: true,
+            showHiddenVariables: false,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
             autoRunSgDebugCommands: [],
@@ -224,6 +225,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
         config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
+        config.showHiddenVariables = config.showHiddenVariables === true ? true : this.configDefaults.showHiddenVariables;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.files = config.files ? config.files : this.configDefaults.files;
@@ -238,8 +240,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         // Check for the existence of the tracker task file in auto injection is enabled
-        if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
-            await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+        if (config.injectRaleTrackerTask) {
+            if (config.raleTrackerTaskFileLocation.includes('${workspaceFolder}')) {
+                config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
+            }
+            if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+                await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+            }
         }
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself

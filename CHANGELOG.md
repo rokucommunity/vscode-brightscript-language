@@ -6,6 +6,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.38.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.7...v2.38.8) - 2023-01-31
+### Changed
+ - Allow relative injectRaleTrackerTask ([#462](https://github.com/rokucommunity/vscode-brightscript-language/pull/462))
+ - upgrade to [roku-debug@0.18.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0183---2023-01-31). Notable changes since 0.18.1:
+     - Increase the timeout for debug protocol control ([roku-debug#134](https://github.com/rokucommunity/roku-debug/pull/134))
+     - Fix off-by-1 bug with threads over protocol ([roku-debug#132](https://github.com/rokucommunity/roku-debug/pull/132))
+
+
+
+## [2.38.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.6...v2.38.7) - 2023-01-24
+### Changed
+ - upgrade to [roku-debug@0.18.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0181---2023-01-24). Notable changes since 0.18.0:
+     - hide prefixed variables in the debug variable panel ([roku-debug#127](https://github.com/rokucommunity/roku-debug/pull/127))
+     - fix isAssignableExpression to correctly support dotted and indexed set statements ([roku-debug#128](https://github.com/rokucommunity/roku-debug/pull/128))
+### Fixed
+ - `continue` keyword colorization ([#459](https://github.com/rokucommunity/vscode-brightscript-language/pull/459))
+
+
+
+## [2.38.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.5...v2.38.6) - 2023-01-17
+### Changed
+ - replaced vsmarketplace badge url to pass marketplace certification
+
+
+
+## [2.38.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.4...v2.38.5) - 2023-01-17
+### Changed
+ - nothing changed. the VSCode extension marketplace isn't showing v2.38.4 for some reason, so bump the patch version to force an update
+
+
+
+## [2.38.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.3...v2.38.4) - 2023-01-12
+### Changed
+ - upgrade to [roku-deploy@3.9.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#393---2023-01-12)
+ - upgrade to [roku-debug@0.18.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0180---2023-01-12)
+     - Execute command for repl expressions ([roku-debug#119](https://github.com/rokucommunity/roku-debug/pull/119))
+     - Fix inifinite-spin for unloaded vars ([roku-debug#120](https://github.com/rokucommunity/roku-debug/pull/120))
+ - upgrade to [brighterscript@0.61.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0613---2023-01-12). Notable changes since 0.61.2:
+     - Add diagnostic for passing more than 5 arguments to a callFunc ([brighterscript#765](https://github.com/rokucommunity/brighterscript/pull/765))
+ - upgrade to [brighterscript-formatter@1.6.23](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1623---2023-01-12)
+### Fixed
+ - rdb keypaths and focus scrolling ([#455](https://github.com/rokucommunity/vscode-brightscript-language/pull/455))
+
+
+
 ## [2.38.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.2...v2.38.3) - 2022-12-15
 ### Changed
  - upgrade to [roku-debug@0.17.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0173---2022-12-15). Notable changes since 0.17.1:

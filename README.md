@@ -2,7 +2,7 @@
 
 [![build status](https://img.shields.io/github/workflow/status/rokucommunity/vscode-brightscript-language/build.svg?logo=github)](https://github.com/rokucommunity/vscode-brightscript-language/actions?query=workflow%3Abuild)
 [![coverage status](https://img.shields.io/coveralls/github/rokucommunity/vscode-brightscript-language?logo=coveralls)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
-[![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/installs-short/RokuCommunity.brightscript.svg?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
+[![Visual Studio Marketplace](https://vsmarketplacebadges.dev/installs-short/RokuCommunity.brightscript.png?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/RokuCommunity.brightscript.svg?logo=visual-studio-code&label=VSCode)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![OpenVSX](https://img.shields.io/open-vsx/v/RokuCommunity/brightscript.svg?label=OpenVSX)](https://open-vsx.org/extension/RokuCommunity/brightscript)
 [![license](https://img.shields.io/github/license/rokucommunity/vscode-brightscript-language.svg)](LICENSE)
