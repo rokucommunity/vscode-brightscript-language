@@ -91,8 +91,8 @@
 
     let odcAvailable = true;
 
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
+    intermediary.observeEvent('onDeviceAvailabilityChange', (message) => {
+        odcAvailable = message.odcAvailable;
     });
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -102,6 +102,7 @@
 <style>
     #container {
         margin: 10px 10px;
+        overflow-wrap: anywhere;
     }
 
     label {

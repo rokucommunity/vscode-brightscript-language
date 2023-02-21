@@ -11,7 +11,7 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.exportRegistry', async () => {
             await vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(async (uri) => {
-                const result = await this.onDeviceComponent?.readRegistry();
+                const result = await this.rtaManager.onDeviceComponent?.readRegistry();
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(result?.values), 'utf8'));
             });
         }));
@@ -27,7 +27,7 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
         }));
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.clearRegistry', async () => {
-            await this.onDeviceComponent.deleteEntireRegistry();
+            await this.rtaManager.onDeviceComponent.deleteEntireRegistry();
             await this.sendRegistryUpdated();
         }));
 
@@ -41,7 +41,7 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
             const input = await vscode.workspace.fs.readFile(uri[0]);
 
             const data = JSON.parse(Buffer.from(input).toString('utf8'));
-            await this.onDeviceComponent?.writeRegistry({
+            await this.rtaManager.onDeviceComponent?.writeRegistry({
                 values: data
             });
             await this.sendRegistryUpdated();
@@ -49,7 +49,7 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
     }
 
     protected async sendRegistryUpdated() {
-        const result = await this.onDeviceComponent?.readRegistry();
+        const result = await this.rtaManager.onDeviceComponent?.readRegistry();
         this.postOrQueueMessage({ name: 'registryUpdated', values: result?.values });
     }
 }

@@ -7,7 +7,7 @@
         showNodeCountByType = false;
     }
 
-    function handleKeydown(event) {
+    function onKeydown(event) {
         const key = event.key;
 
         switch (key) {
@@ -67,7 +67,7 @@
     }
 </style>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={onKeydown} />
 <div id="container">
     <div id="background" />
     <div id="header">

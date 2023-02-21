@@ -19,8 +19,8 @@ class ExtensionIntermediary {
                 delete this.inflightRequests[message.id];
                 request.callback(message);
             } else {
-                if (message.name) {
-                    const listeners = this.observedEvents.get(message.name);
+                if (message.event) {
+                    const listeners = this.observedEvents.get(message.event);
                     if (listeners) {
                         for (const listener of listeners) {
                             listener(message);
@@ -67,14 +67,34 @@ class ExtensionIntermediary {
         });
     }
 
-    public observeEvent(name: string, callback: ObserverCallback) {
-        let observedEvent = this.observedEvents.get(name);
+    public setVscodeContext(key: string, value: boolean | number | string) {
+        window.vscode.postMessage({
+            command: 'setVscodeContext',
+            key: key,
+            value: value
+        });
+    }
+
+    public async getStoredNodeReferences() {
+        return this.sendMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('getStoredNodeReferences');
+    }
+
+    public observeEvent(eventName: string, callback: ObserverCallback) {
+        let observedEvent = this.observedEvents.get(eventName);
         if (!observedEvent) {
             observedEvent = [];
         }
 
         observedEvent.push(callback);
-        this.observedEvents.set(name, observedEvent);
+        this.observedEvents.set(eventName, observedEvent);
+    }
+
+    public sendMessageToWebviews(viewIds: string | string[], message) {
+        window.vscode.postMessage({
+            command: 'sendMessageToWebviews',
+            viewIds: viewIds,
+            message: message
+        });
     }
 
     private generateRandomString(length = 7) {
@@ -142,7 +162,7 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
     }
 
-    public async storeNodeReferences(args: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
+    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
     }
 

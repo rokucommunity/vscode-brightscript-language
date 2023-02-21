@@ -1,87 +1,80 @@
 import * as rta from 'roku-test-automation';
+import type * as vscode from 'vscode';
+import type { ODC } from 'roku-test-automation';
+import * as fsExtra from 'fs-extra';
+import * as path from 'path';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
+import type { RtaManager } from '../managers/RtaManager';
 
 export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
-    protected onDeviceComponent?: rta.OnDeviceComponent;
+    protected rtaManager?: RtaManager;
 
-    // TODO see if we can have this pull from json file instead
-    protected odcCommands: Array<keyof rta.OnDeviceComponent> = [
-        'callFunc',
-        'deleteEntireRegistry',
-        'deleteRegistrySections',
-        'getFocusedNode',
-        'getValue',
-        'getValues',
-        'getNodesInfo',
-        'hasFocus',
-        'isInFocusChain',
-        'onFieldChangeOnce',
-        'readRegistry',
-        'setValue',
-        'writeRegistry',
-        'storeNodeReferences',
-        'deleteNodeReferences',
-        'getNodesWithProperties',
-        'findNodesAtLocation'
-    ];
+    protected odcCommands: Array<ODC.RequestTypes>;
 
-    // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
-    public setOnDeviceComponent(onDeviceComponent?: rta.OnDeviceComponent) {
-        this.onDeviceComponent = onDeviceComponent;
+    constructor(context: vscode.ExtensionContext) {
+        super(context);
+        const requestTypesPath = path.join(rta.utils.getClientFilesPath(), 'requestTypes.schema.json');
+        const json = JSON.parse(fsExtra.readFileSync(requestTypesPath, 'utf8'));
+        this.odcCommands = json.enum;
+    }
 
+    public setRtaManager(rtaManager?: RtaManager) {
+        this.rtaManager = rtaManager;
+    }
+
+    public updateDeviceAvailability() {
         this.postOrQueueMessage({
-            name: 'onDeviceComponentStatus',
-            available: onDeviceComponent ? true : false
+            event: 'onDeviceAvailabilityChange',
+            odcAvailable: !!this.rtaManager.onDeviceComponent,
+            deviceAvailable: !!this.rtaManager.device
         });
     }
 
     protected onViewReady() {
-        // Always post back the ODC status so we make sure the client doesn't miss it if it got refreshed
-        this.setOnDeviceComponent(this.onDeviceComponent);
+        // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
+        this.updateDeviceAvailability();
     }
 
     protected async handleViewMessage(message) {
         const { command, context } = message;
         if (this.odcCommands.includes(command)) {
-            const response = await this.onDeviceComponent[command](context.args, context.options);
-            this.postMessage({
+            const response = await this.rtaManager.sendOdcRequest(this.id, command, context);
+            this.postOrQueueMessage({
                 ...message,
                 response: response
             });
             return true;
+        } else if (command === 'getStoredNodeReferences') {
+            const response = this.rtaManager.getStoredNodeReferences();
+            this.postOrQueueMessage({
+                ...message,
+                response: response
+            });
+
+            return true;
         } else if (command === 'setManualIpAddress') {
-            const onDeviceComponent = rta.odc;
-
-            const rtaConfig: rta.ConfigOptions = {
-                RokuDevice: {
-                    devices: [{
-                        host: context.ipAddress,
-                        password: context.password
-                    }]
-                },
-                OnDeviceComponent: {
-                    disableTelnet: true,
-                    disableCallOriginationLine: true,
-                    clientDebugLogging: false
-                }
-            };
-
-            onDeviceComponent.setConfig(rtaConfig);
-            this.setOnDeviceComponent(onDeviceComponent);
+            this.rtaManager.setupRtaWithConfig({
+                ...message.context,
+                injectRdbOnDeviceComponent: true
+            });
             return true;
         } else if (command === 'getScreenshot') {
             try {
-                const { buffer, format } = await rta.device.getScreenshot();
-
-                // TODO figure out how to handle format doesn't seem to matter
-                this.postMessage({
-                    name: 'screenshotAvailable',
-                    image: `data:image/jpg;base64, ${buffer.toString('base64')}`
+                const result = await this.rtaManager.device.getScreenshot();
+                this.postOrQueueMessage({
+                    ...message,
+                    response: {
+                        success: true,
+                        arrayBuffer: result.buffer.buffer
+                    }
                 });
             } catch (e) {
-                this.postMessage({
-                    name: 'screenshotFailed'
+                this.postOrQueueMessage({
+                    ...message,
+                    response: {
+                        success: false
+                    }
                 });
             }
             return true;

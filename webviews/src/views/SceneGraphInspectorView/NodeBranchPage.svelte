@@ -1,4 +1,5 @@
 <script lang="ts">
+    // TODO this probably should be named somethings besides a page
     import type { ODC } from 'roku-test-automation';
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
@@ -11,10 +12,6 @@
     export let nodeTree: ODC.NodeTree;
     export let depth = 0;
     let self: HTMLDivElement;
-    let nodeFieldsCache: {
-        translation?: [number, number];
-        visible?: boolean;
-    };
 
     const expandedStorageKey = `expanded:${nodeTree.ref}`;
     export let expanded = utils.getStorageBooleanValue(expandedStorageKey);
@@ -38,15 +35,18 @@
             // Go ahead and expand us as well to speed up digging into children if desired
             expanded = true
 
+            const scrollToElement = (element) => {
+                const offset = getOffset(element);
+
+                document.getElementById('container').scrollTo({
+                    left: 0,
+                    top: offset.top - 90,
+                    behavior: 'auto'
+                });
+            }
+
             setTimeout(() => {
-                if (self) {
-                    const rect = self.getBoundingClientRect()
-                    document.getElementById('container').scrollTo({
-                        left: rect.left,
-                        top: rect.top - 90,
-                        behavior: 'smooth'
-                    });
-                }
+                scrollToElement(self);
             }, 0);
         } else {
             selected = false;
@@ -62,39 +62,42 @@
         expanded = !expanded;
     }
 
-    function open() {
-        dispatch('open', nodeTree);
+    function getOffset(obj){
+        let left = obj.offsetLeft;
+        let top = obj.offsetTop;
+
+        while (obj = obj.offsetParent) {
+            left += obj.offsetLeft;
+            top += obj.offsetTop;
+        }
+
+        return {left, top};
     }
 
-    let requestTimeout: ReturnType<typeof setTimeout>;
-    function onNodeMouseEnter() {
-        if (nodeTree.subtype !== 'Global' && !nodeFieldsCache) {
-             // Delay timer to avoid trying to load data for every single item the user scrolls by
-            requestTimeout = setTimeout(async () => {
-                let args: ODC.GetValuesArgs = {
-                    requests: {
-                        visible: {
-                            base: 'nodeRef',
-                            keyPath: `${nodeTree.ref}.visible`
-                        },
-                        translation: {
-                            base: 'nodeRef',
-                            keyPath: `${nodeTree.ref}.translation`
-                        }
-                    }
-                }
+    function open() {
+        // Optimization since we don't need the whole tree to be sent
+        dispatch('openNode', {...nodeTree, children: []});
+    }
 
-                const {results} = await odc.getValues(args);
-                nodeFieldsCache = {
-                    visible: results.visible.value,
-                    translation: results.translation.value
-                };
-            }, 60);
+    function nodeTreeFocused() {
+        let detail = null;
+        if (nodeTree.sceneRect) {
+            detail = {...nodeTree, children: []}
         }
+        // Optimization since we don't need the whole tree to be sent
+        dispatch('nodeTreeFocused', detail);
+    }
+
+    function onNodeMouseEnter() {
+        // Useful while debugging
+        // console.log(nodeTree);
+        // console.log('rect:', nodeTree.rect);
+        // console.log('sceneRect:', nodeTree.sceneRect);
+        nodeTreeFocused();
     }
 
     function onNodeMouseLeave() {
-        clearTimeout(requestTimeout);
+        dispatch('nodeTreeFocused', null);
     }
 
     let lastXScreenPosition;
@@ -112,7 +115,7 @@
             return;
         }
 
-        const translation = nodeFieldsCache.translation;
+        const translation = nodeTree.translation;
         translation[0] += Math.floor(e.x - lastXScreenPosition);
         translation[1] += Math.floor(e.y - lastYScreenPosition);
 
@@ -130,9 +133,9 @@
         await odc.setValue({
             base: 'nodeRef',
             keyPath: `${nodeTree.ref}.visible`,
-            value: !nodeFieldsCache.visible
+            value: !nodeTree.visible
         });
-        nodeFieldsCache.visible = !nodeFieldsCache.visible;
+        nodeTree.visible = !nodeTree.visible;
     }
 
     function onChildExpanded() {
@@ -230,22 +233,20 @@
         </span>
     </div>
     <div class="actions">
-        {#if nodeFieldsCache}
-            {#if nodeFieldsCache.translation !== undefined}
-                <span
-                    title="Move Node Position"
-                    class="icon-button"
-                    on:click|stopPropagation
-                    on:pointerdown={onMoveNodePositionDown}
-                    on:pointermove={throttle(onMoveNodePosition, 33)}>
-                    <Move />
-                </span>
-            {/if}
-            {#if nodeFieldsCache.visible !== undefined}
-                <span title="{nodeFieldsCache.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
-                    {#if nodeFieldsCache.visible}<Eye />{:else}<EyeClosed />{/if}
-                </span>
-            {/if}
+        {#if nodeTree.translation !== undefined}
+            <span
+                title="Move Node Position"
+                class="icon-button"
+                on:click|stopPropagation
+                on:pointerdown={onMoveNodePositionDown}
+                on:pointermove={throttle(onMoveNodePosition, 33)}>
+                <Move />
+            </span>
+        {/if}
+        {#if nodeTree.visible !== undefined}
+            <span title="{nodeTree.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
+                {#if nodeTree.visible}<Eye />{:else}<EyeClosed />{/if}
+            </span>
         {/if}
         <span
             title="Edit Node"
@@ -256,12 +257,13 @@
     </div>
 </div>
 <div class="children" class:hide={!expanded}>
-    {#each nodeTree.children as childNodeTree}
+    {#each nodeTree.children as nodeTreeChild}
         <svelte:self
-            on:open
+            on:openNode
+            on:nodeTreeFocused
             on:childExpanded={onChildExpanded}
             depth={depth + 1}
-            nodeTree={childNodeTree}
+            nodeTree={nodeTreeChild}
             focusedNode={focusedNode} />
     {/each}
 </div>

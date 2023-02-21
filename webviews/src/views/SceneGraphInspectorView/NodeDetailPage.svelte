@@ -146,14 +146,11 @@
     }
 
     function setValue(fieldKeyPath: string, value: any) {
-        const args: Omit<ChangedFieldEntry, 'ts'> = {
-            subtype: inspectNodeSubtype,
-            id: fields.id.value,
+        odc.setValue({
             base: inspectNodeBaseKeyPath.base,
             keyPath: `${inspectNodeBaseKeyPath.keyPath}.${fieldKeyPath}`,
             value: value,
-        }
-        odc.setValue(args);
+        });
     }
 
     function onNodeClicked() {
@@ -226,7 +223,7 @@
         }
     }
 
-    function handleKeydown(event) {
+    function onKeydown(event) {
         // Don't handle anything if we're not the top detail view
         if (inspectChildNodeBaseKeyPath) {
             return;
@@ -243,7 +240,7 @@
         }
     }
 
-    function handleKeyup(event) {
+    function onKeyup(event) {
         const key = event.key;
         switch (key) {
             case 'Shift':
@@ -413,8 +410,8 @@
 </style>
 
 <svelte:window
-    on:keydown={handleKeydown}
-    on:keyup={handleKeyup} />
+    on:keydown={onKeydown}
+    on:keyup={onKeyup} />
 <div id="background" />
 <div id="container" class:hide={inspectChildNodeBaseKeyPath}>
     <div id="header">

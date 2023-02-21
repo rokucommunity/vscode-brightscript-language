@@ -13,7 +13,7 @@
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
 
     window.vscode = acquireVsCodeApi();
-    let loading = true;
+    let loading = false;
     let error: Error | null;
     let showSettingsPage = false;
     let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
@@ -40,6 +40,17 @@
 
     let focusedNode = -1;
 
+    intermediary.observeEvent('storedNodeReferencesUpdated', async () => {
+        loading = true;
+        const result = await intermediary.getStoredNodeReferences();
+        rootTree = result.rootTree;
+        flatTree = result.flatTree;
+
+        totalNodeCount = result.totalNodes ?? 0;
+        nodeCountByType = result.nodeCountByType;
+        loading = false;
+    });
+
     async function refresh() {
         loading = true;
         inspectNodeBaseKeyPath = null;
@@ -48,7 +59,8 @@
         try {
             const result = await odc.storeNodeReferences({
                 includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo', true),
-                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true)
+                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true),
+                includeBoundingRectInfo: true
             }, {
                 timeout: 15000
             });
@@ -91,8 +103,8 @@
 
     let odcAvailable = false;
 
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
+    intermediary.observeEvent('onDeviceAvailabilityChange', (message) => {
+        odcAvailable = message.odcAvailable;
         if (odcAvailable) {
             refresh();
         } else {
@@ -100,10 +112,7 @@
         }
     });
 
-    // Required by any view so we can know that the view is ready to receive messages
-    intermediary.sendViewReady();
-
-    function openNode(event: CustomEvent<ODC.NodeTree>) {
+    function onOpenNode(event: CustomEvent<ODC.NodeTree>) {
         const nodeTree = event.detail;
         inspectNodeNodeTree = nodeTree;
         //if the global node was clicked
@@ -121,6 +130,23 @@
             inspectNodeSubtype = nodeTree.subtype;
         }
     }
+
+    intermediary.observeEvent('onNodeTreeFocused', (message) => {
+        focusedNode = -1;
+        if (message.nodeTree) {
+            focusedNode = message.nodeTree.ref;
+        }
+    });
+
+    function onNodeTreeFocused(event: CustomEvent<ODC.NodeTree>) {
+        intermediary.sendMessageToWebviews('rokuDeviceView', {
+            event: 'onNodeTreeFocused',
+            nodeTree: event.detail
+        })
+    }
+
+    // Required by any view so we can know that the view is ready to receive messages
+    intermediary.sendViewReady();
 </script>
 
 <style>
@@ -128,7 +154,8 @@
         --headerHeight: 30px;
         width: 100%;
         height: 100%;
-        overflow: scroll;
+        overflow-y: scroll;
+        overflow-wrap: anywhere;
     }
 
     #header {
@@ -248,7 +275,8 @@
         <div id="nodeTree">
             {#each rootTree as rootNode}
                 <NodeBranchPage
-                    on:open={openNode}
+                    on:openNode={onOpenNode}
+                    on:nodeTreeFocused={onNodeTreeFocused}
                     bind:focusedNode
                     nodeTree={rootNode}
                     expanded={true} />

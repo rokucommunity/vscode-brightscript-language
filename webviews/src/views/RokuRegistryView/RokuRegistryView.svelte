@@ -9,17 +9,19 @@
     let loading = true;
 
     let registryValues = {};
-    (async () => {
-        loading = true;
-        const { values } = await odc.readRegistry();
-        registryValues = registryView.formatValues(values);
-        loading = false;
-    })();
 
-    let odcAvailable = true;
+    let odcAvailable = false;
 
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
+    intermediary.observeEvent('onDeviceAvailabilityChange', async (message) => {
+        odcAvailable = message.odcAvailable;
+        if (odcAvailable) {
+            loading = true;
+            const { values } = await odc.readRegistry();
+            registryValues = registryView.formatValues(values);
+            loading = false;
+        } else {
+            registryValues = {}
+        }
     });
 
     intermediary.observeEvent('registryUpdated', (message) => {

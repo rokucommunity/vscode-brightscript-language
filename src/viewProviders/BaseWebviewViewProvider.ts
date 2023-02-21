@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
-
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
+import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
@@ -22,9 +23,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     private outDirWatcher: AsyncSubscription;
     private viewReady = false;
     private queuedMessages = [];
+    private webviewViewProviderManager: WebviewViewProviderManager;
 
     public dispose() {
         void this.outDirWatcher?.unsubscribe();
+    }
+
+    public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
+        this.webviewViewProviderManager = manager;
+    }
+
+    public postOrQueueMessage(message) {
+        if (this.viewReady) {
+            this.postMessage(message);
+        } else {
+            this.queuedMessages.push(message);
+        }
     }
 
     protected postMessage(message) {
@@ -39,14 +53,6 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
     }
 
-    protected postOrQueueMessage(message) {
-        if (this.viewReady) {
-            this.postMessage(message);
-        } else {
-            this.queuedMessages.push(message);
-        }
-    }
-
     private setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
@@ -56,6 +62,10 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     this.viewReady = true;
                     this.onViewReady();
                     this.postQueuedMessages();
+                } else if (command === 'setVscodeContext') {
+                    await vscodeContextManager.set(message.key, message.value);
+                } else if (command === 'sendMessageToWebviews') {
+                    this.webviewViewProviderManager.sendMessageToWebviews(message.viewIds, message.message);
                 } else {
                     if (!await this.handleViewMessage(message)) {
                         console.log('Did not handle message', message);
@@ -64,7 +74,10 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             } catch (e) {
                 this.postMessage({
                     ...message,
-                    error: e.message
+                    error: {
+                        message: e.message,
+                        stack: e.stack
+                    }
                 });
             }
         });
@@ -72,6 +85,15 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected handleViewMessage(message): Promise<boolean> | boolean {
         return false;
+    }
+
+    protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string) {
+        context.subscriptions.push(vscode.commands.registerCommand(command, () => {
+            this.postOrQueueMessage({
+                event: 'onVscodeCommandReceived',
+                commandName: command
+            });
+        }));
     }
 
     protected onViewReady() { }
@@ -87,7 +109,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
                 this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
-                    //only refresh when the index.html page is changed. Since vite rewrites the file on every cycle, this is enough to know to reload the page
+                    //only refresh when the index.html page is changed. Since svelte rewrites the file on every build, this is enough to know to reload the page
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {
