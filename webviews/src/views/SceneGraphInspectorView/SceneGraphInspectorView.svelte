@@ -221,7 +221,7 @@
     {:else if !odcAvailable}
         <OdcSetupSteps />
     {:else if error}
-        <div id="errorMessage">{error}</div>
+        <div id="errorMessage">{error.message}</div>
         <div id="errorHelp">
             If you are seeing this, please make sure you have the on device
             component running. This requires that both the files are included in
