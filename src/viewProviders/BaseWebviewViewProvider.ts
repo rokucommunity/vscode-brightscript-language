@@ -105,7 +105,8 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected async getHtmlForWebview() {
         try {
-            if (util.isExtensionHostRunning() && !this.outDirWatcher) {
+            const watcherPath = require.resolve('@parcel/watcher');
+            if (watcherPath && !this.outDirWatcher) {
                 // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
                 this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
