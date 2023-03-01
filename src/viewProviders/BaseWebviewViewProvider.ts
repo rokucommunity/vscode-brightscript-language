@@ -68,7 +68,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     this.webviewViewProviderManager.sendMessageToWebviews(message.viewIds, message.message);
                 } else {
                     if (!await this.handleViewMessage(message)) {
-                        console.log('Did not handle message', message);
+                        console.warn('Did not handle message', message);
                     }
                 }
             } catch (e) {
@@ -116,7 +116,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             if (watcher && !this.outDirWatcher) {
                 // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
                 this.outDirWatcher = await watcher.subscribe(this.webviewBasePath, (err, events: Event[]) => {
-                    //only refresh when the index.html page is changed. Since svelte rewrites the file on every build, this is enough to know to reload the page
+                    //only refresh when the index.html page is changed. Since vite rewrites the file on every build, this is enough to know to reload the page
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {

@@ -159,9 +159,7 @@
             const result = await odc.findNodesAtLocation(args);
             focusedNodeTree = result.matches[0];
         } catch(e) {
-            console.log(e);
-
-            debugger;
+            console.error(e);
         }
     }
 
@@ -224,10 +222,9 @@
             return;
         }
         currentlyCapturingScreenshot = true;
-        const {success, arrayBuffer} = await intermediary.sendMessage('getScreenshot') as any;
-        currentlyCapturingScreenshot = false;
-
-        if (success) {
+        try {
+            const {success, arrayBuffer} = await intermediary.sendMessage('getScreenshot') as any;
+            if (success) {
             const newScreenshotUrl = URL.createObjectURL(new Blob(
                 [new Uint8Array(arrayBuffer)],
                 { type: 'image/jpeg' }
@@ -248,6 +245,9 @@
             setTimeout(() => {
                 requestScreenshot();
             }, 200);
+        }
+        } finally {
+            currentlyCapturingScreenshot = false;
         }
     }
 
