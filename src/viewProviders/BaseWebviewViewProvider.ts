@@ -105,11 +105,17 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected async getHtmlForWebview() {
         try {
-            const watcherPath = require.resolve('@parcel/watcher');
-            if (watcherPath && !this.outDirWatcher) {
+            let watcher;
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                watcher = require('@parcel/watcher');
+            } catch (e) {
+                // Doing nothing if watcher does not exist
+            }
+
+            if (watcher && !this.outDirWatcher) {
                 // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
-                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
+                this.outDirWatcher = await watcher.subscribe(this.webviewBasePath, (err, events: Event[]) => {
                     //only refresh when the index.html page is changed. Since svelte rewrites the file on every build, this is enough to know to reload the page
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
