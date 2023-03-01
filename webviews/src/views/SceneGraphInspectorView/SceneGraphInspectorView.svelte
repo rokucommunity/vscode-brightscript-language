@@ -6,7 +6,7 @@
     import Loader from '../../shared/Loader.svelte';
     import { utils } from '../../utils';
     import NodeCountByTypePage from './NodeCountByTypePage.svelte';
-    import NodeBranchPage from './NodeBranchPage.svelte';
+    import Branch from './Branch.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
@@ -274,7 +274,7 @@
 
         <div id="nodeTree">
             {#each rootTree as rootNode}
-                <NodeBranchPage
+                <Branch
                     on:openNode={onOpenNode}
                     on:nodeTreeFocused={onNodeTreeFocused}
                     bind:focusedNode

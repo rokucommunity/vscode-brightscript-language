@@ -1,5 +1,4 @@
 <script lang="ts">
-    // TODO this probably should be named somethings besides a page
     import type { ODC } from 'roku-test-automation';
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
