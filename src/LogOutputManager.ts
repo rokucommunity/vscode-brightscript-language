@@ -220,12 +220,11 @@ export class LogOutputManager {
             ]);
 
             // need to upgrade this includes statement to include a full hex regex
-            if (e.body.line.includes('')) {
-                this.appendLine('its a match with &h');
+            if (e.body.line.includes('&h')) {
                 const regexGlobal = /&h[0-9A-F][0-9A-F]/g;
-                const regexMatches = e.body.line.match(regexGlobal);
-                for (const regexMatch of Object.keys(regexMatches)) {
-                    this.appendLine('regex item found ' + regexMatch);
+                let regexMatches: RegExpExecArray;
+                while ((regexMatches = regexGlobal.exec(e.body.line)) !== null) {
+                    const regexMatch: string = regexMatches[0];
                     if (errorCodes.has(regexMatch)) {
                         const errorDescription = errorCodes.get(regexMatch);
                         e.body.line = e.body.line.replace(regexMatch, regexMatch + ' ' + errorDescription + ' ');
@@ -265,6 +264,33 @@ export class LogOutputManager {
                 }
             }
         }
+    }
+
+    private getMatches(str, regex) {
+        const matches = [];
+        let match;
+
+        if (regex.global) {
+            regex.lastIndex = 0;
+        } else {
+            regex = new RegExp(regex.source, 'g' +
+                (regex.ignoreCase ? 'i' : '') +
+                (regex.multiline ? 'm' : '') +
+                (regex.sticky ? 'y' : ''));
+        }
+
+        while (match === regex.exec(str)) {
+            // If you want to use regex.lastIndex in this loop, you'd need more
+            // code here to fix IE < 9
+
+            matches.push(match);
+
+            if (regex.lastIndex === match.index) {
+                regex.lastIndex++;
+            }
+        }
+
+        return matches;
     }
 
     private showMessage(message: string, severity: string) {
