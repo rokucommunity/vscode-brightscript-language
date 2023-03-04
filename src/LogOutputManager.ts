@@ -224,7 +224,7 @@ export class LogOutputManager {
                 this.appendLine('its a match with &h');
                 const regexGlobal = /&h[0-9A-F][0-9A-F]/g;
                 const regexMatches = e.body.line.match(regexGlobal);
-                for (const regexMatch of regexMatches) {
+                for (const regexMatch of Object.keys(regexMatches)) {
                     this.appendLine('regex item found ' + regexMatch);
                     if (errorCodes.has(regexMatch)) {
                         const errorDescription = errorCodes.get(regexMatch);
