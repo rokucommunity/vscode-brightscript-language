@@ -25,6 +25,7 @@ import { WhatsNewManager } from './managers/WhatsNewManager';
 import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
+import { ViewProviderId } from './viewProviders/ViewProviderId';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -97,11 +98,11 @@ export class Extension {
 
         //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
-        vscode.window.registerTreeDataProvider('rendezvousView', rendezvousViewProvider);
+        vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Online Devices" view
         let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
-        vscode.window.registerTreeDataProvider('onlineDevicesView', onlineDevicesViewProvider);
+        vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {

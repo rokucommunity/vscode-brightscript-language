@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { ODC } from 'roku-test-automation';
+    import type { TreeNode } from 'roku-test-automation';
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
@@ -8,11 +8,11 @@
     import Chevron from '../../shared/Chevron.svelte';
     const dispatch = createEventDispatcher();
 
-    export let nodeTree: ODC.NodeTree;
+    export let treeNode: TreeNode;
     export let depth = 0;
     let self: HTMLDivElement;
 
-    const expandedStorageKey = `expanded:${nodeTree.ref}`;
+    const expandedStorageKey = `expanded:${treeNode.ref}`;
     export let expanded = utils.getStorageBooleanValue(expandedStorageKey);
     $: {
         if (expanded) {
@@ -26,7 +26,7 @@
     export let focusedNode = -1;
     $: {
         // If we are the focused node then we want to scroll down to this node
-        if (focusedNode !== -1 && nodeTree.ref === focusedNode) {
+        if (focusedNode !== -1 && treeNode.ref === focusedNode) {
             // We need to expand all the parents before we can calculate how far we need to scroll down
             dispatch('childExpanded');
             selected = true;
@@ -52,7 +52,7 @@
         }
     }
 
-    $: hasChildren = nodeTree.children.length > 0;
+    $: hasChildren = treeNode.children.length > 0;
 
     function toggleExpand() {
         if (!hasChildren) {
@@ -75,28 +75,28 @@
 
     function open() {
         // Optimization since we don't need the whole tree to be sent
-        dispatch('openNode', {...nodeTree, children: []});
+        dispatch('openNode', {...treeNode, children: []});
     }
 
-    function nodeTreeFocused() {
+    function treeNodeFocused() {
         let detail = null;
-        if (nodeTree.sceneRect) {
-            detail = {...nodeTree, children: []}
+        if (treeNode.sceneRect) {
+            detail = {...treeNode, children: []}
         }
         // Optimization since we don't need the whole tree to be sent
-        dispatch('nodeTreeFocused', detail);
+        dispatch('treeNodeFocused', detail);
     }
 
     function onNodeMouseEnter() {
         // Useful while debugging
-        // console.log(nodeTree);
-        // console.log('rect:', nodeTree.rect);
-        // console.log('sceneRect:', nodeTree.sceneRect);
-        nodeTreeFocused();
+        // console.log(treeNode);
+        // console.log('rect:', treeNode.rect);
+        // console.log('sceneRect:', treeNode.sceneRect);
+        treeNodeFocused();
     }
 
     function onNodeMouseLeave() {
-        dispatch('nodeTreeFocused', null);
+        dispatch('treeNodeFocused', null);
     }
 
     let lastXScreenPosition;
@@ -114,7 +114,7 @@
             return;
         }
 
-        const translation = nodeTree.translation;
+        const translation = treeNode.translation;
         translation[0] += Math.floor(e.x - lastXScreenPosition);
         translation[1] += Math.floor(e.y - lastYScreenPosition);
 
@@ -123,7 +123,7 @@
 
         await odc.setValue({
             base: 'nodeRef',
-            keyPath: `${nodeTree.ref}.translation`,
+            keyPath: `${treeNode.ref}.translation`,
             value: translation
         }, {timeout: 300});
     }
@@ -131,10 +131,10 @@
     async function toggleNodeVisiblity() {
         await odc.setValue({
             base: 'nodeRef',
-            keyPath: `${nodeTree.ref}.visible`,
-            value: !nodeTree.visible
+            keyPath: `${treeNode.ref}.visible`,
+            value: !treeNode.visible
         });
-        nodeTree.visible = !nodeTree.visible;
+        treeNode.visible = !treeNode.visible;
     }
 
     function onChildExpanded() {
@@ -228,11 +228,11 @@
             {/if}
         </span>
         <span class="nodeName">
-            {nodeTree.subtype}{#if nodeTree.id.length > 0}&nbsp;id: {nodeTree.id}{/if}
+            {treeNode.subtype}{#if treeNode.id.length > 0}&nbsp;id: {treeNode.id}{/if}
         </span>
     </div>
     <div class="actions">
-        {#if nodeTree.translation !== undefined}
+        {#if treeNode.translation !== undefined}
             <span
                 title="Move Node Position"
                 class="icon-button"
@@ -242,9 +242,9 @@
                 <Move />
             </span>
         {/if}
-        {#if nodeTree.visible !== undefined}
-            <span title="{nodeTree.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
-                {#if nodeTree.visible}<Eye />{:else}<EyeClosed />{/if}
+        {#if treeNode.visible !== undefined}
+            <span title="{treeNode.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
+                {#if treeNode.visible}<Eye />{:else}<EyeClosed />{/if}
             </span>
         {/if}
         <span
@@ -256,13 +256,13 @@
     </div>
 </div>
 <div class="children" class:hide={!expanded}>
-    {#each nodeTree.children as nodeTreeChild}
+    {#each treeNode.children as treeNodeChild}
         <svelte:self
             on:openNode
-            on:nodeTreeFocused
+            on:treeNodeFocused
             on:childExpanded={onChildExpanded}
             depth={depth + 1}
-            nodeTree={nodeTreeChild}
+            treeNode={treeNodeChild}
             focusedNode={focusedNode} />
     {/each}
 </div>

@@ -1,13 +1,17 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
+    import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
+    import type { TreeNode } from 'roku-test-automation';
+    import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
 
     window.vscode = acquireVsCodeApi();
 
     let deviceAvailable = false;
-    intermediary.observeEvent('onDeviceAvailabilityChange', (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.deviceAvailable;
 
         enableScreenshotCapture = true
@@ -59,29 +63,29 @@
     }
 
     let mouseIsOverView = false;
-    let focusedNodeTree: ODC.NodeTree | null;
+    let focusedTreeNode: TreeNode | null;
     $: {
         if (mouseIsOverView && isInspectingNodes) {
-            let nodeTree = undefined
-            if (focusedNodeTree) {
-                nodeTree = {
+            let treeNode = undefined
+            if (focusedTreeNode) {
+                treeNode = {
                     // Optimization since we only need the reference for linking with the sceneGraphInspectorView
-                    ref: focusedNodeTree.ref
+                    ref: focusedTreeNode.ref
                 }
             }
-            intermediary.sendMessageToWebviews('sceneGraphInspectorView', {
-                event: 'onNodeTreeFocused',
-                nodeTree: nodeTree
+            intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
+                event: ViewProviderEvent.onTreeNodeFocused,
+                treeNode: treeNode
             });
         }
     }
 
-    intermediary.observeEvent('onNodeTreeFocused', (message) => {
-        focusedNodeTree = message.nodeTree;
+    intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
+        focusedTreeNode = message.treeNode;
     });
 
-    intermediary.observeEvent('storedNodeReferencesUpdated', (message) => {
-        focusedNodeTree = null;
+    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, (message) => {
+        focusedTreeNode = null;
     });
 
     let nodeSelectionCursorLeft = 0;
@@ -89,22 +93,22 @@
 
     let nodeTop: number;
     $: {
-        nodeTop = focusedNodeTree?.sceneRect.y * imageSizeAdjust;
+        nodeTop = focusedTreeNode?.sceneRect.y * imageSizeAdjust;
     }
 
     let nodeLeft: number;
     $: {
-        nodeLeft = focusedNodeTree?.sceneRect.x * imageSizeAdjust;
+        nodeLeft = focusedTreeNode?.sceneRect.x * imageSizeAdjust;
     }
 
     let nodeWidth: number;
     $: {
-        nodeWidth = focusedNodeTree?.sceneRect.width * imageSizeAdjust;
+        nodeWidth = focusedTreeNode?.sceneRect.width * imageSizeAdjust;
     }
 
     let nodeHeight: number;
     $: {
-        nodeHeight = focusedNodeTree?.sceneRect.height * imageSizeAdjust;
+        nodeHeight = focusedTreeNode?.sceneRect.height * imageSizeAdjust;
     }
 
     function getOffset(obj){
@@ -157,7 +161,7 @@
     async function findNodesAtLocation(args) {
         try {
             const result = await odc.findNodesAtLocation(args);
-            focusedNodeTree = result.matches[0];
+            focusedTreeNode = result.matches[0];
         } catch(e) {
             console.error(e);
         }
@@ -175,9 +179,9 @@
         isInspectingNodes = false;
     }
 
-    intermediary.observeEvent('onVscodeCommandReceived', async (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
         const name = message.commandName;
-        if (name === 'extension.brightscript.rokuDeviceView.inspectNodes') {
+        if (name === VscodeCommand.rokuDeviceViewInspectNodes) {
             wasRunningScreenshotCaptureBeforeInspect = enableScreenshotCapture;
             isInspectingNodes = true;
             enableScreenshotCapture = true;
@@ -192,13 +196,13 @@
                 includeBoundingRectInfo: true
             });
 
-        } else if (name === 'extension.brightscript.rokuDeviceView.pauseScreenshotCapture') {
+        } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
             enableScreenshotCapture = false;
-        } else if (name === 'extension.brightscript.rokuDeviceView.resumeScreenshotCapture') {
+        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
             isInspectingNodes = false;
             enableScreenshotCapture = true;
             requestScreenshot();
-        } else if (name === 'extension.brightscript.rokuDeviceView.refreshScreenshot') {
+        } else if (name === VscodeCommand.rokuDeviceViewRefreshScreenshot) {
             enableScreenshotCapture = true;
             requestScreenshot();
             enableScreenshotCapture = false;
@@ -223,7 +227,7 @@
         }
         currentlyCapturingScreenshot = true;
         try {
-            const {success, arrayBuffer} = await intermediary.sendMessage('getScreenshot') as any;
+            const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot) as any;
             if (success) {
             const newScreenshotUrl = URL.createObjectURL(new Blob(
                 [new Uint8Array(arrayBuffer)],
@@ -257,7 +261,7 @@
         switch (key) {
             case 'Escape':
                 isInspectingNodes = false;
-                focusedNodeTree = null;
+                focusedTreeNode = null;
                 break;
         }
     }
@@ -335,17 +339,17 @@
         bind:clientHeight={screenshotContainerHeight}
         on:mousemove={onImageMouseMove}
         on:mousedown={onMouseDown}>
-        {#if focusedNodeTree}
+        {#if focusedTreeNode}
             <div id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
             <div id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
 
             <div id="nodeInfo">
-                <b>subtype:</b> {focusedNodeTree.subtype},
-                <b>id:</b> {focusedNodeTree.id}<br>
-                <b>x:</b> {focusedNodeTree.sceneRect.x},
-                <b>y:</b> {focusedNodeTree.sceneRect.y},
-                <b>width:</b> {focusedNodeTree.sceneRect.width},
-                <b>height:</b> {focusedNodeTree.sceneRect.height}
+                <b>subtype:</b> {focusedTreeNode.subtype},
+                <b>id:</b> {focusedTreeNode.id}<br>
+                <b>x:</b> {focusedTreeNode.sceneRect.x},
+                <b>y:</b> {focusedTreeNode.sceneRect.y},
+                <b>width:</b> {focusedTreeNode.sceneRect.width},
+                <b>height:</b> {focusedTreeNode.sceneRect.height}
             </div>
         {/if}
             <img

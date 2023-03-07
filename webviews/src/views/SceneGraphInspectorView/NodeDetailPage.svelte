@@ -1,62 +1,18 @@
 <script lang="ts">
     import throttle from 'just-throttle';
-    import type { ODC } from 'roku-test-automation';
+    import type { TreeNode, BaseKeyPath } from 'roku-test-automation';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
-    import type { ChangedFieldEntry } from '../../ChangedFieldEntry';
     import Chevron from '../../shared/Chevron.svelte';
     import { Refresh, Discard, ChromeClose, Move, Key } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
-    export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
-    export let flatTree: ODC.NodeTree[] | null;
-    export let inspectNodeNodeTree: ODC.NodeTree | null;
-    $: {
-        const absoluteKeyPathParts = [];
-        let nodeTree = inspectNodeNodeTree;
-        if (inspectNodeNodeTree) {
-            while (nodeTree) {
-                if (nodeTree.subtype === 'RowListItem') {
-                    // If we encounter a RowListItem then we know we need to modify the keypath structure
-                    const position = absoluteKeyPathParts.shift();
-                    for (const child of nodeTree.children) {
-                        if (child.position === position) {
-                            if (child.subtype === 'MarkupGrid') {
-                                absoluteKeyPathParts.unshift('items');
-                            } else if (child.subtype === 'Group') {
-                                absoluteKeyPathParts.unshift('title');
-                            } else {
-                                console.log('Encountered unexpected subtype ' + child.subtype);
-                            }
-                            break;
-                        }
-                    }
-                    absoluteKeyPathParts.unshift(nodeTree.position);
-                } else if (nodeTree.id) {
-                    absoluteKeyPathParts.unshift('#' + nodeTree.id);
-                } else if (nodeTree.position >= 0) {
-                    absoluteKeyPathParts.unshift(nodeTree.position);
-                }
+    export let inspectNodeBaseKeyPath: BaseKeyPath | null;
+    export let inspectNodeTreeNode: TreeNode | null;
 
-                if (nodeTree.parentRef >= 0) {
-                    for (const tree of flatTree) {
-                        if (nodeTree.parentRef === tree.ref) {
-                            nodeTree = tree;
-                            break;
-                        }
-                    }
-                } else {
-                    nodeTree = undefined;
-                }
-            }
-        }
-        inspectNodeAbsoluteKeyPath = absoluteKeyPathParts.join('.');
-    }
-
-    let inspectNodeAbsoluteKeyPath: string;
     let inspectChildNodeSubtype: string;
-    let inspectChildNodeBaseKeyPath: ODC.BaseKeyPath | null;
+    let inspectChildNodeBaseKeyPath: BaseKeyPath | null;
     let showKeyPathInfo = false;
 
 
@@ -428,7 +384,7 @@
             on:click={refresh}>
             <Refresh />
         </span>
-    {#if inspectNodeAbsoluteKeyPath || (inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath)}
+    {#if inspectNodeTreeNode?.keyPath}
         <span
             id="showKeyPathInfo"
             class="icon-button"
@@ -445,23 +401,11 @@
             <ChromeClose />
         </span>
     </div>
-{#if showKeyPathInfo}
-    {#if inspectNodeAbsoluteKeyPath}
-        <div id="baseKeyPathContainer">
-            <b>relative:</b><br>
-            base: '{inspectNodeBaseKeyPath.base}',<br>
-            keyPath: '{inspectNodeBaseKeyPath.keyPath}'<br>
-            <br>
-            <b>absolute:</b><br>
-            base: 'scene',<br>
-            keyPath: '{inspectNodeAbsoluteKeyPath}'
-        </div>
-    {:else if inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath}
-        <div id="baseKeyPathContainer">
-            base: '{inspectNodeBaseKeyPath.base}',<br>
-            keyPath: '{inspectNodeBaseKeyPath.keyPath}'
-        </div>
-    {/if}
+{#if showKeyPathInfo && inspectNodeTreeNode}
+    <div id="baseKeyPathContainer">
+        "base": "scene",<br>
+        "keyPath": "{inspectNodeTreeNode.keyPath}"
+    </div>
 {/if}
 
 

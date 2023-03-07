@@ -1,6 +1,5 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import SettingsPage from './SettingsPage.svelte';
     import Loader from '../../shared/Loader.svelte';
@@ -11,19 +10,22 @@
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
+    import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import type { BaseKeyPath, TreeNode } from 'roku-test-automation';
 
     window.vscode = acquireVsCodeApi();
     let loading = false;
     let error: Error | null;
     let showSettingsPage = false;
-    let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
+    let inspectNodeBaseKeyPath: BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
-    let inspectNodeNodeTree: ODC.NodeTree | undefined;
+    let inspectNodeTreeNode: TreeNode | undefined;
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
-    let rootTree = [] as ODC.NodeTree[];
-    let flatTree = [] as ODC.NodeTree[];
+    let rootTree = [] as TreeNode[];
+    let flatTree = [] as TreeNode[];
 
     const globalNode = {
         id: '',
@@ -40,7 +42,7 @@
 
     let focusedNode = -1;
 
-    intermediary.observeEvent('storedNodeReferencesUpdated', async () => {
+    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async () => {
         loading = true;
         const result = await intermediary.getStoredNodeReferences();
         rootTree = result.rootTree;
@@ -103,7 +105,7 @@
 
     let odcAvailable = false;
 
-    intermediary.observeEvent('onDeviceAvailabilityChange', (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.odcAvailable;
         if (odcAvailable) {
             refresh();
@@ -112,36 +114,35 @@
         }
     });
 
-    function onOpenNode(event: CustomEvent<ODC.NodeTree>) {
-        const nodeTree = event.detail;
-        inspectNodeNodeTree = nodeTree;
+    function onOpenNode(event: CustomEvent<TreeNode>) {
+        const treeNode = event.detail;
+        inspectNodeTreeNode = treeNode;
         //if the global node was clicked
-        if (nodeTree === globalNode) {
+        if (treeNode === globalNode) {
             inspectNodeBaseKeyPath = {
-                base: 'global',
-                keyPath: ''
+                base: 'global'
             };
             inspectNodeSubtype = 'Global';
         } else {
             inspectNodeBaseKeyPath = {
                 base: 'nodeRef',
-                keyPath: `${nodeTree.ref}`
+                keyPath: `${treeNode.ref}`
             };
-            inspectNodeSubtype = nodeTree.subtype;
+            inspectNodeSubtype = treeNode.subtype;
         }
     }
 
-    intermediary.observeEvent('onNodeTreeFocused', (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
         focusedNode = -1;
-        if (message.nodeTree) {
-            focusedNode = message.nodeTree.ref;
+        if (message.treeNode) {
+            focusedNode = message.treeNode.ref;
         }
     });
 
-    function onNodeTreeFocused(event: CustomEvent<ODC.NodeTree>) {
-        intermediary.sendMessageToWebviews('rokuDeviceView', {
-            event: 'onNodeTreeFocused',
-            nodeTree: event.detail
+    function onTreeNodeFocused(event: CustomEvent<TreeNode>) {
+        intermediary.sendMessageToWebviews(ViewProviderId.rokuDeviceView, {
+            event: ViewProviderEvent.onTreeNodeFocused,
+            treeNode: event.detail
         })
     }
 
@@ -276,9 +277,9 @@
             {#each rootTree as rootNode}
                 <Branch
                     on:openNode={onOpenNode}
-                    on:nodeTreeFocused={onNodeTreeFocused}
+                    on:onTreeNodeFocused={onTreeNodeFocused}
                     bind:focusedNode
-                    nodeTree={rootNode}
+                    treeNode={rootNode}
                     expanded={true} />
             {/each}
         </div>
@@ -287,7 +288,6 @@
         <NodeDetailPage
             bind:inspectNodeBaseKeyPath
             inspectNodeSubtype={inspectNodeSubtype}
-            inspectNodeNodeTree={inspectNodeNodeTree}
-            flatTree={flatTree} />
+            inspectNodeTreeNode={inspectNodeTreeNode} />
     {/if}
 </div>

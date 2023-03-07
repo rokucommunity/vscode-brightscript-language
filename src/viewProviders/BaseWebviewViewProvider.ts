@@ -5,6 +5,8 @@ import type { AsyncSubscription, Event } from '@parcel/watcher';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
 import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderCommand } from './ViewProviderCommand';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
@@ -58,13 +60,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             try {
                 const command = message.command;
 
-                if (command === 'viewReady') {
+                if (command === ViewProviderCommand.viewReady) {
                     this.viewReady = true;
                     this.onViewReady();
                     this.postQueuedMessages();
-                } else if (command === 'setVscodeContext') {
+                } else if (command === ViewProviderCommand.setVscodeContext) {
                     await vscodeContextManager.set(message.key, message.value);
-                } else if (command === 'sendMessageToWebviews') {
+                } else if (command === ViewProviderCommand.sendMessageToWebviews) {
                     this.webviewViewProviderManager.sendMessageToWebviews(message.viewIds, message.message);
                 } else {
                     if (!await this.handleViewMessage(message)) {
@@ -90,7 +92,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string) {
         context.subscriptions.push(vscode.commands.registerCommand(command, () => {
             this.postOrQueueMessage({
-                event: 'onVscodeCommandReceived',
+                event: ViewProviderEvent.onVscodeCommandReceived,
                 commandName: command
             });
         }));

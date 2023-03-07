@@ -1,5 +1,10 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
+import type { VscodeCommand } from '../../src/commands/VscodeCommand';
+import type { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
+import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
+import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
+import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -31,10 +36,11 @@ class ExtensionIntermediary {
         });
     }
 
-    public async sendMessage<T>(command: string, context = {}) {
+    public async sendObservableMessage<T>(message: Record<string, unknown>) {
         this.setupExtensionMessageObserver();
 
         const requestId = this.generateRandomString();
+        message.id = requestId;
 
         return new Promise<T>((resolve, reject) => {
             const callback = (message) => {
@@ -43,11 +49,6 @@ class ExtensionIntermediary {
                 } else {
                     resolve(message.response);
                 }
-            };
-            const message = {
-                id: requestId,
-                command: command,
-                context: context
             };
 
             this.inflightRequests[requestId] = {
@@ -58,11 +59,28 @@ class ExtensionIntermediary {
         });
     }
 
+    public sendCommand<T>(command: VscodeCommand | ViewProviderCommand, context = {}) {
+        const message = {
+            command: command,
+            context: context
+        };
+        return this.sendObservableMessage<T>(message);
+    }
+
+    public sendEvent(event: ViewProviderEvent, context = {}) {
+        const message = {
+            event: event,
+            context: context
+        };
+
+        window.vscode.postMessage(message);
+    }
+
     public sendViewReady() {
         this.setupExtensionMessageObserver();
 
         window.vscode.postMessage({
-            command: 'viewReady',
+            command: ViewProviderCommand.viewReady,
             context: {}
         });
     }
@@ -76,7 +94,7 @@ class ExtensionIntermediary {
     }
 
     public async getStoredNodeReferences() {
-        return this.sendMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('getStoredNodeReferences');
+        return this.sendCommand<ReturnType<typeof rta.odc.storeNodeReferences>>(ViewProviderCommand.getStoredNodeReferences);
     }
 
     public observeEvent(eventName: string, callback: ObserverCallback) {
@@ -107,75 +125,75 @@ class ExtensionIntermediary {
 const intermediary = new ExtensionIntermediary();
 
 class ODCIntermediary {
-    public sendOdcMessage<T>(command: string, args?, options?: rta.ODC.RequestOptions) {
-        return intermediary.sendMessage<T>(command, {
+    public sendOdcMessage<T>(command: RequestType, args?, options?: RequestOptions) {
+        return intermediary.sendCommand<T>(command as any, {
             args: args,
             options: options
         });
     }
 
-    public async readRegistry(args?: rta.ODC.ReadRegistryArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.readRegistry>>('readRegistry', args, options);
+    public async readRegistry(args?: ReadRegistryArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.readRegistry>>(RequestType.readRegistry, args, options);
     }
 
-    public async writeRegistry(args: rta.ODC.WriteRegistryArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.writeRegistry>>('writeRegistry', args, options);
+    public async writeRegistry(args: WriteRegistryArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.writeRegistry>>(RequestType.writeRegistry, args, options);
     }
 
-    public async getFocusedNode(args?: rta.ODC.GetFocusedNodeArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getFocusedNode>>('getFocusedNode', args, options);
+    public async getFocusedNode(args?: GetFocusedNodeArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getFocusedNode>>(RequestType.getFocusedNode, args, options);
     }
 
-    public async getValue(args: rta.ODC.GetValueArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValue>>('getValue', args, options);
+    public async getValue(args: GetValueArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValue>>(RequestType.getValue, args, options);
     }
 
-    public async getValues(args: rta.ODC.GetValuesArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValues>>('getValues', args, options);
+    public async getValues(args: GetValuesArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getValues>>(RequestType.getValues, args, options);
     }
 
-    public async getNodesInfo(args: rta.ODC.GetNodesInfoArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfo>>('getNodesInfo', args, options);
+    public async getNodesInfo(args: GetNodesInfoArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesInfo>>(RequestType.getNodesInfo, args, options);
     }
 
-    public async hasFocus(args: rta.ODC.HasFocusArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.hasFocus>>('hasFocus', args, options);
+    public async hasFocus(args: HasFocusArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.hasFocus>>(RequestType.hasFocus, args, options);
     }
 
-    public async isInFocusChain(args: rta.ODC.IsInFocusChainArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.isInFocusChain>>('isInFocusChain', args, options);
+    public async isInFocusChain(args: IsInFocusChainArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.isInFocusChain>>(RequestType.isInFocusChain, args, options);
     }
 
-    public async onFieldChangeOnce(args: rta.ODC.OnFieldChangeOnceArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.onFieldChangeOnce>>('onFieldChangeOnce', args, options);
+    public async onFieldChangeOnce(args: OnFieldChangeOnceArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.onFieldChangeOnce>>(RequestType.onFieldChangeOnce, args, options);
     }
 
-    public async setValue(args: rta.ODC.SetValueArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.setValue>>('setValue', args, options);
+    public async setValue(args: SetValueArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.setValue>>(RequestType.setValue, args, options);
     }
 
-    public async deleteRegistrySections(args: rta.ODC.DeleteRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteRegistrySections>>('deleteRegistrySections', args, options);
+    public async deleteRegistrySections(args: DeleteRegistrySectionsArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteRegistrySections>>(RequestType.deleteRegistrySections, args, options);
     }
 
-    public async deleteEntireRegistry(args?: rta.ODC.DeleteEntireRegistrySectionsArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>('deleteEntireRegistry', args, options);
+    public async deleteEntireRegistry(args?: DeleteEntireRegistrySectionsArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>(RequestType.deleteEntireRegistry, args, options);
     }
 
-    public async storeNodeReferences(args?: rta.ODC.StoreNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>('storeNodeReferences', args, options);
+    public async storeNodeReferences(args?: StoreNodeReferencesArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>(RequestType.storeNodeReferences, args, options);
     }
 
-    public async deleteNodeReferences(args: rta.ODC.DeleteNodeReferencesArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>('deleteNodeReferences', args, options);
+    public async deleteNodeReferences(args: DeleteNodeReferencesArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>(RequestType.deleteNodeReferences, args, options);
     }
 
-    public async getNodesWithProperties(args: rta.ODC.GetNodesWithPropertiesArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>('getNodesWithProperties', args, options);
+    public async getNodesWithProperties(args: GetNodesWithPropertiesArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>(RequestType.getNodesWithProperties, args, options);
     }
 
-    public async findNodesAtLocation(args: rta.ODC.FindNodesAtLocationArgs, options?: rta.ODC.RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>('findNodesAtLocation', args, options);
+    public async findNodesAtLocation(args: FindNodesAtLocationArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>(RequestType.findNodesAtLocation, args, options);
     }
 }
 

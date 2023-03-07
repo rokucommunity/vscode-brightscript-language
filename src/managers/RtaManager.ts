@@ -1,4 +1,5 @@
 import * as rta from 'roku-test-automation';
+import { ViewProviderId } from '../viewProviders/ViewProviderId';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { WebviewViewProviderManager } from './WebviewViewProviderManager';
 
@@ -57,7 +58,7 @@ export class RtaManager {
             }
             context.args.nodeTreeResponse = this.lastStoreNodesResponse;
             let { matches } = await rta.odc.findNodesAtLocation(args, options);
-            if (requestorId === 'rokuDeviceView') {
+            if (requestorId === ViewProviderId.rokuDeviceView) {
                 if (matches.length) {
                     const match = { ...matches[0] };
                     // Remove children as this is where most of the payload is and we don't need this info
@@ -72,10 +73,10 @@ export class RtaManager {
             this.lastStoreNodesResponse = await rta.odc.storeNodeReferences(args, options);
 
             const viewIds = [];
-            if (requestorId === 'rokuDeviceView') {
-                viewIds.push('sceneGraphInspectorView');
-            } else if (requestorId === 'sceneGraphInspectorView') {
-                viewIds.push('rokuDeviceView');
+            if (requestorId === ViewProviderId.rokuDeviceView) {
+                viewIds.push(ViewProviderId.sceneGraphInspectorView);
+            } else if (requestorId === ViewProviderId.sceneGraphInspectorView) {
+                viewIds.push(ViewProviderId.rokuDeviceView);
             }
             this.webviewViewProviderManager.sendMessageToWebviews(viewIds, {
                 event: 'storedNodeReferencesUpdated'

@@ -5,6 +5,7 @@
     import { commandsView } from './RokuCommandsView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import { utils } from '../../utils';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
     let commandArgs: any[];
     let selectedCommand;
@@ -36,11 +37,10 @@
         for (const key in formArgs) {
             let argValue = formArgs[key];
             argValuesForCommand[key] = argValue;
-            const argType = selectedCommand.args.properties[key].type;
-            processedArgs[key] = commandsView.processArgToSendToExtension(
-                argType,
-                argValue
-            );
+            const argType = selectedCommand.args.properties[key]?.type;
+            if (argType) {
+                processedArgs[key] = commandsView.processArgToSendToExtension(argType, argValue);
+            }
         }
 
         utils.setStorageValue(
@@ -55,17 +55,13 @@
             );
             commandResponse = JSON.stringify(response, null, 2);
         } catch (error) {
-            commandResponse = error;
+            commandResponse = error.message;
         }
     }
 
     const commandList = [];
     for (const commandName of odcCommands) {
-        let argsKey =
-            'ODC.' +
-            commandName.charAt(0).toUpperCase() +
-            commandName.slice(1) +
-            'Args';
+        let argsKey = commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
         commandList.push({
             name: commandName,
             args: requestArgsSchema.definitions[argsKey]
@@ -91,7 +87,7 @@
 
     let odcAvailable = true;
 
-    intermediary.observeEvent('onDeviceAvailabilityChange', (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.odcAvailable;
     });
 

@@ -1,16 +1,19 @@
 import * as rta from 'roku-test-automation';
 import type * as vscode from 'vscode';
-import type { ODC } from 'roku-test-automation';
+import type { RequestType } from 'roku-test-automation';
 import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
 import type { RtaManager } from '../managers/RtaManager';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderCommand } from './ViewProviderCommand';
+
 
 export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
     protected rtaManager?: RtaManager;
 
-    protected odcCommands: Array<ODC.RequestTypes>;
+    protected odcCommands: Array<RequestType>;
 
     constructor(context: vscode.ExtensionContext) {
         super(context);
@@ -25,7 +28,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
 
     public updateDeviceAvailability() {
         this.postOrQueueMessage({
-            event: 'onDeviceAvailabilityChange',
+            event: ViewProviderEvent.onDeviceAvailabilityChange,
             odcAvailable: !!this.rtaManager.onDeviceComponent,
             deviceAvailable: !!this.rtaManager.device
         });
@@ -45,7 +48,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
                 response: response
             });
             return true;
-        } else if (command === 'getStoredNodeReferences') {
+        } else if (command === ViewProviderCommand.getStoredNodeReferences) {
             const response = this.rtaManager.getStoredNodeReferences();
             this.postOrQueueMessage({
                 ...message,
@@ -53,13 +56,13 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
             });
 
             return true;
-        } else if (command === 'setManualIpAddress') {
+        } else if (command === ViewProviderCommand.setManualIpAddress) {
             this.rtaManager.setupRtaWithConfig({
                 ...message.context,
                 injectRdbOnDeviceComponent: true
             });
             return true;
-        } else if (command === 'getScreenshot') {
+        } else if (command === ViewProviderCommand.getScreenshot) {
             try {
                 const result = await this.rtaManager.device.getScreenshot();
                 this.postOrQueueMessage({

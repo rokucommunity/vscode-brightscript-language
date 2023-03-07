@@ -1,22 +1,25 @@
 import * as vscode from 'vscode';
+import { VscodeCommand } from '../commands/VscodeCommand';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderId } from './ViewProviderId';
 
 export class RokuRegistryViewProvider extends BaseRdbViewProvider {
-    public readonly id = 'rokuRegistryView';
+    public readonly id = ViewProviderId.rokuRegistryView;
 
     constructor(context: vscode.ExtensionContext) {
         super(context);
 
         const subscriptions = context.subscriptions;
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.exportRegistry', async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryExportRegistry, async () => {
             await vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(async (uri) => {
                 const result = await this.rtaManager.onDeviceComponent?.readRegistry();
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(result?.values), 'utf8'));
             });
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.importRegistry', async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryImportRegistry, async () => {
             const options: vscode.OpenDialogOptions = {
                 canSelectMany: false,
                 openLabel: 'Select',
@@ -26,12 +29,12 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
             await vscode.window.showOpenDialog(options).then(this.importContentsToRegistry.bind(this));
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.clearRegistry', async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryClearRegistry, async () => {
             await this.rtaManager.onDeviceComponent.deleteEntireRegistry();
             await this.sendRegistryUpdated();
         }));
 
-        subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rokuRegistry.refreshRegistry', async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryRefreshRegistry, async () => {
             await this.sendRegistryUpdated();
         }));
     }
@@ -50,6 +53,6 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
 
     protected async sendRegistryUpdated() {
         const result = await this.rtaManager.onDeviceComponent?.readRegistry();
-        this.postOrQueueMessage({ name: 'registryUpdated', values: result?.values });
+        this.postOrQueueMessage({ name: ViewProviderEvent.onRegistryUpdated, values: result?.values });
     }
 }

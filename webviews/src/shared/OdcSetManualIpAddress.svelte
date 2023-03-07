@@ -1,5 +1,6 @@
 <script lang="ts">
     import { Save } from 'svelte-codicons';
+    import { ViewProviderCommand } from '../../../src/viewProviders/ViewProviderCommand';
     import { intermediary } from '../ExtensionIntermediary';
     import { utils } from '../utils';
 
@@ -9,7 +10,7 @@
     function onSaveIpButtonClicked() {
         utils.setStorageValue('manuallySetIpAddress', ipAddress);
         utils.setStorageValue('manuallySetPassword', password);
-        intermediary.sendMessage('setManualIpAddress', {
+        intermediary.sendCommand(ViewProviderCommand.setManualIpAddress, {
             host: ipAddress,
             password: password
         });

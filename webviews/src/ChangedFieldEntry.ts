@@ -1,10 +1,10 @@
-import type { ODC } from 'roku-test-automation';
+import type { BaseType } from 'roku-test-automation';
 
 interface ChangedFieldEntry {
     ts: number; // Unix timestamp
     subtype: string;
     id: string;
-    base?: ODC.BaseTypes;
+    base?: BaseType;
     keyPath: string;
     value: any;
 }
