@@ -58,7 +58,7 @@
     let imageSizeAdjust = 1;
     $: {
         if (imageWidth) {
-            imageSizeAdjust = imageWidth / 1920
+            imageSizeAdjust = imageWidth / 1920;
         }
     }
 
