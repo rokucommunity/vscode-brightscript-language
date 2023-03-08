@@ -23,13 +23,11 @@ class ExtensionIntermediary {
             if (request) {
                 delete this.inflightRequests[message.id];
                 request.callback(message);
-            } else {
-                if (message.event) {
-                    const listeners = this.observedEvents.get(message.event);
-                    if (listeners) {
-                        for (const listener of listeners) {
-                            listener(message);
-                        }
+            } else if (message.event) {
+                const listeners = this.observedEvents.get(message.event);
+                if (listeners) {
+                    for (const listener of listeners) {
+                        listener(message);
                     }
                 }
             }
@@ -55,38 +53,45 @@ class ExtensionIntermediary {
                 message: message,
                 callback: callback
             };
-            window.vscode.postMessage(message);
+            this.postMessage(message);
         });
     }
 
-    public sendCommand<T>(command: VscodeCommand | ViewProviderCommand, context = {}) {
+    public createCommandMessage(command: VscodeCommand | ViewProviderCommand, context = {}) {
         const message = {
             command: command,
             context: context
         };
-        return this.sendObservableMessage<T>(message);
+        return message;
     }
 
-    public sendEvent(event: ViewProviderEvent, context = {}) {
+    public sendCommand<T>(command: VscodeCommand | ViewProviderCommand, context = {}) {
+        return this.sendObservableMessage<T>(this.createCommandMessage(command, context));
+    }
+
+    public createEventMessage(event: ViewProviderEvent, context = {}) {
         const message = {
             event: event,
             context: context
         };
+        return message;
+    }
 
-        window.vscode.postMessage(message);
+    public sendEvent(event: ViewProviderEvent, context = {}) {
+        this.postMessage(this.createEventMessage(event, context));
     }
 
     public sendViewReady() {
         this.setupExtensionMessageObserver();
 
-        window.vscode.postMessage({
+        this.postMessage({
             command: ViewProviderCommand.viewReady,
             context: {}
         });
     }
 
     public setVscodeContext(key: string, value: boolean | number | string) {
-        window.vscode.postMessage({
+        this.postMessage({
             command: 'setVscodeContext',
             key: key,
             value: value
@@ -108,11 +113,15 @@ class ExtensionIntermediary {
     }
 
     public sendMessageToWebviews(viewIds: string | string[], message) {
-        window.vscode.postMessage({
-            command: 'sendMessageToWebviews',
+        this.postMessage({
+            command: ViewProviderCommand.sendMessageToWebviews,
             viewIds: viewIds,
             message: message
         });
+    }
+
+    private postMessage(message) {
+        window.vscode.postMessage(message);
     }
 
     private generateRandomString(length = 7) {

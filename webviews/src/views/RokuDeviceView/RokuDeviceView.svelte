@@ -63,25 +63,35 @@
     }
 
     let mouseIsOverView = false;
+    let lastFocusedTreeNodeRef = -1;
     let focusedTreeNode: TreeNode | null;
     $: {
         if (mouseIsOverView && isInspectingNodes) {
-            let treeNode = undefined
             if (focusedTreeNode) {
-                treeNode = {
-                    // Optimization since we only need the reference for linking with the sceneGraphInspectorView
-                    ref: focusedTreeNode.ref
+                if (lastFocusedTreeNodeRef !== focusedTreeNode.ref) {
+                    lastFocusedTreeNodeRef = focusedTreeNode.ref;
+
+                    const treeNode = {
+                        // Optimization since we only need the reference for linking with the sceneGraphInspectorView
+                        ref: focusedTreeNode.ref
+                    }
+
+                    intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
+                        event: ViewProviderEvent.onTreeNodeFocused,
+                        treeNode: treeNode
+                    });
                 }
+            } else {
+                intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
+                    event: ViewProviderEvent.onTreeNodeFocused,
+                    treeNode: null
+                });
             }
-            intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
-                event: ViewProviderEvent.onTreeNodeFocused,
-                treeNode: treeNode
-            });
         }
     }
 
     intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
-        focusedTreeNode = message.treeNode;
+        focusedTreeNode = message.context.treeNode;
     });
 
     intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, (message) => {
@@ -195,7 +205,6 @@
                 includeArrayGridChildren: true,
                 includeBoundingRectInfo: true
             });
-
         } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
             enableScreenshotCapture = false;
         } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
@@ -229,27 +238,28 @@
         try {
             const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot) as any;
             if (success) {
-            const newScreenshotUrl = URL.createObjectURL(new Blob(
-                [new Uint8Array(arrayBuffer)],
-                { type: 'image/jpeg' }
-            ));
-            URL.revokeObjectURL(screenshotUrl);
-            screenshotUrl = newScreenshotUrl;
+                const newScreenshotUrl = URL.createObjectURL(new Blob(
+                    [new Uint8Array(arrayBuffer)],
+                    { type: 'image/jpeg' }
+                ));
+                URL.revokeObjectURL(screenshotUrl);
+                screenshotUrl = newScreenshotUrl;
+                currentlyCapturingScreenshot = false;
 
-            requestScreenshot();
-            screenshotOutOfDate = false;
-            clearTimeout(screenshotOutOfDateTimeOut);
-            screenshotOutOfDateTimeOut = undefined;
-        } else {
-            if (!screenshotOutOfDateTimeOut) {
-                screenshotOutOfDateTimeOut = setTimeout(() => {
-                    screenshotOutOfDate = true;
-                }, 2000);
-            }
-            setTimeout(() => {
                 requestScreenshot();
-            }, 200);
-        }
+                screenshotOutOfDate = false;
+                clearTimeout(screenshotOutOfDateTimeOut);
+                screenshotOutOfDateTimeOut = undefined;
+            } else {
+                if (!screenshotOutOfDateTimeOut) {
+                    screenshotOutOfDateTimeOut = setTimeout(() => {
+                        screenshotOutOfDate = true;
+                    }, 2000);
+                }
+                setTimeout(() => {
+                    requestScreenshot();
+                }, 200);
+            }
         } finally {
             currentlyCapturingScreenshot = false;
         }
@@ -326,6 +336,10 @@
         margin-left: -3px;
         margin-top: -3px;
     }
+
+    .hide {
+        display: none;
+    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
@@ -340,7 +354,7 @@
         on:mousemove={onImageMouseMove}
         on:mousedown={onMouseDown}>
         {#if focusedTreeNode}
-            <div id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
+            <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
             <div id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
 
             <div id="nodeInfo">

@@ -25,7 +25,6 @@
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
     let rootTree = [] as TreeNode[];
-    let flatTree = [] as TreeNode[];
 
     const globalNode = {
         id: '',
@@ -46,7 +45,6 @@
         loading = true;
         const result = await intermediary.getStoredNodeReferences();
         rootTree = result.rootTree;
-        flatTree = result.flatTree;
 
         totalNodeCount = result.totalNodes ?? 0;
         nodeCountByType = result.nodeCountByType;
@@ -68,7 +66,6 @@
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree;
-            flatTree = result.flatTree;
 
             //insert the global node to the top of the rootNodes list
             rootTree.unshift(globalNode);
@@ -140,10 +137,11 @@
     });
 
     function onTreeNodeFocused(event: CustomEvent<TreeNode>) {
-        intermediary.sendMessageToWebviews(ViewProviderId.rokuDeviceView, {
-            event: ViewProviderEvent.onTreeNodeFocused,
+        const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
             treeNode: event.detail
-        })
+        });
+
+        intermediary.sendMessageToWebviews(ViewProviderId.rokuDeviceView, message);
     }
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -277,7 +275,7 @@
             {#each rootTree as rootNode}
                 <Branch
                     on:openNode={onOpenNode}
-                    on:onTreeNodeFocused={onTreeNodeFocused}
+                    on:treeNodeFocused={onTreeNodeFocused}
                     bind:focusedNode
                     treeNode={rootNode}
                     expanded={true} />

@@ -1,4 +1,5 @@
 import * as rta from 'roku-test-automation';
+import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { WebviewViewProviderManager } from './WebviewViewProviderManager';
@@ -51,10 +52,10 @@ export class RtaManager {
     public async sendOdcRequest(requestorId: string, command: string, context: { args: any; options: any }) {
         const { args, options } = context;
 
-        if (command === 'findNodesAtLocation') {
+        if (command === rta.RequestType.findNodesAtLocation) {
             if (!this.lastStoreNodesResponse) {
                 args.includeBoundingRectInfo = true;
-                await this.sendOdcRequest(requestorId, 'storeNodeReferences', args);
+                await this.sendOdcRequest(requestorId, rta.RequestType.storeNodeReferences, args);
             }
             context.args.nodeTreeResponse = this.lastStoreNodesResponse;
             let { matches } = await rta.odc.findNodesAtLocation(args, options);
@@ -69,7 +70,7 @@ export class RtaManager {
             return {
                 matches: matches
             };
-        } else if (command === 'storeNodeReferences') {
+        } else if (command === rta.RequestType.storeNodeReferences) {
             this.lastStoreNodesResponse = await rta.odc.storeNodeReferences(args, options);
 
             const viewIds = [];
@@ -79,7 +80,7 @@ export class RtaManager {
                 viewIds.push(ViewProviderId.rokuDeviceView);
             }
             this.webviewViewProviderManager.sendMessageToWebviews(viewIds, {
-                event: 'storedNodeReferencesUpdated'
+                event: ViewProviderEvent.onStoredNodeReferencesUpdated
             });
             return this.lastStoreNodesResponse;
         } else {
