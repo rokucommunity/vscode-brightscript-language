@@ -9,7 +9,8 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext) {
         super(context);
 
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewInspectNodes);
+        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewEnableNodeInspector);
+        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewDisableNodeInspector);
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewRefreshScreenshot);
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewPauseScreenshotCapture);
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewResumeScreenshotCapture);

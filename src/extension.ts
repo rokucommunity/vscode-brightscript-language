@@ -50,7 +50,6 @@ export class Extension {
 
         this.globalStateManager = new GlobalStateManager(context);
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
-        context.
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
         //initialize the analytics manager

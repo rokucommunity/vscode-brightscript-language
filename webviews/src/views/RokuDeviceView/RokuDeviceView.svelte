@@ -191,7 +191,7 @@
 
     intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
         const name = message.commandName;
-        if (name === VscodeCommand.rokuDeviceViewInspectNodes) {
+        if (name === VscodeCommand.rokuDeviceViewEnableNodeInspector) {
             wasRunningScreenshotCaptureBeforeInspect = enableScreenshotCapture;
             isInspectingNodes = true;
             enableScreenshotCapture = true;
@@ -207,7 +207,7 @@
             });
         } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
             enableScreenshotCapture = false;
-        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
+        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture || name === VscodeCommand.rokuDeviceViewDisableNodeInspector) {
             isInspectingNodes = false;
             enableScreenshotCapture = true;
             requestScreenshot();
