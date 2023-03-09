@@ -265,24 +265,29 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "extension.brightscript.rokuDeviceView.inspectNodes",
-                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable && !brightscript.rokuDeviceView.isInspectingNodes",
-                    "group": "navigation"
+                    "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
+                    "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
                     "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
-                    "group": "navigation"
+                    "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
                     "when": "view == rokuDeviceView && brightscript.rokuDeviceView.enableScreenshotCapture && !brightscript.rokuDeviceView.isInspectingNodes",
-                    "group": "navigation"
+                    "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
-                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
-                    "group": "navigation"
+                    "command": "extension.brightscript.rokuDeviceView.inspectNodes",
+                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.cancelInspectingNodes",
+                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable && brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@3"
                 }
             ],
             "commandPalette": []
@@ -2419,6 +2424,12 @@
                 "title": "Inspect Nodes",
                 "category": "BrighterScript",
                 "icon": "$(inspect)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.cancelInspectingNodes",
+                "title": "Cancel Inspecting Nodes",
+                "category": "BrighterScript",
+                "icon": "$(circle-slash)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",

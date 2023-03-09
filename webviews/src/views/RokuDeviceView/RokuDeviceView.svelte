@@ -207,7 +207,7 @@
             });
         } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
             enableScreenshotCapture = false;
-        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
+        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture || name === VscodeCommand.rokuDeviceViewCancelInspectingNodes) {
             isInspectingNodes = false;
             enableScreenshotCapture = true;
             requestScreenshot();
