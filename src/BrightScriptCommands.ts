@@ -169,6 +169,10 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand('PowerOff');
         });
 
+        this.registerCommand('pressPowerOn', async () => {
+            await this.sendRemoteCommand('PowerOn');
+        });
+
         this.registerCommand('pressChannelUp', async () => {
             await this.sendRemoteCommand('ChannelUp');
         });

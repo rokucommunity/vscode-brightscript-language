@@ -2,8 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
-
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { util } from '../util';
+import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderCommand } from './ViewProviderCommand';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     constructor(context: vscode.ExtensionContext) {
@@ -22,9 +25,22 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     private outDirWatcher: AsyncSubscription;
     private viewReady = false;
     private queuedMessages = [];
+    private webviewViewProviderManager: WebviewViewProviderManager;
 
     public dispose() {
         void this.outDirWatcher?.unsubscribe();
+    }
+
+    public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
+        this.webviewViewProviderManager = manager;
+    }
+
+    public postOrQueueMessage(message) {
+        if (this.viewReady) {
+            this.postMessage(message);
+        } else {
+            this.queuedMessages.push(message);
+        }
     }
 
     protected postMessage(message) {
@@ -39,30 +55,31 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
     }
 
-    protected postOrQueueMessage(message) {
-        if (this.viewReady) {
-            this.postMessage(message);
-        } else {
-            this.queuedMessages.push(message);
-        }
-    }
-
     private setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
                 const command = message.command;
 
-                if (command === 'viewReady') {
+                if (command === ViewProviderCommand.viewReady) {
                     this.viewReady = true;
                     this.onViewReady();
                     this.postQueuedMessages();
+                } else if (command === ViewProviderCommand.setVscodeContext) {
+                    await vscodeContextManager.set(message.key, message.value);
+                } else if (command === ViewProviderCommand.sendMessageToWebviews) {
+                    this.webviewViewProviderManager.sendMessageToWebviews(message.viewIds, message.message);
                 } else {
-                    await this.handleViewMessage(message);
+                    if (!await this.handleViewMessage(message)) {
+                        console.warn('Did not handle message', message);
+                    }
                 }
             } catch (e) {
                 this.postMessage({
                     ...message,
-                    error: e.message
+                    error: {
+                        message: e.message,
+                        stack: e.stack
+                    }
                 });
             }
         });
@@ -70,6 +87,15 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected handleViewMessage(message): Promise<boolean> | boolean {
         return false;
+    }
+
+    protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string) {
+        context.subscriptions.push(vscode.commands.registerCommand(command, () => {
+            this.postOrQueueMessage({
+                event: ViewProviderEvent.onVscodeCommandReceived,
+                commandName: command
+            });
+        }));
     }
 
     protected onViewReady() { }
@@ -81,11 +107,18 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected async getHtmlForWebview() {
         try {
-            if (util.isExtensionHostRunning() && !this.outDirWatcher) {
+            let watcher;
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                watcher = require('@parcel/watcher');
+            } catch (e) {
+                // Doing nothing if watcher does not exist
+            }
+
+            if (watcher && !this.outDirWatcher) {
                 // When in dev mode, spin up a watcher to auto-reload the webview whenever the files have changed.
-                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                this.outDirWatcher = await require('@parcel/watcher').subscribe(this.webviewBasePath, (err, events: Event[]) => {
-                    //only refresh when the index.html page is changed. Since vite rewrites the file on every cycle, this is enough to know to reload the page
+                this.outDirWatcher = await watcher.subscribe(this.webviewBasePath, (err, events: Event[]) => {
+                    //only refresh when the index.html page is changed. Since vite rewrites the file on every build, this is enough to know to reload the page
                     if (
                         events.find(x => (x.type === 'create' || x.type === 'update') && x.path?.toLowerCase()?.endsWith('index.html'))
                     ) {

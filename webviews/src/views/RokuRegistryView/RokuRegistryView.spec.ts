@@ -3,7 +3,7 @@ import { registryView } from './RokuRegistryView';
 
 describe('RegistryView', () => {
     describe('formatValues', () => {
-        it('should convert json into an object with the correct correct values', () => {
+        it('should convert json into an object with the correct values', () => {
             const input = {
                 a: '{"b": 1}'
             };

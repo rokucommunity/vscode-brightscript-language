@@ -2,10 +2,11 @@ import * as arraySort from 'array-sort';
 import * as vscode from 'vscode';
 import type { RendezvousHistory } from 'roku-debug';
 import { isRendezvousEvent } from 'roku-debug';
+import { ViewProviderId } from './ViewProviderId';
 
 export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
-    public readonly id = 'rendezvousView';
+    public readonly id = ViewProviderId.rendezvousView;
 
     constructor(context: vscode.ExtensionContext) {
         this.toggleSmartSorting();

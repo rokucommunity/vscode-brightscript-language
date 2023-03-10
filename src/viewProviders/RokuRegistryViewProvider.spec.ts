@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import * as sinonImport from 'sinon';
+import { RtaManager } from '../managers/RtaManager';
 import { vscode } from '../mockVscode.spec';
 import { RokuRegistryViewProvider } from './RokuRegistryViewProvider';
 
@@ -35,6 +36,8 @@ afterEach(() => {
 
 describe('RokuRegistryViewProvider', () => {
     const provider = new RokuRegistryViewProvider(vscode.context);
+    const rtaManager = new RtaManager();
+    provider.setRtaManager(rtaManager);
 
     describe('sendRegistryUpdated', () => {
         it('Triggers postOrQueueMessage to send message to web view that the registry was updated', async () => {
