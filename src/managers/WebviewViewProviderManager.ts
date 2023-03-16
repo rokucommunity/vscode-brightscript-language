@@ -68,4 +68,10 @@ export class WebviewViewProviderManager {
             }
         }
     }
+
+    public dispose() {
+        for (const webviewView of this.webviewViews) {
+            webviewView?.provider?.dispose();
+        }
+    }
 }

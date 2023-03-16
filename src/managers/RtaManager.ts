@@ -95,4 +95,8 @@ export class RtaManager {
     public getStoredNodeReferences() {
         return this.lastStoreNodesResponse;
     }
+
+    public dispose() {
+        void this.onDeviceComponent?.shutdown?.();
+    }
 }

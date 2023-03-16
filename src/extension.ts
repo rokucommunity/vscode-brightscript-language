@@ -71,8 +71,10 @@ export class Extension {
             activeDeviceManager
         );
 
-        this.rtaManager = new RtaManager();
-        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager);
+        context.subscriptions.push(
+            this.rtaManager = new RtaManager(),
+            this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager)
+        );
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
         //update the tracked version of the extension
