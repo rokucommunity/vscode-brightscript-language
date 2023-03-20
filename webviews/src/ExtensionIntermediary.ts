@@ -91,11 +91,10 @@ class ExtensionIntermediary {
     }
 
     public setVscodeContext(key: string, value: boolean | number | string) {
-        this.postMessage({
-            command: 'setVscodeContext',
+        this.postMessage(this.createCommandMessage(ViewProviderCommand.setVscodeContext, {
             key: key,
             value: value
-        });
+        }));
     }
 
     public async getStoredNodeReferences() {
@@ -113,11 +112,10 @@ class ExtensionIntermediary {
     }
 
     public sendMessageToWebviews(viewIds: string | string[], message) {
-        this.postMessage({
-            command: ViewProviderCommand.sendMessageToWebviews,
+        this.postMessage(this.createCommandMessage(ViewProviderCommand.sendMessageToWebviews, {
             viewIds: viewIds,
             message: message
-        });
+        }));
     }
 
     private postMessage(message) {

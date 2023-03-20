@@ -19,7 +19,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
         super(context);
         const requestTypesPath = path.join(rta.utils.getClientFilesPath(), 'requestTypes.schema.json');
         const json = JSON.parse(fsExtra.readFileSync(requestTypesPath, 'utf8'));
-        this.odcCommands = json.enum;
+        this.odcCommands = Object.values(json.enum);
     }
 
     public setRtaManager(rtaManager?: RtaManager) {

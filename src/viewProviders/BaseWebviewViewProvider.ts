@@ -65,9 +65,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     this.onViewReady();
                     this.postQueuedMessages();
                 } else if (command === ViewProviderCommand.setVscodeContext) {
-                    await vscodeContextManager.set(message.key, message.value);
+                    const context = message.context;
+                    await vscodeContextManager.set(context.key, context.value);
                 } else if (command === ViewProviderCommand.sendMessageToWebviews) {
-                    this.webviewViewProviderManager.sendMessageToWebviews(message.viewIds, message.message);
+                    const context = message.context;
+                    this.webviewViewProviderManager.sendMessageToWebviews(context.viewIds, context.message);
                 } else {
                     if (!await this.handleViewMessage(message)) {
                         console.warn('Did not handle message', message);
