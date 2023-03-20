@@ -7,7 +7,7 @@
     import { utils } from '../../utils';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
-    let commandArgs: any[];
+    let commandArgs = [];
     let selectedCommand;
 
     // Where we store the info the user put in the form
@@ -62,6 +62,11 @@
     const commandList = [];
     for (const commandName of odcCommands) {
         let argsKey = commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
+        const definition = requestArgsSchema.definitions[argsKey];
+        if (!definition) {
+            console.warn(`Could not retrieve definition for ${commandName}`);
+            continue;
+        }
         commandList.push({
             name: commandName,
             args: requestArgsSchema.definitions[argsKey]

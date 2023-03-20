@@ -7,23 +7,17 @@
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { TreeNode } from 'roku-test-automation';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
+    import { utils } from '../../utils';
 
     window.vscode = acquireVsCodeApi();
 
     let deviceAvailable = false;
-    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
         deviceAvailable = message.deviceAvailable;
-
-        enableScreenshotCapture = true
         requestScreenshot();
     });
 
-    let wasRunningScreenshotCaptureBeforeInspect = false;
-
-    let enableScreenshotCapture = false;
-    $:{
-        intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
-    }
+    let wasRunningScreenshotCaptureBeforeInspect: boolean | undefined;
 
     let screenshotUrl = '';
 
@@ -31,11 +25,20 @@
 
     let isInspectingNodes = false;
     $:{
-        if (!isInspectingNodes) {
+        // Gets called on load even though value is already false
+        if (!isInspectingNodes && wasRunningScreenshotCaptureBeforeInspect !== undefined) {
             enableScreenshotCapture = wasRunningScreenshotCaptureBeforeInspect;
             requestScreenshot();
         }
         intermediary.setVscodeContext('brightscript.rokuDeviceView.isInspectingNodes', isInspectingNodes);
+    }
+
+    let enableScreenshotCapture = utils.getStorageBooleanValue('enableScreenshotCapture', true);
+    // Set our initial state
+    intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
+    $:{
+        intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
+        utils.setStorageValue('enableScreenshotCapture', enableScreenshotCapture);
     }
 
     // We can't observe the image height directly so we observe the surrounding div instead
@@ -231,7 +234,7 @@
     let screenshotOutOfDateTimeOut;
     let currentlyCapturingScreenshot = false;
     async function requestScreenshot() {
-        if (!enableScreenshotCapture || currentlyCapturingScreenshot) {
+        if (!enableScreenshotCapture || currentlyCapturingScreenshot || !deviceAvailable) {
             return;
         }
         currentlyCapturingScreenshot = true;

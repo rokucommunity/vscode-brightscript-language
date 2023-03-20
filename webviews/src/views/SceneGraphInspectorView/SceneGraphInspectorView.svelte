@@ -115,7 +115,7 @@
         const treeNode = event.detail;
         inspectNodeTreeNode = treeNode;
         //if the global node was clicked
-        if (treeNode === globalNode) {
+        if (treeNode.subtype === 'Global') {
             inspectNodeBaseKeyPath = {
                 base: 'global'
             };
