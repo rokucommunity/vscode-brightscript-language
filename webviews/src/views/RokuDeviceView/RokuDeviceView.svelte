@@ -12,7 +12,7 @@
     window.vscode = acquireVsCodeApi();
 
     let deviceAvailable = false;
-    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.deviceAvailable;
         requestScreenshot();
     });
@@ -25,7 +25,7 @@
 
     let isInspectingNodes = false;
     $:{
-        // Gets called on load even though value is already false
+        // Gets called on initial load even though value is already false so we use undefined value on wasRunningScreenshotCaptureBeforeInspect to avoid issues
         if (!isInspectingNodes && wasRunningScreenshotCaptureBeforeInspect !== undefined) {
             enableScreenshotCapture = wasRunningScreenshotCaptureBeforeInspect;
             requestScreenshot();
@@ -34,8 +34,6 @@
     }
 
     let enableScreenshotCapture = utils.getStorageBooleanValue('enableScreenshotCapture', true);
-    // Set our initial state
-    intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
     $:{
         intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
         utils.setStorageValue('enableScreenshotCapture', enableScreenshotCapture);
