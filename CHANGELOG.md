@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.39.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.8...v2.39.0) - 2023-03-22
+### Added
+ - device view with direct node selection ([#465](https://github.com/rokucommunity/vscode-brightscript-language/pull/465))
+
+### Changed
+ - upgrade to [roku-deploy@3.10.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3100---2023-03-16). Notable changes since 3.9.3:
+     - Use micromatch instead of picomatch ([roku-deploy#109](https://github.com/rokucommunity/roku-deploy/pull/109))
+ - upgrade to [roku-debug@0.18.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0184---2023-03-17). Notable changes since 0.18.3:
+ - upgrade to [brighterscript@0.62.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0620---2023-03-17). Notable changes since 0.61.3:
+     - Optional chaining assignment validation ([brighterscript#782](https://github.com/rokucommunity/brighterscript/pull/782))
+     - Fix transpile bug with optional chaning ([brighterscript#781](https://github.com/rokucommunity/brighterscript/pull/781))
+     - Add 'severityOverride' option ([brighterscript#725](https://github.com/rokucommunity/brighterscript/pull/725))
+     - Fix crash when func has no block ([brighterscript#774](https://github.com/rokucommunity/brighterscript/pull/774))
+     - Remove invalid annotation example ([#brighterscript8d3d74e](https://github.com/rokucommunity/brighterscript/commit/8d3d74e))
+ - upgrade to [brighterscript-formatter@1.6.24](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1624---2023-03-17). Notable changes since 1.6.23:
+     - Fix indent format issue related to optional chaining array access ([brighterscript-formatter#71](https://github.com/rokucommunity/brighterscript-formatter/pull/71))
+
+
+
 ## [2.38.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.7...v2.38.8) - 2023-01-31
 ### Changed
  - Allow relative injectRaleTrackerTask ([#462](https://github.com/rokucommunity/vscode-brightscript-language/pull/462))
