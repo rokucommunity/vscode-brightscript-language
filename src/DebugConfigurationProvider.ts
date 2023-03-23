@@ -241,6 +241,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
+            if (!config.raleTrackerTaskFileLocation) {
+                await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but config raleTrackerTaskFileLocation not set`);
+            }
             if (config.raleTrackerTaskFileLocation.includes('${workspaceFolder}')) {
                 config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
             }
