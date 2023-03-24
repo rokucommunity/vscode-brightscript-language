@@ -347,7 +347,12 @@ export class BrightScriptCommands {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
         if (this.host) {
-            this.host = await rokuDebugUtil.dnsLookup(this.host);
+            //try resolving the hostname. (sometimes it fails for no reason, so just ignore the crash if it does)
+            try {
+                this.host = await rokuDebugUtil.dnsLookup(this.host);
+            } catch (e) {
+                console.error('Error doing dns lookup for host ', this.host, e);
+            }
         }
     }
 
