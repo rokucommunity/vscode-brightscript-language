@@ -1,7 +1,7 @@
 <script lang="ts">
     import { utils } from '../../utils';
     import VscodeCheckbox from '../../shared/vscode-ui-toolkit/VscodeCheckbox.svelte';
-    export let showSettings: boolean;
+    export let showSettingsPage: boolean;
 
     let enableDebugLogging = utils.getStorageBooleanValue('enableDebugLogging');
     $: {
@@ -25,10 +25,10 @@
     }
 
     function close() {
-        showSettings = false;
+        showSettingsPage = false;
     }
 
-    function handleKeydown(event) {
+    function onKeydown(event) {
         const key = event.key;
 
         switch (key) {
@@ -88,7 +88,7 @@
     }
 </style>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={onKeydown} />
 <div id="background" />
 <div id="container">
     <div id="header">

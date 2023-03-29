@@ -5,10 +5,11 @@ import { icons } from '../icons';
 import { firstBy } from 'thenby';
 import { Cache } from 'brighterscript/dist/Cache';
 import { util } from '../util';
+import { ViewProviderId } from './ViewProviderId';
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
-    public readonly id = 'onlineDevicesView';
+    public readonly id = ViewProviderId.onlineDevicesView;
 
     constructor(
         private context: vscode.ExtensionContext,

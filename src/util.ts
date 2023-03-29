@@ -188,10 +188,6 @@ class Util {
         this.debounceByKey[key]();
     }
 
-    public isExtensionHostRunning() {
-        return process.argv.includes('--type=extensionHost');
-    }
-
     /**
      * Wraps a function and calls a callback before calling the original function
      */

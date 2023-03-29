@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.38.8",
+    "version": "2.39.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -14,7 +14,7 @@
         "multi-root-ready"
     ],
     "engines": {
-        "vscode": "^1.53.0",
+        "vscode": "^1.57.0",
         "node": "^12.12.0"
     },
     "repository": {
@@ -54,8 +54,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.61.3",
-        "brighterscript-formatter": "^1.6.23",
+        "brighterscript": "^0.62.0",
+        "brighterscript-formatter": "^1.6.24",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
         "fast-xml-parser": "^3.12.16",
@@ -69,9 +69,9 @@
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.18.3",
-        "roku-deploy": "^3.9.3",
-        "roku-test-automation": "^2.0.0-beta.11",
+        "roku-debug": "^0.18.4",
+        "roku-deploy": "^3.10.0",
+        "roku-test-automation": "^2.0.0-beta.14",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "thenby": "^1.3.4",
@@ -198,6 +198,12 @@
                     "type": "webview"
                 },
                 {
+                    "id": "rokuDeviceView",
+                    "contextualTitle": "Roku",
+                    "name": "Device View",
+                    "type": "webview"
+                },
+                {
                     "id": "rokuRegistryView",
                     "name": "Roku Registry",
                     "type": "webview"
@@ -257,6 +263,31 @@
                     "command": "extension.brightscript.rokuRegistry.clearRegistry",
                     "when": "view == rokuRegistryView",
                     "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.enableScreenshotCapture && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.enableNodeInspector",
+                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.rokuDeviceView.disableNodeInspector",
+                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable && brightscript.rokuDeviceView.isInspectingNodes",
+                    "group": "navigation@3"
                 }
             ],
             "commandPalette": []
@@ -2265,6 +2296,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.pressPowerOn",
+                "title": "Press the PowerOn button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressChannelUp",
                 "title": "Press the ChannelUp button on the Roku remote",
                 "category": "Brightscript"
@@ -2382,6 +2418,42 @@
                 "command": "extension.brightscript.languageServer.info",
                 "title": "View BrighterScript LanguageServer Info",
                 "category": "BrighterScript"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.enableNodeInspector",
+                "title": "Inspect nodes",
+                "category": "BrighterScript",
+                "icon": "$(inspect)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.disableNodeInspector",
+                "title": "Stop inspecting nodes",
+                "category": "BrighterScript",
+                "icon": "./images/icons/inspect-active.svg"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
+                "title": "Pause Screenshot Capture",
+                "category": "BrighterScript",
+                "icon": "$(debug-pause)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
+                "title": "Resume Screenshot Capture",
+                "category": "BrighterScript",
+                "icon": "$(debug-start)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
+                "title": "Refresh Screenshot",
+                "category": "BrighterScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.sceneGraphInspectorView.refreshNodeTree",
+                "title": "Refresh Nodetree",
+                "category": "BrighterScript",
+                "icon": "$(refresh)"
             }
         ],
         "keybindings": [

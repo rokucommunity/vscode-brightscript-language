@@ -175,7 +175,7 @@ describe('extension', () => {
             ).to.eql(embeddedPath);
         });
 
-        it('returns value from worksapce when specified', async () => {
+        it('returns value from workspace when specified', async () => {
             vscode.workspace.workspaceFile = URI.file(s`${tempDir}/workspace.code-workspace`);
 
             setConfig(vscode.workspace.workspaceFile.fsPath, {
