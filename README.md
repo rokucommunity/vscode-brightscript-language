@@ -1,6 +1,6 @@
 # BrightScript Language extension for VSCode
 
-[![build status](https://img.shields.io/github/workflow/status/rokucommunity/vscode-brightscript-language/build.svg?logo=github)](https://github.com/rokucommunity/vscode-brightscript-language/actions?query=workflow%3Abuild)
+[![build status](https://img.shields.io/github/actions/workflow/status/rokucommunity/vscode-brightscript-language/build.yml?logo=github&branch=master)](https://github.com/rokucommunity/vscode-brightscript-language/actions/workflows/build.yml)
 [![coverage status](https://img.shields.io/coveralls/github/rokucommunity/vscode-brightscript-language?logo=coveralls)](https://coveralls.io/github/rokucommunity/vscode-brightscript-language?branch=master)
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/installs-short/RokuCommunity.brightscript.png?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/RokuCommunity.brightscript.svg?logo=visual-studio-code&label=VSCode)](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript)
