@@ -23,7 +23,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     public constructor(
         private context: ExtensionContext,
         private activeDeviceManager: any,
-        private telemetryManager: TelemetryManager
+        private telemetryManager: TelemetryManager,
+        private extensionOutputChannel: vscode.OutputChannel
     ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
@@ -75,26 +76,31 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        try {
+            // merge user and workspace settings into the config
+            config = this.processUserWorkspaceSettings(config);
 
-        // merge user and workspace settings into the config
-        config = this.processUserWorkspaceSettings(config);
+            //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
+            this.telemetryManager?.sendStartDebugSessionEvent(config);
 
-        //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
-        this.telemetryManager?.sendStartDebugSessionEvent(config);
+            //force a specific staging folder path because sometimes this conflicts with bsconfig.json
+            config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
 
-        //force a specific staging folder path because sometimes this conflicts with bsconfig.json
-        config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+            config = await this.sanitizeConfiguration(config, folder);
+            config = await this.processEnvFile(folder, config);
+            config = await this.processHostParameter(config);
+            config = await this.processPasswordParameter(config);
+            config = await this.processDeepLinkUrlParameter(config);
+            config = await this.processLogfilePath(folder, config);
 
-        config = await this.sanitizeConfiguration(config, folder);
-        config = await this.processEnvFile(folder, config);
-        config = await this.processHostParameter(config);
-        config = await this.processPasswordParameter(config);
-        config = await this.processDeepLinkUrlParameter(config);
-        config = await this.processLogfilePath(folder, config);
+            await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
-        await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
-
-        return config;
+            return config;
+        } catch (e) {
+            //log any exceptions to the extension panel
+            this.extensionOutputChannel.append((e as Error).stack);
+            throw e;
+        }
     }
 
     /**
@@ -239,15 +245,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
         }
 
+        if (config.raleTrackerTaskFileLocation?.includes('${workspaceFolder}')) {
+            config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
         // Check for the existence of the tracker task file in auto injection is enabled
         if (config.injectRaleTrackerTask) {
             if (!config.raleTrackerTaskFileLocation) {
                 await vscode.window.showErrorMessage(`"raleTrackerTaskFileLocation" must be defined when "injectRaleTrackerTask" is enabled`);
-            }
-            if (config.raleTrackerTaskFileLocation.includes('${workspaceFolder}')) {
-                config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
-            }
-            if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+            } else if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
                 await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
             }
         }
