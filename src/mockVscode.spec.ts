@@ -1,4 +1,4 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration } from 'vscode';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel } from 'vscode';
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
@@ -143,12 +143,17 @@ export let vscode = {
                 show: () => { }
             };
         },
-        createOutputChannel: function() {
+        createOutputChannel: function(name?: string) {
             return {
+                name: name,
+                append: () => { },
+                dispose: () => { },
+                hide: () => { },
+                replace: () => { },
                 show: () => { },
                 clear: () => { },
                 appendLine: () => { }
-            };
+            } as OutputChannel;
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
         showErrorMessage: function(message: string) {

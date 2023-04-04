@@ -51,7 +51,7 @@ describe('BrightScriptConfigurationProvider', () => {
         let activeDeviceManager = {
             getActiveDevices: () => []
         };
-        configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null);
+        configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null, vscode.window.createOutputChannel('Extension'));
     });
 
     afterEach(() => {
