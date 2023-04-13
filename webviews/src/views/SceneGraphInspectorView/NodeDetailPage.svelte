@@ -13,7 +13,10 @@
 
     let inspectChildNodeSubtype: string;
     let inspectChildNodeBaseKeyPath: BaseKeyPath | null;
-    let showKeyPathInfo = false;
+    let showKeyPathInfo = utils.getStorageBooleanValue('showKeyPathInfo');
+    $: {
+        utils.setStorageValue('showKeyPathInfo', showKeyPathInfo);
+    }
 
 
     function close() {
