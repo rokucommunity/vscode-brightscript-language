@@ -5,7 +5,7 @@
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
     import Chevron from '../../shared/Chevron.svelte';
-    import { Refresh, Discard, ChromeClose, Move, Key } from 'svelte-codicons';
+    import { Refresh, Discard, ArrowLeft, Move, Key } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
     export let inspectNodeBaseKeyPath: BaseKeyPath | null;
@@ -337,10 +337,6 @@
         width: auto;
     }
 
-    #closeButton {
-        float: right;
-    }
-
     .collectionItems {
         padding: 3px 0 3px 15px;
         display: block;
@@ -371,6 +367,12 @@
 <div id="background" />
 <div id="container" class:hide={inspectChildNodeBaseKeyPath}>
     <div id="header">
+        <span
+            class="icon-button"
+            title="Back"
+            on:click={close}>
+            <ArrowLeft />
+        </span>
         <span id="nodeSubtype">{inspectNodeSubtype}</span>
         <input
             class="inline"
@@ -393,13 +395,6 @@
             <Key />
         </span>
     {/if}
-        <span
-            id="closeButton"
-            class="icon-button"
-            title="Close"
-            on:click={close}>
-            <ChromeClose />
-        </span>
     </div>
 {#if showKeyPathInfo && inspectNodeTreeNode}
     <div id="baseKeyPathContainer">
