@@ -6,6 +6,8 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import type { TreeNode } from 'roku-test-automation';
+    import { OnDeviceComponent } from 'roku-test-automation/client/dist/OnDeviceComponent';
+    import type { FindNodesAtLocationArgs } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
 
@@ -135,9 +137,10 @@
     }
 
     let lastFindNodesAtLocationArgs;
-    let currentlyRunningFindNodesAtLocation = false;
+    const onDeviceComponent = new OnDeviceComponent({} as any);
+    let lastStoreNodesResponse;
     async function onImageMouseMove(event) {
-        if (!isInspectingNodes) {
+        if (!isInspectingNodes || !lastStoreNodesResponse) {
             return;
         }
 
@@ -150,32 +153,21 @@
 
         const x = Math.round(imageX / imageWidth * 1920);
         const y = Math.round(imageY / imageHeight * 1080);
-        const args = {x: x, y: y}
 
-        if (currentlyRunningFindNodesAtLocation) {
-            lastFindNodesAtLocationArgs = args;
+        if (lastFindNodesAtLocationArgs && lastFindNodesAtLocationArgs.x === x && lastFindNodesAtLocationArgs.y === y) {
             return;
         }
 
-        currentlyRunningFindNodesAtLocation = true;
-        await findNodesAtLocation(args);
-        currentlyRunningFindNodesAtLocation = false;
-
-        if (lastFindNodesAtLocationArgs) {
-            if (lastFindNodesAtLocationArgs.x !== args.x || lastFindNodesAtLocationArgs.y !== args.y) {
-                findNodesAtLocation(lastFindNodesAtLocationArgs);
-            }
-            lastFindNodesAtLocationArgs = undefined;
+        const args: FindNodesAtLocationArgs = {
+            x: x,
+            y: y,
+            nodeTreeResponse: lastStoreNodesResponse
         }
-    }
+        lastFindNodesAtLocationArgs = args;
 
-    async function findNodesAtLocation(args) {
-        try {
-            const result = await odc.findNodesAtLocation(args);
-            focusedTreeNode = result.matches[0];
-        } catch(e) {
-            console.error(e);
-        }
+
+        const {matches} = await onDeviceComponent.findNodesAtLocation(args);
+        focusedTreeNode = matches[0];
     }
 
     function onMouseEnter() {
@@ -199,9 +191,7 @@
             requestScreenshot();
             enableScreenshotCapture = false;
 
-            // IMPROVEMENT in the future we could either do calculations for finding nodes at location locally or switch to only telling SG inspector view to refresh
-            // We also want to update the node information to current state
-            await odc.storeNodeReferences({
+            lastStoreNodesResponse = await odc.storeNodeReferences({
                 includeNodeCountInfo: true,
                 includeArrayGridChildren: true,
                 includeBoundingRectInfo: true
@@ -218,9 +208,7 @@
             enableScreenshotCapture = false;
 
             if (isInspectingNodes) {
-                // IMPROVEMENT in the future we could either do calculations for finding nodes at location locally or switch to only telling SG inspector view to refresh
-                // We also want to update the node information to current state
-                odc.storeNodeReferences({
+                lastStoreNodesResponse = odc.storeNodeReferences({
                     includeNodeCountInfo: true,
                     includeArrayGridChildren: true,
                     includeBoundingRectInfo: true

@@ -12,7 +12,7 @@
     export let depth = 0;
     let self: HTMLDivElement;
 
-    const expandedStorageKey = `expanded:${treeNode.ref}`;
+    const expandedStorageKey = `expanded:${treeNode.keyPath}`;
     export let expanded = utils.getStorageBooleanValue(expandedStorageKey);
     $: {
         if (expanded) {
