@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.40.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.39.0...v2.40.0) - 2023-04-18
+### Added
+ - validation for raleTrackerTaskFileLocation setting existence. ([#472](https://github.com/rokucommunity/vscode-brightscript-language/pull/472))
+### Changed
+ - Run findNode calculations in webview and other improvements ([#477](https://github.com/rokucommunity/vscode-brightscript-language/pull/477))
+ - upgrade to [roku-deploy@3.10.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3101---2023-04-14). Notable changes since 3.10.0:
+     - Bump xml2js from 0.4.23 to 0.5.0 ([roku-deploy#112](https://github.com/rokucommunity/roku-deploy/pull/112))
+     - Fix build status badge ([#roku-deployad2c9ec](https://github.com/rokucommunity/roku-deploy/commit/ad2c9ec))
+ - upgrade to [roku-debug@0.18.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0186---2023-04-18). Notable changes since 0.18.4:
+     - Exclude sourcemaps when sideloading ([roku-debug#145](https://github.com/rokucommunity/roku-debug/pull/145))
+ - upgrade to [brighterscript@0.64.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0642---2023-04-18). Notable changes since 0.62.0:
+     - Fix namespace-relative enum value ([brighterscript#793](https://github.com/rokucommunity/brighterscript/pull/793))
+     - Bump xml2js from 0.4.23 to 0.5.0 ([brighterscript#790](https://github.com/rokucommunity/brighterscript/pull/790))
+     - Fix namespace-relative items ([brighterscript#789](https://github.com/rokucommunity/brighterscript/pull/789))
+     - Wrap transpiled template strings in parens ([brighterscript#788](https://github.com/rokucommunity/brighterscript/pull/788))
+     - Simplify the ast range logic ([brighterscript#784](https://github.com/rokucommunity/brighterscript/pull/784))
+ - upgrade to [brighterscript-formatter@1.6.26](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1626---2023-04-18)
+### Fixed
+ - Fix crash during launch due to missing rale option ([#476](https://github.com/rokucommunity/vscode-brightscript-language/pull/476))
+ - Wrap the dnsLookup for host in a try/catch ([#473](https://github.com/rokucommunity/vscode-brightscript-language/pull/473))
+
+
+
 ## [2.39.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.38.8...v2.39.0) - 2023-03-22
 ### Added
  - device view with direct node selection ([#465](https://github.com/rokucommunity/vscode-brightscript-language/pull/465))
