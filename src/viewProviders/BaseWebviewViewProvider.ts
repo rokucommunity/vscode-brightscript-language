@@ -135,6 +135,17 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return this.getIndexHtml();
     }
 
+    /**
+    * Get a webview-supported URI for the given path
+    */
+    private asWebviewUri(...parts: string[]) {
+        return this.view.webview.asWebviewUri(
+            vscode.Uri.file(
+                path.join(...parts)
+            )
+        );
+    }
+
     private getIndexHtml() {
         let html: string;
         try {
@@ -146,7 +157,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         //the data that will be replaced in the index.html
         const data = {
             viewName: this.id,
-            baseHref: vscode.Uri.file(this.webviewBasePath).with({ scheme: 'vscode-resource' }) + '/',
+            baseHref: `${this.asWebviewUri(this.webviewBasePath)}/`,
             additionalScriptContents: this.additionalScriptContents().join('\n                        ')
         };
         /**
