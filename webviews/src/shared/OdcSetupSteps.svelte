@@ -27,8 +27,10 @@
             <pre><code>' vscode_rdb_on_device_component_entry</code></pre>
         </li>
     </ol>
-
-    The ODC is properly installed if you see this log output during channel launch:
+    The on-device component is properly installed if you see this log output during channel launch:
     <pre><i>[RTA][INFO] OnDeviceComponent init</i></pre>
+
+    <hr/>
+    <b>Connect manually:</b>
     <OdcSetManualIpAddress />
 </div>
