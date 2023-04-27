@@ -6,6 +6,12 @@ body {
     padding: 0;
 }
 
+button {
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: space-between;
+}
+
 .hide {
     display: none;
 }

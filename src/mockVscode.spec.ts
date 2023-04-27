@@ -164,7 +164,11 @@ export let vscode = {
         },
         onDidChangeTextEditorSelection: () => { },
         registerUriHandler: () => { },
-        registerWebviewViewProvider: () => { },
+        registerWebviewViewProvider: () => {
+            return {
+                asWebViewUri: () => { }
+            };
+        },
         showSaveDialog: () => {
             return Promise.resolve('');
         },

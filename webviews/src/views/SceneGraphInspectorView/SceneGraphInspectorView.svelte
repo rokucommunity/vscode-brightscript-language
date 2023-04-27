@@ -192,7 +192,7 @@
         padding: 0 10px 10px;
     }
 
-    .codeSnippet {
+    code {
         color: orange;
         font-weight: bold;
     }
@@ -226,19 +226,16 @@
             component running. This requires that both the files are included in
             the build and that the component is initialized. The easiest way to
             do this is:
-            <ul>
-                <li
-                    >Include the following comment in either your Scene or
-                    main.brs file (if including in main.brs, be sure to add
-                    after your roSGScreen screen.show() call)<br /><span
-                        class="codeSnippet"
-                        >' vscode_rdb_on_device_component_entry</span
-                    ><br /></li>
-                <li
-                    >Make sure your launch.json configuration has<br /><span
-                        class="codeSnippet"
-                        >"injectRdbOnDeviceComponent": true</span> included in it</li>
-            </ul>
+            <ol>
+                <li>
+                    Set <code>"injectRdbOnDeviceComponent": true</code> in `.vscode/launch.json`
+                </li>
+                <li>
+                    Add the following comment in <code>main.brs</code> after calling <code>screen.show()</code>:
+
+                    <code>' vscode_rdb_on_device_component_entry</code>
+                </li>
+            </ol>
             The extension can copy the files automatically for you so there's no
             need to handle that part. If you are still having issues even with these
             steps, check to make sure you're seeing this line in your device logs
