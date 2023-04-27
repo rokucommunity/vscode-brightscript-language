@@ -139,7 +139,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     * Get a webview-supported URI for the given path
     */
     private asWebviewUri(...parts: string[]) {
-        return this.view.webview.asWebviewUri(
+        return this.view?.webview?.asWebviewUri?.(
             vscode.Uri.file(
                 path.join(...parts)
             )
