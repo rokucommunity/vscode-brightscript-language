@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.40.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.0...v2.40.1) - 2023-04-28
+### Changed
+ - upgrade to [roku-debug@0.18.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0188---2023-04-28). Notable changes since 0.18.6:
+     - Make axios a prod dependency ([roku-debug#148](https://github.com/rokucommunity/roku-debug/pull/148))
+     - Add better error for failed session starts ([roku-debug#147](https://github.com/rokucommunity/roku-debug/pull/147))
+     - Bump xml2js from 0.4.23 to 0.5.0 ([roku-debug#146](https://github.com/rokucommunity/roku-debug/pull/146))
+     - adds device query info to debug session ([roku-debug#130](https://github.com/rokucommunity/roku-debug/pull/130))
+ - upgrade to [brighterscript@0.64.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0643---2023-04-28). Notable changes since 0.64.2:
+     - Improves performance in symbol table fetching ([brighterscript#797](https://github.com/rokucommunity/brighterscript/pull/797))
+ - upgrade to [brighterscript-formatter@1.6.27](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1627---2023-04-28). Notable changes since 1.6.26:
+### Fixed
+ - bugs when using the Device View from within WSL ([#478](https://github.com/rokucommunity/vscode-brightscript-language/pull/478))
+
+
+
 ## [2.40.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.39.0...v2.40.0) - 2023-04-18
 ### Added
  - validation for raleTrackerTaskFileLocation setting existence. ([#472](https://github.com/rokucommunity/vscode-brightscript-language/pull/472))
