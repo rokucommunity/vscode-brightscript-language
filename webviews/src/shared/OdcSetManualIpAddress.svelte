@@ -21,13 +21,6 @@
     #setManualIpAddress {
         padding-top: 10px;
     }
-
-    .grid {
-        display: grid;
-    }
-    .col {
-        flex: 1;
-    }
 </style>
 
 <div id="setManualIpAddress">
