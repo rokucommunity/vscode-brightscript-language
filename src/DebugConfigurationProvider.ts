@@ -1,9 +1,7 @@
-/* eslint-disable no-template-curly-in-string */
 import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
-import type { FileEntry } from 'roku-deploy';
 import { DefaultFiles } from 'roku-deploy';
 import * as rta from 'roku-test-automation';
 import type {
