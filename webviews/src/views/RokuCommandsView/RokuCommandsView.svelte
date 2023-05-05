@@ -62,14 +62,13 @@
     const commandList = [];
     for (const commandName of odcCommands) {
         let argsKey = commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
-        const definition = requestArgsSchema.definitions[argsKey];
-        if (!definition) {
-            console.warn(`Could not retrieve definition for ${commandName}`);
-            continue;
+        let definitionArgs = requestArgsSchema.definitions[argsKey] as any[];
+        if (!definitionArgs) {
+            definitionArgs = [];
         }
         commandList.push({
             name: commandName,
-            args: requestArgsSchema.definitions[argsKey]
+            args: definitionArgs
         });
     }
 

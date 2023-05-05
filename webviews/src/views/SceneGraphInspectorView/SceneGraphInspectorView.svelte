@@ -87,7 +87,8 @@
         const returnFocusedArrayGridChild = utils.getStorageBooleanValue('includeArrayGridChildren', true)
         const { ref } = await odc.getFocusedNode({
             includeRef: true,
-            returnFocusedArrayGridChild: returnFocusedArrayGridChild
+            returnFocusedArrayGridChild: returnFocusedArrayGridChild,
+            includeNode: false
         });
         focusedNode = ref;
     }
