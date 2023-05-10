@@ -280,9 +280,6 @@ export class LogOutputManager {
         }
 
         while (match === regex.exec(str)) {
-            // If you want to use regex.lastIndex in this loop, you'd need more
-            // code here to fix IE < 9
-
             matches.push(match);
 
             if (regex.lastIndex === match.index) {
