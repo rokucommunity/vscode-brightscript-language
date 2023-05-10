@@ -1,63 +1,22 @@
 <script lang="ts">
     import throttle from 'just-throttle';
-    import type { ODC } from 'roku-test-automation';
+    import type { TreeNode, BaseKeyPath } from 'roku-test-automation';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
-    import type { ChangedFieldEntry } from '../../ChangedFieldEntry';
     import Chevron from '../../shared/Chevron.svelte';
-    import { Refresh, Discard, ChromeClose, Move, Key } from 'svelte-codicons';
+    import { Refresh, Discard, ArrowLeft, Move, Key } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
-    export let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null;
-    export let flatTree: ODC.NodeTree[] | null;
-    export let inspectNodeNodeTree: ODC.NodeTree | null;
-    $: {
-        const absoluteKeyPathParts = [];
-        let nodeTree = inspectNodeNodeTree;
-        if (inspectNodeNodeTree) {
-            while (nodeTree) {
-                if (nodeTree.subtype === 'RowListItem') {
-                    // If we encounter a RowListItem then we know we need to modify the keypath structure
-                    const position = absoluteKeyPathParts.shift();
-                    for (const child of nodeTree.children) {
-                        if (child.position === position) {
-                            if (child.subtype === 'MarkupGrid') {
-                                absoluteKeyPathParts.unshift('items');
-                            } else if (child.subtype === 'Group') {
-                                absoluteKeyPathParts.unshift('title');
-                            } else {
-                                console.log('Encountered unexpected subtype ' + child.subtype);
-                            }
-                            break;
-                        }
-                    }
-                    absoluteKeyPathParts.unshift(nodeTree.position);
-                } else if (nodeTree.id) {
-                    absoluteKeyPathParts.unshift('#' + nodeTree.id);
-                } else if (nodeTree.position >= 0) {
-                    absoluteKeyPathParts.unshift(nodeTree.position);
-                }
+    export let inspectNodeBaseKeyPath: BaseKeyPath | null;
+    export let inspectNodeTreeNode: TreeNode | null;
 
-                if (nodeTree.parentRef >= 0) {
-                    for (const tree of flatTree) {
-                        if (nodeTree.parentRef === tree.ref) {
-                            nodeTree = tree;
-                            break;
-                        }
-                    }
-                } else {
-                    nodeTree = undefined;
-                }
-            }
-        }
-        inspectNodeAbsoluteKeyPath = absoluteKeyPathParts.join('.');
-    }
-
-    let inspectNodeAbsoluteKeyPath: string;
     let inspectChildNodeSubtype: string;
-    let inspectChildNodeBaseKeyPath: ODC.BaseKeyPath | null;
-    let showKeyPathInfo = false;
+    let inspectChildNodeBaseKeyPath: BaseKeyPath | null;
+    let showKeyPathInfo = utils.getStorageBooleanValue('showKeyPathInfo');
+    $: {
+        utils.setStorageValue('showKeyPathInfo', showKeyPathInfo);
+    }
 
 
     function close() {
@@ -146,14 +105,11 @@
     }
 
     function setValue(fieldKeyPath: string, value: any) {
-        const args: Omit<ChangedFieldEntry, 'ts'> = {
-            subtype: inspectNodeSubtype,
-            id: fields.id.value,
+        odc.setValue({
             base: inspectNodeBaseKeyPath.base,
             keyPath: `${inspectNodeBaseKeyPath.keyPath}.${fieldKeyPath}`,
             value: value,
-        }
-        odc.setValue(args);
+        });
     }
 
     function onNodeClicked() {
@@ -226,7 +182,7 @@
         }
     }
 
-    function handleKeydown(event) {
+    function onKeydown(event) {
         // Don't handle anything if we're not the top detail view
         if (inspectChildNodeBaseKeyPath) {
             return;
@@ -243,7 +199,7 @@
         }
     }
 
-    function handleKeyup(event) {
+    function onKeyup(event) {
         const key = event.key;
         switch (key) {
             case 'Shift':
@@ -384,10 +340,6 @@
         width: auto;
     }
 
-    #closeButton {
-        float: right;
-    }
-
     .collectionItems {
         padding: 3px 0 3px 15px;
         display: block;
@@ -413,11 +365,17 @@
 </style>
 
 <svelte:window
-    on:keydown={handleKeydown}
-    on:keyup={handleKeyup} />
+    on:keydown={onKeydown}
+    on:keyup={onKeyup} />
 <div id="background" />
 <div id="container" class:hide={inspectChildNodeBaseKeyPath}>
     <div id="header">
+        <span
+            class="icon-button"
+            title="Back"
+            on:click={close}>
+            <ArrowLeft />
+        </span>
         <span id="nodeSubtype">{inspectNodeSubtype}</span>
         <input
             class="inline"
@@ -431,7 +389,7 @@
             on:click={refresh}>
             <Refresh />
         </span>
-    {#if inspectNodeAbsoluteKeyPath || (inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath)}
+    {#if inspectNodeTreeNode?.keyPath}
         <span
             id="showKeyPathInfo"
             class="icon-button"
@@ -440,31 +398,12 @@
             <Key />
         </span>
     {/if}
-        <span
-            id="closeButton"
-            class="icon-button"
-            title="Close"
-            on:click={close}>
-            <ChromeClose />
-        </span>
     </div>
-{#if showKeyPathInfo}
-    {#if inspectNodeAbsoluteKeyPath}
-        <div id="baseKeyPathContainer">
-            <b>relative:</b><br>
-            base: '{inspectNodeBaseKeyPath.base}',<br>
-            keyPath: '{inspectNodeBaseKeyPath.keyPath}'<br>
-            <br>
-            <b>absolute:</b><br>
-            base: 'scene',<br>
-            keyPath: '{inspectNodeAbsoluteKeyPath}'
-        </div>
-    {:else if inspectNodeBaseKeyPath.base === 'global' && inspectNodeBaseKeyPath.keyPath}
-        <div id="baseKeyPathContainer">
-            base: '{inspectNodeBaseKeyPath.base}',<br>
-            keyPath: '{inspectNodeBaseKeyPath.keyPath}'
-        </div>
-    {/if}
+{#if showKeyPathInfo && inspectNodeTreeNode}
+    <div id="baseKeyPathContainer">
+        "base": "scene",<br>
+        "keyPath": "{inspectNodeTreeNode.keyPath}"
+    </div>
 {/if}
 
 

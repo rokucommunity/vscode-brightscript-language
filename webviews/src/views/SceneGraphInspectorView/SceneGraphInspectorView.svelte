@@ -1,28 +1,30 @@
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import type { ODC } from 'roku-test-automation';
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import SettingsPage from './SettingsPage.svelte';
     import Loader from '../../shared/Loader.svelte';
     import { utils } from '../../utils';
     import NodeCountByTypePage from './NodeCountByTypePage.svelte';
-    import NodeBranchPage from './NodeBranchPage.svelte';
+    import Branch from './Branch.svelte';
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
+    import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import type { BaseKeyPath, TreeNode } from 'roku-test-automation';
 
     window.vscode = acquireVsCodeApi();
-    let loading = true;
+    let loading = false;
     let error: Error | null;
-    let showSettings = false;
-    let inspectNodeBaseKeyPath: ODC.BaseKeyPath | null = null;
+    let showSettingsPage = false;
+    let inspectNodeBaseKeyPath: BaseKeyPath | null = null;
     let inspectNodeSubtype = '';
-    let inspectNodeNodeTree: ODC.NodeTree | undefined;
+    let inspectNodeTreeNode: TreeNode | undefined;
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
-    let rootTree = [] as ODC.NodeTree[];
-    let flatTree = [] as ODC.NodeTree[];
+    let rootTree = [] as TreeNode[];
 
     const globalNode = {
         id: '',
@@ -33,10 +35,21 @@
         parentRef: -1,
         /** Used to determine the position of this node in its parent if applicable */
         position: -1,
-        children: []
+        children: [],
+        keyPath: ''
     };
 
     let focusedNode = -1;
+
+    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async () => {
+        loading = true;
+        const result = await intermediary.getStoredNodeReferences();
+        rootTree = result.rootTree;
+
+        totalNodeCount = result.totalNodes ?? 0;
+        nodeCountByType = result.nodeCountByType;
+        loading = false;
+    });
 
     async function refresh() {
         loading = true;
@@ -46,13 +59,13 @@
         try {
             const result = await odc.storeNodeReferences({
                 includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo', true),
-                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true)
+                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true),
+                includeBoundingRectInfo: true
             }, {
                 timeout: 15000
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree;
-            flatTree = result.flatTree;
 
             //insert the global node to the top of the rootNodes list
             rootTree.unshift(globalNode);
@@ -80,7 +93,7 @@
     }
 
     function openSettings() {
-        showSettings = true;
+        showSettingsPage = true;
     }
 
     function openNodeCountByType() {
@@ -89,8 +102,8 @@
 
     let odcAvailable = false;
 
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
+        odcAvailable = message.odcAvailable;
         if (odcAvailable) {
             refresh();
         } else {
@@ -98,27 +111,41 @@
         }
     });
 
-    // Required by any view so we can know that the view is ready to receive messages
-    intermediary.sendViewReady();
-
-    function openNode(event: CustomEvent<ODC.NodeTree>) {
-        const nodeTree = event.detail;
-        inspectNodeNodeTree = nodeTree;
+    function onOpenNode(event: CustomEvent<TreeNode>) {
+        const treeNode = event.detail;
+        inspectNodeTreeNode = treeNode;
         //if the global node was clicked
-        if (nodeTree === globalNode) {
+        if (treeNode.subtype === 'Global') {
             inspectNodeBaseKeyPath = {
-                base: 'global',
-                keyPath: ''
+                base: 'global'
             };
             inspectNodeSubtype = 'Global';
         } else {
             inspectNodeBaseKeyPath = {
                 base: 'nodeRef',
-                keyPath: `${nodeTree.ref}`
+                keyPath: `${treeNode.ref}`
             };
-            inspectNodeSubtype = nodeTree.subtype;
+            inspectNodeSubtype = treeNode.subtype;
         }
     }
+
+    intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
+        focusedNode = -1;
+        if (message.treeNode) {
+            focusedNode = message.treeNode.ref;
+        }
+    });
+
+    function onTreeNodeFocused(event: CustomEvent<TreeNode>) {
+        const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
+            treeNode: event.detail
+        });
+
+        intermediary.sendMessageToWebviews(ViewProviderId.rokuDeviceView, message);
+    }
+
+    // Required by any view so we can know that the view is ready to receive messages
+    intermediary.sendViewReady();
 </script>
 
 <style>
@@ -126,7 +153,8 @@
         --headerHeight: 30px;
         width: 100%;
         height: 100%;
-        overflow: scroll;
+        overflow-y: scroll;
+        overflow-wrap: anywhere;
     }
 
     #header {
@@ -164,7 +192,7 @@
         padding: 0 10px 10px;
     }
 
-    .codeSnippet {
+    code {
         color: orange;
         font-weight: bold;
     }
@@ -181,8 +209,8 @@
 </style>
 
 <div id="container">
-    {#if showSettings}
-        <SettingsPage bind:showSettings />
+    {#if showSettingsPage}
+        <SettingsPage bind:showSettingsPage />
     {/if}
     {#if showNodeCountByType}
         <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType />
@@ -192,25 +220,22 @@
     {:else if !odcAvailable}
         <OdcSetupSteps />
     {:else if error}
-        <div id="errorMessage">{error}</div>
+        <div id="errorMessage">{error.message}</div>
         <div id="errorHelp">
             If you are seeing this, please make sure you have the on device
             component running. This requires that both the files are included in
             the build and that the component is initialized. The easiest way to
             do this is:
-            <ul>
-                <li
-                    >Include the following comment in either your Scene or
-                    main.brs file (if including in main.brs, be sure to add
-                    after your roSGScreen screen.show() call)<br /><span
-                        class="codeSnippet"
-                        >' vscode_rdb_on_device_component_entry</span
-                    ><br /></li>
-                <li
-                    >Make sure your launch.json configuration has<br /><span
-                        class="codeSnippet"
-                        >"injectRdbOnDeviceComponent": true</span> included in it</li>
-            </ul>
+            <ol>
+                <li>
+                    Set <code>"injectRdbOnDeviceComponent": true</code> in `.vscode/launch.json`
+                </li>
+                <li>
+                    Add the following comment in <code>main.brs</code> after calling <code>screen.show()</code>:
+
+                    <code>' vscode_rdb_on_device_component_entry</code>
+                </li>
+            </ol>
             The extension can copy the files automatically for you so there's no
             need to handle that part. If you are still having issues even with these
             steps, check to make sure you're seeing this line in your device logs
@@ -245,10 +270,11 @@
 
         <div id="nodeTree">
             {#each rootTree as rootNode}
-                <NodeBranchPage
-                    on:open={openNode}
+                <Branch
+                    on:openNode={onOpenNode}
+                    on:treeNodeFocused={onTreeNodeFocused}
                     bind:focusedNode
-                    nodeTree={rootNode}
+                    treeNode={rootNode}
                     expanded={true} />
             {/each}
         </div>
@@ -257,7 +283,6 @@
         <NodeDetailPage
             bind:inspectNodeBaseKeyPath
             inspectNodeSubtype={inspectNodeSubtype}
-            inspectNodeNodeTree={inspectNodeNodeTree}
-            flatTree={flatTree} />
+            inspectNodeTreeNode={inspectNodeTreeNode} />
     {/if}
 </div>

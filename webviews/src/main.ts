@@ -1,6 +1,7 @@
 /* eslint-disable object-shorthand */
 import rokuRegistryView from './views/RokuRegistryView/RokuRegistryView.svelte';
 import rokuCommandsView from './views/RokuCommandsView/RokuCommandsView.svelte';
+import rokuDeviceView from './views/RokuDeviceView/RokuDeviceView.svelte';
 import sceneGraphInspectorView from './views/SceneGraphInspectorView/SceneGraphInspectorView.svelte';
 import './style.css';
 
@@ -15,6 +16,7 @@ declare const viewName;
 const views = {
     rokuRegistryView,
     rokuCommandsView,
+    rokuDeviceView,
     sceneGraphInspectorView
 };
 

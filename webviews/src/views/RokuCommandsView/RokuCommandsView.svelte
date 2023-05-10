@@ -5,8 +5,9 @@
     import { commandsView } from './RokuCommandsView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import { utils } from '../../utils';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
-    let commandArgs: any[];
+    let commandArgs = [];
     let selectedCommand;
 
     // Where we store the info the user put in the form
@@ -36,11 +37,10 @@
         for (const key in formArgs) {
             let argValue = formArgs[key];
             argValuesForCommand[key] = argValue;
-            const argType = selectedCommand.args.properties[key].type;
-            processedArgs[key] = commandsView.processArgToSendToExtension(
-                argType,
-                argValue
-            );
+            const argType = selectedCommand.args.properties[key]?.type;
+            if (argType) {
+                processedArgs[key] = commandsView.processArgToSendToExtension(argType, argValue);
+            }
         }
 
         utils.setStorageValue(
@@ -55,17 +55,18 @@
             );
             commandResponse = JSON.stringify(response, null, 2);
         } catch (error) {
-            commandResponse = error;
+            commandResponse = error.message;
         }
     }
 
     const commandList = [];
     for (const commandName of odcCommands) {
-        let argsKey =
-            'ODC.' +
-            commandName.charAt(0).toUpperCase() +
-            commandName.slice(1) +
-            'Args';
+        let argsKey = commandName.charAt(0).toUpperCase() + commandName.slice(1) + 'Args';
+        const definition = requestArgsSchema.definitions[argsKey];
+        if (!definition) {
+            console.warn(`Could not retrieve definition for ${commandName}`);
+            continue;
+        }
         commandList.push({
             name: commandName,
             args: requestArgsSchema.definitions[argsKey]
@@ -91,8 +92,8 @@
 
     let odcAvailable = true;
 
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
+        odcAvailable = message.odcAvailable;
     });
 
     // Required by any view so we can know that the view is ready to receive messages
@@ -102,6 +103,7 @@
 <style>
     #container {
         margin: 10px 10px;
+        overflow-wrap: anywhere;
     }
 
     label {
