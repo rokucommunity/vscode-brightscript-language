@@ -89,7 +89,7 @@ export class RendezvousViewProvider implements vscode.TreeDataProvider<vscode.Tr
                 return arraySort(Object.keys(this.rendezvousHistory.occurrences).map((key) => {
                     let fileTreeItem = new RendezvousFileTreeItem(key, vscode.TreeItemCollapsibleState.Collapsed, null, this.rendezvousHistory.occurrences[key]);
                     fileTreeItem.tooltip = fileTreeItem.key;
-                    fileTreeItem.description = `hitCount: ${fileTreeItem.details.hitCount - fileTreeItem.details.zeroCostHitCount} | totalTime: ${fileTreeItem.details.totalTime.toFixed(3)} s`;
+                    fileTreeItem.description = `hitCount: ${fileTreeItem.details.hitCount} | totalTime: ${fileTreeItem.details.totalTime.toFixed(3)} s`;
                     return fileTreeItem;
                 }), this.activeFilter);
             } else {
