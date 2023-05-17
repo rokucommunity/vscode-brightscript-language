@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.40.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.1...v2.40.2) - 2023-05-17
+### Changed
+ - Bump http-cache-semantics from 4.1.0 to 4.1.1 ([#466](https://github.com/rokucommunity/vscode-brightscript-language/pull/466))
+ - Augment roku error codes in the logs with human readable messages ([#467](https://github.com/rokucommunity/vscode-brightscript-language/pull/467))
+ - upgrade to [roku-deploy@3.10.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3102---2023-05-10). Notable changes since 3.10.1:
+     - TBD-67: roku-deploy: fix nodejs 19 bug ([roku-deploy#115](https://github.com/rokucommunity/roku-deploy/pull/115))
+ - upgrade to [roku-debug@0.18.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#01810---2023-05-17). Notable changes since 0.18.8:
+ - upgrade to [brighterscript@0.65.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0650---2023-05-17). Notable changes since 0.64.3:
+     - npm audit fixes. upgrade to coveralls-next ([#brighterscript43756d8](https://github.com/rokucommunity/brighterscript/commit/43756d8))
+     - Improve findChild and findAncestor AST methods ([brighterscript#807](https://github.com/rokucommunity/brighterscript/pull/807))
+ - upgrade to [brighterscript-formatter@1.6.29](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1629---2023-05-17). Notable changes since 1.6.27:
+### Fixed
+ - Remove `<` and `>` from bracket matching ([#483](https://github.com/rokucommunity/vscode-brightscript-language/pull/483))
+ - incorrect rendezvous count for file history ([#482](https://github.com/rokucommunity/vscode-brightscript-language/pull/482))
+ - fix infinite recursion possibility in Scenegraph Inspector and fix Roku Commands list of available requests ([#480](https://github.com/rokucommunity/vscode-brightscript-language/pull/480))
+
+
+
 ## [2.40.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.0...v2.40.1) - 2023-04-28
 ### Changed
  - upgrade to [roku-debug@0.18.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0188---2023-04-28). Notable changes since 0.18.6:
