@@ -1,4 +1,4 @@
-import * as request from 'request';
+import * as request from 'postman-request';
 import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
