@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.40.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.2...2.40.3) - 2023-05-17
+### Changed
+ - upgrade to [roku-debug@0.18.11](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#01811---2023-05-17). Notable changes since 0.18.10:
+     - Fix crash by using postman-request ([roku-debug#151](https://github.com/rokucommunity/roku-debug/pull/151))
+### Fixed
+ - Use postman-request instead of request ([#485](https://github.com/rokucommunity/vscode-brightscript-language/pull/485))
+
+
+
 ## [2.40.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.1...v2.40.2) - 2023-05-17
 ### Changed
  - Bump http-cache-semantics from 4.1.0 to 4.1.1 ([#466](https://github.com/rokucommunity/vscode-brightscript-language/pull/466))
