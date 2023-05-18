@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [2.40.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.2...2.40.3) - 2023-05-17
+## [2.40.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.3...v2.40.4) - 2023-05-18
+### Changed
+ - upgrade to [roku-debug@0.18.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#01812---2023-05-18). Notable changes since 0.18.11:
+     - Remove axios in favor of postman-request ([roku-debug#153](https://github.com/rokucommunity/roku-debug/pull/153))
+     - Fix `file already exists` error and hung process ([roku-debug#152](https://github.com/rokucommunity/roku-debug/pull/152))
+
+
+
+## [2.40.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.2...v2.40.3) - 2023-05-17
 ### Changed
  - upgrade to [roku-debug@0.18.11](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#01811---2023-05-17). Notable changes since 0.18.10:
      - Fix crash by using postman-request ([roku-debug#151](https://github.com/rokucommunity/roku-debug/pull/151))
