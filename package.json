@@ -511,6 +511,123 @@
                                     ]
                                 }
                             },
+                            "fileLogging": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "description": "Configure file logging for debug console logs as well as RokuCommunity debugger logs",
+                                        "default": {
+                                            "dir": "${workspaceFolder}/logs",
+                                            "rokuDevice": {
+                                                "enabled": true,
+                                                "filename": "rokuDevice.log",
+                                                "mode": "session",
+                                                "logLimit": 5
+                                            },
+                                            "debugger": {
+                                                "enabled": true,
+                                                "filename": "debugger.log",
+                                                "mode": "session",
+                                                "logLimit": 5
+                                            }
+                                        },
+                                        "properties": {
+                                            "enabled": {
+                                                "type": "boolean",
+                                                "description": "Should file logging be enabled"
+                                            },
+                                            "dir": {
+                                                "type": "string",
+                                                "description": "Directory where log files should be stored. used when filename is relative",
+                                                "default": "${workspaceFolder}/logs"
+                                            },
+                                            "logLimit": {
+                                                "type": "number",
+                                                "description": "The number of log files to keep. `null` means keep all logs",
+                                                "default": null
+                                            },
+                                            "rokuDevice": {
+                                                "oneOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "description": "File logging for the telnet or IO output from the Roku device currently being debugged. (i.e. all the stuff produced by `print` statements in your code)",
+                                                        "properties": {
+                                                            "enabled": {
+                                                                "type": "boolean",
+                                                                "description": "Should file logging be enabled"
+                                                            },
+                                                            "dir": {
+                                                                "type": "string",
+                                                                "description": "Directory where log files should be stored. used when filename is relative",
+                                                                "default": "${workspaceFolder}/logs"
+                                                            },
+                                                            "logLimit": {
+                                                                "type": "number",
+                                                                "description": "The number of log files to keep. `null` means keep all logs",
+                                                                "default": null
+                                                            },
+                                                            "mode": {
+                                                                "type": "string",
+                                                                "description": "`'session'` means a unique timestamped file will be created on every debug session.`'append'` means all logs will be appended to a single file",
+                                                                "default": "session",
+                                                                "enum": [
+                                                                    "session",
+                                                                    "append"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "boolean",
+                                                        "description": "Enable file logging for debug console logs as well as RokuCommunity debugger logs"
+                                                    }
+                                                ]
+                                            },
+                                            "debugger": {
+                                                "oneOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "description": "File logging for the debugger. Mostly used to provide crash logs to the RokuCommunity team.",
+                                                        "properties": {
+                                                            "enabled": {
+                                                                "type": "boolean",
+                                                                "description": "Should file logging be enabled"
+                                                            },
+                                                            "dir": {
+                                                                "type": "string",
+                                                                "description": "Directory where log files should be stored. used when filename is relative",
+                                                                "default": "${workspaceFolder}/logs"
+                                                            },
+                                                            "logLimit": {
+                                                                "type": "number",
+                                                                "description": "The number of log files to keep. `null` means keep all logs",
+                                                                "default": null
+                                                            },
+                                                            "mode": {
+                                                                "type": "string",
+                                                                "description": "`'session'` means a unique timestamped file will be created on every debug session.`'append'` means all logs will be appended to a single file",
+                                                                "default": "session",
+                                                                "enum": [
+                                                                    "session",
+                                                                    "append"
+                                                                ]
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "boolean",
+                                                        "description": "Enable file logging for debug console logs as well as RokuCommunity debugger logs"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "boolean",
+                                        "description": "Enable file logging for debug console logs as well as RokuCommunity debugger logs"
+                                    }
+                                ]
+                            },
                             "outDir": {
                                 "type": "string",
                                 "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",

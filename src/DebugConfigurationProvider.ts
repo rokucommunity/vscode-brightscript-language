@@ -238,6 +238,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath ??= null;
         config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
+        config.cwd = folderUri.fsPath;
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
