@@ -767,6 +767,7 @@
                             },
                             "logfilePath": {
                                 "type": "string",
+                                "deprecationMessage": "Use `fileLogging` option instead",
                                 "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
                             },
                             "enableDebugProtocol": {
@@ -1772,6 +1773,7 @@
                     },
                     "brightscript.debug.logfilePath": {
                         "type": "string",
+                        "deprecationMessage": "Use `fileLogging` option instead",
                         "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled.",
                         "scope": "resource"
                     },
@@ -2140,6 +2142,7 @@
                 "properties": {
                     "brightscript.extensionLogfilePath": {
                         "type": "string",
+                        "deprecationMessage": "Use `fileLogging` option instead",
                         "description": "File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. ${workspaceFolder} is supported and will point to the first workspace found.",
                         "scope": "resource"
                     }
