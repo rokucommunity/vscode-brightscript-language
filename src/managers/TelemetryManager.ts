@@ -2,6 +2,7 @@ import TelemetryReporter from '@vscode/extension-telemetry';
 import type { Disposable } from 'vscode';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
+import * as vscode from 'vscode';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -40,7 +41,11 @@ export class TelemetryManager implements Disposable {
             isPreLaunchTaskDefined: isDefined(event.preLaunchTask),
             isComponentLibrariesDefined: isDefined(event.componentLibraries),
             isDeepLinkUrlDefined: isDefined(event.deepLinkUrl),
-            isStagingFolderPathDefined: isDefined(event.stagingFolderPath)
+            isStagingFolderPathDefined: isDefined(event.stagingFolderPath),
+            isLogfilePathDefined: isDefined(event.logfilePath),
+            isExtensionLogfilePathDefined: isDefined(
+                vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
+            )
         });
     }
 
