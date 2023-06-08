@@ -598,7 +598,7 @@
                     "name": "punctuation.definition.comment.brs"
                 }
             },
-            "match": "^\\s*?(?i:rem\\s).*$\\n?",
+            "match": "^\\s*?(?i:rem\\s.*)$",
             "name": "comment.line.rem.brs"
         },
         "apostrophe_comment": {
@@ -607,7 +607,7 @@
                     "name": "punctuation.definition.comment.brs"
                 }
             },
-            "match": "(').*$\\n?",
+            "match": "('[^\\r\\n]*)$",
             "name": "comment.line.apostrophe.brs"
         },
         "keyword_logical_operator": {
@@ -730,21 +730,10 @@
                     "include": "#annotation"
                 },
                 {
-                    "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))?",
-                    "beginCaptures": {
-                        "1": {
-                            "name": "variable.object.property.brs"
-                        },
-                        "2": {
-                            "name": "keyword.control.as.brs"
-                        }
-                    },
-                    "patterns": [
-                        {
-                            "include": "#type_expression"
-                        }
-                    ],
-                    "end": "\r?\n"
+                    "include": "#interface_function"
+                },
+                {
+                    "include": "#interface_field"
                 }
             ],
             "end": "(?i)[\\s\\t]*(end[\\s\\t]*interface)",
@@ -753,6 +742,85 @@
                     "name": "storage.type.interface.brs"
                 }
             }
+        },
+        "interface_field": {
+            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))?",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.object.property.brs"
+                },
+                "2": {
+                    "name": "keyword.control.as.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#type_expression"
+                },
+                {
+                    "include": "#comment"
+                }
+            ],
+            "end": "\r?\n"
+        },
+        "interface_function": {
+            "patterns": [
+                {
+                    "include": "#interface_function_with_return_type"
+                },
+                {
+                    "include": "#interface_function_plain"
+                }
+            ]
+        },
+        "interface_function_plain": {
+            "match": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\())(\\))[\\s\\t]",
+            "captures": {
+                "1": {
+                    "name": "storage.type.function.brs"
+                },
+                "2": {
+                    "name": "entity.name.function.member.brs"
+                },
+                "3": {
+                    "name": "punctuation.definition.parameters.begin.brs"
+                },
+                "4": {
+                    "name": "punctuation.definition.parameters.end.brs"
+                },
+                "5": {
+                    "name": "keyword.control.as.brs"
+                }
+            }
+        },
+        "interface_function_with_return_type": {
+            "begin": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\()).*?(\\))[\\s\\t]+(as)",
+            "beginCaptures": {
+                "1": {
+                    "name": "storage.type.function.brs"
+                },
+                "2": {
+                    "name": "entity.name.function.member.brs"
+                },
+                "3": {
+                    "name": "punctuation.definition.parameters.begin.brs"
+                },
+                "4": {
+                    "name": "punctuation.definition.parameters.end.brs"
+                },
+                "5": {
+                    "name": "keyword.control.as.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#type_expression"
+                },
+                {
+                    "include": "#comment"
+                }
+            ],
+            "end": "\r?\n"
         },
         "enum_declaration": {
             "name": "meta.enum.declaration.brs",
