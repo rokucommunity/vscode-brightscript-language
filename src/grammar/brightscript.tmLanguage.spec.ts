@@ -150,6 +150,36 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('handles comments following interface fields', async () => {
+        await testGrammar(`
+            interface Person
+                name as string 'this is a comment
+               '               ^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+               '        ^^^^^^ storage.type.brs
+               '     ^^ keyword.control.as.brs
+               '^^ variable.object.property.brs
+
+               name as string
+              '        ^^^^^^ storage.type.brs
+              '     ^^ keyword.control.as.brs
+              '^^ variable.object.property.brs
+        `);
+    });
+
+    it('handles interface function with return type', async () => {
+        await testGrammar(`
+            interface Person
+                sub test() as string 'this is a comment
+               '                      ^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+               '              ^^^^^^ storage.type.brs
+               '           ^^ keyword.control.as.brs
+               '         ^ punctuation.definition.parameters.end.brs
+               '        ^ punctuation.definition.parameters.begin.brs
+               '    ^^^^ entity.name.function.member.brs
+               '^^^ storage.type.function.brs
+        `);
+    });
+
     it.skip('handles `as Function` parameters properly', async () => {
         await testGrammar(`
              function getStyle(builderFunc as Function, processorFunc as Function) as object
