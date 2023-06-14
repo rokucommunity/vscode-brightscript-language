@@ -11,78 +11,50 @@ import { ViewProviderCommand } from './ViewProviderCommand';
 
 
 export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
-    protected rtaManager?: RtaManager;
-
     protected odcCommands: Array<RequestType>;
 
-    constructor(context: vscode.ExtensionContext) {
-        super(context);
+    constructor(context: vscode.ExtensionContext, dependencies) {
+        super(context, dependencies);
         const requestTypesPath = path.join(rta.utils.getClientFilesPath(), 'requestTypes.schema.json');
         const json = JSON.parse(fsExtra.readFileSync(requestTypesPath, 'utf8'));
         this.odcCommands = Object.values(json.enum);
-    }
 
-    public setRtaManager(rtaManager?: RtaManager) {
-        this.rtaManager = rtaManager;
+        this.setupCommandObservers();
     }
 
     public updateDeviceAvailability() {
-        this.postOrQueueMessage({
-            event: ViewProviderEvent.onDeviceAvailabilityChange,
-            odcAvailable: !!this.rtaManager.onDeviceComponent,
-            deviceAvailable: !!this.rtaManager.device
+        const message = this.createEventMessage(ViewProviderEvent.onDeviceAvailabilityChange, {
+            odcAvailable: !!this.dependencies.rtaManager.onDeviceComponent,
+            deviceAvailable: !!this.dependencies.rtaManager.device
+        });
+
+        this.postOrQueueMessage(message);
+    }
+
+    protected setupCommandObservers() {
+        for (const command of this.odcCommands) {
+            this.addMessageCommandCallback(command, async (message) => {
+                const { command, context } = message;
+                const response = await this.dependencies.rtaManager.sendOdcRequest(this.id, command, context);
+                this.postOrQueueMessage({
+                    ...message,
+                    response: response
+                });
+                return true;
+            });
+        }
+
+        this.addMessageCommandCallback(ViewProviderCommand.setManualIpAddress, (message) => {
+            this.dependencies.rtaManager.setupRtaWithConfig({
+                ...message.context,
+                injectRdbOnDeviceComponent: true
+            });
+            return Promise.resolve(true);
         });
     }
 
     protected onViewReady() {
         // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
         this.updateDeviceAvailability();
-    }
-
-    protected async handleViewMessage(message) {
-        const { command, context } = message;
-        if (this.odcCommands.includes(command)) {
-            const response = await this.rtaManager.sendOdcRequest(this.id, command, context);
-            this.postOrQueueMessage({
-                ...message,
-                response: response
-            });
-            return true;
-        } else if (command === ViewProviderCommand.getStoredNodeReferences) {
-            const response = this.rtaManager.getStoredNodeReferences();
-            this.postOrQueueMessage({
-                ...message,
-                response: response
-            });
-
-            return true;
-        } else if (command === ViewProviderCommand.setManualIpAddress) {
-            this.rtaManager.setupRtaWithConfig({
-                ...message.context,
-                injectRdbOnDeviceComponent: true
-            });
-            return true;
-        } else if (command === ViewProviderCommand.getScreenshot) {
-            try {
-                const result = await this.rtaManager.device.getScreenshot();
-                this.postOrQueueMessage({
-                    ...message,
-                    response: {
-                        success: true,
-                        arrayBuffer: result.buffer.buffer
-                    }
-                });
-            } catch (e) {
-                this.postOrQueueMessage({
-                    ...message,
-                    response: {
-                        success: false
-                    }
-                });
-            }
-            return true;
-        }
-
-        return false;
     }
 }

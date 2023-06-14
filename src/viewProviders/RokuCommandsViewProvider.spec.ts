@@ -29,7 +29,7 @@ beforeEach(() => {
         show: () => { }
     };
 
-    provider = new RokuCommandsViewProvider(vscode.context) as any;
+    provider = new RokuCommandsViewProvider(vscode.context, {}) as any;
 });
 afterEach(() => {
     provider.dispose();
@@ -51,12 +51,13 @@ describe('RokuCommandsViewProvider', () => {
             await provider['resolveWebviewView'](view, {} as any, {} as any);
 
             expect(typeof callback).to.equal('function');
-            const spy = sinon.spy(provider as any, 'handleViewMessage');
+            const fake = sinonImport.fake.returns(Promise.resolve(true));
+            provider['addMessageCommandCallback']('importRegistry', fake);
             callback({
                 command: 'importRegistry',
                 context: {}
             });
-            expect(spy.calledOnce).to.be.true;
+            expect(fake.calledOnce).to.be.true;
         });
     });
 });

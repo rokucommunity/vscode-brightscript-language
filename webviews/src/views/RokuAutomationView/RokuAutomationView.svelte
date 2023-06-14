@@ -1,0 +1,324 @@
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<script lang="ts">
+    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { Trash, Add, Grabber } from 'svelte-codicons';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
+    import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
+
+    window.vscode = acquireVsCodeApi();
+
+    let list = [{name: "foo", id: 0}, {name: "bar", id: 1},
+							{name: "bob", id: 2}, {name: "jean", id: 3}];
+
+    let loading = true;
+    let currentRunningStep = -1;
+
+    const stepTypes = {
+        sleep: {
+            type: 'sleep',
+            defaultValue: 1,
+            name: 'Sleep'
+        },
+        sendKeyPress: {
+            type: 'sendKeyPress',
+            name: 'Send Keypress'
+        },
+        sendText: {
+            type: 'sendText',
+            name: 'Send Text'
+        }
+    };
+
+    const availableKeys = {
+        Back: 'Back',
+        Backspace: 'Backspace',
+        Down: 'Down',
+        Enter: 'Enter',
+        Fwd: 'Forward',
+        Home: 'Home',
+        Left: 'Left',
+        Select: 'Ok',
+        Info: 'Option',
+        Play: 'Play',
+        InstantReplay: 'Replay',
+        Rev: 'Rewind',
+        Right: 'Right',
+        Search: 'Search',
+        Up: 'Up',
+        PowerOff: 'PowerOff',
+        PowerOn: 'PowerOn'
+    }
+
+    let steps = [] as {
+        type: string;
+        value: string;
+    }[];
+
+    let autorunOnDeploy = true;
+
+    // We can't use bind so we have to update it ourselves manually because we're using vscode-checkbox
+    function onAutorunOnDeployChange() {
+        autorunOnDeploy = this.checked;
+        storeConfigs(steps);
+    }
+
+    function storeConfigs(updatedSteps) {
+        if(!loading) {
+            intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
+                configs: [{
+                    name: 'DEFAULT',
+                    steps: updatedSteps
+                }],
+                autorunOnDeploy: autorunOnDeploy
+            });
+        }
+
+        // Required to get it to update the UI
+        steps = updatedSteps;
+    }
+
+    function onStepTypeChange() {
+        const step = steps[this.id];
+        step.type = this.value;
+        delete step.value;
+
+        storeConfigs(steps);
+    }
+
+    function onStepValueChange() {
+        const step = steps[this.id];
+        step.value = this.value;
+
+        storeConfigs(steps);
+    }
+
+    function addStep() {
+        steps.push({
+            type: 'sendKeyPress',
+            value: ''
+        });
+
+        storeConfigs(steps);
+    }
+
+    function deleteStep() {
+        steps.splice(this.id, 1);
+
+        storeConfigs(steps);
+    }
+
+    function runConfig() {
+        intermediary.sendCommand(ViewProviderCommand.runRokuAutomationConfig, {
+            configIndex: this.id
+        });
+    }
+
+    function stopConfig() {
+        intermediary.sendCommand(ViewProviderCommand.stopRokuAutomationConfig, {
+            configIndex: this.id
+        });
+    }
+
+    function onKeydown(event) {
+        const key = event.key;
+console.log('onKeydown', key);
+
+        switch (key) {
+            case 'Escape':
+                stopConfig();
+                break;
+        }
+    }
+
+    intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigsLoaded, (message) => {
+        const configs = message.context.configs;
+        if (configs) {
+            const config = configs[0];
+            steps = config.steps;
+            autorunOnDeploy = message.context.autorunOnDeploy;
+            console.log('autorunOnDeploy', autorunOnDeploy);
+
+        } else {
+            steps = [{
+                type: 'sleep',
+                value: '4'
+            }];
+        }
+        loading = false;
+    });
+
+    let lastStepDate = Date.now();
+    intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
+        currentRunningStep = message.context.step;
+        console.log('currentRunningStep', currentRunningStep);
+        if (currentRunningStep === -1) {
+            // Once we finish running all current steps update our last step date in case we want to add any more steps
+            lastStepDate = Date.now();
+        }
+    });
+
+    function addSleepStep() {
+        // Figure out how long it has been since we last had a step
+        let elapsedTime = (Date.now() - lastStepDate) / 1000;
+
+        // Round to the nearest tenth
+        elapsedTime = (Math.round(elapsedTime * 10) / 10);
+console.log('elapsedTime', elapsedTime);
+
+        steps.push({
+            type: stepTypes.sleep.type,
+            value: elapsedTime.toString()
+        });
+    }
+
+
+    intermediary.observeEvent(ViewProviderEvent.onRokuAutomationKeyPressed, (message) => {
+        let {key, literalCharacter} = message.context;
+        console.log('key', key);
+        console.log('literalCharacter', literalCharacter);
+        if (literalCharacter) {
+            // Check if we were typing somethign before and if so just add on to it
+            const lastStep = steps.at(-1);
+            if (lastStep?.type === stepTypes.sendText.type) {
+                lastStep.value += key
+            } else {
+                addSleepStep();
+                steps.push({
+                    type: stepTypes.sendText.type,
+                    value: key
+                });
+            }
+        } else {
+            addSleepStep();
+            steps.push({
+                type: stepTypes.sendKeyPress.type,
+                value: key
+            });
+        }
+
+        storeConfigs(steps);
+        lastStepDate = Date.now();
+    });
+
+    let hoveringIndex = -1;
+
+    function drop(event) {
+        debugger;
+        const target = 0
+        console.log('event', event);
+        console.log('target', target);
+
+        event.dataTransfer.dropEffect = 'move';
+        const start = parseInt(event.dataTransfer.getData("text/plain"));
+        const newSteps = steps
+
+        if (start < target) {
+            newSteps.splice(target + 1, 0, newSteps[start]);
+            newSteps.splice(start, 1);
+        } else {
+            newSteps.splice(target, 0, newSteps[start]);
+            newSteps.splice(start + 1, 1);
+        }
+        steps = newSteps
+        hoveringIndex = -1
+    }
+
+    function dragstart(event, i) {
+        console.log('dragstart');
+
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.dropEffect = 'move';
+        const start = i;
+        event.dataTransfer.setData('text/plain', start);
+    }
+
+    // Required by any view so we can know that the view is ready to receive messages
+    intermediary.sendViewReady();
+</script>
+
+<style>
+    .highlighted {
+        background-color: #0000FF33;
+    }
+</style>
+
+<svelte:window on:keydown={onKeydown} />
+
+<div>
+    <table>
+    {#each steps as step, index}
+        <tr
+            draggable="true"
+            on:dragstart={event => dragstart(event, index)}
+            on:drop={drop}
+            on:dragover="{false}"
+            on:dragenter={() => hoveringIndex = index}
+            class:highlighted={hoveringIndex === index}>
+            <td style="padding-left: 3px;">
+                <Grabber />
+            </td>
+            <td>
+                <vscode-dropdown id="{index}" on:change={onStepTypeChange} value="{step.type}">
+                {#each Object.entries(stepTypes) as [stepType, stepTypeParams]}
+                    <vscode-option value="{stepType}">{stepTypeParams.name}</vscode-option>
+                {/each}
+                </vscode-dropdown>
+            </td>
+            <td>
+            {#if step.type === stepTypes.sleep.type}
+                <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value ?? stepTypes.sleep.defaultValue}" type="number" />
+            {:else if step.type === stepTypes.sendKeyPress.type}
+                <vscode-dropdown id="{index}" on:change={onStepValueChange} value="{step.value}">
+                {#each Object.entries(availableKeys) as [key, text]}
+                    <vscode-option value={key}>{text}</vscode-option>
+                {/each}
+                </vscode-dropdown>
+            {:else if step.type === stepTypes.sendText.type}
+                <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
+            {/if}
+            </td>
+            <td>
+                {#if currentRunningStep === -1}
+                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={deleteStep}><Trash /></vscode-button>
+                {:else if currentRunningStep === index}
+                    <vscode-progress-ring />
+                {/if}
+            </td>
+
+        </tr>
+    {/each}
+        <tr>
+            <td>
+                <!-- <vscode-button appearance="secondary" aria-label="Add Step">Add Step</vscode-button> -->
+                <vscode-button appearance="icon" title="Add Step" aria-label="Add Step" on:click={addStep}><Add /></vscode-button>
+            </td>
+            <td>
+                <vscode-checkbox on:change={onAutorunOnDeployChange} checked={autorunOnDeploy}>Autorun on deploy</vscode-checkbox>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                {#if currentRunningStep >= 0}
+                    <vscode-button id="0" on:click={stopConfig}>Stop</vscode-button>
+                {:else}
+                    <vscode-button id="0" on:click={runConfig}>Run</vscode-button>
+                {/if}
+            </td>
+        </tr>
+    </table>
+
+    <div class="list">
+        {#each list as n, index  (n.name)}
+          <div
+                   class="list-item"
+             draggable={true}
+             on:dragstart={event => dragstart(event, index)}
+             on:drop|preventDefault={event => drop(event, index)}
+             on:dragenter={() => hoveringIndex = index}
+             class:is-active={hoveringIndex === index}>
+             {n.name}
+          </div>
+        {/each}
+    </div>
+
+</div>

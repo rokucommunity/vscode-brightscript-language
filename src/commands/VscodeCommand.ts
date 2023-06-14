@@ -7,5 +7,7 @@ export enum VscodeCommand {
     rokuRegistryExportRegistry = 'extension.brightscript.rokuRegistry.exportRegistry',
     rokuRegistryImportRegistry = 'extension.brightscript.rokuRegistry.importRegistry',
     rokuRegistryClearRegistry = 'extension.brightscript.rokuRegistry.clearRegistry',
-    rokuRegistryRefreshRegistry = 'extension.brightscript.rokuRegistry.refreshRegistry'
+    rokuRegistryRefreshRegistry = 'extension.brightscript.rokuRegistry.refreshRegistry',
+    rokuAutomationStartRecording = 'extension.brightscript.rokuAutomation.startRecording',
+    rokuAutomationStopRecording = 'extension.brightscript.rokuAutomation.stopRecording'
 }

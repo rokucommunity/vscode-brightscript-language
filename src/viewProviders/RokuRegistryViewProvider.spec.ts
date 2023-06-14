@@ -35,14 +35,15 @@ afterEach(() => {
 });
 
 describe('RokuRegistryViewProvider', () => {
-    const provider = new RokuRegistryViewProvider(vscode.context);
     const rtaManager = new RtaManager();
-    provider.setRtaManager(rtaManager);
+    const provider = new RokuRegistryViewProvider(vscode.context, {
+        rtaManager: rtaManager
+    });
 
     describe('sendRegistryUpdated', () => {
-        it('Triggers postOrQueueMessage to send message to web view that the registry was updated', async () => {
+        it('Triggers postOrQueueMessage to send message to web view that the registry was updated', () => {
             const spy = sinon.stub(provider as any, 'postOrQueueMessage');
-            await provider['sendRegistryUpdated']();
+            provider['sendRegistryUpdated']();
             expect(spy.calledOnce).to.be.true;
         });
     });

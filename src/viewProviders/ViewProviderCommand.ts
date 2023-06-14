@@ -4,5 +4,8 @@ export enum ViewProviderCommand {
     getScreenshot = 'getScreenshot',
     setManualIpAddress = 'setManualIpAddress',
     sendMessageToWebviews = 'sendMessageToWebviews',
-    setVscodeContext = 'setVscodeContext'
+    setVscodeContext = 'setVscodeContext',
+    storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
+    runRokuAutomationConfig = 'runRokuAutomationConfig',
+    stopRokuAutomationConfig = 'stopRokuAutomationConfig'
 }

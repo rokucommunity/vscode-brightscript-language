@@ -13,7 +13,7 @@ export class RtaManager {
 
     public setupRtaWithConfig(config: { host: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
-        rta.odc.setConfig({
+        const rtaConfig: rta.ConfigOptions = {
             RokuDevice: {
                 devices: [{
                     host: config.host,
@@ -26,7 +26,11 @@ export class RtaManager {
                 disableTelnet: true,
                 disableCallOriginationLine: true
             }
-        });
+        };
+
+        rta.odc.setConfig(rtaConfig);
+
+        rta.ecp.setConfig(rtaConfig);
 
         this.device = rta.device;
 
