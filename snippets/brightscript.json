@@ -1,12 +1,4 @@
 {
-    "CreateObject": {
-        "prefix": "createObject",
-        "body": [
-            "${2:variableName} = CreateObject(\"${1:objectType}\")"
-        ],
-        "description": "Simple CreateObject"
-    },
-
     "For Each": {
         "prefix": "for-each",
         "body": [

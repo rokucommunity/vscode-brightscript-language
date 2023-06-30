@@ -2,12 +2,19 @@
  * Installs a local version of all the rokucommunity dependent packages into this project
  */
 
-var fsExtra = require('fs-extra');
-var path = require('path');
-var childProcess = require('child_process');
-var chalk = require('chalk');
+let path = require('path');
+let childProcess = require('child_process');
 
-var argv = require('yargs').argv;
+//run `npm install` first before the rest of this script
+childProcess.execSync('npm install', {
+    cwd: path.normalize(path.join(__dirname, '../')),
+    stdio: 'inherit'
+});
+
+let fsExtra = require('fs-extra');
+let chalk = require('chalk');
+
+let argv = require('yargs').argv;
 
 let packages = [
     'roku-debug',
@@ -43,7 +50,7 @@ for (let packageName of packages) {
         });
     }
 
-    //install all npm dependencies 
+    //install all npm dependencies
     console.log(`Installing npm packages for '${packageName}'`);
     try {
         childProcess.execSync(`npm install`, {

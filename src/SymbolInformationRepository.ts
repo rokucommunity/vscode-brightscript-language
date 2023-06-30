@@ -1,15 +1,12 @@
 import * as vscode from 'vscode';
-
-import {
-  CancellationToken,
-  Location,
-  SymbolInformation, SymbolKind,
-  TextDocument,
-  Uri,
-  WorkspaceSymbolProvider
+import type {
+    CancellationToken,
+    SymbolInformation,
+    TextDocument,
+    WorkspaceSymbolProvider
 } from 'vscode';
 
-import { DeclarationProvider } from './DeclarationProvider';
+import type { DeclarationProvider } from './DeclarationProvider';
 
 export class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
 
@@ -43,18 +40,18 @@ export class SymbolInformationRepository {
     }
 
     private declarationProvider: DeclarationProvider;
-    private cache: Map<string, SymbolInformation[]> = new Map();
+    private cache = new Map<string, SymbolInformation[]>();
 
     public sync(): Promise<void> {
         return this.provider.sync();
     }
 
-    public * find(query: string): IterableIterator<SymbolInformation> {
+    public *find(query: string): IterableIterator<SymbolInformation> {
         const pattern = this.compileQuery(query);
         if (pattern === undefined) {
             return;
         }
-        const fresh: Set<string> = new Set();
+        const fresh = new Set<string>();
         for (const doc of vscode.workspace.textDocuments) {
             if (!doc.isDirty) {
                 continue;

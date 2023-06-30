@@ -5,10 +5,29 @@
             "type": "extensionHost",
             "request": "launch",
             "name": "Extension",
-            "preLaunchTask": "svelte-watch",
+            "preLaunchTask": "watch-webviews",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript-formatter/dist/**/*.js",
+                "${workspaceFolder}/../roku-debug/dist/**/*.js",
+                "${workspaceFolder}/../roku-deploy/dist/**/*.js",
+                "${workspaceFolder}/../brighterscript/dist/**/*.js"
+            ]
+        },
+        {
+            "name": "Extension (PWA)",
+            "type": "pwa-extensionHost",
+            "debugWebWorkerHost": true,
+            "request": "launch",
+            "preLaunchTask": "watch-webviews",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionDevelopmentKind=web"
             ],
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js",
@@ -27,11 +46,12 @@
             "args": [
                 "--server=4711"
             ],
+            "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js",
                 "${workspaceFolder}/../roku-debug/dist/**/*.js",
-                "${workspaceFolder}/../roku-deploy/dist/**/*.js"
+                "!**/node_modules/**"
             ],
+            "resolveSourceMapLocations": null,
             "stopOnEntry": false
         },
         {
@@ -54,14 +74,8 @@
             "cwd": "${workspaceFolder}",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
-                "-r",
-                "ts-node/register",
-                "-r",
-                "source-map-support/register",
                 "--timeout",
-                "999999",
-                "./src/**/*.spec.ts",
-                "./ui/**/*.spec.ts"
+                "0"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }

@@ -1,25 +1,21 @@
-/* tslint:disable:no-unused-expression */
-/* tslint:disable:no-var-requires */
+/* eslint-disable no-template-curly-in-string */
 import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
-import { WorkspaceFolder } from 'vscode';
+import type { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
-
+import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { config } from 'process';
 
-let sinon = createSandbox();
-let c: any;
-let Module = require('module');
-let cwd = s`${path.dirname(__dirname)}`;
-const rootDir = s`${cwd}/rootDir`;
-
-let commandsMock;
+const sinon = createSandbox();
+const Module = require('module');
+const cwd = s`${path.dirname(__dirname)}`;
+const tempDir = s`${cwd}/.tmp`;
+const rootDir = s`${tempDir}/rootDir`;
 
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
@@ -31,36 +27,42 @@ Module.prototype.require = function hijacked(file) {
     }
 };
 
-let configProvider: BrightScriptDebugConfigurationProvider;
-
-beforeEach(() => {
-    let context = {
-        workspaceState: {
-            update: () => { return Promise.resolve(); }
-        }
-    };
-
-    let activeDeviceManager = {
-        getActiveDevices: () => []
-    };
-    configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager);
-    c = configProvider;
-});
-afterEach(() => {
-    sinon.restore();
-});
-
 describe('BrightScriptConfigurationProvider', () => {
+
+    let configProvider: BrightScriptDebugConfigurationProvider;
+    let folder: WorkspaceFolder;
+
+    beforeEach(() => {
+        fsExtra.emptyDirSync(tempDir);
+        let context = {
+            workspaceState: {
+                update: () => {
+                    return Promise.resolve();
+                }
+            }
+        };
+
+        folder = {
+            uri: Uri.file(rootDir),
+            name: 'test-folder',
+            index: 0
+        };
+
+        let activeDeviceManager = {
+            getActiveDevices: () => []
+        };
+        configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null, vscode.window.createOutputChannel('Extension'));
+    });
+
+    afterEach(() => {
+        fsExtra.emptyDirSync(tempDir);
+        sinon.restore();
+    });
+
     describe('resolveDebugConfiguration', () => {
-        let folder: WorkspaceFolder;
         let existingConfigDefaults;
         beforeEach(() => {
-            folder = <any>{
-                uri: Uri.parse('file:/some/project')
-            };
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-
-            const configDefaults = (configProvider as any).configDefaults;
+            const configDefaults = configProvider['configDefaults'];
             existingConfigDefaults = {
                 ...configDefaults
             };
@@ -75,12 +77,10 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles loading declared values from .env files', async () => {
-            let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
-                //should load env file from proper place
-                expect(s`${filePath}`).to.equal(s`/some/project/.env`);
-                return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
-            });
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            fsExtra.outputFileSync(`${rootDir}/.env`, 'ROKU_PASSWORD=pass1234');
+
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
@@ -90,33 +90,29 @@ describe('BrightScriptConfigurationProvider', () => {
                 stopDebuggerOnAppExit: true
             });
             expect(config.password).to.equal('pass1234');
-            expect(stub.called).to.be.true;
         });
 
         it('handles missing values from .env files', async () => {
-            let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
-                //should load env file from proper place
-                expect(filePath).to.equal('/some/project/.env');
-                return Promise.resolve(Buffer.from('USERNAME=bob'));
-            });
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
-            let config = await configProvider.resolveDebugConfiguration(<any>{ uri: { fsPath: '/some/project' } }, <any>{
+            fsExtra.outputFileSync(`${rootDir}/.env`, 'USERNAME=bob');
+
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
                 password: '${env:ROKU_PASSWORD}'
             });
             expect(config.password).to.equal((configProvider as any).configDefaults.password);
-            expect(stub.called).to.be.true;
         });
 
         it('throws on missing .env file', async () => {
             sinon.restore();
             sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
+            sinon.stub(configProvider, 'getBsConfig').returns({});
 
             try {
-                let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                await configProvider.resolveDebugConfiguration(folder, <any>{
                     host: '127.0.0.1',
                     type: 'brightscript',
                     envFile: '${workspaceFolder}/.env',
@@ -129,20 +125,17 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('handles non ${workspaceFolder} replacements', async () => {
-            sinon.stub(configProvider, 'getBrsConfig').returns(Promise.resolve({}));
-            let stub = sinon.stub(configProvider.fsExtra, 'readFile').callsFake((filePath: string) => {
-                //should load env file from proper place
-                expect(filePath).to.equal('/some/project/.env');
-                return Promise.resolve(Buffer.from('ROKU_PASSWORD=pass1234'));
-            });
-            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+            sinon.stub(configProvider, 'getBsConfig').returns({});
+
+            fsExtra.outputFileSync(`${rootDir}/some/project/.env`, 'ROKU_PASSWORD=pass1234');
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
-                envFile: '/some/project/.env',
+                envFile: `${rootDir}/some/project/.env`,
                 password: '${env:ROKU_PASSWORD}'
             });
             expect(config.password).to.equal('pass1234');
-            expect(stub.called).to.be.true;
         });
 
         it('uses the default values if not provided', async () => {
@@ -151,9 +144,9 @@ describe('BrightScriptConfigurationProvider', () => {
             for (const key in configDefaults) {
                 if (key === 'outDir') {
                     expect(
-                        path.normalize(config[key])
+                        s`${config[key]}`
                     ).to.equal(
-                        path.normalize(`${folder.uri.path}/out/`)
+                        s`${folder.uri.fsPath}/out/`
                     );
                 } else {
                     expect(config[key], `Expected "${key}" to match the default`).to.equal(configDefaults[key]);
@@ -176,55 +169,60 @@ describe('BrightScriptConfigurationProvider', () => {
     describe('processLogfilePath', () => {
         let tmpPath = `${rootDir}/.tmp`;
         beforeEach(() => {
-            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+            try {
+                fsExtra.emptyDirSync(tmpPath);
+            } catch (e) { }
         });
         afterEach(() => {
-            try { fsExtra.emptyDirSync(tmpPath); } catch (e) { }
+            try {
+                fsExtra.emptyDirSync(tmpPath);
+            } catch (e) { }
         });
         let workspaceFolder = <any>{
             uri: { fsPath: tmpPath }
         };
-        it('does nothing when prop is falsey', () => {
-            expect(configProvider.processLogfilePath(undefined, undefined)).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{}).logfilePath).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: null }).logfilePath).not.to.be.ok;
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: '' }).logfilePath).not.to.be.ok;
+        it('does nothing when prop is falsey', async () => {
+            expect(await configProvider.processLogfilePath(undefined, undefined)).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{})).logfilePath).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: null })).logfilePath).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: '' })).logfilePath).not.to.be.ok;
             //it trims all whitespace too
-            expect(configProvider.processLogfilePath(undefined, <any>{ logfilePath: ' \n\t' }).logfilePath.trim()).not.to.be.ok;
+            expect((await configProvider.processLogfilePath(undefined, <any>{ logfilePath: ' \n\t' })).logfilePath.trim()).not.to.be.ok;
         });
 
-        it('replaces workspaceFolder', () => {
-            expect(configProvider.processLogfilePath(workspaceFolder, <any>{
+        it('replaces workspaceFolder', async () => {
+            const value = await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: '${workspaceFolder}/logfile.log'
-            }).logfilePath).to.equal(s`${tmpPath}/logfile.log`);
+            });
+            expect(value.logfilePath).to.equal(s`${tmpPath}/logfile.log`);
         });
 
-        it('should create the directory path and file', () => {
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+        it('should create the directory path and file', async () => {
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/a/b/c/brs.log`
             });
             expect(fsExtra.pathExistsSync(s`${tmpPath}/a/b/c/brs.log`)).to.be.true;
         });
 
-        it('should not delete the files in the log folder if it already exists', () => {
+        it('should not delete the files in the log folder if it already exists', async () => {
             fsExtra.writeFileSync(`${tmpPath}/test.txt`, '');
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/brs.log`
             });
             expect(fsExtra.pathExistsSync(s`${tmpPath}/test.txt`)).to.be.true;
         });
 
-        it('should not re-create the logfile if it already exists', () => {
+        it('should not re-create the logfile if it already exists', async () => {
             fsExtra.writeFileSync(`${tmpPath}/brs.log`, 'test contents');
-            configProvider.processLogfilePath(workspaceFolder, <any>{
+            await configProvider.processLogfilePath(workspaceFolder, <any>{
                 logfilePath: s`${tmpPath}/brs.log`
             });
             expect(fsExtra.readFileSync(`${tmpPath}/brs.log`).toString()).equals('test contents');
         });
 
-        it('throws when creating the directory path and file when invalid characters are encountered', () => {
+        it('throws when creating the directory path and file when invalid characters are encountered', async () => {
             try {
-                configProvider.processLogfilePath(workspaceFolder, <any>{
+                await configProvider.processLogfilePath(workspaceFolder, <any>{
                     logfilePath: s`${tmpPath}/ZZZ/brs.log`.replace('ZZZ', '<>')
                 });
                 expect(true, 'Should have thrown').to.be.false;
@@ -235,23 +233,20 @@ describe('BrightScriptConfigurationProvider', () => {
     });
 
     describe('processEnvFile', () => {
-        let folder = {
-            uri: {
-                fsPath: process.cwd()
-            }
-        };
+        function processEnvFile(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
+            return configProvider['processEnvFile'](folder, config as any);
+        }
         it('does nothing if .envFile is not specified', async () => {
-            let config = await c.processEnvFile(folder, {
+            let config = await processEnvFile(folder, {
                 rootDir: '${env:ROOT_DIR}'
             });
             expect(config.rootDir).to.equal('${env:ROOT_DIR}');
         });
 
         it('throws exception when .env file does not exist', async () => {
-            let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
             let threw = false;
             try {
-                await c.processEnvFile(folder, {
+                await processEnvFile(folder, {
                     envFile: '${workspaceFolder}/.env'
                 });
             } catch (e) {
@@ -263,7 +258,7 @@ describe('BrightScriptConfigurationProvider', () => {
         it('replaces ${workspaceFolder} in .envFile path', async () => {
             let stub = sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(false));
             try {
-                await c.processEnvFile(folder, {
+                await processEnvFile(folder, {
                     envFile: '${workspaceFolder}/.env'
                 });
             } catch (e) { }
@@ -272,11 +267,8 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('replaces same env value multiple times in a config', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
-                PASSWORD=password
-            `));
-            let config = await c.processEnvFile(folder, {
+            fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
+            let config = await processEnvFile(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:PASSWORD}',
                 stagingFolderPath: '${env:PASSWORD}'
@@ -287,11 +279,8 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('does not replace text outside of the ${} syntax', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
-                PASSWORD=password
-            `));
-            let config = await c.processEnvFile(folder, {
+            fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
+            const config = await processEnvFile(folder, {
                 'envFile': '${workspaceFolder}/.env',
                 //this key looks exactly like the text within the ${}, make sure it persists. (dunno why someone would do this...)
                 'env:PASSWORD': '${env:PASSWORD}'
@@ -301,11 +290,8 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('ignores ${env:} items that are not found in the env file', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-            sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
-                PASSWORD=password
-            `));
-            let config = await c.processEnvFile(folder, {
+            fsExtra.outputFileSync(`${rootDir}/.env`, `PASSWORD=password`);
+            const config = await processEnvFile(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:NOT_PASSWORD}'
             });
@@ -314,13 +300,12 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('loads env file when not using ${workspaceFolder} var', async () => {
-            sinon.stub(configProvider.util, 'fileExists').returns(Promise.resolve(true));
-            let stub = sinon.stub(c.fsExtra, 'readFile').returns(Promise.resolve(`
-            `));
-            let config = await c.processEnvFile(folder, {
-                envFile: '.env'
+            fsExtra.outputFileSync(`${tempDir}/.env`, `TEST_ENV_VAR=./somePath`);
+            const config = await processEnvFile(folder, {
+                envFile: `${tempDir}/.env`,
+                rootDir: '${env:TEST_ENV_VAR}/123'
             });
-            expect(stub.getCalls()[0]?.args[0]).to.equal('.env');
+            expect(config.rootDir).to.eql('./somePath/123');
         });
     });
 });

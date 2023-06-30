@@ -1,25 +1,35 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext } from 'vscode';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel } from 'vscode';
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
+    vscode.context.globalState['_data'] = {};
 });
 
 export let vscode = {
+    env: {
+        //disable all telemetry reporting during unit tests
+        telemetryConfiguration: {
+            isUsageEnabled: false,
+            isErrorsEnabled: false,
+            isCrashEnabled: false
+        }
+    },
     CompletionItem: class { },
     CodeLens: class { },
     CodeAction: class { },
     Diagnostic: class { },
-    CallHierarchyItem: class {},
+    CallHierarchyItem: class { },
     StatusBarAlignment: {
         Left: 1,
         Right: 2
     },
     extensions: {
         getExtension: () => {
+            let packageContents = require('../package.json');
             return {
                 packageJSON: {
-                    version: undefined
+                    ...packageContents
                 }
             };
         }
@@ -28,7 +38,7 @@ export let vscode = {
         registerDebugConfigurationProvider: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
-        onDidReceiveDebugSessionCustomEvent: () => { },
+        onDidReceiveDebugSessionCustomEvent: () => { }
     },
     languages: {
         registerDefinitionProvider: () => { },
@@ -56,20 +66,30 @@ export let vscode = {
     },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => { return ''; },
+        asAbsolutePath: () => {
+            return '';
+        },
         extensionUri: undefined as Uri,
         extensionPath: '',
         storageUri: undefined as Uri,
         storagePath: '',
         globalStoragePath: '',
-        globalState: {} as any,
+        globalState: {
+            _data: {},
+            update: function(key: string, value: any) {
+                this._data[key] = value;
+            },
+            get: function(key: string) {
+                return this._data[key];
+            }
+        } as any,
         globalStorageUri: undefined as Uri,
         workspaceState: {} as any,
         environmentVariableCollection: {} as any,
         logUri: undefined as Uri,
         logPath: '',
         extensionMode: 2
-    } as ExtensionContext,
+    } as unknown as ExtensionContext,
     workspace: {
         workspaceFolders: [] as WorkspaceFolder[],
         workspaceFile: undefined as Uri,
@@ -91,6 +111,12 @@ export let vscode = {
             return {
                 get: (name: string) => {
                     return this._configuration?.[`${configurationName}.${name}`];
+                },
+                inspect: (name: string) => {
+                    return {
+                        key: name,
+                        globalValue: this._configuration?.[`${configurationName}.${name}`]
+                    } as ReturnType<WorkspaceConfiguration['inspect']>;
                 }
             };
         },
@@ -98,6 +124,12 @@ export let vscode = {
         onDidChangeWorkspaceFolders: () => { },
         findFiles: (include, exclude) => {
             return [];
+        },
+        fs: {
+            writeFile: (uri, buffer) => { },
+            readFile: (uri) => {
+                return Buffer.alloc(0);
+            }
         },
         registerTextDocumentContentProvider: () => { },
         onDidChangeTextDocument: () => { },
@@ -111,12 +143,17 @@ export let vscode = {
                 show: () => { }
             };
         },
-        createOutputChannel: function() {
+        createOutputChannel: function(name?: string) {
             return {
+                name: name,
+                append: () => { },
+                dispose: () => { },
+                hide: () => { },
+                replace: () => { },
                 show: () => { },
                 clear: () => { },
                 appendLine: () => { }
-            };
+            } as OutputChannel;
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
         showErrorMessage: function(message: string) {
@@ -127,7 +164,11 @@ export let vscode = {
         },
         onDidChangeTextEditorSelection: () => { },
         registerUriHandler: () => { },
-        registerWebviewViewProvider: () => { },
+        registerWebviewViewProvider: () => {
+            return {
+                asWebViewUri: () => { }
+            };
+        },
         showSaveDialog: () => {
             return Promise.resolve('');
         },
@@ -151,18 +192,10 @@ export let vscode = {
         }
     },
     DeclarationProvider: class {
-        public onDidChange = () => {
-
-        }
-        public onDidDelete = () => {
-
-        }
-        public onDidReset = () => {
-
-        }
-        public sync = () => {
-
-        }
+        public onDidChange = () => { };
+        public onDidDelete = () => { };
+        public onDidReset = () => { };
+        public sync = () => { };
     },
     OutputChannel: class {
         public clear() { }
@@ -182,12 +215,12 @@ export let vscode = {
         private character: number;
     },
     ParameterInformation: class {
-        constructor(label: string, documentation?: string | any) {
+        constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
         private label: string;
-        private documentation: string | any | undefined;
+        private documentation: any;
     },
     SignatureHelp: class {
         constructor() {
@@ -198,12 +231,12 @@ export let vscode = {
         private activeSignature: number;
     },
     SignatureInformation: class {
-        constructor(label: string, documentation?: string | any) {
+        constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
         private label: string;
-        private documentation: string | any | undefined;
+        private documentation: any;
     },
     Range: class {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
@@ -253,7 +286,9 @@ export let vscode = {
 
         private text: any;
         private fileName: string;
-        public getText() { return this.text; }
+        public getText() {
+            return this.text;
+        }
         public getWordRangeAtPosition() {
             //returns a dummy range (because honestly we should be mocking this in a real test...)
             return undefined;
@@ -292,10 +327,11 @@ export let vscode = {
         }
         private value: string;
     },
+    ThemeColor: class { },
     Uri: {
         file: (src: string) => {
             return {
-                with: ({ }) => {
+                with: () => {
                     return {};
                 }
             };
@@ -313,7 +349,9 @@ export let vscode = {
 export let vscodeLanguageClient = {
     LanguageClient: class {
         public start() { }
-        public onReady() { return Promise.resolve<any>(null); }
+        public onReady() {
+            return Promise.resolve<any>(null);
+        }
         public onNotification() { }
     },
     TransportKind: {

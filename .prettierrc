@@ -1,0 +1,11 @@
+{
+    "svelteSortOrder" : "options-scripts-styles-markup",
+    "svelteAllowShorthand": false,
+    "tabWidth": 4,
+    "useTabs": false,
+    "singleQuote": true,
+    "trailingComma": "none",
+    "bracketSameLine": true,
+    "htmlWhitespaceSensitivity": "strict",
+    "singleAttributePerLine": false
+}

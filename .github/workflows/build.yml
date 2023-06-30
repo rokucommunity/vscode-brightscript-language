@@ -1,13 +1,12 @@
 name: build
 on:
   push:
+    branches:
+      - master
     tags:
-      - '*'
-    branches:
-      - '*'
+      - v*
   pull_request:
-    branches:
-      - '*'
+
 jobs:
   ci:
     runs-on: ${{ matrix.os }}
@@ -16,23 +15,26 @@ jobs:
       COVERALLS_REPO_TOKEN: "Ysqq6q68DgojDzv3gvl5Yv029HXZYwGxq"
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "12.12.0"
+          node-version: "14.19.0"
       - run: npm ci
       - run: npm run build
       - run: npm run lint
       - run: npm run test
-      - run: npm run publish-coverage
+      # disable coverage for now (because coveralls is down right now)
+      #- run: npm run publish-coverage
       - run: npm run package
   release:
     #only run this task if a tag starting with 'v' was used to trigger this (i.e. a tagged release)
     if: startsWith(github.ref, 'refs/tags/v')
     needs: ci
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
+     #the ovsx publish never quits (but the upload succeeds), so kill the build if we've taken more than 10 minutes
+    timeout-minutes: 10
     env:
       VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
       OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
@@ -41,8 +43,8 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "12.12.0"
-      
+          node-version: "14.19.0"
+
       #build package
       - run: npm ci
       - run: npm run build
@@ -74,4 +76,4 @@ jobs:
       - name: Publish to OpenVSX registry
         #exclude beta release tags
         if: contains(github.ref, '-beta.') == false
-        run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}}
+        run: npx ovsx publish -p ${{env.OPEN_VSX_TOKEN}} --debug

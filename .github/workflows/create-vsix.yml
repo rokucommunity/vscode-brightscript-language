@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'The branch name which should be used to build the vsix'
+        description: "The branch name which should be used to build the vsix"
         required: true
 jobs:
   create-vsix:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master

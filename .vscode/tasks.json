@@ -2,6 +2,16 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "watch-all",
+            "type": "shell",
+            "command": "npm run watch-all --loglevel silent",
+            "presentation": {
+                "group": "watch",
+            },
+            "isBackground": true,
+            "problemMatcher": "$tsc-watch"
+        },
+        {
             "label": "watch",
             "type": "shell",
             "command": "npm",
@@ -20,14 +30,11 @@
             },
             "isBackground": true,
             "problemMatcher": "$tsc-watch"
-        }, {
-            "label": "svelte-watch",
+        },
+        {
+            "label": "watch-webviews",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "svelte-watch"
-            ],
+            "command": "npm run watch-webviews",
             "presentation": {
                 "group": "watch",
                 "echo": true,
@@ -36,55 +43,49 @@
                 "panel": "shared"
             },
             "isBackground": true,
-            "problemMatcher": [{
-                "pattern": {
-                    "regexp": "^\\[!\\]"
+            "problemMatcher": [
+                {
+                    "pattern": {
+                        "regexp": "^\\[!\\]"
+                    },
+                    "severity": "error"
                 },
-                "severity": "error"
-            }, {
-                "base": "$tsc-watch",
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^\\s*\\[\\d{1,2}:\\d{1,2}:\\d{1,2}(?: AM| PM)?\\] Validating project",
-                    "endsPattern": "waiting for changes..."
-                },
-            }],
-            "dependsOn": ["watch"]
+                {
+                    "base": "$tsc-watch",
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "^build started\\.\\.\\.",
+                        "endsPattern": "^built in \\d+"
+                    }
+                }
+            ],
+            "dependsOn": [
+                "watch-all"
+            ]
         },
         {
             "label": "test",
             "type": "shell",
-            "command": "npm",
-            "args": [
-                "run",
-                "test:nocover",
-                "--loglevel",
-                "silent"
-            ],
+            "command": "npm run test:nocover --silent",
+            "presentation": {
+                "focus": true,
+            },
             "group": {
                 "kind": "test",
                 "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": true,
-                "clear": true
             },
             "problemMatcher": []
         },
         {
             "label": "clean",
-            "type": "npm",
-            "script": "clean",
-            "problemMatcher": [],
+            "type": "shell",
+            "command": "npm run clean",
+            "problemMatcher": []
         },
         {
-            "type": "npm",
             "label": "build",
-            "script": "build",
+            "type": "shell",
+            "command": "npm run build",
             "dependsOn": "clean",
             "problemMatcher": [],
             "group": {
@@ -92,17 +93,9 @@
                 "isDefault": true
             },
             "presentation": {
-                "echo": true,
-                "reveal": "always",
                 "focus": true,
-                "panel": "dedicated",
-                "clear": true
+                "panel": "dedicated"
             }
-        },
-        {
-            "type": "npm",
-            "script": "test",
-            "problemMatcher": []
         }
     ]
 }
