@@ -5,6 +5,10 @@ import * as url from 'url';
 import { debounce } from 'debounce';
 import * as vscode from 'vscode';
 import { Cache } from 'brighterscript/dist/Cache';
+import * as r from 'postman-request';
+import type { Response } from 'request';
+import type * as requestType from 'request';
+const request = r as typeof requestType;
 
 class Util {
     public async readDir(dirPath: string) {
@@ -380,6 +384,28 @@ class Util {
      */
     public escapeRegex(text: string) {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    }
+
+    /**
+     * Do an http GET request
+     */
+    public httpGet(url: string) {
+        return new Promise<Response>((resolve, reject) => {
+            request.get(url, (err, response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
+    }
+
+    /**
+     * Do an http POST request
+     */
+    public httpPost(url: string) {
+        return new Promise<Response>((resolve, reject) => {
+            request.post(url, (err, response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
     }
 }
 

@@ -48,7 +48,8 @@
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
         "watch-docs": "npm run build-docs -- --watch",
-        "releases": "ts-node scripts/releases.ts"
+        "releases": "ts-node scripts/releases.ts",
+        "sync-syntaxes": "ts-node scripts/sync-scenegraph-tmlanguage.ts"
     },
     "dependencies": {
         "@vscode/extension-telemetry": "^0.4.7",
@@ -299,6 +300,9 @@
             },
             {
                 "language": "brighterscript"
+            },
+            {
+                "language": "scenegraph"
             }
         ],
         "debuggers": [
@@ -857,6 +861,16 @@
                 }
             },
             {
+                "id": "scenegraph",
+                "extensions": [
+                    ".xml"
+                ],
+                "aliases": [
+                    "SceneGraph"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
                 "id": "Log",
                 "aliases": [
                     "log"
@@ -894,6 +908,11 @@
                 "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "language": "scenegraph",
+                "scopeName": "scenegraph.xml",
+                "path": "./syntaxes/scenegraph.tmLanguage.json"
             }
         ],
         "snippets": [
