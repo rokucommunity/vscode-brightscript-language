@@ -50,7 +50,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             enableSourceMaps: true,
             packagePort: 80,
             enableDebugProtocol: false,
-            remotePort: 8060
+            remotePort: 8060,
+            rendezvousTracking: true
         };
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
@@ -239,6 +240,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.logfilePath ??= null;
         config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
         config.cwd = folderUri.fsPath;
+        config.rendezvousTracking = config.rendezvousTracking === false ? false : config.rendezvousTracking;
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);

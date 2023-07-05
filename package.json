@@ -789,6 +789,11 @@
                                 "default": "log",
                                 "description": "The level of logging that should be done during a debug session."
                             }
+                        },
+                        "rendezvousTracking": {
+                            "type": "boolean",
+                            "description": "Should rendezvous tracking be enabled on launch? If `true`: turn on ECP rendezvous tracking, or turn on 8080 rendezvous tracking if ECP unsupported. If `false`, turn off both.",
+                            "default": true
                         }
                     }
                 },
