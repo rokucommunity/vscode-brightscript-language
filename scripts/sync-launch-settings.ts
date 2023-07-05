@@ -1,10 +1,11 @@
-console.log('Sync settings from launch to debug`');
-console.log('===================================');
-const packageJsonFile = '../package.json';
-const packageJson = require(packageJsonFile);
-const { EOL } = require('os');
-const fs = require('fs');
+import { EOL } from 'os';
+import * as fsExtra from 'fs-extra';
+import * as path from 'path';
+const cwd = __dirname;
+const packageJsonPath = path.resolve(`${cwd}/../package.json`);
+const packageJson = fsExtra.readJsonSync(packageJsonPath);
 
+console.log('Sync launch.json definitions into brightscript.debug.* user settings definitions...');
 // extract object from 'package.json'
 const configurationArray = packageJson.contributes.configuration;
 
@@ -28,7 +29,7 @@ const launchProperties = packageJson.contributes.debuggers[0].configurationAttri
 
 for (const [key, data] of Object.entries(launchProperties)) {
     const launchProperty = {};
-    for (const [dataKey, dataValue] of Object.entries(data)) {
+    for (const [dataKey, dataValue] of Object.entries(data as any)) {
         launchProperty[dataKey] = dataValue;
     }
     const scope = 'scope';
@@ -39,18 +40,17 @@ for (const [key, data] of Object.entries(launchProperties)) {
 }
 
 // have to parse final output object to get clean JSON
-const newDebugPropertiesParsed = JSON.parse(JSON.stringify(newDebugProperties))
+const newDebugPropertiesParsed = JSON.parse(JSON.stringify(newDebugProperties));
 
 // finally replace elements back into 'package.json' file
 configurationArray[debugIndex].properties = newDebugPropertiesParsed;
 packageJson.contributes.configuration = configurationArray;
 
 try {
-    fs.writeFileSync(packageJsonFile, JSON.stringify(packageJson, null, 4), 'utf8');
-    fs.appendFileSync(packageJsonFile, EOL, 'utf8');
+    fsExtra.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 4), 'utf8');
+    fsExtra.appendFileSync(packageJsonPath, EOL, 'utf8');
 } catch (e) {
     console.error(e);
 }
 
-console.log('launch settings synchronised with debug settings inside package.json file');
-console.log(packageJson.contributes.configuration);
+console.log('done!');
