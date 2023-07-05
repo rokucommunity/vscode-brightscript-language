@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.41.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.4...v2.41.0) - 2023-07-05
+### Added
+ - ECP Rendezvous tracking (`rendezvousTracking` launch.json option) ([#490](https://github.com/rokucommunity/vscode-brightscript-language/pull/490))
+ - `fileLogging` launch.json option ([#487](https://github.com/rokucommunity/vscode-brightscript-language/pull/487))
+### Changed
+### Fixed
+ - Fix iface syntax highlighting for comments & funcs ([#489](https://github.com/rokucommunity/vscode-brightscript-language/pull/489))
+ - npm audit issues ([4121aee](https://github.com/rokucommunity/vscode-brightscript-language/commit/4121aee))
+ - upgrade to [roku-debug@0.20.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0200---2023-07-05). Notable changes since 0.18.12:
+     - Support sgrendezvous through ecp ([roku-debug#150](https://github.com/rokucommunity/roku-debug/pull/150))
+     - Move `@types/request` to deps to fix `d.bs` files ([#roku-debug691a7be](https://github.com/rokucommunity/roku-debug/commit/691a7be))
+     - File logging ([roku-debug#155](https://github.com/rokucommunity/roku-debug/pull/155))
+ - upgrade to [brighterscript@0.65.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0651---2023-06-09). Notable changes since 0.65.0:
+     - Fix injection of duplicate super calls into classes ([brighterscript#823](https://github.com/rokucommunity/brighterscript/pull/823))
+ - upgrade to [brighterscript-formatter@1.6.30](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1630---2023-07-05)
+
+
+
 ## [2.40.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.3...v2.40.4) - 2023-05-18
 ### Changed
  - upgrade to [roku-debug@0.18.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#01812---2023-05-18). Notable changes since 0.18.11:
