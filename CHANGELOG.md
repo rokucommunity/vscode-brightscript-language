@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.41.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.0...v2.41.1) - 2023-07-07
+### Changed
+ - upgrade to [roku-debug@0.20.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0201---2023-07-07). Notable changes since 0.20.0:
+     - Fix rendezvous tracking crash ([roku-debug#156](https://github.com/rokucommunity/roku-debug/pull/156))
+
+
+
 ## [2.41.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.40.4...v2.41.0) - 2023-07-05
 ### Added
  - ECP Rendezvous tracking (`rendezvousTracking` launch.json option) ([#490](https://github.com/rokucommunity/vscode-brightscript-language/pull/490))
