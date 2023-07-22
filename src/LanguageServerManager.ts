@@ -14,6 +14,7 @@ import {
     window,
     workspace
 } from 'vscode';
+import { BusyStatus, NotificationName, Logger } from 'brighterscript';
 import { CustomCommands, Deferred } from 'brighterscript';
 import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -25,6 +26,8 @@ import type { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
+
+export const LANGUAGE_SERVER_NAME = 'BrighterScript Language Server';
 
 export class LanguageServerManager {
     constructor() {
@@ -101,7 +104,10 @@ export class LanguageServerManager {
             //create the statusbar
             this.languageServerStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
             this.languageServerStatusBar.command = LanguageServerInfoCommand.commandName;
-            this.updateStatusbar('running');
+
+            //enable the statusbar loading anmation. the language server will disable once it finishes loading
+            this.updateStatusbar(true);
+
             this.languageServerStatusBar.show();
 
             //disable the simple providers (the language server will handle all of these)
@@ -151,7 +157,7 @@ export class LanguageServerManager {
             // Create the language client and start the client.
             this.client = new LanguageClient(
                 'brighterScriptLanguageServer',
-                'BrighterScript Language Server',
+                LANGUAGE_SERVER_NAME,
                 serverOptions,
                 clientOptions
             );
@@ -162,19 +168,7 @@ export class LanguageServerManager {
             this.client.onNotification('critical-failure', (message) => {
                 void window.showErrorMessage(message);
             });
-
-            //update the statusbar with build statuses
-            this.client.onNotification('build-status', (message) => {
-                if (message === 'building') {
-                    this.updateStatusbar('running');
-
-                } else if (message === 'success') {
-                    this.updateStatusbar('running');
-
-                } else if (message === 'critical-error') {
-                    this.updateStatusbar('encountered a critical runtime error', '#FF0000');
-                }
-            });
+            this.registerBusyStatusHandler();
             this.deferred.resolve(true);
         } catch (e) {
             console.error(e);
@@ -188,10 +182,44 @@ export class LanguageServerManager {
         return this.ready();
     }
 
-    private updateStatusbar(tooltip: string, color?: string) {
-        this.languageServerStatusBar.text = `$(flame)bsc-${this.selectedBscInfo.version}`;
-        this.languageServerStatusBar.tooltip = 'BrightScript Language Server: ' + tooltip;
-        this.languageServerStatusBar.color = color;
+    private registerBusyStatusHandler() {
+        let timeoutHandle: NodeJS.Timeout;
+
+        const logger = new Logger();
+        this.client.onNotification(NotificationName.busyStatus, (event: any) => {
+            this.setBusyStatus(event.status);
+
+            //if the busy status takes too long, write a lsp log entry with details of what's still pending
+            if (event.status === BusyStatus.busy) {
+                timeoutHandle = setTimeout(() => {
+                    const delay = Date.now() - event.timestamp;
+                    this.client.outputChannel.appendLine(`${logger.getTimestamp()} language server has been 'busy' for ${delay}ms. most recent busyStatus event: ${JSON.stringify(event, undefined, 4)}`);
+                }, 60_000);
+
+                //clear any existing timeout
+            } else if (timeoutHandle) {
+                clearTimeout(timeoutHandle);
+            }
+        });
+
+    }
+
+    private setBusyStatus(status: BusyStatus) {
+        if (status === BusyStatus.busy) {
+            this.updateStatusbar(true);
+        } else {
+            this.updateStatusbar(false);
+        }
+    }
+
+    /**
+     * Enable/disable the loading spinner on the statusbar item
+     */
+    private updateStatusbar(isLoading: boolean) {
+        console.log('update statusbar:', isLoading);
+        const icon = isLoading ? '$(sync~spin)' : '$(flame)';
+        this.languageServerStatusBar.text = `${icon} bsc-${this.selectedBscInfo.version}`;
+        this.languageServerStatusBar.tooltip = `BrightScript Language Server: running`;
     }
 
     /**
