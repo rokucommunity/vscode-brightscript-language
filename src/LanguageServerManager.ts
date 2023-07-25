@@ -106,7 +106,7 @@ export class LanguageServerManager {
             this.languageServerStatusBar.command = LanguageServerInfoCommand.commandName;
 
             //enable the statusbar loading anmation. the language server will disable once it finishes loading
-            this.updateStatusbar(true);
+            this.updateStatusbar(false);
 
             this.languageServerStatusBar.show();
 
@@ -216,7 +216,6 @@ export class LanguageServerManager {
      * Enable/disable the loading spinner on the statusbar item
      */
     private updateStatusbar(isLoading: boolean) {
-        console.log('update statusbar:', isLoading);
         const icon = isLoading ? '$(sync~spin)' : '$(flame)';
         this.languageServerStatusBar.text = `${icon} bsc-${this.selectedBscInfo.version}`;
         this.languageServerStatusBar.tooltip = `BrightScript Language Server: running`;
