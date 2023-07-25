@@ -6,6 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.41.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.1...v2.41.2) - 2023-07-25
+### Added
+ - a spinner in the statusbar when the language server is busy ([#492](https://github.com/rokucommunity/vscode-brightscript-language/pull/492))
+### Changed
+ - upgrade to [roku-deploy@3.10.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3103---2023-07-22). Notable changes since 3.10.2:
+     - Bump word-wrap from 1.2.3 to 1.2.4 ([roku-deploy#117](https://github.com/rokucommunity/roku-deploy/pull/117))
+ - upgrade to [roku-debug@0.20.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0202---2023-07-24). Notable changes since 0.20.1:
+     - Bump word-wrap from 1.2.3 to 1.2.4 ([roku-debug#157](https://github.com/rokucommunity/roku-debug/pull/157))
+ - upgrade to [brighterscript@0.65.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0654---2023-07-24). Notable changes since 0.65.1:
+     - Bump word-wrap from 1.2.3 to 1.2.4 ([brighterscript#851](https://github.com/rokucommunity/brighterscript/pull/851))
+     - Show busy spinner for lsp builds ([brighterscript#852](https://github.com/rokucommunity/brighterscript/pull/852))
+     - Expose event interface ([brighterscript#845](https://github.com/rokucommunity/brighterscript/pull/845))
+     - Add beforeProgramDispose event ([brighterscript#844](https://github.com/rokucommunity/brighterscript/pull/844))
+     - Make component ready on afterScopeCreate ([brighterscript#843](https://github.com/rokucommunity/brighterscript/pull/843))
+     - Add project index to language server log entries ([brighterscript#836](https://github.com/rokucommunity/brighterscript/pull/836))
+     - Bump semver from 6.3.0 to 6.3.1 in /benchmarks ([brighterscript#838](https://github.com/rokucommunity/brighterscript/pull/838))
+     - Bump semver from 5.7.1 to 5.7.2 ([brighterscript#837](https://github.com/rokucommunity/brighterscript/pull/837))
+     - Prevent crashing when diagnostic is missing range. ([brighterscript#832](https://github.com/rokucommunity/brighterscript/pull/832))
+     - Prevent crash when diagnostic is missing range ([brighterscript#831](https://github.com/rokucommunity/brighterscript/pull/831))
+     - Add baseline interface docs ([brighterscript#829](https://github.com/rokucommunity/brighterscript/pull/829))
+ - upgrade to [brighterscript-formatter@1.6.31](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1631---2023-07-24). Notable changes since 1.6.30:
+     - Bump word-wrap from 1.2.3 to 1.2.4 ([brighterscript-formatter#74](https://github.com/rokucommunity/brighterscript-formatter/pull/74))
+
+
+
 ## [2.41.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.0...v2.41.1) - 2023-07-07
 ### Changed
  - upgrade to [roku-debug@0.20.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0201---2023-07-07). Notable changes since 0.20.0:
