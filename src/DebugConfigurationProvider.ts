@@ -242,7 +242,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
-        config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === false ? false : true;
+        config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
