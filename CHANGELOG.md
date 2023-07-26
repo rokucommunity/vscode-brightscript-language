@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.42.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.2...2.42.0) - 2023-07-26
+### Added
+ - `deleteDevChannelBeforeInstall` launch option ([#494](https://github.com/rokucommunity/vscode-brightscript-language/pull/494))
+### Changed
+ - upgrade to [roku-debug@0.20.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0203---2023-07-26). Notable changes since 0.20.2:
+     - Add `deleteDevChannelBeforeInstall` option to delete dev channel before install ([roku-debug#158](https://github.com/rokucommunity/roku-debug/pull/158))
+
+
+
 ## [2.41.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.1...v2.41.2) - 2023-07-25
 ### Added
  - a spinner in the statusbar when the language server is busy ([#492](https://github.com/rokucommunity/vscode-brightscript-language/pull/492))
