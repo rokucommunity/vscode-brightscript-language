@@ -2244,6 +2244,12 @@
                         "description": "Should rendezvous tracking be enabled on launch? If `true`: turn on ECP rendezvous tracking, or turn on 8080 rendezvous tracking if ECP unsupported. If `false`, turn off both.",
                         "default": true,
                         "scope": "resource"
+                    },
+                    "brightscript.debug.deleteDevChannelBeforeInstall": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Delete any currently installed dev channel before starting the debug session",
+                        "scope": "resource"
                     }
                 }
             },
