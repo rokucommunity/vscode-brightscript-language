@@ -1,7 +1,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { odc, intermediary } from '../../ExtensionIntermediary';
-    import { Trash, Add, Grabber } from 'svelte-codicons';
+    import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
 
@@ -119,9 +119,20 @@
         });
     }
 
+    function moveStepUp() {
+        const step = steps.splice(this.id, 1)[0];
+        steps.splice(this.id - 1, 0, step);
+        storeConfigs(steps);
+    }
+
+    function moveStepDown() {
+        const step = steps.splice(this.id, 1)[0];
+        steps.splice(this.id + 1, 0, step);
+        storeConfigs(steps);
+    }
+
     function onKeydown(event) {
         const key = event.key;
-console.log('onKeydown', key);
 
         switch (key) {
             case 'Escape':
@@ -134,6 +145,7 @@ console.log('onKeydown', key);
         const configs = message.context.configs;
         if (configs) {
             const config = configs[0];
+            console.log('config.steps', config.steps);
             steps = config.steps;
             autorunOnDeploy = message.context.autorunOnDeploy;
             console.log('autorunOnDeploy', autorunOnDeploy);
@@ -171,7 +183,6 @@ console.log('elapsedTime', elapsedTime);
         });
     }
 
-
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationKeyPressed, (message) => {
         let {key, literalCharacter} = message.context;
         console.log('key', key);
@@ -200,46 +211,11 @@ console.log('elapsedTime', elapsedTime);
         lastStepDate = Date.now();
     });
 
-    let hoveringIndex = -1;
-
-    function drop(event) {
-        debugger;
-        const target = 0
-        console.log('event', event);
-        console.log('target', target);
-
-        event.dataTransfer.dropEffect = 'move';
-        const start = parseInt(event.dataTransfer.getData("text/plain"));
-        const newSteps = steps
-
-        if (start < target) {
-            newSteps.splice(target + 1, 0, newSteps[start]);
-            newSteps.splice(start, 1);
-        } else {
-            newSteps.splice(target, 0, newSteps[start]);
-            newSteps.splice(start + 1, 1);
-        }
-        steps = newSteps
-        hoveringIndex = -1
-    }
-
-    function dragstart(event, i) {
-        console.log('dragstart');
-
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.dropEffect = 'move';
-        const start = i;
-        event.dataTransfer.setData('text/plain', start);
-    }
-
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
 
 <style>
-    .highlighted {
-        background-color: #0000FF33;
-    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
@@ -247,15 +223,13 @@ console.log('elapsedTime', elapsedTime);
 <div>
     <table>
     {#each steps as step, index}
-        <tr
-            draggable="true"
-            on:dragstart={event => dragstart(event, index)}
-            on:drop={drop}
-            on:dragover="{false}"
-            on:dragenter={() => hoveringIndex = index}
-            class:highlighted={hoveringIndex === index}>
-            <td style="padding-left: 3px;">
-                <Grabber />
+        <tr>
+            <td>
+                {#if index > 0}
+                    <vscode-button id="{index}" appearance="icon" title="Move step up" aria-label="Move step up" on:click={moveStepUp}>
+                        <ArrowUp />
+                    </vscode-button>
+                {/if}
             </td>
             <td>
                 <vscode-dropdown id="{index}" on:change={onStepTypeChange} value="{step.type}">
@@ -263,6 +237,20 @@ console.log('elapsedTime', elapsedTime);
                     <vscode-option value="{stepType}">{stepTypeParams.name}</vscode-option>
                 {/each}
                 </vscode-dropdown>
+            </td>
+            <td>
+                {#if currentRunningStep === -1}
+                    <vscode-button id="{index}" appearance="icon" title="Delete step" aria-label="Delete step" on:click={deleteStep}><Trash /></vscode-button>
+                {:else if currentRunningStep === index}
+                    <vscode-progress-ring />
+                {/if}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                {#if index < steps.length - 1}
+                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={moveStepDown}><ArrowDown /></vscode-button>
+                {/if}
             </td>
             <td>
             {#if step.type === stepTypes.sleep.type}
@@ -277,19 +265,15 @@ console.log('elapsedTime', elapsedTime);
                 <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
             {/if}
             </td>
-            <td>
-                {#if currentRunningStep === -1}
-                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={deleteStep}><Trash /></vscode-button>
-                {:else if currentRunningStep === index}
-                    <vscode-progress-ring />
-                {/if}
+        </tr>
+        <tr>
+            <td colspan="3">
+                <vscode-divider />
             </td>
-
         </tr>
     {/each}
         <tr>
             <td>
-                <!-- <vscode-button appearance="secondary" aria-label="Add Step">Add Step</vscode-button> -->
                 <vscode-button appearance="icon" title="Add Step" aria-label="Add Step" on:click={addStep}><Add /></vscode-button>
             </td>
             <td>
@@ -299,26 +283,11 @@ console.log('elapsedTime', elapsedTime);
         <tr>
             <td colspan="2">
                 {#if currentRunningStep >= 0}
-                    <vscode-button id="0" on:click={stopConfig}>Stop</vscode-button>
+                    <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
                 {:else}
-                    <vscode-button id="0" on:click={runConfig}>Run</vscode-button>
+                    <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
                 {/if}
             </td>
         </tr>
     </table>
-
-    <div class="list">
-        {#each list as n, index  (n.name)}
-          <div
-                   class="list-item"
-             draggable={true}
-             on:dragstart={event => dragstart(event, index)}
-             on:drop|preventDefault={event => drop(event, index)}
-             on:dragenter={() => hoveringIndex = index}
-             class:is-active={hoveringIndex === index}>
-             {n.name}
-          </div>
-        {/each}
-    </div>
-
 </div>

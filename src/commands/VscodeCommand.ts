@@ -9,5 +9,7 @@ export enum VscodeCommand {
     rokuRegistryClearRegistry = 'extension.brightscript.rokuRegistry.clearRegistry',
     rokuRegistryRefreshRegistry = 'extension.brightscript.rokuRegistry.refreshRegistry',
     rokuAutomationStartRecording = 'extension.brightscript.rokuAutomation.startRecording',
-    rokuAutomationStopRecording = 'extension.brightscript.rokuAutomation.stopRecording'
+    rokuAutomationStopRecording = 'extension.brightscript.rokuAutomation.stopRecording',
+    enableRemoteControlMode = 'extension.brightscript.enableRemoteControlMode',
+    disableRemoteControlMode = 'extension.brightscript.disableRemoteControlMode'
 }

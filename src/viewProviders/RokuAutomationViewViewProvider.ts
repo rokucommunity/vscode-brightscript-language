@@ -44,20 +44,29 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         const subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationStartRecording, async () => {
-            // TODO decide how to handle initiator
-            await vscode.commands.executeCommand('extension.brightscript.enableRemoteControlMode');
-            await this.setIsRecording(true);
+            if (this.currentRunningStep === -1) {
+                // Only allow recording when we aren't currently running
+                await this.setIsRecording(true);
+
+                // TODO decide how to handle initiator
+                await vscode.commands.executeCommand(VscodeCommand.enableRemoteControlMode);
+
+                // We reset the current step to update the timestamp of the first sleep
+                this.updateCurrentRunningStep(-1);
+            }
         }));
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationStopRecording, async () => {
-            await vscode.commands.executeCommand('extension.brightscript.disableRemoteControlMode');
-            await this.setIsRecording(false);
+            if (this.isRecording) {
+                await this.setIsRecording(false);
+                // TODO decide how to handle initiator
+                await vscode.commands.executeCommand(VscodeCommand.disableRemoteControlMode);
+            }
         }));
     }
 
     private async setIsRecording(isRecording) {
         this.isRecording = isRecording;
-        // TODO decide how to handle initiator
         await vscodeContextManager.set('brightscript.rokuAutomationView.isRecording', isRecording);
     }
 
