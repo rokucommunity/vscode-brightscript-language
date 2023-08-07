@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { languageServerManager } from '../LanguageServerManager';
+import { LANGUAGE_SERVER_NAME, languageServerManager } from '../LanguageServerManager';
 import * as path from 'path';
 
 export class LanguageServerInfoCommand {
@@ -18,10 +18,23 @@ export class LanguageServerInfoCommand {
                 label: `Restart BrighterScript Language Server`,
                 description: ``,
                 command: this.restartLanguageServer.bind(this)
+            }, {
+                label: `View language server logs`,
+                description: ``,
+                command: this.focusLanguageServerOutputChannel.bind(this)
             }];
+
             let selection = await vscode.window.showQuickPick(commands, { placeHolder: `BrighterScript Project Info` });
             await selection?.command();
         }));
+    }
+
+    private async focusLanguageServerOutputChannel() {
+        const commands = await vscode.commands.getCommands();
+        const command = commands.find(x => x.endsWith(LANGUAGE_SERVER_NAME));
+        if (command) {
+            void vscode.commands.executeCommand(command);
+        }
     }
 
     private async restartLanguageServer() {
