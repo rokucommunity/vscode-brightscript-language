@@ -244,7 +244,6 @@
             <p><button on:click={refresh}>Retry</button></p>
             <OdcSetManualIpAddress />
         </div>
-
     {:else}
         <div id="header">
             <div id="drop-shadow-blocker" />
