@@ -7,9 +7,6 @@
 
     window.vscode = acquireVsCodeApi();
 
-    let list = [{name: "foo", id: 0}, {name: "bar", id: 1},
-							{name: "bob", id: 2}, {name: "jean", id: 3}];
-
     let loading = true;
     let currentRunningStep = -1;
 
@@ -145,11 +142,8 @@
         const configs = message.context.configs;
         if (configs) {
             const config = configs[0];
-            console.log('config.steps', config.steps);
             steps = config.steps;
             autorunOnDeploy = message.context.autorunOnDeploy;
-            console.log('autorunOnDeploy', autorunOnDeploy);
-
         } else {
             steps = [{
                 type: 'sleep',
@@ -164,7 +158,7 @@
         currentRunningStep = message.context.step;
         console.log('currentRunningStep', currentRunningStep);
         if (currentRunningStep === -1) {
-            // Once we finish running all current steps update our last step date in case we want to add any more steps
+            // Once we finish running all current steps, update our last step date in case we want to add any more steps
             lastStepDate = Date.now();
         }
     });
@@ -175,7 +169,6 @@
 
         // Round to the nearest tenth
         elapsedTime = (Math.round(elapsedTime * 10) / 10);
-console.log('elapsedTime', elapsedTime);
 
         steps.push({
             type: stepTypes.sleep.type,
@@ -185,8 +178,6 @@ console.log('elapsedTime', elapsedTime);
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationKeyPressed, (message) => {
         let {key, literalCharacter} = message.context;
-        console.log('key', key);
-        console.log('literalCharacter', literalCharacter);
         if (literalCharacter) {
             // Check if we were typing somethign before and if so just add on to it
             const lastStep = steps.at(-1);
