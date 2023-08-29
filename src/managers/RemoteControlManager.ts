@@ -73,7 +73,7 @@ export class RemoteControlManager {
     public async setRemoteControlMode(isEnabled: boolean, initiator: RemoteControlModeInitiator) {
         if (this.isEnabled && !isEnabled) {
             // Want to also stop Roku automation recording if it was running
-            await vscode.commands.executeCommand(VscodeCommand.rokuAutomationStopRecording);
+            await vscode.commands.executeCommand(VscodeCommand.rokuAutomationViewStopRecording);
         }
 
         //only send a telemetry event if we know who initiated the mode. `undefined` usually means our internal system set the value...so don't track that

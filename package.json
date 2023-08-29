@@ -297,14 +297,24 @@
                     "group": "navigation@3"
                 },
                 {
-                    "command": "extension.brightscript.rokuAutomation.startRecording",
+                    "command": "extension.brightscript.rokuAutomationView.startRecording",
                     "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.isRecording",
                     "group": "navigation"
                 },
                 {
-                    "command": "extension.brightscript.rokuAutomation.stopRecording",
+                    "command": "extension.brightscript.rokuAutomationView.stopRecording",
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.isRecording",
                     "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.rokuAutomationView.enableAutorunOnDeploy",
+                    "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.autorunOnDeploy",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
+                    "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
+                    "group": "navigation@2"
                 }
             ],
             "commandPalette": []
@@ -2692,16 +2702,29 @@
                 "icon": "$(arrow-up)"
             },
             {
-                "command": "extension.brightscript.rokuAutomation.startRecording",
+                "command": "extension.brightscript.rokuAutomationView.startRecording",
                 "title": "Start Recording",
                 "category": "BrighterScript",
                 "icon": "$(record)"
             },
             {
-                "command": "extension.brightscript.rokuAutomation.stopRecording",
+                "command": "extension.brightscript.rokuAutomationView.stopRecording",
                 "title": "Stop Recording",
                 "category": "BrighterScript",
                 "icon": "$(debug-stop)"
+            },
+
+            {
+                "command": "extension.brightscript.rokuAutomationView.enableAutorunOnDeploy",
+                "title": "Enable Autorun on deploy",
+                "category": "BrighterScript",
+                "icon": "$(pass)"
+            },
+            {
+                "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
+                "title": "Disable autorun on deploy",
+                "category": "BrighterScript",
+                "icon": "$(pass-filled)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",

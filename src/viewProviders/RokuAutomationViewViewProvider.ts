@@ -17,7 +17,6 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.storeRokuAutomationConfigs, async (message) => {
             this.rokuAutomationConfigs = message.context.configs;
-            this.rokuAutomationAutorunOnDeploy = message.context.autorunOnDeploy;
             // Make sure to use JSON.stringify or weird stuff happens
             await context.workspaceState.update(this.configStorageKey, JSON.stringify(message.context));
             return true;
@@ -43,12 +42,10 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
         const subscriptions = context.subscriptions;
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationStartRecording, async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewStartRecording, async () => {
             if (this.currentRunningStep === -1) {
                 // Only allow recording when we aren't currently running
                 await this.setIsRecording(true);
-
-                // TODO decide how to handle initiator
                 await vscode.commands.executeCommand(VscodeCommand.enableRemoteControlMode);
 
                 // We reset the current step to update the timestamp of the first sleep
@@ -56,18 +53,37 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             }
         }));
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationStopRecording, async () => {
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewStopRecording, async () => {
             if (this.isRecording) {
                 await this.setIsRecording(false);
-                // TODO decide how to handle initiator
                 await vscode.commands.executeCommand(VscodeCommand.disableRemoteControlMode);
             }
         }));
+
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewEnableAutorunOnDeploy, async () => {
+            await this.setAutorunOnDeploy(true);
+        }));
+
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewDisableAutorunOnDeploy, async () => {
+            await this.setAutorunOnDeploy(false);
+        }));
+
+        let autorunOnDeploy = this.extensionContext.workspaceState.get(this.autorunOnDeployStorageKey);
+        // Default to true if not set
+        if (autorunOnDeploy !== false) {
+            autorunOnDeploy = true;
+        }
+        void this.setAutorunOnDeploy(autorunOnDeploy);
     }
 
     private async setIsRecording(isRecording) {
         this.isRecording = isRecording;
         await vscodeContextManager.set('brightscript.rokuAutomationView.isRecording', isRecording);
+    }
+
+    private async setAutorunOnDeploy(autorunOnDeploy) {
+        this.rokuAutomationAutorunOnDeploy = autorunOnDeploy;
+        await vscodeContextManager.set('brightscript.rokuAutomationView.autorunOnDeploy', autorunOnDeploy);
     }
 
     private isRecording = false;
@@ -79,7 +95,9 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             value: string;
         }[];
     }[];
-    private rokuAutomationAutorunOnDeploy = true;
+
+    private autorunOnDeployStorageKey = 'rokuAutomationAutorunOnDeploy';
+    private rokuAutomationAutorunOnDeploy = false;
 
     private currentRunningStep = -1;
 
@@ -136,12 +154,10 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         if (typeof json === 'string') {
             const result = JSON.parse(json);
             this.rokuAutomationConfigs = result.configs;
-            this.rokuAutomationAutorunOnDeploy = result.autorunOnDeploy;
         }
 
         const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
-            configs: this.rokuAutomationConfigs,
-            autorunOnDeploy: this.rokuAutomationAutorunOnDeploy
+            configs: this.rokuAutomationConfigs
         });
 
         this.postOrQueueMessage(message);

@@ -51,22 +51,13 @@
         value: string;
     }[];
 
-    let autorunOnDeploy = true;
-
-    // We can't use bind so we have to update it ourselves manually because we're using vscode-checkbox
-    function onAutorunOnDeployChange() {
-        autorunOnDeploy = this.checked;
-        storeConfigs(steps);
-    }
-
     function storeConfigs(updatedSteps) {
         if(!loading) {
             intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
                 configs: [{
                     name: 'DEFAULT',
                     steps: updatedSteps
-                }],
-                autorunOnDeploy: autorunOnDeploy
+                }]
             });
         }
 
@@ -143,7 +134,6 @@
         if (configs) {
             const config = configs[0];
             steps = config.steps;
-            autorunOnDeploy = message.context.autorunOnDeploy;
         } else {
             steps = [{
                 type: 'sleep',
@@ -264,11 +254,8 @@
         </tr>
     {/each}
         <tr>
-            <td>
+            <td colspan="2">
                 <vscode-button appearance="icon" title="Add Step" aria-label="Add Step" on:click={addStep}><Add /></vscode-button>
-            </td>
-            <td>
-                <vscode-checkbox on:change={onAutorunOnDeployChange} checked={autorunOnDeploy}>Autorun on deploy</vscode-checkbox>
             </td>
         </tr>
         <tr>
