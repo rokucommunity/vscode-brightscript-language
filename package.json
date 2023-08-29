@@ -752,7 +752,7 @@
                             },
                             "stopDebuggerOnAppExit": {
                                 "type": "boolean",
-                                "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                                "description": "If true, will terminate the debug session if app exit is detected. This option is ignored when enableDebugProtocol is set to true. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
                                 "default": true
                             },
                             "enableSourceMaps": {
@@ -2084,7 +2084,7 @@
                     },
                     "brightscript.debug.stopDebuggerOnAppExit": {
                         "type": "boolean",
-                        "description": "If true, will terminate the debug session if app exit is detected. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
+                        "description": "If true, will terminate the debug session if app exit is detected. This option is ignored when enableDebugProtocol is set to true. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
                         "default": true,
                         "scope": "resource"
                     },
