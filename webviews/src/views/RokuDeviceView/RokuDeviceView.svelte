@@ -245,7 +245,7 @@
                 if (!screenshotOutOfDateTimeOut) {
                     screenshotOutOfDateTimeOut = setTimeout(() => {
                         screenshotOutOfDate = true;
-                    }, 2000);
+                    }, 10000);
                 }
                 setTimeout(() => {
                     requestScreenshot();
