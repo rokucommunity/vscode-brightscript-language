@@ -13,9 +13,7 @@
 
     function onInputChange() {
         value = self.control.value;
-        // console.log('self.control.value', self.control.value)
-        // console.log('self.value', self.value)
-        // console.log('value', value)
+        // Triggers update to be sent to parent's on:input
         dispatch('input', {test: self.control});
     }
 
@@ -24,9 +22,6 @@
         if (self) {
             self.value = value;
             self.control.value = value;
-
-            // Triggers update to be sent to parent's on:input
-            //
         }
     }
 
@@ -39,12 +34,13 @@
         }
     }
 
-    let self: TextField;
+    export let self: TextField | null = null;
 </script>
 
 <style>
-    vscode-text-field[type='number'] {
+    vscode-text-field {
         width: 71px;
+        vertical-align: middle;
     }
 </style>
 
