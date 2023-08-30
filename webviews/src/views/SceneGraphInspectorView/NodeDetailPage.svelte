@@ -9,11 +9,23 @@
     import { Refresh, Discard, ArrowLeft, Move, Key } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
+    // Key path for pulling info
     export let inspectNodeBaseKeyPath: BaseKeyPath | null;
     export let inspectNodeTreeNode: TreeNode | null;
+    $: {
+        // Updated persistentBaseKeyPath whenever inspectNodeTreeNode changes
+        if (inspectNodeTreeNode) {
+            persistentBaseKeyPath = {
+                keyPath: inspectNodeTreeNode.keyPath
+            };
+        }
+    }
+    // Key path for use in automated tests where it must persist across runs
+    export let persistentBaseKeyPath: BaseKeyPath | null;
 
     let inspectChildNodeSubtype: string;
     let inspectChildNodeBaseKeyPath: BaseKeyPath | null;
+    let persistentChildBaseKeyPath: BaseKeyPath | null;
     let showKeyPathInfo = utils.getStorageBooleanValue('showKeyPathInfo');
     $: {
         utils.setStorageValue('showKeyPathInfo', showKeyPathInfo);
@@ -121,6 +133,10 @@
 
     function onNodeClicked() {
         inspectChildNodeSubtype = this.textContent;
+
+        persistentChildBaseKeyPath = {
+            keyPath: persistentBaseKeyPath.keyPath ? persistentBaseKeyPath.keyPath + '.' + this.id : this.id
+        }
         inspectChildNodeBaseKeyPath = {
             ...inspectNodeBaseKeyPath,
             keyPath: inspectNodeBaseKeyPath.keyPath ? inspectNodeBaseKeyPath.keyPath + '.' + this.id : this.id
@@ -382,7 +398,7 @@
                 on:click={refresh}>
                 <Refresh />
             </vscode-button>
-            {#if inspectNodeTreeNode?.keyPath}
+            {#if persistentBaseKeyPath?.keyPath}
                 <vscode-button
                     appearance="icon"
                     title="Show Key Path Info"
@@ -392,10 +408,10 @@
             {/if}
         </section>
     </div>
-{#if showKeyPathInfo && inspectNodeTreeNode}
+{#if showKeyPathInfo && persistentBaseKeyPath}
     <div id="baseKeyPathContainer">
         "base": "scene",<br>
-        "keyPath": "{inspectNodeTreeNode.keyPath}"
+        "keyPath": "{persistentBaseKeyPath.keyPath}"
     </div>
 {/if}
 {#if children.length > 0}
@@ -410,7 +426,7 @@
             {#each children as child, i}
                 <div class="childItem">
                     <span class="index">{i}:</span>
-                    <vscode-button on:click={onNodeClicked} appearance="secondary">{child.subtype}</vscode-button>
+                    <vscode-button id={String(i)} on:click={onNodeClicked} appearance="secondary">{child.subtype}</vscode-button>
                 </div>
             {/each}
         </div>
@@ -630,5 +646,6 @@
 {#if inspectChildNodeBaseKeyPath}
     <svelte:self
         bind:inspectNodeBaseKeyPath={inspectChildNodeBaseKeyPath}
-        inspectNodeSubtype={inspectChildNodeSubtype} />
+        inspectNodeSubtype={inspectChildNodeSubtype}
+        persistentBaseKeyPath={persistentChildBaseKeyPath} />
 {/if}
