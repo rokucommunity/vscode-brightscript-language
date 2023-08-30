@@ -197,6 +197,9 @@
 </script>
 
 <style>
+    vscode-dropdown, vscode-text-field {
+        margin-bottom: 3px;
+    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
@@ -211,6 +214,9 @@
                         <ArrowUp />
                     </vscode-button>
                 {/if}
+                {#if index < steps.length - 1}
+                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={moveStepDown}><ArrowDown /></vscode-button>
+                {/if}
             </td>
             <td>
                 <vscode-dropdown id="{index}" on:change={onStepTypeChange} value="{step.type}">
@@ -218,6 +224,18 @@
                     <vscode-option value="{stepType}">{stepTypeParams.name}</vscode-option>
                 {/each}
                 </vscode-dropdown>
+
+                {#if step.type === stepTypes.sleep.type}
+                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value ?? stepTypes.sleep.defaultValue}" type="number" />
+                {:else if step.type === stepTypes.sendKeyPress.type}
+                    <vscode-dropdown id="{index}" on:change={onStepValueChange} value="{step.value}">
+                    {#each Object.entries(availableKeys) as [key, text]}
+                        <vscode-option value={key}>{text}</vscode-option>
+                    {/each}
+                    </vscode-dropdown>
+                {:else if step.type === stepTypes.sendText.type}
+                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
+                {/if}
             </td>
             <td>
                 {#if currentRunningStep === -1}
@@ -228,27 +246,7 @@
             </td>
         </tr>
         <tr>
-            <td>
-                {#if index < steps.length - 1}
-                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={moveStepDown}><ArrowDown /></vscode-button>
-                {/if}
-            </td>
-            <td>
-            {#if step.type === stepTypes.sleep.type}
-                <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value ?? stepTypes.sleep.defaultValue}" type="number" />
-            {:else if step.type === stepTypes.sendKeyPress.type}
-                <vscode-dropdown id="{index}" on:change={onStepValueChange} value="{step.value}">
-                {#each Object.entries(availableKeys) as [key, text]}
-                    <vscode-option value={key}>{text}</vscode-option>
-                {/each}
-                </vscode-dropdown>
-            {:else if step.type === stepTypes.sendText.type}
-                <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value}" />
-            {/if}
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3">
+            <td colspan="4">
                 <vscode-divider />
             </td>
         </tr>
