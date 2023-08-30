@@ -4,6 +4,7 @@
     import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
+    import NumberField from '../../shared/NumberField.svelte';
 
     window.vscode = acquireVsCodeApi();
 
@@ -202,8 +203,18 @@
 </script>
 
 <style>
+    table {
+        border-spacing: 0;
+        width: 100%;
+    }
+
     vscode-dropdown, vscode-text-field {
-        margin-bottom: 3px;
+        margin: 3px 0;
+        vertical-align: middle;
+    }
+
+    vscode-divider {
+        margin: 0px;
     }
 
     #container {
@@ -220,6 +231,10 @@
 
     #bottomFixed vscode-button {
         margin-right: 5px;
+    }
+
+    .stepTypeDropdown {
+        min-width: 140px;
     }
 </style>
 
@@ -240,14 +255,14 @@
                 {/if}
             </td>
             <td>
-                <vscode-dropdown id="{index}" on:change={onStepTypeChange} value="{step.type}">
+                <vscode-dropdown class="stepTypeDropdown" id="{index}" on:change={onStepTypeChange} value="{step.type}">
                 {#each Object.entries(stepTypes) as [stepType, stepTypeParams]}
                     <vscode-option value="{stepType}">{stepTypeParams.name}</vscode-option>
                 {/each}
                 </vscode-dropdown>
 
                 {#if step.type === stepTypes.sleep.type}
-                    <vscode-text-field id="{index}" on:change={onStepValueChange} value="{step.value ?? stepTypes.sleep.defaultValue}" type="number" />
+                    <NumberField id="{index.toString()}" on:change={onStepValueChange} value="{step?.value?.toString() ?? stepTypes.sleep.defaultValue.toString()}" />
                 {:else if step.type === stepTypes.sendKeyPress.type}
                     <vscode-dropdown id="{index}" on:change={onStepValueChange} value="{step.value}">
                     {#each Object.entries(availableKeys) as [key, text]}
