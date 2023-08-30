@@ -244,7 +244,8 @@
             } else {
                 if (!screenshotOutOfDateTimeOut) {
                     screenshotOutOfDateTimeOut = setTimeout(() => {
-                        screenshotOutOfDate = true;
+                        // screenshotOutOfDate = true;
+                        console.log('screenshot out of date')
                     }, 10000);
                 }
                 setTimeout(() => {
