@@ -4,7 +4,7 @@
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
     import ColorField from './ColorField.svelte';
-    import NumberField from './NumberField.svelte';
+    import NumberField from '../../shared/NumberField.svelte';
     import Chevron from '../../shared/Chevron.svelte';
     import { Refresh, Discard, ArrowLeft, Move, Key } from 'svelte-codicons';
 
@@ -94,22 +94,19 @@
     function onNumberFieldChange() {
         const value = Number(this.value);
         debugger;
-        handleResetValueButtonDisplay(this, value);
+        handleResetValueButtonDisplay(this.self, value);
         setValue(this.id, value);
     }
 
-    function onVector2dFieldChange(tes) {
-        // TODO fix parent access
-        console.log('tes', tes);
+    function onVector2dFieldChange() {
         const id = this.id;
         const values = [];
-        for (const element of this.parentElement.children) {
+        for (const element of this.self.parentElement.children) {
             if (element.id === id) {
-                debugger;
                 values.push(Number(element.value));
             }
         }
-        handleResetValueButtonDisplay(this, values);
+        handleResetValueButtonDisplay(this.self, values);
         setValue(id, values);
     }
 
@@ -149,7 +146,7 @@
         }
 
         const id = element.id;
-        let valueChanged = (newValue !== fields[id].value);
+        let valueChanged = (newValue !== fields[id]?.value);
         if (newValue instanceof Array) {
             valueChanged = false;
             for (const [i, item] of newValue.entries()) {
@@ -275,6 +272,26 @@
     function toggleShowingBraceOrBracketContent() {
         expandedCollectionFields[this.id] = !expandedCollectionFields[this.id];
     }
+
+
+    function formatFieldTitle(input) {
+        let output = "";
+        let word = "";
+
+        for (let i = 0; i < input.length; i++) {
+            if (i > 0 && input[i] === input[i].toUpperCase() && input[i - 1] !== " ") {
+            output += `<span>${word}</span>`;
+            word = "";
+            }
+            word += input[i];
+        }
+
+        if (word !== "") {
+            output += `<span>${word}:</span>`;
+        }
+
+        return output;
+    }
 </script>
 
 <style>
@@ -329,16 +346,17 @@
     }
 
     table {
-        margin: 5px;
+        border-spacing: 0;
+        width: 100%;
     }
 
     td {
         --input-min-width: 30px;
-        padding: 0 3px 5px;
+        padding: 5px 3px 3px 5px;
     }
 
-    td:first-of-type {
-        text-align: right;
+    tr:nth-child(even) {
+        background-color: var(--vscode-editorInlayHint-parameterBackground);
     }
 
     label {
@@ -347,6 +365,10 @@
 
     .collectionItem {
         background-color: var(--vscode-editor-background);
+    }
+
+    vscode-button, vscode-text-field {
+        vertical-align: middle;
     }
 
     /* .inline {
@@ -437,7 +459,7 @@
         {#each Object.entries(fields) as [id, field]}
             <tr>
                 <td>
-                    <label for={id}>{id}:</label>
+                    <label for={id}>{@html formatFieldTitle(id)}</label>
                     <!-- {field.type} {field.fieldType} {field.value} -->
                 </td>
                 <td>
@@ -453,30 +475,29 @@
                 {#if field.value === null}
                     Invalid
                 {:else if field.fieldType === 'vector2d'}
-                        <NumberField
-                            {id}
-                            class="xValue fieldValue"
-                            title="Hold down shift to increment faster"
-                            step={id === 'scale' ? 0.1 : numberInputsStep}
-                            value={field.value[0]}
-                            on:input={onVector2dFieldChange} />
-                        <NumberField
-                            {id}
-                            class="yValue fieldValue"
-                            value={field.value[1]}
-                            title="Hold down shift to increment faster"
-                            step={id === 'scale' ? 0.1 : numberInputsStep}
-                            on:input={onVector2dFieldChange} />
-                        {#if id !== 'scale'}
-                            <vscode-button
-                                appearance="icon"
-                                style="float: right; margin-top: 3px;"
-                                on:pointerdown={onMoveNodePositionDown}
-                                on:pointermove={throttle(onMoveNodePosition, 33)}
-                                on:pointerup={onMoveNodePositionUp}>
-                                <Move />
-                            </vscode-button>
-                        {/if}
+                    <NumberField
+                        {id}
+                        class="xValue fieldValue"
+                        title="Hold down shift to increment faster"
+                        step={id === 'scale' ? 0.1 : numberInputsStep}
+                        value={field.value[0]}
+                        on:input={onVector2dFieldChange} />
+                    <NumberField
+                        {id}
+                        class="yValue fieldValue"
+                        value={field.value[1]}
+                        title="Hold down shift to increment faster"
+                        step={id === 'scale' ? 0.1 : numberInputsStep}
+                        on:input={onVector2dFieldChange} />
+                    {#if id !== 'scale'}
+                        <vscode-button
+                            appearance="icon"
+                            on:pointerdown={onMoveNodePositionDown}
+                            on:pointermove={throttle(onMoveNodePosition, 33)}
+                            on:pointerup={onMoveNodePositionUp}>
+                            <Move />
+                        </vscode-button>
+                    {/if}
                 {:else if field.fieldType === 'color'}
                     <ColorField
                         {id}
@@ -532,7 +553,7 @@
             {:else if field.type === 'roArray'}
                 {#each field.value as item, collectionItemId}
                     <tr class="collectionItem">
-                        <td class="collectionItemId">{collectionItemId}:</td>
+                        <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
                         <td>
                             <vscode-button
                                 appearance="icon"
@@ -551,9 +572,7 @@
                                 {item.subtype}
                             </vscode-button>
                         {:else if typeof item === 'object'}
-                            {JSON.stringify(
-                                item
-                            )}
+                            <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
                         {:else if typeof item === 'number'}
                             <NumberField
                                 id="{id}.{collectionItemId}"
@@ -587,7 +606,7 @@
             {:else if field.type === 'roAssociativeArray'}
                 {#each Object.entries(field.value) as [collectionItemId, item]}
                     <tr class="collectionItem">
-                        <td class="collectionItemId">{collectionItemId}:</td>
+                        <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
                         <td>
                             <vscode-button
                                 appearance="icon"
@@ -610,9 +629,7 @@
                                 checked={item}
                                 on:click={onBooleanFieldClick} />
                         {:else if typeof item === 'object'}
-                            {JSON.stringify(
-                                item
-                            )}
+                            <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
                         {:else if typeof item === 'number'}
                             <NumberField
                                 class="inline"
