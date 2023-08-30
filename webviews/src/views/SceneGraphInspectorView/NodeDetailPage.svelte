@@ -21,7 +21,7 @@
         }
     }
     // Key path for use in automated tests where it must persist across runs
-    export let persistentBaseKeyPath: BaseKeyPath | null;
+    export let persistentBaseKeyPath: BaseKeyPath | null = null;
 
     let inspectChildNodeSubtype: string;
     let inspectChildNodeBaseKeyPath: BaseKeyPath | null;
