@@ -95,6 +95,11 @@
         storeConfigs(steps);
     }
 
+    function clearConfig() {
+        steps = [];
+        storeConfigs(steps);
+    }
+
     function runConfig() {
         intermediary.sendCommand(ViewProviderCommand.runRokuAutomationConfig, {
             configIndex: this.id
@@ -200,11 +205,27 @@
     vscode-dropdown, vscode-text-field {
         margin-bottom: 3px;
     }
+
+    #container {
+        padding-bottom: 50px;
+    }
+
+    #bottomFixed {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 8px;
+        background-color: var(--vscode-breadcrumb-background);
+    }
+
+    #bottomFixed vscode-button {
+        margin-right: 5px;
+    }
 </style>
 
 <svelte:window on:keydown={onKeydown} />
 
-<div>
+<div id="container">
     <table>
     {#each steps as step, index}
         <tr>
@@ -256,14 +277,14 @@
                 <vscode-button appearance="icon" title="Add Step" aria-label="Add Step" on:click={addStep}><Add /></vscode-button>
             </td>
         </tr>
-        <tr>
-            <td colspan="2">
-                {#if currentRunningStep >= 0}
-                    <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
-                {:else}
-                    <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
-                {/if}
-            </td>
-        </tr>
     </table>
+</div>
+
+<div id="bottomFixed">
+    {#if currentRunningStep >= 0}
+        <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
+    {:else}
+        <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
+        <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
+    {/if}
 </div>
