@@ -121,7 +121,7 @@
 
     function moveStepDown() {
         const step = steps.splice(this.id, 1)[0];
-        steps.splice(this.id + 1, 0, step);
+        steps.splice(+this.id + 1, 0, step);
         storeConfigs(steps);
     }
 
@@ -251,7 +251,9 @@
                     </vscode-button>
                 {/if}
                 {#if index < steps.length - 1}
-                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={moveStepDown}><ArrowDown /></vscode-button>
+                    <vscode-button id="{index}" appearance="icon" aria-label="Trash" on:click={moveStepDown}>
+                        <ArrowDown />
+                    </vscode-button>
                 {/if}
             </td>
             <td>
@@ -262,7 +264,7 @@
                 </vscode-dropdown>
 
                 {#if step.type === stepTypes.sleep.type}
-                    <NumberField id="{index.toString()}" on:change={onStepValueChange} value="{step?.value?.toString() ?? stepTypes.sleep.defaultValue.toString()}" />
+                    <NumberField id="{index.toString()}" on:input={onStepValueChange} step="0.1" value="{step?.value?.toString() ?? stepTypes.sleep.defaultValue.toString()}" />
                 {:else if step.type === stepTypes.sendKeyPress.type}
                     <vscode-dropdown id="{index}" on:change={onStepValueChange} value="{step.value}">
                     {#each Object.entries(availableKeys) as [key, text]}
