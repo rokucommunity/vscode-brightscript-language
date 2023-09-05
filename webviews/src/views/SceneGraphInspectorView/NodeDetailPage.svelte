@@ -116,7 +116,7 @@
     }
 
     function onColorFieldChange() {
-        handleResetValueButtonDisplay(this);
+        handleResetValueButtonDisplay(this.self);
         setValue(this.id, this.value);
     }
 

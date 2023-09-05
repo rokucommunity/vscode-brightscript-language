@@ -31,10 +31,13 @@
             value = hexColor;
             // Triggers update to be sent to parent's on:input
             dispatch('input');
-        } catch {}
+        } catch(e) {
+            console.log('convert failed', e)
+        }
     }
 
     let textColor: string;
+    export let self = null;
 </script>
 
 <style>
@@ -44,7 +47,7 @@
     }
 </style>
 
-<div
+<div bind:this={self}
     style="background-color: {hexColor}; color: {textColor};"
     contenteditable="true"
     bind:innerHTML={hexColor} />
