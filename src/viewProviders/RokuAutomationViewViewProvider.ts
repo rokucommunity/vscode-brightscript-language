@@ -15,6 +15,8 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
+        this.context = context;
+
         this.addMessageCommandCallback(ViewProviderCommand.storeRokuAutomationConfigs, async (message) => {
             this.rokuAutomationConfigs = message.context.configs;
             // Make sure to use JSON.stringify or weird stuff happens
@@ -68,7 +70,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             await this.setAutorunOnDeploy(false);
         }));
 
-        let autorunOnDeploy = this.extensionContext.workspaceState.get(this.autorunOnDeployStorageKey);
+        let autorunOnDeploy: boolean = this.extensionContext.workspaceState.get(this.autorunOnDeployStorageKey);
         // Default to true if not set
         if (autorunOnDeploy !== false) {
             autorunOnDeploy = true;
@@ -81,10 +83,13 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         await vscodeContextManager.set('brightscript.rokuAutomationView.isRecording', isRecording);
     }
 
-    private async setAutorunOnDeploy(autorunOnDeploy) {
+    private async setAutorunOnDeploy(autorunOnDeploy: boolean) {
         this.rokuAutomationAutorunOnDeploy = autorunOnDeploy;
         await vscodeContextManager.set('brightscript.rokuAutomationView.autorunOnDeploy', autorunOnDeploy);
+        await this.context.workspaceState.update(this.autorunOnDeployStorageKey, autorunOnDeploy);
     }
+
+    private context: vscode.ExtensionContext;
 
     private isRecording = false;
     private configStorageKey = 'rokuAutomationConfigs';
