@@ -41,7 +41,7 @@
         inspectNodeBaseKeyPath = null;
     }
 
-    let numberInputsStep = 1;
+    let numberInputsStep = '1';
 
     let fields = {} as {
         [key: string]: {
@@ -217,7 +217,7 @@
                 close();
                 break;
             case 'Shift':
-                numberInputsStep = 15;
+                numberInputsStep = '15';
                 break;
         }
     }
@@ -226,7 +226,7 @@
         const key = event.key;
         switch (key) {
             case 'Shift':
-                numberInputsStep = 1;
+                numberInputsStep = '1';
                 break;
         }
     }
@@ -479,7 +479,7 @@
                         {id}
                         class="xValue fieldValue"
                         title="Hold down shift to increment faster"
-                        step={id === 'scale' ? 0.1 : numberInputsStep}
+                        step={id === 'scale' ? '0.1' : numberInputsStep}
                         value={field.value[0]}
                         on:input={onVector2dFieldChange} />
                     <NumberField
@@ -487,7 +487,7 @@
                         class="yValue fieldValue"
                         value={field.value[1]}
                         title="Hold down shift to increment faster"
-                        step={id === 'scale' ? 0.1 : numberInputsStep}
+                        step={id === 'scale' ? '0.1' : numberInputsStep}
                         on:input={onVector2dFieldChange} />
                     {#if id !== 'scale'}
                         <vscode-button

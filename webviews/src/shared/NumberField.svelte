@@ -14,7 +14,7 @@
     function onInputChange() {
         value = self.control.value;
         // Triggers update to be sent to parent's on:input
-        dispatch('input', {test: self.control});
+        dispatch('input');
     }
 
     export let value = '';
@@ -26,11 +26,10 @@
     }
 
     export let title = '';
-    export let step = 10;
+    export let step = '1';
     $: {
-        // TODO needs to be looked into fixing
         if (self) {
-            self.control.step = step.toString();
+            self.control.step = step;
         }
     }
 
