@@ -15,7 +15,7 @@
 
     let deviceAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
-        deviceAvailable = message.deviceAvailable;
+        deviceAvailable = message.context.deviceAvailable;
         requestScreenshot();
     });
 
@@ -79,16 +79,18 @@
                         ref: focusedTreeNode.ref
                     }
 
-                    intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
-                        event: ViewProviderEvent.onTreeNodeFocused,
+                    const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
                         treeNode: treeNode
                     });
+
+                    intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
                 }
             } else {
-                intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, {
-                    event: ViewProviderEvent.onTreeNodeFocused,
+                const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
                     treeNode: null
                 });
+
+                intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
             }
         }
     }
@@ -183,7 +185,7 @@
     }
 
     intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
-        const name = message.commandName;
+        const name = message.context.commandName;
         if (name === VscodeCommand.rokuDeviceViewEnableNodeInspector) {
             wasRunningScreenshotCaptureBeforeInspect = enableScreenshotCapture;
             isInspectingNodes = true;
@@ -242,8 +244,9 @@
             } else {
                 if (!screenshotOutOfDateTimeOut) {
                     screenshotOutOfDateTimeOut = setTimeout(() => {
-                        screenshotOutOfDate = true;
-                    }, 2000);
+                        // screenshotOutOfDate = true;
+                        console.log('screenshot out of date')
+                    }, 10000);
                 }
                 setTimeout(() => {
                     requestScreenshot();

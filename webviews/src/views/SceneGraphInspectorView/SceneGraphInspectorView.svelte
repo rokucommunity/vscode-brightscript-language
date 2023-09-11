@@ -104,7 +104,7 @@
     let odcAvailable = false;
 
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
-        odcAvailable = message.odcAvailable;
+        odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
             refresh();
         } else {
@@ -132,8 +132,8 @@
 
     intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
         focusedNode = -1;
-        if (message.treeNode) {
-            focusedNode = message.treeNode.ref;
+        if (message.context.treeNode) {
+            focusedNode = message.context.treeNode.ref;
         }
     });
 
@@ -244,7 +244,6 @@
             <p><button on:click={refresh}>Retry</button></p>
             <OdcSetManualIpAddress />
         </div>
-
     {:else}
         <div id="header">
             <div id="drop-shadow-blocker" />

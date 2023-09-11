@@ -72,7 +72,7 @@ export class Extension {
         );
 
         this.rtaManager = new RtaManager();
-        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager);
+        this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
         //update the tracked version of the extension

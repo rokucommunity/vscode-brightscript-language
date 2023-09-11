@@ -4,5 +4,6 @@ export enum ViewProviderId {
     sceneGraphInspectorView = 'sceneGraphInspectorView',
     rokuDeviceView = 'rokuDeviceView',
     rokuRegistryView = 'rokuRegistryView',
-    rokuCommandsView = 'rokuCommandsView'
+    rokuCommandsView = 'rokuCommandsView',
+    rokuAutomationView = 'rokuAutomationView'
 }

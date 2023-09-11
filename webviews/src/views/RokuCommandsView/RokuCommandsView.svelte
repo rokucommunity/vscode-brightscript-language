@@ -92,7 +92,7 @@
     let odcAvailable = true;
 
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
-        odcAvailable = message.odcAvailable;
+        odcAvailable = message.context.odcAvailable;
     });
 
     // Required by any view so we can know that the view is ready to receive messages

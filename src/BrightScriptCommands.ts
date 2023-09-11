@@ -23,6 +23,7 @@ export class BrightScriptCommands {
 
     private fileUtils: BrightScriptFileUtils;
     private host: string;
+    private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
 
     public registerCommands() {
 
@@ -306,7 +307,15 @@ export class BrightScriptCommands {
         }
     }
 
-    public async sendRemoteCommand(key: string, host?: string) {
+    public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {
+        for (const notifier of this.keypressNotifiers) {
+            notifier(key, literalCharacter);
+        }
+
+        if (literalCharacter) {
+            key = 'Lit_' + encodeURIComponent(key);
+        }
+
         // do we have a temporary override?
         if (!host) {
             // Get the long lived host ip
@@ -356,6 +365,10 @@ export class BrightScriptCommands {
         }
     }
 
+    public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {
+        this.keypressNotifiers.push(notifier);
+    }
+
     private registerCommand(name: string, callback: (...args: any[]) => any, thisArg?: any) {
         const prefix = 'extension.brightscript.';
         const commandName = name.startsWith(prefix) ? name : prefix + name;
@@ -363,7 +376,6 @@ export class BrightScriptCommands {
     }
 
     private async sendAsciiToDevice(character: string) {
-        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
-        await this.sendRemoteCommand(commandToSend);
+        await this.sendRemoteCommand(character, undefined, true);
     }
 }

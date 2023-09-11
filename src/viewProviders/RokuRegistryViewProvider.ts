@@ -7,14 +7,14 @@ import { ViewProviderId } from './ViewProviderId';
 export class RokuRegistryViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuRegistryView;
 
-    constructor(context: vscode.ExtensionContext) {
-        super(context);
+    constructor(context: vscode.ExtensionContext, dependencies) {
+        super(context, dependencies);
 
         const subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryExportRegistry, async () => {
             await vscode.window.showSaveDialog({ saveLabel: 'Save' }).then(async (uri) => {
-                const result = await this.rtaManager.onDeviceComponent?.readRegistry();
+                const result = await this.dependencies.rtaManager.onDeviceComponent?.readRegistry();
                 await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(result?.values), 'utf8'));
             });
         }));
@@ -30,12 +30,12 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
         }));
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryClearRegistry, async () => {
-            await this.rtaManager.onDeviceComponent.deleteEntireRegistry();
-            await this.sendRegistryUpdated();
+            await this.dependencies.rtaManager.onDeviceComponent.deleteEntireRegistry();
+            this.sendRegistryUpdated();
         }));
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryRefreshRegistry, async () => {
-            await this.sendRegistryUpdated();
+        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuRegistryRefreshRegistry, () => {
+            this.sendRegistryUpdated();
         }));
     }
 
@@ -44,15 +44,14 @@ export class RokuRegistryViewProvider extends BaseRdbViewProvider {
             const input = await vscode.workspace.fs.readFile(uri[0]);
 
             const data = JSON.parse(Buffer.from(input).toString('utf8'));
-            await this.rtaManager.onDeviceComponent?.writeRegistry({
+            await this.dependencies.rtaManager.onDeviceComponent?.writeRegistry({
                 values: data
             });
-            await this.sendRegistryUpdated();
+            this.sendRegistryUpdated();
         }
     }
 
-    protected async sendRegistryUpdated() {
-        const result = await this.rtaManager.onDeviceComponent?.readRegistry();
-        this.postOrQueueMessage({ name: ViewProviderEvent.onRegistryUpdated, values: result?.values });
+    protected sendRegistryUpdated() {
+        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRegistryUpdated));
     }
 }

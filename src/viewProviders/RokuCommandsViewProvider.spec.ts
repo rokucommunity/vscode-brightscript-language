@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { vscode } from '../mockVscode.spec';
 import { RokuCommandsViewProvider } from './RokuCommandsViewProvider';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -29,7 +30,7 @@ beforeEach(() => {
         show: () => { }
     };
 
-    provider = new RokuCommandsViewProvider(vscode.context) as any;
+    provider = new RokuCommandsViewProvider(vscode.context, {}) as any;
 });
 afterEach(() => {
     provider.dispose();
@@ -51,12 +52,13 @@ describe('RokuCommandsViewProvider', () => {
             await provider['resolveWebviewView'](view, {} as any, {} as any);
 
             expect(typeof callback).to.equal('function');
-            const spy = sinon.spy(provider as any, 'handleViewMessage');
+            const fake = sinonImport.fake.returns(Promise.resolve(true));
+            provider['addMessageCommandCallback'](VscodeCommand.rokuRegistryImportRegistry, fake);
             callback({
-                command: 'importRegistry',
+                command: VscodeCommand.rokuRegistryImportRegistry,
                 context: {}
             });
-            expect(spy.calledOnce).to.be.true;
+            expect(fake.calledOnce).to.be.true;
         });
     });
 });

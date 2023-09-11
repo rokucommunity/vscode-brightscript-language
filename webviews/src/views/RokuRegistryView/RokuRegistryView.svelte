@@ -14,7 +14,7 @@
     let odcAvailable = false;
 
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
-        odcAvailable = message.odcAvailable;
+        odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
             loading = true;
             const { values } = await odc.readRegistry();
@@ -25,8 +25,11 @@
         }
     });
 
-    intermediary.observeEvent(ViewProviderEvent.onRegistryUpdated, (message) => {
-        registryValues = registryView.formatValues(message.values);
+    intermediary.observeEvent(ViewProviderEvent.onRegistryUpdated, async (message) => {
+        loading = true;
+        const { values } = await odc.readRegistry();
+        registryValues = registryView.formatValues(values);
+        loading = false;
     });
 
     // Required by any view so we can know that the view is ready to receive messages

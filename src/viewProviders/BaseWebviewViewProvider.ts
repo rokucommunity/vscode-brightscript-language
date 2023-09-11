@@ -1,17 +1,28 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
+import type { RequestType } from 'roku-test-automation';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
+import type { ChannelPublishedEvent } from 'roku-debug';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
-import { util } from '../util';
 import type { WebviewViewProviderManager } from '../managers/WebviewViewProviderManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
+import type { VscodeCommand } from '../commands/VscodeCommand';
+import type { RtaManager } from '../managers/RtaManager';
+import type { BrightScriptCommands } from '../BrightScriptCommands';
 
 export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
-    constructor(context: vscode.ExtensionContext) {
-        this.webviewBasePath = path.join(context.extensionPath, 'dist', 'webviews');
-        context.subscriptions.push(this);
+    constructor(
+        protected extensionContext: vscode.ExtensionContext,
+        protected dependencies: {
+            rtaManager: RtaManager;
+            brightscriptCommands: BrightScriptCommands;
+        }
+    ) {
+        this.webviewBasePath = path.join(extensionContext.extensionPath, 'dist', 'webviews');
+        extensionContext.subscriptions.push(this);
+        this.extensionContext = extensionContext;
     }
 
     /**
@@ -26,6 +37,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     private viewReady = false;
     private queuedMessages = [];
     private webviewViewProviderManager: WebviewViewProviderManager;
+    private messageCommandCallbacks = {} as Record<ViewProviderCommand, (message) => Promise<boolean>>;
 
     public dispose() {
         void this.outDirWatcher?.unsubscribe();
@@ -33,6 +45,26 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
         this.webviewViewProviderManager = manager;
+    }
+
+    public onChannelPublishedEvent(e: ChannelPublishedEvent) {
+        // Can be overwritten in a child to notify on channel publish
+    }
+
+    public createCommandMessage(command: VscodeCommand | ViewProviderCommand, context = {}) {
+        const message = {
+            command: command,
+            context: context
+        };
+        return message;
+    }
+
+    public createEventMessage(event: ViewProviderEvent, context = {}) {
+        const message = {
+            event: event,
+            context: context
+        };
+        return message;
     }
 
     public postOrQueueMessage(message) {
@@ -55,6 +87,10 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
     }
 
+    protected addMessageCommandCallback(command: ViewProviderCommand | VscodeCommand | RequestType, callback: (message) => Promise<boolean>) {
+        this.messageCommandCallbacks[command] = callback;
+    }
+
     private setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
@@ -71,7 +107,8 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     const context = message.context;
                     this.webviewViewProviderManager.sendMessageToWebviews(context.viewIds, context.message);
                 } else {
-                    if (!await this.handleViewMessage(message)) {
+                    const callback = this.messageCommandCallbacks[command];
+                    if (!callback || !await callback(message)) {
                         console.warn('Did not handle message', message);
                     }
                 }
@@ -87,16 +124,13 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         });
     }
 
-    protected handleViewMessage(message): Promise<boolean> | boolean {
-        return false;
-    }
-
     protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string) {
         context.subscriptions.push(vscode.commands.registerCommand(command, () => {
-            this.postOrQueueMessage({
-                event: ViewProviderEvent.onVscodeCommandReceived,
+            const message = this.createEventMessage(ViewProviderEvent.onVscodeCommandReceived, {
                 commandName: command
             });
+
+            this.postOrQueueMessage(message);
         }));
     }
 
