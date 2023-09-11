@@ -84,7 +84,7 @@
     function addStep() {
         steps.push({
             type: 'sendKeyPress',
-            value: ''
+            value: 'Ok'
         });
 
         storeConfigs(steps);
@@ -143,7 +143,7 @@
         } else {
             steps = [{
                 type: 'sleep',
-                value: '4'
+                value: '8'
             }];
         }
         loading = false;
@@ -152,7 +152,6 @@
     let lastStepDate = Date.now();
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
         currentRunningStep = message.context.step;
-        console.log('currentRunningStep', currentRunningStep);
         if (currentRunningStep === -1) {
             // Once we finish running all current steps, update our last step date in case we want to add any more steps
             lastStepDate = Date.now();

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { vscode } from '../mockVscode.spec';
 import { RokuCommandsViewProvider } from './RokuCommandsViewProvider';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -52,9 +53,9 @@ describe('RokuCommandsViewProvider', () => {
 
             expect(typeof callback).to.equal('function');
             const fake = sinonImport.fake.returns(Promise.resolve(true));
-            provider['addMessageCommandCallback']('importRegistry', fake);
+            provider['addMessageCommandCallback'](VscodeCommand.rokuRegistryImportRegistry, fake);
             callback({
-                command: 'importRegistry',
+                command: VscodeCommand.rokuRegistryImportRegistry,
                 context: {}
             });
             expect(fake.calledOnce).to.be.true;

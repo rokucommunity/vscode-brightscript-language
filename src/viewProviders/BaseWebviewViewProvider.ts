@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
+import type { RequestType } from 'roku-test-automation';
 import type { AsyncSubscription, Event } from '@parcel/watcher';
 import type { ChannelPublishedEvent } from 'roku-debug';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
@@ -86,7 +87,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         }
     }
 
-    protected addMessageCommandCallback(command: string, callback: (message) => Promise<boolean>) {
+    protected addMessageCommandCallback(command: ViewProviderCommand | VscodeCommand | RequestType, callback: (message) => Promise<boolean>) {
         this.messageCommandCallbacks[command] = callback;
     }
 
