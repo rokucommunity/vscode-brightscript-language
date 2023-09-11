@@ -93,7 +93,6 @@
 
     function onNumberFieldChange() {
         const value = Number(this.value);
-        debugger;
         handleResetValueButtonDisplay(this.self, value);
         setValue(this.id, value);
     }
@@ -370,20 +369,6 @@
     vscode-button, vscode-text-field {
         vertical-align: middle;
     }
-
-    /* .inline {
-        display: inline;
-        width: auto;
-    } */
-
-    /* .collectionItems {
-        padding: 3px 0 3px 15px;
-        display: block;
-    }
-
-    .collectionItem .collectionItemId {
-        font-weight: bold;
-    } */
 
     .braceOrBracket {
         cursor: pointer;
