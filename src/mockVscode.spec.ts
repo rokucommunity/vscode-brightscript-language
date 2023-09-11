@@ -83,8 +83,16 @@ export let vscode = {
                 return this._data[key];
             }
         } as any,
+        workspaceState: {
+            _data: {},
+            update: function(key: string, value: any) {
+                this._data[key] = value;
+            },
+            get: function(key: string) {
+                return this._data[key];
+            }
+        } as any,
         globalStorageUri: undefined as Uri,
-        workspaceState: {} as any,
         environmentVariableCollection: {} as any,
         logUri: undefined as Uri,
         logPath: '',

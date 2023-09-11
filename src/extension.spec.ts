@@ -28,20 +28,6 @@ describe('extension', () => {
     beforeEach(() => {
         sinon.stub(languageServerManager, 'init').returns(Promise.resolve());
 
-        context = {
-            extensionPath: '',
-            subscriptions: [],
-            asAbsolutePath: () => { },
-            globalState: {
-                get: () => {
-
-                },
-                update: () => {
-
-                }
-            }
-        };
-
         originalWebviews = extensionInstance['webviews'];
         extensionInstance['webviews'] = [];
     });
@@ -54,48 +40,48 @@ describe('extension', () => {
     it('registers configuration provider', async () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers formatter', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentRangeFormattingEditProvider');
         expect(spy.getCalls().length).to.equal(0);
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.getCalls().length).to.be.greaterThan(1);
     });
 
     it('registers definition provider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDefinitionProvider');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.callCount).to.be.greaterThan(0);
     });
 
     it('registers all commands', async () => {
         let stub = sinon.stub(BrightScriptCommands.prototype, 'registerCommands').callsFake(() => { });
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(stub.callCount).to.equal(1);
     });
 
     it('registers onDidStartDebugSession', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidStartDebugSession');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers onDidTerminateDebugSession', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidTerminateDebugSession');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.calledOnce).to.be.true;
     });
 
     it('registers onDidReceiveDebugSessionCustomEvent', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 });
