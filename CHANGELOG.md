@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.43.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.42.0...v2.43.0) - 2023-09-12
+### Added
+ - Roku Test Automation Panel ([#499](https://github.com/rokucommunity/vscode-brightscript-language/pull/499))
+### Changed
+ - Updated Node Detail Page in Scenegraph Node Inspector ([#499](https://github.com/rokucommunity/vscode-brightscript-language/pull/499))
+ - upgrade to [roku-debug@0.20.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0204---2023-09-11). Notable changes since 0.20.3:
+ - upgrade to [brighterscript@0.65.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0655---2023-09-06). Notable changes since 0.65.4:
+     - Task/support bs const in bsconfig ([brighterscript#887](https://github.com/rokucommunity/brighterscript/pull/887))
+     - allow optionally specifying bslib destination directory ([brighterscript#871](https://github.com/rokucommunity/brighterscript/pull/871))
+     - ensure consistent insertion of bslib.brs ([brighterscript#870](https://github.com/rokucommunity/brighterscript/pull/870))
+     - Fix crashes in util for null ranges ([brighterscript#869](https://github.com/rokucommunity/brighterscript/pull/869))
+     - Print diagnostic related information ([brighterscript#867](https://github.com/rokucommunity/brighterscript/pull/867))
+     - Fix tab issue when printing diagnostics ([brighterscript#865](https://github.com/rokucommunity/brighterscript/pull/865))
+ - upgrade to [brighterscript-formatter@1.6.32](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1632---2023-09-11). Notable changes since 1.6.31:
+
+
+
 ## [2.42.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.41.2...2.42.0) - 2023-07-26
 ### Added
  - `deleteDevChannelBeforeInstall` launch option ([#494](https://github.com/rokucommunity/vscode-brightscript-language/pull/494))
