@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import type { DiagnosticCollection } from 'vscode';
 import type { BSDebugDiagnostic } from 'roku-debug';
 import { isChanperfEvent, isDiagnosticsEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
@@ -24,7 +23,6 @@ export class LogOutputManager {
         docLinkProvider,
         private declarationProvider: DeclarationProvider
     ) {
-        this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
 
@@ -103,7 +101,6 @@ export class LogOutputManager {
     public isClearingOutputOnLaunch: boolean;
     public isClearingConsoleOnChannelStart: boolean;
     public hyperlinkFormat: string;
-    private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
@@ -247,22 +244,6 @@ export class LogOutputManager {
                 this.clearOutput();
             }
 
-        } else if (isDiagnosticsEvent(e)) {
-            let errorsByPath = {};
-            for (const diagnostic of e.body.diagnostics) {
-                if (diagnostic.path) {
-                    if (!errorsByPath[diagnostic.path]) {
-                        errorsByPath[diagnostic.path] = [];
-                    }
-                    errorsByPath[diagnostic.path].push(diagnostic);
-                }
-            }
-            for (const path in errorsByPath) {
-                if (errorsByPath.hasOwnProperty(path)) {
-                    const errors = errorsByPath[path];
-                    await this.addDiagnosticForError(path, errors);
-                }
-            }
         }
     }
 
@@ -297,39 +278,6 @@ export class LogOutputManager {
             warn: vscode.window.showWarningMessage
         };
         methods[severity](message);
-    }
-
-    public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
-        //TODO get the actual folder
-        let documentUri: vscode.Uri;
-        let uri = vscode.Uri.file(path);
-        let doc = await vscode.workspace.openTextDocument(uri); // calls back
-        if (doc !== undefined) {
-            documentUri = doc.uri;
-        }
-        // console.log("got " + documentUri);
-
-        //debug crap - for some reason - using this URI works - using the one from the path does not :()
-        // const document = vscode.window.activeTextEditor.document;
-        // const currentDocumentUri = document.uri;
-        // console.log("currentDocumentUri " + currentDocumentUri);
-        if (documentUri !== undefined) {
-            let result: vscode.Diagnostic[] = [];
-            for (const diagnostic of diagnostics) {
-                result.push({
-                    code: diagnostic.code,
-                    message: diagnostic.message,
-                    source: diagnostic.source,
-                    severity: diagnostic.severity,
-                    tags: diagnostic.tags,
-                    range: new vscode.Range(
-                        new vscode.Position(diagnostic.range.start.line, diagnostic.range.start.character),
-                        new vscode.Position(diagnostic.range.end.line, diagnostic.range.end.character)
-                    )
-                });
-            }
-            this.collection.set(documentUri, result);
-        }
     }
 
     /**
@@ -487,7 +435,6 @@ export class LogOutputManager {
         this.allLogLines = [];
         this.displayedLogLines = [];
         this.outputChannel.clear();
-        this.collection.clear();
         this.docLinkProvider.resetCustomLinks();
     }
 
