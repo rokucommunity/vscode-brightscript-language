@@ -177,6 +177,10 @@ export class Extension {
             //if this is a brightscript debug session
             if (e.type === 'brightscript') {
                 this.chanperfStatusBar.hide();
+                const config = e.configuration as BrightScriptLaunchConfiguration;
+                if (config.enableRemoteControl) {
+                    void this.remoteControlManager.setRemoteControlMode(false, 'launch');
+                }
             }
         });
 
@@ -212,6 +216,9 @@ export class Extension {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
             logOutputManager.setLaunchConfig(config);
+            if (config.enableRemoteControl) {
+                void this.remoteControlManager.setRemoteControlMode(true, 'launch');
+            }
         } else if (isChannelPublishedEvent(e)) {
             this.webviewViewProviderManager.onChannelPublishedEvent(e);
             //write debug server log statements to the DebugServer output channel

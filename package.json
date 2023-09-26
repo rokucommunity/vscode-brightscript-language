@@ -824,6 +824,11 @@
                                 "type": "boolean",
                                 "default": false,
                                 "description": "Delete any currently installed dev channel before starting the debug session"
+                            },
+                            "enableRemoteControl": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "Enable remote control mode when starting the debug session"
                             }
                         }
                     }

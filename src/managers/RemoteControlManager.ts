@@ -128,4 +128,4 @@ export class RemoteControlManager {
     }
 }
 
-export type RemoteControlModeInitiator = 'statusbar' | 'command';
+export type RemoteControlModeInitiator = 'statusbar' | 'command' | 'launch';
