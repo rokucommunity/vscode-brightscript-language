@@ -53,7 +53,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             remotePort: 8060,
             rendezvousTracking: true,
             deleteDevChannelBeforeInstall: false,
-            enableRemoteControl: false
+            remoteControlMode: {
+                activateOnSessionStart: false,
+                deactivateOnSessionEnd: false
+            }
         };
 
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
@@ -244,7 +247,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
-        config.enableRemoteControl = config.enableRemoteControl === true ? true : this.configDefaults.enableRemoteControl;
+        config.remoteControlMode = config.remoteControlMode ? config.remoteControlMode : this.configDefaults.remoteControlMode;
+        config.remoteControlMode = config.remoteControlMode === true ? { activateOnSessionStart: true, deactivateOnSessionEnd: true } : config.remoteControlMode;
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
@@ -565,8 +569,8 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     disableScreenSaver?: boolean;
 
     /**
-     * If true, the remote control will be enabled at the start of the debug session
+     * If true, the remote control will be enabled at the start of the debug session, and disabled at the end of the debug session.
      * @default false
      */
-    enableRemoteControl?: boolean;
+    remoteControlMode?: boolean | { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 }

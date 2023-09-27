@@ -178,7 +178,7 @@ export class Extension {
             if (e.type === 'brightscript') {
                 this.chanperfStatusBar.hide();
                 const config = e.configuration as BrightScriptLaunchConfiguration;
-                if (config.enableRemoteControl) {
+                if (config.remoteControlMode && (config.remoteControlMode === true || config.remoteControlMode?.deactivateOnSessionEnd === true)) {
                     void this.remoteControlManager.setRemoteControlMode(false, 'launch');
                 }
             }
@@ -216,7 +216,7 @@ export class Extension {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
             logOutputManager.setLaunchConfig(config);
-            if (config.enableRemoteControl) {
+            if (config.remoteControlMode && (config.remoteControlMode === true || config.remoteControlMode?.activateOnSessionStart === true)) {
                 void this.remoteControlManager.setRemoteControlMode(true, 'launch');
             }
         } else if (isChannelPublishedEvent(e)) {

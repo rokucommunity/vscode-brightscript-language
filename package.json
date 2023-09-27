@@ -825,10 +825,27 @@
                                 "default": false,
                                 "description": "Delete any currently installed dev channel before starting the debug session"
                             },
-                            "enableRemoteControl": {
-                                "type": "boolean",
-                                "default": true,
-                                "description": "Enable remote control mode when starting the debug session"
+                            "remoteControlMode": {
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "description": "Options for activating and deactivating remote control mode",
+                                        "properties": {
+                                            "activateOnSessionStart": {
+                                                "type": "boolean",
+                                                "description": "Activate remote control mode on debug session start"
+                                            },
+                                            "deactivateOnSessionEnd": {
+                                                "type": "boolean",
+                                                "description": "Deactivate remote control mode on session end"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "boolean",
+                                        "description": "Activate on session start, deactivate on session end."
+                                    }
+                                ]
                             }
                         }
                     }
