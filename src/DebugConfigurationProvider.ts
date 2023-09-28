@@ -578,8 +578,8 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     disableScreenSaver?: boolean;
 
     /**
-     * If true, the remote control will be enabled at the start of the debug session, and disabled at the end of the debug session.
-     * @default false
+     * If set, the remote control will be enabled/disabled at the start/end of the debug session, respectively.
+     * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 }
