@@ -149,7 +149,7 @@ describe('BrightScriptConfigurationProvider', () => {
                         s`${folder.uri.fsPath}/out/`
                     );
                 } else {
-                    expect(config[key], `Expected "${key}" to match the default`).to.equal(configDefaults[key]);
+                    expect(config[key], `Expected "${key}" to match the default`).to.deep.equal(configDefaults[key]);
                 }
             }
         });
