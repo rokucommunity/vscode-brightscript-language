@@ -113,23 +113,25 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             return Promise.resolve(true);
         });
 
-        const config = this.rokuAutomationConfigs[index];
-        for (const [index, step] of config.steps.entries()) {
-            if (stopRunning) {
-                break;
-            }
+        const config = this.rokuAutomationConfigs?.[index];
+        if (config) {
+            for (const [index, step] of config.steps.entries()) {
+                if (stopRunning) {
+                    break;
+                }
 
-            this.updateCurrentRunningStep(index);
-            switch (step.type) {
-                case 'sleep':
-                    await utils.sleep(+step.value * 1000);
-                    break;
-                case 'sendText':
-                    await ecp.sendText(step.value);
-                    break;
-                case 'sendKeyPress':
-                    await ecp.sendKeyPress(step.value as any);
-                    break;
+                this.updateCurrentRunningStep(index);
+                switch (step.type) {
+                    case 'sleep':
+                        await utils.sleep(+step.value * 1000);
+                        break;
+                    case 'sendText':
+                        await ecp.sendText(step.value);
+                        break;
+                    case 'sendKeyPress':
+                        await ecp.sendKeyPress(step.value as any);
+                        break;
+                }
             }
         }
 
