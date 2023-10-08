@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.43.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.43.0...v2.43.1) - 2023-10-08
+### Added
+ - ability to enable/disable remote control on launch/session-end ([#503](https://github.com/rokucommunity/vscode-brightscript-language/pull/503))
+### Changed
+ - upgrade to [roku-debug@0.20.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0206---2023-10-06). Notable changes since 0.20.4:
+     - Fix bug with telnet getting stuck ([roku-debug#163](https://github.com/rokucommunity/roku-debug/pull/163))
+ - upgrade to [brighterscript@0.65.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0658---2023-10-06). Notable changes since 0.65.5:
+     - Bump postcss from 8.2.15 to 8.4.31 ([brighterscript#928](https://github.com/rokucommunity/brighterscript/pull/928))
+     - Add interface parameter support ([brighterscript#924](https://github.com/rokucommunity/brighterscript/pull/924))
+     - Better typing for `Deferred` ([brighterscript#923](https://github.com/rokucommunity/brighterscript/pull/923))
+     - fix bug in --noproject flag logic ([brighterscript#922](https://github.com/rokucommunity/brighterscript/pull/922))
+     - Add some more details to the plugins docs ([brighterscript#913](https://github.com/rokucommunity/brighterscript/pull/913))
+     - Fix incorrect quasi location in template string ([brighterscript#921](https://github.com/rokucommunity/brighterscript/pull/921))
+     - Fix UnaryExpression transpile for ns and const ([brighterscript#914](https://github.com/rokucommunity/brighterscript/pull/914))
+     - Add missing emitDefinitions to docs and fix iface ([brighterscript#893](https://github.com/rokucommunity/brighterscript/pull/893))
+     - add noProject flag to bsc so BSConfig.json not expected ([brighterscript#868](https://github.com/rokucommunity/brighterscript/pull/868))
+ - upgrade to [brighterscript-formatter@1.6.34](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1634---2023-10-06). Notable changes since 1.6.32:
+     - Sort imports ([brighterscript-formatter#75](https://github.com/rokucommunity/brighterscript-formatter/pull/75))
+### Fixed
+ - automation view crash when no config found ([#504](https://github.com/rokucommunity/vscode-brightscript-language/pull/504))
+ - error when generating the docs ([12dfb27](https://github.com/rokucommunity/vscode-brightscript-language/commit/12dfb27))
+
+
+
 ## [2.43.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.42.0...v2.43.0) - 2023-09-12
 ### Added
  - Roku Test Automation Panel ([#499](https://github.com/rokucommunity/vscode-brightscript-language/pull/499))
