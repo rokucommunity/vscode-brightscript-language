@@ -169,7 +169,8 @@
         "onCommand:extension.brightscript.changeTvInput",
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
-        "onCommand:brighterscript.showPreviewToSide"
+        "onCommand:brighterscript.showPreviewToSide",
+        "onCommand:extension.brightscript.captureScreenshot"
     ],
     "contributes": {
         "viewsContainers": {
@@ -2769,6 +2770,11 @@
                 "title": "Stop inspecting nodes",
                 "category": "BrighterScript",
                 "icon": "./images/icons/inspect-active.svg"
+            },
+            {
+                "command": "extension.brightscript.captureScreenshot",
+                "title": "Capture Screenshot",
+                "category": "BrighterScript"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
