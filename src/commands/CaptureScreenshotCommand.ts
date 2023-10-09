@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { extension } from '../extension';
 import * as rokuDeploy from 'roku-deploy';
-import { BrightScriptCommands } from '../BrightScriptCommands';
+import type { BrightScriptCommands } from '../BrightScriptCommands';
 
 export const FILE_SCHEME = 'bs-captureScreenshot';
 
@@ -21,6 +21,7 @@ export class CaptureScreenshotCommand {
             let status = await rokuDeploy.takeScreenshot({ host: host, password: pass, outDir: outDirPath, outFile: filename });
             if (status) {
                 void vscode.window.showInformationMessage(`Screenshot saved at: ` + status);
+                void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(status));
             }
         }));
     }
