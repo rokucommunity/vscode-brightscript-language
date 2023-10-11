@@ -26,6 +26,7 @@ import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugSe
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
+import { DiagnosticManager } from './managers/DiagnosticManager';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -44,6 +45,7 @@ export class Extension {
     private brightScriptCommands: BrightScriptCommands;
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
+    private diagnosticManager = new DiagnosticManager();
 
     public async activate(context: vscode.ExtensionContext) {
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
@@ -171,6 +173,7 @@ export class Extension {
             if (e.type === 'brightscript') {
                 logOutputManager.onDidStartDebugSession();
             }
+            this.diagnosticManager.clear();
         });
 
         vscode.debug.onDidTerminateDebugSession((e) => {
@@ -182,6 +185,7 @@ export class Extension {
                     void this.remoteControlManager.setRemoteControlMode(false, 'launch');
                 }
             }
+            this.diagnosticManager.clear();
         });
 
         vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
@@ -208,7 +212,7 @@ export class Extension {
         context.subscriptions.push(vscode.languages.registerDefinitionProvider(xmlSelector, new BrightScriptXmlDefinitionProvider(definitionRepo)));
 
         await this.whatsNewManager.showWelcomeOrWhatsNewIfRequired();
-        await languageServerPromise;
+        //await languageServerPromise;
     }
 
     private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
@@ -248,6 +252,21 @@ export class Extension {
                     preview: false,
                     selection: util.toRange(firstDiagnostic.range)
                 });
+            }
+
+            let errorsByPath = {};
+            for (const diagnostic of e.body.diagnostics) {
+                if (diagnostic.path) {
+                    if (!errorsByPath[diagnostic.path]) {
+                        errorsByPath[diagnostic.path] = [];
+                    }
+                    errorsByPath[diagnostic.path].push(diagnostic);
+                }
+            }
+            for (const path in errorsByPath) {
+                if (errorsByPath.hasOwnProperty(path)) {
+                    await this.diagnosticManager.addDiagnosticForError(path, errorsByPath[path]).catch(() => { });
+                }
             }
         }
     }
