@@ -3,9 +3,13 @@ import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
 import { icons } from '../icons';
 import { firstBy } from 'thenby';
-import { Cache } from 'brighterscript/dist/Cache';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
+
+/**
+ * A sequence used to generate unique IDs for tree items that don't care about having a key
+ */
+let treeItemKeySequence = 0;
 
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -110,65 +114,73 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             const details = this.concealObject(element.details, ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']);
 
             for (let [key, values] of details) {
-
-                // Create a tree item for every detail property on the device
-                let treeItem = new DeviceInfoTreeItem(
-                    key,
-                    element,
-                    vscode.TreeItemCollapsibleState.None,
-                    key,
-                    //if this is one of the properties that need concealed
-                    values.value?.toString()
+                result.push(
+                    this.createDeviceInfoTreeItem({
+                        label: key,
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        key: key,
+                        //if this is one of the properties that need concealed
+                        description: values.value?.toString(),
+                        tooltip: 'Copy to clipboard',
+                        // Prepare the copy to clipboard command
+                        command: {
+                            command: 'extension.brightscript.copyToClipboard',
+                            title: 'Copy To Clipboard',
+                            arguments: [values.originalValue]
+                        }
+                    })
                 );
-
-                // Prepare the copy to clipboard command
-                treeItem.tooltip = 'Copy to clipboard';
-                treeItem.command = {
-                    command: 'extension.brightscript.copyToClipboard',
-                    title: 'Copy To Clipboard',
-                    arguments: [values.originalValue]
-                };
-                result.push(treeItem);
             }
 
             const device = this.findDeviceById(element.key);
 
             if (device.deviceInfo['is-tv']) {
-                let changeTvInputItem = new DeviceInfoTreeItem(
-                    '📺 Switch TV Input',
-                    element,
-                    vscode.TreeItemCollapsibleState.None,
-                    '',
-                    'click to change'
+                result.unshift(
+                    this.createDeviceInfoTreeItem({
+                        label: '📺 Switch TV Input',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        description: 'click to change',
+                        tooltip: 'Change the current TV input',
+                        command: {
+                            command: 'extension.brightscript.changeTvInput',
+                            title: 'Switch TV Input',
+                            arguments: [device.ip]
+                        }
+                    })
                 );
-
-                // Prepare the open url command
-                changeTvInputItem.tooltip = 'Change the current TV input';
-                changeTvInputItem.command = {
-                    command: 'extension.brightscript.changeTvInput',
-                    title: 'Switch TV Input',
-                    arguments: [device.ip]
-                };
-                result.unshift(changeTvInputItem);
             }
 
-            let openWebpageItem = new DeviceInfoTreeItem(
-                '🔗 Open device web portal',
-                element,
-                vscode.TreeItemCollapsibleState.None,
-                '',
-                device.ip
+            result.unshift(
+                this.createDeviceInfoTreeItem({
+                    label: '📷 Capture Screenshot',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Capture a screenshot',
+                    command: {
+                        command: 'extension.brightscript.captureScreenshot',
+                        title: 'Capture Screenshot',
+                        arguments: [device.ip]
+                    }
+                })
             );
 
-            // Prepare the open url command
-            openWebpageItem.tooltip = 'Open';
-            openWebpageItem.command = {
-                command: 'extension.brightscript.openUrl',
-                title: 'Open',
-                arguments: [`http://${device.ip}`]
-            };
+            result.unshift(
+                this.createDeviceInfoTreeItem({
+                    label: '🔗 Open device web portal',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Open the web portal for this device',
+                    description: device.ip,
+                    command: {
+                        command: 'extension.brightscript.openUrl',
+                        title: 'Open',
+                        arguments: [`http://${device.ip}`]
+                    }
+                })
+            );
 
-            result.unshift(openWebpageItem);
 
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
@@ -177,6 +189,30 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             // Return the device details
             return result;
         }
+    }
+
+    private createDeviceInfoTreeItem(options: {
+        label: string;
+        parent: DeviceTreeItem;
+        collapsibleState: vscode.TreeItemCollapsibleState;
+        key?: string;
+        description?: string;
+        details?: any;
+        command?: vscode.Command;
+        tooltip?: string;
+    }) {
+        const item = new DeviceInfoTreeItem(
+            options.label,
+            options.parent,
+            options.collapsibleState,
+            options.key ?? `tree-item-${treeItemKeySequence++}`,
+            options.description ?? '',
+            options.details ?? '',
+            options.command
+        );
+        // Prepare the open url command
+        item.tooltip = options.tooltip;
+        return item;
     }
 
     /**

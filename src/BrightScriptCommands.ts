@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
+import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
@@ -22,13 +23,16 @@ export class BrightScriptCommands {
     }
 
     private fileUtils: BrightScriptFileUtils;
-    private host: string;
+    public host: string;
+    public password: string;
+    public workspacePath: string;
     private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
 
     public registerCommands() {
 
         brighterScriptPreviewCommand.register(this.context);
         languageServerInfoCommand.register(this.context);
+        captureScreenshotCommand.register(this.context, this);
 
         this.registerGeneralCommands();
 
@@ -343,7 +347,7 @@ export class BrightScriptCommands {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
-            if (this.host === '${promptForHost}') {
+            if (!this.host || this.host === '${promptForHost}') {
                 this.host = await vscode.window.showInputBox({
                     placeHolder: 'The IP address of your Roku device',
                     value: ''
@@ -363,6 +367,45 @@ export class BrightScriptCommands {
                 console.error('Error doing dns lookup for host ', this.host, e);
             }
         }
+        return this.host;
+    }
+
+    public async getRemotePassword() {
+        this.password = await this.context.workspaceState.get('remotePassword');
+        if (!this.password) {
+            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            this.password = config.get('password');
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!this.password || this.password === '${promptForPassword}') {
+                this.password = await vscode.window.showInputBox({
+                    placeHolder: 'The developer account password for your Roku device',
+                    value: ''
+                });
+            }
+        }
+        if (!this.password) {
+            throw new Error(`Can't send command: password is required.`);
+        } else {
+            await this.context.workspaceState.update('remotePassword', this.password);
+        }
+        return this.password;
+    }
+
+    public async getWorkspacePath() {
+        this.workspacePath = await this.context.workspaceState.get('workspacePath');
+        //let folderUri: vscode.Uri;
+        if (!this.workspacePath) {
+            if (vscode.workspace.workspaceFolders.length === 1) {
+                this.workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            } else {
+                //there are multiple workspaces, ask the user to specify which one they want to use
+                let workspaceFolder = await vscode.window.showWorkspaceFolderPick();
+                if (workspaceFolder) {
+                    this.workspacePath = workspaceFolder.uri.fsPath;
+                }
+            }
+        }
+        return this.workspacePath;
     }
 
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {

@@ -169,7 +169,8 @@
         "onCommand:extension.brightscript.changeTvInput",
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
-        "onCommand:brighterscript.showPreviewToSide"
+        "onCommand:brighterscript.showPreviewToSide",
+        "onCommand:extension.brightscript.captureScreenshot"
     ],
     "contributes": {
         "viewsContainers": {
@@ -2771,20 +2772,25 @@
                 "icon": "./images/icons/inspect-active.svg"
             },
             {
+                "command": "extension.brightscript.captureScreenshot",
+                "title": "Capture Screenshot",
+                "category": "BrighterScript"
+            },
+            {
                 "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
-                "title": "Pause Screenshot Capture",
+                "title": "Device View: Pause Screenshot Capture",
                 "category": "BrighterScript",
                 "icon": "$(debug-pause)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
-                "title": "Resume Screenshot Capture",
+                "title": "Device View: Resume Screenshot Capture",
                 "category": "BrighterScript",
                 "icon": "$(debug-start)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
-                "title": "Refresh Screenshot",
+                "title": "Device View: Refresh Screenshot",
                 "category": "BrighterScript",
                 "icon": "$(refresh)"
             },
