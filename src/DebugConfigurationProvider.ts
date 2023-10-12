@@ -477,6 +477,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
+            } else {
+                await this.context.workspaceState.update('remotePassword', config.password);
             }
         }
 
