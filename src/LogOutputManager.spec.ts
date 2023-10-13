@@ -27,25 +27,18 @@ import { util } from 'brighterscript';
 describe('LogOutputManager ', () => {
     let logOutputManagerMock: Sinon.SinonMock;
     let logOutputManager: LogOutputManager;
-    let languagesMock: Sinon.SinonMock;
     let outputChannelMock: Sinon.SinonMock;
     let logDocumentLinkProviderMock: Sinon.SinonMock;
-    let collectionMock: Sinon.SinonMock;
     let declarationProviderMock: Sinon.SinonMock;
 
     beforeEach(() => {
         sinon.restore();
         const outputChannel = new vscode.OutputChannel();
-        const debugCollection = new vscode.DebugCollection();
         const logDocumentLinkProvider = new LogDocumentLinkProvider();
         const declarationProvider = new DeclarationProvider();
         outputChannelMock = sinon.mock(outputChannel);
         logDocumentLinkProviderMock = sinon.mock(logDocumentLinkProvider);
-        collectionMock = sinon.mock(debugCollection);
         declarationProviderMock = sinon.mock(declarationProvider);
-        languagesMock = sinon.mock(vscode.languages);
-        languagesMock.expects('createDiagnosticCollection').returns(debugCollection);
-        collectionMock.expects('clear');
         logOutputManager = new LogOutputManager(outputChannel, vscode.context, logDocumentLinkProvider, declarationProvider);
         logOutputManagerMock = sinon.mock(logOutputManager);
     });
@@ -55,38 +48,30 @@ describe('LogOutputManager ', () => {
     });
 
     it('tests onDidStartDebugSession clear flag', () => {
-        collectionMock.expects('clear').once();
         logOutputManager.isClearingConsoleOnChannelStart = true;
         logOutputManager.onDidStartDebugSession();
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidStartDebugSession no clear flag', () => {
-        collectionMock.expects('clear').never();
         logOutputManager.isClearingConsoleOnChannelStart = false;
         logOutputManager.onDidStartDebugSession();
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - LaunchStartEvent - clear flag', async () => {
-        collectionMock.expects('clear').once();
         logOutputManager.isClearingOutputOnLaunch = true;
         await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: 'LaunchStartEvent' });
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - LaunchStartEvent - no clear flag', async () => {
-        collectionMock.expects('clear').never();
         logOutputManager.isClearingOutputOnLaunch = false;
         await logOutputManager.onDidReceiveDebugSessionCustomEvent(new LaunchStartEvent({} as any));
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
@@ -94,34 +79,18 @@ describe('LogOutputManager ', () => {
         outputChannelMock.expects('appendLine').once();
         await logOutputManager.onDidReceiveDebugSessionCustomEvent(new LogOutputEvent('test 1'));
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - empty', async () => {
         await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '', body: {} });
         outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
     it('tests onDidReceiveDebugSessionCustomEvent - error - undefined', async () => {
         await logOutputManager.onDidReceiveDebugSessionCustomEvent({ event: '' });
         outputChannelMock.verify();
-        collectionMock.verify();
-        logOutputManagerMock.verify();
-    });
-
-    it('tests onDidReceiveDebugSessionCustomEvent - errors', async () => {
-        logOutputManagerMock.expects('addDiagnosticForError').once();
-        let compileErrors: BSDebugDiagnostic[] = [{
-            path: 'path1',
-            message: 'message1',
-            range: util.createRange(1, 2, 3, 4)
-        }];
-        await logOutputManager.onDidReceiveDebugSessionCustomEvent(new DiagnosticsEvent(compileErrors));
-        outputChannelMock.verify();
-        collectionMock.verify();
         logOutputManagerMock.verify();
     });
 
@@ -130,13 +99,11 @@ describe('LogOutputManager ', () => {
             logOutputManager.appendLine('test1', true);
             logOutputManager.appendLine('test2', true);
             logOutputManager.appendLine('test3', true);
-            collectionMock.expects('clear').once();
             outputChannelMock.expects('clear').once();
 
             logOutputManager.clearOutput();
 
             outputChannelMock.verify();
-            collectionMock.verify();
         });
 
         it('tests output indexes are cleared', () => {
@@ -151,7 +118,6 @@ describe('LogOutputManager ', () => {
             logOutputManager.markOutput();
 
             logOutputManagerMock.verify();
-            collectionMock.verify();
 
             logOutputManagerMock = sinon.mock(logOutputManager);
             logOutputManager.clearOutput();
@@ -164,7 +130,6 @@ describe('LogOutputManager ', () => {
             logOutputManager.markOutput();
 
             logOutputManagerMock.verify();
-            collectionMock.verify();
 
         });
     });
@@ -175,7 +140,6 @@ describe('LogOutputManager ', () => {
                 .withExactArgs('test1').once();
             logOutputManager.appendLine('test1', true);
             outputChannelMock.verify();
-            collectionMock.verify();
         });
 
         it('splits multiple lines', () => {
@@ -187,7 +151,6 @@ describe('LogOutputManager ', () => {
             logOutputManager.appendLine('test1\ntest2', true);
 
             outputChannelMock.verify();
-            collectionMock.verify();
         });
     });
 
@@ -204,7 +167,6 @@ describe('LogOutputManager ', () => {
             logOutputManager.markOutput();
 
             logOutputManagerMock.verify();
-            collectionMock.verify();
         });
     });
 

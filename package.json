@@ -2793,19 +2793,19 @@
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
-                "title": "Pause Screenshot Capture",
+                "title": "Device View: Pause Screenshot Capture",
                 "category": "BrighterScript",
                 "icon": "$(debug-pause)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
-                "title": "Resume Screenshot Capture",
+                "title": "Device View: Resume Screenshot Capture",
                 "category": "BrighterScript",
                 "icon": "$(debug-start)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
-                "title": "Refresh Screenshot",
+                "title": "Device View: Refresh Screenshot",
                 "category": "BrighterScript",
                 "icon": "$(refresh)"
             },
