@@ -10,6 +10,8 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import * as rokuDeploy from 'roku-deploy';
+import * as path from 'path';
 
 export class BrightScriptCommands {
 
@@ -26,6 +28,8 @@ export class BrightScriptCommands {
     public host: string;
     public password: string;
     public workspacePath: string;
+    private signingPassword: string;
+    private signedPackagePath: string;
     private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
 
     public registerCommands() {
@@ -201,7 +205,76 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('rekeyDevice', async () => {
+            await this.rekeyDevice();
+        });
+
+        this.registerCommand('createPackage', async () => {
+            await this.createPackage();
+        });
+
+        this.registerCommand('rekeyAndPackage', async () => {
+            await this.rekeyDevice().then(async () => {
+                await this.createPackage();
+            });
+        });
+
         this.registerKeyboardInputs();
+    }
+
+    private async rekeyDevice() {
+        await this.getRemoteHost();
+        await this.getRemotePassword();
+        await this.getSigningPassword();
+        await this.getSignedPackagePath();
+
+        await rokuDeploy.rekeyDevice({ host: this.host, password: this.password, signingPassword: this.signingPassword, rekeySignedPackage: this.signedPackagePath }
+        ).then(() => void vscode.window.showInformationMessage(`Device successfully rekeyed!`));
+    }
+
+    private async createPackage() {
+        await this.getWorkspacePath();
+        let config = vscode.workspace.getConfiguration('launch', null);
+        const configurations = config.get<any[]>('configurations');
+        let configNames = [];
+        for (let config of configurations) {
+            configNames.push(config.name);
+        }
+
+        //show user a list of available launch configs to choose from
+        let selectedConfig = configurations[0];
+        let selectedConfigName = await vscode.window.showQuickPick(configNames, { placeHolder: 'Please select a config', canPickMany: false });
+        if (selectedConfigName) {
+            let selectedIndex = configNames.indexOf(selectedConfigName);
+            selectedConfig = configurations[selectedIndex];
+        }
+
+        if (selectedConfig.rootDir?.includes('${workspaceFolder}')) {
+            selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', this.workspacePath));
+        }
+
+        await this.getSigningPassword();
+        await this.getRemoteHost();
+        await this.getRemotePassword();
+
+        let rokuDeployOptions = {
+            rootDir: selectedConfig.rootDir,
+            files: selectedConfig.files,
+            outDir: this.workspacePath + '/out',
+            outFile: 'roku-' + selectedConfig.name.replace(/ /g, '-'),
+            retainStagingDir: true,
+            host: this.host,
+            password: this.password,
+            signingPassword: this.signingPassword
+        };
+
+        //create a zip and pkg file of the app based on the selected launch config
+        await rokuDeploy.createPackage(rokuDeployOptions).then(async () => {
+            let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
+            let localPkgFilePath = await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions).then(() => {
+                void vscode.window.showInformationMessage(`Package successfully created!`);
+            });
+        });
     }
 
     /**
@@ -402,6 +475,46 @@ export class BrightScriptCommands {
                     this.workspacePath = workspaceFolder.uri.fsPath;
                 }
             }
+        }
+    }
+
+    public async getSigningPassword() {
+        this.signingPassword = await this.context.workspaceState.get('signingPassword');
+        if (!this.signingPassword) {
+            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            this.signingPassword = config.get('signingPassword');
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!this.signingPassword) {
+                this.signingPassword = await vscode.window.showInputBox({
+                    placeHolder: 'Enter the signing password used for creating signed packages',
+                    value: ''
+                });
+            }
+        }
+        if (!this.signingPassword) {
+            throw new Error('Can\'t send command: signingPassword is required.');
+        } else {
+            await this.context.workspaceState.update('signingPassword', this.signingPassword);
+        }
+    }
+
+    public async getSignedPackagePath() {
+        this.signedPackagePath = await this.context.workspaceState.get('signedPackagePath');
+        if (!this.signedPackagePath) {
+            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            this.signedPackagePath = config.get('signedPackagePath');
+            // eslint-disable-next-line no-template-curly-in-string
+            if (!this.signedPackagePath) {
+                this.signedPackagePath = await vscode.window.showInputBox({
+                    placeHolder: 'Enter the path for the signed package',
+                    value: ''
+                });
+            }
+        }
+        if (!this.signedPackagePath) {
+            throw new Error('Can\'t send command: Signed Package Path is required.');
+        } else {
+            await this.context.workspaceState.update('signedPackagePath', this.signedPackagePath);
         }
     }
 

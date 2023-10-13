@@ -2772,6 +2772,21 @@
                 "icon": "./images/icons/inspect-active.svg"
             },
             {
+                "command": "extension.brightscript.rekeyDevice",
+                "title": "Rekey Device",
+                "category": "BrighterScript"
+            },
+            {
+                "command": "extension.brightscript.createPackage",
+                "title": "Create Package",
+                "category": "BrighterScript"
+            },
+            {
+                "command": "extension.brightscript.rekeyAndPackage",
+                "title": "Rekey Device and Create Package",
+                "category": "BrighterScript"
+            },
+            {
                 "command": "extension.brightscript.captureScreenshot",
                 "title": "Capture Screenshot",
                 "category": "BrighterScript"
