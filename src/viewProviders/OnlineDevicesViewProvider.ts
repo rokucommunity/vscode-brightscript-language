@@ -182,20 +182,6 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             );
 
 
-            let captureScreenshot = new DeviceInfoTreeItem(
-                'Capture Screenshot',
-                element,
-                vscode.TreeItemCollapsibleState.None,
-                '',
-                ''
-            );
-            captureScreenshot.tooltip = 'Capture';
-            captureScreenshot.command = {
-                command: 'extension.brightscript.captureScreenshot',
-                title: 'Capture Screenshot'
-            };
-            result.unshift(captureScreenshot);
-
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
             }
