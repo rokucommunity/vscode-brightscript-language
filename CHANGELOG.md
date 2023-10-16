@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.44.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.43.1...v2.44.0) - 2023-10-16
+### Added
+ - ability to capture device screenshots ([#505](https://github.com/rokucommunity/vscode-brightscript-language/pull/505))
+### Changed
+ - Make device picker name same as tree view item ([#508](https://github.com/rokucommunity/vscode-brightscript-language/pull/508))
+ - Diagnostic manager ([#502](https://github.com/rokucommunity/vscode-brightscript-language/pull/502))
+ - upgrade to [roku-debug@0.20.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0207---2023-10-16). Notable changes since 0.20.6:
+     - Debug Protocol Enhancements ([roku-debug#107](https://github.com/rokucommunity/roku-debug/pull/107))
+
+
+
 ## [2.43.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.43.0...v2.43.1) - 2023-10-08
 ### Added
  - ability to enable/disable remote control on launch/session-end ([#503](https://github.com/rokucommunity/vscode-brightscript-language/pull/503))

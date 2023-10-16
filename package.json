@@ -71,7 +71,7 @@
         "node-ssdp": "^4.0.0",
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.20.6",
+        "roku-debug": "^0.20.7",
         "roku-deploy": "^3.10.3",
         "roku-test-automation": "^2.0.0-beta.20",
         "semver": "^7.1.3",
