@@ -12,6 +12,7 @@ import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ActiveDeviceManager } from './ActiveDeviceManager';
 import * as rokuDeploy from 'roku-deploy';
 import * as path from 'path';
+import { readFileSync } from 'fs-extra';
 
 export class BrightScriptCommands {
 
@@ -214,25 +215,223 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('rekeyAndPackage', async () => {
-            await this.rekeyDevice().then(async () => {
-                await this.createPackage();
-            });
+            await this.rekeyDevice();
+            await this.createPackage();
         });
 
         this.registerKeyboardInputs();
     }
 
-    private async rekeyDevice() {
-        await this.getRemoteHost();
-        await this.getRemotePassword();
-        await this.getSigningPassword();
-        await this.getSignedPackagePath();
+    private async getRekeyConfigFromJson(rekeyConfig) {
+        const options: vscode.OpenDialogOptions = {
+            canSelectMany: false,
+            openLabel: 'Select',
+            canSelectFiles: true,
+            canSelectFolders: false,
+            filters: {
+                'Json files': ['json']
+            }
+        };
+        await this.getWorkspacePath();
 
-        await rokuDeploy.rekeyDevice({ host: this.host, password: this.password, signingPassword: this.signingPassword, rekeySignedPackage: this.signedPackagePath }
-        ).then(() => void vscode.window.showInformationMessage(`Device successfully rekeyed!`));
+        let fileUri = await vscode.window.showOpenDialog(options);
+        if (fileUri?.[0]) {
+            let content = JSON.parse(readFileSync(fileUri[0].fsPath).toString());
+
+            if (content.signingPassword) {
+                rekeyConfig.signingPassword = content.signingPassword;
+            }
+
+            if (content.rekeySignedPackage.includes('./')) {
+                rekeyConfig.rekeySignedPackage = this.workspacePath + content.rekeySignedPackage.replace('./', '/');
+            }
+
+            if (content.host) {
+                rekeyConfig.host = content.host;
+            }
+
+            if (content.password) {
+                rekeyConfig.password = content.password;
+            }
+        }
+        return rekeyConfig;
+    }
+
+    private async getRekeyManualEntries(rekeyConfig) {
+        rekeyConfig.host = await vscode.window.showInputBox({
+            placeHolder: 'Enter IP address of the Roku device you want to rekey',
+            value: ''
+        });
+
+        rekeyConfig.password = await vscode.window.showInputBox({
+            placeHolder: 'Enter password for the Roku device you want to rekey',
+            value: ''
+        });
+
+        rekeyConfig.signingPassword = await vscode.window.showInputBox({
+            placeHolder: 'Enter signingPassword to be used to rekey the Roku',
+            value: ''
+        });
+
+        const options: vscode.OpenDialogOptions = {
+            canSelectMany: false,
+            openLabel: 'Select signed package file',
+            canSelectFiles: true,
+            canSelectFolders: false,
+            filters: {
+                'Pkg files': ['pkg']
+            }
+        };
+        let fileUri = await vscode.window.showOpenDialog(options);
+        if (fileUri?.[0]) {
+            rekeyConfig.rekeySignedPackage = fileUri[0].fsPath;
+        }
+
+        return rekeyConfig;
+    }
+
+    private async rekeyDevice() {
+        const PICK_FROM_JSON = 'Pick from Json file';
+        const MANUAL_ENTRY = 'Enter manually';
+
+        let rekeyConfig = {
+            signingPassword: '',
+            rekeySignedPackage: '',
+            host: '',
+            password: ''
+        };
+
+        let rekeyOptionList = [PICK_FROM_JSON, MANUAL_ENTRY];
+        let rekeyOption = await vscode.window.showQuickPick(rekeyOptionList, { placeHolder: 'How do you want to select you configurations', canPickMany: false });
+        if (rekeyOption) {
+            switch (rekeyOption) {
+                case PICK_FROM_JSON:
+                    rekeyConfig = await this.getRekeyConfigFromJson(rekeyConfig);
+                    break;
+
+                case MANUAL_ENTRY:
+                    rekeyConfig = await this.getRekeyManualEntries(rekeyConfig);
+                    break;
+            }
+        }
+
+        await rokuDeploy.rekeyDevice(rekeyConfig);
+        void vscode.window.showInformationMessage(`Device successfully rekeyed!`);
     }
 
     private async createPackage() {
+        await this.getWorkspacePath();
+        let rokuDeployOptions = {
+            rootDir: '',
+            outDir: this.workspacePath + '/out',
+            outFile: '',
+            retainStagingDir: true,
+            host: '',
+            password: '',
+            signingPassword: ''
+        };
+
+        let PACKAGE_FOLDER = 'Pick a folder';
+        let PACKAGE_FROM_LAUNCH_JSON = 'Pick from a launch.json';
+        let PACKAGE_FROM_ROKU_DEPLOY = 'Pick a rokudeploy.json';
+
+        let packageOptionList = [PACKAGE_FOLDER, PACKAGE_FROM_LAUNCH_JSON, PACKAGE_FROM_ROKU_DEPLOY];
+        let packageOption = await vscode.window.showQuickPick(packageOptionList, { placeHolder: 'What would you like to package', canPickMany: false });
+        if (packageOption) {
+            switch (packageOption) {
+                case PACKAGE_FOLDER:
+                    rokuDeployOptions = await this.packageFromFolder(rokuDeployOptions);
+                    break;
+
+                case PACKAGE_FROM_LAUNCH_JSON:
+                    rokuDeployOptions = await this.packageFromLaunchConfig(rokuDeployOptions);
+                    break;
+
+                case PACKAGE_FROM_ROKU_DEPLOY:
+                    rokuDeployOptions = await this.packageFromRokuDeploy(rokuDeployOptions);
+                    break;
+            }
+
+            await this.getSigningPassword(false);
+            await this.getRemoteHost(false);
+            await this.getRemotePassword(false);
+
+            let hostValue = rokuDeployOptions.host ? rokuDeployOptions.host : this.host;
+            let passwordValue = rokuDeployOptions.password ? rokuDeployOptions.password : this.password;
+            let signingPasswordValue = rokuDeployOptions.signingPassword ? rokuDeployOptions.signingPassword : this.signingPassword;
+
+            rokuDeployOptions.host = await vscode.window.showInputBox({
+                title: 'Enter IP address of the Roku device',
+                value: hostValue ? hostValue : ''
+            });
+
+            rokuDeployOptions.password = await vscode.window.showInputBox({
+                title: 'Enter password for the Roku device',
+                value: passwordValue ? passwordValue : ''
+            });
+
+            rokuDeployOptions.signingPassword = await vscode.window.showInputBox({
+                title: 'Enter signingPassword to be used to rekey the Roku',
+                value: signingPasswordValue ? signingPasswordValue : ''
+            });
+
+            let confirmText = 'Create Package';
+            let cancelText = 'Cancel';
+            let response = await vscode.window.showInformationMessage(
+                'Please confirm details below to create package \n' + JSON.stringify(rokuDeployOptions),
+                ...[confirmText, cancelText]
+            );
+            if (response === confirmText) {
+                //create a zip and pkg file of the app based on the selected launch config
+                await rokuDeploy.createPackage(rokuDeployOptions);
+                let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
+                await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions);
+                void vscode.window.showInformationMessage(`Package successfully created!`);
+            }
+        }
+    }
+
+    private async packageFromFolder(rokuDeployOptions) {
+        const options: vscode.OpenDialogOptions = {
+            canSelectMany: false,
+            openLabel: 'Select Folder to package',
+            canSelectFiles: false,
+            canSelectFolders: true
+        };
+        let fileUri = await vscode.window.showOpenDialog(options);
+        if (fileUri?.[0]) {
+            let rootDir = fileUri?.[0].fsPath;
+            let rootDirArray = rootDir.split('/');
+            let outFileName = rootDirArray[rootDirArray.length - 1];
+
+            rokuDeployOptions.rootDir = rootDir;
+            rokuDeployOptions.outFile = 'roku-' + outFileName.replace(/ /g, '-');
+
+            return rokuDeployOptions;
+        }
+    }
+
+
+    private async packageFromRokuDeploy(rokuDeployOptions) {
+        const options: vscode.OpenDialogOptions = {
+            canSelectMany: false,
+            openLabel: 'Select',
+            canSelectFiles: true,
+            canSelectFolders: false,
+            filters: {
+                'Json files': ['json']
+            }
+        };
+        await this.getWorkspacePath();
+
+        let fileUri = await vscode.window.showOpenDialog(options);
+        if (fileUri?.[0]) {
+            return this.parseRokuDeployJson(fileUri[0].fsPath, rokuDeployOptions);
+        }
+        return rokuDeployOptions;
+    }
+
+    private async packageFromLaunchConfig(rokuDeployOptions) {
         await this.getWorkspacePath();
         let config = vscode.workspace.getConfiguration('launch', null);
         const configurations = config.get<any[]>('configurations');
@@ -253,28 +452,58 @@ export class BrightScriptCommands {
             selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', this.workspacePath));
         }
 
-        await this.getSigningPassword();
-        await this.getRemoteHost();
-        await this.getRemotePassword();
+        if (!selectedConfig.host.includes('${')) {
+            rokuDeployOptions.host = selectedConfig.host;
+        }
 
-        let rokuDeployOptions = {
-            rootDir: selectedConfig.rootDir,
-            files: selectedConfig.files,
-            outDir: this.workspacePath + '/out',
-            outFile: 'roku-' + selectedConfig.name.replace(/ /g, '-'),
-            retainStagingDir: true,
-            host: this.host,
-            password: this.password,
-            signingPassword: this.signingPassword
-        };
+        if (!selectedConfig.password.includes('${')) {
+            rokuDeployOptions.password = selectedConfig.password;
+        }
 
-        //create a zip and pkg file of the app based on the selected launch config
-        await rokuDeploy.createPackage(rokuDeployOptions).then(async () => {
-            let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
-            let localPkgFilePath = await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions).then(() => {
-                void vscode.window.showInformationMessage(`Package successfully created!`);
-            });
-        });
+        rokuDeployOptions.rootDir = selectedConfig.rootDir;
+        rokuDeployOptions.files = selectedConfig.files;
+        rokuDeployOptions.outFile = 'roku-' + selectedConfig.name.replace(/ /g, '-');
+
+        return rokuDeployOptions;
+    }
+
+    private async parseRokuDeployJson(filePath: string, rokuDeployOptions) {
+        let content = JSON.parse(readFileSync(filePath).toString());
+
+        if (content.signingPassword) {
+            rokuDeployOptions.signingPassword = content.signingPassword;
+        }
+
+        await this.getWorkspacePath();
+        if (content.rekeySignedPackage?.includes('./')) {
+            rokuDeployOptions.rekeySignedPackage = this.workspacePath + content.rekeySignedPackage.replace('./', '/');
+        }
+
+        if (content.host) {
+            rokuDeployOptions.host = content.host;
+        }
+
+        if (content.password) {
+            rokuDeployOptions.password = content.password;
+        }
+
+        if (content.rootDir?.includes('./')) {
+            rokuDeployOptions.rootDir = this.workspacePath + content.rootDir.replace('./', '/');
+        }
+
+        if (content.outDir?.includes('./')) {
+            rokuDeployOptions.outDir = this.workspacePath + content.outDir.replace('./', '/');
+        }
+
+        if (content.outFile) {
+            rokuDeployOptions.outFile = content.outFile;
+        }
+
+        if (content.retainStagingDir) {
+            rokuDeployOptions.retainStagingDir = content.retainStagingDir;
+        }
+
+        return rokuDeployOptions;
     }
 
     /**
@@ -414,13 +643,13 @@ export class BrightScriptCommands {
         }
     }
 
-    public async getRemoteHost() {
+    public async getRemoteHost(showPrompt = true) {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
-            if (!this.host || this.host === '${promptForHost}') {
+            if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
                 this.host = await vscode.window.showInputBox({
                     placeHolder: 'The IP address of your Roku device',
                     value: ''
@@ -443,13 +672,13 @@ export class BrightScriptCommands {
         return this.host;
     }
 
-    public async getRemotePassword() {
+    public async getRemotePassword(showPrompt = true) {
         this.password = await this.context.workspaceState.get('remotePassword');
         if (!this.password) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.password = config.get('password');
             // eslint-disable-next-line no-template-curly-in-string
-            if (!this.password || this.password === '${promptForPassword}') {
+            if ((!this.password || this.password === '${promptForPassword}') && showPrompt) {
                 this.password = await vscode.window.showInputBox({
                     placeHolder: 'The developer account password for your Roku device',
                     value: ''
@@ -481,13 +710,13 @@ export class BrightScriptCommands {
         return this.workspacePath;
     }
 
-    public async getSigningPassword() {
+    public async getSigningPassword(showPrompt = true) {
         this.signingPassword = await this.context.workspaceState.get('signingPassword');
         if (!this.signingPassword) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.signingPassword = config.get('signingPassword');
             // eslint-disable-next-line no-template-curly-in-string
-            if (!this.signingPassword) {
+            if (!this.signingPassword && showPrompt) {
                 this.signingPassword = await vscode.window.showInputBox({
                     placeHolder: 'Enter the signing password used for creating signed packages',
                     value: ''

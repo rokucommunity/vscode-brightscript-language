@@ -2774,17 +2774,17 @@
             {
                 "command": "extension.brightscript.rekeyDevice",
                 "title": "Rekey Device",
-                "category": "BrighterScript"
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.createPackage",
                 "title": "Create Package",
-                "category": "BrighterScript"
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.rekeyAndPackage",
                 "title": "Rekey Device and Create Package",
-                "category": "BrighterScript"
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.captureScreenshot",
