@@ -411,8 +411,9 @@ export class BrightScriptCommands {
         return this.workspacePath;
     }
 
-    public async getSigningPassword(showPrompt = true) {
-        let signingPassword = await this.context.workspaceState.get('signingPassword');
+    public async getSigningPassword(showPrompt = true): Promise<string> {
+        let signingPassword = '';
+        signingPassword = await this.context.workspaceState.get('signingPassword');
         if (!signingPassword) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             signingPassword = config.get('signingPassword');
