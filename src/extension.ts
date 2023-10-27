@@ -1,11 +1,7 @@
 import * as vscode from 'vscode';
 import * as prettyBytes from 'pretty-bytes';
-<<<<<<< Updated upstream
-import { extensions } from 'vscode';
-=======
 import { DiagnosticCollection, extensions } from 'vscode';
-import * as rta from 'roku-test-automation';
->>>>>>> Stashed changes
+import type * as rta from 'roku-test-automation';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
@@ -27,19 +23,19 @@ import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
-<<<<<<< Updated upstream
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isTestEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
-=======
 import { SceneGraphInspectorViewProvider } from './viewProviders/SceneGraphInspectorViewProvider';
 import { RokuCommandsViewProvider } from './viewProviders/RokuCommandsViewProvider';
 import { RokuRegistryViewProvider } from './viewProviders/RokuRegistryViewProvider';
 import type { BSDebugDiagnostic } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 import { DiagnosticManager } from './managers/DiagnosticManager';
->>>>>>> Stashed changes
+import { Socket } from 'net';
+import { util as rokuDebugUtil } from 'roku-debug';
+import { networkInterfaces } from 'os';
+import { DebugSessionMediator } from './DebugSessionMediator';
 
 const EXTENSION_ID = 'RokuCommunity.brightscript';
 
@@ -56,11 +52,10 @@ export class Extension {
     private telemetryManager: TelemetryManager;
     private remoteControlManager: RemoteControlManager;
     private brightScriptCommands: BrightScriptCommands;
-<<<<<<< Updated upstream
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
-=======
     private diagnosticManager = new DiagnosticManager();
+    private debugSessionMediator: DebugSessionMediator;
 
     public odc?: rta.OnDeviceComponent;
 
@@ -74,9 +69,11 @@ export class Extension {
         constructor: RokuCommandsViewProvider,
         provider: undefined as RokuCommandsViewProvider
     }];
->>>>>>> Stashed changes
 
     public async activate(context: vscode.ExtensionContext) {
+        this.debugSessionMediator = new DebugSessionMediator();
+        await this.debugSessionMediator.start();
+
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
         this.globalStateManager = new GlobalStateManager(context);
@@ -241,6 +238,9 @@ export class Extension {
     }
 
     private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+        if (isTestEvent(e)) {
+            console.log(e.body.message);
+        }
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);

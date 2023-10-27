@@ -92,6 +92,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config = await this.processPasswordParameter(config);
             config = await this.processDeepLinkUrlParameter(config);
             config = await this.processLogfilePath(folder, config);
+            //TODO
+            config.mediatorPort = 9001;
 
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
 
@@ -561,4 +563,9 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.
      */
     disableScreenSaver?: boolean;
+
+    /**
+     * The port for communcation between the extension and the debugger
+     */
+    mediatorPort?: number;
 }
