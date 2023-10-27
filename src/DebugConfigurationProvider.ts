@@ -1,4 +1,4 @@
-import { util as bslangUtil } from 'brighterscript';
+import { Deferred, util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -8,6 +8,7 @@ import type {
     CancellationToken,
     DebugConfigurationProvider,
     ExtensionContext,
+    QuickPickItem,
     WorkspaceFolder
 } from 'vscode';
 import * as vscode from 'vscode';
@@ -15,12 +16,13 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
+import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
     public constructor(
         private context: ExtensionContext,
-        private activeDeviceManager: any,
+        private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel
     ) {
@@ -399,57 +401,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
             if (this.activeDeviceManager.enabled) {
-                if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
-                    let deviceWaitTime = 5000;
-                    if (this.showDeviceInfoMessages) {
-                        await vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
-                    }
-
-                    await util.delay(deviceWaitTime);
-                }
-
-                let activeDevices = this.activeDeviceManager.getActiveDevices();
-
-                if (activeDevices && Object.keys(activeDevices).length) {
-                    let items = [];
-
-                    // Create the Quick Picker option items
-                    for (const key of Object.keys(activeDevices)) {
-                        let device = activeDevices[key];
-                        let itemText = `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
-
-                        if (this.activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === this.activeDeviceManager.lastUsedDevice) {
-                            items.unshift(itemText);
-                        } else {
-                            items.push(itemText);
-                        }
-                    }
-
-                    // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
-                    let manualIpOption = 'Other';
-                    items.push(manualIpOption);
-
-                    let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
-
-                    if (host === manualIpOption) {
-                        showInputBox = true;
-                    } else if (host) {
-                        let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
-                        let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
-                        if (defaultDeviceName) {
-                            this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
-                        }
-                        config.host = deviceIP;
-                    } else {
-                        // User canceled. Give them one more change to enter an ip
-                        showInputBox = true;
-                    }
+                const host = await this.promptForHost();
+                if (host === 'Enter manually') {
+                    showInputBox = true;
+                } else if (host) {
+                    config.host = host;
                 } else {
+                    // User canceled. Give them one more change to enter an ip
                     showInputBox = true;
                 }
             } else {
                 showInputBox = true;
             }
+        } else {
+            showInputBox = true;
         }
 
         if (showInputBox) {
@@ -465,6 +430,108 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         return config;
+    }
+
+    /**
+     * Prompt the user to pick a host from a list of devices
+     */
+    private async promptForHost() {
+        const deferred = new Deferred<string>();
+
+        const discoveryTime = 5_000;
+        const manualLabel = 'Enter manually';
+
+        //create the quickpick item
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.placeholder = `Please Select a Roku or manually type an IP address`;
+        quickPick.keepScrollPosition = true;
+
+        //allow the user to manually type an IP address
+        quickPick.onDidAccept(() => {
+            deferred.resolve(quickPick.value);
+        });
+
+        //create a text-based spinner factory for use in the "loading ..." label
+        const generateSpinnerText = util.createTextSpinner(3);
+
+        const refreshList = () => {
+            let itemsRefreshed: Array<QuickPickItem & { device?: RokuDeviceDetails }> = this.activeDeviceManager.getActiveDevices().map(device => ({
+                label: `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`,
+                device: device
+            }));
+
+            const devicesLabel: QuickPickItem = {
+                label: this.activeDeviceManager.lastUsedDevice ? 'other devices' : 'devices',
+                kind: vscode.QuickPickItemKind.Separator
+            };
+            itemsRefreshed.unshift(devicesLabel);
+
+            //move the the most recently used device to the top
+            if (this.activeDeviceManager.lastUsedDevice) {
+                const idx = itemsRefreshed.findIndex(x => x.device?.id === this.activeDeviceManager.lastUsedDevice?.id);
+                const [item] = itemsRefreshed.splice(idx, 1);
+                itemsRefreshed.unshift(item);
+
+                itemsRefreshed.unshift({
+                    label: 'last used',
+                    kind: vscode.QuickPickItemKind.Separator
+                });
+            }
+
+            if (this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime) {
+                devicesLabel.label += ` (searching ${generateSpinnerText()})`;
+                setTimeout(() => {
+                    refreshList();
+                }, 500);
+            }
+
+            // allow user to manually type an IP address
+            itemsRefreshed.push(
+                { label: '', kind: vscode.QuickPickItemKind.Separator },
+                { label: manualLabel, device: { id: Number.MAX_SAFE_INTEGER } } as any
+            );
+
+            //find the active item from our list (if there is one)
+            const activeItem = itemsRefreshed.find(x => {
+                return x.device?.id === ((quickPick.activeItems?.[0] as any)?.device as RokuDeviceDetails)?.id;
+            });
+            quickPick.items = itemsRefreshed;
+            if (activeItem) {
+                quickPick.activeItems = [activeItem];
+            }
+            quickPick.show();
+        };
+
+        //anytime the device picker adds/removes a device, update the list
+        this.activeDeviceManager.on('device-found', refreshList);
+        this.activeDeviceManager.on('device-expire', refreshList);
+        quickPick.onDidHide(() => {
+            deferred.reject(new Error('No host was selected'));
+            quickPick.dispose();
+        });
+
+        quickPick.onDidChangeSelection(selection => {
+            const selectedItem = selection[0];
+            if (selectedItem) {
+                if (selectedItem.kind === vscode.QuickPickItemKind.Separator) {
+                    // Handle separator selection
+                } else {
+                    if (selectedItem.label === manualLabel) {
+                        deferred.resolve(manualLabel);
+                    } else {
+                        const device = (selectedItem as any).device as RokuDeviceDetails;
+                        this.activeDeviceManager.lastUsedDevice = device;
+                        deferred.resolve(device.ip);
+                    }
+                    quickPick.dispose();
+                }
+            }
+        });
+        //run the list refresh once to show the popup
+        refreshList();
+        const result = await deferred.promise;
+        quickPick.dispose();
+        return result;
     }
 
     /**

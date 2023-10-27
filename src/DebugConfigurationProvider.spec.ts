@@ -10,6 +10,7 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
+import type { ActiveDeviceManager } from './ActiveDeviceManager';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -50,7 +51,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         let activeDeviceManager = {
             getActiveDevices: () => []
-        };
+        } as any as ActiveDeviceManager;
         configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null, vscode.window.createOutputChannel('Extension'));
     });
 

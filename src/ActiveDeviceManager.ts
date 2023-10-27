@@ -1,5 +1,5 @@
 import * as backoff from 'backoff';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import * as xmlParser from 'fast-xml-parser';
 import * as http from 'http';
 import * as NodeCache from 'node-cache';
@@ -8,13 +8,13 @@ import { Client } from 'node-ssdp';
 import { URL } from 'url';
 import { util } from './util';
 import * as vscode from 'vscode';
+import { firstBy } from 'thenby';
 
 const DEFAULT_TIMEOUT = 10000;
 
-export class ActiveDeviceManager extends EventEmitter {
+export class ActiveDeviceManager {
 
     constructor() {
-        super();
         this.isRunning = false;
         this.firstRequestForDevices = true;
 
@@ -38,23 +38,70 @@ export class ActiveDeviceManager extends EventEmitter {
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
         //anytime a device leaves the cache (either expired or manually deleted)
         this.deviceCache.on('del', (deviceId, device) => {
-            this.emit('expiredDevice', deviceId, device);
+            void this.emit('device-expire', device);
         });
         this.processEnabledState();
     }
 
+    private emitter = new EventEmitter();
+
+    public on(eventName: 'device-expire', handler: (device: RokuDeviceDetails) => void);
+    public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void);
+    public on(eventName: string, handler: (payload: any) => void) {
+        this.emitter.on(eventName, handler);
+        return () => {
+            if (this.emitter !== undefined) {
+                this.emitter.removeListener(eventName, handler);
+            }
+        };
+    }
+
+    private async emit(eventName: 'device-expire', device: RokuDeviceDetails);
+    private async emit(eventName: 'device-found', device: RokuDeviceDetails);
+    private async emit(eventName: string, data?: any) {
+        //emit these events on next tick, otherwise they will be processed immediately which could cause issues
+        await util.sleep(0);
+        this.emitter?.emit(eventName, data);
+    }
+
     public firstRequestForDevices: boolean;
-    public lastUsedDevice: string;
-    private enabled: boolean;
+    public lastUsedDevice: RokuDeviceDetails;
+    public enabled: boolean;
     private showInfoMessages: boolean;
     private deviceCache: NodeCache;
     private exponentialBackoff: any;
     private isRunning: boolean;
 
-    // Returns an object will all the active devices by device id
-    public getActiveDevices() {
+    /**
+     * Get a list of all devices discovered on the network
+     */
+    public getActiveDevices(): RokuDeviceDetails[] {
         this.firstRequestForDevices = false;
-        return this.deviceCache.mget(this.deviceCache.keys());
+        const devices = Object.values(
+            this.deviceCache.mget(this.deviceCache.keys()) as Record<string, RokuDeviceDetails>
+        ).sort(firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
+            return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
+        }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
+            if (a.id < b.id) {
+                return -1;
+            }
+            if (a.id > b.id) {
+                return 1;
+            }
+            // ids must be equal
+            return 0;
+        }));
+        return devices;
+    }
+
+    private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
+        if (device.deviceInfo['is-stick']) {
+            return 0;
+        }
+        if (device.deviceInfo['is-tv']) {
+            return 2;
+        }
+        return 1;
     }
 
     // Returns the device cache statistics.
@@ -114,6 +161,18 @@ export class ActiveDeviceManager extends EventEmitter {
         }
     }
 
+    /**
+     * The number of milliseconds since a new device was discovered
+     */
+    public get timeSinceLastDiscoveredDevice() {
+        if (!this.lastDiscoveredDeviceDate) {
+            return 0;
+        }
+        return Date.now() - this.lastDiscoveredDeviceDate.getTime();
+    }
+    private lastDiscoveredDeviceDate: Date;
+
+
     // Discover all Roku devices on the network and watch for new ones that connect
     private discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
         return new Promise((resolve, reject) => {
@@ -122,13 +181,16 @@ export class ActiveDeviceManager extends EventEmitter {
 
             finder.on('found', (device: RokuDeviceDetails) => {
                 if (!devices.includes(device.id)) {
-                    if (this.showInfoMessages && this.deviceCache.get(device.id) === undefined) {
-                        // New device found
-                        void vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
+                    if (this.deviceCache.get(device.id) === undefined) {
+                        this.lastDiscoveredDeviceDate = new Date();
+                        if (this.showInfoMessages) {
+                            // New device found
+                            void vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
+                        }
                     }
                     this.deviceCache.set(device.id, device);
                     devices.push(device.id);
-                    this.emit('foundDevice', device.id, device);
+                    this.emit('device-found', device);
                 }
             });
 

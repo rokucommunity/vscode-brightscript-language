@@ -328,4 +328,16 @@ describe('Util', () => {
             ]);
         });
     });
+
+    describe('generateLoadingText', () => {
+        it('generates properly', () => {
+            const spin = util.createTextSpinner(3, '-', '*');
+            expect(spin()).to.eql('--*');
+            expect(spin()).to.eql('-*-');
+            expect(spin()).to.eql('*--');
+            expect(spin()).to.eql('--*');
+            expect(spin()).to.eql('-*-');
+            expect(spin()).to.eql('*--');
+        });
+    });
 });

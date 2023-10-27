@@ -381,6 +381,37 @@ class Util {
     public escapeRegex(text: string) {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     }
+
+    /**
+     * Returns a function that generates a string of off+on chars for showing "animated" loading in text-based locations
+     * @param max the total number of chars to show
+     * @param offChar the char to show when that index is "off"
+     * @param onChar the char to show when that index is "on"
+     * @returns function that generates loading strings
+     */
+    public createTextSpinner(max: number, offChar = '◦', onChar = '•') {
+        let current = 0;
+        const fullText = offChar.repeat(max).split('');
+        /**
+         * Generate the next text
+         */
+        return function spinner() {
+            const text = [...fullText];
+            text[current++ % max] = onChar;
+            return text.reverse().join('');
+        };
+    }
+
+    /**
+     * Set an interval
+     * @returns a function that can be called to clear the interval
+     */
+    public setInterval(callback: () => any, duration: number) {
+        const handle = setInterval(callback, duration);
+        return () => {
+            clearInterval(handle);
+        };
+    }
 }
 
 const util = new Util();
