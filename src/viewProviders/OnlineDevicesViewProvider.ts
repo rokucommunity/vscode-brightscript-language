@@ -199,11 +199,6 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 })
             );
 
-
-            if (semver.satisfies(element.details['software-version'], '>=11')) {
-                // TODO: add ECP system hooks here in the future (like registry call, etc...)
-            }
-
             // Return the device details
             return result;
         }
