@@ -339,5 +339,27 @@ describe('Util', () => {
             expect(spin()).to.eql('-*-');
             expect(spin()).to.eql('*--');
         });
+
+        it('returns same value when passed false', () => {
+            const spin = util.createTextSpinner(3, '-', '*');
+            expect(spin()).to.eql('--*');
+            expect(spin(false)).to.eql('--*');
+
+            expect(spin()).to.eql('-*-');
+            expect(spin(false)).to.eql('-*-');
+
+            expect(spin()).to.eql('*--');
+            expect(spin(false)).to.eql('*--');
+
+            expect(spin()).to.eql('--*');
+            expect(spin(false)).to.eql('--*');
+
+            expect(spin()).to.eql('-*-');
+            expect(spin(false)).to.eql('-*-');
+
+            expect(spin()).to.eql('*--');
+            expect(spin(false)).to.eql('*--');
+
+        });
     });
 });

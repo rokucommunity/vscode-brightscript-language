@@ -17,6 +17,7 @@ import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
+import { debounce } from 'debounce';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
@@ -437,6 +438,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async promptForHost() {
         const deferred = new Deferred<string>();
+        const disposables: Array<() => any> = [];
 
         const discoveryTime = 5_000;
         const manualLabel = 'Enter manually';
@@ -454,8 +456,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //create a text-based spinner factory for use in the "loading ..." label
         const generateSpinnerText = util.createTextSpinner(3);
 
-        const refreshList = () => {
-            let itemsRefreshed: Array<QuickPickItem & { device?: RokuDeviceDetails }> = this.activeDeviceManager.getActiveDevices().map(device => ({
+        const refreshListDebounced = debounce(() => refreshList(true), 400);
+
+        const refreshList = (updateSpinnerText = false) => {
+            const devices = this.activeDeviceManager.getActiveDevices();
+            let itemsRefreshed: Array<QuickPickItem & { device?: RokuDeviceDetails }> = devices.map(device => ({
                 label: `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`,
                 device: device
             }));
@@ -479,15 +484,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
 
             if (this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime) {
-                devicesLabel.label += ` (searching ${generateSpinnerText()})`;
-                setTimeout(() => {
-                    refreshList();
-                }, 500);
+                devicesLabel.label += ` (searching ${generateSpinnerText(updateSpinnerText)})`;
+                refreshListDebounced();
             }
 
             // allow user to manually type an IP address
             itemsRefreshed.push(
-                { label: '', kind: vscode.QuickPickItemKind.Separator },
+                { label: ' ', kind: vscode.QuickPickItemKind.Separator },
                 { label: manualLabel, device: { id: Number.MAX_SAFE_INTEGER } } as any
             );
 
@@ -503,8 +506,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         };
 
         //anytime the device picker adds/removes a device, update the list
-        this.activeDeviceManager.on('device-found', refreshList);
-        this.activeDeviceManager.on('device-expire', refreshList);
+        disposables.push(
+            this.activeDeviceManager.on('device-found', () => refreshList()),
+            this.activeDeviceManager.on('device-expire', () => refreshList())
+        );
+
         quickPick.onDidHide(() => {
             deferred.reject(new Error('No host was selected'));
             quickPick.dispose();
@@ -531,6 +537,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         refreshList();
         const result = await deferred.promise;
         quickPick.dispose();
+        for (const disposable of disposables) {
+            disposable();
+        }
         return result;
     }
 

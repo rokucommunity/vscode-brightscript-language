@@ -390,14 +390,18 @@ class Util {
      * @returns function that generates loading strings
      */
     public createTextSpinner(max: number, offChar = '◦', onChar = '•') {
-        let current = 0;
+        let current = 2;
         const fullText = offChar.repeat(max).split('');
         /**
          * Generate the next text
+         * @param increment if false, will return the same value as last time
          */
-        return function spinner() {
+        return function spinner(increment = true) {
             const text = [...fullText];
-            text[current++ % max] = onChar;
+            if (increment) {
+                current++;
+            }
+            text[current % max] = onChar;
             return text.reverse().join('');
         };
     }
