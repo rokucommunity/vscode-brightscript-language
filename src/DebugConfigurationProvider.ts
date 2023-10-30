@@ -459,49 +459,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         const refreshListDebounced = debounce(() => refreshList(true), 400);
 
         const refreshList = (updateSpinnerText = false) => {
-            const devices = this.activeDeviceManager.getActiveDevices();
-            let itemsRefreshed: Array<QuickPickItem & { device?: RokuDeviceDetails }> = devices.map(device => ({
-                label: `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`,
-                device: device
-            }));
-
-            const devicesLabel: QuickPickItem = {
-                label: this.activeDeviceManager.lastUsedDevice ? 'other devices' : 'devices',
-                kind: vscode.QuickPickItemKind.Separator
-            };
-            itemsRefreshed.unshift(devicesLabel);
-
-            //move the the most recently used device to the top
-            if (this.activeDeviceManager.lastUsedDevice) {
-                const idx = itemsRefreshed.findIndex(x => x.device?.id === this.activeDeviceManager.lastUsedDevice?.id);
-                const [item] = itemsRefreshed.splice(idx, 1);
-                itemsRefreshed.unshift(item);
-
-                itemsRefreshed.unshift({
-                    label: 'last used',
-                    kind: vscode.QuickPickItemKind.Separator
-                });
-            }
-
+            const { activeItems } = quickPick;
+            let spinnerText = '';
             if (this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime) {
-                devicesLabel.label += ` (searching ${generateSpinnerText(updateSpinnerText)})`;
+                spinnerText = ` (searching ${generateSpinnerText(updateSpinnerText)})`;
                 refreshListDebounced();
             }
-
-            // allow user to manually type an IP address
-            itemsRefreshed.push(
-                { label: ' ', kind: vscode.QuickPickItemKind.Separator },
-                { label: manualLabel, device: { id: Number.MAX_SAFE_INTEGER } } as any
+            quickPick.items = this.createHostQuickPickList(
+                this.activeDeviceManager.getActiveDevices(),
+                this.activeDeviceManager.lastUsedDevice,
+                spinnerText
             );
-
-            //find the active item from our list (if there is one)
-            const activeItem = itemsRefreshed.find(x => {
-                return x.device?.id === ((quickPick.activeItems?.[0] as any)?.device as RokuDeviceDetails)?.id;
-            });
-            quickPick.items = itemsRefreshed;
-            if (activeItem) {
-                quickPick.activeItems = [activeItem];
-            }
+            quickPick.activeItems = activeItems;
             quickPick.show();
         };
 
@@ -541,6 +510,66 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             disposable();
         }
         return result;
+    }
+
+    private createHostLabel(device: RokuDeviceDetails) {
+        return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
+    }
+
+    /**
+     * Generate the item list for the `this.promptForHost()` call
+     */
+    private createHostQuickPickList(devices: RokuDeviceDetails[], lastUsedDevice: RokuDeviceDetails, spinnerText: string) {
+        //the collection of items we will eventually return
+        let items: Array<QuickPickItem & { device?: RokuDeviceDetails }> = [];
+
+        //yank the last used device out of the list so we can think about the remaining list more easily
+        lastUsedDevice = devices.find(x => x.id === lastUsedDevice?.id);
+        //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
+        devices = devices.filter(x => x.id !== lastUsedDevice?.id);
+
+        // Ensure the most recently used device is at the top of the list
+        if (lastUsedDevice) {
+            //add a separator for "last used"
+            items.push({
+                label: 'last used',
+                kind: vscode.QuickPickItemKind.Separator
+            });
+
+            //add the device
+            items.push({
+                label: this.createHostLabel(lastUsedDevice),
+                device: lastUsedDevice
+            });
+        }
+
+        //add all other devices
+        if (devices.length > 0) {
+            items.push({
+                label: lastUsedDevice ? 'other devices' : 'devices',
+                kind: vscode.QuickPickItemKind.Separator
+            });
+
+            //add each device
+            for (const device of devices) {
+                //add the device
+                items.push({
+                    label: this.createHostLabel(device),
+                    device: device
+                });
+            }
+        }
+
+        //include a divider between devices and "manual" option (only if we have devices)
+        if (spinnerText || lastUsedDevice || devices.length) {
+            items.push({ label: spinnerText.trim() || ' ', kind: vscode.QuickPickItemKind.Separator });
+        }
+
+        // allow user to manually type an IP address
+        items.push(
+            { label: 'Enter manually', device: { id: Number.MAX_SAFE_INTEGER } } as any
+        );
+        return items;
     }
 
     /**
