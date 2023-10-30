@@ -9,6 +9,7 @@ import { URL } from 'url';
 import { util } from './util';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
+import type { Disposable } from 'vscode';
 
 const DEFAULT_TIMEOUT = 10000;
 
@@ -45,13 +46,15 @@ export class ActiveDeviceManager {
 
     private emitter = new EventEmitter();
 
-    public on(eventName: 'device-expire', handler: (device: RokuDeviceDetails) => void);
-    public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void);
-    public on(eventName: string, handler: (payload: any) => void) {
+    public on(eventName: 'device-expire', handler: (device: RokuDeviceDetails) => void): Disposable;
+    public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void): Disposable;
+    public on(eventName: string, handler: (payload: any) => void): Disposable {
         this.emitter.on(eventName, handler);
-        return () => {
-            if (this.emitter !== undefined) {
-                this.emitter.removeListener(eventName, handler);
+        return {
+            dispose: () => {
+                if (this.emitter !== undefined) {
+                    this.emitter.removeListener(eventName, handler);
+                }
             }
         };
     }
@@ -254,7 +257,7 @@ class RokuFinder extends EventEmitter {
                             const device: RokuDeviceDetails = {
                                 location: url.origin,
                                 ip: url.hostname,
-                                id: info['device-info']['device-id'],
+                                id: info['device-info']['device-id']?.toString?.(),
                                 deviceInfo: info['device-info']
                             };
                             this.emit('found', device);

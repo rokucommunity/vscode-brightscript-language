@@ -7,6 +7,7 @@ import * as rta from 'roku-test-automation';
 import type {
     CancellationToken,
     DebugConfigurationProvider,
+    Disposable,
     ExtensionContext,
     QuickPickItem,
     WorkspaceFolder
@@ -18,6 +19,12 @@ import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
 import { debounce } from 'debounce';
+
+/**
+ * An id to represent the "Enter manually" option in the host picker
+ */
+const manualHostItemId = `${Number.MAX_SAFE_INTEGER}`;
+const manualLabel = 'Enter manually';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
@@ -438,15 +445,21 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async promptForHost() {
         const deferred = new Deferred<string>();
-        const disposables: Array<() => any> = [];
+        const disposables: Array<Disposable> = [];
 
         const discoveryTime = 5_000;
-        const manualLabel = 'Enter manually';
 
         //create the quickpick item
         const quickPick = vscode.window.createQuickPick();
+        disposables.push(quickPick);
         quickPick.placeholder = `Please Select a Roku or manually type an IP address`;
         quickPick.keepScrollPosition = true;
+
+        function dispose() {
+            for (const disposable of disposables) {
+                disposable.dispose();
+            }
+        }
 
         //allow the user to manually type an IP address
         quickPick.onDidAccept(() => {
@@ -456,33 +469,57 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //create a text-based spinner factory for use in the "loading ..." label
         const generateSpinnerText = util.createTextSpinner(3);
 
+        const itemCache = new Map<string, QuickPickHostItem>();
+
         const refreshListDebounced = debounce(() => refreshList(true), 400);
 
         const refreshList = (updateSpinnerText = false) => {
+            console.log('refreshList', { updateSpinnerText: updateSpinnerText });
             const { activeItems } = quickPick;
             let spinnerText = '';
             if (this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime) {
                 spinnerText = ` (searching ${generateSpinnerText(updateSpinnerText)})`;
                 refreshListDebounced();
             }
-            quickPick.items = this.createHostQuickPickList(
+            const items = this.createHostQuickPickList(
                 this.activeDeviceManager.getActiveDevices(),
                 this.activeDeviceManager.lastUsedDevice,
-                spinnerText
+                spinnerText,
+                itemCache
             );
-            quickPick.activeItems = activeItems;
+            quickPick.items = items;
+
+            // highlight the first non-separator item
+            if (activeItems.length === 0) {
+                for (const item of items) {
+                    if (item.kind !== vscode.QuickPickItemKind.Separator && item.device?.id !== manualHostItemId) {
+                        quickPick.activeItems = [item];
+                        break;
+                    }
+                }
+            } else {
+                //restore previously highlighted item
+                quickPick.activeItems = activeItems;
+            }
             quickPick.show();
         };
 
         //anytime the device picker adds/removes a device, update the list
         disposables.push(
-            this.activeDeviceManager.on('device-found', () => refreshList()),
-            this.activeDeviceManager.on('device-expire', () => refreshList())
+            this.activeDeviceManager.on('device-found', () => {
+                console.log('device found');
+                refreshList();
+            }),
+            this.activeDeviceManager.on('device-expire', () => {
+                console.log('device expire');
+                refreshList();
+            })
         );
 
         quickPick.onDidHide(() => {
+            dispose();
             deferred.reject(new Error('No host was selected'));
-            quickPick.dispose();
+
         });
 
         quickPick.onDidChangeSelection(selection => {
@@ -505,10 +542,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //run the list refresh once to show the popup
         refreshList();
         const result = await deferred.promise;
-        quickPick.dispose();
-        for (const disposable of disposables) {
-            disposable();
-        }
+        dispose();
         return result;
     }
 
@@ -519,12 +553,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     /**
      * Generate the item list for the `this.promptForHost()` call
      */
-    private createHostQuickPickList(devices: RokuDeviceDetails[], lastUsedDevice: RokuDeviceDetails, spinnerText: string) {
+    private createHostQuickPickList(devices: RokuDeviceDetails[], lastUsedDevice: RokuDeviceDetails, spinnerText: string, cache = new Map<string, QuickPickHostItem>()) {
         //the collection of items we will eventually return
-        let items: Array<QuickPickItem & { device?: RokuDeviceDetails }> = [];
+        let items: QuickPickHostItem[] = [];
 
-        //yank the last used device out of the list so we can think about the remaining list more easily
-        lastUsedDevice = devices.find(x => x.id === lastUsedDevice?.id);
+        //find the lastUsedDevice from the devices list if possible, or use the data from the lastUsedDevice if not
+        lastUsedDevice = devices.find(x => x.id === lastUsedDevice?.id) ?? lastUsedDevice;
         //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
         devices = devices.filter(x => x.id !== lastUsedDevice?.id);
 
@@ -567,8 +601,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // allow user to manually type an IP address
         items.push(
-            { label: 'Enter manually', device: { id: Number.MAX_SAFE_INTEGER } } as any
+            { label: 'Enter manually', device: { id: manualHostItemId } } as any
         );
+
+        // replace items with their cached versions if found (to maintain references)
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (cache.has(item.label)) {
+                items[i] = cache.get(item.label);
+                items[i].device = item.device;
+            } else {
+                cache.set(item.label, item);
+            }
+        }
+
         return items;
     }
 
@@ -690,3 +736,5 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 }
+
+type QuickPickHostItem = QuickPickItem & { device?: RokuDeviceDetails };
