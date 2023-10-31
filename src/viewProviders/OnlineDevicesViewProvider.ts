@@ -32,7 +32,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
         });
 
-        this.activeDeviceManager.on('device-expire', device => {
+        this.activeDeviceManager.on('device-expired', device => {
             // Remove the device from the list
             const foundIndex = this.devices.findIndex(x => x.id === device.id);
             this.devices.splice(foundIndex, 1);

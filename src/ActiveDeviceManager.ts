@@ -39,27 +39,31 @@ export class ActiveDeviceManager {
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
         //anytime a device leaves the cache (either expired or manually deleted)
         this.deviceCache.on('del', (deviceId, device) => {
-            void this.emit('device-expire', device);
+            void this.emit('device-expired', device);
         });
         this.processEnabledState();
     }
 
     private emitter = new EventEmitter();
 
-    public on(eventName: 'device-expire', handler: (device: RokuDeviceDetails) => void): Disposable;
-    public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void): Disposable;
-    public on(eventName: string, handler: (payload: any) => void): Disposable {
+    public on(eventName: 'device-expired', handler: (device: RokuDeviceDetails) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
         this.emitter.on(eventName, handler);
-        return {
-            dispose: () => {
-                if (this.emitter !== undefined) {
-                    this.emitter.removeListener(eventName, handler);
-                }
+        const unsubscribe = () => {
+            if (this.emitter !== undefined) {
+                this.emitter.removeListener(eventName, handler);
             }
         };
+
+        disposables?.push({
+            dispose: unsubscribe
+        });
+
+        return unsubscribe;
     }
 
-    private async emit(eventName: 'device-expire', device: RokuDeviceDetails);
+    private async emit(eventName: 'device-expired', device: RokuDeviceDetails);
     private async emit(eventName: 'device-found', device: RokuDeviceDetails);
     private async emit(eventName: string, data?: any) {
         //emit these events on next tick, otherwise they will be processed immediately which could cause issues

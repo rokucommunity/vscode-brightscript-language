@@ -367,7 +367,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('includes "manual', () => {
             expect(
-                configProvider['createHostQuickPickList']([], undefined, '')
+                configProvider['createHostQuickPickList']([], undefined)
             ).to.eql([{
                 label: 'Enter manually',
                 device: {
@@ -378,7 +378,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('includes separators for devices and manual options', () => {
             expect(
-                configProvider['createHostQuickPickList']([devices[0]], undefined, '')
+                configProvider['createHostQuickPickList']([devices[0]], undefined)
             ).to.eql([
                 {
                     kind: QuickPickItemKind.Separator,
@@ -402,7 +402,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('moves active device to the top', () => {
             expect(
-                configProvider['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1], '').map(x => x.label)
+                configProvider['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1]).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -416,47 +416,46 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('includes the spinner text when "last used" and "other devices" separators are both present', () => {
             expect(
-                configProvider['createHostQuickPickList'](devices, devices[1], ' (searching ...)').map(x => x.label)
+                configProvider['createHostQuickPickList'](devices, devices[1]).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
                 'other devices',
                 label(devices[0]),
                 label(devices[2]),
-                '(searching ...)',
+                ' ',
                 'Enter manually'
             ]);
         });
 
         it('includes the spinner text if "devices" separator is present', () => {
             expect(
-                configProvider['createHostQuickPickList'](devices, null, ' (searching ...)').map(x => x.label)
+                configProvider['createHostQuickPickList'](devices, null).map(x => x.label)
             ).to.eql([
                 'devices',
                 label(devices[0]),
                 label(devices[1]),
                 label(devices[2]),
-                '(searching ...)',
+                ' ',
                 'Enter manually'
             ]);
         });
 
         it('includes the spinner text if only "last used" separator is present', () => {
             expect(
-                configProvider['createHostQuickPickList']([devices[0]], devices[0], ' (searching ...)').map(x => x.label)
+                configProvider['createHostQuickPickList']([devices[0]], devices[0]).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[0]),
-                '(searching ...)',
+                ' ',
                 'Enter manually'
             ]);
         });
 
         it('includes the spinner text when no other device entries are present', () => {
             expect(
-                configProvider['createHostQuickPickList']([], null, ' (searching ...)').map(x => x.label)
+                configProvider['createHostQuickPickList']([], null).map(x => x.label)
             ).to.eql([
-                '(searching ...)',
                 'Enter manually'
             ]);
         });

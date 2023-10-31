@@ -400,35 +400,22 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
+    private async promptForHostManual() {
+        return this.openInputBox('The IP address of your Roku device');
+    }
+
     /**
      * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        let showInputBox = false;
-
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
             if (this.activeDeviceManager.enabled) {
-                const host = await this.promptForHost();
-                if (host === 'Enter manually') {
-                    showInputBox = true;
-                } else if (host) {
-                    config.host = host;
-                } else {
-                    // User canceled. Give them one more change to enter an ip
-                    showInputBox = true;
-                }
+                config.host = await this.promptForHost();
             } else {
-                showInputBox = true;
+                config.host = await this.promptForHostManual();
             }
-        } else {
-            showInputBox = true;
         }
-
-        if (showInputBox) {
-            config.host = await this.openInputBox('The IP address of your Roku device');
-        }
-        // #endregion
 
         //check the host and throw error if not provided or update the workspace to set last host
         if (!config.host) {
@@ -444,7 +431,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Prompt the user to pick a host from a list of devices
      */
     private async promptForHost() {
-        const deferred = new Deferred<string>();
+        const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
         const discoveryTime = 5_000;
@@ -461,65 +448,64 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-        //allow the user to manually type an IP address
+        //detect if the user types an IP address into the picker and presses enter.
         quickPick.onDidAccept(() => {
-            deferred.resolve(quickPick.value);
+            deferred.resolve({
+                ip: quickPick.value
+            });
         });
 
-        //create a text-based spinner factory for use in the "loading ..." label
-        const generateSpinnerText = util.createTextSpinner(3);
+        let activeChangesSinceRefresh = 0;
+        let activeItem: QuickPickItem;
+
+        // remember the currently active item so we can maintain active selection when refreshing the list
+        quickPick.onDidChangeActive((items) => {
+            // reset our activeChanges tracker since users cannot cause items.length to be 0 (meaning a refresh has just happened)
+            if (items.length === 0) {
+                activeChangesSinceRefresh = 0;
+                return;
+            }
+            if (activeChangesSinceRefresh > 0) {
+                activeItem = items[0];
+            }
+            activeChangesSinceRefresh++;
+        });
 
         const itemCache = new Map<string, QuickPickHostItem>();
-
-        const refreshListDebounced = debounce(() => refreshList(true), 400);
-
-        const refreshList = (updateSpinnerText = false) => {
-            console.log('refreshList', { updateSpinnerText: updateSpinnerText });
-            const { activeItems } = quickPick;
-            let spinnerText = '';
-            if (this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime) {
-                spinnerText = ` (searching ${generateSpinnerText(updateSpinnerText)})`;
-                refreshListDebounced();
-            }
+        quickPick.show();
+        const refreshList = () => {
             const items = this.createHostQuickPickList(
                 this.activeDeviceManager.getActiveDevices(),
                 this.activeDeviceManager.lastUsedDevice,
-                spinnerText,
                 itemCache
             );
             quickPick.items = items;
 
-            // highlight the first non-separator item
-            if (activeItems.length === 0) {
-                for (const item of items) {
-                    if (item.kind !== vscode.QuickPickItemKind.Separator && item.device?.id !== manualHostItemId) {
-                        quickPick.activeItems = [item];
-                        break;
-                    }
-                }
-            } else {
-                //restore previously highlighted item
-                quickPick.activeItems = activeItems;
+            // update the busy spinner based on how long it's been since the last discovered device
+            quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
+            setTimeout(() => {
+                quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
+            }, discoveryTime - this.activeDeviceManager.timeSinceLastDiscoveredDevice + 20);
+
+            // clear the activeItem if we can't find it in the list
+            if (!quickPick.items.includes(activeItem)) {
+                activeItem = undefined;
             }
-            quickPick.show();
+
+            // if the user manually selected an item, re-focus that item now that we refreshed the list
+            if (activeItem) {
+                quickPick.activeItems = [activeItem];
+            }
+            // quickPick.show();
         };
 
         //anytime the device picker adds/removes a device, update the list
-        disposables.push(
-            this.activeDeviceManager.on('device-found', () => {
-                console.log('device found');
-                refreshList();
-            }),
-            this.activeDeviceManager.on('device-expire', () => {
-                console.log('device expire');
-                refreshList();
-            })
-        );
+        this.activeDeviceManager.on('device-found', refreshList, disposables);
+        this.activeDeviceManager.on('device-expired', refreshList, disposables);
 
         quickPick.onDidHide(() => {
             dispose();
             deferred.reject(new Error('No host was selected'));
-
         });
 
         quickPick.onDidChangeSelection(selection => {
@@ -529,11 +515,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                     // Handle separator selection
                 } else {
                     if (selectedItem.label === manualLabel) {
-                        deferred.resolve(manualLabel);
+                        deferred.resolve({ manual: true });
                     } else {
                         const device = (selectedItem as any).device as RokuDeviceDetails;
                         this.activeDeviceManager.lastUsedDevice = device;
-                        deferred.resolve(device.ip);
+                        deferred.resolve(device);
                     }
                     quickPick.dispose();
                 }
@@ -543,9 +529,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         refreshList();
         const result = await deferred.promise;
         dispose();
-        return result;
+        if (result?.manual === true) {
+            return this.promptForHostManual();
+        } else {
+            return result?.ip;
+        }
     }
 
+    /**
+     * Generate the label used when showing "host" entries in a quick picker
+     * @param device the device containing all the info
+     * @returns a properly formatted host string
+     */
     private createHostLabel(device: RokuDeviceDetails) {
         return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
     }
@@ -553,7 +548,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     /**
      * Generate the item list for the `this.promptForHost()` call
      */
-    private createHostQuickPickList(devices: RokuDeviceDetails[], lastUsedDevice: RokuDeviceDetails, spinnerText: string, cache = new Map<string, QuickPickHostItem>()) {
+    private createHostQuickPickList(devices: RokuDeviceDetails[], lastUsedDevice: RokuDeviceDetails, cache = new Map<string, QuickPickHostItem>()) {
         //the collection of items we will eventually return
         let items: QuickPickHostItem[] = [];
 
@@ -595,8 +590,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
 
         //include a divider between devices and "manual" option (only if we have devices)
-        if (spinnerText || lastUsedDevice || devices.length) {
-            items.push({ label: spinnerText.trim() || ' ', kind: vscode.QuickPickItemKind.Separator });
+        if (lastUsedDevice || devices.length) {
+            items.push({ label: ' ', kind: vscode.QuickPickItemKind.Separator });
         }
 
         // allow user to manually type an IP address
