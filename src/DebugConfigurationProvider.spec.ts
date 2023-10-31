@@ -7,6 +7,7 @@ import type { WorkspaceFolder } from 'vscode';
 import { QuickPickItemKind } from 'vscode';
 import Uri from 'vscode-uri';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { manualHostItemId } from './DebugConfigurationProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
@@ -370,7 +371,7 @@ describe('BrightScriptConfigurationProvider', () => {
             ).to.eql([{
                 label: 'Enter manually',
                 device: {
-                    id: Number.MAX_SAFE_INTEGER
+                    id: manualHostItemId
                 }
             }]);
         });
@@ -393,7 +394,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 }, {
                     label: 'Enter manually',
                     device: {
-                        id: Number.MAX_SAFE_INTEGER
+                        id: manualHostItemId
                     }
                 }]
             );

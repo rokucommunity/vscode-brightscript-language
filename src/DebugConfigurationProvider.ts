@@ -23,7 +23,7 @@ import { debounce } from 'debounce';
 /**
  * An id to represent the "Enter manually" option in the host picker
  */
-const manualHostItemId = `${Number.MAX_SAFE_INTEGER}`;
+export const manualHostItemId = `${Number.MAX_SAFE_INTEGER}`;
 const manualLabel = 'Enter manually';
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
