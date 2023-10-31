@@ -1,4 +1,11 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel } from 'vscode';
+import { EventEmitter } from 'eventemitter3';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+
+//copied from vscode to help with unit tests
+enum QuickPickItemKind {
+    Separator = -1,
+    Default = 0
+}
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
@@ -20,6 +27,7 @@ export let vscode = {
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
+    QuickPickItemKind: QuickPickItemKind,
     StatusBarAlignment: {
         Left: 1,
         Right: 2
@@ -144,12 +152,46 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        showInputBox: () => { },
         createStatusBarItem: () => {
             return {
                 clear: () => { },
                 text: '',
                 show: () => { }
             };
+        },
+        createQuickPick: () => {
+            class QuickPick {
+                private emitter = new EventEmitter();
+
+                public placeholder = '';
+
+                public items: QuickPickItem[];
+                public keepScrollPosition = false;
+
+                public show() { }
+
+                public onDidAccept(cb) {
+                    this.emitter.on('didAccept', cb);
+                }
+
+                public onDidHide(cb) {
+                    this.emitter.on('didHide', cb);
+                }
+
+                public hide() {
+                    this.emitter.emit('didHide');
+                }
+
+                public onDidChangeSelection(cb) {
+                    this.emitter.on('didChangeSelection', cb);
+                }
+
+                public dispose() {
+                    this.emitter.removeAllListeners();
+                }
+            }
+            return new QuickPick();
         },
         createOutputChannel: function(name?: string) {
             return {
