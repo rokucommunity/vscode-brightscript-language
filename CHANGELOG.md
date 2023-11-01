@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.44.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.44.0...v2.44.1) - 2023-10-31
+### Changed
+ - Enhance host picker during launch ([#512](https://github.com/rokucommunity/vscode-brightscript-language/pull/512))
+ - Add link for ECP registry ([#511](https://github.com/rokucommunity/vscode-brightscript-language/pull/511))
+ - Add brs to releases script ([5c6622b](https://github.com/rokucommunity/vscode-brightscript-language/commit/5c6622b))
+ - upgrade to [roku-debug@0.20.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0208---2023-10-31). Notable changes since 0.20.7:
+     - Clean up control socket when it's closed ([roku-debug#166](https://github.com/rokucommunity/roku-debug/pull/166))
+
+
+
 ## [2.44.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.43.1...v2.44.0) - 2023-10-16
 ### Added
  - ability to capture device screenshots ([#505](https://github.com/rokucommunity/vscode-brightscript-language/pull/505))
