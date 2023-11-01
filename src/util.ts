@@ -243,7 +243,7 @@ class Util {
      * Shows ether a QuickPick or InputBox to the user and allows them to enter
      * items not in the QuickPick list of items
      */
-    public async showQuickPickInputBox(configuration: { placeholder?: string; items?: vscode.QuickPickItem[]; matchOnDescription?: boolean; matchOnDetail?: boolean; returnDetail?: boolean } = {}): Promise<string | null> {
+    public async showQuickPickInputBox(configuration: { placeholder?: string; items?: vscode.QuickPickItem[]; matchOnDescription?: boolean; matchOnDetail?: boolean } = {}): Promise<string | null> {
         if (configuration?.items?.length) {
             // We have items so use QuickPick
             const quickPick = vscode.window.createQuickPick();
@@ -264,11 +264,7 @@ class Util {
                     // Since we clear the active item when the user types (onDidChangeValue)
                     // there will only be an active item if the user clicked on an item with
                     // the mouse or used the arrows keys and then hit enter with one selected.
-                    if (configuration?.returnDetail) {
-                        resolve(quickPick.activeItems?.[0]?.detail);
-                    } else {
-                        resolve(quickPick.activeItems?.[0]?.label ?? quickPick.value);
-                    }
+                    resolve(quickPick.activeItems?.[0]?.label ?? quickPick.value);
                 });
 
                 quickPick.onDidHide(() => {
