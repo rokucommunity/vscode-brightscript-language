@@ -10,6 +10,7 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import * as xml2js from 'xml2js';
 
 export class BrightScriptCommands {
 
@@ -263,20 +264,21 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('openQuickInputBox', async (url: string, placeholder: string, appNames: vscode.QuickPickItem[]) => {
-            const stuffUserTyped = await util.showQuickPickInputBox({
-                placeholder: placeholder,
-                items: appNames,
-                returnDetail: true
-            });
+        this.registerCommand('openRegistry', async (host: string) => {
+            if (!host) {
+                host = await this.getRemoteHost();
+            }
+            const apps = await util.httpGet(`http://${host}:8060/query/apps`);
+            let parsedApps = this.parseXmlResponse(apps.body);
+            const selectedApp = await vscode.window.showQuickPick(parsedApps, { placeHolder: 'Which app would you like to see the registry for?' });
 
-            if (stuffUserTyped) {
-                const appId = stuffUserTyped.replace('App ID: ', '');
-                const newUrl = url.replace('{appId}', appId);
+            if (selectedApp) {
+                const appId = (selectedApp as any).appId;
+                let url = `http://${host}:8060/query/registry/${appId}`;
                 try {
-                    await vscode.env.openExternal(vscode.Uri.parse(newUrl));
+                    await vscode.env.openExternal(vscode.Uri.parse(url));
                 } catch (error) {
-                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${newUrl}`);
+                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
                 }
             }
         });
@@ -438,5 +440,41 @@ export class BrightScriptCommands {
 
     private async sendAsciiToDevice(character: string) {
         await this.sendRemoteCommand(character, undefined, true);
+    }
+
+    private parseXmlResponse(responseData) {
+        let appNames: vscode.QuickPickItem[] = [];
+
+        // Extract the XML content
+        const xmlStartIndex = responseData.indexOf('<?xml');
+        const xmlContent = responseData.slice(xmlStartIndex);
+        xml2js.parseString(xmlContent, (err, result) => {
+            if (err) {
+                console.error('Error parsing XML:', err);
+                return;
+            }
+
+            appNames = result.apps.app
+                // Map the XML data to QuickPickItem objects
+                .map((appData: any) => {
+                    return {
+                        label: appData._,
+                        detail: `ID: ${appData.$.id}`,
+                        description: `${appData.$.version}`,
+                        appId: `${appData.$.id}`
+                    } as vscode.QuickPickItem;
+                })
+                // Have the app with id 'dev' be at the top
+                .sort((a, b) => {
+                    if (a.appId === 'dev') {
+                        return -1;
+                    }
+                    if (b.appId === 'dev') {
+                        return 1;
+                    }
+                    return a.label.localeCompare(b.label);
+                });
+        });
+        return appNames;
     }
 }
