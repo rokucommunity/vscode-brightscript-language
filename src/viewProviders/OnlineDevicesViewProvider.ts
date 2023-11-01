@@ -5,6 +5,8 @@ import { icons } from '../icons';
 import { firstBy } from 'thenby';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
+import { Socket } from 'net';
+import * as xml2js from 'xml2js';
 
 /**
  * A sequence used to generate unique IDs for tree items that don't care about having a key
@@ -58,8 +60,80 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         }
         return 1;
     }
+    private async getAppData(deviceIp: string): Promise<vscode.QuickPickItem[]> {
+        return new Promise<vscode.QuickPickItem[]>((resolve, reject) => {
+            const appNames: vscode.QuickPickItem[] = [];
+            const client: Socket = new Socket();
+            const port = 8060;
 
-    getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
+            const httpRequest = `GET /query/apps HTTP/1.1\r\n` +
+                                `Host: ${deviceIp}:${port}\r\n` +
+                                `Connection: close\r\n\r\n`;
+            client.connect({ host: deviceIp, port: port }, () => {
+                client.write(httpRequest);
+            });
+
+            let responseData = '';
+            client.on('data', (data) => {
+                responseData += data.toString();
+            });
+
+            client.on('end', () => {
+                try {
+                    const parsedData = this.parseXmlResponse(responseData);
+                    resolve(parsedData);
+                } catch (error) {
+                    console.error('Error:', error);
+                    reject(error);
+                } finally {
+                    client.end();
+                }
+            });
+
+            client.on('error', (error) => {
+                console.error(`Error: ${error.message}`);
+                client.destroy();
+                reject(error);
+            });
+        });
+    }
+
+    private parseXmlResponse(responseData) {
+        let appNames: vscode.QuickPickItem[] = [];
+
+        // Extract the XML content
+        const xmlStartIndex = responseData.indexOf('<?xml');
+        const xmlContent = responseData.slice(xmlStartIndex);
+        xml2js.parseString(xmlContent, (err, result) => {
+            if (err) {
+                console.error('Error parsing XML:', err);
+                return;
+            }
+
+            appNames = result.apps.app
+                // Map the XML data to QuickPickItem objects
+                .map((appData: any) => {
+                    return {
+                        label: appData._,
+                        detail: `App ID: ${appData.$.id}`,
+                        description: `${appData.$.version}`
+                    } as vscode.QuickPickItem;
+                })
+                // Have the app with id 'dev' be at the top
+                .sort((a, b) => {
+                    if (a.detail === 'App ID: dev') {
+                        return -1;
+                    }
+                    if (b.detail === 'App ID: dev') {
+                        return 1;
+                    }
+                    return a.label.localeCompare(b.label);
+                });
+        });
+        return appNames;
+    }
+
+    async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
 
@@ -168,6 +242,9 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
+                let appNames: vscode.QuickPickItem[] = [];
+                appNames = await this.getAppData(device.ip);
+
                 result.unshift(
                     this.createDeviceInfoTreeItem({
                         label: '🔗 View Registry',
@@ -176,9 +253,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                         tooltip: 'View the ECP Registry',
                         description: device.ip,
                         command: {
-                            command: 'extension.brightscript.openUrl',
+                            command: 'extension.brightscript.openQuickInputBox',
                             title: 'Open',
-                            arguments: [`http://${device.ip}:8060/query/registry/dev`]
+                            arguments: [`http://${device.ip}:8060/query/registry/{appId}`,
+                                'Which app would you like to see the registry for?',
+                                appNames]
                         }
                     })
                 );

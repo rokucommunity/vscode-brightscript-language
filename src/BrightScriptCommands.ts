@@ -263,6 +263,24 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('openQuickInputBox', async (url: string, placeholder: string, appNames: vscode.QuickPickItem[]) => {
+            const stuffUserTyped = await util.showQuickPickInputBox({
+                placeholder: placeholder,
+                items: appNames,
+                returnDetail: true
+            });
+
+            if (stuffUserTyped) {
+                const appId = stuffUserTyped.replace('App ID: ', '');
+                const newUrl = url.replace('{appId}', appId);
+                try {
+                    await vscode.env.openExternal(vscode.Uri.parse(newUrl));
+                } catch (error) {
+                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${newUrl}`);
+                }
+            }
+        });
+
         this.registerCommand('showReleaseNotes', () => {
             this.whatsNewManager.showReleaseNotes();
         });
