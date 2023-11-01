@@ -444,11 +444,7 @@ export class BrightScriptCommands {
 
     private parseXmlResponse(responseData) {
         let appNames: vscode.QuickPickItem[] = [];
-
-        // Extract the XML content
-        const xmlStartIndex = responseData.indexOf('<?xml');
-        const xmlContent = responseData.slice(xmlStartIndex);
-        xml2js.parseString(xmlContent, (err, result) => {
+        xml2js.parseString(responseData, (err, result) => {
             if (err) {
                 console.error('Error parsing XML:', err);
                 return;
