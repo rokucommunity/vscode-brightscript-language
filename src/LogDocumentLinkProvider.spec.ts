@@ -1,4 +1,4 @@
-import { assert, expect } from 'chai';
+import { expect } from 'chai';
 import * as path from 'path';
 import * as sinonImport from 'sinon';
 

@@ -10,12 +10,10 @@ import type { DeclarationProvider } from './DeclarationProvider';
 
 export class BrightScriptWorkspaceSymbolProvider implements WorkspaceSymbolProvider {
 
-    constructor(provider: DeclarationProvider, symbolInformationRepository: SymbolInformationRepository) {
-        this.declarationProvider = provider;
+    constructor(symbolInformationRepository: SymbolInformationRepository) {
         this.repo = symbolInformationRepository;
     }
 
-    private declarationProvider: DeclarationProvider;
     private repo: SymbolInformationRepository;
 
     public provideWorkspaceSymbols(query: string, token: CancellationToken): Promise<SymbolInformation[]> {

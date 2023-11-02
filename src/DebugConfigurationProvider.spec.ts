@@ -1,5 +1,3 @@
-/* eslint-disable no-template-curly-in-string */
-import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';

@@ -5,10 +5,7 @@ import * as path from 'path';
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
 
-    private context: vscode.ExtensionContext;
     public register(context: vscode.ExtensionContext) {
-        this.context = context;
-
         context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
                 label: `Change Selected BrighterScript Version`,

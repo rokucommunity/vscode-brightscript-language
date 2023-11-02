@@ -9,8 +9,6 @@ import * as sinonActual from 'sinon';
 import { util } from './util';
 let sinon = sinonActual.createSandbox();
 
-const rootDir = path.normalize(path.dirname(__dirname));
-
 beforeEach(() => {
     sinon.restore();
 });

@@ -16,19 +16,8 @@ Module.prototype.require = function hijacked(file) {
 };
 
 let sinon: sinonImport.SinonSandbox;
-let view;
-let callback;
 beforeEach(() => {
     sinon = sinonImport.createSandbox();
-    view = {
-        webview: {
-            onDidReceiveMessage: (cb) => {
-                callback = cb;
-            },
-            postMessage: (message) => { }
-        },
-        show: () => { }
-    };
 });
 afterEach(() => {
     sinon.restore();

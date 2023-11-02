@@ -325,7 +325,7 @@ class Util {
         }
 
         //do value transforms
-        for (let [key, entry] of result) {
+        for (let [, entry] of result) {
             let { value } = entry;
             for (const secretValue of secretValues) {
                 if (typeof value === 'string') {
