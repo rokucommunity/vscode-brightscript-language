@@ -29,7 +29,6 @@ Module.prototype.require = function hijacked(file) {
 const tempDir = s`${process.cwd()}/.tmp`;
 
 describe('extension', () => {
-    let context: any;
     let languageServerManager: LanguageServerManager;
 
     beforeEach(() => {

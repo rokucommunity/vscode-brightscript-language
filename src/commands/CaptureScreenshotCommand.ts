@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as fsExtra from 'fs-extra';
 import * as rokuDeploy from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 

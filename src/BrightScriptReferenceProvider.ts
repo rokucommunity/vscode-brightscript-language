@@ -53,7 +53,6 @@ export class BrightScriptReferenceProvider implements vscode.ReferenceProvider {
         let locations = [];
         let searchTerm = word;
         let regex = new RegExp(searchTerm, 'ig');
-        let wordLength = word.length;
         for (const [line, text] of iterlines(input)) {
             let result;
             while ((result = regex.exec(text))) {

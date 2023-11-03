@@ -11,9 +11,9 @@ import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationV
 
 export class WebviewViewProviderManager {
     constructor(
-        private context: vscode.ExtensionContext,
+        context: vscode.ExtensionContext,
         private rtaManager: RtaManager,
-        private brightScriptCommands: BrightScriptCommands
+        brightScriptCommands: BrightScriptCommands
     ) {
 
         for (const webview of this.webviewViews) {

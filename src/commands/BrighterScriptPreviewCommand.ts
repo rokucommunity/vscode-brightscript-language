@@ -1,6 +1,5 @@
-import { Uri, Position, Range } from 'vscode';
+import { Uri, Range } from 'vscode';
 import * as vscode from 'vscode';
-import { extension } from '../extension';
 import { util } from '../util';
 import * as path from 'path';
 import * as querystring from 'querystring';
@@ -129,7 +128,7 @@ export class BrighterScriptPreviewCommand {
     /**
      * Sync a source editor to the selection in the preview editor
      */
-    private async syncSourceLocation(uri: vscode.Uri) {
+    public async syncSourceLocation(uri: vscode.Uri) {
         let sourceFsPath = this.getSourcePathFromPreviewUri(uri);
         let activePreview = this.activePreviews[sourceFsPath];
 

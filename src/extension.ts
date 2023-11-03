@@ -96,14 +96,12 @@ export class Extension {
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
-        let languageServerPromise = languageServerManager.init(context, definitionRepo);
-
         //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
         vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
