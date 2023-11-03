@@ -5,7 +5,6 @@ import { icons } from '../icons';
 import { firstBy } from 'thenby';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
-import { Socket } from 'net';
 
 /**
  * A sequence used to generate unique IDs for tree items that don't care about having a key
