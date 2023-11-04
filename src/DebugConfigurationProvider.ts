@@ -18,6 +18,10 @@ import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
 import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManager';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import cloneDeep = require('clone-deep');
+import { rokuDeploy } from 'roku-deploy';
+import type { DeviceInfo } from 'roku-deploy';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -79,38 +83,48 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        let deviceInfo: DeviceInfo;
         try {
             // merge user and workspace settings into the config
-            config = this.processUserWorkspaceSettings(config);
-
-            //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
-            this.telemetryManager?.sendStartDebugSessionEvent(config);
+            let result = this.processUserWorkspaceSettings(config);
 
             //force a specific staging folder path because sometimes this conflicts with bsconfig.json
-            config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+            result.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
 
-            config = await this.sanitizeConfiguration(config, folder);
-            config = await this.processEnvFile(folder, config);
-            config = await this.processHostParameter(config);
-            config = await this.processPasswordParameter(config);
-            config = await this.processDeepLinkUrlParameter(config);
-            config = await this.processLogfilePath(folder, config);
+            result = await this.sanitizeConfiguration(result, folder);
+            result = await this.processEnvFile(folder, result);
+            result = await this.processHostParameter(result);
+            result = await this.processPasswordParameter(result);
+            result = await this.processDeepLinkUrlParameter(result);
+            result = await this.processLogfilePath(folder, result);
 
-            await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
+            deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
 
-            return config;
+            if (!deviceInfo.developerEnabled) {
+                throw new Error(`Cannot deploy: '${result.host}' has not enabled developer mode`);
+            }
+
+            await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
+
+            return result;
         } catch (e) {
             //log any exceptions to the extension panel
             this.extensionOutputChannel.append((e as Error).stack);
             throw e;
+        } finally {
+            //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
+            this.telemetryManager?.sendStartDebugSessionEvent(
+                this.processUserWorkspaceSettings(config) as any,
+                deviceInfo
+            );
         }
     }
 
     /**
      * There are several debug-level config values that can be stored in user settings, so get those
      */
-    private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration) {
+    private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
         const workspaceConfig = vscode.workspace.getConfiguration('brightscript.debug');
 
         let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
@@ -135,9 +149,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //merge the user/workspace settings in with the config (the config wins on conflict)
         const result = {
             ...userWorkspaceSettings ?? {},
-            ...config ?? {}
+            ...cloneDeep(config ?? {})
         };
-        return result;
+        return result as BrightScriptLaunchConfiguration;
     }
 
     /**
