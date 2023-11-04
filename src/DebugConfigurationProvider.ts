@@ -99,9 +99,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
 
-            deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
+            try {
+                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
+            } catch (e) {
+                // a failed deviceInfo request should NOT fail the launch
+                console.error(`Failed to fetch device info for ${result.host}`, e);
+            }
 
-            if (!deviceInfo.developerEnabled) {
+            if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: '${result.host}' has not enabled developer mode`);
             }
 
