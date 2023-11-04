@@ -120,7 +120,7 @@
         "rimraf": "^3.0.0",
         "sinon": "^7.2.3",
         "source-map-support": "^0.5.21",
-        "statigen": "^0.5.1",
+        "statigen": "^0.5.2",
         "terminal-overwrite": "^2.0.1",
         "ts-node": "^10.9.1",
         "tslib": "^2.3.1",
