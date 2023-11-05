@@ -107,7 +107,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
-                throw new Error(`Cannot deploy: '${result.host}' has not enabled developer mode`);
+                throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
