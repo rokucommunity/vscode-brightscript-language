@@ -3,6 +3,7 @@ import type { Disposable } from 'vscode';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
 import * as vscode from 'vscode';
+import type { DeviceInfo } from 'roku-deploy';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -31,7 +32,7 @@ export class TelemetryManager implements Disposable {
     /**
      * Track when a debug session has been started
      */
-    public sendStartDebugSessionEvent(event: BrightScriptLaunchConfiguration & { preLaunchTask: string }) {
+    public sendStartDebugSessionEvent(event: BrightScriptLaunchConfiguration & { preLaunchTask: string }, deviceInfo?: DeviceInfo) {
         this.reporter.sendTelemetryEvent('startDebugSession', {
             enableDebugProtocol: boolToString(event.enableDebugProtocol),
             retainDeploymentArchive: boolToString(event.retainDeploymentArchive),
@@ -45,7 +46,14 @@ export class TelemetryManager implements Disposable {
             isLogfilePathDefined: isDefined(event.logfilePath),
             isExtensionLogfilePathDefined: isDefined(
                 vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
-            )
+            ),
+            // include some deviceInfo data
+            deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,
+            deviceInfoSoftwareBuild: deviceInfo?.softwareBuild?.toString(),
+            deviceInfoBrightscriptDebuggerVersion: deviceInfo?.brightscriptDebuggerVersion,
+            deviceInfoCountry: deviceInfo?.country,
+            deviceInfoLocale: deviceInfo?.locale,
+            deviceInfoUiResolution: deviceInfo?.uiResolution
         });
     }
 

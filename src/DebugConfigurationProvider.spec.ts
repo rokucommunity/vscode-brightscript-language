@@ -12,6 +12,7 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import type { RokuDeviceDetails } from './ActiveDeviceManager';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { rokuDeploy } from 'roku-deploy';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -78,6 +79,8 @@ describe('BrightScriptConfigurationProvider', () => {
             // Override any properties that would cause a prompt if not overridden
             configDefaults.host = '192.168.1.100';
             configDefaults.password = 'aaaa';
+            //return an empty deviceInfo response
+            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(Promise.reject(new Error('Failure during test')));
         });
 
         afterEach(() => {
