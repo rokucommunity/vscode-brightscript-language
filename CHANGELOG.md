@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.0...v2.45.1) - 2023-11-06
+### Fixed
+ - extension crash introduced in 2.45.0 ([#520](https://github.com/rokucommunity/vscode-brightscript-language/pull/520))
+
+
+
 ## [2.45.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.44.1...v2.45.0) - 2023-11-06
 ### Changed
  - Auto-enable debug protocol on 12.5 devices ([#517](https://github.com/rokucommunity/vscode-brightscript-language/pull/517))
