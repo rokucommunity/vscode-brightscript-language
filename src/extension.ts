@@ -95,6 +95,9 @@ export class Extension {
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
+        //initialize the LanguageServerManager
+        void languageServerManager.init(context, definitionRepo);
+
         //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
