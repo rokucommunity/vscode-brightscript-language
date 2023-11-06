@@ -1,4 +1,5 @@
 import { Deferred, util as bslangUtil } from 'brighterscript';
+import * as semver from 'semver';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -22,6 +23,7 @@ import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManag
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
+import type { GlobalStateManager } from './GlobalStateManager';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -35,7 +37,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private context: ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
-        private extensionOutputChannel: vscode.OutputChannel
+        private extensionOutputChannel: vscode.OutputChannel,
+        private globalStateManager: GlobalStateManager
     ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
@@ -80,14 +83,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private configDefaults: any;
 
     /**
+     * A counter used to track how often the user clicks the "use telnet" button in the popup
+     */
+    private useTelnetCounter = 0;
+
+    /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
         let deviceInfo: DeviceInfo;
+        let result: BrightScriptLaunchConfiguration;
         try {
             // merge user and workspace settings into the config
-            let result = this.processUserWorkspaceSettings(config);
+            result = this.processUserWorkspaceSettings(config);
 
             //force a specific staging folder path because sometimes this conflicts with bsconfig.json
             result.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
@@ -110,6 +119,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
+            result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
             return result;
@@ -121,9 +132,55 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
             this.telemetryManager?.sendStartDebugSessionEvent(
                 this.processUserWorkspaceSettings(config) as any,
+                result,
                 deviceInfo
             );
         }
+    }
+
+    private async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
+        if (config.enableDebugProtocol !== undefined || !semver.gte(deviceInfo?.softwareVersion ?? '0.0.0', '12.5.0')) {
+            config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
+            return config;
+        }
+
+        //auto-pick a value if user chose to snooze the popup
+        if (this.globalStateManager.debugProtocolPopupSnoozeUntilDate && this.globalStateManager.debugProtocolPopupSnoozeUntilDate > new Date()) {
+            config.enableDebugProtocol = this.globalStateManager.debugProtocolPopupSnoozeValue;
+            return config;
+        }
+
+        //enable the debug protocol by default if the user hasn't defined this prop, and the target RokuOS is 12.5 or greater
+        const result = await vscode.window.showInformationMessage('New Debug Protocol Enabled', {
+            modal: true,
+            detail: `We've activated Roku's debug protocol for this session. This will become the default choice in the future and may be implemented without additional notice. Your feedback during this testing phase is invaluable.`
+        }, 'Okay', `Okay (and dont warn again)`, this.useTelnetCounter < 2 ? 'Use telnet' : 'Use telnet (and ask less often)', 'Report an issue');
+
+
+        if (result === 'Okay') {
+            config.enableDebugProtocol = true;
+        } else if (result === `Okay (and dont warn again)`) {
+            config.enableDebugProtocol = true;
+            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
+            //snooze for 2 weeks
+            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (14 * 24 * 60 * 60 * 1000));
+        } else if (result === 'Use telnet') {
+            this.useTelnetCounter++;
+            config.enableDebugProtocol = false;
+        } else if (result === 'Use telnet (and ask less often)') {
+            this.useTelnetCounter = 0;
+            config.enableDebugProtocol = false;
+            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
+            //snooze for 12 hours
+            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (12 * 60 * 60 * 1000));
+        } else if (result === 'Report an issue') {
+            await util.openIssueReporter({ deviceInfo: deviceInfo });
+            throw new Error('Debug session cancelled');
+        } else {
+            throw new Error('Debug session cancelled');
+        }
+
+        return config;
     }
 
     /**
@@ -262,7 +319,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath ??= null;
-        config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;

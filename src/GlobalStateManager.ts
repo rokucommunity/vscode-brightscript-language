@@ -11,7 +11,9 @@ export class GlobalStateManager {
     private keys = {
         lastRunExtensionVersion: 'lastRunExtensionVersion',
         lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion',
-        sendRemoteTextHistory: 'sendRemoteTextHistory'
+        sendRemoteTextHistory: 'sendRemoteTextHistory',
+        debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
+        debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -36,10 +38,29 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
     }
 
+
+    public get debugProtocolPopupSnoozeUntilDate(): Date {
+        const epoch = this.context.globalState.get<number>(this.keys.debugProtocolPopupSnoozeUntilDate);
+        if (epoch) {
+            return new Date(epoch);
+        }
+    }
+    public set debugProtocolPopupSnoozeUntilDate(value: Date) {
+        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeUntilDate, value?.getTime());
+    }
+
+
+    public get debugProtocolPopupSnoozeValue(): boolean {
+        return this.context.globalState.get<boolean>(this.keys.debugProtocolPopupSnoozeValue);
+    }
+    public set debugProtocolPopupSnoozeValue(value: boolean) {
+        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeValue, value);
+    }
+
+
     public get sendRemoteTextHistory(): string[] {
         return this.context.globalState.get(this.keys.sendRemoteTextHistory) ?? [];
     }
-
     public set sendRemoteTextHistory(history: string[]) {
         history ??= [];
         // only update the results if the user has the the history enabled
