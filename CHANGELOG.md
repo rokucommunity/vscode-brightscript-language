@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.44.1...v2.45.0) - 2023-11-06
+### Changed
+ - Auto-enable debug protocol on 12.5 devices ([#517](https://github.com/rokucommunity/vscode-brightscript-language/pull/517))
+ - Telemetry tracking for roku OS version ([#516](https://github.com/rokucommunity/vscode-brightscript-language/pull/516))
+ - upgrade to [roku-deploy@3.10.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3104---2023-11-03). Notable changes since 3.10.3:
+     - Enhance getDeviceInfo() method ([roku-deploy#120](https://github.com/rokucommunity/roku-deploy/pull/120))
+ - upgrade to [roku-debug@0.20.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0209---2023-11-05). Notable changes since 0.20.8:
+     - Upgrade to new deviceInfo api from roku-deploy ([roku-debug#167](https://github.com/rokucommunity/roku-debug/pull/167))
+ - upgrade to [brighterscript@0.65.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0659---2023-11-06). Notable changes since 0.65.8:
+     - Fix issue with unary expression parsing ([brighterscript#938](https://github.com/rokucommunity/brighterscript/pull/938))
+
+
+
 ## [2.44.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.44.0...v2.44.1) - 2023-10-31
 ### Changed
  - Enhance host picker during launch ([#512](https://github.com/rokucommunity/vscode-brightscript-language/pull/512))
