@@ -1,4 +1,5 @@
 import { Deferred, util as bslangUtil } from 'brighterscript';
+import * as semver from 'semver';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -22,6 +23,7 @@ import type { ActiveDeviceManager, RokuDeviceDetails } from './ActiveDeviceManag
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
+import type { GlobalStateManager } from './GlobalStateManager';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -35,7 +37,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private context: ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
-        private extensionOutputChannel: vscode.OutputChannel
+        private extensionOutputChannel: vscode.OutputChannel,
+        private globalStateManager: GlobalStateManager
     ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
@@ -110,6 +113,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
+            result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
             return result;
@@ -124,6 +129,35 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 deviceInfo
             );
         }
+    }
+
+    private async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
+        if (config.enableDebugProtocol !== undefined || !semver.gte(deviceInfo?.softwareVersion ?? '0.0.0', '12.5.0')) {
+            config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
+            return config;
+        }
+
+        if (this.globalStateManager.suppressDebugProtocolAutoEnabledMessage) {
+            config.enableDebugProtocol = true;
+            return config;
+        }
+
+        //enable the debug protocol by default if the user hasn't defined this prop, and the target RokuOS is 12.5 or greater
+        const result = await vscode.window.showWarningMessage(`We have just auto-enabled Roku's new debug protocol for this debug session. The debug protocol will soon become the default option without warning, so please be sure to notify us about any issues you encounter while using this feature during this testing phase.`, {
+            modal: true
+        }, 'Okay', `Okay (and dont warn again)`, 'No, use the telnet debugger');
+        //cancel
+        if (result === undefined) {
+            throw new Error('Debug session cancelled');
+        } else if (result === 'Okay') {
+            config.enableDebugProtocol = true;
+        } else if (result === `Okay (and dont warn again)`) {
+            config.enableDebugProtocol = true;
+            this.globalStateManager.suppressDebugProtocolAutoEnabledMessage = true;
+        } else if (result === 'No, use the telnet debugger') {
+            config.enableDebugProtocol = false;
+        }
+        return config;
     }
 
     /**
@@ -262,7 +296,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath ??= null;
-        config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;

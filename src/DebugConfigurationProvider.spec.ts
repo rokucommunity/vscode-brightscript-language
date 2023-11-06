@@ -1,5 +1,6 @@
 import { assert, expect } from 'chai';
 import * as path from 'path';
+import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
 import { QuickPickItemKind } from 'vscode';
@@ -13,6 +14,7 @@ import * as fsExtra from 'fs-extra';
 import type { RokuDeviceDetails } from './ActiveDeviceManager';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { rokuDeploy } from 'roku-deploy';
+import { GlobalStateManager } from './GlobalStateManager';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -34,16 +36,11 @@ describe('BrightScriptConfigurationProvider', () => {
 
     let configProvider: BrightScriptDebugConfigurationProvider;
     let folder: WorkspaceFolder;
+    let globalStateManager: GlobalStateManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
-        let context = {
-            workspaceState: {
-                update: () => {
-                    return Promise.resolve();
-                }
-            }
-        };
+        globalStateManager = new GlobalStateManager(vscode.context);
 
         folder = {
             uri: Uri.file(rootDir),
@@ -56,10 +53,11 @@ describe('BrightScriptConfigurationProvider', () => {
         let activeDeviceManager = new ActiveDeviceManager();
 
         configProvider = new BrightScriptDebugConfigurationProvider(
-            <any>context,
+            vscode.context,
             activeDeviceManager,
             null,
-            vscode.window.createOutputChannel('Extension')
+            vscode.window.createOutputChannel('Extension'),
+            globalStateManager
         );
     });
 
@@ -460,6 +458,54 @@ describe('BrightScriptConfigurationProvider', () => {
                 'Enter manually'
             ]);
         });
+    });
 
+    describe('processEnableDebugProtocolParameter', () => {
+        let value: string;
+        let stub: SinonStub;
+        beforeEach(() => {
+            stub = sinon.stub(vscode.window, 'showWarningMessage').callsFake(() => {
+                return Promise.resolve(value) as any;
+            });
+        });
+
+        it('sets true when clicked "okay"', async () => {
+            value = 'Okay';
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
+        });
+
+        it('sets true and flips global state when clicked "okay"', async () => {
+            value = `Okay (and dont warn again)`;
+            expect(globalStateManager.suppressDebugProtocolAutoEnabledMessage).to.eql(false);
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
+            expect(globalStateManager.suppressDebugProtocolAutoEnabledMessage).to.eql(true);
+        });
+
+        it('sets false when clicked "No, use the telnet debugger"', async () => {
+            value = 'No, use the telnet debugger';
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(false);
+        });
+
+        it('thorws exception clicked "cancel"', async () => {
+            value = undefined;
+            let ex;
+            try {
+                await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            } catch (e) {
+                ex = e;
+            }
+            expect(ex?.message).to.eql('Debug session cancelled');
+        });
+
+        it('sets to true and does not prompt when "dont show again" was clicked"', async () => {
+            value = `Okay (and dont warn again)`;
+            globalStateManager.suppressDebugProtocolAutoEnabledMessage = true;
+            let config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
+            expect(stub.called).to.be.false;
+        });
     });
 });

@@ -11,7 +11,8 @@ export class GlobalStateManager {
     private keys = {
         lastRunExtensionVersion: 'lastRunExtensionVersion',
         lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion',
-        sendRemoteTextHistory: 'sendRemoteTextHistory'
+        sendRemoteTextHistory: 'sendRemoteTextHistory',
+        suppressDebugProtocolAutoEnabledMessage: 'suppressDebugProtocolAutoEnabledMessage'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -36,10 +37,19 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
     }
 
+    /**
+     * Should the "we auto-enabled the debug protocol for you" message be suppressed? Defaults to false.
+     */
+    public get suppressDebugProtocolAutoEnabledMessage() {
+        return this.context.globalState.get<boolean>(this.keys.suppressDebugProtocolAutoEnabledMessage) === true;
+    }
+    public set suppressDebugProtocolAutoEnabledMessage(value: boolean) {
+        void this.context.globalState.update(this.keys.suppressDebugProtocolAutoEnabledMessage, value);
+    }
+
     public get sendRemoteTextHistory(): string[] {
         return this.context.globalState.get(this.keys.sendRemoteTextHistory) ?? [];
     }
-
     public set sendRemoteTextHistory(history: string[]) {
         history ??= [];
         // only update the results if the user has the the history enabled
