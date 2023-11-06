@@ -206,6 +206,9 @@ export let vscode = {
             } as OutputChannel;
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
+        showInformationMessage: function(message: string) {
+
+        },
         showWarningMessage: function(message: string) {
 
         },

@@ -83,14 +83,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private configDefaults: any;
 
     /**
+     * A counter used to track how often the user clicks the "use telnet" button in the popup
+     */
+    private useTelnetCounter = 0;
+
+    /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
         let deviceInfo: DeviceInfo;
+        let result: BrightScriptLaunchConfiguration;
         try {
             // merge user and workspace settings into the config
-            let result = this.processUserWorkspaceSettings(config);
+            result = this.processUserWorkspaceSettings(config);
 
             //force a specific staging folder path because sometimes this conflicts with bsconfig.json
             result.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
@@ -126,6 +132,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
             this.telemetryManager?.sendStartDebugSessionEvent(
                 this.processUserWorkspaceSettings(config) as any,
+                result,
                 deviceInfo
             );
         }
@@ -137,26 +144,42 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             return config;
         }
 
-        if (this.globalStateManager.suppressDebugProtocolAutoEnabledMessage) {
-            config.enableDebugProtocol = true;
+        //auto-pick a value if user chose to snooze the popup
+        if (this.globalStateManager.debugProtocolPopupSnoozeUntilDate && this.globalStateManager.debugProtocolPopupSnoozeUntilDate > new Date()) {
+            config.enableDebugProtocol = this.globalStateManager.debugProtocolPopupSnoozeValue;
             return config;
         }
 
         //enable the debug protocol by default if the user hasn't defined this prop, and the target RokuOS is 12.5 or greater
-        const result = await vscode.window.showWarningMessage(`We have just auto-enabled Roku's new debug protocol for this debug session. The debug protocol will soon become the default option without warning, so please be sure to notify us about any issues you encounter while using this feature during this testing phase.`, {
-            modal: true
-        }, 'Okay', `Okay (and dont warn again)`, 'No, use the telnet debugger');
-        //cancel
-        if (result === undefined) {
-            throw new Error('Debug session cancelled');
-        } else if (result === 'Okay') {
+        const result = await vscode.window.showInformationMessage('New Debug Protocol Enabled', {
+            modal: true,
+            detail: `We've activated Roku's debug protocol for this session. This will become the default choice in the future and may be implemented without additional notice. Your feedback during this testing phase is invaluable.`
+        }, 'Okay', `Okay (and dont warn again)`, this.useTelnetCounter < 2 ? 'Use telnet' : 'Use telnet (and ask less often)', 'Report an issue');
+
+
+        if (result === 'Okay') {
             config.enableDebugProtocol = true;
         } else if (result === `Okay (and dont warn again)`) {
             config.enableDebugProtocol = true;
-            this.globalStateManager.suppressDebugProtocolAutoEnabledMessage = true;
-        } else if (result === 'No, use the telnet debugger') {
+            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
+            //snooze for 2 weeks
+            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (14 * 24 * 60 * 60 * 1000));
+        } else if (result === 'Use telnet') {
+            this.useTelnetCounter++;
             config.enableDebugProtocol = false;
+        } else if (result === 'Use telnet (and ask less often)') {
+            this.useTelnetCounter = 0;
+            config.enableDebugProtocol = false;
+            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
+            //snooze for 12 hours
+            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (12 * 60 * 60 * 1000));
+        } else if (result === 'Report an issue') {
+            await util.openIssueReporter({ deviceInfo: deviceInfo });
+            throw new Error('Debug session cancelled');
+        } else {
+            throw new Error('Debug session cancelled');
         }
+
         return config;
     }
 

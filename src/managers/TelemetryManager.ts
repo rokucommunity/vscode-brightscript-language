@@ -32,18 +32,29 @@ export class TelemetryManager implements Disposable {
     /**
      * Track when a debug session has been started
      */
-    public sendStartDebugSessionEvent(event: BrightScriptLaunchConfiguration & { preLaunchTask: string }, deviceInfo?: DeviceInfo) {
+    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo) {
+        let debugConnectionType: 'debugProtocol' | 'telnet';
+        let enableDebugProtocol = finalConfig?.enableDebugProtocol ?? initialConfig?.enableDebugProtocol;
+        if (enableDebugProtocol === true) {
+            debugConnectionType = 'debugProtocol';
+        } else if (enableDebugProtocol === false) {
+            debugConnectionType = 'telnet';
+        } else {
+            debugConnectionType = undefined;
+        }
+
         this.reporter.sendTelemetryEvent('startDebugSession', {
-            enableDebugProtocol: boolToString(event.enableDebugProtocol),
-            retainDeploymentArchive: boolToString(event.retainDeploymentArchive),
-            retainStagingFolder: boolToString(event.retainStagingFolder),
-            injectRaleTrackerTask: boolToString(event.injectRaleTrackerTask),
-            isFilesDefined: isDefined(event.files),
-            isPreLaunchTaskDefined: isDefined(event.preLaunchTask),
-            isComponentLibrariesDefined: isDefined(event.componentLibraries),
-            isDeepLinkUrlDefined: isDefined(event.deepLinkUrl),
-            isStagingFolderPathDefined: isDefined(event.stagingFolderPath),
-            isLogfilePathDefined: isDefined(event.logfilePath),
+            enableDebugProtocol: boolToString(initialConfig.enableDebugProtocol),
+            debugConnectionType: debugConnectionType?.toString(),
+            retainDeploymentArchive: boolToString(initialConfig.retainDeploymentArchive),
+            retainStagingFolder: boolToString(initialConfig.retainStagingFolder),
+            injectRaleTrackerTask: boolToString(initialConfig.injectRaleTrackerTask),
+            isFilesDefined: isDefined(initialConfig.files),
+            isPreLaunchTaskDefined: isDefined(initialConfig.preLaunchTask),
+            isComponentLibrariesDefined: isDefined(initialConfig.componentLibraries),
+            isDeepLinkUrlDefined: isDefined(initialConfig.deepLinkUrl),
+            isStagingFolderPathDefined: isDefined(initialConfig.stagingFolderPath),
+            isLogfilePathDefined: isDefined(initialConfig.logfilePath),
             isExtensionLogfilePathDefined: isDefined(
                 vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),

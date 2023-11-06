@@ -12,7 +12,8 @@ export class GlobalStateManager {
         lastRunExtensionVersion: 'lastRunExtensionVersion',
         lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion',
         sendRemoteTextHistory: 'sendRemoteTextHistory',
-        suppressDebugProtocolAutoEnabledMessage: 'suppressDebugProtocolAutoEnabledMessage'
+        debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
+        debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -37,15 +38,25 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
     }
 
-    /**
-     * Should the "we auto-enabled the debug protocol for you" message be suppressed? Defaults to false.
-     */
-    public get suppressDebugProtocolAutoEnabledMessage() {
-        return this.context.globalState.get<boolean>(this.keys.suppressDebugProtocolAutoEnabledMessage) === true;
+
+    public get debugProtocolPopupSnoozeUntilDate(): Date {
+        const epoch = this.context.globalState.get<number>(this.keys.debugProtocolPopupSnoozeUntilDate);
+        if (epoch) {
+            return new Date(epoch);
+        }
     }
-    public set suppressDebugProtocolAutoEnabledMessage(value: boolean) {
-        void this.context.globalState.update(this.keys.suppressDebugProtocolAutoEnabledMessage, value);
+    public set debugProtocolPopupSnoozeUntilDate(value: Date) {
+        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeUntilDate, value?.getTime());
     }
+
+
+    public get debugProtocolPopupSnoozeValue(): boolean {
+        return this.context.globalState.get<boolean>(this.keys.debugProtocolPopupSnoozeValue);
+    }
+    public set debugProtocolPopupSnoozeValue(value: boolean) {
+        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeValue, value);
+    }
+
 
     public get sendRemoteTextHistory(): string[] {
         return this.context.globalState.get(this.keys.sendRemoteTextHistory) ?? [];

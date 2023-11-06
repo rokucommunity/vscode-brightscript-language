@@ -27,8 +27,7 @@ import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
-
-const EXTENSION_ID = 'RokuCommunity.brightscript';
+import { EXTENSION_ID } from './constants';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
