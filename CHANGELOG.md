@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.1...v2.45.2) - 2023-11-08
+### Changed
+ - Better messaging around debugProtocol popup ([#522](https://github.com/rokucommunity/vscode-brightscript-language/pull/522))
+ - upgrade roku-test-automation to 2.0.0-beta.22 to fix issue with RDB ([#521](https://github.com/rokucommunity/vscode-brightscript-language/pull/521))
+ - upgrade to [roku-debug@0.20.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02010---2023-11-08). Notable changes since 0.20.9:
+     - Fix sideload crash ([roku-debug#168](https://github.com/rokucommunity/roku-debug/pull/168))
+ - upgrade to [brighterscript-formatter@1.6.35](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1635---2023-11-08). Notable changes since 1.6.34:
+
+
+
 ## [2.45.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.0...v2.45.1) - 2023-11-06
 ### Fixed
  - extension crash introduced in 2.45.0 ([#520](https://github.com/rokucommunity/vscode-brightscript-language/pull/520))
