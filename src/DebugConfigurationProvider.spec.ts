@@ -477,14 +477,14 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('sets true and flips global state when clicked "okay"', async () => {
-            value = `Okay (and dont warn again)`;
+            value = `Okay (ask less often)`;
             expect(globalStateManager.debugProtocolPopupSnoozeUntilDate).to.eql(undefined);
             const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
             expect(config.enableDebugProtocol).to.eql(true);
             //2 weeks after now
             expect(
                 globalStateManager.debugProtocolPopupSnoozeUntilDate.getTime()
-            ).closeTo(Date.now() + (14 * 24 * 60 * 60 * 1000), 1000);
+            ).closeTo(Date.now() + (12 * 60 * 60 * 1000), 1000);
             expect(globalStateManager.debugProtocolPopupSnoozeValue).to.eql(true);
         });
 
@@ -506,26 +506,12 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('sets to true and does not prompt when "dont show again" was clicked', async () => {
-            value = `Okay (and dont warn again)`;
+            value = `Okay (ask less often)`;
             globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (60 * 1000));
             globalStateManager.debugProtocolPopupSnoozeValue = true;
             let config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
             expect(config.enableDebugProtocol).to.eql(true);
             expect(stub.called).to.be.false;
-        });
-
-        it('shows the alternate telnet prompt after 2 debug sessions', async () => {
-            value = `Use telnet`;
-
-            await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(stub.getCall(stub.callCount - 1).args[4]).to.eql('Use telnet');
-
-            await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(stub.getCall(stub.callCount - 1).args[4]).to.eql('Use telnet');
-
-            value = 'Use telnet (and ask less often)';
-            await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(stub.getCall(stub.callCount - 1).args[4]).to.eql('Use telnet (and ask less often)');
         });
 
         it('shows the issue picker when selected', async () => {

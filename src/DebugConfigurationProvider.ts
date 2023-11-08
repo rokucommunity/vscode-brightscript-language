@@ -83,11 +83,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     private configDefaults: any;
 
     /**
-     * A counter used to track how often the user clicks the "use telnet" button in the popup
-     */
-    private useTelnetCounter = 0;
-
-    /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
@@ -153,22 +148,19 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //enable the debug protocol by default if the user hasn't defined this prop, and the target RokuOS is 12.5 or greater
         const result = await vscode.window.showInformationMessage('New Debug Protocol Enabled', {
             modal: true,
-            detail: `We've activated Roku's debug protocol for this session. This will become the default choice in the future and may be implemented without additional notice. Your feedback during this testing phase is invaluable.`
-        }, 'Okay', `Okay (and dont warn again)`, this.useTelnetCounter < 2 ? 'Use telnet' : 'Use telnet (and ask less often)', 'Report an issue');
-
+            detail: `We've activated Roku's debug protocol for this session (an alternative to the telnet debugger). This will become the default choice sometime in the future and may be implemented without additional notice. Your feedback during this testing phase is invaluable.`
+        }, 'Okay', `Okay (ask less often)`, 'Use telnet', 'Use telnet (ask less often)', 'Report an issue');
 
         if (result === 'Okay') {
             config.enableDebugProtocol = true;
-        } else if (result === `Okay (and dont warn again)`) {
+        } else if (result === `Okay (ask less often)`) {
             config.enableDebugProtocol = true;
             this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
             //snooze for 2 weeks
-            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (14 * 24 * 60 * 60 * 1000));
+            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (12 * 60 * 60 * 1000));
         } else if (result === 'Use telnet') {
-            this.useTelnetCounter++;
             config.enableDebugProtocol = false;
-        } else if (result === 'Use telnet (and ask less often)') {
-            this.useTelnetCounter = 0;
+        } else if (result === 'Use telnet (ask less often)') {
             config.enableDebugProtocol = false;
             this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
             //snooze for 12 hours
