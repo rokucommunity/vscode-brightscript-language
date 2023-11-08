@@ -417,6 +417,10 @@ class Runner {
             'brighterscript'
         ]
     }, {
+        name: 'brs',
+        npmName: '@rokucommunity/brs',
+        dependencies: []
+    }, {
         name: 'ropm',
         dependencies: [
             'brighterscript',
@@ -512,4 +516,3 @@ builder.run(<any>options).catch((error) => {
     console.error(error);
     process.exit(1);
 });
-

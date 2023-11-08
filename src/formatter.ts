@@ -2,11 +2,9 @@ import type { FormattingOptions } from 'brighterscript-formatter';
 import { Runner, Formatter as BrighterScriptFormatter } from 'brighterscript-formatter';
 import type {
     DocumentRangeFormattingEditProvider,
-    ProviderResult,
     TextDocument
 } from 'vscode';
 import {
-    EndOfLine,
     Position,
     Range,
     TextEdit,

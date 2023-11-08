@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
 import { icons } from '../icons';
-import { firstBy } from 'thenby';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
 
@@ -16,25 +15,24 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     public readonly id = ViewProviderId.onlineDevicesView;
 
     constructor(
-        private context: vscode.ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager
     ) {
         this.devices = [];
-        this.activeDeviceManager.on('foundDevice', (newDeviceId: string, newDevice: RokuDeviceDetails) => {
-            if (!this.findDeviceById(newDeviceId)) {
+        this.activeDeviceManager.on('device-found', newDevice => {
+            if (!this.findDeviceById(newDevice.id)) {
                 // Add the device to the list
                 this.devices.push(newDevice);
                 this._onDidChangeTreeData.fire(null);
             } else {
                 // Update the device
-                const foundIndex = this.devices.findIndex(device => device.id === newDeviceId);
+                const foundIndex = this.devices.findIndex(device => device.id === newDevice.id);
                 this.devices[foundIndex] = newDevice;
             }
         });
 
-        this.activeDeviceManager.on('expiredDevice', (deviceId: string, device: RokuDeviceDetails) => {
+        this.activeDeviceManager.on('device-expired', device => {
             // Remove the device from the list
-            const foundIndex = this.devices.findIndex(x => x.id === deviceId);
+            const foundIndex = this.devices.findIndex(x => x.id === device.id);
             this.devices.splice(foundIndex, 1);
             this._onDidChangeTreeData.fire(null);
         });
@@ -49,38 +47,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     private devices: Array<RokuDeviceDetails>;
 
-    private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
-        if (device.deviceInfo['is-stick']) {
-            return 0;
-        }
-        if (device.deviceInfo['is-tv']) {
-            return 2;
-        }
-        return 1;
-    }
-
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
-
-                // Process the root level devices in order by id
-
-                let devices = this.devices.sort(
-                    firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
-                        return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
-                    }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
-                        if (a.id < b.id) {
-                            return -1;
-                        }
-                        if (a.id > b.id) {
-                            return 1;
-                        }
-                        // ids must be equal
-                        return 0;
-                    }));
-
                 let items: DeviceTreeItem[] = [];
-                for (const device of devices) {
+                for (const device of this.devices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
                         device.deviceInfo['user-device-name'] + ' - ' + this.concealString(device.deviceInfo['serial-number']),
@@ -165,6 +136,24 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     }
                 })
             );
+
+            if (semver.satisfies(element.details['software-version'], '>=11')) {
+                // TODO: add ECP system hooks here in the future (like registry call, etc...)
+                result.unshift(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔗 View Registry',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'View the ECP Registry',
+                        description: device.ip,
+                        command: {
+                            command: 'extension.brightscript.openUrl',
+                            title: 'Open',
+                            arguments: [`http://${device.ip}:8060/query/registry/dev`]
+                        }
+                    })
+                );
+            }
 
             result.unshift(
                 this.createDeviceInfoTreeItem({

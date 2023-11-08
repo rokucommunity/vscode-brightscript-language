@@ -1,11 +1,8 @@
 import { expect } from 'chai';
 import * as semver from 'semver';
-import { createSandbox } from 'sinon';
 import { GlobalStateManager } from '../GlobalStateManager';
 import { vscode } from '../mockVscode.spec';
 import { WhatsNewManager } from './WhatsNewManager';
-
-const sinon = createSandbox();
 
 describe('WhatsNewManager', () => {
     let whatsNewManager: WhatsNewManager;

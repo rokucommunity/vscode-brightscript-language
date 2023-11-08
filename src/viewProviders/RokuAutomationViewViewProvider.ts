@@ -129,7 +129,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                         await ecp.sendText(step.value);
                         break;
                     case 'sendKeyPress':
-                        await ecp.sendKeyPress(step.value as any);
+                        await ecp.sendKeypress(step.value as any);
                         break;
                 }
             }

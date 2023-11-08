@@ -5,7 +5,6 @@ import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
-import type { RtaManager } from '../managers/RtaManager';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { ViewProviderCommand } from './ViewProviderCommand';
 

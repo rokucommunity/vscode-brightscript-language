@@ -1,4 +1,11 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel } from 'vscode';
+import { EventEmitter } from 'eventemitter3';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+
+//copied from vscode to help with unit tests
+enum QuickPickItemKind {
+    Separator = -1,
+    Default = 0
+}
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
@@ -20,6 +27,7 @@ export let vscode = {
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
+    QuickPickItemKind: QuickPickItemKind,
     StatusBarAlignment: {
         Left: 1,
         Right: 2
@@ -144,12 +152,46 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        showInputBox: () => { },
         createStatusBarItem: () => {
             return {
                 clear: () => { },
                 text: '',
                 show: () => { }
             };
+        },
+        createQuickPick: () => {
+            class QuickPick {
+                private emitter = new EventEmitter();
+
+                public placeholder = '';
+
+                public items: QuickPickItem[];
+                public keepScrollPosition = false;
+
+                public show() { }
+
+                public onDidAccept(cb) {
+                    this.emitter.on('didAccept', cb);
+                }
+
+                public onDidHide(cb) {
+                    this.emitter.on('didHide', cb);
+                }
+
+                public hide() {
+                    this.emitter.emit('didHide');
+                }
+
+                public onDidChangeSelection(cb) {
+                    this.emitter.on('didChangeSelection', cb);
+                }
+
+                public dispose() {
+                    this.emitter.removeAllListeners();
+                }
+            }
+            return new QuickPick();
         },
         createOutputChannel: function(name?: string) {
             return {
@@ -164,6 +206,12 @@ export let vscode = {
             } as OutputChannel;
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
+        showInformationMessage: function(message: string) {
+
+        },
+        showWarningMessage: function(message: string) {
+
+        },
         showErrorMessage: function(message: string) {
 
         },
@@ -219,32 +267,32 @@ export let vscode = {
             this.line = line;
             this.character = character;
         }
-        private line: number;
-        private character: number;
+        public line: number;
+        public character: number;
     },
     ParameterInformation: class {
         constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
-        private label: string;
-        private documentation: any;
+        public label: string;
+        public documentation: any;
     },
     SignatureHelp: class {
         constructor() {
             this.signatures = [];
         }
-        private signatures: any[];
-        private activeParameter: number;
-        private activeSignature: number;
+        public signatures: any[];
+        public activeParameter: number;
+        public activeSignature: number;
     },
     SignatureInformation: class {
         constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
-        private label: string;
-        private documentation: any;
+        public label: string;
+        public documentation: any;
     },
     Range: class {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
@@ -253,10 +301,10 @@ export let vscode = {
             this.endLine = endLine;
             this.endCharacter = endCharacter;
         }
-        private startLine: number;
-        private startCharacter: number;
-        private endLine: number;
-        private endCharacter: number;
+        public startLine: number;
+        public startCharacter: number;
+        public endLine: number;
+        public endCharacter: number;
     },
     SymbolKind: {
         File: 0,
@@ -293,7 +341,7 @@ export let vscode = {
         }
 
         private text: any;
-        private fileName: string;
+        public fileName: string;
         public getText() {
             return this.text;
         }
@@ -326,14 +374,14 @@ export let vscode = {
             this.range = range;
             this.uri = uri;
         }
-        private range: any;
-        private uri: string;
+        public range: any;
+        public uri: string;
     },
     MarkdownString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-        private value: string;
+        public value: string;
     },
     ThemeColor: class { },
     Uri: {
@@ -350,7 +398,7 @@ export let vscode = {
         constructor(value: string = null) {
             this.value = value;
         }
-        private value: string;
+        public value: string;
     }
 };
 

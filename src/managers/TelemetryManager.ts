@@ -3,6 +3,7 @@ import type { Disposable } from 'vscode';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
 import * as vscode from 'vscode';
+import type { DeviceInfo } from 'roku-deploy';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -31,21 +32,39 @@ export class TelemetryManager implements Disposable {
     /**
      * Track when a debug session has been started
      */
-    public sendStartDebugSessionEvent(event: BrightScriptLaunchConfiguration & { preLaunchTask: string }) {
+    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo) {
+        let debugConnectionType: 'debugProtocol' | 'telnet';
+        let enableDebugProtocol = finalConfig?.enableDebugProtocol ?? initialConfig?.enableDebugProtocol;
+        if (enableDebugProtocol === true) {
+            debugConnectionType = 'debugProtocol';
+        } else if (enableDebugProtocol === false) {
+            debugConnectionType = 'telnet';
+        } else {
+            debugConnectionType = undefined;
+        }
+
         this.reporter.sendTelemetryEvent('startDebugSession', {
-            enableDebugProtocol: boolToString(event.enableDebugProtocol),
-            retainDeploymentArchive: boolToString(event.retainDeploymentArchive),
-            retainStagingFolder: boolToString(event.retainStagingFolder),
-            injectRaleTrackerTask: boolToString(event.injectRaleTrackerTask),
-            isFilesDefined: isDefined(event.files),
-            isPreLaunchTaskDefined: isDefined(event.preLaunchTask),
-            isComponentLibrariesDefined: isDefined(event.componentLibraries),
-            isDeepLinkUrlDefined: isDefined(event.deepLinkUrl),
-            isStagingFolderPathDefined: isDefined(event.stagingFolderPath),
-            isLogfilePathDefined: isDefined(event.logfilePath),
+            enableDebugProtocol: boolToString(initialConfig.enableDebugProtocol),
+            debugConnectionType: debugConnectionType?.toString(),
+            retainDeploymentArchive: boolToString(initialConfig.retainDeploymentArchive),
+            retainStagingFolder: boolToString(initialConfig.retainStagingFolder),
+            injectRaleTrackerTask: boolToString(initialConfig.injectRaleTrackerTask),
+            isFilesDefined: isDefined(initialConfig.files),
+            isPreLaunchTaskDefined: isDefined(initialConfig.preLaunchTask),
+            isComponentLibrariesDefined: isDefined(initialConfig.componentLibraries),
+            isDeepLinkUrlDefined: isDefined(initialConfig.deepLinkUrl),
+            isStagingFolderPathDefined: isDefined(initialConfig.stagingFolderPath),
+            isLogfilePathDefined: isDefined(initialConfig.logfilePath),
             isExtensionLogfilePathDefined: isDefined(
                 vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
-            )
+            ),
+            // include some deviceInfo data
+            deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,
+            deviceInfoSoftwareBuild: deviceInfo?.softwareBuild?.toString(),
+            deviceInfoBrightscriptDebuggerVersion: deviceInfo?.brightscriptDebuggerVersion,
+            deviceInfoCountry: deviceInfo?.country,
+            deviceInfoLocale: deviceInfo?.locale,
+            deviceInfoUiResolution: deviceInfo?.uiResolution
         });
     }
 
