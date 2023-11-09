@@ -117,7 +117,8 @@ describe('LogOutputManager ', () => {
         let compileErrors: BSDebugDiagnostic[] = [{
             path: 'path1',
             message: 'message1',
-            range: util.createRange(1, 2, 3, 4)
+            range: util.createRange(1, 2, 3, 4),
+            severity: 1
         }];
         await logOutputManager.onDidReceiveDebugSessionCustomEvent(new DiagnosticsEvent(compileErrors));
         outputChannelMock.verify();

@@ -23,7 +23,7 @@ import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isTestEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -33,7 +33,6 @@ import { RokuRegistryViewProvider } from './viewProviders/RokuRegistryViewProvid
 import type { BSDebugDiagnostic } from 'roku-debug';
 import { DiagnosticManager } from './managers/DiagnosticManager';
 import { Socket } from 'net';
-import { util as rokuDebugUtil } from 'roku-debug';
 import { networkInterfaces } from 'os';
 import { DebugSessionMediator } from './DebugSessionMediator';
 
@@ -238,9 +237,6 @@ export class Extension {
     }
 
     private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
-        if (isTestEvent(e)) {
-            console.log(e.body.message);
-        }
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);

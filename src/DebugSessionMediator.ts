@@ -1,32 +1,38 @@
-import { defer, util as rokuDebugUtil } from 'roku-debug';
-import * as Socket from 'roku-debug/dist/JsonSocketClient';
+import { JsonMessengerServer } from 'roku-debug';
 
 export class DebugSessionMediator {
     /**
  * The server
  */
-    private server: Socket.JsonMessengerServer;
+    private server: JsonMessengerServer;
 
     public port: number;
-    public activeIoPorts = {};
+    private stateByKey = { };
 
     public async start() {
-        this.server = new Socket.JsonMessengerServer();
+        this.server = new JsonMessengerServer();
         await this.server.connect('0.0.0.0', 9001);
 
         this.server.on('request', (client, event) => {
             if (event.name === 'set-state') {
-                if ('io-socket-status' in event.data) {
-                    this.activeIoPorts[event.data.host] = event.data['io-socket-status'];
-                    client.sendResponse(event, this.activeIoPorts[event.data.host]);
+                if (!(event.data.key in this.stateByKey)) {
+                    this.stateByKey[event.data.key] = {};
                 }
+                if (Object.keys(event.data.state).length === 0) {
+                    const { [event.clientId]: removedKey, ...rest } = this.stateByKey[event.data.key];
+                    this.stateByKey[event.data.key] = rest;
+                } else {
+                    this.stateByKey[event.data.key][event.clientId] = event.data.state;
+                }
+                client.sendResponse(event, this.stateByKey[event.data.key]);
             } else if (event.name === 'get-state') {
-                if ('io-socket-status' in event.data) {
-                    let data = event.data;
-                    data.host = event.data.host;
-                    data['io-socket-status'] = this.activeIoPorts[event.data.host] ?? false;
-                    client.sendResponse(event, data['io-socket-status']);
-                }
+                let data = event.data;
+                data.data = this.stateByKey[event.data.key] ?? {};
+                client.sendResponse(event, data.data);
+
+            } else if (event.name === 'clear-all') {
+                this.stateByKey[event.data.key] = {};
+                client.sendResponse(event, {});
             }
         });
     }
@@ -36,6 +42,7 @@ export class DebugSessionMediator {
     }
 
     public async destroy() {
+        //TODO make sure this is destroyed
         await this.stop();
     }
 }
