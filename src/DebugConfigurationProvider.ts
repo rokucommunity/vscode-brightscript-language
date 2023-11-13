@@ -104,7 +104,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processLogfilePath(folder, result);
 
             try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
+                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
             } catch (e) {
                 // a failed deviceInfo request should NOT fail the launch
                 console.error(`Failed to fetch device info for ${result.host}`, e);
