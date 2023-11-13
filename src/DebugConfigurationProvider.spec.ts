@@ -175,17 +175,16 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.remotePort).to.equal(5678);
         });
 
-        [
-            { input: true, expected: { activateOnSessionStart: true, deactivateOnSessionEnd: true } },
-            { input: false, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } },
-            { input: undefined, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } }
-        ].forEach(({ input, expected }) => {
-            it('allows using a bool value for remoteConfigMode', async () => {
+        it('allows using a bool value for remoteConfigMode', async () => {
+            async function doTest(remoteControlMode: boolean, expected: any) {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
-                    remoteControlMode: input
+                    remoteControlMode: remoteControlMode
                 });
                 expect(config.remoteControlMode).to.deep.equal(expected);
-            });
+            }
+            await doTest(true, { activateOnSessionStart: true, deactivateOnSessionEnd: true });
+            await doTest(false, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+            await doTest(undefined, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
         });
     });
 
