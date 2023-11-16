@@ -27,8 +27,8 @@ import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
-
-const EXTENSION_ID = 'RokuCommunity.brightscript';
+import { EXTENSION_ID } from './constants';
+import { UserInputManager } from './managers/UserInputManager';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -64,6 +64,9 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
         let activeDeviceManager = new ActiveDeviceManager();
+        let userInputManager = new UserInputManager(
+            activeDeviceManager
+        );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
@@ -96,14 +99,15 @@ export class Extension {
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
-        let languageServerPromise = languageServerManager.init(context, definitionRepo);
+        //initialize the LanguageServerManager
+        void languageServerManager.init(context, definitionRepo);
 
         //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(context, activeDeviceManager);
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
         vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
@@ -132,7 +136,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, this.globalStateManager, userInputManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

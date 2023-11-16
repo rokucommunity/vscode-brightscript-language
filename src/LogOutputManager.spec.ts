@@ -20,9 +20,7 @@ Module.prototype.require = function hijacked(file) {
 import { DeclarationProvider } from './DeclarationProvider';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogLine, LogOutputManager } from './LogOutputManager';
-import type { BSDebugDiagnostic } from 'roku-debug';
-import { DiagnosticsEvent, LaunchStartEvent, LogOutputEvent } from 'roku-debug';
-import { util } from 'brighterscript';
+import { LaunchStartEvent, LogOutputEvent } from 'roku-debug';
 
 describe('LogOutputManager ', () => {
     let logOutputManagerMock: Sinon.SinonMock;

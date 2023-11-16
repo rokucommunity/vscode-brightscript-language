@@ -137,7 +137,6 @@ export class DeclarationProvider implements Disposable {
     }
 
     private onDidChangeFile(uri: Uri) {
-        const excludes = getExcludeGlob();
         this.dirty.set(uri.fsPath, uri);
     }
 

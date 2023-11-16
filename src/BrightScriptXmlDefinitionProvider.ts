@@ -1,12 +1,8 @@
 import * as vscode from 'vscode';
-
 import type {
     CancellationToken,
     Definition,
     DefinitionProvider, Position, TextDocument
-} from 'vscode';
-import {
-    Range
 } from 'vscode';
 
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';

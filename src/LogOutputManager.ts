@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import type { BSDebugDiagnostic } from 'roku-debug';
-import { isChanperfEvent, isDiagnosticsEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
+import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
@@ -31,7 +30,6 @@ export class LogOutputManager {
             this.loadConfigSettings();
         });
 
-        this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
         this.logLevelRegex = null;
@@ -85,7 +83,6 @@ export class LogOutputManager {
         this.clearOutput();
 
     }
-    private context: any;
     private displayedLogLines: LogLine[];
     private allLogLines: LogLine[];
     private markCount: number;
@@ -245,30 +242,6 @@ export class LogOutputManager {
             }
 
         }
-    }
-
-    private getMatches(str, regex) {
-        const matches = [];
-        let match;
-
-        if (regex.global) {
-            regex.lastIndex = 0;
-        } else {
-            regex = new RegExp(regex.source, 'g' +
-                (regex.ignoreCase ? 'i' : '') +
-                (regex.multiline ? 'm' : '') +
-                (regex.sticky ? 'y' : ''));
-        }
-
-        while (match === regex.exec(str)) {
-            matches.push(match);
-
-            if (regex.lastIndex === match.index) {
-                regex.lastIndex++;
-            }
-        }
-
-        return matches;
     }
 
     private showMessage(message: string, severity: string) {

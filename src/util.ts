@@ -5,6 +5,9 @@ import * as url from 'url';
 import { debounce } from 'debounce';
 import * as vscode from 'vscode';
 import { Cache } from 'brighterscript/dist/Cache';
+import undent from 'undent';
+import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
+import type { DeviceInfo } from 'roku-deploy';
 import * as r from 'postman-request';
 import type { Response } from 'request';
 import type * as requestType from 'request';
@@ -329,7 +332,7 @@ class Util {
         }
 
         //do value transforms
-        for (let [key, entry] of result) {
+        for (let [, entry] of result) {
             let { value } = entry;
             for (const secretValue of secretValues) {
                 if (typeof value === 'string') {
@@ -394,6 +397,31 @@ class Util {
             request.get(url, (err, response) => {
                 return err ? reject(err) : resolve(response);
             });
+        });
+    }
+
+    public async openIssueReporter(options: { title?: string; body?: string; deviceInfo?: DeviceInfo }) {
+        if (!options.body) {
+            options.body = undent`
+                Please describe the issue you are experiencing:
+
+                Steps to reproduce:
+
+                Additional feedback:
+            `;
+        }
+        options.body += `\n\nroku-debug version: ${ROKU_DEBUG_VERSION}`;
+        if (options.deviceInfo) {
+            options.body += '\n' + undent`
+                Device firmware: ${options.deviceInfo.softwareVersion}.${options.deviceInfo.softwareBuild}
+                Debug protocol version: ${options.deviceInfo.brightscriptDebuggerVersion}
+                Device model: ${options.deviceInfo.modelNumber}
+            `;
+        }
+        await vscode.commands.executeCommand('vscode.openIssueReporter', {
+            extensionId: EXTENSION_ID,
+            issueTitle: options.title ?? 'Problem with Debug Protocol',
+            issueBody: options.body
         });
     }
 }

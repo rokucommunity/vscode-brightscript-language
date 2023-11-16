@@ -5,8 +5,7 @@ import type {
 } from 'vscode';
 import {
     Location,
-    SymbolKind,
-    TextDocument
+    SymbolKind
 } from 'vscode';
 import * as vscode from 'vscode';
 

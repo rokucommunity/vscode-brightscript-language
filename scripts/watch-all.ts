@@ -33,7 +33,7 @@ const projects = [{
 }, {
     name: 'brighterscript-formatter'
 }, {
-    name: 'vscode-brightscript-language',
+    name: path.basename(path.resolve(__dirname, '..')),
     dependencies: [
         'brighterscript',
         'roku-deploy',

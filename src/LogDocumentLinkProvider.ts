@@ -2,7 +2,6 @@ import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import { DocumentLink, Position, Range } from 'vscode';
 import * as vscode from 'vscode';
-import { util } from './util';
 import BrightscriptFileUtils from './BrightScriptFileUtils';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
@@ -38,7 +37,6 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
     public fileUtils: BrightscriptFileUtils;
 
     public async setLaunchConfig(launchConfig: BrightScriptLaunchConfiguration) {
-        this.launchConfig = launchConfig;
         this.fileMaps = {};
 
         let sourceRootDir = launchConfig.sourceDirs ? launchConfig.sourceDirs : [launchConfig.rootDir];
@@ -69,8 +67,6 @@ export class LogDocumentLinkProvider implements vscode.DocumentLinkProvider {
 
     public fileMaps: Record<string, { src: string; dest: string; pkgPath: string }>;
     public customLinks: DocumentLink[];
-
-    private launchConfig: BrightScriptLaunchConfiguration;
 
     public provideDocumentLinks(doc: vscode.TextDocument, token: vscode.CancellationToken) {
         return this.customLinks;

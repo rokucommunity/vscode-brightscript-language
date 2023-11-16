@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
 import { icons } from '../icons';
-import { firstBy } from 'thenby';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
 
@@ -16,7 +15,6 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     public readonly id = ViewProviderId.onlineDevicesView;
 
     constructor(
-        private context: vscode.ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager
     ) {
         this.devices = [];

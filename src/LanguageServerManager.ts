@@ -263,7 +263,7 @@ export class LanguageServerManager {
             this.simpleSubscriptions.push(
                 vscode.languages.registerDefinitionProvider(selector, definitionProvider),
                 vscode.languages.registerDocumentSymbolProvider(selector, new BrightScriptDocumentSymbolProvider(this.declarationProvider)),
-                vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(this.declarationProvider, symbolInformationRepository)),
+                vscode.languages.registerWorkspaceSymbolProvider(new BrightScriptWorkspaceSymbolProvider(symbolInformationRepository)),
                 vscode.languages.registerReferenceProvider(selector, new BrightScriptReferenceProvider()),
                 vscode.languages.registerSignatureHelpProvider(selector, new BrightScriptSignatureHelpProvider(this.definitionRepository), '(', ',')
             );

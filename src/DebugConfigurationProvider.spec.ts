@@ -1,19 +1,19 @@
-/* eslint-disable no-template-curly-in-string */
-import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
+import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
-import { QuickPickItemKind } from 'vscode';
 import Uri from 'vscode-uri';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
-import { manualHostItemId } from './DebugConfigurationProvider';
+import { UserInputManager } from './managers/UserInputManager';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import type { RokuDeviceDetails } from './ActiveDeviceManager';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { rokuDeploy } from 'roku-deploy';
+import { GlobalStateManager } from './GlobalStateManager';
+import { util } from './util';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -35,16 +35,12 @@ describe('BrightScriptConfigurationProvider', () => {
 
     let configProvider: BrightScriptDebugConfigurationProvider;
     let folder: WorkspaceFolder;
+    let globalStateManager: GlobalStateManager;
+    let userInputManager: UserInputManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
-        let context = {
-            workspaceState: {
-                update: () => {
-                    return Promise.resolve();
-                }
-            }
-        };
+        globalStateManager = new GlobalStateManager(vscode.context);
 
         folder = {
             uri: Uri.file(rootDir),
@@ -55,12 +51,15 @@ describe('BrightScriptConfigurationProvider', () => {
         //prevent the 'start' method from actually running
         sinon.stub(ActiveDeviceManager.prototype as any, 'start').callsFake(() => { });
         let activeDeviceManager = new ActiveDeviceManager();
+        userInputManager = new UserInputManager(activeDeviceManager);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
-            <any>context,
+            vscode.context,
             activeDeviceManager,
             null,
-            vscode.window.createOutputChannel('Extension')
+            vscode.window.createOutputChannel('Extension'),
+            globalStateManager,
+            userInputManager
         );
     });
 
@@ -80,6 +79,8 @@ describe('BrightScriptConfigurationProvider', () => {
             // Override any properties that would cause a prompt if not overridden
             configDefaults.host = '192.168.1.100';
             configDefaults.password = 'aaaa';
+            //return an empty deviceInfo response
+            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(Promise.reject(new Error('Failure during test')));
         });
 
         afterEach(() => {
@@ -175,17 +176,16 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.remotePort).to.equal(5678);
         });
 
-        [
-            { input: true, expected: { activateOnSessionStart: true, deactivateOnSessionEnd: true } },
-            { input: false, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } },
-            { input: undefined, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } }
-        ].forEach(({ input, expected }) => {
-            it('allows using a bool value for remoteConfigMode', async () => {
+        it('allows using a bool value for remoteConfigMode', async () => {
+            async function doTest(remoteControlMode: boolean, expected: any) {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
-                    remoteControlMode: input
+                    remoteControlMode: remoteControlMode
                 });
                 expect(config.remoteControlMode).to.deep.equal(expected);
-            });
+            }
+            await doTest(true, { activateOnSessionStart: true, deactivateOnSessionEnd: true });
+            await doTest(false, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+            await doTest(undefined, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
         });
     });
 
@@ -332,133 +332,74 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
-    describe('createHostQuickPickList', () => {
-        const devices: Array<RokuDeviceDetails> = [{
-            deviceInfo: {
-                'user-device-name': 'roku1',
-                'serial-number': 'alpha',
-                'model-number': 'model1'
-            },
-            id: '1',
-            ip: '1.1.1.1',
-            location: '???'
-        }, {
-            deviceInfo: {
-                'user-device-name': 'roku2',
-                'serial-number': 'beta',
-                'model-number': 'model2'
-            },
-            id: '2',
-            ip: '1.1.1.2',
-            location: '???'
-        }, {
-            deviceInfo: {
-                'user-device-name': 'roku3',
-                'serial-number': 'charlie',
-                'model-number': 'model3'
-            },
-            id: '3',
-            ip: '1.1.1.3',
-            location: '???'
-        }];
-        function label(device: RokuDeviceDetails) {
-            return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
-        }
-
-        it('includes "manual', () => {
-            expect(
-                configProvider['createHostQuickPickList']([], undefined)
-            ).to.eql([{
-                label: 'Enter manually',
-                device: {
-                    id: manualHostItemId
-                }
-            }]);
+    describe('processEnableDebugProtocolParameter', () => {
+        let value: string;
+        let stub: SinonStub;
+        beforeEach(() => {
+            stub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => {
+                return Promise.resolve(value) as any;
+            });
         });
 
-        it('includes separators for devices and manual options', () => {
-            expect(
-                configProvider['createHostQuickPickList']([devices[0]], undefined)
-            ).to.eql([
-                {
-                    kind: QuickPickItemKind.Separator,
-                    label: 'devices'
-                },
-                {
-                    label: '1.1.1.1 | roku1 - alpha - model1',
-                    device: devices[0]
-                },
-                {
-                    kind: QuickPickItemKind.Separator,
-                    label: ' '
-                }, {
-                    label: 'Enter manually',
-                    device: {
-                        id: manualHostItemId
-                    }
-                }]
-            );
+        it('sets true when clicked "okay"', async () => {
+            value = 'Okay';
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
         });
 
-        it('moves active device to the top', () => {
+        it('sets true and flips global state when clicked "okay"', async () => {
+            value = `Okay (ask less often)`;
+            expect(globalStateManager.debugProtocolPopupSnoozeUntilDate).to.eql(undefined);
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
+            //2 weeks after now
             expect(
-                configProvider['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[1]),
-                'other devices',
-                label(devices[0]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
+                globalStateManager.debugProtocolPopupSnoozeUntilDate.getTime()
+            ).closeTo(Date.now() + (12 * 60 * 60 * 1000), 1000);
+            expect(globalStateManager.debugProtocolPopupSnoozeValue).to.eql(true);
         });
 
-        it('includes the spinner text when "last used" and "other devices" separators are both present', () => {
-            expect(
-                configProvider['createHostQuickPickList'](devices, devices[1]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[1]),
-                'other devices',
-                label(devices[0]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
+        it('sets false when clicked "No, use the telnet debugger"', async () => {
+            value = 'Use telnet';
+            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(false);
         });
 
-        it('includes the spinner text if "devices" separator is present', () => {
-            expect(
-                configProvider['createHostQuickPickList'](devices, null).map(x => x.label)
-            ).to.eql([
-                'devices',
-                label(devices[0]),
-                label(devices[1]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
+        it('thorws exception clicked "cancel"', async () => {
+            value = undefined;
+            let ex;
+            try {
+                await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            } catch (e) {
+                ex = e;
+            }
+            expect(ex?.message).to.eql('Debug session cancelled');
         });
 
-        it('includes the spinner text if only "last used" separator is present', () => {
-            expect(
-                configProvider['createHostQuickPickList']([devices[0]], devices[0]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[0]),
-                ' ',
-                'Enter manually'
-            ]);
+        it('sets to true and does not prompt when "dont show again" was clicked', async () => {
+            value = `Okay (ask less often)`;
+            globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (60 * 1000));
+            globalStateManager.debugProtocolPopupSnoozeValue = true;
+            let config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.eql(true);
+            expect(stub.called).to.be.false;
         });
 
-        it('includes the spinner text when no other device entries are present', () => {
-            expect(
-                configProvider['createHostQuickPickList']([], null).map(x => x.label)
-            ).to.eql([
-                'Enter manually'
-            ]);
+        it('shows the issue picker when selected', async () => {
+            value = `Report an issue`;
+            const reportStub = sinon.stub(util, 'openIssueReporter').returns(Promise.resolve());
+
+            try {
+                await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
+            } catch (e) { }
+
+            expect(reportStub.called).to.be.true;
         });
 
+        it('turns truthy values into true', async () => {
+            value = `Report an issue`;
+            const config = await configProvider['processEnableDebugProtocolParameter']({ enableDebugProtocol: {} } as any, { softwareVersion: '12.5.0' });
+            expect(config.enableDebugProtocol).to.be.true;
+        });
     });
 });

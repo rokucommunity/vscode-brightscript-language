@@ -21,7 +21,6 @@ Module.prototype.require = function hijacked(file) {
 };
 
 describe('extension', () => {
-    let context: any;
     let originalWebviews;
     const extensionInstance = extension.extension;
 
