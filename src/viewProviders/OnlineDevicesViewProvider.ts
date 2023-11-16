@@ -141,15 +141,15 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
                 result.unshift(
                     this.createDeviceInfoTreeItem({
-                        label: '🔗 View Registry',
+                        label: '📋 View Registry',
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
                         tooltip: 'View the ECP Registry',
                         description: device.ip,
                         command: {
-                            command: 'extension.brightscript.openUrl',
+                            command: 'extension.brightscript.openRegistryInBrowser',
                             title: 'Open',
-                            arguments: [`http://${device.ip}:8060/query/registry/dev`]
+                            arguments: [device.ip]
                         }
                     })
                 );
@@ -169,11 +169,6 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     }
                 })
             );
-
-
-            if (semver.satisfies(element.details['software-version'], '>=11')) {
-                // TODO: add ECP system hooks here in the future (like registry call, etc...)
-            }
 
             // Return the device details
             return result;

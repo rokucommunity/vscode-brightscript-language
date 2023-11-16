@@ -73,7 +73,8 @@ export class Extension {
             this.remoteControlManager,
             this.whatsNewManager,
             context,
-            activeDeviceManager
+            activeDeviceManager,
+            userInputManager
         );
 
         this.rtaManager = new RtaManager();

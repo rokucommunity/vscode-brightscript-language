@@ -99,6 +99,7 @@
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.53.0",
+        "@types/xml2js": "^0.4.14",
         "@types/yargs": "^17.0.10",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
@@ -2724,6 +2725,12 @@
             {
                 "command": "extension.brightscript.rokuRegistry.exportRegistry",
                 "title": "Export Registry",
+                "category": "BrighterScript",
+                "icon": "$(browser)"
+            },
+            {
+                "command": "extension.brightscript.openRegistryInBrowser",
+                "title": "Open device registry in a browser",
                 "category": "BrighterScript",
                 "icon": "$(arrow-up)"
             },
