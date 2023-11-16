@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.3...v2.45.4) - 2023-11-16
+### Changed
+ - upgrade to [roku-debug@0.20.13](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02013---2023-11-16). Notable changes since 0.20.12:
+     - Fix bug with compile error reporting ([roku-debug#174](https://github.com/rokucommunity/roku-debug/pull/174))
+
+
+
 ## [2.45.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.2...v2.45.3) - 2023-11-15
 ### Changed
  - Shorten the timeout for device-info query ([#525](https://github.com/rokucommunity/vscode-brightscript-language/pull/525))
