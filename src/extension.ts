@@ -28,6 +28,7 @@ import { WebviewViewProviderManager } from './managers/WebviewViewProviderManage
 import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
+import { UserInputManager } from './managers/UserInputManager';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -63,6 +64,9 @@ export class Extension {
 
         this.telemetryManager.sendStartupEvent();
         let activeDeviceManager = new ActiveDeviceManager();
+        let userInputManager = new UserInputManager(
+            activeDeviceManager
+        );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
@@ -132,7 +136,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, this.globalStateManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, this.globalStateManager, userInputManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
