@@ -141,13 +141,13 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
                 result.unshift(
                     this.createDeviceInfoTreeItem({
-                        label: '🔗 View Registry',
+                        label: '📋 View Registry',
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
                         tooltip: 'View the ECP Registry',
                         description: device.ip,
                         command: {
-                            command: 'extension.brightscript.openRegistry',
+                            command: 'extension.brightscript.openRegistryInBrowser',
                             title: 'Open',
                             arguments: [device.ip]
                         }
