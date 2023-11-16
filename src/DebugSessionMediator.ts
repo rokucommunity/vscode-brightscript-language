@@ -1,4 +1,5 @@
 import { JsonMessengerServer } from 'roku-debug';
+import { EventEmitter } from 'stream';
 
 export class DebugSessionMediator {
     /**
@@ -18,9 +19,9 @@ export class DebugSessionMediator {
                 if (!(event.data.key in this.stateByKey)) {
                     this.stateByKey[event.data.key] = {};
                 }
+                //State is empty, remove client id data
                 if (Object.keys(event.data.state).length === 0) {
-                    const { [event.clientId]: removedKey, ...rest } = this.stateByKey[event.data.key];
-                    this.stateByKey[event.data.key] = rest;
+                    delete this.stateByKey[event.data.key][event.clientId];
                 } else {
                     this.stateByKey[event.data.key][event.clientId] = event.data.state;
                 }
