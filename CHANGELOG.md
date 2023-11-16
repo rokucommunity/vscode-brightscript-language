@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.4...v2.45.5) - 2023-11-16
+### Changed
+ - Add app dropdown menu for ECP registry link ([#514](https://github.com/rokucommunity/vscode-brightscript-language/pull/514))
+ - chore: move common user input into a dedicated manager ([#523](https://github.com/rokucommunity/vscode-brightscript-language/pull/523))
+
+
+
 ## [2.45.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.3...v2.45.4) - 2023-11-16
 ### Changed
  - upgrade to [roku-debug@0.20.13](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02013---2023-11-16). Notable changes since 0.20.12:
