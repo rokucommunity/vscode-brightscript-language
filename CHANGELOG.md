@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.3...v2.45.4) - 2023-11-16
+### Changed
+ - upgrade to [roku-debug@0.20.13](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02013---2023-11-16). Notable changes since 0.20.12:
+     - Fix bug with compile error reporting ([roku-debug#174](https://github.com/rokucommunity/roku-debug/pull/174))
+
+
+
+## [2.45.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.2...v2.45.3) - 2023-11-15
+### Changed
+ - Shorten the timeout for device-info query ([#525](https://github.com/rokucommunity/vscode-brightscript-language/pull/525))
+ - upgrade to [roku-deploy@3.10.5](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3105---2023-11-14). Notable changes since 3.10.4:
+     - better detection for sideloading errors ([roku-deploy#127](https://github.com/rokucommunity/roku-deploy/pull/127))
+ - upgrade to [roku-debug@0.20.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02012---2023-11-14). Notable changes since 0.20.10:
+     - Add timeout for deviceinfo query so we don't wait too long ([roku-debug#171](https://github.com/rokucommunity/roku-debug/pull/171))
+     - Update DebugProtocolClient supported version range ([roku-debug#170](https://github.com/rokucommunity/roku-debug/pull/170))
+     - fix small typo in debug potocol message ([roku-debug#169](https://github.com/rokucommunity/roku-debug/pull/169))
+ - upgrade to [brighterscript@0.65.10](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06510---2023-11-14)
+
+
+
 ## [2.45.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.1...v2.45.2) - 2023-11-08
 ### Changed
  - Better messaging around debugProtocol popup ([#522](https://github.com/rokucommunity/vscode-brightscript-language/pull/522))

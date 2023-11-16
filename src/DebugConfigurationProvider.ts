@@ -98,12 +98,16 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
 
+            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
+            statusbarItem.text = '$(sync~spin) Fetching device info';
+            statusbarItem.show();
             try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
+                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
             } catch (e) {
                 // a failed deviceInfo request should NOT fail the launch
                 console.error(`Failed to fetch device info for ${result.host}`, e);
             }
+            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);

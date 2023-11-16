@@ -157,7 +157,8 @@ export let vscode = {
             return {
                 clear: () => { },
                 text: '',
-                show: () => { }
+                show: () => { },
+                dispose: () => { }
             };
         },
         createQuickPick: () => {
