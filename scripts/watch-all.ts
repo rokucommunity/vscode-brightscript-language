@@ -119,7 +119,7 @@ const printStatus = debounce(() => {
                 logger.writeLine(`${chalk.red(project.name)} diagnostics:\n`);
                 for (const diagnostic of project.diagnostics ?? []) {
                     logger.writeLine(
-                        diagnostic.raw?.replace(diagnostic.path!, path.normalize(path.join('../', diagnostic.path!)))
+                        diagnostic.raw?.replace(diagnostic.path!, path.normalize(path.join(project.path, diagnostic.path!)))
                     );
                 }
             }
