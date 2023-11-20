@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.5...v2.45.6) - 2023-11-20
+### Fixed
+ - backtick support in surrounding & autoClosing pairs ([#528](https://github.com/rokucommunity/vscode-brightscript-language/pull/528))
+
+
+
 ## [2.45.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.4...v2.45.5) - 2023-11-16
 ### Changed
  - Add app dropdown menu for ECP registry link ([#514](https://github.com/rokucommunity/vscode-brightscript-language/pull/514))
