@@ -113,7 +113,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
-            result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+            //TODO re-enable once we've fixed some of the debug protocol issues
+            // result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+
+            result.enableDebugProtocol ??= this.configDefaults.enableDebugProtocol;
 
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
@@ -132,7 +135,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
     }
 
-    private async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
+    protected async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
         if (config.enableDebugProtocol !== undefined || !semver.gte(deviceInfo?.softwareVersion ?? '0.0.0', '12.5.0')) {
             config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
             return config;
