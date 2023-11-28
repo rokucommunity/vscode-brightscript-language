@@ -9,7 +9,6 @@ import { execSync, exec } from 'child_process';
 import * as chalk from 'chalk';
 import * as semver from 'semver';
 import * as prompt from 'prompt';
-import latestVersion from 'latest-version';
 import * as terminalOverwrite from 'terminal-overwrite';
 import * as notifier from 'node-notifier';
 
@@ -217,8 +216,8 @@ class Runner {
 
     private async waitForLatestVersion(project: Project, targetVersion: string) {
         let isFinished;
-        const interval = 15 * 1000;
-        const initialDelay = (60 * 1000) - interval;
+        const interval = 15_000;
+        const initialDelay = 60_000 - interval;
 
         //if in test mode, do a small timeout to simulate waiting for latest version, then mark finished
         if (this.options.test) {
@@ -228,12 +227,11 @@ class Runner {
         } else {
             setTimeout(() => {
                 const handle = setInterval(() => {
-                    void latestVersion(project.npmName).then((result) => {
-                        if (result === targetVersion) {
-                            isFinished = true;
-                            clearInterval(handle);
-                        }
-                    });
+                    const latestVersion = this.getLatestVersion(project.npmName);
+                    if (latestVersion === targetVersion) {
+                        isFinished = true;
+                        clearInterval(handle);
+                    }
                 }, interval);
                 //publishing takes several minutes, so don't start monitoring for a little while...
             }, initialDelay);
@@ -249,6 +247,18 @@ class Runner {
         }
         terminalOverwrite(`${chalk.green(project.name)}: package successfully published to npm`);
     }
+
+    /**
+     *
+     * @param packageName Find the latest-published version of an npm package
+     */
+    private getLatestVersion(packageName: string) {
+        const versions = JSON.parse(
+            execSync(`npm view ${packageName} versions --json`).toString()
+        ) as string[];
+        return semver.maxSatisfying(versions, '*');
+    }
+
 
     private sleep(timeout: number) {
         return new Promise<void>((resolve) => {
