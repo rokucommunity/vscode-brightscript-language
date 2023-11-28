@@ -8,10 +8,8 @@ import { Cache } from 'brighterscript/dist/Cache';
 import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
 import type { DeviceInfo } from 'roku-deploy';
-import * as r from 'postman-request';
-import type { Response } from 'request';
-import type * as requestType from 'request';
-const request = r as typeof requestType;
+import * as request from 'postman-request';
+import type { Response, CoreOptions } from 'request';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -207,27 +205,6 @@ class Util {
     }
 
     /**
-     * Decode HTML entities like &nbsp; &#39; to its original character
-     */
-    public decodeHtmlEntities(encodedString: string) {
-        let translateRegex = /&(nbsp|amp|quot|lt|gt);/g;
-        let translate = {
-            'nbsp': ' ',
-            'amp': '&',
-            'quot': '"',
-            'lt': '<',
-            'gt': '>'
-        };
-
-        return encodedString.replace(translateRegex, (match, entity) => {
-            return translate[entity];
-        }).replace(/&#(\d+);/gi, (match, numStr) => {
-            let num = parseInt(numStr, 10);
-            return String.fromCharCode(num);
-        });
-    }
-
-    /**
      * Creates an output channel but wraps the `append` and `appendLine`
      * functions so a function can be called with their values
      */
@@ -392,7 +369,7 @@ class Util {
     /**
      * Do an http GET request
      */
-    public httpGet(url: string, options?: requestType.CoreOptions) {
+    public httpGet(url: string, options?: CoreOptions) {
         return new Promise<Response>((resolve, reject) => {
             request.get(url, options, (err, response) => {
                 return err ? reject(err) : resolve(response);
