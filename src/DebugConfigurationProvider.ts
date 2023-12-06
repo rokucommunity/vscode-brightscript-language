@@ -64,6 +64,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             remotePort: 8060,
             rendezvousTracking: true,
             deleteDevChannelBeforeInstall: false,
+            sceneGraphDebugCommandsPort: 8080,
             remoteControlMode: {
                 activateOnSessionStart: false,
                 deactivateOnSessionEnd: false
@@ -316,6 +317,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
+        config.sceneGraphDebugCommandsPort = config.sceneGraphDebugCommandsPort ? config.sceneGraphDebugCommandsPort : this.configDefaults.sceneGraphDebugCommandsPort;
         if (typeof config.remoteControlMode === 'boolean') {
             config.remoteControlMode = {
                 activateOnSessionStart: config.remoteControlMode,

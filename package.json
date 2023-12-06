@@ -830,6 +830,11 @@
                                 "default": false,
                                 "description": "Delete any currently installed dev channel before starting the debug session"
                             },
+                            "sceneGraphDebugCommandsPort": {
+                                "type": "number",
+                                "default": 8080,
+                                "description": "Delete any currently installed dev channel before starting the debug session"
+                            },
                             "remoteControlMode": {
                                 "oneOf": [
                                     {
