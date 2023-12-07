@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.8...v2.45.9) - 2023-12-07
+### Changed
+ - Add a few missing brightscript.debug settings ([#535](https://github.com/rokucommunity/vscode-brightscript-language/pull/535))
+ - Support a configurable port for SceneGraphDebugCommandController ([#534](https://github.com/rokucommunity/vscode-brightscript-language/pull/534))
+
+
+
 ## [2.45.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.7...v2.45.8) - 2023-12-07
 ### Changed
  - Use getDeviceInfo from roku-deploy ([#532](https://github.com/rokucommunity/vscode-brightscript-language/pull/532))
