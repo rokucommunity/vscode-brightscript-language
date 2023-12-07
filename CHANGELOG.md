@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.7...v2.45.8) - 2023-12-07
+### Changed
+ - Use getDeviceInfo from roku-deploy ([#532](https://github.com/rokucommunity/vscode-brightscript-language/pull/532))
+ - upgrade to [roku-deploy@3.11.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3111---2023-11-30). Notable changes since 3.10.5:
+     - Wait for file stream to close before resolving promise ([roku-deploy#133](https://github.com/rokucommunity/roku-deploy/pull/133))
+     - Add public function to normalize device-info field values ([roku-deploy#129](https://github.com/rokucommunity/roku-deploy/pull/129))
+ - upgrade to [roku-debug@0.20.14](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02014---2023-12-07). Notable changes since 0.20.13:
+     - Fixing issues before release 0.20.14 ([#roku-debug01fba07](https://github.com/rokucommunity/roku-debug/commit/01fba07))
+     - Make the connection port for SceneGraphDebugCommandController configurable ([roku-debug#177](https://github.com/rokucommunity/roku-debug/pull/177))
+ - upgrade to [brighterscript@0.65.12](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06512---2023-12-07). Notable changes since 0.65.10:
+     - Fix out-of-date transpile blocks in docs ([brighterscript#956](https://github.com/rokucommunity/brighterscript/pull/956))
+     - Add `optional` modifier for interface and class members ([brighterscript#955](https://github.com/rokucommunity/brighterscript/pull/955))
+     - Use regex for faster manifest/typedef detection ([brighterscript#976](https://github.com/rokucommunity/brighterscript/pull/976))
+     - Correct RANGE in template string when dealing with quotes in annotations ([brighterscript#975](https://github.com/rokucommunity/brighterscript/pull/975))
+     - Add manifest loading from files ([brighterscript#942](https://github.com/rokucommunity/brighterscript/pull/942))
+     - Enums as class initial values ([brighterscript#950](https://github.com/rokucommunity/brighterscript/pull/950))
+ - upgrade to [brighterscript-formatter@1.6.36](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1636---2023-12-07). Notable changes since 1.6.35:
+### Fixed
+ - spelling mistake in lsp message ([#531](https://github.com/rokucommunity/vscode-brightscript-language/pull/531))
+
+
+
 ## [2.45.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.6...v2.45.7) - 2023-11-27
 ### Changed
  - Hide the debug protocol popup, use telnet by default ([#530](https://github.com/rokucommunity/vscode-brightscript-language/pull/530))
