@@ -833,7 +833,7 @@
                             "sceneGraphDebugCommandsPort": {
                                 "type": "number",
                                 "default": 8080,
-                                "description": "Delete any currently installed dev channel before starting the debug session"
+                                "description": "Port for sending SceneGraph debug commands"
                             },
                             "remoteControlMode": {
                                 "oneOf": [
