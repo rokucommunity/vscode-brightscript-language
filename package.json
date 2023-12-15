@@ -302,6 +302,11 @@
                     "group": "navigation@3"
                 },
                 {
+                    "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
+                    "group": "navigation@4"
+                },
+                {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
                     "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.isRecording",
                     "group": "navigation"
@@ -320,6 +325,12 @@
                     "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
                     "group": "navigation@2"
+                }
+            ],
+            "webview/context": [
+                {
+                    "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
+                    "when": "webviewId == rokuDeviceView"
                 }
             ],
             "commandPalette": []
@@ -2837,6 +2848,12 @@
                 "title": "Device View: Refresh Screenshot",
                 "category": "BrighterScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
+                "title": "Copy Screenshot",
+                "category": "BrighterScript",
+                "icon": "$(clippy)"
             },
             {
                 "command": "extension.brightscript.sceneGraphInspectorView.refreshNodeTree",

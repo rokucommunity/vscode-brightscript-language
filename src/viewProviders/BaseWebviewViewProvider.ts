@@ -124,14 +124,21 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         });
     }
 
-    protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string) {
-        context.subscriptions.push(vscode.commands.registerCommand(command, () => {
+    protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string, callback: (() => any) | undefined = undefined) {
+        this.registerCommand(context, command, async () => {
+            if (callback) {
+                await callback();
+            }
             const message = this.createEventMessage(ViewProviderEvent.onVscodeCommandReceived, {
                 commandName: command
             });
 
             this.postOrQueueMessage(message);
-        }));
+        });
+    }
+
+    protected registerCommand(context: vscode.ExtensionContext, command: string, callback: (...args: any[]) => any) {
+        context.subscriptions.push(vscode.commands.registerCommand(command, callback));
     }
 
     protected onViewReady() { }

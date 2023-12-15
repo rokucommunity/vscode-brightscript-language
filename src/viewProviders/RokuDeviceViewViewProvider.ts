@@ -15,6 +15,11 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewRefreshScreenshot);
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewPauseScreenshotCapture);
         this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewResumeScreenshotCapture);
+        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewCopyScreenshot, () => {
+            // In order for copy to be successful the webview has to have focus
+            this.view.show(false);
+        });
+
 
         this.addMessageCommandCallback(ViewProviderCommand.getScreenshot, async (message) => {
             try {
