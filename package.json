@@ -303,7 +303,7 @@
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
-                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
+                    "when": "view == rokuDeviceView",
                     "group": "navigation@4"
                 },
                 {
