@@ -16,7 +16,10 @@
     let deviceAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.context.deviceAvailable;
-        requestScreenshot();
+        if (deviceAvailable) {
+            // We want to always request a screenshot when someone first opens the panel so we are forcing it
+            requestScreenshot(true);
+        }
     });
 
     let wasRunningScreenshotCaptureBeforeInspect: boolean | undefined;
@@ -184,6 +187,8 @@
         isInspectingNodes = false;
     }
 
+    let currentScreenshot: Blob;
+
     intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
         const name = message.context.commandName;
         if (name === VscodeCommand.rokuDeviceViewEnableNodeInspector) {
@@ -216,23 +221,38 @@
                     includeBoundingRectInfo: true
                 });
             }
+        } else if (name === VscodeCommand.rokuDeviceViewCopyScreenshot) {
+            if(!currentScreenshot) {
+                await requestScreenshot(true);
+            }
+
+            // Need time for the DOM to become focused before clipboard seems to work
+            setTimeout(async () => {
+                const clipboardItem = new ClipboardItem({
+                    [currentScreenshot.type]: currentScreenshot
+                });
+                await navigator.clipboard.write([clipboardItem]);
+            }, 100);
         }
     });
 
     let screenshotOutOfDateTimeOut;
     let currentlyCapturingScreenshot = false;
-    async function requestScreenshot() {
-        if (!enableScreenshotCapture || currentlyCapturingScreenshot || !deviceAvailable) {
-            return;
+    async function requestScreenshot(force = false) {
+        if (!enableScreenshotCapture || !deviceAvailable) {
+            if (!force || currentlyCapturingScreenshot) {
+                return;
+            }
         }
         currentlyCapturingScreenshot = true;
         try {
             const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot) as any;
             if (success) {
-                const newScreenshotUrl = URL.createObjectURL(new Blob(
+                currentScreenshot = new Blob(
                     [new Uint8Array(arrayBuffer)],
-                    { type: 'image/jpeg' }
-                ));
+                    { type: 'image/png' } // jpg isn't supported for clipboard and png seems to work for both so ¯\_(ツ)_/¯
+                );
+                const newScreenshotUrl = URL.createObjectURL(currentScreenshot);
                 URL.revokeObjectURL(screenshotUrl);
                 screenshotUrl = newScreenshotUrl;
                 currentlyCapturingScreenshot = false;
@@ -344,7 +364,8 @@
         bind:clientWidth={screenshotContainerWidth}
         bind:clientHeight={screenshotContainerHeight}
         on:mousemove={onImageMouseMove}
-        on:mousedown={onMouseDown}>
+        on:mousedown={onMouseDown}
+        data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
         {#if focusedTreeNode}
             <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
             <div id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
@@ -360,6 +381,7 @@
         {/if}
             <img
                 id="screenshot"
+                alt="Screenshot from Roku device"
                 src="{screenshotUrl}" />
 
     </div>
