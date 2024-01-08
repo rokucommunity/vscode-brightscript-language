@@ -228,7 +228,7 @@ export class LogOutputManager {
             this.appendLine(e.body.line);
 
         } else if (isPopupMessageEvent(e)) {
-            this.showMessage(e.body.message, e.body.severity);
+            this.showMessage(e.body.message, e.body.severity, e.body.modal);
 
         } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
@@ -244,13 +244,13 @@ export class LogOutputManager {
         }
     }
 
-    private showMessage(message: string, severity: string) {
+    private showMessage(message: string, severity: string, modal: boolean) {
         const methods = {
             error: vscode.window.showErrorMessage,
             info: vscode.window.showInformationMessage,
             warn: vscode.window.showWarningMessage
         };
-        methods[severity](message);
+        methods[severity](message, { modal: modal });
     }
 
     /**
