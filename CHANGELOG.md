@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.10](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.9...v2.45.10) - 2024-01-10
+### Changed
+ - upgrade to [roku-deploy@3.11.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3112---2023-12-20). Notable changes since 3.11.1:
+     - Update wrong host password error message ([roku-deploy#134](https://github.com/rokucommunity/roku-deploy/pull/134))
+ - upgrade to [roku-debug@0.21.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0210---2024-01-10). Notable changes since 0.20.14:
+     - Add cli flag to run dap as standalone process ([roku-debug#173](https://github.com/rokucommunity/roku-debug/pull/173))
+     - Expose debug protocol port ([roku-debug#182](https://github.com/rokucommunity/roku-debug/pull/182))
+     - Display a modal message when the we fail to upload a package to the device ([roku-debug#178](https://github.com/rokucommunity/roku-debug/pull/178))
+ - upgrade to [brighterscript@0.65.16](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06516---2024-01-08). Notable changes since 0.65.12:
+     - Prevent publishing of empty files ([brighterscript#997](https://github.com/rokucommunity/brighterscript/pull/997))
+     - Improve null safety ([brighterscript#996](https://github.com/rokucommunity/brighterscript/pull/996))
+     - Prevent errors when using enums in a file that's not included in any scopes ([brighterscript#995](https://github.com/rokucommunity/brighterscript/pull/995))
+     - Fix multi-namespace class inheritance transpile bug ([brighterscript#990](https://github.com/rokucommunity/brighterscript/pull/990))
+     - Add check for onChange function ([brighterscript#941](https://github.com/rokucommunity/brighterscript/pull/941))
+     - Fix broken enum transpiling ([brighterscript#985](https://github.com/rokucommunity/brighterscript/pull/985))
+ - upgrade to [brighterscript-formatter@1.6.37](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1637---2024-01-08). Notable changes since 1.6.36:
+### Fixed
+ - improve messaging when debug session encounters errors ([#537](https://github.com/rokucommunity/vscode-brightscript-language/pull/537))
+ - improve screenshot capabilities to make it easier to share screenshots from device. ([#536](https://github.com/rokucommunity/vscode-brightscript-language/pull/536))
+
+
+
 ## [2.45.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.8...v2.45.9) - 2023-12-07
 ### Changed
  - Add a few missing brightscript.debug settings ([#535](https://github.com/rokucommunity/vscode-brightscript-language/pull/535))
