@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.11](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.10...v2.45.11) - 2024-01-17
+### Changed
+ - upgrade to [roku-debug@0.21.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0211---2024-01-16). Notable changes since 0.21.0:
+ - upgrade to [brighterscript@0.65.17](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06517---2024-01-16). Notable changes since 0.65.16:
+     - adds support for libpkg prefix ([brighterscript#1017](https://github.com/rokucommunity/brighterscript/pull/1017))
+     - Assign .program to the builder BEFORE calling afterProgram ([brighterscript#1011](https://github.com/rokucommunity/brighterscript/pull/1011))
+ - upgrade to [brighterscript-formatter@1.6.38](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1638---2024-01-16). Notable changes since 1.6.37:
+
+
+
 ## [2.45.10](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.9...v2.45.10) - 2024-01-10
 ### Changed
  - upgrade to [roku-deploy@3.11.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3112---2023-12-20). Notable changes since 3.11.1:
