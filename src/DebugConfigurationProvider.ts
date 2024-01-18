@@ -318,6 +318,15 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
         config.sceneGraphDebugCommandsPort = config.sceneGraphDebugCommandsPort ? config.sceneGraphDebugCommandsPort : this.configDefaults.sceneGraphDebugCommandsPort;
+
+        //if packageTask is defined, make sure there's actually a task with that name defined
+        if (config.packageTask) {
+            const targetTask = (await vscode.tasks.fetchTasks()).find(x => x.name === config.packageTask);
+            if (!targetTask) {
+                throw new Error(`Cannot find task '${config.packageTask}' for launch option 'packageTask'`);
+            }
+        }
+
         if (typeof config.remoteControlMode === 'boolean') {
             config.remoteControlMode = {
                 activateOnSessionStart: config.remoteControlMode,
@@ -367,6 +376,13 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
             config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
+        }
+
+        if (config.packagePath?.includes('${workspaceFolder}')) {
+            config.packagePath = path.normalize(config.packagePath.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+        if (config.packagePath?.includes('${outDir}')) {
+            config.packagePath = path.normalize(config.packagePath.replace('${outDir}', config.outDir));
         }
 
         if (!config.rootDir) {
