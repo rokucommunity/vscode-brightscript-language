@@ -292,7 +292,10 @@ export class Extension {
         } catch (e) {
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: e.body.requestId,
-                error: e
+                error: {
+                    message: e?.message,
+                    stack: e?.stack
+                }
             });
         }
     }
