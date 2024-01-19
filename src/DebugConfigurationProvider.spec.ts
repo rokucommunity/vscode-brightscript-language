@@ -294,11 +294,11 @@ describe('BrightScriptConfigurationProvider', () => {
             let config = await processEnvFile(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:PASSWORD}',
-                stagingFolderPath: '${env:PASSWORD}'
+                stagingDir: '${env:PASSWORD}'
             });
 
             expect(config.rootDir).to.equal('password');
-            expect(config.stagingFolderPath).to.equal('password');
+            expect(config.stagingDir).to.equal('password');
         });
 
         it('does not replace text outside of the ${} syntax', async () => {
