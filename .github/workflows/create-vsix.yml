@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: "14.16.1"
       - run: npm ci
-      - run: node scripts/create-vsix.js ${{ github.event.inputs.branch }}
+      - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
       - uses: actions/upload-artifact@v2
         with:
           name: vscode-brightscript-language.vsix
