@@ -2,109 +2,174 @@
  * Installs a local version of all the rokucommunity dependent packages into this project
  */
 
-let path = require('path');
-let childProcess = require('child_process');
+import * as path from 'path';
+import * as childProcess from 'child_process';
+import * as fsExtra from 'fs-extra';
+import * as chalk from 'chalk';
+//path to the parent folder where all of the rokucommunity projects reside (i.e. 1 level above vscode-brightscript-language
+const cwd = path.normalize(`${__dirname}/../../`);
 
-//run `npm install` first before the rest of this script
-childProcess.execSync('npm install', {
-    cwd: path.normalize(path.join(__dirname, '../')),
-    stdio: 'inherit'
-});
+const pull = process.argv.includes('--pull');
+const enableVerboseLogging = process.argv.includes('--verbose');
 
-let fsExtra = require('fs-extra');
-let chalk = require('chalk');
+class InstallLocalRunner {
 
-let argv = require('yargs').argv;
-
-let packages = [
-    'roku-debug',
-    'roku-deploy',
-    'brighterscript',
-    'brighterscript-formatter'
-];
-
-//set the cwd to the root of this project
-let thisProjectRootPath = path.join(__dirname, '..');
-process.chdir(thisProjectRootPath);
-let packageJson = JSON.parse(fsExtra.readFileSync('package.json').toString());
-
-for (let packageName of packages) {
-    printHeader(packageName);
-    let packageSrcPath = path.resolve(path.join('..', packageName));
-
-    //if the project doesn't exist, clone it from github
-    if (!fsExtra.pathExistsSync(packageSrcPath)) {
-        console.log(`Cloning '${packageName}' from github`);
-        //clone the project
-        childProcess.execSync(`git clone https://github.com/rokucommunity/${packageName}`, {
-            cwd: path.resolve('..'),
-            stdio: 'inherit'
-        });
-        //if --pull was provided, fetch and pull latest for each repo
-    } else if (argv.pull === true) {
-        console.log(`'${packageName}' exists. Getting latest`);
-
-        childProcess.execSync(`git fetch && git pull`, {
-            cwd: packageSrcPath,
-            stdio: 'inherit'
-        });
+    public run() {
+        for (const project of this.projects) {
+            this.installProject(project.name);
+        }
+        //create a symlink of the workspace file at the root
+        try {
+            if (!fsExtra.pathExistsSync(`${cwd}/workspace.code-workspace`)) {
+                console.log(`Creating hardlink for 'workspace.code-workspace'`);
+                fsExtra.linkSync(`${cwd}/vscode-brightscript-language/workspace.code-workspace`, `${cwd}/workspace.code-workspace`);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        console.log('Done!');
     }
 
-    //install all npm dependencies
-    console.log(`Installing npm packages for '${packageName}'`);
-    try {
-        childProcess.execSync(`npm install`, {
-            cwd: path.resolve('..', packageName),
-            stdio: 'inherit'
-        });
-    } catch (e) {
-        console.error(e);
+    private projects: Project[] = [
+        {
+            name: 'roku-deploy',
+            dependencies: []
+        },
+        {
+            name: 'brighterscript',
+            dependencies: [
+                'roku-deploy'
+            ]
+        },
+        {
+            name: 'brighterscript-formatter',
+            dependencies: [
+                'brighterscript'
+            ]
+        },
+        {
+            name: 'roku-debug',
+            dependencies: [
+                'roku-deploy',
+                'brighterscript'
+            ]
+        },
+        {
+            name: 'vscode-brightscript-language',
+            dependencies: [
+                'roku-deploy',
+                'brighterscript',
+                'roku-debug',
+                'brighterscript-formatter'
+            ]
+        }
+    ];
+
+    private getProject(name: string) {
+        return this.projects.find(x => x.name === name)!;
     }
 
-    console.log(`bulding '${packageName}'`);
-    //build the project
-    try {
-        childProcess.execSync(`npm run build`, {
-            cwd: path.resolve('..', packageName),
-            stdio: 'inherit'
-        });
-    } catch (e) {
-        console.error(e);
+    private installProject(projectName: string) {
+        const project = this.getProject(projectName);
+
+        function log(...args: any[]) {
+            let projectName = `${chalk.blue(project.name)}:`;
+            if (args[0] === '\n') {
+                projectName = args.shift() + projectName;
+            }
+            console.log(projectName, ...args);
+        }
+
+        if (project.processed) {
+            log('already processed...skipping');
+            return;
+        }
+
+        this.printHeader(project.name);
+        let projectDir = `${cwd}/${project.name}`;
+
+        //if the project doesn't exist, clone it from github
+        if (!fsExtra.pathExistsSync(projectDir)) {
+            this.execSync(`git clone https://github.com/rokucommunity/${project.name}`);
+
+            //if --pull was provided, fetch and pull latest for each repo
+        } else if (pull === true) {
+            log(`project directory exists so fetching latest from github`);
+
+            this.execSync(`git fetch && git pull`, { cwd: projectDir });
+        }
+
+        //install all npm dependencies
+        log(`installing npm packages`);
+        try {
+            this.execSync(`npm install`, { cwd: projectDir });
+        } catch (e) {
+            console.error(e);
+        }
+
+        //ensure all dependencies are installed
+        for (const dependency of project.dependencies) {
+            log('\n', `installing dependency ${chalk.blue(dependency)}`);
+            this.installProject(dependency);
+
+            log(`deleting ${chalk.green(`./node_modules/${dependency}`)} to prevent contention`);
+            try {
+                fsExtra.removeSync(`node_modules/${project.name}`);
+            } catch (e) {
+                console.error(e);
+            }
+            log(`linking ${chalk.green(`../${dependency}`)} to ${chalk.green(`./node_modules/${dependency}`)}`);
+            //install local version of the dependency into this project
+            this.execSync(`npm install file:../${dependency}`, { cwd: projectDir });
+        }
+
+        log('\n', `building`);
+        //build the project
+        try {
+            this.execSync(`npm run build`, { cwd: projectDir });
+        } catch (e) {
+            console.error(e);
+        }
+
+        project.processed = true;
     }
 
-    console.log(`deleting '${packageName}' from node_modules to prevent contention`);
-    try {
-        fsExtra.ensureDirSync(`node_modules/${packageName}`);
-        fsExtra.removeSync(`node_modules/${packageName}`);
-    } catch (e) {
-        console.error(e);
+    private printHeader(name) {
+        const length = 80;
+        let text = '\n';
+
+        text += ''.padStart(length, '-') + '\n';
+
+        let leftLen = Math.round((length / 2) - (name.length / 2));
+        let rightLen = 80 - (name.length + leftLen);
+        text += ''.padStart(leftLen, '-') + chalk.white(name) + ''.padStart(rightLen, '-') + '\n';
+
+        text += ''.padStart(length, '-') + '\n';
+
+        console.log(chalk.blue(text));
     }
 
-    console.log(`adding '../${packageName}' to package.json`);
-    packageJson.dependencies[packageName] = `file:../${packageName}`;
+    private execSync(command: string, options?: childProcess.ExecSyncOptions) {
+        options = {
+            cwd: cwd,
+            stdio: enableVerboseLogging ? 'inherit' : 'ignore',
+            ...options ?? {}
+        };
+        if (enableVerboseLogging) {
+            console.log(command, options);
+        }
+        try {
+            return childProcess.execSync(command, options);
+        } catch (e) {
+            console.error(e);
+        }
+    }
 }
 
-printHeader('vscode-brightscript-language');
-console.log('saving package.json changes');
-fsExtra.writeFileSync('package.json', JSON.stringify(packageJson, null, 4));
-console.log('npm install');
-childProcess.execSync('npm install', {
-    stdio: 'inherit'
-});
-
-
-
-function printHeader(name) {
-    var length = 80;
-    let text = '\n';
-
-    text += ''.padStart(length, '-') + '\n';
-
-    let leftLen = Math.round((length / 2) - (name.length / 2));
-    let rightLen = 80 - (name.length + leftLen);
-    text += ''.padStart(leftLen, '-') + chalk.white(name) + ''.padStart(rightLen, '-') + '\n';
-
-    text += ''.padStart(length, '-') + '\n';
-
-    console.log(chalk.blue(text));
+interface Project {
+    name: string;
+    dependencies: string[];
+    processed?: boolean;
 }
+
+new InstallLocalRunner().run();
