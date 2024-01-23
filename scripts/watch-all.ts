@@ -25,18 +25,29 @@ logger.writeLine(`${timestamp()} Starting compilation in watch mode...`);
 
 //run watch tasks for every related project, in a single output window so we don't have 7 console tabs open
 const projects = [{
-    name: 'brighterscript'
+    name: 'roku-deploy',
+    dependencies: []
 }, {
-    name: 'roku-deploy'
+    name: 'brighterscript',
+    dependencies: [
+        'roku-deploy'
+    ]
 }, {
-    name: 'roku-debug'
+    name: 'brighterscript-formatter',
+    dependencies: [
+        'brighterscript'
+    ]
 }, {
-    name: 'brighterscript-formatter'
+    name: 'roku-debug',
+    dependencies: [
+        'roku-deploy',
+        'brighterscript'
+    ]
 }, {
     name: path.basename(path.resolve(__dirname, '..')),
     dependencies: [
-        'brighterscript',
         'roku-deploy',
+        'brighterscript',
         'roku-debug',
         'brighterscript-formatter'
     ]
