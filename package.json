@@ -43,7 +43,7 @@
         "package-local": "node scripts/package-local.js",
         "publish": "vsce publish",
         "clean": "rimraf dist",
-        "install-local": "node scripts/install-local.js",
+        "install-local": "npm i && ts-node scripts/install-local.ts",
         "install-pull-local": "node scripts/install-local.js --pull",
         "uninstall-local": "node scripts/uninstall-local.js",
         "build-docs": "statigen -s docs -o .tmp/docs",
