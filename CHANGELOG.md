@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.12](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.11...v2.45.12) - 2024-01-26
+### Changed
+ - upgrade to [roku-debug@0.21.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0212---2024-01-25). Notable changes since 0.21.1:
+     - Use `stagingDir` instead of stagingFolderPath ([roku-debug#185](https://github.com/rokucommunity/roku-debug/pull/185))
+ - upgrade to [brighterscript@0.65.18](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06518---2024-01-25). Notable changes since 0.65.17:
+     - Prevent overwriting the Program._manifest if already set on startup ([brighterscript#1027](https://github.com/rokucommunity/brighterscript/pull/1027))
+     - Improving null safety: Add FinalizedBsConfig and tweak plugin events ([brighterscript#1000](https://github.com/rokucommunity/brighterscript/pull/1000))
+ - upgrade to [brighterscript-formatter@1.6.39](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1639---2024-01-25). Notable changes since 1.6.38:
+     - allow spacing on dotted get paths ([brighterscript-formatter#83](https://github.com/rokucommunity/brighterscript-formatter/pull/83))
+
+
+
 ## [2.45.11](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.10...v2.45.11) - 2024-01-17
 ### Changed
  - upgrade to [roku-debug@0.21.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0211---2024-01-16). Notable changes since 0.21.0:
