@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.13](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.12...v2.45.13) - 2024-01-28
+### Fixed
+ - Sets `stagingDir` properly in DebugConfigurationProvider ([#543](https://github.com/rokucommunity/vscode-brightscript-language/pull/543))
+
+
+
 ## [2.45.12](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.11...v2.45.12) - 2024-01-26
 ### Changed
  - upgrade to [roku-debug@0.21.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0212---2024-01-25). Notable changes since 0.21.1:
