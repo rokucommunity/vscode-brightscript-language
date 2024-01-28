@@ -89,8 +89,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // merge user and workspace settings into the config
             result = this.processUserWorkspaceSettings(config);
 
-            //force a specific staging folder path because sometimes this conflicts with bsconfig.json
-            result.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+            //force a specific stagingDir because sometimes this conflicts with bsconfig.json
+            result.stagingDir = path.join('${outDir}/.roku-deploy-staging');
+            result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvFile(folder, result);
@@ -363,6 +364,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.stagingFolderPath.includes('${workspaceFolder}')) {
             config.stagingFolderPath = path.normalize(config.stagingFolderPath.replace('${workspaceFolder}', folderUri.fsPath));
         }
+
+        if (config.stagingDir.includes('${outDir}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${outDir}', config.outDir));
+        }
+        if (config.stagingDir.includes('${workspaceFolder}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
