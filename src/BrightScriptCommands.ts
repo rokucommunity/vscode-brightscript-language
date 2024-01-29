@@ -11,6 +11,8 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import * as xml2js from 'xml2js';
+import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
 
 export class BrightScriptCommands {
@@ -264,6 +266,52 @@ export class BrightScriptCommands {
                 await vscode.env.openExternal(vscode.Uri.parse(url));
             } catch (error) {
                 await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+            }
+        });
+
+        this.registerCommand('openRegistryInBrowser', async (host: string) => {
+            if (!host) {
+                host = await this.userInputManager.promptForHost();
+            }
+
+            let responseText = await util.spinAsync('Fetching app list', async () => {
+                return (await util.httpGet(`http://${host}:8060/query/apps`, { timeout: 4_000 })).body as string;
+            });
+
+            const parsed = await xml2js.parseStringPromise(responseText);
+
+            //convert the items to QuickPick items
+            const items: Array<vscode.QuickPickItem & { appId?: string }> = parsed.apps.app.map((appData: any) => {
+                return {
+                    label: appData._,
+                    detail: `ID: ${appData.$.id}`,
+                    description: `${appData.$.version}`,
+                    appId: `${appData.$.id}`
+                } as vscode.QuickPickItem;
+                //sort the items alphabetically
+            }).sort(firstBy('label'));
+
+            //move the dev app to the top (and add a label/section to differentiate it)
+            const devApp = items.find(x => x.appId === 'dev');
+            if (devApp) {
+                items.splice(items.indexOf(devApp), 1);
+                items.unshift(
+                    { kind: vscode.QuickPickItemKind.Separator, label: 'dev' },
+                    devApp,
+                    { kind: vscode.QuickPickItemKind.Separator, label: ' ' }
+                );
+            }
+
+            const selectedApp: typeof items[0] = await vscode.window.showQuickPick(items, { placeHolder: 'Which app would you like to see the registry for?' });
+
+            if (selectedApp) {
+                const appId = selectedApp.appId;
+                let url = `http://${host}:8060/query/registry/${appId}`;
+                try {
+                    await vscode.env.openExternal(vscode.Uri.parse(url));
+                } catch (error) {
+                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+                }
             }
         });
 

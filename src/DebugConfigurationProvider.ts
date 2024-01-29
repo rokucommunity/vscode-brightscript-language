@@ -64,6 +64,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             remotePort: 8060,
             rendezvousTracking: true,
             deleteDevChannelBeforeInstall: false,
+            sceneGraphDebugCommandsPort: 8080,
             remoteControlMode: {
                 activateOnSessionStart: false,
                 deactivateOnSessionEnd: false
@@ -88,8 +89,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // merge user and workspace settings into the config
             result = this.processUserWorkspaceSettings(config);
 
-            //force a specific staging folder path because sometimes this conflicts with bsconfig.json
-            result.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+            //force a specific stagingDir because sometimes this conflicts with bsconfig.json
+            result.stagingDir = path.join('${outDir}/.roku-deploy-staging');
+            result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvFile(folder, result);
@@ -98,18 +100,25 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
 
+            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
+            statusbarItem.text = '$(sync~spin) Fetching device info';
+            statusbarItem.show();
             try {
-                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true });
+                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
             } catch (e) {
                 // a failed deviceInfo request should NOT fail the launch
                 console.error(`Failed to fetch device info for ${result.host}`, e);
             }
+            statusbarItem.dispose();
 
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
-            result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+            //TODO re-enable once we've fixed some of the debug protocol issues
+            // result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
+
+            result.enableDebugProtocol ??= this.configDefaults.enableDebugProtocol;
 
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
@@ -128,7 +137,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
     }
 
-    private async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
+    protected async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
         if (config.enableDebugProtocol !== undefined || !semver.gte(deviceInfo?.softwareVersion ?? '0.0.0', '12.5.0')) {
             config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
             return config;
@@ -309,6 +318,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.cwd = folderUri.fsPath;
         config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
         config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
+        config.sceneGraphDebugCommandsPort = config.sceneGraphDebugCommandsPort ? config.sceneGraphDebugCommandsPort : this.configDefaults.sceneGraphDebugCommandsPort;
         if (typeof config.remoteControlMode === 'boolean') {
             config.remoteControlMode = {
                 activateOnSessionStart: config.remoteControlMode,
@@ -354,6 +364,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (config.stagingFolderPath.includes('${workspaceFolder}')) {
             config.stagingFolderPath = path.normalize(config.stagingFolderPath.replace('${workspaceFolder}', folderUri.fsPath));
         }
+
+        if (config.stagingDir.includes('${outDir}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${outDir}', config.outDir));
+        }
+        if (config.stagingDir.includes('${workspaceFolder}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
 
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {

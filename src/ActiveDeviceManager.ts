@@ -1,7 +1,5 @@
 import * as backoff from 'backoff';
 import { EventEmitter } from 'eventemitter3';
-import * as xmlParser from 'fast-xml-parser';
-import * as http from 'http';
 import * as NodeCache from 'node-cache';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client } from 'node-ssdp';
@@ -10,6 +8,7 @@ import { util } from './util';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
+import { rokuDeploy } from 'roku-deploy';
 
 const DEFAULT_TIMEOUT = 10000;
 
@@ -224,52 +223,41 @@ class RokuFinder extends EventEmitter {
         });
 
         this.client.on('response', (headers: SsdpHeaders) => {
-            if (!this.running) {
-                return;
-            }
-
-            const { ST, LOCATION } = headers;
-            if (ST && LOCATION && ST.includes('roku')) {
-                http.get(`${LOCATION}/query/device-info`, {
-                    headers: {
-                        'User-Agent': 'https://github.com/RokuCommunity/vscode-brightscript-language'
-                    }
-                }, (resp) => {
-                    // Get the device info
-                    let data = '';
-
-                    resp.on('data', (chunk) => {
-                        // A chunk of data has been received.
-                        data += chunk;
-                    });
-
-                    resp.on('end', () => {
-                        // The whole response has been received.
-                        let info = xmlParser.parse(data);
-                        for (const key in info['device-info']) {
-                            let value = info['device-info'][key];
-                            if (typeof value === 'string') {
-                                // Clean up the string results to make them more readable
-                                info['device-info'][key] = util.decodeHtmlEntities(value);
-                            }
-                        }
-
-                        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-                        let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-                        if (includeNonDeveloperDevices || info['device-info']['developer-enabled']) {
-                            const url = new URL(LOCATION);
-                            const device: RokuDeviceDetails = {
-                                location: url.origin,
-                                ip: url.hostname,
-                                id: info['device-info']['device-id']?.toString?.(),
-                                deviceInfo: info['device-info']
-                            };
-                            this.emit('found', device);
-                        }
-                    });
-                });
-            }
+            void this.processSsdpResponse(headers);
         });
+    }
+
+    private async processSsdpResponse(headers: SsdpHeaders) {
+        if (!this.running) {
+            return;
+        }
+
+        const { ST, LOCATION } = headers;
+        if (LOCATION && ST?.includes('roku')) {
+            const url = new URL(LOCATION);
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: url.hostname,
+                remotePort: parseInt(url.port ?? '8060')
+            });
+
+            //sanitize the data
+            for (const key in deviceInfo) {
+                deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
+            }
+
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+            if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
+                const url = new URL(LOCATION);
+                const device: RokuDeviceDetails = {
+                    location: url.origin,
+                    ip: url.hostname,
+                    id: deviceInfo['device-id']?.toString?.(),
+                    deviceInfo: deviceInfo as any
+                };
+                this.emit('found', device);
+            }
+        }
     }
 
     private readonly client: Client;
@@ -374,7 +362,7 @@ export interface RokuDeviceDetails {
         'trc-channel-version'?: string;
         'davinci-version'?: string;
         'av-sync-calibration-enabled'?: number;
-        // Anything nre they might add that we do not know about
+        // Anything they might add that we do not know about
         [key: string]: any;
     };
 }

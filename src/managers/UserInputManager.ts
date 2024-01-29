@@ -71,7 +71,7 @@ export class UserInputManager {
 
         const itemCache = new Map<string, QuickPickHostItem>();
         if (options?.defaultValue) {
-            quickPick.value = options.defaultValue;
+            quickPick.value = options?.defaultValue;
         }
         quickPick.show();
         const refreshList = () => {

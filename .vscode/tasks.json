@@ -9,7 +9,10 @@
                 "group": "watch",
             },
             "isBackground": true,
-            "problemMatcher": "$tsc-watch"
+            "problemMatcher": {
+                "base": "$tsc-watch",
+                "fileLocation": "absolute"
+            }
         },
         {
             "label": "watch",

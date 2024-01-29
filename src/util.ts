@@ -8,6 +8,8 @@ import { Cache } from 'brighterscript/dist/Cache';
 import undent from 'undent';
 import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
 import type { DeviceInfo } from 'roku-deploy';
+import * as request from 'postman-request';
+import type { Response, CoreOptions } from 'request';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -203,27 +205,6 @@ class Util {
     }
 
     /**
-     * Decode HTML entities like &nbsp; &#39; to its original character
-     */
-    public decodeHtmlEntities(encodedString: string) {
-        let translateRegex = /&(nbsp|amp|quot|lt|gt);/g;
-        let translate = {
-            'nbsp': ' ',
-            'amp': '&',
-            'quot': '"',
-            'lt': '<',
-            'gt': '>'
-        };
-
-        return encodedString.replace(translateRegex, (match, entity) => {
-            return translate[entity];
-        }).replace(/&#(\d+);/gi, (match, numStr) => {
-            let num = parseInt(numStr, 10);
-            return String.fromCharCode(num);
-        });
-    }
-
-    /**
      * Creates an output channel but wraps the `append` and `appendLine`
      * functions so a function can be called with their values
      */
@@ -385,6 +366,17 @@ class Util {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     }
 
+    /**
+     * Do an http GET request
+     */
+    public httpGet(url: string, options?: CoreOptions) {
+        return new Promise<Response>((resolve, reject) => {
+            request.get(url, options, (err, response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
+    }
+
     public async openIssueReporter(options: { title?: string; body?: string; deviceInfo?: DeviceInfo }) {
         if (!options.body) {
             options.body = undent`
@@ -408,6 +400,29 @@ class Util {
             issueTitle: options.title ?? 'Problem with Debug Protocol',
             issueBody: options.body
         });
+    }
+
+    public createStatusbarSpinner(message: string) {
+        const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
+        statusbarItem.text = `$(sync~spin) ${message}`;
+        statusbarItem.show();
+        return statusbarItem;
+    }
+
+    /**
+     * Show a statusbar spinner that is hidden once the callback resolves
+     * @param message the message that should be shown in the statusbar spinner
+     * @param callback the function to run, that when completed will hide the spinner
+     * @returns
+     */
+    public async spinAsync<T>(message: string, callback: () => Promise<T>) {
+        const spinner = this.createStatusbarSpinner(message);
+        try {
+            const result = await callback();
+            return result;
+        } finally {
+            spinner.dispose();
+        }
     }
 }
 

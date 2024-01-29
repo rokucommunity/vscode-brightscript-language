@@ -3,15 +3,13 @@ import * as path from 'path';
 import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
-import { QuickPickItemKind } from 'vscode';
 import Uri from 'vscode-uri';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
-import { UserInputManager, manualHostItemId } from './managers/UserInputManager';
+import { UserInputManager } from './managers/UserInputManager';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import type { RokuDeviceDetails } from './ActiveDeviceManager';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { rokuDeploy } from 'roku-deploy';
 import { GlobalStateManager } from './GlobalStateManager';
@@ -178,17 +176,16 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(config.remotePort).to.equal(5678);
         });
 
-        [
-            { input: true, expected: { activateOnSessionStart: true, deactivateOnSessionEnd: true } },
-            { input: false, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } },
-            { input: undefined, expected: { activateOnSessionStart: false, deactivateOnSessionEnd: false } }
-        ].forEach(({ input, expected }) => {
-            it('allows using a bool value for remoteConfigMode', async () => {
+        it('allows using a bool value for remoteConfigMode', async () => {
+            async function doTest(remoteControlMode: boolean, expected: any) {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
-                    remoteControlMode: input
+                    remoteControlMode: remoteControlMode
                 });
                 expect(config.remoteControlMode).to.deep.equal(expected);
-            });
+            }
+            await doTest(true, { activateOnSessionStart: true, deactivateOnSessionEnd: true });
+            await doTest(false, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+            await doTest(undefined, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
         });
     });
 
@@ -332,135 +329,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 rootDir: '${env:TEST_ENV_VAR}/123'
             });
             expect(config.rootDir).to.eql('./somePath/123');
-        });
-    });
-
-    describe('createHostQuickPickList', () => {
-        const devices: Array<RokuDeviceDetails> = [{
-            deviceInfo: {
-                'user-device-name': 'roku1',
-                'serial-number': 'alpha',
-                'model-number': 'model1'
-            },
-            id: '1',
-            ip: '1.1.1.1',
-            location: '???'
-        }, {
-            deviceInfo: {
-                'user-device-name': 'roku2',
-                'serial-number': 'beta',
-                'model-number': 'model2'
-            },
-            id: '2',
-            ip: '1.1.1.2',
-            location: '???'
-        }, {
-            deviceInfo: {
-                'user-device-name': 'roku3',
-                'serial-number': 'charlie',
-                'model-number': 'model3'
-            },
-            id: '3',
-            ip: '1.1.1.3',
-            location: '???'
-        }];
-        function label(device: RokuDeviceDetails) {
-            return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
-        }
-
-        it('includes "manual', () => {
-            expect(
-                configProvider['createHostQuickPickList']([], undefined)
-            ).to.eql([{
-                label: 'Enter manually',
-                device: {
-                    id: manualHostItemId
-                }
-            }]);
-        });
-
-        it('includes separators for devices and manual options', () => {
-            expect(
-                configProvider['createHostQuickPickList']([devices[0]], undefined)
-            ).to.eql([
-                {
-                    kind: QuickPickItemKind.Separator,
-                    label: 'devices'
-                },
-                {
-                    label: '1.1.1.1 | roku1 - alpha - model1',
-                    device: devices[0]
-                },
-                {
-                    kind: QuickPickItemKind.Separator,
-                    label: ' '
-                }, {
-                    label: 'Enter manually',
-                    device: {
-                        id: manualHostItemId
-                    }
-                }]
-            );
-        });
-
-        it('moves active device to the top', () => {
-            expect(
-                configProvider['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[1]),
-                'other devices',
-                label(devices[0]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
-        });
-
-        it('includes the spinner text when "last used" and "other devices" separators are both present', () => {
-            expect(
-                configProvider['createHostQuickPickList'](devices, devices[1]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[1]),
-                'other devices',
-                label(devices[0]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
-        });
-
-        it('includes the spinner text if "devices" separator is present', () => {
-            expect(
-                configProvider['createHostQuickPickList'](devices, null).map(x => x.label)
-            ).to.eql([
-                'devices',
-                label(devices[0]),
-                label(devices[1]),
-                label(devices[2]),
-                ' ',
-                'Enter manually'
-            ]);
-        });
-
-        it('includes the spinner text if only "last used" separator is present', () => {
-            expect(
-                configProvider['createHostQuickPickList']([devices[0]], devices[0]).map(x => x.label)
-            ).to.eql([
-                'last used',
-                label(devices[0]),
-                ' ',
-                'Enter manually'
-            ]);
-        });
-
-        it('includes the spinner text when no other device entries are present', () => {
-            expect(
-                configProvider['createHostQuickPickList']([], null).map(x => x.label)
-            ).to.eql([
-                'Enter manually'
-            ]);
         });
     });
 
