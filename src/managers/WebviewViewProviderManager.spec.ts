@@ -15,7 +15,7 @@ describe('WebviewViewProviderManager', () => {
     const config = {} as BrightScriptLaunchConfiguration;
     let webviewViewProviderManager: WebviewViewProviderManager;
     let rtaManager: RtaManager;
-    const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any);
+    const brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any);
 
     before(() => {
         context = {

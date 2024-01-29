@@ -173,7 +173,10 @@
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
         "onCommand:brighterscript.showPreviewToSide",
-        "onCommand:extension.brightscript.captureScreenshot"
+        "onCommand:extension.brightscript.captureScreenshot",
+        "onCommand:extension.brightscript.rekeyDevice",
+        "onCommand:extension.brightscript.createPackage",
+        "onCommand:extension.brightscript.rekeyAndPackage"
     ],
     "contributes": {
         "viewsContainers": {

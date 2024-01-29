@@ -1,18 +1,20 @@
 import * as vscode from 'vscode';
-import * as fsExtra from 'fs-extra';
 import * as rokuDeploy from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
+import type { UserInputManager } from '../managers/UserInputManager';
 
 export const FILE_SCHEME = 'bs-captureScreenshot';
 
 export class RekeyAndPackageCommand {
 
-    private brightScriptCommandsInstance: BrightScriptCommands;
+    private brightScriptCommands: BrightScriptCommands;
+    private userInputManager: UserInputManager;
 
-    public register(context: vscode.ExtensionContext, BrightScriptCommandsInstance: BrightScriptCommands) {
-        this.brightScriptCommandsInstance = BrightScriptCommandsInstance;
+    public register(context: vscode.ExtensionContext, BrightScriptCommandsInstance: BrightScriptCommands, userInputManager: UserInputManager) {
+        this.brightScriptCommands = BrightScriptCommandsInstance;
+        this.userInputManager = userInputManager;
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rekeyDevice', async (hostParam?: string) => {
             await this.rekeyDevice();
@@ -32,7 +34,7 @@ export class RekeyAndPackageCommand {
         const PICK_FROM_JSON = 'Pick from Json file';
         const MANUAL_ENTRY = 'Enter manually';
 
-        let rekeyConfig = {
+        let rekeyConfig: RekeyConfig = {
             signingPassword: '',
             rekeySignedPackage: '',
             host: '',
@@ -40,7 +42,7 @@ export class RekeyAndPackageCommand {
         };
 
         let rekeyOptionList = [PICK_FROM_JSON, MANUAL_ENTRY];
-        let rekeyOption = await vscode.window.showQuickPick(rekeyOptionList, { placeHolder: 'How do you want to select you configurations', canPickMany: false });
+        let rekeyOption = await vscode.window.showQuickPick(rekeyOptionList, { placeHolder: 'How would you like to select your configuration', canPickMany: false });
         if (rekeyOption) {
             switch (rekeyOption) {
                 case PICK_FROM_JSON:
@@ -57,7 +59,7 @@ export class RekeyAndPackageCommand {
         void vscode.window.showInformationMessage(`Device successfully rekeyed!`);
     }
 
-    private async getRekeyConfigFromJson(rekeyConfig) {
+    private async getRekeyConfigFromJson(rekeyConfig: RekeyConfig) {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
             openLabel: 'Select',
@@ -77,8 +79,8 @@ export class RekeyAndPackageCommand {
             }
 
             if (content.rekeySignedPackage.includes('./')) {
-                await this.brightScriptCommandsInstance.getWorkspacePath();
-                let workspacePath = this.brightScriptCommandsInstance.workspacePath;
+                await this.brightScriptCommands.getWorkspacePath();
+                let workspacePath = this.brightScriptCommands.workspacePath;
                 rekeyConfig.rekeySignedPackage = workspacePath + content.rekeySignedPackage.replace('./', '/');
             }
 
@@ -93,29 +95,31 @@ export class RekeyAndPackageCommand {
         return this.getRekeyManualEntries(rekeyConfig, rekeyConfig);
     }
 
-    private async getRekeyManualEntries(rekeyConfig, defaultValues) {
-        rekeyConfig.host = await vscode.window.showInputBox({
-            placeHolder: 'Enter IP address of the Roku device you want to rekey',
-            value: defaultValues?.host ? defaultValues.host : ''
-        });
+    private async getRekeyManualEntries(rekeyConfig: RekeyConfig, defaultValues) {
+        rekeyConfig.host = await this.userInputManager.promptForHost();
 
         rekeyConfig.password = await vscode.window.showInputBox({
             placeHolder: 'Enter password for the Roku device you want to rekey',
-            value: defaultValues?.password ? defaultValues.password : ''
+            value: defaultValues?.password ?? ''
         });
+        if (!rekeyConfig.password) {
+            throw new Error('Cancelled');
+        }
 
         rekeyConfig.signingPassword = await vscode.window.showInputBox({
             placeHolder: 'Enter signingPassword to be used to rekey the Roku',
-            value: defaultValues?.signingPassword ? defaultValues.signingPassword : ''
+            value: defaultValues?.signingPassword ?? ''
         });
+        if (!rekeyConfig.signingPassword) {
+            throw new Error('Cancelled');
+        }
 
-        let chooseFileText = 'Choose';
-        let cancelText = 'Cancel';
         let response = await vscode.window.showInformationMessage(
-            'Please choose a signed package to rekey your device',
-            ...[chooseFileText, cancelText]
+            'Please choose a signed package (a .pkg file) to rekey your device',
+            { modal: true },
+            'Open file picker'
         );
-        if (response === chooseFileText) {
+        if (response === 'Open file picker') {
             const options: vscode.OpenDialogOptions = {
                 canSelectMany: false,
                 openLabel: 'Select signed package file',
@@ -129,14 +133,29 @@ export class RekeyAndPackageCommand {
             if (fileUri?.[0]) {
                 rekeyConfig.rekeySignedPackage = fileUri[0].fsPath;
             }
+        } else {
+            throw new Error('Cancelled');
         }
 
-        return rekeyConfig;
+        const selection = await vscode.window.showInformationMessage('Rekey info:', {
+            modal: true,
+            detail: [
+                `host: ${rekeyConfig.host}`,
+                `password: ${rekeyConfig.password}`,
+                `signing password: ${rekeyConfig.signingPassword}`,
+                `package: ${rekeyConfig.rekeySignedPackage}`
+            ].join('\n')
+        }, 'Rekey', 'I want to change something');
+        if (selection === 'Rekey') {
+            return rekeyConfig;
+        } else if (selection === 'I want to change something') {
+            return this.getRekeyManualEntries(rekeyConfig, rekeyConfig);
+        }
     }
 
     private async createPackage() {
-        await this.brightScriptCommandsInstance.getWorkspacePath();
-        let workspacePath = this.brightScriptCommandsInstance.workspacePath;
+        await this.brightScriptCommands.getWorkspacePath();
+        let workspacePath = this.brightScriptCommands.workspacePath;
 
         let rokuDeployOptions = {
             rootDir: '',
@@ -169,11 +188,11 @@ export class RekeyAndPackageCommand {
                     break;
             }
 
-            await this.brightScriptCommandsInstance.getRemoteHost(false);
-            await this.brightScriptCommandsInstance.getRemotePassword(false);
-            let host = this.brightScriptCommandsInstance.host;
-            let remotePassword = this.brightScriptCommandsInstance.password;
-            let signingPassword = await this.brightScriptCommandsInstance.getSigningPassword(false);
+            await this.brightScriptCommands.getRemoteHost(false);
+            await this.brightScriptCommands.getRemotePassword(false);
+            let host = this.brightScriptCommands.host;
+            let remotePassword = this.brightScriptCommands.password;
+            let signingPassword = await this.brightScriptCommands.getSigningPassword(false);
 
             let hostValue = rokuDeployOptions.host ? rokuDeployOptions.host : host;
             let passwordValue = rokuDeployOptions.password ? rokuDeployOptions.password : remotePassword;
@@ -266,8 +285,8 @@ export class RekeyAndPackageCommand {
         }
 
         if (selectedConfig.rootDir?.includes('${workspaceFolder}')) {
-            await this.brightScriptCommandsInstance.getWorkspacePath();
-            let workspacePath = this.brightScriptCommandsInstance.workspacePath;
+            await this.brightScriptCommands.getWorkspacePath();
+            let workspacePath = this.brightScriptCommands.workspacePath;
 
             selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', workspacePath));
         }
@@ -289,8 +308,8 @@ export class RekeyAndPackageCommand {
 
     private async parseRokuDeployJson(filePath: string, rokuDeployOptions) {
         let content = JSON.parse(readFileSync(filePath).toString());
-        await this.brightScriptCommandsInstance.getWorkspacePath();
-        let workspacePath = this.brightScriptCommandsInstance.workspacePath;
+        await this.brightScriptCommands.getWorkspacePath();
+        let workspacePath = this.brightScriptCommands.workspacePath;
 
         if (content.signingPassword) {
             rokuDeployOptions.signingPassword = content.signingPassword;
@@ -326,7 +345,13 @@ export class RekeyAndPackageCommand {
 
         return rokuDeployOptions;
     }
+}
 
+interface RekeyConfig {
+    signingPassword: string;
+    rekeySignedPackage: string;
+    host: string;
+    password: string;
 }
 
 export const rekeyAndPackageCommand = new RekeyAndPackageCommand();

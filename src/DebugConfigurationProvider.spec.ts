@@ -6,7 +6,7 @@ import type { WorkspaceFolder } from 'vscode';
 import { QuickPickItemKind } from 'vscode';
 import Uri from 'vscode-uri';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
-import { manualHostItemId } from './DebugConfigurationProvider';
+import { UserInputManager, manualHostItemId } from './managers/UserInputManager';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
@@ -38,6 +38,7 @@ describe('BrightScriptConfigurationProvider', () => {
     let configProvider: BrightScriptDebugConfigurationProvider;
     let folder: WorkspaceFolder;
     let globalStateManager: GlobalStateManager;
+    let userInputManager: UserInputManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
@@ -52,13 +53,15 @@ describe('BrightScriptConfigurationProvider', () => {
         //prevent the 'start' method from actually running
         sinon.stub(ActiveDeviceManager.prototype as any, 'start').callsFake(() => { });
         let activeDeviceManager = new ActiveDeviceManager();
+        userInputManager = new UserInputManager(activeDeviceManager);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
             activeDeviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
-            globalStateManager
+            globalStateManager,
+            userInputManager
         );
     });
 

@@ -11,7 +11,7 @@ import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
 import type { ActiveDeviceManager } from './ActiveDeviceManager';
-import * as rokuDeploy from 'roku-deploy';
+import type { UserInputManager } from './managers/UserInputManager';
 
 export class BrightScriptCommands {
 
@@ -19,7 +19,8 @@ export class BrightScriptCommands {
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager
+        private activeDeviceManager: ActiveDeviceManager,
+        private userInputManager: UserInputManager
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
@@ -35,7 +36,7 @@ export class BrightScriptCommands {
         brighterScriptPreviewCommand.register(this.context);
         languageServerInfoCommand.register(this.context);
         captureScreenshotCommand.register(this.context, this);
-        rekeyAndPackageCommand.register(this.context, this);
+        rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
 
         this.registerGeneralCommands();
 
