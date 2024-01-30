@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.14](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.13...v2.45.14) - 2024-01-30
+### Changed
+ - upgrade to [roku-debug@0.21.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0213---2024-01-30)
+ - upgrade to [brighterscript@0.65.19](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06519---2024-01-30). Notable changes since 0.65.18:
+     - Backport v1 syntax changes ([brighterscript#1034](https://github.com/rokucommunity/brighterscript/pull/1034))
+ - upgrade to [brighterscript-formatter@1.6.40](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1640---2024-01-30)
+
+
+
 ## [2.45.13](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.12...v2.45.13) - 2024-01-28
 ### Fixed
  - Sets `stagingDir` properly in DebugConfigurationProvider ([#543](https://github.com/rokucommunity/vscode-brightscript-language/pull/543))
