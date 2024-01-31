@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.16](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.15...v2.45.16) - 2024-01-31
+### Changed
+ - upgrade to [brighterscript@0.65.21](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06521---2024-01-31). Notable changes since 0.65.20:
+     - Fix parsing issues with multi-index IndexedSet and IndexedGet ([brighterscript#1050](https://github.com/rokucommunity/brighterscript/pull/1050))
+
+
+
 ## [2.45.15](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.14...v2.45.15) - 2024-01-30
 ### Changed
  - upgrade to [brighterscript@0.65.20](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06520---2024-01-30). Notable changes since 0.65.19:
