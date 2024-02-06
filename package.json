@@ -2541,11 +2541,6 @@
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.clearLogOutput",
-                "title": "Clear the brightscript log output",
-                "category": "Brightscript"
-            },
-            {
                 "command": "extension.brightscript.toggleRemoteControlMode",
                 "title": "Toggle remote control mode",
                 "category": "Brightscript"
@@ -2693,7 +2688,7 @@
             },
             {
                 "command": "extension.brightscript.clearLogOutput",
-                "title": "Clear Log Output",
+                "title": "Clear the brightscript log output",
                 "category": "Brightscript"
             },
             {
