@@ -96,7 +96,7 @@ export class RekeyAndPackageCommand {
     }
 
     private async getRekeyManualEntries(rekeyConfig: RekeyConfig, defaultValues) {
-        rekeyConfig.host = await this.userInputManager.promptForHost();
+        rekeyConfig.host = await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host });
 
         rekeyConfig.password = await vscode.window.showInputBox({
             placeHolder: 'Enter password for the Roku device you want to rekey',
@@ -176,14 +176,23 @@ export class RekeyAndPackageCommand {
             retainStagingDir: defaultValues?.retainStagingDir ? defaultValues.retainStagingDir : true,
             host: defaultValues?.host ? defaultValues.host : '',
             password: defaultValues?.password ? defaultValues.password : '',
-            signingPassword: defaultValues?.signingPassword ? defaultValues.signingPassword : ''
+            signingPassword: defaultValues?.signingPassword ? defaultValues.signingPassword : '',
+            packageConfig: defaultValues?.packageConfig ? defaultValues?.packageConfig : ''
         };
 
         let PACKAGE_FOLDER = 'Pick a folder';
         let PACKAGE_FROM_LAUNCH_JSON = 'Pick from a launch.json';
         let PACKAGE_FROM_ROKU_DEPLOY = 'Pick a rokudeploy.json';
+        let packageOptionList = [];
 
-        let packageOptionList = [PACKAGE_FOLDER, PACKAGE_FROM_LAUNCH_JSON, PACKAGE_FROM_ROKU_DEPLOY];
+        if (rokuDeployOptions.packageConfig !== '') {
+            packageOptionList.push({
+                label: `Previous Selection:`,
+                detail: `${rokuDeployOptions.packageConfig}`
+            });
+        }
+        packageOptionList.push(PACKAGE_FOLDER, PACKAGE_FROM_LAUNCH_JSON, PACKAGE_FROM_ROKU_DEPLOY);
+
         let packageOption = await vscode.window.showQuickPick(packageOptionList, { placeHolder: 'What would you like to package', canPickMany: false });
         if (packageOption) {
             switch (packageOption) {
@@ -200,7 +209,7 @@ export class RekeyAndPackageCommand {
                     break;
             }
 
-            rokuDeployOptions.host = await this.userInputManager.promptForHost();
+            rokuDeployOptions.host = await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' });
 
             rokuDeployOptions.password = await vscode.window.showInputBox({
                 placeHolder: 'Enter password for the Roku device',
@@ -258,6 +267,7 @@ export class RekeyAndPackageCommand {
 
             rokuDeployOptions.rootDir = rootDir;
             rokuDeployOptions.outFile = 'roku-' + outFileName.replace(/ /g, '-');
+            rokuDeployOptions.packageConfig = 'folder: ' + rootDir;
 
             return rokuDeployOptions;
         }
@@ -304,6 +314,7 @@ export class RekeyAndPackageCommand {
 
             selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', workspacePath));
         }
+        rokuDeployOptions.packageConfig = 'launch.json: ' + selectedConfig.rootDir;
 
         if (!selectedConfig.host.includes('${')) {
             rokuDeployOptions.host = selectedConfig.host;
@@ -321,6 +332,7 @@ export class RekeyAndPackageCommand {
     }
 
     private async parseRokuDeployJson(filePath: string, rokuDeployOptions) {
+        rokuDeployOptions.packageConfig = 'rokudeploy.json: ' + filePath;
         let content = JSON.parse(readFileSync(filePath).toString());
         await this.brightScriptCommands.getWorkspacePath();
         let workspacePath = this.brightScriptCommands.workspacePath;
@@ -376,6 +388,7 @@ interface RokuDeployOptions {
     host: string;
     password: string;
     signingPassword: string;
+    packageConfig: string;
 }
 
 export const rekeyAndPackageCommand = new RekeyAndPackageCommand();
