@@ -25,8 +25,7 @@ export class RekeyAndPackageCommand {
         }));
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rekeyAndPackage', async (hostParam?: string) => {
-            await this.rekeyDevice();
-            await this.createPackage({});
+            await this.createPackage({}, true);
         }));
     }
 
@@ -114,12 +113,31 @@ export class RekeyAndPackageCommand {
             throw new Error('Cancelled');
         }
 
+        rekeyConfig.rekeySignedPackage = await this.getSignedPackage(rekeyConfig.rekeySignedPackage);
+
+        const selection = await vscode.window.showInformationMessage('Rekey info:', {
+            modal: true,
+            detail: [
+                `host: ${rekeyConfig.host}`,
+                `password: ${rekeyConfig.password}`,
+                `signing password: ${rekeyConfig.signingPassword}`,
+                `package: ${rekeyConfig.rekeySignedPackage}`
+            ].join('\n')
+        }, 'Rekey', 'I want to change something');
+        if (selection === 'Rekey') {
+            return rekeyConfig;
+        } else if (selection === 'I want to change something') {
+            return this.getRekeyManualEntries(rekeyConfig, rekeyConfig);
+        }
+    }
+
+    private async getSignedPackage(rekeySignedPackage) {
         let response = '';
-        if (rekeyConfig.rekeySignedPackage !== '') {
+        if (rekeySignedPackage !== '') {
             response = await vscode.window.showInformationMessage(
                 'Please choose a signed package (a .pkg file) to rekey your device',
                 { modal: true,
-                    detail: `Current file: ${rekeyConfig.rekeySignedPackage}` },
+                    detail: `Current file: ${rekeySignedPackage}` },
                 'Use the current file', 'Pick a different file'
             );
         } else {
@@ -141,31 +159,17 @@ export class RekeyAndPackageCommand {
             };
             let fileUri = await vscode.window.showOpenDialog(options);
             if (fileUri?.[0]) {
-                rekeyConfig.rekeySignedPackage = fileUri[0].fsPath;
+                return fileUri[0].fsPath;
             }
         } else if (response === 'Use the current file') {
-            //Use the same package
+            return rekeySignedPackage;
         } else {
             throw new Error('Cancelled');
         }
-
-        const selection = await vscode.window.showInformationMessage('Rekey info:', {
-            modal: true,
-            detail: [
-                `host: ${rekeyConfig.host}`,
-                `password: ${rekeyConfig.password}`,
-                `signing password: ${rekeyConfig.signingPassword}`,
-                `package: ${rekeyConfig.rekeySignedPackage}`
-            ].join('\n')
-        }, 'Rekey', 'I want to change something');
-        if (selection === 'Rekey') {
-            return rekeyConfig;
-        } else if (selection === 'I want to change something') {
-            return this.getRekeyManualEntries(rekeyConfig, rekeyConfig);
-        }
     }
 
-    private async createPackage(defaultValues) {
+
+    private async createPackage(defaultValues, rekeyFlag = false) {
         await this.brightScriptCommands.getWorkspacePath();
         let workspacePath = this.brightScriptCommands.workspacePath;
 
@@ -177,6 +181,7 @@ export class RekeyAndPackageCommand {
             host: defaultValues?.host ? defaultValues.host : '',
             password: defaultValues?.password ? defaultValues.password : '',
             signingPassword: defaultValues?.signingPassword ? defaultValues.signingPassword : '',
+            rekeySignedPackage: defaultValues?.rekeySignedPackage ? defaultValues.rekeySignedPackage : '',
             packageConfig: defaultValues?.packageConfig ? defaultValues?.packageConfig : ''
         };
 
@@ -224,22 +229,34 @@ export class RekeyAndPackageCommand {
                 value: rokuDeployOptions.signingPassword ?? ''
             });
 
+            let details = [
+                `host: ${rokuDeployOptions.host}`,
+                `password: ${rokuDeployOptions.password}`,
+                `signing password: ${rokuDeployOptions.signingPassword}`,
+                `outDir: ${rokuDeployOptions.outDir}`,
+                `outFile: ${rokuDeployOptions.outFile}`,
+                `rootDir: ${rokuDeployOptions.rootDir}`,
+                `retainStagingDir: ${rokuDeployOptions.retainStagingDir}`
+            ];
+
+            if (rekeyFlag) {
+                rokuDeployOptions.rekeySignedPackage = await this.getSignedPackage(rokuDeployOptions.rekeySignedPackage);
+                details.push(`rekeySignedPackage: ${rokuDeployOptions.rekeySignedPackage}`);
+            }
+
             let confirmText = 'Create Package';
             let changeText = 'I want to change something';
             let response = await vscode.window.showInformationMessage('Create Package info:', {
                 modal: true,
-                detail: [
-                    `host: ${rokuDeployOptions.host}`,
-                    `password: ${rokuDeployOptions.password}`,
-                    `signing password: ${rokuDeployOptions.signingPassword}`,
-                    `outDir: ${rokuDeployOptions.outDir}`,
-                    `outFile: ${rokuDeployOptions.outFile}`,
-                    `rootDir: ${rokuDeployOptions.rootDir}`,
-                    `retainStagingDir: ${rokuDeployOptions.retainStagingDir}`
-                ].join('\n')
+                detail: details.join('\n')
             }, confirmText, changeText);
 
             if (response === confirmText) {
+                if (rekeyFlag) {
+                    //rekey device
+                    await rokuDeploy.rekeyDevice(rokuDeployOptions);
+                }
+
                 //create a zip and pkg file of the app based on the selected launch config
                 await rokuDeploy.createPackage(rokuDeployOptions);
                 let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
@@ -247,7 +264,7 @@ export class RekeyAndPackageCommand {
                 void vscode.window.showInformationMessage(`Package successfully created!`);
 
             } else if (response === changeText) {
-                return this.createPackage(rokuDeployOptions);
+                return this.createPackage(rokuDeployOptions, rekeyFlag);
             }
         }
     }
@@ -388,6 +405,7 @@ interface RokuDeployOptions {
     host: string;
     password: string;
     signingPassword: string;
+    rekeySignedPackage: string;
     packageConfig: string;
 }
 
