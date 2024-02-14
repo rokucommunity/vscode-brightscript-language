@@ -98,7 +98,7 @@ export class RekeyAndPackageCommand {
         rekeyConfig.host = await this.userInputManager.promptForHost({ defaultValue: rekeyConfig?.host ?? defaultValues?.host });
 
         rekeyConfig.password = await vscode.window.showInputBox({
-            placeHolder: 'Enter password for the Roku device you want to rekey',
+            title: 'Enter password for the Roku device you want to rekey',
             value: defaultValues?.password ?? ''
         });
         if (!rekeyConfig.password) {
@@ -106,7 +106,7 @@ export class RekeyAndPackageCommand {
         }
 
         rekeyConfig.signingPassword = await vscode.window.showInputBox({
-            placeHolder: 'Enter signingPassword to be used to rekey the Roku',
+            title: 'Enter signingPassword to be used to rekey the Roku',
             value: defaultValues?.signingPassword ?? ''
         });
         if (!rekeyConfig.signingPassword) {
@@ -168,6 +168,30 @@ export class RekeyAndPackageCommand {
         }
     }
 
+    private async promptUserForAFolder(dialogTitle) {
+        let response = '';
+
+        response = await vscode.window.showInformationMessage(
+            dialogTitle,
+            { modal: true },
+            'Open file picker'
+        );
+
+        if (response === 'Open file picker') {
+            const options: vscode.OpenDialogOptions = {
+                canSelectMany: false,
+                openLabel: 'Select',
+                canSelectFiles: false,
+                canSelectFolders: true
+            };
+            let folderUri = await vscode.window.showOpenDialog(options);
+            if (folderUri?.[0]) {
+                return folderUri[0].fsPath;
+            }
+        } else {
+            throw new Error('Cancelled');
+        }
+    }
 
     private async createPackage(defaultValues, rekeyFlag = false) {
         await this.brightScriptCommands.getWorkspacePath();
@@ -217,7 +241,7 @@ export class RekeyAndPackageCommand {
             rokuDeployOptions.host = await this.userInputManager.promptForHost({ defaultValue: rokuDeployOptions?.host ?? '' });
 
             rokuDeployOptions.password = await vscode.window.showInputBox({
-                placeHolder: 'Enter password for the Roku device',
+                title: 'Enter password for the Roku device',
                 value: rokuDeployOptions.password ?? ''
             });
             if (!rokuDeployOptions.password) {
@@ -225,9 +249,16 @@ export class RekeyAndPackageCommand {
             }
 
             rokuDeployOptions.signingPassword = await vscode.window.showInputBox({
-                title: 'Enter signingPassword to be used to rekey the Roku',
+                title: 'Enter signingPassword for the Roku',
                 value: rokuDeployOptions.signingPassword ?? ''
             });
+
+            if (!rokuDeployOptions.rootDir) {
+                rokuDeployOptions.rootDir = await this.promptUserForAFolder('Select rootDir to create package');
+            }
+            if (!rokuDeployOptions.rootDir) {
+                throw new Error('Cancelled');
+            }
 
             let details = [
                 `host: ${rokuDeployOptions.host}`,
@@ -261,7 +292,9 @@ export class RekeyAndPackageCommand {
                 await rokuDeploy.createPackage(rokuDeployOptions);
                 let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
                 await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions);
-                void vscode.window.showInformationMessage(`Package successfully created!`);
+
+                let successfulMessage = `Package successfully created at ` + rokuDeployOptions.outDir + `/` + rokuDeployOptions.outFile;
+                void vscode.window.showInformationMessage(successfulMessage);
 
             } else if (response === changeText) {
                 return this.createPackage(rokuDeployOptions, rekeyFlag);
@@ -279,11 +312,9 @@ export class RekeyAndPackageCommand {
         let fileUri = await vscode.window.showOpenDialog(options);
         if (fileUri?.[0]) {
             let rootDir = fileUri?.[0].fsPath;
-            let rootDirArray = rootDir.split('/');
-            let outFileName = rootDirArray[rootDirArray.length - 1];
 
             rokuDeployOptions.rootDir = rootDir;
-            rokuDeployOptions.outFile = 'roku-' + outFileName.replace(/ /g, '-');
+            rokuDeployOptions.outFile = path.basename(rootDir);
             rokuDeployOptions.packageConfig = 'folder: ' + rootDir;
 
             return rokuDeployOptions;
