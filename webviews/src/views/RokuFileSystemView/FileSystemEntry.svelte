@@ -13,8 +13,6 @@
         dateCreated?: true
     };
 
-    let containerWidth = 0;
-
     function onDoubleClick() {
         dispatch('open', entry);
     }
@@ -45,7 +43,7 @@
     }
 </style>
 
-<vscode-data-grid-row on:dblclick={onDoubleClick} bind:clientWidth={containerWidth}>
+<vscode-data-grid-row on:dblclick={onDoubleClick}>
     <vscode-data-grid-cell grid-column="1">
         {#if entry.type === 'file'}
             <File />

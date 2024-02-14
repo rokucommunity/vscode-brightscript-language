@@ -28,12 +28,10 @@
 
     let overlays = [] as OverlayInfo[]
     $: {
-        console.log('overlays changed', overlays)
         intermediary.updateWorkspaceState(WorkspaceStateKey.rokuAppOverlays, overlays);
     }
 
     intermediary.getWorkspaceState(WorkspaceStateKey.rokuAppOverlays).then((storedOverlays) => {
-        console.log('storedOverlays', storedOverlays)
         if (storedOverlays !== undefined) {
             overlays = storedOverlays;
         }

@@ -345,7 +345,7 @@
                 },
                 {
                     "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
-                    "when": "view == rokuAppOverlaysView",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
                 },
                 {
