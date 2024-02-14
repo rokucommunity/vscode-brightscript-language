@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as rta from 'roku-test-automation';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
@@ -56,25 +58,7 @@ export class RtaManager {
     public async sendOdcRequest(requestorId: string, command: string, context: { args: any; options: any }) {
         const { args, options } = context;
 
-        if (command === rta.RequestType.findNodesAtLocation) {
-            if (!this.lastStoreNodesResponse) {
-                args.includeBoundingRectInfo = true;
-                await this.sendOdcRequest(requestorId, rta.RequestType.storeNodeReferences, args);
-            }
-            context.args.nodeTreeResponse = this.lastStoreNodesResponse;
-            let { matches } = await rta.odc.findNodesAtLocation(args, options);
-            if (requestorId === ViewProviderId.rokuDeviceView) {
-                if (matches.length) {
-                    const match = { ...matches[0] };
-                    // Remove children as this is where most of the payload is and we don't need this info
-                    match.children = [];
-                    matches = [match];
-                }
-            }
-            return {
-                matches: matches
-            };
-        } else if (command === rta.RequestType.storeNodeReferences) {
+        if (command === rta.RequestType.storeNodeReferences) {
             this.lastStoreNodesResponse = await rta.odc.storeNodeReferences(args, options);
 
             const viewIds = [];
@@ -87,6 +71,18 @@ export class RtaManager {
                 event: ViewProviderEvent.onStoredNodeReferencesUpdated
             });
             return this.lastStoreNodesResponse;
+        } else if (command === rta.RequestType.writeFile) {
+            // We can't access files from the webview so we just store the path and access it in node instead
+            const directoryPath = path.dirname(args.destinationPath);
+            // We always try to make the directory. Doesn't fail if it already exists
+            await rta.odc.createDirectory({
+                path: directoryPath
+            });
+
+            return rta.odc.writeFile({
+                binaryPayload: fs.readFileSync(args.sourcePath),
+                path: args.destinationPath
+            }, options);
         } else {
             return this.onDeviceComponent[command](args, options);
         }
