@@ -16,6 +16,7 @@
 <style>
     vscode-data-grid-cell {
         padding: 5px;
+        cursor: pointer;
     }
 
     #iconContainer {
