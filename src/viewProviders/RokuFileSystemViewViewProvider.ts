@@ -26,6 +26,7 @@ export class RokuFileSystemViewViewProvider extends BaseRdbViewProvider {
             // Write some content to the new file
             fs.writeFileSync(filePath, result.binaryPayload);
             await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath));
+            await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
             return true;
         });
     }
