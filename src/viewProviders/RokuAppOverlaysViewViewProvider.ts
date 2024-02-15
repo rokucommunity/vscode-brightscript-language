@@ -22,7 +22,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 canSelectFiles: true,
                 canSelectFolders: false,
                 filters: {
-                    Images: ['png', 'jpg', 'jpeg', 'webp']
+                    Images: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif']
                 }
             };
             const [file] = await vscode.window.showOpenDialog(options);
