@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { v4 as uuid } from 'uuid';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
@@ -31,7 +32,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
             const destinationFileName = path.basename(file.path, extension) + '_' + Date.now() + extension;
 
             const message = this.createEventMessage(ViewProviderEvent.onRokuAppOverlayAdded, {
-                id: this.randomStringGenerator(),
+                id: uuid(),
                 name: name,
                 sourcePath: file.path,
                 destinationFileName: destinationFileName
@@ -39,11 +40,5 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
 
             this.postOrQueueMessage(message);
         }));
-    }
-
-    private randomStringGenerator(length = 7) {
-        const p = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        // eslint-disable-next-line no-bitwise
-        return [...Array(length)].reduce((a) => a + p[~~(Math.random() * p.length)], '');
     }
 }
