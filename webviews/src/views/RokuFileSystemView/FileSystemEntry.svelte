@@ -40,6 +40,7 @@
 <style>
     vscode-data-grid-cell {
         padding: 5px;
+        user-select: none;
     }
 </style>
 
