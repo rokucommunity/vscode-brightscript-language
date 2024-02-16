@@ -151,7 +151,12 @@
         }
     }
 
-    async function deleteNode(id, parentKeypath = '') {
+    /**
+     * Used to delete a node from the node tree on the Roku device. Used both for removing a single overlay Poster as well as removing all overlays parented under `containerKeyPath`
+     * @param id the id of the node we want to delete
+     * @param parentKeypath the key path to get to the parent of the node we are trying to delete
+     */
+    async function deleteNode(id: string, parentKeypath = '') {
         // We have to figure out the index first so get all of the children and look for the matching id
         const {value} = await odc.getValue({
             keyPath: parentKeypath,

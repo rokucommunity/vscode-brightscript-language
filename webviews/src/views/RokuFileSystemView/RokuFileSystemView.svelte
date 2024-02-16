@@ -102,6 +102,11 @@
         }
     }
 
+    /**
+     * Handles retrieving info about the current path from the Roku device and updating the UI accordingly
+     * @param path the path we want to update the UI based on
+     * @param forceReload whether we should still update even if the path is the same as the existing
+     */
     async function updateCurrentPath(path: string, forceReload = false) {
         // You need to make sure it has a trailing slash
         if (path.length > 0 && path.slice(-1) !== '/') {
@@ -129,33 +134,28 @@
             });
             loading = false;
         } else {
-            await updateCurrentPathContentsInfo(path);
-        }
-    }
+            loading = true;
+
+            const {list} = await odc.getDirectoryListing({
+                path: path
+            });
+
+            currentPathContentsInfo = list.map((name) => {
+                return {
+                    name: name,
+                    path: path + name
+                }
+            });
+
+            loading = false;
 
 
-    async function updateCurrentPathContentsInfo(path: string) {
-        loading = true;
-
-        const {list} = await odc.getDirectoryListing({
-            path: path
-        });
-
-        currentPathContentsInfo = list.map((name) => {
-            return {
-                name: name,
-                path: path + name
+            for (const [index, info] of currentPathContentsInfo.entries()) {
+                const statInfo = await odc.statPath({
+                    path: info.path
+                }) as PathContentsInfo;
+                currentPathContentsInfo[index] = {...info, ...statInfo};
             }
-        });
-
-        loading = false;
-
-
-        for (const [index, info] of currentPathContentsInfo.entries()) {
-            const statInfo = await odc.statPath({
-                path: info.path
-            }) as PathContentsInfo;
-            currentPathContentsInfo[index] = {...info, ...statInfo};
         }
     }
 
