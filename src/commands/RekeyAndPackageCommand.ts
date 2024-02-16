@@ -294,12 +294,34 @@ export class RekeyAndPackageCommand {
                 await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions);
 
                 let successfulMessage = `Package successfully created at ` + rokuDeployOptions.outDir + `/` + rokuDeployOptions.outFile;
-                void vscode.window.showInformationMessage(successfulMessage);
+                void vscode.window.showInformationMessage(successfulMessage, 'Open in Finder')
+                    .then(selection => {
+                        this.openPackageInExplorer(rokuDeployOptions.outDir);
+                    });
 
             } else if (response === changeText) {
                 return this.createPackage(rokuDeployOptions, rekeyFlag);
             }
         }
+    }
+
+    private openPackageInExplorer(packagePath) {
+        let cmd = ``;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+        switch (require(`os`).platform().toLowerCase().replace(/[0-9]/g, ``).replace(`darwin`, `macos`)) {
+            case `win`:
+                cmd = `explorer`;
+                break;
+            case `linux`:
+                cmd = `xdg-open`;
+                break;
+            case `macos`:
+                cmd = `open`;
+                break;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+        require('child_process').exec(`${cmd} "${packagePath}"`);
     }
 
     private async packageFromFolder(rokuDeployOptions) {
