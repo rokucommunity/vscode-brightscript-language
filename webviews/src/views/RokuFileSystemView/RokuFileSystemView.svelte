@@ -102,14 +102,14 @@
         }
     }
 
-    async function updateCurrentPath(path: string, force = false) {
+    async function updateCurrentPath(path: string, forceReload = false) {
         // You need to make sure it has a trailing slash
         if (path.length > 0 && path.slice(-1) !== '/') {
             path += '/';
         }
 
         // Check if path is already equal
-        if (path === currentPath && !force) {
+        if (path === currentPath && !forceReload) {
             return;
         }
 
@@ -130,7 +130,6 @@
             loading = false;
         } else {
             await updateCurrentPathContentsInfo(path);
-
         }
     }
 
@@ -164,7 +163,7 @@
         await updateCurrentPath(currentPath, true);
     }
 
-    function onSortColumnChange(self) {
+    function onSortColumnChange() {
         const newSortHeader = this;
 
         if (currentSortHeader && newSortHeader.column === currentSortHeader.column) {
