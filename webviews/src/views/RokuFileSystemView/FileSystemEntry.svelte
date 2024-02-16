@@ -1,6 +1,6 @@
 
 <script lang="ts">
-    import { File, Database, Folder, Question } from 'svelte-codicons';
+    import { File, Database, Folder } from 'svelte-codicons';
     import { createEventDispatcher } from 'svelte';
     import type { PathContentsInfo } from '../../shared/types';
     const dispatch = createEventDispatcher();
@@ -42,6 +42,10 @@
         padding: 5px;
         user-select: none;
     }
+
+    vscode-progress-ring {
+        transform: scale(0.57) translate(-8px, -8px);
+    }
 </style>
 
 <vscode-data-grid-row on:dblclick={onDoubleClick}>
@@ -53,7 +57,7 @@
         {:else if entry.type === 'fileSystem'}
             <Database />
         {:else}
-            <Question />
+            <vscode-progress-ring />
         {/if}
     </vscode-data-grid-cell>
     {#if columnsToShow.name}
