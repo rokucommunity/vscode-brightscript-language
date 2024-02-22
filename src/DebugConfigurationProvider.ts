@@ -328,8 +328,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             }
         }
 
-           //if publishTask is defined, make sure there's actually a task with that name defined
-           if (config.publishTask) {
+        //if publishTask is defined, make sure there's actually a task with that name defined
+        if (config.publishTask) {
             const targetTask = (await vscode.tasks.fetchTasks()).find(x => x.name === config.publishTask);
             if (!targetTask) {
                 throw new Error(`Cannot find task '${config.publishTask}' for launch option 'publishTask'`);
