@@ -6,6 +6,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.17](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.16...v2.45.17) - 2024-02-09
+### Changed
+ - Remove duplicate 'clearLogOutput' command ([#544](https://github.com/rokucommunity/vscode-brightscript-language/pull/544))
+ - upgrade to [brighterscript@0.65.22](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06522---2024-02-09). Notable changes since 0.65.21:
+     - Add support for `provideReferences` in plugins ([brighterscript#1066](https://github.com/rokucommunity/brighterscript/pull/1066))
+     - Fix sourcemap comment and add `file` prop to map ([brighterscript#1064](https://github.com/rokucommunity/brighterscript/pull/1064))
+     - Allow v1 syntax: built-in types for class member types and type declarations on lhs ([brighterscript#1059](https://github.com/rokucommunity/brighterscript/pull/1059))
+     - Move `coveralls-next` to a devDependency since it's not needed at runtime ([brighterscript#1051](https://github.com/rokucommunity/brighterscript/pull/1051))
+
+
+
+## [2.45.16](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.15...v2.45.16) - 2024-01-31
+### Changed
+ - upgrade to [brighterscript@0.65.21](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06521---2024-01-31). Notable changes since 0.65.20:
+     - Fix parsing issues with multi-index IndexedSet and IndexedGet ([brighterscript#1050](https://github.com/rokucommunity/brighterscript/pull/1050))
+
+
+
+## [2.45.15](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.14...v2.45.15) - 2024-01-30
+### Changed
+ - upgrade to [brighterscript@0.65.20](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06520---2024-01-30). Notable changes since 0.65.19:
+     - Add plugin hooks for getDefinition ([brighterscript#1045](https://github.com/rokucommunity/brighterscript/pull/1045))
+
+
+
+## [2.45.14](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.13...v2.45.14) - 2024-01-30
+### Changed
+ - upgrade to [roku-debug@0.21.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0213---2024-01-30)
+ - upgrade to [brighterscript@0.65.19](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06519---2024-01-30). Notable changes since 0.65.18:
+     - Backport v1 syntax changes ([brighterscript#1034](https://github.com/rokucommunity/brighterscript/pull/1034))
+ - upgrade to [brighterscript-formatter@1.6.40](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1640---2024-01-30)
+
+
+
+## [2.45.13](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.12...v2.45.13) - 2024-01-28
+### Fixed
+ - Sets `stagingDir` properly in DebugConfigurationProvider ([#543](https://github.com/rokucommunity/vscode-brightscript-language/pull/543))
+
+
+
+## [2.45.12](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.11...v2.45.12) - 2024-01-26
+### Changed
+ - upgrade to [roku-debug@0.21.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0212---2024-01-25). Notable changes since 0.21.1:
+     - Use `stagingDir` instead of stagingFolderPath ([roku-debug#185](https://github.com/rokucommunity/roku-debug/pull/185))
+ - upgrade to [brighterscript@0.65.18](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06518---2024-01-25). Notable changes since 0.65.17:
+     - Prevent overwriting the Program._manifest if already set on startup ([brighterscript#1027](https://github.com/rokucommunity/brighterscript/pull/1027))
+     - Improving null safety: Add FinalizedBsConfig and tweak plugin events ([brighterscript#1000](https://github.com/rokucommunity/brighterscript/pull/1000))
+ - upgrade to [brighterscript-formatter@1.6.39](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1639---2024-01-25). Notable changes since 1.6.38:
+     - allow spacing on dotted get paths ([brighterscript-formatter#83](https://github.com/rokucommunity/brighterscript-formatter/pull/83))
+
+
+
+## [2.45.11](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.10...v2.45.11) - 2024-01-17
+### Changed
+ - upgrade to [roku-debug@0.21.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0211---2024-01-16). Notable changes since 0.21.0:
+ - upgrade to [brighterscript@0.65.17](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06517---2024-01-16). Notable changes since 0.65.16:
+     - adds support for libpkg prefix ([brighterscript#1017](https://github.com/rokucommunity/brighterscript/pull/1017))
+     - Assign .program to the builder BEFORE calling afterProgram ([brighterscript#1011](https://github.com/rokucommunity/brighterscript/pull/1011))
+ - upgrade to [brighterscript-formatter@1.6.38](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1638---2024-01-16). Notable changes since 1.6.37:
+
+
+
+## [2.45.10](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.9...v2.45.10) - 2024-01-10
+### Changed
+ - upgrade to [roku-deploy@3.11.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3112---2023-12-20). Notable changes since 3.11.1:
+     - Update wrong host password error message ([roku-deploy#134](https://github.com/rokucommunity/roku-deploy/pull/134))
+ - upgrade to [roku-debug@0.21.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0210---2024-01-10). Notable changes since 0.20.14:
+     - Add cli flag to run dap as standalone process ([roku-debug#173](https://github.com/rokucommunity/roku-debug/pull/173))
+     - Expose debug protocol port ([roku-debug#182](https://github.com/rokucommunity/roku-debug/pull/182))
+     - Display a modal message when the we fail to upload a package to the device ([roku-debug#178](https://github.com/rokucommunity/roku-debug/pull/178))
+ - upgrade to [brighterscript@0.65.16](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06516---2024-01-08). Notable changes since 0.65.12:
+     - Prevent publishing of empty files ([brighterscript#997](https://github.com/rokucommunity/brighterscript/pull/997))
+     - Improve null safety ([brighterscript#996](https://github.com/rokucommunity/brighterscript/pull/996))
+     - Prevent errors when using enums in a file that's not included in any scopes ([brighterscript#995](https://github.com/rokucommunity/brighterscript/pull/995))
+     - Fix multi-namespace class inheritance transpile bug ([brighterscript#990](https://github.com/rokucommunity/brighterscript/pull/990))
+     - Add check for onChange function ([brighterscript#941](https://github.com/rokucommunity/brighterscript/pull/941))
+     - Fix broken enum transpiling ([brighterscript#985](https://github.com/rokucommunity/brighterscript/pull/985))
+ - upgrade to [brighterscript-formatter@1.6.37](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1637---2024-01-08). Notable changes since 1.6.36:
+### Fixed
+ - improve messaging when debug session encounters errors ([#537](https://github.com/rokucommunity/vscode-brightscript-language/pull/537))
+ - improve screenshot capabilities to make it easier to share screenshots from device. ([#536](https://github.com/rokucommunity/vscode-brightscript-language/pull/536))
+
+
+
 ## [2.45.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.8...v2.45.9) - 2023-12-07
 ### Changed
  - Add a few missing brightscript.debug settings ([#535](https://github.com/rokucommunity/vscode-brightscript-language/pull/535))
