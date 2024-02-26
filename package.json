@@ -821,10 +821,6 @@
                                 "type": "string",
                                 "description": "Task to run instead of roku-deploy to produce the .zip file that will be uploaded to the Roku."
                             },
-                            "publishTask": {
-                                "type": "string",
-                                "description": "Task to run to upload the package instead of having roku-deploy do it"
-                            },
                             "packagePath": {
                                 "type": "string",
                                 "description": "Path to the .zip that will be uploaded to the Roku"
