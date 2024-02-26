@@ -680,6 +680,11 @@
                                 "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
                                 "default": "${workspaceFolder}/out"
                             },
+                            "stagingDir": {
+                                "type": "string",
+                                "description": "The folder where the vscode will copy all the project files to before creating the zip",
+                                "default": "${workspaceFolder}/out/.roku-deploy-staging"
+                            },
                             "stopOnEntry": {
                                 "type": "boolean",
                                 "description": "Should the debugger stop on the first line of the program after launch.",
@@ -2063,6 +2068,12 @@
                         "type": "string",
                         "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
                         "default": "${workspaceFolder}/out",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.stagingDir": {
+                        "type": "string",
+                        "description": "The folder where the vscode will copy all the project files to before creating the zip",
+                        "default": "${workspaceFolder}/out/.roku-deploy-staging",
                         "scope": "resource"
                     },
                     "brightscript.debug.stopOnEntry": {

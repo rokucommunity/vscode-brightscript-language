@@ -90,7 +90,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = this.processUserWorkspaceSettings(config);
 
             //force a specific stagingDir because sometimes this conflicts with bsconfig.json
-            result.stagingDir = path.join('${outDir}/.roku-deploy-staging');
+            result.stagingDir ??= path.join('${outDir}/.roku-deploy-staging');
             result.stagingFolderPath = result.stagingDir;
 
             result = await this.sanitizeConfiguration(result, folder);
