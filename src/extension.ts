@@ -77,7 +77,7 @@ export class Extension {
             userInputManager
         );
 
-        this.rtaManager = new RtaManager();
+        this.rtaManager = new RtaManager(context);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
@@ -177,6 +177,7 @@ export class Extension {
             //if this is a brightscript debug session
             if (e.type === 'brightscript') {
                 logOutputManager.onDidStartDebugSession();
+                this.webviewViewProviderManager.onDidStartDebugSession(e);
             }
             this.diagnosticManager.clear();
         });
