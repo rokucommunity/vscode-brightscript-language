@@ -196,10 +196,10 @@
         }
     });
 
-    let deviceAvailable = false;
+    let odcAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
-        deviceAvailable = message.context.deviceAvailable;
-        if (deviceAvailable) {
+        odcAvailable = message.context.odcAvailable;
+        if (odcAvailable) {
             for (const [index, overlay] of overlays.entries()) {
                 await conditionallyDeployOverlay(overlay, index);
             }
@@ -223,7 +223,7 @@
 
 
 <div id="container">
-    {#if deviceAvailable}
+    {#if odcAvailable}
         {#if overlays.length }
             <table>
                 {#each overlays as overlay, index}

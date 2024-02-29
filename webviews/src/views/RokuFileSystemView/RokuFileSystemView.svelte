@@ -222,10 +222,10 @@
         }
     });
 
-    let deviceAvailable = false;
+    let odcAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
-        deviceAvailable = message.context.deviceAvailable;
-        if (deviceAvailable) {
+        odcAvailable = message.context.odcAvailable;
+        if (odcAvailable) {
             await refresh();
         }
     });
@@ -235,11 +235,6 @@
 </script>
 
 <style>
-    #container  {
-        --headerHeight: 36px;
-        padding-top: var(--headerHeight);
-    }
-
     #breadcrumbs {
         position: fixed;
         top: 0;
@@ -249,17 +244,28 @@
         z-index: 1;
     }
 
+    #currentPathContents {
+        --headerHeight: 36px;
+        padding-top: var(--headerHeight);
+    }
+
+    #emptyFolder {
+        padding: 10px;
+    }
+
     #headerRow {
         position: sticky;
         top: var(--headerHeight);
         z-index: 1000;
         background-color: var(--vscode-sideBar-background);
     }
+
+    .hide {
+        display: none;
+    }
 </style>
-
-
-<div id="container" bind:clientWidth={containerWidth}>
-    {#if deviceAvailable}
+<div bind:clientWidth={containerWidth}>
+    {#if odcAvailable}
         {#if loading}
             <Loader />
         {:else}
@@ -272,27 +278,31 @@
                     {/if}
                 {/each}
             </div>
+            <div id="currentPathContents">
+                <div id="emptyFolder" class:hide={currentPathContentsInfo.length > 0}>
+                    This folder is empty.
+                </div>
+                <vscode-data-grid class:hide={currentPathContentsInfo.length === 0} grid-template-columns={gridTemplateColumns}>
+                    <vscode-data-grid-row id="headerRow" row-type="header">
+                        {#if columnsToShow.name}
+                            <SortableGridHeader on:click={onSortColumnChange} title="Name" column={2} />
+                        {/if}
+                        {#if columnsToShow.size}
+                            <SortableGridHeader on:click={onSortColumnChange} title="Size" column={3} />
+                        {/if}
+                        {#if columnsToShow.dateModified}
+                            <SortableGridHeader on:click={onSortColumnChange} title="Date Modified" column={4} />
+                        {/if}
+                        {#if columnsToShow.dateCreated}
+                            <SortableGridHeader on:click={onSortColumnChange} title="Date Created" column={5} />
+                        {/if}
+                    </vscode-data-grid-row>
 
-            <vscode-data-grid grid-template-columns={gridTemplateColumns}>
-                <vscode-data-grid-row id="headerRow" row-type="header">
-                    {#if columnsToShow.name}
-                        <SortableGridHeader on:click={onSortColumnChange} title="Name" column={2} />
-                    {/if}
-                    {#if columnsToShow.size}
-                        <SortableGridHeader on:click={onSortColumnChange} title="Size" column={3} />
-                    {/if}
-                    {#if columnsToShow.dateModified}
-                        <SortableGridHeader on:click={onSortColumnChange} title="Date Modified" column={4} />
-                    {/if}
-                    {#if columnsToShow.dateCreated}
-                        <SortableGridHeader on:click={onSortColumnChange} title="Date Created" column={5} />
-                    {/if}
-                </vscode-data-grid-row>
-
-                {#each currentPathContentsInfo as entry}
-                    <FileSystemEntry on:open={onOpen} entry={entry} columnsToShow={columnsToShow} />
-                {/each}
-            </vscode-data-grid>
+                    {#each currentPathContentsInfo as entry}
+                        <FileSystemEntry on:open={onOpen} entry={entry} columnsToShow={columnsToShow} />
+                    {/each}
+                </vscode-data-grid>
+            </div>
         {/if}
     {:else}
         <OdcSetupSteps />
