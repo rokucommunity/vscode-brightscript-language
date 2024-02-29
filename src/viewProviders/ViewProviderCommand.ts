@@ -1,11 +1,16 @@
 export enum ViewProviderCommand {
-    viewReady = 'viewReady',
-    getStoredNodeReferences = 'getStoredNodeReferences',
     getScreenshot = 'getScreenshot',
-    setManualIpAddress = 'setManualIpAddress',
-    sendMessageToWebviews = 'sendMessageToWebviews',
-    setVscodeContext = 'setVscodeContext',
-    storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
+    getStoredNodeReferences = 'getStoredNodeReferences',
+    getStoredRokuAppOverlays = 'getStoredRokuAppOverlays',
+    getWorkspaceState = 'getWorkspaceState',
+    openRokuFile = 'openRokuFile',
     runRokuAutomationConfig = 'runRokuAutomationConfig',
-    stopRokuAutomationConfig = 'stopRokuAutomationConfig'
+    sendMessageToWebviews = 'sendMessageToWebviews',
+    setManualIpAddress = 'setManualIpAddress',
+    setVscodeContext = 'setVscodeContext',
+    updateWorkspaceState = 'updateWorkspaceState',
+    stopRokuAutomationConfig = 'stopRokuAutomationConfig',
+    storeRokuAppOverlays = 'storeRokuAppOverlays',
+    storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
+    viewReady = 'viewReady'
 }

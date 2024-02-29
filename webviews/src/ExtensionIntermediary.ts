@@ -4,7 +4,7 @@ import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import type { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
 import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
-import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs } from 'roku-test-automation';
+import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeChildrenArgs } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -95,6 +95,20 @@ class ExtensionIntermediary {
             key: key,
             value: value
         }));
+    }
+
+    public updateWorkspaceState(key: string, value: any) {
+        return this.sendCommand<void>(ViewProviderCommand.updateWorkspaceState, {
+            key: key,
+            value: value
+        });
+    }
+
+    public getWorkspaceState(key: string, defaultValue: string | undefined = undefined) {
+        return this.sendCommand<any>(ViewProviderCommand.getWorkspaceState, {
+            key: key,
+            defaultValue: defaultValue
+        });
     }
 
     public async getStoredNodeReferences() {
@@ -201,6 +215,38 @@ class ODCIntermediary {
 
     public async findNodesAtLocation(args: FindNodesAtLocationArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.findNodesAtLocation>>(RequestType.findNodesAtLocation, args, options);
+    }
+
+    public async getVolumeList(args: GetVolumeListArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getVolumeList>>(RequestType.getVolumeList, args, options);
+    }
+
+    public async getDirectoryListing(args: GetDirectoryListingArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.getDirectoryListing>>(RequestType.getDirectoryListing, args, options);
+    }
+
+    public async statPath(args: StatPathArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.statPath>>(RequestType.statPath, args, options);
+    }
+
+    public async renameFile(args: RenameFileArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.renameFile>>(RequestType.renameFile, args, options);
+    }
+
+    public async deleteFile(args: DeleteFileArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteFile>>(RequestType.deleteFile, args, options);
+    }
+
+    public async createDirectory(args: CreateDirectoryArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.createDirectory>>(RequestType.createDirectory, args, options);
+    }
+
+    public async writeFile(args: { sourcePath: string; destinationPath: string }, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.writeFile>>(RequestType.writeFile, args, options);
+    }
+
+    public async removeNodeChildren(args: RemoveNodeChildrenArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.removeNodeChildren>>(RequestType.removeNodeChildren, args, options);
     }
 }
 

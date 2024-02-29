@@ -5,6 +5,8 @@ import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as vscode from 'vscode';
 import { RokuCommandsViewProvider } from '../viewProviders/RokuCommandsViewProvider';
 import { RokuDeviceViewViewProvider } from '../viewProviders/RokuDeviceViewViewProvider';
+import { RokuFileSystemViewViewProvider } from '../viewProviders/RokuFileSystemViewViewProvider';
+import { RokuAppOverlaysViewViewProvider } from '../viewProviders/RokuAppOverlaysViewViewProvider';
 import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvider';
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
@@ -15,7 +17,6 @@ export class WebviewViewProviderManager {
         private rtaManager: RtaManager,
         brightScriptCommands: BrightScriptCommands
     ) {
-
         for (const webview of this.webviewViews) {
             if (!webview.provider) {
                 webview.provider = new webview.constructor(context, {
@@ -30,11 +31,8 @@ export class WebviewViewProviderManager {
     }
 
     private webviewViews = [{
-        constructor: SceneGraphInspectorViewProvider,
-        provider: undefined as SceneGraphInspectorViewProvider
-    }, {
-        constructor: RokuRegistryViewProvider,
-        provider: undefined as RokuRegistryViewProvider
+        constructor: RokuAutomationViewViewProvider,
+        provider: undefined as RokuAutomationViewViewProvider
     }, {
         constructor: RokuCommandsViewProvider,
         provider: undefined as RokuCommandsViewProvider
@@ -42,8 +40,17 @@ export class WebviewViewProviderManager {
         constructor: RokuDeviceViewViewProvider,
         provider: undefined as RokuDeviceViewViewProvider
     }, {
-        constructor: RokuAutomationViewViewProvider,
-        provider: undefined as RokuAutomationViewViewProvider
+        constructor: RokuFileSystemViewViewProvider,
+        provider: undefined as RokuFileSystemViewViewProvider
+    }, {
+        constructor: RokuRegistryViewProvider,
+        provider: undefined as RokuRegistryViewProvider
+    }, {
+        constructor: RokuAppOverlaysViewViewProvider,
+        provider: undefined as RokuAppOverlaysViewViewProvider
+    }, {
+        constructor: SceneGraphInspectorViewProvider,
+        provider: undefined as SceneGraphInspectorViewProvider
     }];
 
     public getWebviewViewProviders() {

@@ -81,6 +81,7 @@
         "source-map": "^0.7.3",
         "thenby": "^1.3.4",
         "undent": "^0.1.0",
+        "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6"
     },
@@ -206,8 +207,20 @@
                 },
                 {
                     "id": "rokuDeviceView",
-                    "contextualTitle": "Roku",
-                    "name": "Device View",
+                    "contextualTitle": "Roku Device View",
+                    "name": "Roku Device View",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuFileSystemView",
+                    "contextualTitle": "Roku File System",
+                    "name": "Roku File System",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuAppOverlaysView",
+                    "contextualTitle": "Roku App Overlays",
+                    "name": "Roku App Overlays",
                     "type": "webview"
                 },
                 {
@@ -258,22 +271,22 @@
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
-                    "when": "view == rokuRegistryView",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.importRegistry",
-                    "when": "view == rokuRegistryView",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.exportRegistry",
-                    "when": "view == rokuRegistryView",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.clearRegistry",
-                    "when": "view == rokuRegistryView",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation"
                 },
                 {
@@ -324,6 +337,21 @@
                 {
                     "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuFileSystemView.refresh",
+                    "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@2"
                 }
             ],
@@ -2797,6 +2825,24 @@
                 "title": "Disable autorun on deploy",
                 "category": "BrighterScript",
                 "icon": "$(pass-filled)"
+            },
+            {
+                "command": "extension.brightscript.rokuFileSystemView.refresh",
+                "title": "Refresh",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                "title": "Add New Overlay",
+                "category": "BrighterScript",
+                "icon": "$(new-file)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                "title": "Remove All Overlays",
+                "category": "BrighterScript",
+                "icon": "$(trash)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",

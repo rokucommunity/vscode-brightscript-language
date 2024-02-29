@@ -2,8 +2,8 @@
 <svelte:options accessors={true} />
 
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
     import type { TextField } from '@vscode/webview-ui-toolkit';
+    import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
     export let id: string;
