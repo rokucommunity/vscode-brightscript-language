@@ -353,7 +353,6 @@
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
                     "group": "navigation@2"
                 },
-
                 {
                     "command": "extension.brightscript.rokuFileSystemView.refresh",
                     "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
