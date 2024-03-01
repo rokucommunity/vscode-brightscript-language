@@ -48,7 +48,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     }
 
     public onDidStartDebugSession(e: vscode.DebugSession) {
-        // Can be overwritten in a child to notify on channel publish
+        // Can be overwritten in a child to notify on debug session start
+    }
+
+    public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        // Can be overwritten in a child to notify on debug session end
     }
 
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {

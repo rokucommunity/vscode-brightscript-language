@@ -190,6 +190,7 @@ export class Extension {
                 if (config.remoteControlMode?.deactivateOnSessionEnd) {
                     void this.remoteControlManager.setRemoteControlMode(false, 'launch');
                 }
+                this.webviewViewProviderManager.onDidTerminateDebugSession(e);
             }
             this.diagnosticManager.clear();
         });

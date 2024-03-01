@@ -67,6 +67,12 @@ export class WebviewViewProviderManager {
         }
     }
 
+    public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        for (const webview of this.webviewViews) {
+            webview.provider.onDidTerminateDebugSession(e);
+        }
+    }
+
     // Notification from extension
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         const config = e.body.launchConfiguration as BrightScriptLaunchConfiguration;

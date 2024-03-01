@@ -9,6 +9,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuDeviceView;
 
     private temporarilyDisableScreenshotCapture = false;
+    private resumeScreenshotCapture: () => void | undefined;
 
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
@@ -28,7 +29,10 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             try {
                 if (this.temporarilyDisableScreenshotCapture) {
                     // Sometimes we need to temporarily stop screenshot capture as it can prevent successful package deployment to the device
-                    return;
+                    // Originally was just returning true here but now we just pause until we resume capturing
+                    await new Promise<void>((resolve) => {
+                        this.resumeScreenshotCapture = resolve;
+                    });
                 }
                 const result = await this.dependencies.rtaManager.device.getScreenshot();
                 this.postOrQueueMessage({
@@ -54,7 +58,14 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         this.temporarilyDisableScreenshotCapture = true;
     }
 
+    public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        // In case we failed to start debugging we want to allow screenshots again
+        this.temporarilyDisableScreenshotCapture = false;
+        this.resumeScreenshotCapture?.();
+    }
+
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         this.temporarilyDisableScreenshotCapture = false;
+        this.resumeScreenshotCapture?.();
     }
 }
