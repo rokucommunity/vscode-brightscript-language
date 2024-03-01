@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.46.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.17...v2.46.0) - 2024-03-01
+### Added
+ - Add some enhanced launch settings to support more diverse projects ([#538](https://github.com/rokucommunity/vscode-brightscript-language/pull/538))
+ - Device disconnect support and other improvements in RDB ([#548](https://github.com/rokucommunity/vscode-brightscript-language/pull/548))
+ - Add Roku File System Panel and Roku App Overlays Panel ([#545](https://github.com/rokucommunity/vscode-brightscript-language/pull/545))
+### Changed
+ - upgrade to [roku-deploy@3.12.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3120---2024-03-01). Notable changes since 3.11.2:
+     - Support overriding various package upload form data ([roku-deploy#136](https://github.com/rokucommunity/roku-deploy/pull/136))
+     - Retry the convertToSquahsfs request given the HPE_INVALID_CONSTANT error ([roku-deploy#145](https://github.com/rokucommunity/roku-deploy/pull/145))
+ - upgrade to [roku-debug@0.21.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0215---2024-03-01). Notable changes since 0.21.3:
+     - Add some enhanced launch settings to support more diverse projects ([roku-debug#184](https://github.com/rokucommunity/roku-debug/pull/184))
+     - DebugProtocol fixes ([roku-debug#186](https://github.com/rokucommunity/roku-debug/pull/186))
+     - Support relaunch debug protocol ([roku-debug#181](https://github.com/rokucommunity/roku-debug/pull/181))
+ - upgrade to [brighterscript@0.65.24](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06524---2024-03-01). Notable changes since 0.65.22:
+     - TBD-204: Empty interfaces break the parser ([brighterscript#1082](https://github.com/rokucommunity/brighterscript/pull/1082))
+     - fix maestro link ([brighterscript#1068](https://github.com/rokucommunity/brighterscript/pull/1068))
+ - upgrade to [brighterscript-formatter@1.6.41](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1641---2024-02-29)
+
+
+
 ## [2.45.17](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.16...v2.45.17) - 2024-02-09
 ### Changed
  - Remove duplicate 'clearLogOutput' command ([#544](https://github.com/rokucommunity/vscode-brightscript-language/pull/544))

@@ -56,8 +56,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.65.22",
-        "brighterscript-formatter": "^1.6.40",
+        "brighterscript": "^0.65.24",
+        "brighterscript-formatter": "^1.6.41",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -264,13 +264,11 @@
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "navigation"
                 },
-
                 {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == onlineDevicesView",
                     "group": "navigation"
                 },
-
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
                     "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
@@ -296,7 +294,6 @@
                     "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@5"
                 },
-
                 {
                     "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
                     "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
@@ -332,7 +329,6 @@
                     "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isOnDeviceComponentAvailable",
                     "group": "navigation@5"
                 },
-
                 {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
                     "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.isRecording",
@@ -363,7 +359,6 @@
                     "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@2"
                 },
-
                 {
                     "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
                     "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
@@ -379,13 +374,11 @@
                     "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@3"
                 },
-
                 {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == rokuCommandsView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
                 },
-
                 {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
