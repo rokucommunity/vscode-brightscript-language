@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.45.16",
+    "version": "2.45.17",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -56,7 +56,7 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.65.21",
+        "brighterscript": "^0.65.22",
         "brighterscript-formatter": "^1.6.40",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
@@ -81,6 +81,7 @@
         "source-map": "^0.7.3",
         "thenby": "^1.3.4",
         "undent": "^0.1.0",
+        "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6"
     },
@@ -206,8 +207,20 @@
                 },
                 {
                     "id": "rokuDeviceView",
-                    "contextualTitle": "Roku",
-                    "name": "Device View",
+                    "contextualTitle": "Roku Device View",
+                    "name": "Roku Device View",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuFileSystemView",
+                    "contextualTitle": "Roku File System",
+                    "name": "Roku File System",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuAppOverlaysView",
+                    "contextualTitle": "Roku App Overlays",
+                    "name": "Roku App Overlays",
                     "type": "webview"
                 },
                 {
@@ -251,31 +264,39 @@
                     "when": "debugType == 'brightscript' && view == rendezvousView",
                     "group": "navigation"
                 },
+
                 {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == onlineDevicesView",
                     "group": "navigation"
                 },
+
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.importRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.exportRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@3"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.clearRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@4"
                 },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@5"
+                },
+
                 {
                     "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
                     "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
@@ -307,6 +328,12 @@
                     "group": "navigation@4"
                 },
                 {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isOnDeviceComponentAvailable",
+                    "group": "navigation@5"
+                },
+
+                {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
                     "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.isRecording",
                     "group": "navigation"
@@ -325,6 +352,44 @@
                     "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuFileSystemView.refresh",
+                    "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
+                },
+
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@3"
+                },
+
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuCommandsView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
                 }
             ],
             "webview/context": [
@@ -2630,11 +2695,6 @@
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.clearLogOutput",
-                "title": "Clear the brightscript log output",
-                "category": "Brightscript"
-            },
-            {
                 "command": "extension.brightscript.toggleRemoteControlMode",
                 "title": "Toggle remote control mode",
                 "category": "Brightscript"
@@ -2782,7 +2842,7 @@
             },
             {
                 "command": "extension.brightscript.clearLogOutput",
-                "title": "Clear Log Output",
+                "title": "Clear the brightscript log output",
                 "category": "Brightscript"
             },
             {
@@ -2893,6 +2953,24 @@
                 "icon": "$(pass-filled)"
             },
             {
+                "command": "extension.brightscript.rokuFileSystemView.refresh",
+                "title": "Refresh",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                "title": "Add New Overlay",
+                "category": "BrighterScript",
+                "icon": "$(new-file)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                "title": "Remove All Overlays",
+                "category": "BrighterScript",
+                "icon": "$(trash)"
+            },
+            {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
                 "category": "BrighterScript",
@@ -2949,6 +3027,12 @@
                 "title": "Refresh Nodetree",
                 "category": "BrighterScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.disconnectFromDevice",
+                "title": "Disconnect From Roku Device",
+                "category": "BrighterScript",
+                "icon": "$(debug-disconnect)"
             }
         ],
         "keybindings": [

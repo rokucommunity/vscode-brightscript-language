@@ -1,10 +1,13 @@
 /* eslint-disable object-shorthand */
-import rokuRegistryView from './views/RokuRegistryView/RokuRegistryView.svelte';
+import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
+import rokuAutomationView from './views/RokuAutomationView/RokuAutomationView.svelte';
 import rokuCommandsView from './views/RokuCommandsView/RokuCommandsView.svelte';
 import rokuDeviceView from './views/RokuDeviceView/RokuDeviceView.svelte';
+import rokuFileSystemView from './views/RokuFileSystemView/RokuFileSystemView.svelte';
+import rokuRegistryView from './views/RokuRegistryView/RokuRegistryView.svelte';
+import rokuAppOverlaysView from './views/RokuAppOverlaysView/RokuAppOverlaysView.svelte';
 import sceneGraphInspectorView from './views/SceneGraphInspectorView/SceneGraphInspectorView.svelte';
-import rokuAutomationView from './views/RokuAutomationView/RokuAutomationView.svelte';
-import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
+
 
 import './style.css';
 
@@ -22,11 +25,13 @@ declare const viewName;
 
 //these need to exactly match the names from the "views" contributions in package.json
 const views = {
-    rokuRegistryView,
+    rokuAutomationView,
     rokuCommandsView,
     rokuDeviceView,
-    sceneGraphInspectorView,
-    rokuAutomationView
+    rokuFileSystemView,
+    rokuRegistryView,
+    rokuAppOverlaysView,
+    sceneGraphInspectorView
 };
 
 const app = new views[viewName]({

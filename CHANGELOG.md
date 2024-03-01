@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.45.17](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.16...v2.45.17) - 2024-02-09
+### Changed
+ - Remove duplicate 'clearLogOutput' command ([#544](https://github.com/rokucommunity/vscode-brightscript-language/pull/544))
+ - upgrade to [brighterscript@0.65.22](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06522---2024-02-09). Notable changes since 0.65.21:
+     - Add support for `provideReferences` in plugins ([brighterscript#1066](https://github.com/rokucommunity/brighterscript/pull/1066))
+     - Fix sourcemap comment and add `file` prop to map ([brighterscript#1064](https://github.com/rokucommunity/brighterscript/pull/1064))
+     - Allow v1 syntax: built-in types for class member types and type declarations on lhs ([brighterscript#1059](https://github.com/rokucommunity/brighterscript/pull/1059))
+     - Move `coveralls-next` to a devDependency since it's not needed at runtime ([brighterscript#1051](https://github.com/rokucommunity/brighterscript/pull/1051))
+
+
+
 ## [2.45.16](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.15...v2.45.16) - 2024-01-31
 ### Changed
  - upgrade to [brighterscript@0.65.21](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06521---2024-01-31). Notable changes since 0.65.20:
