@@ -9,7 +9,7 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuDeviceView;
 
     private temporarilyDisableScreenshotCapture = false;
-    private resumeScreenshotCapture: () => void | undefined;
+    private resumeScreenshotCapture?: () => void;
 
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
@@ -23,7 +23,6 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
             // In order for copy to be successful the webview has to have focus
             this.view.show(false);
         });
-
 
         this.addMessageCommandCallback(ViewProviderCommand.getScreenshot, async (message) => {
             try {
@@ -62,10 +61,12 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
         // In case we failed to start debugging we want to allow screenshots again
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();
+        delete this.resumeScreenshotCapture;
     }
 
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         this.temporarilyDisableScreenshotCapture = false;
         this.resumeScreenshotCapture?.();
+        delete this.resumeScreenshotCapture;
     }
 }
