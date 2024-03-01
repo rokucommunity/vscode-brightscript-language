@@ -47,7 +47,7 @@ describe('WebviewViewProviderManager', () => {
         let spy;
         before(() => {
             spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-            rtaManager = new RtaManager();
+            rtaManager = new RtaManager(context);
             webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, brightScriptCommands);
         });
 
@@ -76,7 +76,7 @@ describe('WebviewViewProviderManager', () => {
                 }
             };
 
-            rtaManager = new RtaManager();
+            rtaManager = new RtaManager(context);
             webviewViewProviderManager = new WebviewViewProviderManager(context, rtaManager, brightScriptCommands);
             rtaManager.setWebviewViewProviderManager(webviewViewProviderManager);
         });

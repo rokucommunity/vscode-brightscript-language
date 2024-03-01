@@ -1,3 +1,4 @@
+
 <script lang="ts">
     import throttle from 'just-throttle';
     import type { TreeNode, BaseKeyPath } from 'roku-test-automation';
@@ -6,7 +7,7 @@
     import ColorField from './ColorField.svelte';
     import NumberField from '../../shared/NumberField.svelte';
     import Chevron from '../../shared/Chevron.svelte';
-    import { Refresh, Discard, ArrowLeft, Move, Key } from 'svelte-codicons';
+    import { Refresh, Discard, ArrowLeft, Move, Key, Clippy } from 'svelte-codicons';
 
     export let inspectNodeSubtype: string;
     // Key path for pulling info
@@ -42,6 +43,8 @@
     }
 
     let numberInputsStep = '1';
+
+    let nodeInfoResponse;
 
     let fields = {} as {
         [key: string]: {
@@ -79,9 +82,9 @@
                 request: inspectNodeBaseKeyPath
             }
         });
-        const node = results.request;
-        fields = node.fields;
-        children = node.children;
+        nodeInfoResponse = results.request;
+        fields = nodeInfoResponse.fields;
+        children = nodeInfoResponse.children;
     }
     refresh();
 
@@ -291,6 +294,10 @@
 
         return output;
     }
+
+    function copyNodeInfoJson() {
+        navigator.clipboard.writeText(JSON.stringify(nodeInfoResponse, undefined, 4))
+    }
 </script>
 
 <style>
@@ -413,6 +420,13 @@
                     <Key />
                 </vscode-button>
             {/if}
+
+            <vscode-button
+                appearance="icon"
+                title="Copy Node Info Response JSON"
+                on:click={copyNodeInfoJson}>
+                <Clippy />
+            </vscode-button>
         </section>
     </div>
 {#if showKeyPathInfo && persistentBaseKeyPath}

@@ -17,5 +17,6 @@ export enum VscodeCommand {
     disableRemoteControlMode = 'extension.brightscript.disableRemoteControlMode',
     rokuAppOverlaysViewAddNewOverlay = 'extension.brightscript.rokuAppOverlaysView.addNewOverlay',
     rokuAppOverlaysViewRemoveAllOverlays = 'extension.brightscript.rokuAppOverlaysView.removeAllOverlays',
-    rokuFileSystemViewRefresh = 'extension.brightscript.rokuFileSystemView.refresh'
+    rokuFileSystemViewRefresh = 'extension.brightscript.rokuFileSystemView.refresh',
+    disconnectFromDevice = 'extension.brightscript.disconnectFromDevice'
 }

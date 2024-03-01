@@ -1,12 +1,25 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rta from 'roku-test-automation';
+import * as vscode from 'vscode';
 import { ViewProviderEvent } from '../viewProviders/ViewProviderEvent';
 import { ViewProviderId } from '../viewProviders/ViewProviderId';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { WebviewViewProviderManager } from './WebviewViewProviderManager';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 export class RtaManager {
+    constructor(
+        context: vscode.ExtensionContext
+    ) {
+        context.subscriptions.push(vscode.commands.registerCommand(VscodeCommand.disconnectFromDevice, () => {
+            void this.onDeviceComponent?.shutdown();
+            this.onDeviceComponent = undefined;
+            void vscodeContextManager.set('brightscript.isOnDeviceComponentAvailable', false);
+            this.updateDeviceAvailabilityOnWebViewProviders();
+        }));
+    }
+
     public onDeviceComponent?: rta.OnDeviceComponent;
     public device?: rta.RokuDevice;
 
@@ -44,11 +57,7 @@ export class RtaManager {
         }
         void vscodeContextManager.set('brightscript.isOnDeviceComponentAvailable', !!this.onDeviceComponent);
 
-        for (const webviewProvider of this.webviewViewProviderManager.getWebviewViewProviders()) {
-            if (typeof webviewProvider.updateDeviceAvailability === 'function') {
-                webviewProvider.updateDeviceAvailability();
-            }
-        }
+        this.updateDeviceAvailabilityOnWebViewProviders();
 
         if (config.disableScreenSaver) {
             void this.onDeviceComponent?.disableScreenSaver({ disableScreensaver: true });
@@ -94,5 +103,13 @@ export class RtaManager {
 
     public getStoredNodeReferences() {
         return this.lastStoreNodesResponse;
+    }
+
+    private updateDeviceAvailabilityOnWebViewProviders() {
+        for (const webviewProvider of this.webviewViewProviderManager.getWebviewViewProviders()) {
+            if (typeof webviewProvider.updateDeviceAvailability === 'function') {
+                webviewProvider.updateDeviceAvailability();
+            }
+        }
     }
 }
