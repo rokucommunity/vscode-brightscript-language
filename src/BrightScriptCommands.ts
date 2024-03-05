@@ -252,7 +252,10 @@ export class BrightScriptCommands {
 
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
-                await vscode.env.clipboard.writeText(value);
+                if (util.isNullish(value)) {
+                    throw new Error('Cannot copy ${value} to clipboard');
+                }
+                await vscode.env.clipboard.writeText(value?.toString());
                 await vscode.window.showInformationMessage(`Copied to clipboard: ${value}`);
             } catch (error) {
                 await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
