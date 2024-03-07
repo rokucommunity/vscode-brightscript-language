@@ -6,6 +6,54 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors normal conditional compile statements properly', async () => {
+        await testGrammar(`
+             #if true
+            '^^^ keyword.preprocessor.if.brs
+             #elseif false
+            '^^^^^^^ keyword.preprocessor.elseif.brs
+             #else
+            '^^^^^ keyword.preprocessor.else.brs
+             #endif
+            '^^^^^^ keyword.preprocessor.endif.brs
+        `);
+    });
+
+    it('colors composite keyword conditional compile statements properly', async () => {
+        await testGrammar(`
+             #const IS_DEV_MODE=true
+            '^^^^^^ keyword.preprocessor.const.brs
+             #error Something bad happened
+            '^^^^^^ keyword.preprocessor.error.brs
+             #if true
+            '^^^ keyword.preprocessor.if.brs
+             #else if false
+            '^^^^^^^^ keyword.preprocessor.elseif.brs
+             #else
+            '^^^^^ keyword.preprocessor.else.brs
+             #end if
+            '^^^^^^^ keyword.preprocessor.endif.brs
+        `);
+    });
+
+    it('colors leading whitespace conditional compile statements properly', async () => {
+        //carrots should be shorter by 1 because \t turns into 1 char
+        await testGrammar(`
+             #\t const IS_DEV_MODE=true
+            '^^^^^^^^ keyword.preprocessor.const.brs
+             #\t error Something bad happened
+            '^^^^^^^^ keyword.preprocessor.error.brs
+             #\t if true
+            '^^^^^ keyword.preprocessor.if.brs
+             #\t else if false
+            '^^^^^^^ keyword.preprocessor.elseif.brs
+             #\t else
+            '^^^^^^^ keyword.preprocessor.else.brs
+             #\t end if
+            '^^^^^^^^^ keyword.preprocessor.endif.brs
+        `);
+    });
+
     it('colors `continue for`', async () => {
         await testGrammar(`
             for i = 0 to 10
