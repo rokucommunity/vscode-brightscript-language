@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.46.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.46.0...v2.46.1) - 2024-03-07
+### Changed
+ - upgrade to [roku-debug@0.21.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0216---2024-03-07). Notable changes since 0.21.5:
+ - upgrade to [brighterscript@0.65.25](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06525---2024-03-07). Notable changes since 0.65.24:
+     - Support when tokens have null ranges ([brighterscript#1072](https://github.com/rokucommunity/brighterscript/pull/1072))
+     - Support whitespace in conditional compile keywords ([brighterscript#1090](https://github.com/rokucommunity/brighterscript/pull/1090))
+     - Allow negative patterns in diagnostic filters ([brighterscript#1078](https://github.com/rokucommunity/brighterscript/pull/1078))
+ - upgrade to [brighterscript-formatter@1.7.0](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#170---2024-03-07). Notable changes since 1.6.41:
+     - Add `insertSpaceAfterConditionalCompileSymbol`, fix conditional compile formatting ([brighterscript-formatter#87](https://github.com/rokucommunity/brighterscript-formatter/pull/87))
+### Fixed
+ - conditional compile syntax highlighting ([#551](https://github.com/rokucommunity/vscode-brightscript-language/pull/551))
+ - crash when trying to copy numeric values to the clipboard ([#550](https://github.com/rokucommunity/vscode-brightscript-language/pull/550))
+
+
+
 ## [2.46.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.45.17...v2.46.0) - 2024-03-01
 ### Added
  - Add some enhanced launch settings to support more diverse projects ([#538](https://github.com/rokucommunity/vscode-brightscript-language/pull/538))
