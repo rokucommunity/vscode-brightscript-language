@@ -309,7 +309,7 @@
                     </vscode-data-grid-row>
 
                     {#each currentPathContentsInfo as entry}
-                        <FileSystemEntry on:open={onOpen} on:delete{onDelete} entry={entry} columnsToShow={columnsToShow} />
+                        <FileSystemEntry on:open={onOpen} on:delete={onDelete} entry={entry} columnsToShow={columnsToShow} />
                     {/each}
                 </vscode-data-grid>
             </div>
