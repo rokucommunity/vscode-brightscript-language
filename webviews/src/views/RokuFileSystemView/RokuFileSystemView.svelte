@@ -24,33 +24,35 @@
         name?: true,
         size?: true,
         dateModified?: true,
-        dateCreated?: true
+        dateCreated?: true,
+        delete?: true
     };
 
     $:{
         if(containerWidth > 600) {
-            gridTemplateColumns = '24px 6fr 2fr 4fr 4fr'
+            gridTemplateColumns = '24px 6fr 2fr 4fr 4fr 1fr'
             columnsToShow = {
                 name: true,
                 size: true,
                 dateModified: true,
-                dateCreated: true
+                dateCreated: true,
+                delete: true
             }
         } else if(containerWidth > 400) {
-            gridTemplateColumns = '24px 6fr 2fr 4fr 0'
+            gridTemplateColumns = '24px 6fr 2fr 4fr 0 0'
             columnsToShow = {
                 name: true,
                 size: true,
                 dateModified: true,
             }
         } else if(containerWidth > 300) {
-            gridTemplateColumns = '24px 6fr 2fr 0 0'
+            gridTemplateColumns = '24px 6fr 2fr 0 0 0'
             columnsToShow = {
                 name: true,
                 size: true
             }
         } else {
-            gridTemplateColumns = '24px 6fr 0 0 0'
+            gridTemplateColumns = '24px 6fr 0 0 0 0'
             columnsToShow = {
                 name: true
             }
@@ -100,6 +102,11 @@
         } else {
             updateCurrentPath(pathContentsInfo.path);
         }
+    }
+
+    function onDelete(event: CustomEvent<PathContentsInfo>) {
+        const pathContentsInfo = event.detail;
+        intermediary.sendCommand(ViewProviderCommand.deleteRokuFile, pathContentsInfo);
     }
 
     /**
@@ -296,10 +303,13 @@
                         {#if columnsToShow.dateCreated}
                             <SortableGridHeader on:click={onSortColumnChange} title="Date Created" column={5} />
                         {/if}
+                        {#if columnsToShow.delete}
+                            <vscode-data-grid-cell grid-column="6">Delete</vscode-data-grid-cell>
+                        {/if}
                     </vscode-data-grid-row>
 
                     {#each currentPathContentsInfo as entry}
-                        <FileSystemEntry on:open={onOpen} entry={entry} columnsToShow={columnsToShow} />
+                        <FileSystemEntry on:open={onOpen} on:delete{onDelete} entry={entry} columnsToShow={columnsToShow} />
                     {/each}
                 </vscode-data-grid>
             </div>
