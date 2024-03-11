@@ -1,6 +1,6 @@
 
 <script lang="ts">
-    import { File, Database, Folder } from 'svelte-codicons';
+    import { File, Database, Folder, Trash } from 'svelte-codicons';
     import { createEventDispatcher } from 'svelte';
     import type { PathContentsInfo } from '../../shared/types';
     const dispatch = createEventDispatcher();
@@ -15,6 +15,10 @@
 
     function onDoubleClick() {
         dispatch('open', entry);
+    }
+
+    function onDeleteClick() {
+        dispatch('delete', entry);
     }
 
     function padNum(number: number) {
@@ -73,5 +77,10 @@
     {#if columnsToShow.dateCreated}
         <vscode-data-grid-cell grid-column="5">{formatDate(entry.ctime)}</vscode-data-grid-cell>
     {/if}
+{/if}
+{#if entry.permissions === "rw" && (entry.type === 'directory' || entry.type === 'file')}
+    <vscode-data-grid-cell grid-column="6">
+        <vscode-button on:click={onDeleteClick}><Trash/></vscode-button>
+    </vscode-data-grid-cell>
 {/if}
 </vscode-data-grid-row>

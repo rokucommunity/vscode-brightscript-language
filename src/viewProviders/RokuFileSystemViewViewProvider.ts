@@ -29,5 +29,15 @@ export class RokuFileSystemViewViewProvider extends BaseRdbViewProvider {
             await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
             return true;
         });
+
+        this.addMessageCommandCallback(ViewProviderCommand.deleteRokuFile, async (message) => {
+            const pathContentsInfo = message.context;
+            await this.dependencies.rtaManager.onDeviceComponent.deleteFile({
+                path: pathContentsInfo.path
+            });
+
+            await vscode.commands.executeCommand(VscodeCommand.rokuFileSystemViewRefresh);
+            return true;
+        });
     }
 }

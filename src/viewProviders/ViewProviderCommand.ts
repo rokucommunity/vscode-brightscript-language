@@ -4,6 +4,7 @@ export enum ViewProviderCommand {
     getStoredRokuAppOverlays = 'getStoredRokuAppOverlays',
     getWorkspaceState = 'getWorkspaceState',
     openRokuFile = 'openRokuFile',
+    deleteRokuFile = 'deleteRokuFile',
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',
     setManualIpAddress = 'setManualIpAddress',
