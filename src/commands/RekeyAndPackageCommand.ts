@@ -134,9 +134,10 @@ export class RekeyAndPackageCommand {
         }
     }
 
-    private async getSignedPackage(rekeySignedPackage) {
+    private async getSignedPackage(rekeySignedPackage: string) {
         let response = '';
-        if (rekeySignedPackage !== '') {
+
+        if (rekeySignedPackage?.length > 0) {
             response = await vscode.window.showInformationMessage(
                 'Please choose a signed package (a .pkg file) to rekey your device',
                 {
