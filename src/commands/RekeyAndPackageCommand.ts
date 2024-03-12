@@ -257,9 +257,6 @@ export class RekeyAndPackageCommand {
 
             //normalize a few options
             rokuDeployOptions.outFile ??= rokuDeploy.getOptions(rokuDeployOptions).outFile;
-            if (!rokuDeployOptions.outFile.endsWith('.pkg')) {
-                rokuDeployOptions.outFile += '.pkg';
-            }
             rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir ?? `${workspaceFolder}/out`);
             rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
             rokuDeployOptions.retainStagingDir = true;
@@ -269,7 +266,7 @@ export class RekeyAndPackageCommand {
                 `password: ${rokuDeployOptions.password}`,
                 `signing password: ${rokuDeployOptions.signingPassword}`,
                 `outDir: ${rokuDeployOptions.outDir}`,
-                `outFile: ${rokuDeployOptions.outFile}`,
+                `outFile: ${rokuDeployOptions.outFile}.pkg`,
                 `rootDir: ${rokuDeployOptions.rootDir}`
             ];
 
