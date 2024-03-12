@@ -199,21 +199,10 @@ export class RekeyAndPackageCommand {
         }
     }
 
-    private async createPackage(defaultValues, rekeyFlag = false) {
-        await this.brightScriptCommands.getWorkspacePath();
-        let workspacePath = this.brightScriptCommands.workspacePath;
+    private async createPackage(defaultValues: Partial<RokuDeployOptions>, rekeyFlag = false) {
+        const workspaceFolder = await this.brightScriptCommands.getWorkspacePath();
 
-        let rokuDeployOptions: RokuDeployOptions = {
-            rootDir: defaultValues?.rootDir ? defaultValues.rootDir : '',
-            outDir: defaultValues?.outDir ? defaultValues.outDir : workspacePath + '/out',
-            outFile: defaultValues?.outFile ? defaultValues.outFile : '',
-            retainStagingDir: defaultValues?.retainStagingDir ? defaultValues.retainStagingDir : true,
-            host: defaultValues?.host ? defaultValues.host : '',
-            password: defaultValues?.password ? defaultValues.password : '',
-            signingPassword: defaultValues?.signingPassword ? defaultValues.signingPassword : '',
-            rekeySignedPackage: defaultValues?.rekeySignedPackage ? defaultValues.rekeySignedPackage : '',
-            packageConfig: defaultValues?.packageConfig ? defaultValues?.packageConfig : ''
-        };
+        let rokuDeployOptions = defaultValues as RokuDeployOptions;
 
         let PACKAGE_FOLDER = 'Pick a folder';
         let PACKAGE_FROM_LAUNCH_JSON = 'Pick from a launch.json';
@@ -271,8 +260,9 @@ export class RekeyAndPackageCommand {
             if (!rokuDeployOptions.outFile.endsWith('.pkg')) {
                 rokuDeployOptions.outFile += '.pkg';
             }
-            rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir);
+            rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir ?? `${workspaceFolder}/out`);
             rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
+            rokuDeployOptions.retainStagingDir = true;
 
             let details = [
                 `host: ${rokuDeployOptions.host}`,
@@ -280,8 +270,7 @@ export class RekeyAndPackageCommand {
                 `signing password: ${rokuDeployOptions.signingPassword}`,
                 `outDir: ${rokuDeployOptions.outDir}`,
                 `outFile: ${rokuDeployOptions.outFile}`,
-                `rootDir: ${rokuDeployOptions.rootDir}`,
-                `retainStagingDir: ${rokuDeployOptions.retainStagingDir}`
+                `rootDir: ${rokuDeployOptions.rootDir}`
             ];
 
             if (rekeyFlag) {
