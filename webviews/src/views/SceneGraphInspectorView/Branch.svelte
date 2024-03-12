@@ -1,11 +1,12 @@
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import type { TreeNode } from 'roku-test-automation';
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
-    import { createEventDispatcher } from 'svelte';
     import { Edit, Eye, EyeClosed, DebugBreakpointDataUnverified, Move } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
+    import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
     export let treeNode: TreeNode;

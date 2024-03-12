@@ -22,7 +22,8 @@ import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent } from 'roku-debug';
+import type { CustomRequestEvent } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -77,7 +78,7 @@ export class Extension {
             userInputManager
         );
 
-        this.rtaManager = new RtaManager();
+        this.rtaManager = new RtaManager(context);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
@@ -177,6 +178,7 @@ export class Extension {
             //if this is a brightscript debug session
             if (e.type === 'brightscript') {
                 logOutputManager.onDidStartDebugSession();
+                this.webviewViewProviderManager.onDidStartDebugSession(e);
             }
             this.diagnosticManager.clear();
         });
@@ -189,6 +191,7 @@ export class Extension {
                 if (config.remoteControlMode?.deactivateOnSessionEnd) {
                     void this.remoteControlManager.setRemoteControlMode(false, 'launch');
                 }
+                this.webviewViewProviderManager.onDidTerminateDebugSession(e);
             }
             this.diagnosticManager.clear();
         });
@@ -220,7 +223,7 @@ export class Extension {
         //await languageServerPromise;
     }
 
-    private async debugSessionCustomEventHandler(e: any, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+    private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
@@ -237,6 +240,8 @@ export class Extension {
         } else if (isRendezvousEvent(e)) {
             rendezvousViewProvider.onDidReceiveDebugSessionCustomEvent(e);
 
+        } else if (isCustomRequestEvent(e)) {
+            await this.processCustomRequestEvent(e, e.session);
         } else if (isChanperfEvent(e)) {
             if (!e.body.error) {
                 this.chanperfStatusBar.text = `$(dashboard)cpu: ${e.body.cpu.total}%, mem: ${prettyBytes(e.body.memory.total).replace(/ /g, '')}`;
@@ -274,6 +279,49 @@ export class Extension {
                 }
             }
         }
+    }
+
+    private async processCustomRequestEvent(event: CustomRequestEvent, session: vscode.DebugSession) {
+        try {
+            let response: any;
+            if (isExecuteTaskCustomRequest(event)) {
+                response = await this.executeTask(event.body.task);
+            }
+            await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
+                requestId: event.body.requestId,
+                ...response ?? {}
+            });
+        } catch (e) {
+            await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
+                requestId: e.body.requestId,
+                error: {
+                    message: e?.message,
+                    stack: e?.stack
+                }
+            });
+        }
+    }
+
+    private async executeTask(taskName: string) {
+        const tasks = await vscode.tasks.fetchTasks();
+        const targetTask = tasks.find(x => x.name === taskName);
+        if (!targetTask) {
+            throw new Error(`Cannot find task '$taskName}'`);
+        }
+        let execution: vscode.TaskExecution;
+        let taskFinished = new Promise<void>((resolve, reject) => {
+            //monitor all ended tasks to see when our task ends
+            const disposable = vscode.tasks.onDidEndTask((e) => {
+                if (e.execution === execution) {
+                    disposable.dispose();
+                    resolve();
+                }
+            });
+        });
+
+        execution = await vscode.tasks.executeTask(targetTask);
+        console.log(execution);
+        await taskFinished;
     }
 
     /**

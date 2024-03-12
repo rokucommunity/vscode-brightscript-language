@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.45.17",
+    "version": "2.46.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -56,8 +56,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.65.22",
-        "brighterscript-formatter": "^1.6.40",
+        "brighterscript": "^0.65.25",
+        "brighterscript-formatter": "^1.7.0",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -75,13 +75,14 @@
         "open": "^8.4.2",
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
-        "roku-debug": "^0.21.3",
-        "roku-deploy": "^3.11.2",
+        "roku-debug": "^0.21.6",
+        "roku-deploy": "^3.12.0",
         "roku-test-automation": "2.0.0-beta.22",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "thenby": "^1.3.4",
         "undent": "^0.1.0",
+        "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
         "vscode-uri": "^1.0.6"
     },
@@ -210,8 +211,20 @@
                 },
                 {
                     "id": "rokuDeviceView",
-                    "contextualTitle": "Roku",
-                    "name": "Device View",
+                    "contextualTitle": "Roku Device View",
+                    "name": "Roku Device View",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuFileSystemView",
+                    "contextualTitle": "Roku File System",
+                    "name": "Roku File System",
+                    "type": "webview"
+                },
+                {
+                    "id": "rokuAppOverlaysView",
+                    "contextualTitle": "Roku App Overlays",
+                    "name": "Roku App Overlays",
                     "type": "webview"
                 },
                 {
@@ -262,23 +275,28 @@
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.importRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.exportRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@3"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.clearRegistry",
-                    "when": "view == rokuRegistryView",
-                    "group": "navigation"
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@5"
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
@@ -311,6 +329,11 @@
                     "group": "navigation@4"
                 },
                 {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isOnDeviceComponentAvailable",
+                    "group": "navigation@5"
+                },
+                {
                     "command": "extension.brightscript.rokuAutomationView.startRecording",
                     "when": "view == rokuAutomationView && !brightscript.rokuAutomationView.isRecording",
                     "group": "navigation"
@@ -329,6 +352,41 @@
                     "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
                     "when": "view == rokuAutomationView && brightscript.rokuAutomationView.autorunOnDeploy",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuFileSystemView.refresh",
+                    "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuAppOverlaysView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == rokuCommandsView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.disconnectFromDevice",
+                    "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
+                    "group": "navigation@1"
                 }
             ],
             "webview/context": [
@@ -684,6 +742,11 @@
                                 "description": "The folder where the the build artifacts are placed (like the staging folder and .zip files of the apps)",
                                 "default": "${workspaceFolder}/out"
                             },
+                            "stagingDir": {
+                                "type": "string",
+                                "description": "The folder where the vscode will copy all the project files to before creating the zip",
+                                "default": "${workspaceFolder}/out/.roku-deploy-staging"
+                            },
                             "stopOnEntry": {
                                 "type": "boolean",
                                 "description": "Should the debugger stop on the first line of the program after launch.",
@@ -806,6 +869,11 @@
                                 "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                                 "scope": "resource"
                             },
+                            "emitChannelPublishedEvent": {
+                                "type": "boolean",
+                                "description": "Should the ChannelPublishedEvent be emitted. This is a hack for when certain roku devices become locked up as a result of this event being emitted. You probably don't need to set this",
+                                "default": true
+                            },
                             "packagePort": {
                                 "type": "number",
                                 "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
@@ -820,6 +888,38 @@
                                 "type": "string",
                                 "deprecationMessage": "Use `fileLogging` option instead",
                                 "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
+                            },
+                            "packageTask": {
+                                "type": "string",
+                                "description": "Task to run instead of roku-deploy to produce the .zip file that will be uploaded to the Roku."
+                            },
+                            "packagePath": {
+                                "type": "string",
+                                "description": "Path to the .zip that will be uploaded to the Roku"
+                            },
+                            "packageUploadOverrides": {
+                                "type": "object",
+                                "description": "Overrides for values used during the roku-deploy zip upload process, like the route and various form data. You probably don't need to change these...",
+                                "default": {
+                                    "route": "plugin_install",
+                                    "formData": {}
+                                },
+                                "required": [],
+                                "properties": {
+                                    "route": {
+                                        "type": "string",
+                                        "description": "The route to use for uploading to the Roku device. Defaults to 'plugin_install'",
+                                        "default": "plugin_install"
+                                    },
+                                    "formData": {
+                                        "type": "object",
+                                        "description": "A dictionary of form fields to be included in the package upload request. Set a value to null to delete from the form",
+                                        "additionalProperties": true,
+                                        "default": {
+                                            "someformfield": "someFormValue"
+                                        }
+                                    }
+                                }
                             },
                             "enableDebugProtocol": {
                                 "type": "boolean",
@@ -2037,6 +2137,12 @@
                         "default": "${workspaceFolder}/out",
                         "scope": "resource"
                     },
+                    "brightscript.debug.stagingDir": {
+                        "type": "string",
+                        "description": "The folder where the vscode will copy all the project files to before creating the zip",
+                        "default": "${workspaceFolder}/out/.roku-deploy-staging",
+                        "scope": "resource"
+                    },
                     "brightscript.debug.stopOnEntry": {
                         "type": "boolean",
                         "description": "Should the debugger stop on the first line of the program after launch.",
@@ -2350,6 +2456,47 @@
                                 "description": "Activate on session start, deactivate on session end."
                             }
                         ],
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.emitChannelPublishedEvent": {
+                        "type": "boolean",
+                        "description": "Should the ChannelPublishedEvent be emitted. This is a hack for when certain roku devices become locked up as a result of this event being emitted. You probably don't need to set this",
+                        "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.packageTask": {
+                        "type": "string",
+                        "description": "Task to run instead of roku-deploy to produce the .zip file that will be uploaded to the Roku.",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.packagePath": {
+                        "type": "string",
+                        "description": "Path to the .zip that will be uploaded to the Roku",
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.packageUploadOverrides": {
+                        "type": "object",
+                        "description": "Overrides for values used during the roku-deploy zip upload process, like the route and various form data. You probably don't need to change these...",
+                        "default": {
+                            "route": "plugin_install",
+                            "formData": {}
+                        },
+                        "required": [],
+                        "properties": {
+                            "route": {
+                                "type": "string",
+                                "description": "The route to use for uploading to the Roku device. Defaults to 'plugin_install'",
+                                "default": "plugin_install"
+                            },
+                            "formData": {
+                                "type": "object",
+                                "description": "A dictionary of form fields to be included in the package upload request. Set a value to null to delete from the form",
+                                "additionalProperties": true,
+                                "default": {
+                                    "someformfield": "someFormValue"
+                                }
+                            }
+                        },
                         "scope": "resource"
                     }
                 }
@@ -2803,6 +2950,24 @@
                 "icon": "$(pass-filled)"
             },
             {
+                "command": "extension.brightscript.rokuFileSystemView.refresh",
+                "title": "Refresh",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
+                "title": "Add New Overlay",
+                "category": "BrighterScript",
+                "icon": "$(new-file)"
+            },
+            {
+                "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
+                "title": "Remove All Overlays",
+                "category": "BrighterScript",
+                "icon": "$(trash)"
+            },
+            {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
                 "category": "BrighterScript",
@@ -2874,6 +3039,12 @@
                 "title": "Refresh Nodetree",
                 "category": "BrighterScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.disconnectFromDevice",
+                "title": "Disconnect From Roku Device",
+                "category": "BrighterScript",
+                "icon": "$(debug-disconnect)"
             }
         ],
         "keybindings": [

@@ -2,8 +2,8 @@
 
 <script lang="ts">
     import hexRgb from 'hex-rgb';
-    import { createEventDispatcher } from 'svelte';
     import { colorField } from './ColorField';
+    import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
     export let id: string;

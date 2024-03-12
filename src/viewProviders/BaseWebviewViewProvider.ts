@@ -47,6 +47,14 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         this.webviewViewProviderManager = manager;
     }
 
+    public onDidStartDebugSession(e: vscode.DebugSession) {
+        // Can be overwritten in a child to notify on debug session start
+    }
+
+    public onDidTerminateDebugSession(e: vscode.DebugSession) {
+        // Can be overwritten in a child to notify on debug session end
+    }
+
     public onChannelPublishedEvent(e: ChannelPublishedEvent) {
         // Can be overwritten in a child to notify on channel publish
     }
@@ -106,6 +114,19 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 } else if (command === ViewProviderCommand.sendMessageToWebviews) {
                     const context = message.context;
                     this.webviewViewProviderManager.sendMessageToWebviews(context.viewIds, context.message);
+                } else if (command === ViewProviderCommand.updateWorkspaceState) {
+                    const context = message.context;
+                    await this.extensionContext.workspaceState.update(context.key, context.value);
+                    this.postOrQueueMessage({
+                        ...message
+                    });
+                } else if (command === ViewProviderCommand.getWorkspaceState) {
+                    const context = message.context;
+                    const response = await this.extensionContext.workspaceState.get(context.key, context.defaultValue);
+                    this.postOrQueueMessage({
+                        ...message,
+                        response: response
+                    });
                 } else {
                     const callback = this.messageCommandCallbacks[command];
                     if (!callback || !await callback(message)) {

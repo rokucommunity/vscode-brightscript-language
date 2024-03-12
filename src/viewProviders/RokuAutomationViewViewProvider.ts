@@ -8,6 +8,7 @@ import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
+import { WorkspaceStateKey } from './WorkspaceStateKey';
 
 export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAutomationView;
@@ -20,7 +21,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.addMessageCommandCallback(ViewProviderCommand.storeRokuAutomationConfigs, async (message) => {
             this.rokuAutomationConfigs = message.context.configs;
             // Make sure to use JSON.stringify or weird stuff happens
-            await context.workspaceState.update(this.configStorageKey, JSON.stringify(message.context));
+            await context.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(message.context));
             return true;
         });
 
@@ -70,7 +71,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             await this.setAutorunOnDeploy(false);
         }));
 
-        let autorunOnDeploy: boolean = this.extensionContext.workspaceState.get(this.autorunOnDeployStorageKey);
+        let autorunOnDeploy: boolean = this.extensionContext.workspaceState.get(WorkspaceStateKey.rokuAutomationAutorunOnDeploy);
         // Default to true if not set
         if (autorunOnDeploy !== false) {
             autorunOnDeploy = true;
@@ -86,13 +87,12 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     private async setAutorunOnDeploy(autorunOnDeploy: boolean) {
         this.rokuAutomationAutorunOnDeploy = autorunOnDeploy;
         await vscodeContextManager.set('brightscript.rokuAutomationView.autorunOnDeploy', autorunOnDeploy);
-        await this.context.workspaceState.update(this.autorunOnDeployStorageKey, autorunOnDeploy);
+        await this.context.workspaceState.update(WorkspaceStateKey.rokuAutomationAutorunOnDeploy, autorunOnDeploy);
     }
 
     private context: vscode.ExtensionContext;
 
     private isRecording = false;
-    private configStorageKey = 'rokuAutomationConfigs';
     private rokuAutomationConfigs: {
         name: string;
         steps: {
@@ -101,7 +101,6 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         }[];
     }[];
 
-    private autorunOnDeployStorageKey = 'rokuAutomationAutorunOnDeploy';
     private rokuAutomationAutorunOnDeploy = false;
 
     private currentRunningStep = -1;
@@ -157,7 +156,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
         this.updateDeviceAvailability();
 
-        const json = this.extensionContext.workspaceState.get(this.configStorageKey);
+        const json = this.extensionContext.workspaceState.get(WorkspaceStateKey.rokuAutomationConfigs);
         if (typeof json === 'string') {
             const result = JSON.parse(json);
             this.rokuAutomationConfigs = result.configs;
