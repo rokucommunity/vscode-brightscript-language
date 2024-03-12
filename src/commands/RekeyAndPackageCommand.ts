@@ -4,6 +4,7 @@ import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
 import type { UserInputManager } from '../managers/UserInputManager';
+import { standardizePath } from 'brighterscript';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import open = require('open');
 
@@ -138,8 +139,10 @@ export class RekeyAndPackageCommand {
         if (rekeySignedPackage !== '') {
             response = await vscode.window.showInformationMessage(
                 'Please choose a signed package (a .pkg file) to rekey your device',
-                { modal: true,
-                    detail: `Current file: ${rekeySignedPackage}` },
+                {
+                    modal: true,
+                    detail: `Current file: ${rekeySignedPackage}`
+                },
                 'Use the current file', 'Pick a different file'
             );
         } else {
@@ -216,7 +219,7 @@ export class RekeyAndPackageCommand {
         let PACKAGE_FROM_ROKU_DEPLOY = 'Pick a rokudeploy.json';
         let packageOptionList = [];
 
-        if (rokuDeployOptions.packageConfig !== '') {
+        if (rokuDeployOptions.packageConfig) {
             packageOptionList.push({
                 label: `Previous Selection:`,
                 detail: `${rokuDeployOptions.packageConfig}`
@@ -262,6 +265,14 @@ export class RekeyAndPackageCommand {
                 throw new Error('Cancelled');
             }
 
+            //normalize a few options
+            rokuDeployOptions.outFile ??= rokuDeploy.getOptions(rokuDeployOptions).outFile;
+            if (!rokuDeployOptions.outFile.endsWith('.pkg')) {
+                rokuDeployOptions.outFile += '.pkg';
+            }
+            rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir);
+            rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
+
             let details = [
                 `host: ${rokuDeployOptions.host}`,
                 `password: ${rokuDeployOptions.password}`,
@@ -294,9 +305,9 @@ export class RekeyAndPackageCommand {
                 await rokuDeploy.createPackage(rokuDeployOptions);
                 let remotePkgPath = await rokuDeploy.signExistingPackage(rokuDeployOptions);
                 await rokuDeploy.retrieveSignedPackage(remotePkgPath, rokuDeployOptions);
-
-                let successfulMessage = `Package successfully created at ` + rokuDeployOptions.outDir + `/` + rokuDeployOptions.outFile;
-                void vscode.window.showInformationMessage(successfulMessage, 'Open in Finder').then(selection => {
+                const outPath = standardizePath(`${rokuDeployOptions.outDir}/${rokuDeployOptions.outFile}`);
+                let successfulMessage = `Package successfully created at ${outPath}`;
+                void vscode.window.showInformationMessage(successfulMessage, 'View in folder').then(() => {
                     return open(rokuDeployOptions.outDir);
                 });
 
