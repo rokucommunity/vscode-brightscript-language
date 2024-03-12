@@ -463,49 +463,6 @@ export class BrightScriptCommands {
         return this.workspacePath;
     }
 
-    public async getSigningPassword(showPrompt = true): Promise<string> {
-        let signingPassword = '';
-        signingPassword = await this.context.workspaceState.get('signingPassword');
-        if (!signingPassword) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
-            signingPassword = config.get('signingPassword');
-            // eslint-disable-next-line no-template-curly-in-string
-            if (!signingPassword && showPrompt) {
-                signingPassword = await vscode.window.showInputBox({
-                    placeHolder: 'Enter the signing password used for creating signed packages',
-                    value: ''
-                });
-            }
-        }
-        if (!signingPassword) {
-            throw new Error('Can\'t send command: signingPassword is required.');
-        } else {
-            await this.context.workspaceState.update('signingPassword', signingPassword);
-            return signingPassword;
-        }
-    }
-
-    public async getSignedPackagePath() {
-        let signedPackagePath = await this.context.workspaceState.get('signedPackagePath');
-        if (!signedPackagePath) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
-            signedPackagePath = config.get('signedPackagePath');
-            // eslint-disable-next-line no-template-curly-in-string
-            if (!signedPackagePath) {
-                signedPackagePath = await vscode.window.showInputBox({
-                    placeHolder: 'Enter the path for the signed package',
-                    value: ''
-                });
-            }
-        }
-        if (!signedPackagePath) {
-            throw new Error('Can\'t send command: Signed Package Path is required.');
-        } else {
-            await this.context.workspaceState.update('signedPackagePath', signedPackagePath);
-            return signedPackagePath;
-        }
-    }
-
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {
         this.keypressNotifiers.push(notifier);
     }
