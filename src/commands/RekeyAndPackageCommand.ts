@@ -136,7 +136,7 @@ export class RekeyAndPackageCommand {
 
     private async getSignedPackage(rekeySignedPackage: string) {
         let response = '';
-
+        rekeySignedPackage = standardizePath(rekeySignedPackage);
         if (rekeySignedPackage?.length > 0) {
             response = await vscode.window.showInformationMessage(
                 'Please choose a signed package (a .pkg file) to rekey your device',
@@ -260,6 +260,9 @@ export class RekeyAndPackageCommand {
             rokuDeployOptions.outDir = standardizePath(rokuDeployOptions.outDir ?? `${workspaceFolder}/out`);
             rokuDeployOptions.rootDir = standardizePath(rokuDeployOptions.rootDir);
             rokuDeployOptions.retainStagingDir = true;
+            if (rokuDeployOptions.rekeySignedPackage?.length > 0) {
+                rokuDeployOptions.rekeySignedPackage = standardizePath(rokuDeployOptions.rekeySignedPackage);
+            }
 
             let details = [
                 `host: ${rokuDeployOptions.host}`,
