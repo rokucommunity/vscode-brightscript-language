@@ -192,13 +192,6 @@
                 {
                     "id": "onlineDevicesView",
                     "name": "Devices"
-                }
-            ],
-            "debug": [
-                {
-                    "id": "rendezvousView",
-                    "name": "Rendezvous",
-                    "when": "debugType == 'brightscript'"
                 },
                 {
                     "id": "sceneGraphInspectorView",
@@ -237,6 +230,13 @@
                     "id": "rokuAutomationView",
                     "name": "Roku Automation",
                     "type": "webview"
+                }
+            ],
+            "debug": [
+                {
+                    "id": "rendezvousView",
+                    "name": "Rendezvous",
+                    "when": "debugType == 'brightscript'"
                 }
             ]
         },
