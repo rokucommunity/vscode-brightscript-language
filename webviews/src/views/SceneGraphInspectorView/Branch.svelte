@@ -1,15 +1,15 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import type { TreeNode } from 'roku-test-automation';
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
-    import { Edit, Eye, EyeClosed, DebugBreakpointDataUnverified, Move } from 'svelte-codicons';
+    import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
+    import type { TreeNodeWithBase } from '../../shared/types';
     import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
-    export let treeNode: TreeNode;
+    export let treeNode: TreeNodeWithBase;
     export let depth = 0;
     let self: HTMLDivElement;
 
@@ -23,40 +23,46 @@
         }
     }
 
-    let selected = false;
-    export let focusedNode = -1;
+    export let expandTreeNode: TreeNodeWithBase | undefined;
     $: {
-        // If we are the focused node then we want to scroll down to this node
-        if (focusedNode !== -1 && treeNode.ref === focusedNode) {
-            // We need to expand all the parents before we can calculate how far we need to scroll down
-            dispatch('childExpanded');
-            selected = true;
-
-            // Go ahead and expand us as well to speed up digging into children if desired
-            expanded = true
-
-            const scrollToElement = (element) => {
-                const offset = getOffset(element);
-
-                document.getElementById('container').scrollTo({
-                    left: 0,
-                    top: offset.top - 90,
-                    behavior: 'auto'
-                });
-            }
-
-            setTimeout(() => {
-                scrollToElement(self);
-            }, 0);
-        } else {
-            selected = false;
+        // Don't want to run on empty keypaths as these are at the base level and should stay expanded
+        if (treeNode.keyPath) {
+            // Want to collapse for everything but Scene which has an empty key path
+            expanded = doTreeNodesMatch(treeNode, expandTreeNode);
         }
+    }
+
+
+    let selected = false;
+    export let selectTreeNode: TreeNodeWithBase | undefined;
+    $: {
+        selected = doTreeNodesMatch(treeNode, selectTreeNode);
     }
 
     $: hasChildren = treeNode.children.length > 0;
 
+    function doTreeNodesMatch(treeNodeA: TreeNodeWithBase, treeNodeB: TreeNodeWithBase | undefined) {
+        if (treeNodeB) {
+            if (treeNodeA.subtype === 'MainNode') {
+            }
+            if (treeNodeA.parentRef >= 0 && treeNodeB.parentRef >= 0) {
+                // Use key path to compare if we have a parentRef
+                if (treeNodeA.keyPath === treeNodeB.keyPath && treeNodeB.base === treeNodeB.base) {
+                    return true;
+                }
+            } else {
+                // Else use ref
+                if (treeNodeA.ref === treeNodeB.ref) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     function toggleExpand() {
         if (!hasChildren) {
+            open();
             return;
         }
         expanded = !expanded;
@@ -150,7 +156,6 @@
         position: relative;
         padding-left: var(--leftGutterPadding);
         cursor: pointer;
-        height: 100%;
         display: flex;
     }
 
@@ -179,7 +184,7 @@
 
     .actions {
         position: absolute;
-        right: 5px;
+        right: 0px;
         display: none;
         height: 100%;
         align-items: center;
@@ -206,7 +211,8 @@
 
     .content {
         display: flex;
-        padding: 4px 0px;
+        padding: 4px 4px 4px 0;
+        width: 100%;
     }
 </style>
 
@@ -216,14 +222,17 @@
     class:selected
     on:mouseenter="{onNodeMouseEnter}"
     on:mouseleave="{onNodeMouseLeave}"
-    on:click|stopPropagation={toggleExpand}>
+    on:click|stopPropagation={toggleExpand}
+    >
     {#each { length: depth ?? 0 } as _, i}
         <span class="indent-guide">&nbsp;</span>
     {/each}
-    <div class="content">
+    <div class="content" on:click|stopPropagation={open}>
         <span class="item-icon">
             {#if hasChildren}
-                <Chevron expanded={expanded} />
+                <span on:click|stopPropagation={toggleExpand}>
+                    <Chevron expanded={expanded} />
+                </span>
             {:else}
                 <DebugBreakpointDataUnverified style="opacity: .2" />
             {/if}
@@ -248,12 +257,6 @@
                 {#if treeNode.visible}<Eye />{:else}<EyeClosed />{/if}
             </span>
         {/if}
-        <span
-            title="Edit Node"
-            class="icon-button editButton"
-            on:click|stopPropagation={open}>
-            <Edit />
-        </span>
     </div>
 </div>
 <div class="children" class:hide={!expanded}>
@@ -264,6 +267,7 @@
             on:childExpanded={onChildExpanded}
             depth={depth + 1}
             treeNode={treeNodeChild}
-            focusedNode={focusedNode} />
+            selectTreeNode={selectTreeNode}
+            expandTreeNode={expandTreeNode} />
     {/each}
 </div>

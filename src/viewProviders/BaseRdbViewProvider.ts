@@ -50,6 +50,15 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
             });
             return Promise.resolve(true);
         });
+
+        this.addMessageCommandCallback(ViewProviderCommand.getStoredNodeReferences, (message) => {
+            const response = this.dependencies.rtaManager.getStoredNodeReferences();
+            this.postOrQueueMessage({
+                ...message,
+                response: response
+            });
+            return Promise.resolve(true);
+        });
     }
 
     protected onViewReady() {

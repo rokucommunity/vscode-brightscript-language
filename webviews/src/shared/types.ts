@@ -7,5 +7,5 @@ export type PathContentsInfo = Omit<Partial<Awaited<ReturnType<typeof odc.statPa
 };
 
 export type TreeNodeWithBase = Partial<TreeNode> & {
-    base: keyof typeof BaseType;
+    base?: keyof typeof BaseType;
 };
