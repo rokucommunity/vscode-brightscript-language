@@ -25,10 +25,35 @@
 
     export let expandTreeNode: TreeNodeWithBase | undefined;
     $: {
-        // Don't want to run on empty keypaths as these are at the base level and should stay expanded
-        if (treeNode.keyPath) {
-            // Want to collapse for everything but Scene which has an empty key path
+        // We we want the only variable in the reactive statement to be expandTreeNode or else it will also trigger when expanded changes as well
+        expandTreeNodeChecks(expandTreeNode);
+    }
+
+    function expandTreeNodeChecks(expandTreeNode) {
+        if (!expandTreeNode) {
+            // Don't want to run on empty keypaths as these are at the base level and should stay expanded
+            if (treeNode.keyPath) {
+                expanded = false
+            }
+        } else {
             expanded = doTreeNodesMatch(treeNode, expandTreeNode);
+
+            if (expanded) {
+                // We need to expand all the parents before we can calculate how far we need to scroll down
+                dispatch('childExpanded');
+
+                const scrollToElement = (element) => {
+                    const offset = getOffset(element);
+                    document.getElementById('container').scrollTo({
+                        left: 0,
+                        top: offset.top - 90,
+                        behavior: 'auto'
+                    });
+                }
+                setTimeout(() => {
+                    scrollToElement(self);
+                }, 0);
+            }
         }
     }
 
@@ -43,9 +68,7 @@
 
     function doTreeNodesMatch(treeNodeA: TreeNodeWithBase, treeNodeB: TreeNodeWithBase | undefined) {
         if (treeNodeB) {
-            if (treeNodeA.subtype === 'MainNode') {
-            }
-            if (treeNodeA.parentRef >= 0 && treeNodeB.parentRef >= 0) {
+            if (treeNodeA.parentRef >= 0 && (treeNodeB.parentRef >= 0 || treeNodeB.parentRef === undefined)) {
                 // Use key path to compare if we have a parentRef
                 if (treeNodeA.keyPath === treeNodeB.keyPath && treeNodeB.base === treeNodeB.base) {
                     return true;

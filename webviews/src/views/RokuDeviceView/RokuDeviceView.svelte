@@ -224,7 +224,7 @@
             enableScreenshotCapture = false;
 
             if (isInspectingNodes) {
-                lastStoreNodesResponse = odc.storeNodeReferences({
+                lastStoreNodesResponse = await odc.storeNodeReferences({
                     includeNodeCountInfo: true,
                     includeArrayGridChildren: true,
                     includeBoundingRectInfo: true
@@ -388,6 +388,7 @@
                 <b>height:</b> {focusedTreeNode.sceneRect.height}
             </div>
         {/if}
+        <!-- only show image if we have a url to avoid showing as broken image -->
         {#if screenshotUrl}
             <img
                 id="screenshot"

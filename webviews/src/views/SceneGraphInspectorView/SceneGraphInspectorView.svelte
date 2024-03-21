@@ -141,7 +141,6 @@
     }
 
     intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
-        console.log('received onTreeNodeFocused', message.context.treeNode);
         const context = message.context;
         selectTreeNode = context.treeNode;
         expandTreeNode = context.treeNode;
