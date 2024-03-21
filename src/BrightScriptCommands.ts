@@ -4,6 +4,7 @@ import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
+import { rekeyAndPackageCommand } from './commands/RekeyAndPackageCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
@@ -37,6 +38,7 @@ export class BrightScriptCommands {
         brighterScriptPreviewCommand.register(this.context);
         languageServerInfoCommand.register(this.context);
         captureScreenshotCommand.register(this.context, this);
+        rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
 
         this.registerGeneralCommands();
 
@@ -394,13 +396,13 @@ export class BrightScriptCommands {
         }
     }
 
-    public async getRemoteHost() {
+    public async getRemoteHost(showPrompt = true) {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
-            if (!this.host || this.host === '${promptForHost}') {
+            if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
                 this.host = await vscode.window.showInputBox({
                     placeHolder: 'The IP address of your Roku device',
                     value: ''
@@ -423,13 +425,13 @@ export class BrightScriptCommands {
         return this.host;
     }
 
-    public async getRemotePassword() {
+    public async getRemotePassword(showPrompt = true) {
         this.password = await this.context.workspaceState.get('remotePassword');
         if (!this.password) {
             let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
             this.password = config.get('password');
             // eslint-disable-next-line no-template-curly-in-string
-            if (!this.password || this.password === '${promptForPassword}') {
+            if ((!this.password || this.password === '${promptForPassword}') && showPrompt) {
                 this.password = await vscode.window.showInputBox({
                     placeHolder: 'The developer account password for your Roku device',
                     value: ''
