@@ -316,7 +316,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    console.log('FOUND VAR ' + varSymbol.name);
+                    // console.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
 
                     if (classSymbol) {

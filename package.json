@@ -1796,6 +1796,12 @@
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
                         "default": true,
                         "scope": "resource"
+                    },
+                    "brightscript.languageServer.enableThreading": {
+                        "type": "boolean",
+                        "description": "Should the projects in this workspace be run in their own dedicated worker threads, or all run on the main thread",
+                        "default": true,
+                        "scope": "resource"
                     }
                 }
             },

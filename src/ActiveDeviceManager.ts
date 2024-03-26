@@ -202,7 +202,7 @@ export class ActiveDeviceManager {
 
             finder.on('timeout', () => {
                 if (devices.length === 0) {
-                    console.info(`Could not find any Roku devices after ${timeout / 1000} seconds`);
+                    // console.info(`Could not find any Roku devices after ${timeout / 1000} seconds`);
                 }
                 resolve(devices);
             });
