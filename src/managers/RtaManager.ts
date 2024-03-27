@@ -59,7 +59,7 @@ export class RtaManager {
 
         this.updateDeviceAvailabilityOnWebViewProviders();
 
-        if (config.disableScreenSaver) {
+        if (config.disableScreenSaver !== false) {
             void this.onDeviceComponent?.disableScreenSaver({ disableScreensaver: true });
         }
     }

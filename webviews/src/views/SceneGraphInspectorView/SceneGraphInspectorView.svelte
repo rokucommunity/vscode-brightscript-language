@@ -12,21 +12,20 @@
     import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
-    import type { BaseKeyPath, TreeNode } from 'roku-test-automation';
+    import type { TreeNode } from 'roku-test-automation';
+    import type { TreeNodeWithBase } from '../../shared/types';
 
     window.vscode = acquireVsCodeApi();
     let loading = false;
     let error: Error | null;
     let showSettingsPage = false;
-    let inspectNodeBaseKeyPath: BaseKeyPath | null = null;
-    let inspectNodeSubtype = '';
-    let inspectNodeTreeNode: TreeNode | undefined;
+    let inspectNodeTreeNode: TreeNodeWithBase | null;
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
-    let rootTree = [] as TreeNode[];
+    let rootTree = [] as TreeNodeWithBase[];
 
-    const globalNode = {
+    const globalNode: TreeNodeWithBase = {
         id: '',
         subtype: 'Global',
         /** This is the reference to the index it was stored at that we can use in later calls. If -1 we don't have one. */
@@ -36,15 +35,26 @@
         /** Used to determine the position of this node in its parent if applicable */
         position: -1,
         children: [],
-        keyPath: ''
+        keyPath: '',
+        base: 'global'
     };
 
-    let focusedNode = -1;
+    let selectTreeNode: TreeNodeWithBase | undefined;
+    let expandTreeNode: TreeNodeWithBase | undefined;
+
+    let containerWidth = -1
+    let shouldDisplaySideBySide = false;
+    $:{
+        shouldDisplaySideBySide = (containerWidth > 600);
+    }
 
     intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async () => {
         loading = true;
         const result = await intermediary.getStoredNodeReferences();
-        rootTree = result.rootTree;
+        rootTree = result.rootTree as TreeNodeWithBase[];
+
+        //insert the global node to the top of the rootNodes list
+        rootTree.unshift(globalNode);
 
         totalNodeCount = result.totalNodes ?? 0;
         nodeCountByType = result.nodeCountByType;
@@ -53,7 +63,11 @@
 
     async function refresh() {
         loading = true;
-        inspectNodeBaseKeyPath = null;
+        // We store and then unset and then reset to reload the node again
+        const temp = inspectNodeTreeNode;
+        inspectNodeTreeNode = null;
+        inspectNodeTreeNode = temp;
+
         rootTree = [];
 
         try {
@@ -65,7 +79,7 @@
                 timeout: 15000
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
-            rootTree = result.rootTree;
+            rootTree = result.rootTree as TreeNodeWithBase[];
 
             //insert the global node to the top of the rootNodes list
             rootTree.unshift(globalNode);
@@ -83,14 +97,22 @@
     async function showFocusedNode() {
         await refresh();
         // Won't fire again if the value didn't actually change so it won't expand the children out without this
-        focusedNode = -1;
+        selectTreeNode = undefined;
+        expandTreeNode = undefined;
         const returnFocusedArrayGridChild = utils.getStorageBooleanValue('includeArrayGridChildren', true)
-        const { ref } = await odc.getFocusedNode({
-            includeRef: true,
+        const {keyPath} = await odc.getFocusedNode({
+            includeRef: returnFocusedArrayGridChild, // Currently returnFocusedArrayGridChild also relies on includeRef being enabled in RTA. Will update in future version to not require this at the call site
             returnFocusedArrayGridChild: returnFocusedArrayGridChild,
             includeNode: false
         });
-        focusedNode = ref;
+
+        selectTreeNode = {
+            keyPath: keyPath
+        };
+
+        expandTreeNode = {
+            keyPath: keyPath
+        };
     }
 
     function openSettings() {
@@ -115,25 +137,16 @@
     function onOpenNode(event: CustomEvent<TreeNode>) {
         const treeNode = event.detail;
         inspectNodeTreeNode = treeNode;
-        //if the global node was clicked
-        if (treeNode.subtype === 'Global') {
-            inspectNodeBaseKeyPath = {
-                base: 'global'
-            };
-            inspectNodeSubtype = 'Global';
-        } else {
-            inspectNodeBaseKeyPath = {
-                base: 'nodeRef',
-                keyPath: `${treeNode.ref}`
-            };
-            inspectNodeSubtype = treeNode.subtype;
-        }
+        selectTreeNode = treeNode;
     }
 
     intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
-        focusedNode = -1;
-        if (message.context.treeNode) {
-            focusedNode = message.context.treeNode.ref;
+        const context = message.context;
+        selectTreeNode = context.treeNode;
+        expandTreeNode = context.treeNode;
+
+        if (context.shouldOpen) {
+            inspectNodeTreeNode = context.treeNode;
         }
     });
 
@@ -154,7 +167,6 @@
         --headerHeight: 30px;
         width: 100%;
         height: 100%;
-        overflow-y: scroll;
         overflow-wrap: anywhere;
     }
 
@@ -172,15 +184,52 @@
     }
 
     #nodeTree {
-        padding: 0;
-        position: relative;
-        top: calc(var(--headerHeight) + 5px);
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: inherit;
+        padding: var(--headerHeight) 0 0;
         user-select: none;
-        min-height: 100%;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        overflow-y: scroll;
+        box-sizing: border-box;
+    }
+
+    #nodeTree::-webkit-scrollbar {
+        /* We don't want to show since it looks bad with the 200% height */
+        display: none;
+    }
+
+    #nodeTreeContent {
+        /* used to help avoid things moving when expanded or collapsed */
+        height: 200%;
+    }
+
+    #nodeTree.fullscreen {
+        width: 100%;
+    }
+
+    #nodeTree.sideBySide {
+        width: 45%;
+        float: left;
+    }
+
+    #detailContainer {
+        position: relative;
+        height: 100%;
+        overflow-y: auto;
+        box-sizing: border-box;
+        z-index: 101;
+    }
+
+    #detailContainer.fullscreen {
+        width: 100%;
+        position: absolute;
+        top: 0;
+    }
+
+    #detailContainer.sideBySide {
+        width: 55%;
+        float: left;
+        border-left: 3px solid var(--vscode-panel-border);
     }
 
     #errorMessage {
@@ -207,9 +256,13 @@
         text-decoration: underline;
         cursor: pointer;
     }
+
+    .hide {
+        display: none !important;
+    }
 </style>
 
-<div id="container">
+<div id="container" bind:clientWidth={containerWidth}>
     {#if showSettingsPage}
         <SettingsPage bind:showSettingsPage />
     {/if}
@@ -245,7 +298,7 @@
             <OdcSetManualIpAddress />
         </div>
     {:else}
-        <div id="header">
+        <div id="header" class={inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}>
             <div id="drop-shadow-blocker" />
             <span
                 class="icon-button"
@@ -268,21 +321,27 @@
             {/if}
         </div>
 
-        <div id="nodeTree">
-            {#each rootTree as rootNode}
-                <Branch
-                    on:openNode={onOpenNode}
-                    on:treeNodeFocused={onTreeNodeFocused}
-                    bind:focusedNode
-                    treeNode={rootNode}
-                    expanded={true} />
-            {/each}
+        <div id="nodeTree" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}" >
+            <div id="nodeTreeContent">
+                {#each rootTree as rootNode}
+                    <Branch
+                        on:openNode={onOpenNode}
+                        on:treeNodeFocused={onTreeNodeFocused}
+                        bind:selectTreeNode
+                        bind:expandTreeNode
+                        treeNode={rootNode}
+                        expanded={true} />
+                {/each}
+            </div>
         </div>
-    {/if}
-    {#if inspectNodeBaseKeyPath}
-        <NodeDetailPage
-            bind:inspectNodeBaseKeyPath
-            inspectNodeSubtype={inspectNodeSubtype}
-            inspectNodeTreeNode={inspectNodeTreeNode} />
+        <div id="detailContainer" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {!inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}">
+            {#if inspectNodeTreeNode}
+                <NodeDetailPage
+                    bind:inspectNodeTreeNode
+                    showFullscreen={!shouldDisplaySideBySide} />
+            {:else if shouldDisplaySideBySide}
+                <div style="margin-top: var(--headerHeight); padding: 10px;">Select a node to inspect it</div>
+            {/if}
+        </div>
     {/if}
 </div>

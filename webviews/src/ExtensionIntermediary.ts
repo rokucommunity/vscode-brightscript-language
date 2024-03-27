@@ -1,9 +1,9 @@
 /** Acts as a middle man that takes request from our views and sends them through vscode message protocol and waits for replies to simplify usage in code */
 import type * as rta from 'roku-test-automation';
+import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import type { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
 import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeChildrenArgs } from 'roku-test-automation';
 
 class ExtensionIntermediary {

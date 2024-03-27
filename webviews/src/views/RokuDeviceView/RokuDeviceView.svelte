@@ -5,9 +5,8 @@
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
-    import type { TreeNode } from 'roku-test-automation';
+    import type { TreeNode, FindNodesAtLocationArgs } from 'roku-test-automation';
     import { OnDeviceComponent } from 'roku-test-automation/client/dist/OnDeviceComponent';
-    import type { FindNodesAtLocationArgs } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
 
@@ -73,37 +72,42 @@
     let focusedTreeNode: TreeNode | null;
     $: {
         if (mouseIsOverView && isInspectingNodes) {
-            if (focusedTreeNode) {
-                if (lastFocusedTreeNodeRef !== focusedTreeNode.ref) {
-                    lastFocusedTreeNodeRef = focusedTreeNode.ref;
-
-                    const treeNode = {
-                        // Optimization since we only need the reference for linking with the sceneGraphInspectorView
-                        ref: focusedTreeNode.ref
-                    }
-
-                    const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
-                        treeNode: treeNode
-                    });
-
-                    intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
-                }
-            } else {
-                const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
-                    treeNode: null
-                });
-
-                intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
+            if (focusedTreeNode && lastFocusedTreeNodeRef !== focusedTreeNode.ref) {
+                lastFocusedTreeNodeRef = focusedTreeNode.ref;
+                sendOnTreeNodeFocusedEvent(focusedTreeNode);
             }
         }
+    }
+
+    function sendOnTreeNodeFocusedEvent(treeNode, shouldOpen = false) {
+        if (!shouldOpen) {
+            treeNode = {
+                // Optimization since we only need the keyPath for linking with the sceneGraphInspectorView unless we are opening that node
+                keyPath: treeNode?.keyPath
+            }
+        }
+        const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
+            // Keeping outer treeNode structure just so the events being sent from this view to the sceneGraphInspectorView are the same as we receive
+            treeNode: treeNode,
+            shouldOpen: shouldOpen
+        });
+        intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
     }
 
     intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
         focusedTreeNode = message.context.treeNode;
     });
 
-    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, (message) => {
-        focusedTreeNode = null;
+    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async (message) => {
+        if (focusedTreeNode) {
+            const result = await intermediary.getStoredNodeReferences();
+            for (const treeNode of result.flatTree) {
+                if (treeNode.keyPath === focusedTreeNode.keyPath) {
+                    focusedTreeNode = treeNode;
+                    break;
+                }
+            }
+        }
     });
 
     let nodeSelectionCursorLeft = 0;
@@ -170,7 +174,6 @@
         }
         lastFindNodesAtLocationArgs = args;
 
-
         const {matches} = await onDeviceComponent.findNodesAtLocation(args);
         focusedTreeNode = matches[0];
     }
@@ -184,6 +187,11 @@
     }
 
     function onMouseDown() {
+        // We want to send one last event that will also trigger the node
+        if(isInspectingNodes && focusedTreeNode) {
+            sendOnTreeNodeFocusedEvent(focusedTreeNode, true);
+        }
+
         isInspectingNodes = false;
     }
 
@@ -215,7 +223,7 @@
             enableScreenshotCapture = false;
 
             if (isInspectingNodes) {
-                lastStoreNodesResponse = odc.storeNodeReferences({
+                lastStoreNodesResponse = await odc.storeNodeReferences({
                     includeNodeCountInfo: true,
                     includeArrayGridChildren: true,
                     includeBoundingRectInfo: true
@@ -379,10 +387,13 @@
                 <b>height:</b> {focusedTreeNode.sceneRect.height}
             </div>
         {/if}
+        <!-- only show image if we have a url to avoid showing as broken image -->
+        {#if screenshotUrl}
             <img
                 id="screenshot"
                 alt="Screenshot from Roku device"
                 src="{screenshotUrl}" />
+        {/if}
 
     </div>
     {:else}
