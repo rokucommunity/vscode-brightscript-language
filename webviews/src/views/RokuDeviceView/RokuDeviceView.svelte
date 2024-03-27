@@ -5,9 +5,8 @@
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
-    import type { TreeNode } from 'roku-test-automation';
+    import type { TreeNode, FindNodesAtLocationArgs } from 'roku-test-automation';
     import { OnDeviceComponent } from 'roku-test-automation/client/dist/OnDeviceComponent';
-    import type { FindNodesAtLocationArgs } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
 
