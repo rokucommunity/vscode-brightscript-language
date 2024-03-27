@@ -72,6 +72,7 @@
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
+        "open": "^8.4.2",
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
         "roku-debug": "^0.21.6",
@@ -175,7 +176,10 @@
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
         "onCommand:brighterscript.showPreviewToSide",
-        "onCommand:extension.brightscript.captureScreenshot"
+        "onCommand:extension.brightscript.captureScreenshot",
+        "onCommand:extension.brightscript.rekeyDevice",
+        "onCommand:extension.brightscript.createPackage",
+        "onCommand:extension.brightscript.rekeyAndPackage"
     ],
     "contributes": {
         "viewsContainers": {
@@ -2985,6 +2989,21 @@
                 "title": "Stop inspecting nodes",
                 "category": "BrighterScript",
                 "icon": "./images/icons/inspect-active.svg"
+            },
+            {
+                "command": "extension.brightscript.rekeyDevice",
+                "title": "Rekey Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.createPackage",
+                "title": "Create Package",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.rekeyAndPackage",
+                "title": "Rekey Device and Create Package",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.captureScreenshot",
