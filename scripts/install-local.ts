@@ -18,15 +18,6 @@ class InstallLocalRunner {
         for (const project of this.projects) {
             this.installProject(project.name);
         }
-        //create a symlink of the workspace file at the root
-        try {
-            if (!fsExtra.pathExistsSync(`${cwd}/workspace.code-workspace`)) {
-                console.log(`Creating hardlink for 'workspace.code-workspace'`);
-                fsExtra.linkSync(`${cwd}/vscode-brightscript-language/workspace.code-workspace`, `${cwd}/workspace.code-workspace`);
-            }
-        } catch (e) {
-            console.error(e);
-        }
         console.log('Done!');
     }
 
