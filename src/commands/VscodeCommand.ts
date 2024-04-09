@@ -18,5 +18,6 @@ export enum VscodeCommand {
     rokuAppOverlaysViewAddNewOverlay = 'extension.brightscript.rokuAppOverlaysView.addNewOverlay',
     rokuAppOverlaysViewRemoveAllOverlays = 'extension.brightscript.rokuAppOverlaysView.removeAllOverlays',
     rokuFileSystemViewRefresh = 'extension.brightscript.rokuFileSystemView.refresh',
-    disconnectFromDevice = 'extension.brightscript.disconnectFromDevice'
+    disconnectFromDevice = 'extension.brightscript.disconnectFromDevice',
+    openSceneGraphInspectorInPanel = 'extension.brightscript.openSceneGraphInspectorInPanel'
 }
