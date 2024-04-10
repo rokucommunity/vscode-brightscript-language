@@ -3048,7 +3048,7 @@
                 "command": "extension.brightscript.openSceneGraphInspectorInPanel",
                 "title": "Open SceneGraph Inspector In New Window",
                 "category": "BrighterScript",
-                "icon": "$(empty-window)"
+                "icon": "$(link-external)"
             }
         ],
         "keybindings": [
