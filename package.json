@@ -384,9 +384,13 @@
                     "group": "navigation@1"
                 },
                 {
+                    "command": "extension.brightscript.openSceneGraphInspectorInPanel",
+                    "when": "view == sceneGraphInspectorView",
+                    "group": "navigation@1"
+                }, {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
-                    "group": "navigation@1"
+                    "group": "navigation@2"
                 }
             ],
             "webview/context": [
@@ -3035,16 +3039,16 @@
                 "icon": "$(clippy)"
             },
             {
-                "command": "extension.brightscript.sceneGraphInspectorView.refreshNodeTree",
-                "title": "Refresh Nodetree",
-                "category": "BrighterScript",
-                "icon": "$(refresh)"
-            },
-            {
                 "command": "extension.brightscript.disconnectFromDevice",
                 "title": "Disconnect From Roku Device",
                 "category": "BrighterScript",
                 "icon": "$(debug-disconnect)"
+            },
+            {
+                "command": "extension.brightscript.openSceneGraphInspectorInPanel",
+                "title": "Open SceneGraph Inspector In New Window",
+                "category": "BrighterScript",
+                "icon": "$(link-external)"
             }
         ],
         "keybindings": [

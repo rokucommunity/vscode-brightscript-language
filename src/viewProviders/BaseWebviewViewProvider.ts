@@ -31,6 +31,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
      */
     public readonly abstract id: string;
 
+    protected panel?: vscode.WebviewPanel;
     protected view?: vscode.WebviewView;
     protected webviewBasePath: string;
     private outDirWatcher: AsyncSubscription;
@@ -85,6 +86,10 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
 
     protected postMessage(message) {
         this.view?.webview.postMessage(message).then(null, (reason) => {
+            console.log('postMessage failed: ', reason);
+        });
+
+        this.panel?.webview.postMessage(message).then(null, (reason) => {
             console.log('postMessage failed: ', reason);
         });
     }
@@ -257,5 +262,55 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             ]
         };
         webview.html = await this.getHtmlForWebview();
+    }
+
+    protected async createOrRevealWebviewPanel() {
+        // See if we need to make the panel or not
+        let createPanel = false;
+        if (!this.panel) {
+            createPanel = true;
+        } else {
+            try {
+                if (!this.panel.active) {
+                    // If we still exist and aren't active then reveal the panel
+                    this.panel.reveal();
+                }
+            } catch (e) {
+                createPanel = true;
+            }
+        }
+
+        if (createPanel) {
+            this.panel = vscode.window.createWebviewPanel(
+                this.id,
+                await this.getViewNameById(this.id),
+                vscode.ViewColumn.Active,
+                {
+                    // Enable javascript in the webview
+                    enableScripts: true,
+                    localResourceRoots: [
+                        vscode.Uri.file(this.webviewBasePath)
+                    ]
+                }
+            );
+
+            this.setupViewMessageObserver(this.panel.webview);
+
+            const html = await this.getHtmlForWebview();
+            this.panel.webview.html = html;
+        }
+    }
+
+    private async getViewNameById(viewId) {
+        const packageJsonPath = path.join(this.extensionContext.extensionPath, 'package.json');
+        const packageJson = JSON.parse(await fsExtra.readFile(packageJsonPath, 'utf8'));
+
+        for (const view of [...packageJson.contributes.views.debug, ...packageJson.contributes.views['vscode-brightscript-language']]) {
+            if (view.id === viewId) {
+                return view.name;
+            }
+        }
+
+        return null;
     }
 }

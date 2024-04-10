@@ -1,6 +1,7 @@
 import type * as vscode from 'vscode';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 export class SceneGraphInspectorViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.sceneGraphInspectorView;
@@ -8,6 +9,8 @@ export class SceneGraphInspectorViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.registerCommandWithWebViewNotifier(context, 'extension.brightscript.sceneGraphInspectorView.refreshNodeTree');
+        this.registerCommand(context, VscodeCommand.openSceneGraphInspectorInPanel, async () => {
+            await this.createOrRevealWebviewPanel();
+        });
     }
 }
