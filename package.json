@@ -387,7 +387,8 @@
                     "command": "extension.brightscript.openSceneGraphInspectorInPanel",
                     "when": "view == sceneGraphInspectorView",
                     "group": "navigation@1"
-                }, {
+                },
+                {
                     "command": "extension.brightscript.disconnectFromDevice",
                     "when": "view == sceneGraphInspectorView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@2"

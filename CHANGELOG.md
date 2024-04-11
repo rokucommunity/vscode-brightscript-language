@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.47.0...v2.48.0) - 2024-04-11
+### Added
+ - support for opening SceneGraph Inspector in panel ([#561](https://github.com/rokucommunity/vscode-brightscript-language/pull/561))
+
+
+
 ## [2.47.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.46.1...v2.47.0) - 2024-04-01
 ### Added
  - support for split panel scenegraph inspector ([#555](https://github.com/rokucommunity/vscode-brightscript-language/pull/555))
