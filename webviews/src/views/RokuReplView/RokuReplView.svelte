@@ -9,7 +9,7 @@
     window.vscode = acquireVsCodeApi();
 
     let loading = false;
-    let replResponse: any = '';
+    let replResponse: any = undefined;
     let replError = '';
     let replTimeTaken = -1;
     let odcAvailable = false;
@@ -37,6 +37,7 @@
         if (replOutput?.error) {
             replError = replOutput.error.message;
             replTimeTaken = -1
+            replResponse = undefined;
         } else if (response !== undefined) {
             replTimeTaken = replOutput.timeTaken;
             if (typeof response === 'object' || Array.isArray(response)) {
@@ -44,6 +45,25 @@
             } else {
                 replResponse = response;
             }
+        }
+    }
+
+    let modifierKeyPushed = false;
+
+    function onKeydown(event) {
+        const key = event.key;
+
+        if (key === 'Meta' || key === 'Control') {
+            modifierKeyPushed = true;
+        } else if (key === 'Enter' && modifierKeyPushed) {
+            sendReplRequest();
+        }
+    }
+
+    function onKeyUp(event) {
+        const key = event.key;
+        if (key === 'Meta' || key === 'Control') {
+            modifierKeyPushed = false;
         }
     }
 
@@ -64,21 +84,25 @@
         margin-bottom: 10px;
     }
 
-    #runButton {
-        margin-bottom: 10px;
+    vscode-divider {
+        margin: 10px 0;
     }
 
-    #replOutput, #replError {
-        margin-top: 10px;
+    pre {
+        margin: 5px 0;
     }
 
     #replError {
         color: var(--vscode-debugConsole-errorForeground);
     }
 </style>
+
+<svelte:window on:keydown={onKeydown} on:keyup={onKeyUp} />
+
 <div id="container">
     {#if odcAvailable}
-        <vscode-text-area id="replCode" placeholder="Enter your brightscript code here to run on your device" rows="10" resize="both" on:input={onReplCodeChange} value={replCode} />
+        <vscode-text-area id="replCode" placeholder="Enter your brightscript code here to run on your device. For example:
+return 1 + 1" rows="10" resize="both" on:input={onReplCodeChange} value={replCode} />
 
         <table>
             <tr>
@@ -96,10 +120,12 @@
             </tr>
         </table>
 
-        <vscode-divider />
-
-        {#if !loading}
-            <pre id="replOutput">{replResponse}</pre>
+        {#if !loading && (replResponse !== undefined || replError !== '')}
+            <vscode-divider />
+            {#if replResponse !== undefined}
+                <strong id="replOutputHeader">Returned value:</strong>
+                <pre id="replOutput">{replResponse}</pre>
+            {/if}
             <div id="replError">{replError}</div>
         {/if}
     {:else}

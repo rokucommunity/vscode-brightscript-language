@@ -10,6 +10,7 @@ import { ComponentLibraryServer } from 'roku-debug';
 import * as getPort from 'get-port';
 import * as path from 'path';
 import * as os from 'os';
+import { Parser } from 'brighterscript';
 
 export class RokuReplViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuReplView;
@@ -25,6 +26,18 @@ export class RokuReplViewProvider extends BaseRdbViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.sendReplRequest, async (message) => {
             try {
+                // Verify the code is valid first
+                const replBrsContents = this.getREPLBrs(message.context.replCode);
+                const parser = Parser.parse(replBrsContents);
+                if (parser.diagnostics.length > 0) {
+                    this.postOrQueueMessage(this.createResponseMessage(message, {
+                        replOutput: {
+                            error: parser.diagnostics[0]
+                        }
+                    }));
+                    return true;
+                }
+
                 if (!this.componentLibraryServer) {
                     this.componentLibraryServer = new ComponentLibraryServer();
                     this.componentLibraryPort = await getPort();
@@ -35,7 +48,7 @@ export class RokuReplViewProvider extends BaseRdbViewProvider {
                 const zip = new JSZip();
                 zip.file('manifest', this.getManifestContents());
                 zip.file('components/REPL.xml', this.getREPLXml());
-                zip.file('components/REPL.brs', this.getREPLBrs(message.context.replCode));
+                zip.file('components/REPL.brs', replBrsContents);
                 const content = await zip.generateAsync({ type: 'nodebuffer', compressionOptions: { level: 2 } });
                 await fsExtra.outputFile(`${this.componentLibraryFolder}/${this.componentLibraryFileName}`, content);
 
