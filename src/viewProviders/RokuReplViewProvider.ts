@@ -125,7 +125,7 @@ export class RokuReplViewProvider extends BaseRdbViewProvider {
             hidden=1
             rsg_version=1.2
             major_version=1
-            minor_version=1
+            minor_version=0
             build_version=0
         `;
         return contents;
