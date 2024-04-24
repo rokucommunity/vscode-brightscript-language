@@ -9,7 +9,7 @@ export class SceneGraphInspectorViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.registerCommand(context, VscodeCommand.openSceneGraphInspectorInPanel, async () => {
+        this.registerCommand(VscodeCommand.openSceneGraphInspectorInPanel, async () => {
             await this.createOrRevealWebviewPanel();
         });
     }

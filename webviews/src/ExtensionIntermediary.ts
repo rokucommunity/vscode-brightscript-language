@@ -65,7 +65,7 @@ class ExtensionIntermediary {
         return message;
     }
 
-    public sendCommand<T>(command: VscodeCommand | ViewProviderCommand, context = {}) {
+    public sendCommand<T = any>(command: VscodeCommand | ViewProviderCommand, context = {}) {
         return this.sendObservableMessage<T>(this.createCommandMessage(command, context));
     }
 

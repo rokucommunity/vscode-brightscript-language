@@ -16,8 +16,6 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.context = context;
-
         this.addMessageCommandCallback(ViewProviderCommand.storeRokuAutomationConfigs, async (message) => {
             this.rokuAutomationConfigs = message.context.configs;
             // Make sure to use JSON.stringify or weird stuff happens
@@ -43,9 +41,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             }
         });
 
-        const subscriptions = context.subscriptions;
-
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewStartRecording, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewStartRecording, async () => {
             if (this.currentRunningStep === -1) {
                 // Only allow recording when we aren't currently running
                 await this.setIsRecording(true);
@@ -54,22 +50,22 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 // We reset the current step to update the timestamp of the first sleep
                 this.updateCurrentRunningStep(-1);
             }
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewStopRecording, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewStopRecording, async () => {
             if (this.isRecording) {
                 await this.setIsRecording(false);
                 await vscode.commands.executeCommand(VscodeCommand.disableRemoteControlMode);
             }
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewEnableAutorunOnDeploy, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewEnableAutorunOnDeploy, async () => {
             await this.setAutorunOnDeploy(true);
-        }));
+        });
 
-        subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAutomationViewDisableAutorunOnDeploy, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewDisableAutorunOnDeploy, async () => {
             await this.setAutorunOnDeploy(false);
-        }));
+        });
 
         let autorunOnDeploy: boolean = this.extensionContext.workspaceState.get(WorkspaceStateKey.rokuAutomationAutorunOnDeploy);
         // Default to true if not set
@@ -87,10 +83,8 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     private async setAutorunOnDeploy(autorunOnDeploy: boolean) {
         this.rokuAutomationAutorunOnDeploy = autorunOnDeploy;
         await vscodeContextManager.set('brightscript.rokuAutomationView.autorunOnDeploy', autorunOnDeploy);
-        await this.context.workspaceState.update(WorkspaceStateKey.rokuAutomationAutorunOnDeploy, autorunOnDeploy);
+        await this.extensionContext.workspaceState.update(WorkspaceStateKey.rokuAutomationAutorunOnDeploy, autorunOnDeploy);
     }
-
-    private context: vscode.ExtensionContext;
 
     private isRecording = false;
     private rokuAutomationConfigs: {
