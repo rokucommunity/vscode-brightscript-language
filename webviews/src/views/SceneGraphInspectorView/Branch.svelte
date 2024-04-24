@@ -3,7 +3,7 @@
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
-    import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move } from 'svelte-codicons';
+    import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move, Issues } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
     import type { TreeNodeWithBase } from '../../shared/types';
     import { createEventDispatcher } from 'svelte';
@@ -171,6 +171,12 @@
         expanded = true;
         dispatch('childExpanded');
     }
+
+    async function focusNode() {
+        await odc.focusNode({
+            keyPath: treeNode.keyPath
+        });
+    }
 </script>
 
 <style>
@@ -265,6 +271,12 @@
         </span>
     </div>
     <div class="actions">
+        {#if treeNode.visible !== undefined}
+            <span title="Focus Node" class="icon-button" on:click|stopPropagation={focusNode}>
+                <Issues />
+            </span>
+        {/if}
+
         {#if treeNode.translation !== undefined}
             <span
                 title="Move Node Position"
