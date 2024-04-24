@@ -35,10 +35,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
             this.addMessageCommandCallback(command, async (message) => {
                 const { command, context } = message;
                 const response = await this.dependencies.rtaManager.sendOdcRequest(this.id, command, context);
-                this.postOrQueueMessage({
-                    ...message,
-                    response: response
-                });
+                this.postOrQueueMessage(this.createResponseMessage(message, response));
                 return true;
             });
         }
@@ -53,10 +50,7 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.getStoredNodeReferences, (message) => {
             const response = this.dependencies.rtaManager.getStoredNodeReferences();
-            this.postOrQueueMessage({
-                ...message,
-                response: response
-            });
+            this.postOrQueueMessage(this.createResponseMessage(message, response));
             return Promise.resolve(true);
         });
     }

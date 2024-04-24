@@ -14,12 +14,12 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewEnableNodeInspector);
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewDisableNodeInspector);
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewRefreshScreenshot);
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewPauseScreenshotCapture);
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewResumeScreenshotCapture);
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuDeviceViewCopyScreenshot, () => {
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewEnableNodeInspector);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewDisableNodeInspector);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewRefreshScreenshot);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewPauseScreenshotCapture);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewResumeScreenshotCapture);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuDeviceViewCopyScreenshot, () => {
             // In order for copy to be successful the webview has to have focus
             this.view.show(false);
         });
@@ -34,20 +34,14 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                     });
                 }
                 const result = await this.dependencies.rtaManager.device.getScreenshot();
-                this.postOrQueueMessage({
-                    ...message,
-                    response: {
-                        success: true,
-                        arrayBuffer: result.buffer.buffer
-                    }
+                this.createResponseMessage(message, {
+                    success: true,
+                    arrayBuffer: result.buffer.buffer
                 });
             } catch (e) {
-                this.postOrQueueMessage({
-                    ...message,
-                    response: {
-                        success: false
-                    }
-                });
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: false
+                }));
             }
             return true;
         });

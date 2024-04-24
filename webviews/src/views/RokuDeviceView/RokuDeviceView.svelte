@@ -254,7 +254,7 @@
         }
         currentlyCapturingScreenshot = true;
         try {
-            const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot) as any;
+            const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot);
             if (success) {
                 currentScreenshot = new Blob(
                     [new Uint8Array(arrayBuffer)],

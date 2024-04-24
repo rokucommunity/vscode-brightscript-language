@@ -76,6 +76,16 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         return message;
     }
 
+    public createResponseMessage(incomingMessage, response = undefined, error = undefined) {
+        const message = {
+            ...incomingMessage,
+            response: response,
+            error: error
+        };
+
+        return message;
+    }
+
     public postOrQueueMessage(message) {
         if (this.viewReady) {
             this.postMessage(message);
@@ -122,16 +132,11 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                 } else if (command === ViewProviderCommand.updateWorkspaceState) {
                     const context = message.context;
                     await this.extensionContext.workspaceState.update(context.key, context.value);
-                    this.postOrQueueMessage({
-                        ...message
-                    });
+                    this.postOrQueueMessage(this.createResponseMessage(message));
                 } else if (command === ViewProviderCommand.getWorkspaceState) {
                     const context = message.context;
                     const response = await this.extensionContext.workspaceState.get(context.key, context.defaultValue);
-                    this.postOrQueueMessage({
-                        ...message,
-                        response: response
-                    });
+                    this.postOrQueueMessage(this.createResponseMessage(message, response));
                 } else {
                     const callback = this.messageCommandCallbacks[command];
                     if (!callback || !await callback(message)) {
@@ -150,8 +155,8 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         });
     }
 
-    protected registerCommandWithWebViewNotifier(context: vscode.ExtensionContext, command: string, callback: (() => any) | undefined = undefined) {
-        this.registerCommand(context, command, async () => {
+    protected registerCommandWithWebViewNotifier(command: string, callback: (() => any) | undefined = undefined) {
+        this.registerCommand(command, async () => {
             if (callback) {
                 await callback();
             }
@@ -163,8 +168,8 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         });
     }
 
-    protected registerCommand(context: vscode.ExtensionContext, command: string, callback: (...args: any[]) => any) {
-        context.subscriptions.push(vscode.commands.registerCommand(command, callback));
+    protected registerCommand(command: string, callback: (...args: any[]) => any) {
+        this.extensionContext.subscriptions.push(vscode.commands.registerCommand(command, callback));
     }
 
     protected onViewReady() { }
