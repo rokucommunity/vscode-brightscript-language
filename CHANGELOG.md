@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.0...v2.48.1) - 2024-04-23
+### Added
+ - support for focusing a node in SceneGraph Inspector ([#563](https://github.com/rokucommunity/vscode-brightscript-language/pull/563))
+
+
+
 ## [2.48.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.47.0...v2.48.0) - 2024-04-11
 ### Added
  - support for opening SceneGraph Inspector in panel ([#561](https://github.com/rokucommunity/vscode-brightscript-language/pull/561))
