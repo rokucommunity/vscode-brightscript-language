@@ -1802,6 +1802,20 @@
                         "description": "Should the projects in this workspace be run in their own dedicated worker threads, or all run on the main thread",
                         "default": true,
                         "scope": "resource"
+                    },
+                    "brightscript.languageServer.logLevel": {
+                        "type": "string",
+                        "enum": [
+                            "off",
+                            "error",
+                            "warn",
+                            "log",
+                            "info",
+                            "debug",
+                            "trace"
+                        ],
+                        "description": "The level of logging that should be used for the language server. If omitted, the most verbose value from all bsconfig.json files will be used, or default to 'log' if no bsconfig.json files are found.",
+                        "scope": "resource"
                     }
                 }
             },
@@ -3938,10 +3952,10 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": {
-                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                        "regexp": "^\\[(?:\\d+|:|\\.|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
                     },
                     "endsPattern": {
-                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                        "regexp": "^\\[(?:\\d+|:|\\.|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
                     }
                 }
             },
@@ -3961,10 +3975,10 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": {
-                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
+                        "regexp": "^\\[(?:\\d+|:|\\.|\\s|AM|PM)+\\]\\s*((File change detected\\.+\\s*Starting incremental compilation)|(Starting compilation in watch mode))\\.+"
                     },
                     "endsPattern": {
-                        "regexp": "^\\[(?:\\d+|:|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
+                        "regexp": "^\\[(?:\\d+|:|\\.|\\s|AM|PM)+\\]\\s*(?:Compilation complete\\.|Found \\d+ errors?\\.)?\\s*Watching for file changes\\.+"
                     }
                 }
             }
