@@ -9,9 +9,11 @@
     import Loader from '../../shared/Loader.svelte';
     import type { TreeNodeWithBase } from '../../shared/types';
     export let inspectNodeTreeNode: TreeNodeWithBase | null;
+    let lastInspectNodeTreeNode;
     $: {
-        // Updated persistentBaseKeyPath whenever inspectNodeTreeNode changes
-        if (inspectNodeTreeNode) {
+        // For some reason this is getting triggered twice so we do a check to see if the value is the same and only call refresh if it is different
+        if (lastInspectNodeTreeNode !== inspectNodeTreeNode) {
+            lastInspectNodeTreeNode = inspectNodeTreeNode;
             refresh();
         }
     }
@@ -76,9 +78,9 @@
 
         loading = true;
 
-        // We're switching to using reusable key path instead of nodeRef as the default unless we aren't part of the node tree
+        // We're switching to using reusable key path instead of nodeRef as the default unless we aren't part of the node tree or global
         try {
-            if (inspectNodeTreeNode.parentRef < 0) {
+            if (inspectNodeTreeNode.base != 'global' && inspectNodeTreeNode.parentRef < 0) {
                 throw('fallback to nodeRef');
             }
 
