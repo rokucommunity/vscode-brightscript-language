@@ -146,6 +146,7 @@
         expandTreeNode = context.treeNode;
 
         if (context.shouldOpen) {
+            debugger;
             inspectNodeTreeNode = context.treeNode;
         }
     });
