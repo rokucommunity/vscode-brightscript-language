@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "14.19.0"
+          node-version: "18.18.2"
       - run: npm ci
       - run: npm run build
       - run: npm run lint
@@ -43,8 +43,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "14.19.0"
-
+          node-version: "18.18.2"
       #build package
       - run: npm ci
       - run: npm run build
