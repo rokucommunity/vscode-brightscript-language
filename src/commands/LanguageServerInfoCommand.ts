@@ -69,7 +69,7 @@ export class LanguageServerInfoCommand {
                 versions.push({
                     label: 'Use Workspace Version',
                     description: version,
-                    detail: bscPath
+                    detail: bscPath.replace(/\\+/g, '/')
                 });
             }
         }

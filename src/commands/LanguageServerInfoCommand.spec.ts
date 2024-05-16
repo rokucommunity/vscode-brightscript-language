@@ -89,7 +89,7 @@ describe('LanguageServerInfoCommand', () => {
             }, {
                 label: `Use Workspace Version`,
                 description: '1.2.3',
-                detail: 'node_modules\\brighterscript'
+                detail: 'node_modules/brighterscript'
             }]);
         });
 
@@ -103,7 +103,7 @@ describe('LanguageServerInfoCommand', () => {
             }, {
                 label: `Use Workspace Version`,
                 description: '1.2.3',
-                detail: 'node_modules\\brighterscript'
+                detail: 'node_modules/brighterscript'
             }]);
 
             writePackage('2.3.4');
@@ -115,7 +115,7 @@ describe('LanguageServerInfoCommand', () => {
             }, {
                 label: `Use Workspace Version`,
                 description: '2.3.4',
-                detail: 'node_modules\\brighterscript'
+                detail: 'node_modules/brighterscript'
             }]);
         });
 
@@ -129,7 +129,7 @@ describe('LanguageServerInfoCommand', () => {
             }, {
                 label: `Use Workspace Version`,
                 description: '1.2.3',
-                detail: 'node_modules\\brighterscript'
+                detail: 'node_modules/brighterscript'
             }]);
 
             fsExtra.removeSync(`${tempDir}/node_modules`);
