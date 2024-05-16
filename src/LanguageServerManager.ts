@@ -321,7 +321,7 @@ export class LanguageServerManager {
             this.selectedBscInfo = {
                 path: bsdkPath,
                 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                version: require(`${bsdkPath}/package.json`).version
+                version: fsExtra.readJsonSync(`${bsdkPath}/package.json`).version
             };
         } catch (e) {
             console.error(e);

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { LANGUAGE_SERVER_NAME, languageServerManager } from '../LanguageServerManager';
 import * as path from 'path';
+import * as resolve from 'resolve';
+import * as fsExtra from 'fs-extra';
 
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
@@ -38,50 +40,63 @@ export class LanguageServerInfoCommand {
         await vscode.commands.executeCommand('extension.brightscript.languageServer.restart');
     }
 
+    private discoverBrighterScriptVersions(workspaceFolders: string[]): BscVersionInfo[] {
+        const versions: BscVersionInfo[] = [{
+            label: `Use VSCode's version`,
+            description: languageServerManager.embeddedBscInfo.version
+        }];
+
+        //look for brighterscript in node_modules from all workspace folders
+        for (const workspaceFolder of workspaceFolders) {
+            let bscPath: string;
+            try {
+
+                bscPath = resolve.sync('brighterscript', {
+                    basedir: workspaceFolder
+                });
+            } catch (e) {
+                //could not resolve the path, so just move on
+            }
+
+            //resolve returns a bsc script path, so remove that to get the root of brighterscript folder
+            if (bscPath) {
+                bscPath = bscPath.replace(/[\\\/]dist[\\\/]index.js/i, '');
+                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+                const version = fsExtra.readJsonSync(`${bscPath}/package.json`).version;
+                //make the path relative to the workspace folder
+                bscPath = path.relative(workspaceFolder, bscPath);
+
+                versions.push({
+                    label: 'Use Workspace Version',
+                    description: version,
+                    detail: bscPath
+                });
+            }
+        }
+        return versions;
+    }
+
     /**
      * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to
      * call the reload manually
      */
     public async selectBrighterScriptVersion() {
-        const versions = [{
-            label: `Use VS Code's version`,
-            description: languageServerManager.embeddedBscInfo.version,
-            detail: undefined as string //require.resolve('brighterscript')
-        }];
-
-        //look for brighterscript in all workspace folders
-        for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-            const workspaceOrFolderPath = this.getWorkspaceOrFolderPath(workspaceFolder.uri.fsPath);
-            try {
-                let bscPath = require.resolve('brighterscript', {
-                    paths: [workspaceFolder.uri.fsPath]
-                });
-                //require.resolve returns a bsc script path, so remove that to get the root of brighterscript folder
-                if (bscPath) {
-                    bscPath = bscPath.replace(/[\\\/]dist[\\\/]index.js/i, '');
-                    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                    const version = require(`${bscPath}/package.json`).version;
-                    //make the path relative to the workspace folder
-                    bscPath = path.relative(workspaceOrFolderPath, bscPath);
-
-                    versions.push({
-                        label: 'Use Workspace Version',
-                        description: version,
-                        detail: bscPath
-                    });
-                }
-            } finally { }
-        }
+        const versions = this.discoverBrighterScriptVersions(
+            vscode.workspace.workspaceFolders.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath))
+        );
         let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` });
         if (selection) {
             const config = vscode.workspace.getConfiguration('brightscript');
+            //quickly clear the setting, then set it again so we are guaranteed to trigger a change event
+            await config.update('bsdk', undefined);
+
             //if the user picked "use embedded version", then remove the setting
             if (versions.indexOf(selection) === 0) {
                 //setting to undefined means "remove"
                 await config.update('bsdk', 'embedded');
                 return 'embedded';
             } else {
-                //save this to workspace/folder settings (vscode automatically decides if it goes into the code-workspace settings or the folder settings
+                //save this to workspace/folder settings (vscode automatically decides if it goes into the code-workspace settings or the folder settings)
                 await config.update('bsdk', selection.detail);
                 return selection.detail;
             }
@@ -96,6 +111,12 @@ export class LanguageServerInfoCommand {
             return workspaceFolder;
         }
     }
+}
+
+interface BscVersionInfo {
+    label: string;
+    description: string;
+    detail?: string;
 }
 
 export const languageServerInfoCommand = new LanguageServerInfoCommand();
