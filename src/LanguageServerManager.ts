@@ -326,7 +326,7 @@ export class LanguageServerManager {
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup
-            await vscode.window.showErrorMessage(`Can't find language server at "${bsdkPath}". Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            await vscode.window.showErrorMessage(`Can't find language server at "${bsdkPath}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
