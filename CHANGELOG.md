@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.2...v2.48.3) - 2024-05-20
+### Changed
+ - Improve manual ip address component UI design ([#570](https://github.com/rokucommunity/vscode-brightscript-language/pull/570))
+### Fixed
+ - Fix broken device view ([#570](https://github.com/rokucommunity/vscode-brightscript-language/pull/570))
+
+
+
 ## [2.48.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.1...v2.48.2) - 2024-05-17
 ### Added
  - syntax highlighting support for `alias` statements ([#567](https://github.com/rokucommunity/vscode-brightscript-language/pull/567))
