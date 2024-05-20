@@ -34,10 +34,10 @@ export class RokuDeviceViewViewProvider extends BaseRdbViewProvider {
                     });
                 }
                 const result = await this.dependencies.rtaManager.device.getScreenshot();
-                this.createResponseMessage(message, {
+                this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: true,
                     arrayBuffer: result.buffer.buffer
-                });
+                }));
             } catch (e) {
                 this.postOrQueueMessage(this.createResponseMessage(message, {
                     success: false
