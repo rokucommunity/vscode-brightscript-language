@@ -285,23 +285,23 @@
         <div id="content">
             <a href="#ignore-errors-and-warnings-on-a-per-line-basis"><h1 id="ignore-errors-and-warnings-on-a-per-line-basis">Ignore errors and warnings on a per-line basis</h1></a><p>In addition to disabling an entire class of errors in the <code>ignoreErrorCodes</code> array in <code>bsconfig.json</code>, you may also disable errors for a subset of the complier rules within a file with the following comment flags:</p>
 <ul>
-<li><code>brs:disable-next-line</code></li>
-<li><code>brs:disable-next-line: code1 code2 code3</code></li>
-<li><code>brs:disable-line</code></li>
-<li><code>brs:disable-line: code1 code2 code3</code></li>
+<li><code>bs:disable-next-line</code></li>
+<li><code>bs:disable-next-line: code1 code2 code3</code></li>
+<li><code>bs:disable-line</code></li>
+<li><code>bs:disable-line: code1 code2 code3</code></li>
 </ul>
 <p>Here are some examples:</p>
 <pre><code class="language-vb">sub Main()
     &#39;disable errors about invalid syntax here
-    &#39;brs:disable-next-line
+    &#39;bs:disable-next-line
     DoSomething(
 
-    DoSomething( &#39;brs:disable-line
+    DoSomething( &#39;bs:disable-line
 
     &#39;disable errors about wrong parameter count
-    DoSomething(1,2,3) &#39;brs:disable-next-line
+    DoSomething(1,2,3) &#39;bs:disable-next-line
 
-    DoSomething(1,2,3) &#39;brs:disable-next-line:1002
+    DoSomething(1,2,3) &#39;bs:disable-next-line:1002
 end sub
 
 sub DoSomething()
