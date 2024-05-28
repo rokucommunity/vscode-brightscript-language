@@ -10,6 +10,7 @@ import { RokuAppOverlaysViewViewProvider } from '../viewProviders/RokuAppOverlay
 import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvider';
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
+import { RokuReplViewProvider } from '../viewProviders/RokuReplViewProvider';
 
 export class WebviewViewProviderManager {
     constructor(
@@ -51,6 +52,9 @@ export class WebviewViewProviderManager {
     }, {
         constructor: SceneGraphInspectorViewProvider,
         provider: undefined as SceneGraphInspectorViewProvider
+    }, {
+        constructor: RokuReplViewProvider,
+        provider: undefined as RokuReplViewProvider
     }];
 
     public getWebviewViewProviders() {

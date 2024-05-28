@@ -38,6 +38,9 @@
                     "include": "#import_statement"
                 },
                 {
+                    "include": "#alias_statement"
+                },
+                {
                     "include": "#namespace_declaration"
                 },
                 {
@@ -390,6 +393,20 @@
                 },
                 "2": {
                     "name": "string.quoted.double.brs"
+                }
+            }
+        },
+        "alias_statement": {
+            "match": "(?i:(alias)\\s+([a-z0-9_]+)\\s*(=)\\s*)",
+            "captures": {
+                "1": {
+                    "name": "keyword.declaration.alias.brs"
+                },
+                "2": {
+                    "name": "entity.name.variable.brs"
+                },
+                "3": {
+                    "name": "keyword.operator.assignment.brs"
                 }
             }
         },

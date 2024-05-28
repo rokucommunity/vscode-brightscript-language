@@ -6,6 +6,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.2...v2.48.3) - 2024-05-20
+### Changed
+ - Improve manual ip address component UI design ([#570](https://github.com/rokucommunity/vscode-brightscript-language/pull/570))
+### Fixed
+ - Fix broken device view ([#570](https://github.com/rokucommunity/vscode-brightscript-language/pull/570))
+
+
+
+## [2.48.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.1...v2.48.2) - 2024-05-17
+### Added
+ - syntax highlighting support for `alias` statements ([#567](https://github.com/rokucommunity/vscode-brightscript-language/pull/567))
+ - Add on device brightscript repl ([#564](https://github.com/rokucommunity/vscode-brightscript-language/pull/564))
+### Changed
+ - upgrade to [roku-debug@0.21.8](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0218---2024-05-16)
+ - upgrade to [brighterscript@0.67.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0671---2024-05-16). Notable changes since 0.65.27:
+     - fix ascii color chars in language server logs ([brighterscript#1189](https://github.com/rokucommunity/brighterscript/pull/1189))
+     - Fix crash when diagnostic is missing range ([brighterscript#1174](https://github.com/rokucommunity/brighterscript/pull/1174))
+     - Move function calls to separate diagnostic (brs1140) ([brighterscript#1169](https://github.com/rokucommunity/brighterscript/pull/1169))
+     - resolve the stagingDir option relative to the bsconfig.json file ([brighterscript#1148](https://github.com/rokucommunity/brighterscript/pull/1148))
+     - Upgrade to @rokucommunity/logger ([brighterscript#1137](https://github.com/rokucommunity/brighterscript/pull/1137))
+ - upgrade to [brighterscript-formatter@1.7.2](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#172---2024-05-17). Notable changes since 1.7.1:
+     - Fixing issues before release 1.7.2 ([#brighterscript-formatter239ba44](https://github.com/rokucommunity/brighterscript-formatter/commit/239ba44))
+     - fix-node14 ([brighterscript-formatter#91](https://github.com/rokucommunity/brighterscript-formatter/pull/91))
+### Fixed
+ - bugs in the language server version picker ([#568](https://github.com/rokucommunity/vscode-brightscript-language/pull/568))
+ - bug that prevented accessing global in scenegraph inspector, prevent duplicate requests for same node ([#565](https://github.com/rokucommunity/vscode-brightscript-language/pull/565))
+
+
+
+## [2.48.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.0...v2.48.1) - 2024-04-23
+### Added
+ - support for focusing a node in SceneGraph Inspector ([#563](https://github.com/rokucommunity/vscode-brightscript-language/pull/563))
+
+
+
+## [2.48.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.47.0...v2.48.0) - 2024-04-11
+### Added
+ - support for opening SceneGraph Inspector in panel ([#561](https://github.com/rokucommunity/vscode-brightscript-language/pull/561))
+
+
+
+## [2.47.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.46.1...v2.47.0) - 2024-04-01
+### Added
+ - support for split panel scenegraph inspector ([#555](https://github.com/rokucommunity/vscode-brightscript-language/pull/555))
+ - commands to rekey device and create packages ([#509](https://github.com/rokucommunity/vscode-brightscript-language/pull/509))
+ - delete button in FS view ([#552](https://github.com/rokucommunity/vscode-brightscript-language/pull/552))
+### Changed
+ - Don't hardlink the workspace file during install-local ([b874df2](https://github.com/rokucommunity/vscode-brightscript-language/commit/b874df2))
+ - upgrade to [roku-debug@0.21.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0217---2024-03-27). Notable changes since 0.21.6:
+     - TBD-221: Optional Chainging Operator errors in debug console ([roku-debug#187](https://github.com/rokucommunity/roku-debug/pull/187))
+ - upgrade to [brighterscript@0.65.27](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#06527---2024-03-27). Notable changes since 0.65.25:
+     - Improve workspace/document symbol handling ([brighterscript#1120](https://github.com/rokucommunity/brighterscript/pull/1120))
+     - Plugin hook provide workspace symbol ([brighterscript#1118](https://github.com/rokucommunity/brighterscript/pull/1118))
+     - Upgade LSP packages ([brighterscript#1117](https://github.com/rokucommunity/brighterscript/pull/1117))
+     - Add plugin hook for documentSymbol ([brighterscript#1116](https://github.com/rokucommunity/brighterscript/pull/1116))
+     - Increase max param count to 63 ([brighterscript#1112](https://github.com/rokucommunity/brighterscript/pull/1112))
+     - Prevent unused variable warnings on ternary and null coalescence expressions ([brighterscript#1101](https://github.com/rokucommunity/brighterscript/pull/1101))
+ - upgrade to [brighterscript-formatter@1.7.1](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#171---2024-03-27)
+
+
+
 ## [2.46.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.46.0...v2.46.1) - 2024-03-07
 ### Changed
  - upgrade to [roku-debug@0.21.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0216---2024-03-07). Notable changes since 0.21.5:

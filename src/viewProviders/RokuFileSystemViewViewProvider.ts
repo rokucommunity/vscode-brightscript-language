@@ -13,7 +13,7 @@ export class RokuFileSystemViewViewProvider extends BaseRdbViewProvider {
     constructor(context: vscode.ExtensionContext, dependencies) {
         super(context, dependencies);
 
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuFileSystemViewRefresh);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuFileSystemViewRefresh);
 
         this.addMessageCommandCallback(ViewProviderCommand.openRokuFile, async (message) => {
             const pathContentsInfo = message.context;

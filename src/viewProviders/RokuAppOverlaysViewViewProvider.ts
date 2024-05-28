@@ -14,7 +14,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
 
         const subscriptions = context.subscriptions;
 
-        this.registerCommandWithWebViewNotifier(context, VscodeCommand.rokuAppOverlaysViewRemoveAllOverlays);
+        this.registerCommandWithWebViewNotifier(VscodeCommand.rokuAppOverlaysViewRemoveAllOverlays);
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAppOverlaysViewAddNewOverlay, async () => {
             const options: vscode.OpenDialogOptions = {

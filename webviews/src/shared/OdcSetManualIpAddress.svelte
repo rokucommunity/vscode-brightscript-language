@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { Save } from 'svelte-codicons';
     import { ViewProviderCommand } from '../../../src/viewProviders/ViewProviderCommand';
     import { intermediary } from '../ExtensionIntermediary';
     import { utils } from '../utils';
@@ -7,9 +6,17 @@
     let ipAddress = utils.getStorageValue('manuallySetIpAddress', '');
     let password = utils.getStorageValue('manuallySetPassword', '');
 
-    function onSaveIpButtonClicked() {
+    function onIpAddressChange() {
+        ipAddress = this.value
         utils.setStorageValue('manuallySetIpAddress', ipAddress);
+    }
+
+    function onPasswordChange() {
+        password = this.value
         utils.setStorageValue('manuallySetPassword', password);
+    }
+
+    function onConnectClicked() {
         intermediary.sendCommand(ViewProviderCommand.setManualIpAddress, {
             host: ipAddress,
             password: password
@@ -31,19 +38,24 @@
                 <label for="ipAddress">IP Address</label>
             </td>
             <td>
-                <input
+                <vscode-text-field
                     id="ipAddress"
-                    class="fieldValue"
-                    bind:value={ipAddress} />
-            </td>
-            <td rowspan="2">
-                <button on:click={onSaveIpButtonClicked}><Save />&nbsp;<b>Apply</b></button>
+                    value={ipAddress}
+                    on:input={onIpAddressChange} />
             </td>
         </tr>
         <tr>
             <td> <label for="password">Password</label></td>
             <td>
-                <input id="password" class="fieldValue" bind:value={password} />
+                <vscode-text-field
+                    id="password"
+                    value={password}
+                    on:input={onPasswordChange} />
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <vscode-button on:click={onConnectClicked}>Connect</vscode-button>
             </td>
         </tr>
     </table>

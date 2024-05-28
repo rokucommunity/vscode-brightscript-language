@@ -321,12 +321,12 @@ export class LanguageServerManager {
             this.selectedBscInfo = {
                 path: bsdkPath,
                 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                version: require(`${bsdkPath}/package.json`).version
+                version: fsExtra.readJsonSync(`${bsdkPath}/package.json`).version
             };
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup
-            await vscode.window.showErrorMessage(`Can't find language server at "${bsdkPath}". Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            await vscode.window.showErrorMessage(`Can't find language server at "${bsdkPath}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
