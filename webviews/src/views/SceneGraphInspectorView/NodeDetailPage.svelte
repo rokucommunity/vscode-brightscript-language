@@ -462,7 +462,7 @@
                     on:click={refresh}>
                     <Refresh />
                 </vscode-button>
-                {#if inspectChildNodeTreeNode?.keyPath}
+                {#if inspectNodeTreeNode?.keyPath}
                     <vscode-button
                         appearance="icon"
                         title="Show Key Path Info"
