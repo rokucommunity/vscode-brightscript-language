@@ -1,10 +1,12 @@
 import type {
     LanguageClientOptions,
     ServerOptions,
-    ExecuteCommandParams
+    ExecuteCommandParams,
+    StateChangeEvent
 } from 'vscode-languageclient/node';
 import {
     LanguageClient,
+    State,
     TransportKind
 } from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
@@ -26,6 +28,42 @@ import type { DefinitionRepository } from './DefinitionRepository';
 import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
+import { EventEmitter } from 'eventemitter3';
+
+/**
+ * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
+ * There seems to be no time limit on adding up to the 5, so even after a few days, vscode may still terminate the language server.
+ * This class track when the language server is stopped and then not started back up again after a period of time.
+ * For example, 20 seconds after after the final failure, this event fires so that we can show a "wanna restart it" popup.
+ */
+class LspRunTracker {
+
+    public constructor(
+        public debounceDelay: number
+    ) {
+    }
+
+    public setState(state: State) {
+        //if language server is running, clear any timers
+        if (state === State.Starting || state === State.Running) {
+            clearTimeout(this.timeoutHandle);
+        } else {
+            this.timeoutHandle = setTimeout(() => {
+                clearTimeout(this.timeoutHandle);
+                this.emitter.emit('stopped');
+            }, this.debounceDelay);
+        }
+    }
+    private timeoutHandle: NodeJS.Timeout;
+
+    private emitter = new EventEmitter();
+    public on(event: 'stopped', listener: () => any) {
+        this.emitter.on(event, listener);
+        return () => {
+            this.emitter.off(event, listener);
+        };
+    }
+}
 
 export const LANGUAGE_SERVER_NAME = 'BrighterScript Language Server';
 
@@ -53,10 +91,25 @@ export class LanguageServerManager {
     public async init(
         context: vscode.ExtensionContext,
         definitionRepository: DefinitionRepository
-
     ) {
         this.context = context;
         this.definitionRepository = definitionRepository;
+
+        //if the lsp is permanently stopped by vscode, ask the user if they want to restart it again.
+        this.lspRunTracker.on('stopped', async () => {
+            //stop the statusbar spinner
+            this.updateStatusbar(false);
+            if (this.isLanguageServerEnabledInSettings()) {
+                const response = await vscode.window.showErrorMessage('The BrighterScript language server unexpectedly shut down. Do you want to restart it?', {
+                    modal: true
+                }, { title: 'Yes' }, { title: 'No ', isCloseAffordance: true });
+                if (response.title === 'Yes') {
+                    await this.restart();
+                }
+            } else {
+                await this.disableLanguageServer();
+            }
+        });
 
         //dynamically enable or disable the language server based on user settings
         vscode.workspace.onDidChangeConfiguration(async (configuration) => {
@@ -88,7 +141,9 @@ export class LanguageServerManager {
     }
 
     private client: LanguageClient;
-    private languageServerStatusBar: vscode.StatusBarItem;
+    private statusbarItem: vscode.StatusBarItem;
+
+    private lspRunTracker = new LspRunTracker(20_000);
 
     private clientDispose: Disposable;
 
@@ -101,14 +156,14 @@ export class LanguageServerManager {
             }
             this.refreshDeferred();
 
-            //create the statusbar
-            this.languageServerStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-            this.languageServerStatusBar.command = LanguageServerInfoCommand.commandName;
+            //create the statusbar item
+            this.statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+            this.statusbarItem.command = LanguageServerInfoCommand.commandName;
 
             //enable the statusbar loading anmation. the language server will disable once it finishes loading
             this.updateStatusbar(false);
 
-            this.languageServerStatusBar.show();
+            this.statusbarItem.show();
 
             //disable the simple providers (the language server will handle all of these)
             this.disableSimpleProviders();
@@ -164,6 +219,10 @@ export class LanguageServerManager {
             // Start the client. This will also launch the server
             this.clientDispose = this.client.start();
             await this.client.onReady();
+            this.client.onDidChangeState((event: StateChangeEvent) => {
+                console.log(new Date().toLocaleTimeString(), 'onDidChangeState', State[event.newState]);
+                this.lspRunTracker.setState(event.newState);
+            });
 
             this.client.onNotification('critical-failure', (message) => {
                 void window.showErrorMessage(message);
@@ -216,9 +275,13 @@ export class LanguageServerManager {
      * Enable/disable the loading spinner on the statusbar item
      */
     private updateStatusbar(isLoading: boolean) {
+        //do nothing if we don't have a statusbar
+        if (!this.statusbarItem) {
+            return;
+        }
         const icon = isLoading ? '$(sync~spin)' : '$(flame)';
-        this.languageServerStatusBar.text = `${icon} bsc-${this.selectedBscInfo.version}`;
-        this.languageServerStatusBar.tooltip = `BrightScript Language Server: running`;
+        this.statusbarItem.text = `${icon} bsc-${this.selectedBscInfo.version}`;
+        this.statusbarItem.tooltip = `BrightScript Language Server: running`;
     }
 
     /**
@@ -234,8 +297,8 @@ export class LanguageServerManager {
     private async disableLanguageServer() {
         if (this.client) {
             await this.client.stop();
-            this.languageServerStatusBar.dispose();
-            this.languageServerStatusBar = undefined;
+            this.statusbarItem.dispose();
+            this.statusbarItem = undefined;
             this.clientDispose?.dispose();
             this.client = undefined;
             //delay slightly to let things catch up

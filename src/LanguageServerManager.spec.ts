@@ -28,7 +28,7 @@ Module.prototype.require = function hijacked(file) {
 
 const tempDir = s`${process.cwd()}/.tmp`;
 
-describe('extension', () => {
+describe('LanguageServerManager', () => {
     let languageServerManager: LanguageServerManager;
 
     beforeEach(() => {
@@ -53,6 +53,15 @@ describe('extension', () => {
     afterEach(() => {
         sinon.restore();
         fsExtra.removeSync(tempDir);
+    });
+
+    describe('updateStatusbar', () => {
+        it('does not crash when undefined', () => {
+            delete languageServerManager['statusbarItem'];
+            //the test passes if these don't throw
+            languageServerManager['updateStatusbar'](true);
+            languageServerManager['updateStatusbar'](false);
+        });
     });
 
     it('registers referenceProvider', () => {
