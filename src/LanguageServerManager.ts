@@ -44,10 +44,9 @@ class LspRunTracker {
     }
 
     public setState(state: State) {
+        clearTimeout(this.timeoutHandle);
         //if language server is running, clear any timers
-        if (state === State.Starting || state === State.Running) {
-            clearTimeout(this.timeoutHandle);
-        } else {
+        if (state === State.Stopped) {
             this.timeoutHandle = setTimeout(() => {
                 clearTimeout(this.timeoutHandle);
                 this.emitter.emit('stopped');
@@ -216,13 +215,15 @@ export class LanguageServerManager {
                 serverOptions,
                 clientOptions
             );
-            // Start the client. This will also launch the server
-            this.clientDispose = this.client.start();
-            await this.client.onReady();
+
             this.client.onDidChangeState((event: StateChangeEvent) => {
                 console.log(new Date().toLocaleTimeString(), 'onDidChangeState', State[event.newState]);
                 this.lspRunTracker.setState(event.newState);
             });
+
+            // Start the client. This will also launch the server
+            this.clientDispose = this.client.start();
+            await this.client.onReady();
 
             this.client.onNotification('critical-failure', (message) => {
                 void window.showErrorMessage(message);
