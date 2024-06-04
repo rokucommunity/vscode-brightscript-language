@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.3...v2.48.4) - 2024-06-04
+### Added
+ - Prompt to restart lsp if it has stopped ([#575](https://github.com/rokucommunity/vscode-brightscript-language/pull/575))
+### Changed
+ - Fix shows key path info bug in scenegraph inspector ([#574](https://github.com/rokucommunity/vscode-brightscript-language/pull/574))
+ - Small lsp tweaks ([#572](https://github.com/rokucommunity/vscode-brightscript-language/pull/572))
+ - upgrade to [roku-debug@0.21.9](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0219---2024-06-03). Notable changes since 0.21.8:
+     - Prevent corrupted breakpoints due to invalid sourceDirs, add more logging ([roku-debug#189](https://github.com/rokucommunity/roku-debug/pull/189))
+ - upgrade to [brighterscript@0.67.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0672---2024-06-03). Notable changes since 0.67.1:
+     - Fix crash with optional chaining in signature help ([brighterscript#1207](https://github.com/rokucommunity/brighterscript/pull/1207))
+ - upgrade to [brighterscript-formatter@1.7.3](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#173---2024-06-03)
+
+
+
 ## [2.48.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.2...v2.48.3) - 2024-05-20
 ### Changed
  - Improve manual ip address component UI design ([#570](https://github.com/rokucommunity/vscode-brightscript-language/pull/570))
