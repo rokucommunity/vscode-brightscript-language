@@ -1,5 +1,6 @@
 import { EventEmitter } from 'eventemitter3';
 import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+import * as path from 'path';
 
 //copied from vscode to help with unit tests
 enum QuickPickItemKind {
@@ -14,6 +15,7 @@ afterEach(() => {
 });
 
 export let vscode = {
+    version: '1.89.1',
     env: {
         //disable all telemetry reporting during unit tests
         telemetryConfiguration: {
@@ -21,6 +23,11 @@ export let vscode = {
             isErrorsEnabled: false,
             isCrashEnabled: false
         }
+    },
+    ExtensionMode: {
+        Production: 1,
+        Development: 2,
+        Test: 3
     },
     CompletionItem: class { },
     CodeLens: class { },
@@ -72,10 +79,12 @@ export let vscode = {
 
         }
     },
+    CodeActionKind: {
+    },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => {
-            return '';
+        asAbsolutePath: (arg) => {
+            return path.resolve(arg);
         },
         extensionUri: undefined as Uri,
         extensionPath: '',

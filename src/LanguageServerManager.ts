@@ -44,9 +44,10 @@ class LspRunTracker {
     }
 
     public setState(state: State) {
-        clearTimeout(this.timeoutHandle);
         //if language server is running, clear any timers
-        if (state === State.Stopped) {
+        if (state === State.Starting || state === State.Running) {
+            clearTimeout(this.timeoutHandle);
+        } else {
             this.timeoutHandle = setTimeout(() => {
                 clearTimeout(this.timeoutHandle);
                 this.emitter.emit('stopped');
@@ -146,9 +147,64 @@ export class LanguageServerManager {
 
     private clientDispose: Disposable;
 
+    /**
+     * Create a new LanguageClient instance
+     * @returns
+     */
+    private constructLanguageClient() {
+
+        // The server is implemented in node
+        let serverModule = this.context.asAbsolutePath(
+            path.join('dist', 'LanguageServerRunner.js')
+        );
+
+        //give the runner the specific version of bsc to run
+        const args = [
+            this.selectedBscInfo.path,
+            (this.context.extensionMode === vscode.ExtensionMode.Development).toString()
+        ];
+        // If the extension is launched in debug mode then the debug server options are used
+        // Otherwise the run options are used
+        let serverOptions: ServerOptions = {
+            run: {
+                module: serverModule,
+                transport: TransportKind.ipc,
+                args: args
+            },
+            debug: {
+                module: serverModule,
+                transport: TransportKind.ipc,
+                args: args,
+                // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
+                options: { execArgv: ['--nolazy', '--inspect=6009'] }
+            }
+        };
+
+        // Options to control the language client
+        let clientOptions: LanguageClientOptions = {
+            // Register the server for various types of documents
+            documentSelector: [
+                { scheme: 'file', language: 'brightscript' },
+                { scheme: 'file', language: 'brighterscript' },
+                { scheme: 'file', language: 'xml' }
+            ],
+            synchronize: {
+                // Notify the server about file changes to every filetype it cares about
+                fileEvents: workspace.createFileSystemWatcher('**/*')
+            }
+        };
+
+        // Create the language client and start the client.
+        return new LanguageClient(
+            'brighterScriptLanguageServer',
+            LANGUAGE_SERVER_NAME,
+            serverOptions,
+            clientOptions
+        );
+    }
+
     private async enableLanguageServer() {
         try {
-
             //if we already have a language server, nothing more needs to be done
             if (this.client) {
                 return await this.ready();
@@ -167,54 +223,7 @@ export class LanguageServerManager {
             //disable the simple providers (the language server will handle all of these)
             this.disableSimpleProviders();
 
-            // The server is implemented in node
-            let serverModule = this.context.asAbsolutePath(
-                path.join('dist', 'LanguageServerRunner.js')
-            );
-
-            //give the runner the specific version of bsc to run
-            const args = [
-                this.selectedBscInfo.path,
-                (this.context.extensionMode === vscode.ExtensionMode.Development).toString()
-            ];
-            // If the extension is launched in debug mode then the debug server options are used
-            // Otherwise the run options are used
-            let serverOptions: ServerOptions = {
-                run: {
-                    module: serverModule,
-                    transport: TransportKind.ipc,
-                    args: args
-                },
-                debug: {
-                    module: serverModule,
-                    transport: TransportKind.ipc,
-                    args: args,
-                    // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-                    options: { execArgv: ['--nolazy', '--inspect=6009'] }
-                }
-            };
-
-            // Options to control the language client
-            let clientOptions: LanguageClientOptions = {
-                // Register the server for various types of documents
-                documentSelector: [
-                    { scheme: 'file', language: 'brightscript' },
-                    { scheme: 'file', language: 'brighterscript' },
-                    { scheme: 'file', language: 'xml' }
-                ],
-                synchronize: {
-                    // Notify the server about file changes to every filetype it cares about
-                    fileEvents: workspace.createFileSystemWatcher('**/*')
-                }
-            };
-
-            // Create the language client and start the client.
-            this.client = new LanguageClient(
-                'brighterScriptLanguageServer',
-                LANGUAGE_SERVER_NAME,
-                serverOptions,
-                clientOptions
-            );
+            this.client = this.constructLanguageClient();
 
             this.client.onDidChangeState((event: StateChangeEvent) => {
                 console.log(new Date().toLocaleTimeString(), 'onDidChangeState', State[event.newState]);
@@ -223,6 +232,7 @@ export class LanguageServerManager {
 
             // Start the client. This will also launch the server
             this.clientDispose = this.client.start();
+
             await this.client.onReady();
 
             this.client.onNotification('critical-failure', (message) => {
@@ -231,13 +241,16 @@ export class LanguageServerManager {
             this.registerBusyStatusHandler();
             this.deferred.resolve(true);
         } catch (e) {
-            console.error(e);
-            void this.client?.stop?.();
+            //stop the client by any means necessary
+            try {
+                void this.client?.stop?.();
+            } catch { }
             delete this.client;
 
             this.refreshDeferred();
 
-            this.deferred.reject(e);
+            this.deferred?.reject(e);
+            throw e;
         }
         return this.ready();
     }
