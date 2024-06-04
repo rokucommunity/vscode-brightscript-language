@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.4...v2.48.5) - 2024-06-04
+### Fixed
+ - bug with the language server crash tracker ([#576](https://github.com/rokucommunity/vscode-brightscript-language/pull/576))
+
+
+
 ## [2.48.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.3...v2.48.4) - 2024-06-04
 ### Added
  - Prompt to restart lsp if it has stopped ([#575](https://github.com/rokucommunity/vscode-brightscript-language/pull/575))
