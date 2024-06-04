@@ -19,18 +19,7 @@ describe('WebviewViewProviderManager', () => {
 
     before(() => {
         context = {
-            ...vscode.context,
-            extensionPath: '',
-            subscriptions: [],
-            asAbsolutePath: () => { },
-            globalState: {
-                get: () => {
-
-                },
-                update: () => {
-
-                }
-            }
+            ...vscode.context
         };
 
         config.host = '86.75.30.9';

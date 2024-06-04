@@ -6,11 +6,15 @@ import { DefinitionRepository } from './DefinitionRepository';
 import { DeclarationProvider } from './DeclarationProvider';
 import type { ExtensionContext } from 'vscode';
 import * as path from 'path';
-import { standardizePath as s } from 'brighterscript';
+import { Deferred, standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import URI from 'vscode-uri';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
-
+import type { StateChangeEvent } from 'vscode-languageclient/node';
+import {
+    LanguageClient,
+    State
+} from 'vscode-languageclient/node';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -37,22 +41,69 @@ describe('LanguageServerManager', () => {
             new DeclarationProvider()
         );
         languageServerManager['context'] = {
+            asAbsolutePath: vscode.context.asAbsolutePath,
             subscriptions: [],
-            asAbsolutePath: () => { },
             globalState: {
-                get: () => {
-
-                },
-                update: () => {
-
-                }
+                get: () => { },
+                update: () => { }
             }
         } as unknown as ExtensionContext;
     });
 
+    function stubConstructClient(processor?: (LanguageClient) => void) {
+        sinon.stub(languageServerManager as any, 'constructLanguageClient').callsFake(() => {
+            const client = {
+                start: () => { },
+                onDidChangeState: (cb) => {
+                },
+                onReady: () => Promise.resolve(),
+                onNotification: () => { }
+            };
+            processor?.(client);
+            return client;
+        });
+    }
+
     afterEach(() => {
         sinon.restore();
         fsExtra.removeSync(tempDir);
+    });
+
+    describe('lsp crash tracking', () => {
+        it('shows popup after a stop without a subsequent start/restart/running', async () => {
+            let changeState: (event: StateChangeEvent) => void;
+            //disable starting so we can manually test
+            sinon.stub(languageServerManager, 'syncVersionAndTryRun').callsFake(() => Promise.resolve());
+
+            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository']);
+
+            languageServerManager['lspRunTracker'].debounceDelay = 100;
+
+            let registerOnDidChangeStateDeferred = new Deferred();
+            stubConstructClient((client) => {
+                client.onDidChangeState = (cb) => {
+                    changeState = cb as unknown as any;
+                    registerOnDidChangeStateDeferred.resolve();
+                };
+            });
+
+            void languageServerManager['enableLanguageServer']();
+
+            await registerOnDidChangeStateDeferred.promise;
+            let showErrorMessageDeferred = new Deferred();
+            sinon.stub(vscode.window, 'showErrorMessage').callsFake(() => {
+                showErrorMessageDeferred.resolve();
+            });
+
+            //call the callback with the stopped state
+            changeState({
+                oldState: State.Stopped,
+                newState: State.Stopped
+            });
+
+            // the test will fail if the error message not shown
+            await showErrorMessageDeferred.promise;
+        });
     });
 
     describe('updateStatusbar', () => {
@@ -94,6 +145,7 @@ describe('LanguageServerManager', () => {
 
     describe('enableLanguageServer', () => {
         it('properly handles runtime exception', async () => {
+            stubConstructClient();
             languageServerManager['client'] = {} as any;
             sinon.stub(languageServerManager as any, 'ready').callsFake(() => {
                 throw new Error('failed for test');
