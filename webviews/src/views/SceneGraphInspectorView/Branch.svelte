@@ -3,10 +3,11 @@
     import throttle from 'just-throttle';
     import { odc } from '../../ExtensionIntermediary';
     import { utils } from '../../utils';
-    import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move, Issues } from 'svelte-codicons';
+    import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move, Issues, Trash } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
     import type { TreeNodeWithBase } from '../../shared/types';
     import { createEventDispatcher } from 'svelte';
+    import type { TreeNode } from 'roku-test-automation';
     const dispatch = createEventDispatcher();
 
     export let treeNode: TreeNodeWithBase;
@@ -177,6 +178,18 @@
             keyPath: treeNode.keyPath
         });
     }
+
+    async function removeNode() {
+        await odc.removeNode({
+            keyPath: treeNode.keyPath
+        });
+        dispatch('nodeRemoved', treeNode);
+    }
+
+    function onChildNodeRemoved(event: CustomEvent<TreeNode>) {
+        const removedChildTreeNode = event.detail;
+        treeNode.children = treeNode.children.filter(child => child.keyPath !== removedChildTreeNode.keyPath);
+    }
 </script>
 
 <style>
@@ -271,6 +284,11 @@
         </span>
     </div>
     <div class="actions">
+        {#if treeNode.parentRef >= 0}
+            <span title="Remove Node" class="icon-button" on:click|stopPropagation={removeNode}>
+                <Trash />
+            </span>
+        {/if}
         {#if treeNode.visible !== undefined}
             <span title="Focus Node" class="icon-button" on:click|stopPropagation={focusNode}>
                 <Issues />
@@ -300,6 +318,7 @@
             on:openNode
             on:treeNodeFocused
             on:childExpanded={onChildExpanded}
+            on:nodeRemoved={onChildNodeRemoved}
             depth={depth + 1}
             treeNode={treeNodeChild}
             selectTreeNode={selectTreeNode}
