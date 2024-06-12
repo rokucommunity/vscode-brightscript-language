@@ -4,7 +4,7 @@ import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComp
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
 import type { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeChildrenArgs, FocusNodeArgs } from 'roku-test-automation';
+import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -247,6 +247,10 @@ class ODCIntermediary {
 
     public async removeNodeChildren(args: RemoveNodeChildrenArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.removeNodeChildren>>(RequestType.removeNodeChildren, args, options);
+    }
+
+    public async removeNode(args: RemoveNodeArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.removeNode>>(RequestType.removeNode, args, options);
     }
 
     public async focusNode(args: FocusNodeArgs, options?: RequestOptions) {
