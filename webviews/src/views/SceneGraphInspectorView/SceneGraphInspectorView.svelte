@@ -24,6 +24,7 @@
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
     let rootTree = [] as TreeNodeWithBase[];
+    let flatTree = [] as TreeNodeWithBase[];
 
     const globalNode: TreeNodeWithBase = {
         id: '',
@@ -45,13 +46,14 @@
     let containerWidth = -1
     let shouldDisplaySideBySide = false;
     $:{
-        shouldDisplaySideBySide = (containerWidth > 600);
+        shouldDisplaySideBySide = (containerWidth > 600) && !showNodeCountByType;
     }
 
     intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async () => {
         loading = true;
         const result = await intermediary.getStoredNodeReferences();
         rootTree = result.rootTree as TreeNodeWithBase[];
+        flatTree = result.flatTree as TreeNodeWithBase[];
 
         //insert the global node to the top of the rootNodes list
         rootTree.unshift(globalNode);
@@ -80,6 +82,7 @@
             });
             utils.debugLog(`Store node references took ${result.timeTaken}ms`);
             rootTree = result.rootTree as TreeNodeWithBase[];
+            flatTree = result.flatTree as TreeNodeWithBase[];
 
             //insert the global node to the top of the rootNodes list
             rootTree.unshift(globalNode);
@@ -267,7 +270,9 @@
         <SettingsPage bind:showSettingsPage />
     {/if}
     {#if showNodeCountByType}
-        <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType />
+        <span class:hide={inspectNodeTreeNode}>
+            <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType bind:flatTree bind:inspectNodeTreeNode />
+        </span>
     {/if}
     {#if loading}
         <Loader />
@@ -298,7 +303,7 @@
             <OdcSetManualIpAddress />
         </div>
     {:else}
-        <div id="header" class={inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}>
+        <div id="header" class:hide={inspectNodeTreeNode && !shouldDisplaySideBySide}>
             <div id="drop-shadow-blocker" />
             <span
                 class="icon-button"
