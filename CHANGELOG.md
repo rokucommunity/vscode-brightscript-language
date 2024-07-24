@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.48.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.5...v2.48.6) - 2024-07-24
+### Added
+ - support for viewing nodes that are in the node tree from NodeCountByTypePage ([#579](https://github.com/rokucommunity/vscode-brightscript-language/pull/579))
+ - support for removing nodes in SceneGraph Inspector ([#578](https://github.com/rokucommunity/vscode-brightscript-language/pull/578))
+### Changed
+ - upgrade to [roku-deploy@3.12.1](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3121---2024-07-19). Notable changes since 3.12.0:
+     - Fix bug with absolute paths and getDestPath ([roku-deploy#171](https://github.com/rokucommunity/roku-deploy/pull/171))
+ - upgrade to [roku-debug@0.21.10](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02110---2024-07-24). Notable changes since 0.21.9:
+     - Prevent crash when rokuAdapter is not defined. ([roku-debug#194](https://github.com/rokucommunity/roku-debug/pull/194))
+ - upgrade to [brighterscript@0.67.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0674---2024-07-24). Notable changes since 0.67.2:
+     - Fix crash with missing scope ([brighterscript#1234](https://github.com/rokucommunity/brighterscript/pull/1234))
+     - Fix conform bsconfig.schema.json to strict types ([brighterscript#1205](https://github.com/rokucommunity/brighterscript/pull/1205))
+     - Flag using devDependency in production code ([brighterscript#1222](https://github.com/rokucommunity/brighterscript/pull/1222))
+ - upgrade to [brighterscript-formatter@1.7.4](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#174---2024-07-24). Notable changes since 1.7.3:
+
+
+
 ## [2.48.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.4...v2.48.5) - 2024-06-04
 ### Fixed
  - bug with the language server crash tracker ([#576](https://github.com/rokucommunity/vscode-brightscript-language/pull/576))
