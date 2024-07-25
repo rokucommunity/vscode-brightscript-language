@@ -1787,6 +1787,12 @@
                             "original"
                         ],
                         "scope": "resource"
+                    },
+                    "brightscript.format.sortImports": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Sort import statements alphabetically",
+                        "scope": "resource"
                     }
                 }
             },
