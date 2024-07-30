@@ -16,7 +16,8 @@ import {
     window,
     workspace
 } from 'vscode';
-import { BusyStatus, NotificationName, Logger } from 'brighterscript';
+import { BusyStatus, NotificationName, standardizePath as s } from 'brighterscript';
+import { Logger } from '@rokucommunity/logger';
 import { CustomCommands, Deferred } from 'brighterscript';
 import type { CodeWithSourceMap } from 'source-map';
 import BrightScriptDefinitionProvider from './BrightScriptDefinitionProvider';
@@ -29,6 +30,7 @@ import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
+import * as childProcess from 'child_process';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -88,10 +90,13 @@ export class LanguageServerManager {
         return this.definitionRepository.provider;
     }
 
+    private logger: Logger;
     public async init(
         context: vscode.ExtensionContext,
-        definitionRepository: DefinitionRepository
+        definitionRepository: DefinitionRepository,
+        logger: Logger
     ) {
+        this.logger = logger;
         this.context = context;
         this.definitionRepository = definitionRepository;
 
@@ -266,7 +271,7 @@ export class LanguageServerManager {
             if (event.status === BusyStatus.busy) {
                 timeoutHandle = setTimeout(() => {
                     const delay = Date.now() - event.timestamp;
-                    this.client.outputChannel.appendLine(`${logger.getTimestamp()} language server has been 'busy' for ${delay}ms. most recent busyStatus event: ${JSON.stringify(event, undefined, 4)}`);
+                    this.client.outputChannel.appendLine(`${logger.formatTimestamp(new Date())} language server has been 'busy' for ${delay}ms. most recent busyStatus event: ${JSON.stringify(event, undefined, 4)}`);
                 }, 60_000);
 
                 //clear any existing timeout
@@ -386,6 +391,7 @@ export class LanguageServerManager {
      * and if different, re-launch the specific version of the language server'
      */
     public async syncVersionAndTryRun() {
+        await this.ensureBscVersionInstalled('0.67.3');
         const bsdkPath = await this.getBsdkPath();
 
         //if the path to bsc is different, spin down the old server and start a new one
@@ -459,6 +465,53 @@ export class LanguageServerManager {
                 fsExtra.readFileSync(vscode.workspace.workspaceFile.fsPath
                 ).toString()
             );
+    }
+
+    /**
+     * Ensure that the specified bsc version is installed in the global storage directory.
+     * @param version
+     * @param retryCount the number of times we should retry before giving up
+     * @returns full path to the root of where the brighterscript module is installed
+     */
+    private async ensureBscVersionInstalled(version: string, retryCount = 1) {
+        console.log('Ensuring bsc version is installed', version);
+        const bscNpmDir = s`${this.context.globalStorageUri.fsPath}/packages/brighterscript-${version}`;
+        if (await fsExtra.pathExists(bscNpmDir) === false) {
+            //write a simple package.json file referencing the version of brighterscript we want
+            await fsExtra.outputJson(`${bscNpmDir}/package.json`, {
+                name: 'vscode-brighterscript-host',
+                private: true,
+                version: '1.0.0',
+                dependencies: {
+                    'brighterscript': version
+                }
+            });
+            await new Promise<void>((resolve, reject) => {
+                const process = childProcess.exec(`npm install`, {
+                    cwd: bscNpmDir
+                });
+                process.on('error', (err) => {
+                    console.error(err);
+                    reject(err);
+                });
+                process.on('close', (code) => {
+                    if (code === 0) {
+                        resolve();
+                    }
+                });
+            });
+        }
+        const bscPath = s`${bscNpmDir}/node_modules/brighterscript`;
+
+        //if the module is invalid, try again
+        if (await fsExtra.pathExists(`${bscPath}/dist/index.js`) === false && retryCount > 0) {
+            console.log(`Failed to load brighterscript module at ${bscNpmDir}. Deleting directory and trying again`);
+            //remove the dir and try again
+            await fsExtra.remove(bscNpmDir);
+            return this.ensureBscVersionInstalled(version, retryCount - 1);
+        }
+
+        return bscPath;
     }
 }
 
