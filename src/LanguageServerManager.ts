@@ -31,6 +31,7 @@ import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
 import * as childProcess from 'child_process';
+import * as semver from 'semver';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -90,13 +91,10 @@ export class LanguageServerManager {
         return this.definitionRepository.provider;
     }
 
-    private logger: Logger;
     public async init(
         context: vscode.ExtensionContext,
-        definitionRepository: DefinitionRepository,
-        logger: Logger
+        definitionRepository: DefinitionRepository
     ) {
-        this.logger = logger;
         this.context = context;
         this.definitionRepository = definitionRepository;
 
@@ -391,7 +389,6 @@ export class LanguageServerManager {
      * and if different, re-launch the specific version of the language server'
      */
     public async syncVersionAndTryRun() {
-        await this.ensureBscVersionInstalled('0.67.3');
         const bsdkPath = await this.getBsdkPath();
 
         //if the path to bsc is different, spin down the old server and start a new one
@@ -421,15 +418,19 @@ export class LanguageServerManager {
     }
 
     /**
-     * Get the full path to the brighterscript module where the LanguageServer should be run
+     * Get the full path to the brighterscript module where the LanguageServer should be run.
+     * If `brightscript.bsdk` is a version number or a URL, install that version in global storage and return that path.
+     * if it's a relative path, resolve it to the workspace folder and return that path.
      */
     private async getBsdkPath() {
         //if there's a bsdk entry in the workspace settings, assume the path is relative to the workspace
         if (this.workspaceConfigIncludesBsdkKey()) {
             let bsdk = vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk');
-            return bsdk === 'embedded'
-                ? this.embeddedBscInfo.path
-                : path.resolve(path.dirname(vscode.workspace.workspaceFile.fsPath), bsdk);
+            if (bsdk === 'embedded') {
+                return this.embeddedBscInfo.path;
+            }
+            let bscPath = await this.ensureBscVersionInstalled(bsdk);
+            return path.resolve(path.dirname(vscode.workspace.workspaceFile.fsPath), bscPath);
         }
 
         const folderResults = new Set<string>();
@@ -437,11 +438,14 @@ export class LanguageServerManager {
         for (const folder of vscode.workspace.workspaceFolders) {
             const bsdk = vscode.workspace.getConfiguration('brightscript', folder).get<string>('bsdk');
             if (bsdk) {
-                folderResults.add(
-                    bsdk === 'embedded'
-                        ? this.embeddedBscInfo.path
-                        : path.resolve(folder.uri.fsPath, bsdk)
-                );
+                if (bsdk === 'embedded') {
+                    folderResults.add(this.embeddedBscInfo.path);
+                } else {
+                    let bscPath = await this.ensureBscVersionInstalled(bsdk);
+                    folderResults.add(
+                        path.resolve(folder.uri.fsPath, bscPath)
+                    );
+                }
             }
         }
         const values = [...folderResults.values()];
@@ -473,42 +477,75 @@ export class LanguageServerManager {
      * @param retryCount the number of times we should retry before giving up
      * @returns full path to the root of where the brighterscript module is installed
      */
-    private async ensureBscVersionInstalled(version: string, retryCount = 1) {
-        console.log('Ensuring bsc version is installed', version);
-        const bscNpmDir = s`${this.context.globalStorageUri.fsPath}/packages/brighterscript-${version}`;
-        if (await fsExtra.pathExists(bscNpmDir) === false) {
-            //write a simple package.json file referencing the version of brighterscript we want
-            await fsExtra.outputJson(`${bscNpmDir}/package.json`, {
-                name: 'vscode-brighterscript-host',
-                private: true,
-                version: '1.0.0',
-                dependencies: {
-                    'brighterscript': version
-                }
-            });
-            await new Promise<void>((resolve, reject) => {
-                const process = childProcess.exec(`npm install`, {
-                    cwd: bscNpmDir
-                });
-                process.on('error', (err) => {
-                    console.error(err);
-                    reject(err);
-                });
-                process.on('close', (code) => {
-                    if (code === 0) {
-                        resolve();
+    private async ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
+        let folderName: string;
+        let packageJsonEntry: string;
+        //if this is a URL
+        if (/^(http|https):\/\//.test(bsdkEntry)) {
+            folderName = `brighterscript-${btoa(bsdkEntry.trim())}`.substring(0, 30);
+            packageJsonEntry = bsdkEntry.trim();
+
+            //this is a valid semantic version
+        } else if (semver.valid(bsdkEntry)) {
+            folderName = `brighterscript-${bsdkEntry}`;
+            packageJsonEntry = bsdkEntry;
+
+            //assume this is a folder path, return as-is
+        } else {
+            return bsdkEntry;
+        }
+
+        let bscPath: string;
+
+        const action = async () => {
+
+            console.log('Ensuring bsc version is installed', packageJsonEntry);
+            const bscNpmDir = s`${this.context.globalStorageUri.fsPath}/packages/${folderName}`;
+            if (await fsExtra.pathExists(bscNpmDir) === false) {
+                //write a simple package.json file referencing the version of brighterscript we want
+                await fsExtra.outputJson(`${bscNpmDir}/package.json`, {
+                    name: 'vscode-brighterscript-host',
+                    private: true,
+                    version: '1.0.0',
+                    dependencies: {
+                        'brighterscript': packageJsonEntry
                     }
                 });
-            });
-        }
-        const bscPath = s`${bscNpmDir}/node_modules/brighterscript`;
+                await new Promise<void>((resolve, reject) => {
+                    const process = childProcess.exec(`npm install`, {
+                        cwd: bscNpmDir
+                    });
+                    process.on('error', (err) => {
+                        console.error(err);
+                        reject(err);
+                    });
+                    process.on('close', (code) => {
+                        if (code === 0) {
+                            resolve();
+                        }
+                    });
+                });
+            }
+            bscPath = s`${bscNpmDir}/node_modules/brighterscript`;
 
-        //if the module is invalid, try again
-        if (await fsExtra.pathExists(`${bscPath}/dist/index.js`) === false && retryCount > 0) {
-            console.log(`Failed to load brighterscript module at ${bscNpmDir}. Deleting directory and trying again`);
-            //remove the dir and try again
-            await fsExtra.remove(bscNpmDir);
-            return this.ensureBscVersionInstalled(version, retryCount - 1);
+            //if the module is invalid, try again
+            if (await fsExtra.pathExists(`${bscPath}/dist/index.js`) === false && retryCount > 0) {
+                console.log(`Failed to load brighterscript module at ${bscNpmDir}. Deleting directory and trying again`);
+                //remove the dir and try again
+                await fsExtra.remove(bscNpmDir);
+                return this.ensureBscVersionInstalled(bsdkEntry, retryCount - 1, false);
+            }
+        };
+
+        //show a progress spinner if configured to do so
+        if (showProgress) {
+            await vscode.window.withProgress({
+                title: 'Installing brighterscript language server ' + packageJsonEntry,
+                location: vscode.ProgressLocation.Notification,
+                cancellable: false
+            }, action);
+        } else {
+            await action();
         }
 
         return bscPath;

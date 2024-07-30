@@ -35,6 +35,21 @@ describe('LanguageServerInfoCommand', () => {
         fsExtra.removeSync(tempDir);
     });
 
+    describe('getBscVersionsFromNpm', () => {
+        it('returns a list of versions', async () => {
+            const results = await command['getBscVersionsFromNpm']();
+            // `results` is entire list of all bsc versions, live from npm. so we obviously can't make a test that ensure they're all correct.
+            // so just check that certain values are sorted correctly
+            expect(results.map(x => x.version).filter(x => x.startsWith('0.64'))).to.eql([
+                '0.64.4',
+                '0.64.3',
+                '0.64.2',
+                '0.64.1',
+                '0.64.0'
+            ]);
+        });
+    });
+
     describe('discoverBrighterScriptVersions', () => {
         function writePackage(version: string) {
             fsExtra.outputJsonSync(s`${tempDir}/package.json`, {

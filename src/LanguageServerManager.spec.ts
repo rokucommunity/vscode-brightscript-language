@@ -76,7 +76,7 @@ describe('LanguageServerManager', () => {
             //disable starting so we can manually test
             sinon.stub(languageServerManager, 'syncVersionAndTryRun').callsFake(() => Promise.resolve());
 
-            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository'], languageServerManager['logger']);
+            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository']);
 
             languageServerManager['lspRunTracker'].debounceDelay = 100;
 
@@ -325,7 +325,7 @@ describe('LanguageServerManager', () => {
         });
     });
 
-    describe.only('ensureBscVersionInstalled', function() {
+    describe('ensureBscVersionInstalled', function() {
         //these tests take a long time (due to running `npm install`)
         this.timeout(20_000);
 

@@ -3,6 +3,11 @@ import { LANGUAGE_SERVER_NAME, languageServerManager } from '../LanguageServerMa
 import * as path from 'path';
 import * as resolve from 'resolve';
 import * as fsExtra from 'fs-extra';
+import * as childProcess from 'child_process';
+import { firstBy } from 'thenby';
+import * as dayjs from 'dayjs';
+import * as relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
@@ -73,7 +78,43 @@ export class LanguageServerInfoCommand {
                 });
             }
         }
+
         return versions;
+    }
+
+    private async getBscVersionsFromNpm() {
+        const versions = await new Promise((resolve, reject) => {
+            const process = childProcess.exec(`npm view brighterscript time --json`);
+
+            process.stdout.on('data', (data) => {
+                try {
+                    const versions = JSON.parse(data);
+                    delete versions.created;
+                    delete versions.modified;
+                    resolve(versions);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+
+            process.stderr.on('data', (error) => {
+                reject(error);
+            });
+
+            process.on('exit', (code) => {
+                if (code !== 0) {
+                    reject(new Error(`Process exited with code ${code}`));
+                }
+            });
+        });
+        return Object.entries(versions)
+            .map(x => {
+                return {
+                    version: x[0],
+                    date: x[1]
+                };
+            })
+            .sort(firstBy(x => x.date, -1));
     }
 
     /**
@@ -84,7 +125,30 @@ export class LanguageServerInfoCommand {
         const versions = this.discoverBrighterScriptVersions(
             vscode.workspace.workspaceFolders.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath))
         );
-        let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` });
+
+        //start the request right now, we will leverage it later
+        const versionsFromNpmPromise = this.getBscVersionsFromNpm();
+
+        //get the full list of versions from npm
+        versions.push({
+            label: '$(package) Install from npm',
+            description: '',
+            detail: '',
+            command: async () => {
+                let versionsFromNpm = (await versionsFromNpmPromise).map(x => ({
+                    label: x.version,
+                    detail: x.version,
+                    description: dayjs(x.date).fromNow(true) + ' ago'
+                }));
+                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+            }
+        } as any);
+
+        let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+
+        //if the selection has a command, run it before continuing;
+        selection = await selection?.command() ?? selection;
+
         if (selection) {
             const config = vscode.workspace.getConfiguration('brightscript');
             //quickly clear the setting, then set it again so we are guaranteed to trigger a change event
