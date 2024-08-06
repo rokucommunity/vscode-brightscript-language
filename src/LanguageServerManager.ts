@@ -32,6 +32,7 @@ import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
 import * as childProcess from 'child_process';
 import * as semver from 'semver';
+import * as md5 from 'md5';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -482,7 +483,8 @@ export class LanguageServerManager {
         let packageJsonEntry: string;
         //if this is a URL
         if (/^(http|https):\/\//.test(bsdkEntry)) {
-            folderName = `brighterscript-${btoa(bsdkEntry.trim())}`.substring(0, 30);
+            //hash the URL to create a unique folder name. There is next to zero possibility these will clash, so the hash should be fine.
+            folderName = `brighterscript-${md5(bsdkEntry.trim())}`;
             packageJsonEntry = bsdkEntry.trim();
 
             //this is a valid semantic version

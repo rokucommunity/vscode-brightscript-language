@@ -65,7 +65,10 @@ describe('LanguageServerManager', () => {
         });
     }
 
-    afterEach(() => {
+    afterEach(function() {
+        //deleting certain directories take a while
+        this.timeout(30_000);
+
         sinon.restore();
         fsExtra.removeSync(tempDir);
     });
@@ -356,6 +359,20 @@ describe('LanguageServerManager', () => {
                 fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`)
             ).to.be.true;
             expect(spy.called).to.be.false;
+        });
+
+        it('installs from url', async () => {
+            fsExtra.ensureDirSync(
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
+            );
+            expect(
+                await languageServerManager['ensureBscVersionInstalled'](
+                    'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz'
+                )
+            ).to.eql(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`);
+            expect(
+                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`)
+            ).to.be.true;
         });
 
         it('repairs a broken bsc version', async () => {

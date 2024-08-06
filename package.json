@@ -70,6 +70,7 @@
         "iconv-lite": "0.4.24",
         "jszip": "^3.10.1",
         "just-throttle": "^4.0.1",
+        "md5": "^2.3.0",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
