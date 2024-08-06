@@ -34,6 +34,9 @@ export let vscode = {
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
+    ProgressLocation: {
+        Notification: 1
+    },
     QuickPickItemKind: QuickPickItemKind,
     StatusBarAlignment: {
         Left: 1,
@@ -161,6 +164,9 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        withProgress: (options, action) => {
+            return action();
+        },
         showInputBox: () => { },
         createStatusBarItem: () => {
             return {

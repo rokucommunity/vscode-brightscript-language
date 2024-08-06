@@ -15,6 +15,7 @@ import {
     LanguageClient,
     State
 } from 'vscode-languageclient/node';
+import * as childProcess from 'child_process';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -64,7 +65,10 @@ describe('LanguageServerManager', () => {
         });
     }
 
-    afterEach(() => {
+    afterEach(function() {
+        //deleting certain directories take a while
+        this.timeout(30_000);
+
         sinon.restore();
         fsExtra.removeSync(tempDir);
     });
@@ -321,6 +325,77 @@ describe('LanguageServerManager', () => {
 
             //should get null since that's what the 'selectBrighterScriptVersion' function returns from our stub
             expect(bsdkPath).to.eql(null);
+        });
+    });
+
+    describe('ensureBscVersionInstalled', function() {
+        //these tests take a long time (due to running `npm install`)
+        this.timeout(20_000);
+
+        const storageDir = s`${tempDir}/brighterscript-storage`;
+        beforeEach(() => {
+            fsExtra.removeSync(storageDir);
+            (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
+        });
+
+        it('installs a bsc version when not present', async () => {
+            expect(
+                await languageServerManager['ensureBscVersionInstalled']('0.65.0')
+            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
+            expect(
+                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`)
+            ).to.be.true;
+        });
+
+        it('reuses the same bsc version when already exists', async () => {
+            let spy = sinon.spy(childProcess, 'exec');
+            fsExtra.ensureDirSync(
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
+            );
+            expect(
+                await languageServerManager['ensureBscVersionInstalled']('0.65.0')
+            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
+            expect(
+                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`)
+            ).to.be.true;
+            expect(spy.called).to.be.false;
+        });
+
+        it('installs from url', async () => {
+            fsExtra.ensureDirSync(
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
+            );
+            expect(
+                await languageServerManager['ensureBscVersionInstalled'](
+                    'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz'
+                )
+            ).to.eql(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`);
+            expect(
+                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`)
+            ).to.be.true;
+        });
+
+        it('repairs a broken bsc version', async () => {
+            let stub = sinon.stub(fsExtra, 'remove');
+            fsExtra.ensureDirSync(
+                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`
+            );
+            fsExtra.writeFileSync(
+                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript/package.json`,
+                'bad json'
+            );
+
+            expect(
+                await languageServerManager['ensureBscVersionInstalled']('0.65.1')
+            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`);
+            expect(
+                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`)
+            ).to.be.true;
+
+            //make sure we deleted the bad folder
+            expect(
+                s`${stub.getCalls()[0].args[0]}`
+            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.1`);
         });
     });
 });
