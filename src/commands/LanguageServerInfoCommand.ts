@@ -7,6 +7,8 @@ import * as childProcess from 'child_process';
 import { firstBy } from 'thenby';
 import * as dayjs from 'dayjs';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
+import { util } from '../util';
+import { VscodeCommand } from './VscodeCommand';
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
@@ -26,6 +28,13 @@ export class LanguageServerInfoCommand {
                 label: `View language server logs`,
                 description: ``,
                 command: this.focusLanguageServerOutputChannel.bind(this)
+            }, {
+                label: `Delete cached brighterscript versions`,
+                description: ``,
+                command: async () => {
+                    await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
+                    await vscode.window.showInformationMessage('All cached brighterscript versions have been removed');
+                }
             }];
 
             let selection = await vscode.window.showQuickPick(commands, { placeHolder: `BrighterScript Project Info` });

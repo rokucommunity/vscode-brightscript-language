@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import type { LanguageServerManager } from '../LanguageServerManager';
+import { VscodeCommand } from './VscodeCommand';
 
 export class ClearNpmPackageCacheCommand {
-    public static commandName = 'extension.brightscript.clearNpmPackageCache';
 
     public register(context: vscode.ExtensionContext, languageServerManager: LanguageServerManager) {
-        context.subscriptions.push(vscode.commands.registerCommand(ClearNpmPackageCacheCommand.commandName, async () => {
+        context.subscriptions.push(vscode.commands.registerCommand(VscodeCommand.clearNpmPackageCache, async () => {
             await languageServerManager.clearNpmPackageCache();
         }));
     }

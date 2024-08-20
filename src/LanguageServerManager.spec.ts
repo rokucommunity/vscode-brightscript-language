@@ -401,7 +401,7 @@ describe('LanguageServerManager', () => {
 
     describe('clearNpmPackageCache', () => {
         it('clears the cache', async () => {
-            fsExtra.ensureFileSync(`${storageDir}/test.txt`);
+            fsExtra.ensureFileSync(`${storageDir}/packages/test.txt`);
             expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.true;
 
             await languageServerManager.clearNpmPackageCache();
