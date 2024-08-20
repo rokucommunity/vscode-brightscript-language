@@ -75,7 +75,8 @@ export class Extension {
             this.whatsNewManager,
             context,
             activeDeviceManager,
-            userInputManager
+            userInputManager,
+            languageServerManager
         );
 
         this.rtaManager = new RtaManager(context);

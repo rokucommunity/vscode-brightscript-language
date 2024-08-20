@@ -14,6 +14,8 @@ import type { ActiveDeviceManager } from './ActiveDeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
+import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
+import type { LanguageServerManager } from './LanguageServerManager';
 
 export class BrightScriptCommands {
 
@@ -22,7 +24,8 @@ export class BrightScriptCommands {
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager,
-        private userInputManager: UserInputManager
+        private userInputManager: UserInputManager,
+        private languageServerManager: LanguageServerManager
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
@@ -39,6 +42,7 @@ export class BrightScriptCommands {
         languageServerInfoCommand.register(this.context);
         captureScreenshotCommand.register(this.context, this);
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
+        clearNpmPackageCacheCommand.register(this.context, this.languageServerManager);
 
         this.registerGeneralCommands();
 

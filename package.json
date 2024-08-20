@@ -3085,6 +3085,12 @@
                 "title": "Open SceneGraph Inspector In New Window",
                 "category": "BrighterScript",
                 "icon": "$(link-external)"
+            },
+            {
+                "command": "extension.brightscript.clearNpmPackageCache",
+                "title": "Clear the extension's local node_modules cache",
+                "category": "BrighterScript",
+                "icon": "$(link-external)"
             }
         ],
         "keybindings": [

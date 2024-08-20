@@ -34,6 +34,8 @@ Module.prototype.require = function hijacked(file) {
 const tempDir = s`${process.cwd()}/.tmp`;
 
 describe('LanguageServerManager', () => {
+    const storageDir = s`${tempDir}/brighterscript-storage`;
+
     let languageServerManager: LanguageServerManager;
 
     beforeEach(() => {
@@ -49,6 +51,10 @@ describe('LanguageServerManager', () => {
                 update: () => { }
             }
         } as unknown as ExtensionContext;
+
+        fsExtra.removeSync(storageDir);
+        (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
+
     });
 
     function stubConstructClient(processor?: (LanguageClient) => void) {
@@ -332,12 +338,6 @@ describe('LanguageServerManager', () => {
         //these tests take a long time (due to running `npm install`)
         this.timeout(20_000);
 
-        const storageDir = s`${tempDir}/brighterscript-storage`;
-        beforeEach(() => {
-            fsExtra.removeSync(storageDir);
-            (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
-        });
-
         it('installs a bsc version when not present', async () => {
             expect(
                 await languageServerManager['ensureBscVersionInstalled']('0.65.0')
@@ -396,6 +396,17 @@ describe('LanguageServerManager', () => {
             expect(
                 s`${stub.getCalls()[0].args[0]}`
             ).to.eql(s`${storageDir}/packages/brighterscript-0.65.1`);
+        });
+    });
+
+    describe('clearNpmPackageCache', () => {
+        it('clears the cache', async () => {
+            fsExtra.ensureFileSync(`${storageDir}/test.txt`);
+            expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.true;
+
+            await languageServerManager.clearNpmPackageCache();
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.false;
         });
     });
 });

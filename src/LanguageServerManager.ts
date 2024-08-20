@@ -552,6 +552,13 @@ export class LanguageServerManager {
 
         return bscPath;
     }
+
+    /**
+     * Clear all packages stored in the npm cache for this extension
+     */
+    public async clearNpmPackageCache() {
+        await fsExtra.emptyDir(s`${this.context.globalStorageUri.fsPath}/packages`);
+    }
 }
 
 export const languageServerManager = new LanguageServerManager();
