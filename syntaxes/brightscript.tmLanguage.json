@@ -20,6 +20,9 @@
                     "include": "#regex"
                 },
                 {
+                    "include": "#bsdoc"
+                },
+                {
                     "include": "#if_with_paren"
                 },
                 {
@@ -996,6 +999,62 @@
         "vscode_rale_tracker_entry_comment": {
             "match": "('\\s*vscode_rale_tracker_entry[^\\S\\r\\n]*)",
             "name": "keyword.preprocessor.brs"
+        },
+        "bsdoc": {
+            "patterns": [
+                {
+                    "include": "#bsdoc_param_and_type"
+                },
+                {
+                    "include": "#bsdoc_generic"
+                }
+            ]
+        },
+        "bsdoc_generic": {
+            "match": "(?i:\\s*(rem|')\\s*(@)(\\w+)(.*$))",
+            "captures": {
+                "1": {
+                    "name": "comment.line.apostrophe.brs"
+                },
+                "2": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "3": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "4": {
+                    "name": "comment.block.documentation.brs"
+                }
+            }
+        },
+        "bsdoc_param_and_type": {
+            "match": "(?i:\\s*(rem|')\\s*(@)(param|type)\\s*(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+)?(.*))",
+            "captures": {
+                "1": {
+                    "name": "comment.line.apostrophe.brs"
+                },
+                "2": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "3": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "4": {
+                    "name": "punctuation.definition.bracket.curly.begin.bsdoc"
+                },
+                "5": {
+                    "name": " comment.block.documentation.brs entity.name.type.instance.bsdoc"
+                },
+                "6": {
+                    "name": "punctuation.definition.bracket.curly.end.bsdoc"
+                },
+                "7": {
+                    "name": "variable.other.bsdoc"
+                },
+                "8": {
+                    "name": "comment.block.documentation.brs"
+                }
+            }
         },
         "annotation": {
             "patterns": [
