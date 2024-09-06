@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.49.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.6...v2.49.0) - 2024-09-06
+### Added
+ - Add syntax highlighting support for bsdoc tags ([#586](https://github.com/rokucommunity/vscode-brightscript-language/pull/586))
+ - Add sort imports setting ([#582](https://github.com/rokucommunity/vscode-brightscript-language/pull/582))
+### Changed
+ - upgrade to [brighterscript@0.67.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0676---2024-09-05). Notable changes since 0.67.4:
+     - Add support for resolving sourceRoot at time of config load ([brighterscript#1290](https://github.com/rokucommunity/brighterscript/pull/1290))
+     - Add support for roIntrinsicDouble ([brighterscript#1291](https://github.com/rokucommunity/brighterscript/pull/1291))
+     - Add plugin naming convention ([brighterscript#1284](https://github.com/rokucommunity/brighterscript/pull/1284))
+     - Add templatestring support for annotation.getArguments() ([brighterscript#1264](https://github.com/rokucommunity/brighterscript/pull/1264))
+
+
+
 ## [2.48.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.5...v2.48.6) - 2024-07-24
 ### Added
  - support for viewing nodes that are in the node tree from NodeCountByTypePage ([#579](https://github.com/rokucommunity/vscode-brightscript-language/pull/579))
