@@ -1011,7 +1011,7 @@
             ]
         },
         "bsdoc_generic": {
-            "match": "(?i:\\s*(rem|')\\s*(@)(\\w+)(.*$))",
+            "match": "(?i:\\s*(rem|'+)\\s*(@)(\\w+)(.*$))",
             "captures": {
                 "1": {
                     "name": "comment.line.apostrophe.brs"
@@ -1028,7 +1028,7 @@
             }
         },
         "bsdoc_param_and_type": {
-            "match": "(?i:\\s*(rem|')\\s*(@)(param|type)\\s*(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+)?(.*))",
+            "match": "(?i:\\s*(rem|'+)\\s*(@)(param|type)\\s*(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+)?(.*))",
             "captures": {
                 "1": {
                     "name": "comment.line.apostrophe.brs"
