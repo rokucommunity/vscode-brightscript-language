@@ -1811,6 +1811,12 @@
                         "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
                         "scope": "resource"
                     },
+                    "brightscript.npmCacheRetentionDays": {
+                        "type": "integer",
+                        "description": "How long should the extension keep around unused extension-managed npm packages such as brighterscript",
+                        "default": 45,
+                        "scope": "resource"
+                    },
                     "brightscript.enableLanguageServer": {
                         "type": "boolean",
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",

@@ -7,7 +7,6 @@ import * as childProcess from 'child_process';
 import { firstBy } from 'thenby';
 import * as dayjs from 'dayjs';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
-import { util } from '../util';
 import { VscodeCommand } from './VscodeCommand';
 dayjs.extend(relativeTime);
 
@@ -156,7 +155,7 @@ export class LanguageServerInfoCommand {
         let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
 
         //if the selection has a command, run it before continuing;
-        selection = await selection?.command() ?? selection;
+        selection = await selection?.command?.() ?? selection;
 
         if (selection) {
             const config = vscode.workspace.getConfiguration('brightscript');

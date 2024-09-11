@@ -16,6 +16,9 @@ import {
     State
 } from 'vscode-languageclient/node';
 import * as childProcess from 'child_process';
+import { util } from './util';
+import * as dayjs from 'dayjs';
+import { GlobalStateManager } from './GlobalStateManager';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -44,13 +47,11 @@ describe('LanguageServerManager', () => {
             new DeclarationProvider()
         );
         languageServerManager['context'] = {
+            ...vscode.context,
             asAbsolutePath: vscode.context.asAbsolutePath,
-            subscriptions: [],
-            globalState: {
-                get: () => { },
-                update: () => { }
-            }
+            subscriptions: []
         } as unknown as ExtensionContext;
+        languageServerManager['globalStateManager'] = new GlobalStateManager(languageServerManager['context']);
 
         fsExtra.removeSync(storageDir);
         (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
@@ -407,6 +408,53 @@ describe('LanguageServerManager', () => {
             await languageServerManager.clearNpmPackageCache();
 
             expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.false;
+        });
+    });
+
+    describe('deleteOutdatedBscVersions', () => {
+        beforeEach(() => {
+            //prevent lsp from actually running
+            sinon.stub(languageServerManager as any, 'syncVersionAndTryRun').returns(Promise.resolve());
+        });
+
+        it('runs after a short delay after init', async () => {
+            const stub = sinon.stub(languageServerManager as any, 'deleteOutdatedBscVersions').callsFake(() => { });
+
+            languageServerManager['outdatedBscVersionDeleteDelay'] = 50;
+
+            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository']);
+
+            expect(stub.called).to.be.false;
+
+            await util.sleep(100);
+            expect(stub.called).to.be.true;
+        });
+
+        it('deletes bsc versions that are older than the specified number of days', async () => {
+            //create a vew bsc versions
+            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
+            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`);
+            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.2/node_modules/brighterscript`);
+
+            //mark the first and third as outdated
+            await languageServerManager['updateBscVersionUsageDate'](
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
+                dayjs().subtract(46, 'day').toDate()
+            );
+            await languageServerManager['updateBscVersionUsageDate'](
+                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`,
+                dayjs().subtract(20, 'day').toDate()
+            );
+            await languageServerManager['updateBscVersionUsageDate'](
+                s`${storageDir}/packages/brighterscript-0.65.2/node_modules/brighterscript`,
+                dayjs().subtract(60, 'day').toDate()
+            );
+
+            await languageServerManager.deleteOutdatedBscVersions();
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.0`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.1`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.2`)).to.be.false;
         });
     });
 });

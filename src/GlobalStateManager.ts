@@ -14,6 +14,7 @@ export class GlobalStateManager {
         sendRemoteTextHistory: 'sendRemoteTextHistory',
         debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue'
+
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -37,7 +38,6 @@ export class GlobalStateManager {
     public set lastSeenReleaseNotesVersion(value: string) {
         void this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
     }
-
 
     public get debugProtocolPopupSnoozeUntilDate(): Date {
         const epoch = this.context.globalState.get<number>(this.keys.debugProtocolPopupSnoozeUntilDate);

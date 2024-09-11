@@ -33,6 +33,8 @@ import { EventEmitter } from 'eventemitter3';
 import * as childProcess from 'child_process';
 import * as semver from 'semver';
 import * as md5 from 'md5';
+import type { GlobalStateManager } from './GlobalStateManager';
+import * as dayjs from 'dayjs';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -92,12 +94,27 @@ export class LanguageServerManager {
         return this.definitionRepository.provider;
     }
 
+    /**
+     * The delay after init before we delete any outdated bsc versions
+     */
+    private outdatedBscVersionDeleteDelay = 5 * 60 * 1000;
+
     public async init(
         context: vscode.ExtensionContext,
         definitionRepository: DefinitionRepository
     ) {
         this.context = context;
         this.definitionRepository = definitionRepository;
+
+        //anytime the window changes focus, save the current brighterscript version
+        vscode.window.onDidChangeWindowState(async (e) => {
+            await this.updateBscVersionUsageDate(this.selectedBscInfo.path);
+        });
+
+        //in about 5 minutes, clean up any outdated bsc versions (delayed to prevent slower startup times)
+        setTimeout(() => {
+            void this.deleteOutdatedBscVersions();
+        }, this.outdatedBscVersionDeleteDelay);
 
         //if the lsp is permanently stopped by vscode, ask the user if they want to restart it again.
         this.lspRunTracker.on('stopped', async () => {
@@ -472,6 +489,36 @@ export class LanguageServerManager {
             );
     }
 
+    private get packagesDir() {
+        return s`${this.context.globalStorageUri.fsPath}/packages`;
+    }
+
+    /**
+     * Extract some info about the bsc version string
+     * @param version can be a semantic version, a URL, or a folder path
+     * @returns
+     */
+    private parseBscVersion(version: string) {
+        //if this is a URL
+        if (/^(http|https):\/\//.test(version)) {
+            //hash the URL to create a unique folder name. There is next to zero possibility these will clash, so the hash should be fine.
+            return {
+                folderName: `brighterscript-${md5(version.trim())}`,
+                packageJsonEntry: version.trim()
+            };
+
+            //this is a valid semantic version
+        } else if (semver.valid(version)) {
+            return {
+                folderName: `brighterscript-${version}`,
+                packageJsonEntry: version
+            };
+            //assume this is a folder path, return undefined
+        } else {
+            return undefined;
+        }
+    }
+
     /**
      * Ensure that the specified bsc version is installed in the global storage directory.
      * @param version
@@ -479,21 +526,11 @@ export class LanguageServerManager {
      * @returns full path to the root of where the brighterscript module is installed
      */
     private async ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
-        let folderName: string;
-        let packageJsonEntry: string;
-        //if this is a URL
-        if (/^(http|https):\/\//.test(bsdkEntry)) {
-            //hash the URL to create a unique folder name. There is next to zero possibility these will clash, so the hash should be fine.
-            folderName = `brighterscript-${md5(bsdkEntry.trim())}`;
-            packageJsonEntry = bsdkEntry.trim();
 
-            //this is a valid semantic version
-        } else if (semver.valid(bsdkEntry)) {
-            folderName = `brighterscript-${bsdkEntry}`;
-            packageJsonEntry = bsdkEntry;
+        const { folderName, packageJsonEntry } = this.parseBscVersion(bsdkEntry) ?? {};
 
-            //assume this is a folder path, return as-is
-        } else {
+        //assume this is a folder path, return as-is
+        if (!folderName || !packageJsonEntry) {
             return bsdkEntry;
         }
 
@@ -502,7 +539,7 @@ export class LanguageServerManager {
         const action = async () => {
 
             console.log('Ensuring bsc version is installed', packageJsonEntry);
-            const bscNpmDir = s`${this.context.globalStorageUri.fsPath}/packages/${folderName}`;
+            const bscNpmDir = s`${this.packagesDir}/${folderName}`;
             if (await fsExtra.pathExists(bscNpmDir) === false) {
                 //write a simple package.json file referencing the version of brighterscript we want
                 await fsExtra.outputJson(`${bscNpmDir}/package.json`, {
@@ -557,7 +594,55 @@ export class LanguageServerManager {
      * Clear all packages stored in the npm cache for this extension
      */
     public async clearNpmPackageCache() {
-        await fsExtra.emptyDir(s`${this.context.globalStorageUri.fsPath}/packages`);
+        await fsExtra.emptyDir(this.packagesDir);
+    }
+
+    /**
+     * Update the last-used date of a specific instance of brighterscript so we can prevent it from being cleaned up too soon
+     * @param bscPath
+     */
+    private async updateBscVersionUsageDate(bscPath: string, date = new Date()) {
+        const usage = this.context.globalState.get('bsc-usage', {});
+        usage[s`${bscPath}`] = date.getTime();
+        await this.context.globalState.update('bsc-usage', usage);
+    }
+
+    /**
+     * The number of days to retain a cached npm package before deleting it.
+     */
+    private get npmCacheRetentionDays() {
+        return vscode.workspace.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
+    }
+
+    /**
+     * Delete any brighterscript versions that haven't been used in a while
+     */
+    public async deleteOutdatedBscVersions() {
+        //build a date that represents the cutoff date (i.e. 45 days ago)
+        const cutoffDate = dayjs().subtract(this.npmCacheRetentionDays, 'days');
+
+        //get a list of bsc locations that have been recently used
+        const bscLocationsToKeep = Object.entries(
+            this.context.globalState.get<Record<string, number>>('bsc-usage', {})
+
+            //keep versions that have been used recently
+        ).filter(([, lastUsedTime]) => {
+            //if this version was used within the past 45 days, keep it
+            return dayjs(lastUsedTime).diff(cutoffDate) > 0;
+        }).map(x => x[0]);
+
+        //get a list of folders in our internal packages directory
+        const dirs = (await fsExtra.readdir(this.packagesDir));
+
+        //delete any dir not in the keep list
+        for (const dir of dirs) {
+            const fullDir = s`${this.packagesDir}/${dir}/node_modules/brighterscript`;
+            if (bscLocationsToKeep.includes(fullDir) === false) {
+                try {
+                    await fsExtra.remove(s`${this.packagesDir}/${dir}`);
+                } catch { }
+            }
+        }
     }
 }
 

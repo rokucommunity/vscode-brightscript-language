@@ -99,8 +99,8 @@ export let vscode = {
             update: function(key: string, value: any) {
                 this._data[key] = value;
             },
-            get: function(key: string) {
-                return this._data[key];
+            get: function(key: string, defaultData) {
+                return this._data[key] ?? defaultData;
             }
         } as any,
         workspaceState: {
@@ -176,6 +176,7 @@ export let vscode = {
                 dispose: () => { }
             };
         },
+        onDidChangeWindowState: () => { },
         createQuickPick: () => {
             class QuickPick {
                 private emitter = new EventEmitter();
