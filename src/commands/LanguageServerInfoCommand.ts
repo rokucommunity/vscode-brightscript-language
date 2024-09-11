@@ -5,9 +5,10 @@ import * as resolve from 'resolve';
 import * as fsExtra from 'fs-extra';
 import * as childProcess from 'child_process';
 import { firstBy } from 'thenby';
+import { VscodeCommand } from './VscodeCommand';
+import URI from 'vscode-uri';
 import * as dayjs from 'dayjs';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
-import { VscodeCommand } from './VscodeCommand';
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
@@ -27,6 +28,12 @@ export class LanguageServerInfoCommand {
                 label: `View language server logs`,
                 description: ``,
                 command: this.focusLanguageServerOutputChannel.bind(this)
+            }, {
+                label: `View BrighterScript version cache folder`,
+                description: ``,
+                command: async () => {
+                    await vscode.commands.executeCommand('revealFileInOS', URI.file(languageServerManager.packagesDir));
+                }
             }, {
                 label: `Delete cached brighterscript versions`,
                 description: ``,

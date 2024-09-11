@@ -1812,7 +1812,7 @@
                         "scope": "resource"
                     },
                     "brightscript.npmCacheRetentionDays": {
-                        "type": "integer",
+                        "type": "number",
                         "description": "How long should the extension keep around unused extension-managed npm packages such as brighterscript",
                         "default": 45,
                         "scope": "resource"

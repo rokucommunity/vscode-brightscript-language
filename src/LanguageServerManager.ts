@@ -33,7 +33,6 @@ import { EventEmitter } from 'eventemitter3';
 import * as childProcess from 'child_process';
 import * as semver from 'semver';
 import * as md5 from 'md5';
-import type { GlobalStateManager } from './GlobalStateManager';
 import * as dayjs from 'dayjs';
 
 /**
@@ -489,7 +488,7 @@ export class LanguageServerManager {
             );
     }
 
-    private get packagesDir() {
+    public get packagesDir() {
         return s`${this.context.globalStorageUri.fsPath}/packages`;
     }
 
