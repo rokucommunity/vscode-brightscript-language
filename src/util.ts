@@ -10,6 +10,7 @@ import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
 import type { DeviceInfo } from 'roku-deploy';
 import * as request from 'postman-request';
 import type { Response, CoreOptions } from 'request';
+import * as childProcess from 'child_process';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -268,9 +269,14 @@ class Util {
      * Get a promise that resolves after the given number of milliseconds.
      */
     public sleep(milliseconds: number) {
-        return new Promise((resolve) => {
-            setTimeout(resolve, milliseconds);
-        });
+        let handle: NodeJS.Timeout;
+        const promise = new Promise((resolve) => {
+            handle = setTimeout(resolve, milliseconds);
+        }) as Promise<void> & { cancel: () => void };
+        promise.cancel = () => {
+            clearTimeout(handle);
+        };
+        return promise;
     }
 
     /**
@@ -423,6 +429,21 @@ class Util {
         } finally {
             spinner.dispose();
         }
+    }
+
+    public async exec(command: string, options?: childProcess.ExecOptions) {
+        await new Promise<void>((resolve, reject) => {
+            const process = childProcess.exec(command, options);
+            process.on('error', (err) => {
+                console.error(err);
+                reject(err);
+            });
+            process.on('close', (code) => {
+                if (code === 0) {
+                    resolve();
+                }
+            });
+        });
     }
 }
 

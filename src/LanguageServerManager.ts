@@ -30,7 +30,6 @@ import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
-import * as childProcess from 'child_process';
 import * as semver from 'semver';
 import * as md5 from 'md5';
 import * as dayjs from 'dayjs';
@@ -524,8 +523,24 @@ export class LanguageServerManager {
      * @param retryCount the number of times we should retry before giving up
      * @returns full path to the root of where the brighterscript module is installed
      */
-    private async ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
+    private ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
+        let timeout = util.sleep(3 * 60 * 1000);
+        this.ensureBscVersionInstalledPromise = Promise.race([
+            //only block for a few minutes, then let the next one try
+            timeout,
+            this.ensureBscVersionInstalledPromise
+        ]).then(() => {
+            return this._ensureBscVersionInstalled(bsdkEntry, retryCount, showProgress);
+        }).catch((error) => {
+            console.error(error);
+        }).finally(() => {
+            timeout.cancel();
+        });
+        return this.ensureBscVersionInstalledPromise;
+    }
+    private ensureBscVersionInstalledPromise = Promise.resolve<any>(undefined);
 
+    private async _ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
         const { folderName, packageJsonEntry } = this.parseBscVersion(bsdkEntry) ?? {};
 
         //assume this is a folder path, return as-is
@@ -549,19 +564,8 @@ export class LanguageServerManager {
                         'brighterscript': packageJsonEntry
                     }
                 });
-                await new Promise<void>((resolve, reject) => {
-                    const process = childProcess.exec(`npm install`, {
-                        cwd: bscNpmDir
-                    });
-                    process.on('error', (err) => {
-                        console.error(err);
-                        reject(err);
-                    });
-                    process.on('close', (code) => {
-                        if (code === 0) {
-                            resolve();
-                        }
-                    });
+                await util.exec('npm install', {
+                    cwd: bscNpmDir
                 });
             }
             bscPath = s`${bscNpmDir}/node_modules/brighterscript`;
@@ -571,7 +575,7 @@ export class LanguageServerManager {
                 console.log(`Failed to load brighterscript module at ${bscNpmDir}. Deleting directory and trying again`);
                 //remove the dir and try again
                 await fsExtra.remove(bscNpmDir);
-                return this.ensureBscVersionInstalled(bsdkEntry, retryCount - 1, false);
+                return this._ensureBscVersionInstalled(bsdkEntry, retryCount - 1, false);
             }
         };
 

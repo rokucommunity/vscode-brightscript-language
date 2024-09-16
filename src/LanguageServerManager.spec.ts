@@ -15,7 +15,6 @@ import {
     LanguageClient,
     State
 } from 'vscode-languageclient/node';
-import * as childProcess from 'child_process';
 import { util } from './util';
 import * as dayjs from 'dayjs';
 import { GlobalStateManager } from './GlobalStateManager';
@@ -348,8 +347,37 @@ describe('LanguageServerManager', () => {
             ).to.be.true;
         });
 
+        it('does not run multiple installs for the same version at the same time', async () => {
+            let spy = sinon.stub(util, 'exec').callsFake(async (command, options) => {
+                //simulate that the bsc code was installed
+                fsExtra.outputFileSync(`${options.cwd}/node_modules/brighterscript/dist/index.js`, '');
+                //ensure both requests have the opportunity to run at same time
+                await util.sleep(200);
+            });
+            //request the install multiple times without waiting for them
+            const promises = [
+                languageServerManager['ensureBscVersionInstalled']('0.65.0'),
+                languageServerManager['ensureBscVersionInstalled']('0.65.0'),
+                languageServerManager['ensureBscVersionInstalled']('0.65.1')
+            ];
+            //now wait for them to finish
+            expect(
+                await Promise.all(promises)
+            ).to.eql([
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
+                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
+                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`
+            ]);
+
+            //the spy should have only been called once for each unique version
+            expect(spy.getCalls().map(x => x.args[1].cwd)).to.eql([
+                s`${storageDir}/packages/brighterscript-0.65.0`,
+                s`${storageDir}/packages/brighterscript-0.65.1`
+            ]);
+        });
+
         it('reuses the same bsc version when already exists', async () => {
-            let spy = sinon.spy(childProcess, 'exec');
+            let spy = sinon.spy(util, 'exec');
             fsExtra.ensureDirSync(
                 s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
             );
