@@ -454,6 +454,10 @@ class Runner {
     }, {
         name: 'roku-promise',
         dependencies: []
+    }, {
+        name: 'promises',
+        npmName: '@rokucommunity/promises',
+        dependencies: []
     }].map(project => {
         const repoName = project.name.split('/').pop();
         return {

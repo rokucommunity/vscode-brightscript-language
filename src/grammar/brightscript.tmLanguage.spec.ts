@@ -224,6 +224,10 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    /**
+     * @param test comment 123
+     */
+
     it('handles comments following interface fields', async () => {
         await testGrammar(`
             interface Person
@@ -252,6 +256,123 @@ describe('brightscript.tmlanguage.json', () => {
                '    ^^^^ entity.name.function.member.brs
                '^^^ storage.type.function.brs
         `);
+    });
+
+    describe('bsdoc', () => {
+        //the grammar tester doesn't like testing standalone comments, so prefix all of the testable lines of code in this block with a single `t` identifier
+
+        it('colorizes generic tags correctly', async () => {
+            await testGrammar(`
+                t'@unknownparam just comments
+                '               ^^^^^^^^^^^^^ comment.block.documentation.brs
+                '  ^^^^^^^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        /**
+         * @param p1 comment one
+         * @param {string} p1 comment one
+         */
+        it('colorizes @param without type', async () => {
+            await testGrammar(`
+                t'@param p1
+                '        ^^ variable.other.bsdoc
+                '  ^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param', async () => {
+            await testGrammar(`
+                t'@param {boolean} p1
+                '                  ^^ variable.other.bsdoc
+                '                ^ punctuation.definition.bracket.curly.end.bsdoc
+                '         ^^^^^^^ entity.name.type.instance.bsdoc
+                '        ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param without name', async () => {
+            await testGrammar(`
+                t'@param {boolean}
+                '                ^ punctuation.definition.bracket.curly.end.bsdoc
+                '         ^^^^^^^ entity.name.type.instance.bsdoc
+                '        ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param with comment', async () => {
+            await testGrammar(`
+                t'@param {boolean} p1 this is a comment
+                '                     ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '                  ^^ variable.other.bsdoc
+                '                ^ punctuation.definition.bracket.curly.end.bsdoc
+                '         ^^^^^^^ entity.name.type.instance.bsdoc
+                '        ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @type without type', async () => {
+            await testGrammar(`
+                t'@type p1
+                '       ^^ variable.other.bsdoc
+                '  ^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param', async () => {
+            await testGrammar(`
+                t'@type {boolean} p1
+                '                 ^^ variable.other.bsdoc
+                '               ^ punctuation.definition.bracket.curly.end.bsdoc
+                '        ^^^^^^^ entity.name.type.instance.bsdoc
+                '       ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param without name', async () => {
+            await testGrammar(`
+                t'@type {boolean}
+                '               ^ punctuation.definition.bracket.curly.end.bsdoc
+                '        ^^^^^^^ entity.name.type.instance.bsdoc
+                '       ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @param with comment', async () => {
+            await testGrammar(`
+                t'@type {boolean} p1 this is a comment
+                '                    ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '                 ^^ variable.other.bsdoc
+                '               ^ punctuation.definition.bracket.curly.end.bsdoc
+                '        ^^^^^^^ entity.name.type.instance.bsdoc
+                '       ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
     });
 
     it.skip('handles `as Function` parameters properly', async () => {
