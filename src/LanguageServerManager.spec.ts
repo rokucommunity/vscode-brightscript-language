@@ -55,6 +55,9 @@ describe('LanguageServerManager', () => {
         fsExtra.removeSync(storageDir);
         (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
 
+        //this delay is used to clean up old versions. for testing, have it trigger instantly so it doesn't keep the testing process alive
+        languageServerManager['outdatedBscVersionDeleteDelay'] = 0;
+
     });
 
     function stubConstructClient(processor?: (LanguageClient) => void) {
