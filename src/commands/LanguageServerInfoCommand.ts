@@ -9,6 +9,7 @@ import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
 import * as dayjs from 'dayjs';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
+import { util } from '../util';
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
@@ -35,11 +36,19 @@ export class LanguageServerInfoCommand {
                     await vscode.commands.executeCommand('revealFileInOS', URI.file(languageServerManager.packagesDir));
                 }
             }, {
-                label: `Delete cached brighterscript versions`,
+                label: `Remove cached brighterscript versions`,
                 description: ``,
                 command: async () => {
-                    await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
-                    await vscode.window.showInformationMessage('All cached brighterscript versions have been removed');
+                    await util.runWithProgress(async () => {
+                        await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
+                    }, {
+                        title: 'Removing cached brighterscript versions'
+                    });
+
+                    void vscode.window.showInformationMessage('All cached brighterscript versions have been removed');
+
+                    //restart the language server since we might have just removed the one we're using
+                    await this.restartLanguageServer();
                 }
             }];
 
@@ -137,7 +146,7 @@ export class LanguageServerInfoCommand {
      * call the reload manually
      */
     public async selectBrighterScriptVersion() {
-        const versions = this.discoverBrighterScriptVersions(
+        const quickPickItems = this.discoverBrighterScriptVersions(
             vscode.workspace.workspaceFolders.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath))
         );
 
@@ -145,7 +154,7 @@ export class LanguageServerInfoCommand {
         const versionsFromNpmPromise = this.getBscVersionsFromNpm();
 
         //get the full list of versions from npm
-        versions.push({
+        quickPickItems.push({
             label: '$(package) Install from npm',
             description: '',
             detail: '',
@@ -159,7 +168,7 @@ export class LanguageServerInfoCommand {
             }
         } as any);
 
-        let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+        let selection = await vscode.window.showQuickPick(quickPickItems, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
 
         //if the selection has a command, run it before continuing;
         selection = await selection?.command?.() ?? selection;
@@ -170,7 +179,7 @@ export class LanguageServerInfoCommand {
             await config.update('bsdk', undefined);
 
             //if the user picked "use embedded version", then remove the setting
-            if (versions.indexOf(selection) === 0) {
+            if (quickPickItems.indexOf(selection) === 0) {
                 //setting to undefined means "remove"
                 await config.update('bsdk', 'embedded');
                 return 'embedded';
