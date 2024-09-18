@@ -111,7 +111,7 @@ export class LocalPackageManager {
         await fsExtra.remove(s`${this.storageLocation}/${packageName}`);
 
         const catalog = this.getCatalog();
-        delete catalog?.packages?.[packageName];
+        delete catalog.packages?.[packageName];
         this.setCatalog(catalog);
     }
 

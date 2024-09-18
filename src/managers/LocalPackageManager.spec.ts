@@ -131,9 +131,27 @@ describe.only('LocalPackageManager', () => {
             });
 
         });
+
+        it('does not crash when removing missing package', async () => {
+            await manager.remove('is-odd', '1.0.0');
+        });
+
+        it('does not crash when packageDir is undefined', async () => {
+            sinon.stub(manager as any, 'getPackageDir').returns(undefined);
+            await manager.remove('is-odd', '1.0.0');
+        });
     });
 
     describe('removeAll', () => {
+        it('removes entries from the catalog', async () => {
+            await manager.install('is-odd', '1.0.0');
+            await manager.removeAll('is-odd');
+        });
+
+        it('handles undefined package name', async () => {
+            await manager.removeAll(undefined as string);
+        });
+
         it('removes all packages', async () => {
             fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
             fsExtra.ensureDirSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd`);
@@ -143,6 +161,12 @@ describe.only('LocalPackageManager', () => {
 
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd`)).to.be.false;
             expect(fsExtra.pathExistsSync(`${storageDir}/is-even`)).to.be.true;
+        });
+    });
+
+    describe('dispose', () => {
+        it('works', () => {
+            manager.dispose();
         });
     });
 });
