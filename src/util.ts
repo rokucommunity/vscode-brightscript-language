@@ -447,6 +447,43 @@ class Util {
     }
 
     /**
+     * Determine if the current OS is running a version of windows
+     */
+    private isWindowsPlatform() {
+        return process.platform.startsWith('win');
+    }
+
+    /**
+     * Spawn an npm command and return a promise.
+     * This is necessary because spawn requires the file extension (.cmd) on windows.
+     * @param args - the list of args to pass to npm. Any undefined args will be removed from the list, so feel free to use ternary outside to simplify things
+     */
+    spawnNpmAsync(args: Array<string | undefined>, options?: childProcess.SpawnOptions) {
+        //filter out undefined args
+        args = args.filter(arg => arg !== undefined);
+        return this.spawnAsync(
+            this.isWindowsPlatform() ? 'npm.cmd' : 'npm',
+            args,
+            options
+        );
+    }
+
+    /**
+     * Executes an exec command and returns a promise that completes when it's finished
+     */
+    spawnAsync(command: string, args?: string[], options?: childProcess.SpawnOptions) {
+        return new Promise((resolve, reject) => {
+            const child = childProcess.spawn(command, args ?? [], {
+                ...(options ?? {}),
+                stdio: 'inherit'
+            });
+            child.addListener('error', reject);
+            child.addListener('exit', resolve);
+        });
+    }
+
+
+    /**
      * Run an action with option for a progress spinner. If `showProgress` is `false` then no progress is shown and instead the action is run directly
      */
     public async runWithProgress(action: () => PromiseLike<any>, options: Partial<vscode.ProgressOptions> & { showProgress?: boolean }) {
