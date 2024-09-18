@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
-import type { LanguageServerManager } from '../LanguageServerManager';
 import { VscodeCommand } from './VscodeCommand';
+import type { LocalPackageManager } from '../managers/LocalPackageManager';
 
 export class ClearNpmPackageCacheCommand {
 
-    public register(context: vscode.ExtensionContext, languageServerManager: LanguageServerManager) {
+    public register(context: vscode.ExtensionContext, localPackageManager: LocalPackageManager) {
         context.subscriptions.push(vscode.commands.registerCommand(VscodeCommand.clearNpmPackageCache, async () => {
-            await languageServerManager.clearNpmPackageCache();
+            await localPackageManager.removeAll();
         }));
     }
 }

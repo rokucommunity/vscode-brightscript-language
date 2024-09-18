@@ -15,7 +15,7 @@ import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
-import type { LanguageServerManager } from './LanguageServerManager';
+import type { LocalPackageManager } from './managers/LocalPackageManager';
 
 export class BrightScriptCommands {
 
@@ -25,7 +25,7 @@ export class BrightScriptCommands {
         private context: vscode.ExtensionContext,
         private activeDeviceManager: ActiveDeviceManager,
         private userInputManager: UserInputManager,
-        private languageServerManager: LanguageServerManager
+        private localPackageManager: LocalPackageManager
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
@@ -39,10 +39,10 @@ export class BrightScriptCommands {
     public registerCommands() {
 
         brighterScriptPreviewCommand.register(this.context);
-        languageServerInfoCommand.register(this.context);
+        languageServerInfoCommand.register(this.context, this.localPackageManager);
         captureScreenshotCommand.register(this.context, this);
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
-        clearNpmPackageCacheCommand.register(this.context, this.languageServerManager);
+        clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
 
         this.registerGeneralCommands();
 

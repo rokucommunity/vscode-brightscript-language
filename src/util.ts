@@ -486,7 +486,7 @@ class Util {
     /**
      * Run an action with option for a progress spinner. If `showProgress` is `false` then no progress is shown and instead the action is run directly
      */
-    public async runWithProgress(action: () => PromiseLike<any>, options: Partial<vscode.ProgressOptions> & { showProgress?: boolean }) {
+    public async runWithProgress(options: Partial<vscode.ProgressOptions> & { showProgress?: boolean }, action: () => PromiseLike<any>) {
         //show a progress spinner if configured to do so
         if (options?.showProgress !== false) {
             return vscode.window.withProgress({

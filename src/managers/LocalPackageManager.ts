@@ -53,8 +53,9 @@ export class LocalPackageManager {
      * Install a package with the given name and version information
      * @param packageName the name of the package
      * @param version the versionInfo of the package. See {versionInfo} for more details
+     * @returns the absolute path to the installed package
      */
-    public async install(packageName: string, version: string) {
+    public async install(packageName: string, version: string): Promise<string> {
         const packageDir = this.getPackageDir(packageName, version);
 
         //if this package is already installed, skip the install
@@ -84,6 +85,8 @@ export class LocalPackageManager {
             dir: packageDir,
             installDate: Date.now()
         });
+
+        return s`${packageDir}/node_modules/${packageName}`;
     }
 
     /**
@@ -91,7 +94,7 @@ export class LocalPackageManager {
      * @param packageName name of the package
      * @param version version of the package to remove
      */
-    public async remove(packageName: string, version: VersionInfo) {
+    public async removePackageVersion(packageName: string, version: VersionInfo) {
         const packageDir = this.getPackageDir(packageName, version);
         if (packageDir) {
             await fsExtra.remove(packageDir);
@@ -106,13 +109,20 @@ export class LocalPackageManager {
      * Remove all packages with the given name
      * @param packageName the name of the package that will have all versions removed
      */
-    public async removeAll(packageName: string) {
+    public async removePackage(packageName: string) {
         //delete the package folder
         await fsExtra.remove(s`${this.storageLocation}/${packageName}`);
 
         const catalog = this.getCatalog();
         delete catalog.packages?.[packageName];
         this.setCatalog(catalog);
+    }
+
+    /**
+     * Remove all packages and their versions
+     */
+    public async removeAll() {
+        await fsExtra.emptyDir(this.storageLocation);
     }
 
     public dispose() {

@@ -33,6 +33,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as semver from 'semver';
 import * as md5 from 'md5';
 import * as dayjs from 'dayjs';
+import type { LocalPackageManager } from './managers/LocalPackageManager';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -92,6 +93,8 @@ export class LanguageServerManager {
         return this.definitionRepository.provider;
     }
 
+    private localPackageManager: LocalPackageManager;
+
     /**
      * The delay after init before we delete any outdated bsc versions
      */
@@ -99,10 +102,14 @@ export class LanguageServerManager {
 
     public async init(
         context: vscode.ExtensionContext,
-        definitionRepository: DefinitionRepository
+        definitionRepository: DefinitionRepository,
+        localPackageManager: LocalPackageManager
     ) {
         this.context = context;
+
         this.definitionRepository = definitionRepository;
+
+        this.localPackageManager = localPackageManager;
 
         //anytime the window changes focus, save the current brighterscript version
         vscode.window.onDidChangeWindowState(async (e) => {
@@ -487,10 +494,6 @@ export class LanguageServerManager {
             );
     }
 
-    public get packagesDir() {
-        return s`${this.context.globalStorageUri.fsPath}/packages`;
-    }
-
     /**
      * Extract some info about the bsc version string
      * @param version can be a semantic version, a URL, or a folder path
@@ -549,59 +552,17 @@ export class LanguageServerManager {
             return bsdkEntry;
         }
 
-        function runWithProgress(action) {
+        //install this version of brighterscript
+        return util.runWithProgress({
+            title: 'Installing brighterscript language server ' + packageJsonEntry,
+            location: vscode.ProgressLocation.Notification,
+            cancellable: false,
             //show a progress spinner if configured to do so
-            if (showProgress) {
-                return vscode.window.withProgress({
-                    title: 'Installing brighterscript language server ' + packageJsonEntry,
-                    location: vscode.ProgressLocation.Notification,
-                    cancellable: false
-                }, action);
-            } else {
-                return action();
-            }
-        }
+            showProgress: showProgress && !this.localPackageManager.isInstalled('brighterscript', packageJsonEntry)
+        }, async () => {
 
-        let bscPath: string;
-
-
-        console.log('Ensuring bsc version is installed', packageJsonEntry);
-        const bscNpmDir = s`${this.packagesDir}/${folderName}`;
-        //if the npm dir isn't there, install it
-        if (await fsExtra.pathExists(bscNpmDir) === false) {
-            //write a simple package.json file referencing the version of brighterscript we want
-            await fsExtra.outputJson(`${bscNpmDir}/package.json`, {
-                name: 'vscode-brighterscript-host',
-                private: true,
-                version: '1.0.0',
-                dependencies: {
-                    'brighterscript': packageJsonEntry
-                }
-            });
-            await runWithProgress(async () => {
-                await util.exec('npm install', {
-                    cwd: bscNpmDir
-                });
-            });
-        }
-        bscPath = s`${bscNpmDir}/node_modules/brighterscript`;
-
-        //if the module is invalid, try again
-        if (await fsExtra.pathExists(`${bscPath}/dist/index.js`) === false && retryCount > 0) {
-            console.log(`Failed to load brighterscript module at ${bscNpmDir}. Deleting directory and trying again`);
-            //remove the dir and try again
-            await fsExtra.remove(bscNpmDir);
-            return this._ensureBscVersionInstalled(bsdkEntry, retryCount - 1, false);
-        }
-
-        return bscPath;
-    }
-
-    /**
-     * Clear all packages stored in the npm cache for this extension
-     */
-    public async clearNpmPackageCache() {
-        await fsExtra.emptyDir(this.packagesDir);
+            return this.localPackageManager.install('brighterscript', packageJsonEntry);
+        });
     }
 
     /**

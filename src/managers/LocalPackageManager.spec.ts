@@ -20,6 +20,20 @@ describe.only('LocalPackageManager', () => {
 
         fsExtra.emptyDirSync(storageDir);
         sinon.restore();
+
+        //mock the npm install command to speed up the tests
+        sinon.stub(util, 'spawnNpmAsync').callsFake(async (args: string[], options) => {
+            let spawnCwd = s`${options.cwd?.toString()}`;
+            if (args[0] !== 'install' || !spawnCwd.startsWith(storageDir)) {
+                throw new Error(`Invalid cwd: ${spawnCwd}`);
+            }
+
+            //get the dependency name
+            const packageName = Object.keys(
+                fsExtra.readJsonSync(`${spawnCwd}/package.json`).dependencies
+            )[0];
+            await fsExtra.outputJson(s`${spawnCwd}/node_modules/${packageName}/package.json`, {});
+        });
     });
 
     afterEach(() => {
@@ -109,7 +123,7 @@ describe.only('LocalPackageManager', () => {
                 manager.install('is-even', '1.0.0')
             ]);
 
-            await manager.remove('is-odd', '2.0.0');
+            await manager.removePackageVersion('is-odd', '2.0.0');
 
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd/package.json`)).to.be.false;
@@ -133,23 +147,23 @@ describe.only('LocalPackageManager', () => {
         });
 
         it('does not crash when removing missing package', async () => {
-            await manager.remove('is-odd', '1.0.0');
+            await manager.removePackageVersion('is-odd', '1.0.0');
         });
 
         it('does not crash when packageDir is undefined', async () => {
             sinon.stub(manager as any, 'getPackageDir').returns(undefined);
-            await manager.remove('is-odd', '1.0.0');
+            await manager.removePackageVersion('is-odd', '1.0.0');
         });
     });
 
-    describe('removeAll', () => {
+    describe('removePackage', () => {
         it('removes entries from the catalog', async () => {
             await manager.install('is-odd', '1.0.0');
-            await manager.removeAll('is-odd');
+            await manager.removePackage('is-odd');
         });
 
         it('handles undefined package name', async () => {
-            await manager.removeAll(undefined as string);
+            await manager.removePackage(undefined as string);
         });
 
         it('removes all packages', async () => {
@@ -157,10 +171,24 @@ describe.only('LocalPackageManager', () => {
             fsExtra.ensureDirSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd`);
             fsExtra.ensureDirSync(`${storageDir}/is-even/1.0.0/node_modules/is-even`);
 
-            await manager.removeAll('is-odd');
+            await manager.removePackage('is-odd');
 
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd`)).to.be.false;
             expect(fsExtra.pathExistsSync(`${storageDir}/is-even`)).to.be.true;
+        });
+    });
+
+    describe('removeAll', () => {
+        it('removes everything from the storage dir', async () => {
+            await manager.install('is-odd', '1.0.0');
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/catalog.json`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd`)).to.be.true;
+
+            await manager.removeAll();
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/catalog.json`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd`)).to.be.false;
         });
     });
 

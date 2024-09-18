@@ -7,15 +7,17 @@ import * as childProcess from 'child_process';
 import { firstBy } from 'thenby';
 import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
-import * as dayjs from 'dayjs';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
 import { util } from '../util';
+import type { LocalPackageManager } from '../managers/LocalPackageManager';
+import { standardizePath as s } from 'brighterscript';
+import * as dayjs from 'dayjs';
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
 
-    public register(context: vscode.ExtensionContext) {
+    public register(context: vscode.ExtensionContext, localPackageManager: LocalPackageManager) {
         context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
                 label: `Change Selected BrighterScript Version`,
@@ -33,16 +35,16 @@ export class LanguageServerInfoCommand {
                 label: `View BrighterScript version cache folder`,
                 description: ``,
                 command: async () => {
-                    await vscode.commands.executeCommand('revealFileInOS', URI.file(languageServerManager.packagesDir));
+                    await vscode.commands.executeCommand('revealFileInOS', URI.file(s`${localPackageManager.storageLocation}/brighterscript`));
                 }
             }, {
                 label: `Remove cached brighterscript versions`,
                 description: ``,
                 command: async () => {
-                    await util.runWithProgress(async () => {
-                        await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
-                    }, {
+                    await util.runWithProgress({
                         title: 'Removing cached brighterscript versions'
+                    }, async () => {
+                        await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
                     });
 
                     void vscode.window.showInformationMessage('All cached brighterscript versions have been removed');

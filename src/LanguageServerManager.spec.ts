@@ -88,7 +88,7 @@ describe('LanguageServerManager', () => {
             //disable starting so we can manually test
             sinon.stub(languageServerManager, 'syncVersionAndTryRun').callsFake(() => Promise.resolve());
 
-            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository']);
+            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository'], languageServerManager['localPackageManager']);
 
             languageServerManager['lspRunTracker'].debounceDelay = 100;
 
@@ -431,17 +431,6 @@ describe('LanguageServerManager', () => {
         });
     });
 
-    describe('clearNpmPackageCache', () => {
-        it('clears the cache', async () => {
-            fsExtra.ensureFileSync(`${storageDir}/packages/test.txt`);
-            expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.true;
-
-            await languageServerManager.clearNpmPackageCache();
-
-            expect(fsExtra.pathExistsSync(`${storageDir}/packages/test.txt`)).to.be.false;
-        });
-    });
-
     describe('deleteOutdatedBscVersions', () => {
         beforeEach(() => {
             //prevent lsp from actually running
@@ -453,7 +442,7 @@ describe('LanguageServerManager', () => {
 
             languageServerManager['outdatedBscVersionDeleteDelay'] = 50;
 
-            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository']);
+            await languageServerManager.init(languageServerManager['context'], languageServerManager['definitionRepository'], languageServerManager['localPackageManager']);
 
             expect(stub.called).to.be.false;
 
