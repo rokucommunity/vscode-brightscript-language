@@ -27,12 +27,18 @@ describe.only('LocalPackageManager', () => {
         sinon.restore();
     });
 
-    function expectCatalogEquals(expectedCatalog: PackageCatalog) {
+    function expectCatalogEquals(expectedCatalog: { packages: Record<string, Record<string, { dir: string }>> }) {
         const catalog = fsExtra.readJsonSync(manager['catalogPath']);
         //remove the `lastUpdated` property because it's not deterministic
         for (let packageName in catalog.packages) {
             for (let version in catalog.packages[packageName]) {
-                delete catalog.packages[packageName][version].lastUpdated;
+                delete catalog.packages[packageName][version].installDate;
+
+                //coerce all paths to the same dir separator
+                catalog.packages[packageName][version].dir = s`${catalog.packages[packageName][version].dir}`;
+                if (expectedCatalog?.packages?.[packageName]?.[version]?.dir) {
+                    expectedCatalog.packages[packageName][version].dir = s`${expectedCatalog.packages[packageName][version].dir}`;
+                }
             }
         }
         expect(catalog).to.eql(expectedCatalog);
@@ -63,13 +69,75 @@ describe.only('LocalPackageManager', () => {
 
             expect(stub.called).to.be.false;
         });
+
+        it('installs multiple versions at the same time', async () => {
+            await Promise.all([
+                manager.install('is-odd', '1.0.0'),
+                manager.install('is-odd', '2.0.0'),
+                manager.install('is-even', '1.0.0')
+            ]);
+            expectCatalogEquals({
+                packages: {
+                    'is-odd': {
+                        '1.0.0': {
+                            dir: `${storageDir}/is-odd/1.0.0`
+                        },
+                        '2.0.0': {
+                            dir: `${storageDir}/is-odd/2.0.0`
+                        }
+                    },
+                    'is-even': {
+                        '1.0.0': {
+                            dir: `${storageDir}/is-even/1.0.0`
+                        }
+                    }
+                }
+            });
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd/package.json`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-even/1.0.0/node_modules/is-even/package.json`)).to.be.true;
+        });
+
+    });
+
+    describe('remove', () => {
+        it('removes a specific package version', async () => {
+            await Promise.all([
+                manager.install('is-odd', '1.0.0'),
+                manager.install('is-odd', '2.0.0'),
+                manager.install('is-even', '1.0.0')
+            ]);
+
+            await manager.remove('is-odd', '2.0.0');
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd/package.json`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-even/1.0.0/node_modules/is-even/package.json`)).to.be.true;
+
+            expectCatalogEquals({
+                packages: {
+                    'is-odd': {
+                        '1.0.0': {
+                            dir: `${storageDir}/is-odd/1.0.0`
+                        }
+                    },
+                    'is-even': {
+                        '1.0.0': {
+                            dir: `${storageDir}/is-even/1.0.0`
+                        }
+                    }
+                }
+            });
+
+        });
     });
 
     describe('removeAll', () => {
         it('removes all packages', async () => {
             fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
-            fsExtra.ensureDirSync(`${storageDir}/is-odd/1.1.0/node_modules/is-odd`);
-            fsExtra.ensureDirSync(`${storageDir}/is-even/1.1.0/node_modules/is-even`);
+            fsExtra.ensureDirSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd`);
+            fsExtra.ensureDirSync(`${storageDir}/is-even/1.0.0/node_modules/is-even`);
 
             await manager.removeAll('is-odd');
 
