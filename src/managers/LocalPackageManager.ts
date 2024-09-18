@@ -131,7 +131,12 @@ export class LocalPackageManager {
 }
 
 /**
- * The versionInfo of a package. This can be a specific version number, a semver range, a url to a package, or a release channel
+ * The versionInfo of a package. This can be:
+ *  - specific version number (i.e. `1.0.0`, `2.3.4-alpha.1`)
+ *  - a url to a package (i.e. `https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz`)
+ *  - TODO: a path to a local package (i.e. `file:/path/to/package.tgz`)
+ *  - TODO: a release tag (i.e. `@latest`, `@next`)
+ *  - TODO: a release line (i.e. `insider:lsp-rewrite`)
  */
 export type VersionInfo = string;
 
