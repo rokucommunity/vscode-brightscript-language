@@ -1,4 +1,5 @@
-import { LocalPackageManager, PackageCatalog } from './LocalPackageManager';
+import type { PackageCatalog } from './LocalPackageManager';
+import { LocalPackageManager } from './LocalPackageManager';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import { expect } from 'chai';
@@ -9,8 +10,8 @@ const sinon = createSandbox();
 const cwd = s`${__dirname}/../../`;
 const tempDir = s`${cwd}/.tmp`;
 
-describe.only('LocalPackageManager', function() {
-    this.timeout(10_000);
+describe.only('LocalPackageManager', () => {
+
     const storageDir = s`${tempDir}/storage`;
     let manager: LocalPackageManager;
 
@@ -37,26 +38,43 @@ describe.only('LocalPackageManager', function() {
         expect(catalog).to.eql(expectedCatalog);
     }
 
-    it('installs a package when missing', async () => {
-        await manager.install('is-odd', '1.0.0');
-        expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
-    });
+    describe('install', function() {
+        this.timeout(10_000);
 
-    it('skips install when package is already there', async () => {
-        const stub = sinon.stub(util, 'spawnAsync').callsFake(() => Promise.resolve());
-
-        fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
-        fsExtra.outputJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`, {
-            name: 'is-odd',
-            customKey: 'test'
+        it('installs a package when missing', async () => {
+            await manager.install('is-odd', '1.0.0');
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
         });
 
-        await manager.install('is-odd', '1.0.0');
+        it('skips install when package is already there', async () => {
+            const stub = sinon.stub(util, 'spawnAsync').callsFake(() => Promise.resolve());
 
-        expect(
-            fsExtra.readJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`).customKey
-        ).to.eql('test');
+            fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
+            fsExtra.outputJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`, {
+                name: 'is-odd',
+                customKey: 'test'
+            });
 
-        expect(stub.called).to.be.false;
+            await manager.install('is-odd', '1.0.0');
+
+            expect(
+                fsExtra.readJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`).customKey
+            ).to.eql('test');
+
+            expect(stub.called).to.be.false;
+        });
+    });
+
+    describe('removeAll', () => {
+        it('removes all packages', async () => {
+            fsExtra.ensureDirSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd`);
+            fsExtra.ensureDirSync(`${storageDir}/is-odd/1.1.0/node_modules/is-odd`);
+            fsExtra.ensureDirSync(`${storageDir}/is-even/1.1.0/node_modules/is-even`);
+
+            await manager.removeAll('is-odd');
+
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd`)).to.be.false;
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-even`)).to.be.true;
+        });
     });
 });

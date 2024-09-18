@@ -86,6 +86,19 @@ export class LocalPackageManager {
         });
     }
 
+    /**
+     * Remove all packages with the given name
+     * @param packageName the name of the package that will have all versions removed
+     */
+    public async removeAll(packageName: string) {
+        //delete the package folder
+        await fsExtra.remove(s`${this.storageLocation}/${packageName}`);
+
+        const catalog = this.getCatalog();
+        delete catalog?.packages?.[packageName];
+        this.setCatalog(catalog);
+    }
+
     public dispose() {
 
     }
