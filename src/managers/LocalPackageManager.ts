@@ -2,13 +2,19 @@
 import * as fsExtra from 'fs-extra';
 import { standardizePath as s } from 'brighterscript';
 import { util } from '../util';
+import type { ExtensionContext } from 'vscode';
+import * as lodash from 'lodash';
+import { isPromise } from 'util/types';
+
+const USAGE_KEY = 'local-package-usage';
 
 /**
  * Manages all node_module packages that are installed by this extension
  */
 export class LocalPackageManager {
     constructor(
-        public readonly storageLocation: string
+        public readonly storageLocation: string,
+        public readonly context: ExtensionContext
     ) {
         this.catalogPath = s`${this.storageLocation}/catalog.json`;
     }
@@ -20,7 +26,7 @@ export class LocalPackageManager {
      */
     private getCatalog(): PackageCatalog {
         //load from disk
-        return fsExtra.readJsonSync(this.catalogPath, { throws: false }) || {};
+        return fsExtra.readJsonSync(this.catalogPath, { throws: false }) ?? {};
     }
 
     /**
@@ -30,23 +36,22 @@ export class LocalPackageManager {
         fsExtra.outputJsonSync(this.catalogPath, catalog);
     }
 
-    private setCatalogPackageInfo(packageName: string, version: string, info: PackageInfo) {
+    private setCatalogPackageInfo(packageName: string, version: string, info: PackageCatalogPackageInfo) {
         const catalog = this.getCatalog();
 
-        catalog.packages ??= {};
-        catalog.packages[packageName] ??= {};
-        catalog.packages[packageName][version] = info;
+        lodash.set(catalog, ['packages', packageName, version], info);
+
         this.setCatalog(catalog);
     }
 
-    private getPackageDir(packageName: string, version: string): string {
-        return s`${this.storageLocation}/${packageName}/${version}`;
-    }
-
-    public isInstalled(packageName: string, version: string) {
-        return fsExtra.pathExistsSync(
-            this.getPackageDir(packageName, version)
-        );
+    /**
+     * Is the given package installed
+     * @param packageName name of the package
+     * @param versionInfo versionInfo of the package
+     * @returns true if the package is installed, false if not
+     */
+    public isInstalled(packageName: string, versionInfo: string) {
+        return this.getPackageInfo(packageName, versionInfo).isInstalled;
     }
 
     /**
@@ -56,17 +61,18 @@ export class LocalPackageManager {
      * @returns the absolute path to the installed package
      */
     public async install(packageName: string, version: string): Promise<string> {
-        const packageDir = this.getPackageDir(packageName, version);
+        const packageInfo = this.getPackageInfo(packageName, version);
 
         //if this package is already installed, skip the install
-        if (this.isInstalled(packageName, version)) {
+        if (packageInfo.isInstalled) {
             return;
         }
+        const rootDir = s`${this.storageLocation}/${packageName}/${packageInfo.versionDirName}`;
 
-        fsExtra.ensureDirSync(packageDir);
+        fsExtra.ensureDirSync(rootDir);
 
         //write a simple package.json file referencing the version of brighterscript we want
-        await fsExtra.outputJson(`${packageDir}/package.json`, {
+        await fsExtra.outputJson(`${rootDir}/package.json`, {
             name: 'vscode-brighterscript-host',
             private: true,
             version: '1.0.0',
@@ -77,16 +83,16 @@ export class LocalPackageManager {
 
         //install the package
         await util.spawnNpmAsync(['install'], {
-            cwd: packageDir
+            cwd: rootDir
         });
 
         //update the catalog
         this.setCatalogPackageInfo(packageName, version, {
-            dir: packageDir,
+            versionDirName: packageInfo.versionDirName,
             installDate: Date.now()
         });
 
-        return s`${packageDir}/node_modules/${packageName}`;
+        return s`${rootDir}/node_modules/${packageName}`;
     }
 
     /**
@@ -94,15 +100,30 @@ export class LocalPackageManager {
      * @param packageName name of the package
      * @param version version of the package to remove
      */
-    public async removePackageVersion(packageName: string, version: VersionInfo) {
-        const packageDir = this.getPackageDir(packageName, version);
-        if (packageDir) {
-            await fsExtra.remove(packageDir);
-
-            const catalog = this.getCatalog();
+    public async removePackageVersion(packageName: string, version: VersionInfo, catalog?: PackageCatalog) {
+        await this.withCatalog(async (catalog) => {
+            const info = this.getPackageInfo(packageName, version, catalog);
+            await fsExtra.remove(info.rootDir);
             delete catalog.packages?.[packageName]?.[version];
+        }, catalog);
+    }
+
+    /**
+     * Run an action with a given catalog object. If no catalog is provided, the catalog will be loaded from disk and saved back to disk after the action is complete.
+     * If a catalog is provided, it's assumed the outside caller will handle saving the catalog to disk
+     */
+    private async withCatalog<T = any>(callback: (catalog: PackageCatalog) => T | PromiseLike<T>, catalog?: PackageCatalog): Promise<T> {
+        let hasExternalCatalog = !!catalog;
+        catalog ??= this.getCatalog();
+
+        const result = await Promise.resolve(
+            callback(catalog)
+        );
+
+        if (!hasExternalCatalog) {
             this.setCatalog(catalog);
         }
+        return result;
     }
 
     /**
@@ -125,6 +146,91 @@ export class LocalPackageManager {
         await fsExtra.emptyDir(this.storageLocation);
     }
 
+    /**
+     * Get info about this package (regardless of whether it's installed or not).
+     * If the package is not installed, all
+     * @param packageName name of the package
+     * @param versionInfo versionInfo of the package
+     * @param catalog the catalog object. If not provided, it will be loaded from disk
+     * @returns
+     */
+    private getPackageInfo(packageName: string, versionInfo: VersionInfo, catalog = this.getCatalog()): PackageInfo {
+        //TODO derive a better name for some edge cases (like urls or tags)
+        const versionDirName = versionInfo;
+
+        const rootDir = s`${this.storageLocation}/${packageName}/${versionDirName}`;
+        const packageDir = s`${rootDir}/node_modules/${packageName}`;
+        const packageInfo = (catalog.packages?.[packageName]?.[versionInfo] ?? {}) as PackageCatalogPackageInfo;
+        const lastUseDate = this.context.globalState.get(USAGE_KEY, {})[packageName]?.[versionInfo];
+        return {
+            packageName: packageName,
+            versionInfo: versionInfo,
+            rootDir: rootDir,
+            packageDir: packageDir,
+            versionDirName: versionDirName,
+            isInstalled: fsExtra.pathExistsSync(packageDir),
+            lastUsedDate: lastUseDate ? new Date(lastUseDate) : undefined,
+            installDate: packageInfo.installDate ? new Date(packageInfo.installDate) : undefined
+        };
+    }
+
+    /**
+     * Mark a package as being used by the user right now. This can help with determining which packages are safe to remove after a period of time.
+     * @param packageName the name of the package
+     * @param version the version of the package
+     */
+    public async setUsage(packageName: string, version: VersionInfo, dateUsed: Date = new Date()) {
+        const usage = this.context.globalState.get(USAGE_KEY, {});
+        lodash.set(usage, [packageName, version], dateUsed.getTime());
+        await this.context.globalState.update(USAGE_KEY, usage);
+    }
+
+    /**
+     * Delete packages that havent older than the given cutoff date
+     * @param cutoffDate any package not used since this date will be deleted
+     */
+    public async deletePackagesOlderThan(cutoffDate: Date) {
+        //get the list of directories from the storage folder (these are our package names)
+        const packageNames = (await fsExtra.readdir(this.storageLocation))
+            .filter(x => x !== 'catalog.json');
+
+        let onDiskPackages = {};
+
+        //get every version folder for each package
+        await Promise.all(
+            packageNames.map(async (packageName) => {
+                onDiskPackages[packageName] = {};
+                for (const versionDirName of await fsExtra.readdir(s`${this.storageLocation}/${packageName}`)) {
+                    //set to the oldest date possible
+                    onDiskPackages[packageName][versionDirName] = 0;
+                }
+            })
+        );
+
+        const catalog = this.getCatalog();
+
+        //now get the actual usage dates
+        const usage = this.context.globalState.get(USAGE_KEY, {});
+        for (const [packageName, versions] of Object.entries(usage)) {
+            for (const [version, dateUsed] of Object.entries(versions)) {
+                const packageInfo = this.getPackageInfo(packageName, version, catalog);
+                onDiskPackages[packageName][packageInfo.versionDirName] = dateUsed;
+            }
+        }
+
+        let cutoffDateMs = cutoffDate.getTime();
+        //now delete every directory that's older than our date
+        for (const [packageName, versions] of Object.entries(onDiskPackages)) {
+            for (const [versionDirName, lastUsedDate] of Object.entries(versions)) {
+                if (lastUsedDate < cutoffDateMs) {
+                    await this.removePackageVersion(packageName, versionDirName);
+                }
+            }
+        }
+        this.setCatalog(catalog);
+    }
+
+
     public dispose() {
 
     }
@@ -143,15 +249,48 @@ export type VersionInfo = string;
 export interface PackageCatalog {
     packages: {
         [packageName: string]: {
-            [version: string]: PackageInfo;
+            [version: string]: PackageCatalogPackageInfo;
         };
     };
 }
 
+export interface PackageCatalogPackageInfo {
+    versionDirName: string;
+    installDate: number;
+}
+
 export interface PackageInfo {
     /**
-     * The path to the package on disk
+     * The name of the package
      */
-    dir: string;
-    installDate: number;
+    packageName: string;
+    /**
+     * The versionInfo of the package.
+     */
+    versionInfo: VersionInfo;
+    /**
+     * The directory where this this package version will be installed (i.e. `${storageDir}/${packageName}/${versionDirName}`)
+     */
+    rootDir: string;
+    /**
+     * Directory where this package will actually be located (i.e. `${packageDir}/node_modules/${packageName}`)
+     */
+    packageDir: string;
+    /**
+     * The name of the directory representing this version. If versionInfo is a semantic version, we'll use that for the dirName.
+     * Otherwise, we'll create a unique hash of the versionInfo
+     */
+    versionDirName: string;
+    /**
+     * Is this package currently installed
+     */
+    isInstalled: boolean;
+    /**
+     * Date this package was installed
+     */
+    installDate: Date;
+    /**
+     * Date this package was last used by vscode
+     */
+    lastUsedDate: Date;
 }
