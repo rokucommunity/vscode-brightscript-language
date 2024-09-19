@@ -6,6 +6,7 @@ import type { ExtensionContext } from 'vscode';
 import * as lodash from 'lodash';
 import * as md5 from 'md5';
 import * as semver from 'semver';
+import * as path from 'path';
 
 const USAGE_KEY = 'local-package-usage';
 
@@ -58,11 +59,11 @@ export class LocalPackageManager {
     /**
      * Install a package with the given name and version information
      * @param packageName the name of the package
-     * @param version the versionInfo of the package. See {versionInfo} for more details
+     * @param versionInfo the versionInfo of the package. See {versionInfo} for more details
      * @returns the absolute path to the installed package
      */
-    public async install(packageName: string, version: string): Promise<string> {
-        const packageInfo = this.getPackageInfo(packageName, version);
+    public async install(packageName: string, versionInfo: string): Promise<PackageInfo> {
+        const packageInfo = this.getPackageInfo(packageName, versionInfo);
 
         //if this package is already installed, skip the install
         if (packageInfo.isInstalled) {
@@ -78,7 +79,7 @@ export class LocalPackageManager {
             private: true,
             version: '1.0.0',
             dependencies: {
-                [packageName]: version
+                [packageName]: versionInfo
             }
         });
 
@@ -88,12 +89,12 @@ export class LocalPackageManager {
         });
 
         //update the catalog
-        this.setCatalogPackageInfo(packageName, version, {
+        this.setCatalogPackageInfo(packageName, versionInfo, {
             versionDirName: packageInfo.versionDirName,
             installDate: Date.now()
         });
 
-        return s`${rootDir}/node_modules/${packageName}`;
+        return this.getPackageInfo(packageName, versionInfo);
     }
 
     /**
@@ -101,7 +102,7 @@ export class LocalPackageManager {
      * @param packageName name of the package
      * @param version version of the package to remove
      */
-    public async removePackageVersion(packageName: string, version: VersionInfo, catalog?: PackageCatalog) {
+    public async uninstall(packageName: string, version: VersionInfo, catalog?: PackageCatalog) {
         await this.withCatalog(async (catalog) => {
             const info = this.getPackageInfo(packageName, version, catalog);
             await fsExtra.remove(info.rootDir);
@@ -201,6 +202,7 @@ export class LocalPackageManager {
             rootDir: rootDir,
             packageDir: packageDir,
             versionDirName: versionDirName,
+            version: fsExtra.readJsonSync(s`${packageDir}/package.json`, { throws: false })?.version,
             isInstalled: fsExtra.pathExistsSync(packageDir),
             lastUsedDate: lastUseDate ? new Date(lastUseDate) : undefined,
             installDate: packageInfo.installDate ? new Date(packageInfo.installDate) : undefined
@@ -219,10 +221,10 @@ export class LocalPackageManager {
     }
 
     /**
-     * Delete packages that havent older than the given cutoff date
+     * Delete packages that havent been used since the given cutoff date
      * @param cutoffDate any package not used since this date will be deleted
      */
-    public async deletePackagesOlderThan(cutoffDate: Date) {
+    public async deletePackagesNotUsedSince(cutoffDate: Date) {
         //get the list of directories from the storage folder (these are our package names)
         const packageNames = (await fsExtra.readdir(this.storageLocation))
             .filter(x => x !== 'catalog.json');
@@ -256,13 +258,72 @@ export class LocalPackageManager {
         for (const [packageName, versions] of Object.entries(onDiskPackages)) {
             for (const [versionDirName, lastUsedDate] of Object.entries(versions)) {
                 if (lastUsedDate < cutoffDateMs) {
-                    await this.removePackageVersion(packageName, versionDirName);
+                    await this.uninstall(packageName, versionDirName);
                 }
             }
         }
         this.setCatalog(catalog);
     }
 
+    /**
+     * Parse the versionInfo string into a ParsedVersionInfo object which gives us more details about how to handle it
+     * @param versionInfo the string to evaluate
+     * @param cwd a current working directory to use when resolving relative paths
+     * @returns an object with parsed information about the versionInfo
+     */
+    public parseVersionInfo(versionInfo: string, cwd: string): ParsedVersionInfo {
+        //is empty string or undefined, return undefined
+        if (!util.isNonEmptyString(versionInfo)) {
+            return undefined;
+
+            //is an exact semver value
+        } else if (semver.valid(versionInfo)) {
+            return {
+                type: 'semver-exact',
+                value: versionInfo
+            };
+            //is a semver range
+        } else if (semver.validRange(versionInfo)) {
+            return {
+                type: 'semver-range',
+                value: versionInfo
+            };
+            //is a dist tag (like @next, @latest, etc...)
+        } else if (/^@[a-zA-Z][a-zA-Z0-9-_]*$/.test(versionInfo)) {
+            return {
+                type: 'semver-range',
+                value: versionInfo
+            };
+
+            //is a url, return as-is
+        } else if (/^(http|https):\/\//.test(versionInfo)) {
+            return {
+                type: 'url',
+                value: versionInfo
+            };
+
+            //path to a tgz
+        } else if (/\.tgz$/i.test(versionInfo)) {
+            return {
+                type: 'tgz-path',
+                value: versionInfo
+            };
+
+            //an absolute path
+        } else if (path.isAbsolute(versionInfo)) {
+            return {
+                type: 'dir',
+                value: versionInfo
+            };
+
+            //assume relative path, resolve it to the cwd
+        } else {
+            return {
+                type: 'dir',
+                value: path.resolve(cwd, versionInfo)
+            };
+        }
+    }
 
     public dispose() {
 
@@ -312,6 +373,10 @@ export interface PackageInfo {
      */
     packageDir: string;
     /**
+     * The version from this package's `package.json` file. Will be `undefined` if unable to read the file
+     */
+    version?: string;
+    /**
      * The name of the directory representing this version. If versionInfo is a semantic version, we'll use that for the dirName.
      * Otherwise, we'll create a unique hash of the versionInfo
      */
@@ -329,3 +394,23 @@ export interface PackageInfo {
      */
     lastUsedDate: Date;
 }
+
+export type ParsedVersionInfo = {
+    type: 'url';
+    value: string;
+} | {
+    type: 'tgz-path';
+    value: string;
+} | {
+    type: 'semver-exact';
+    value: string;
+} | {
+    type: 'semver-range';
+    value: string;
+} | {
+    type: 'dist-tag';
+    value: string;
+} | {
+    type: 'dir';
+    value: string;
+};

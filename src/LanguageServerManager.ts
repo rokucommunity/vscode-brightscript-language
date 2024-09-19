@@ -1,21 +1,9 @@
-import type {
-    LanguageClientOptions,
-    ServerOptions,
-    ExecuteCommandParams,
-    StateChangeEvent
-} from 'vscode-languageclient/node';
-import {
-    LanguageClient,
-    State,
-    TransportKind
-} from 'vscode-languageclient/node';
+import type { LanguageClientOptions, ServerOptions, ExecuteCommandParams, StateChangeEvent } from 'vscode-languageclient/node';
+import { LanguageClient, State, TransportKind } from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import type { Disposable } from 'vscode';
-import {
-    window,
-    workspace
-} from 'vscode';
+import { window, workspace } from 'vscode';
 import { BusyStatus, NotificationName, standardizePath as s } from 'brighterscript';
 import { Logger } from '@rokucommunity/logger';
 import { CustomCommands, Deferred } from 'brighterscript';
@@ -30,10 +18,8 @@ import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
-import * as semver from 'semver';
-import * as md5 from 'md5';
 import * as dayjs from 'dayjs';
-import type { LocalPackageManager } from './managers/LocalPackageManager';
+import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -75,10 +61,12 @@ export const LANGUAGE_SERVER_NAME = 'BrighterScript Language Server';
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+        const version = require('brighterscript/package.json').version;
         this.embeddedBscInfo = {
-            path: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
-            // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-            version: require('brighterscript/package.json').version
+            packageDir: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
+            versionInfo: version,
+            version: version
         };
         //default to the embedded bsc version
         this.selectedBscInfo = this.embeddedBscInfo;
@@ -113,7 +101,7 @@ export class LanguageServerManager {
 
         //anytime the window changes focus, save the current brighterscript version
         vscode.window.onDidChangeWindowState(async (e) => {
-            await this.updateBscVersionUsageDate(this.selectedBscInfo.path);
+            await this.localPackageManager.setUsage('brighterscript', this.selectedBscInfo.versionInfo);
         });
 
         //in about 5 minutes, clean up any outdated bsc versions (delayed to prevent slower startup times)
@@ -186,7 +174,7 @@ export class LanguageServerManager {
 
         //give the runner the specific version of bsc to run
         const args = [
-            this.selectedBscInfo.path,
+            this.selectedBscInfo.packageDir,
             (this.context.extensionMode === vscode.ExtensionMode.Development).toString()
         ];
         // If the extension is launched in debug mode then the debug server options are used
@@ -412,24 +400,22 @@ export class LanguageServerManager {
      * and if different, re-launch the specific version of the language server'
      */
     public async syncVersionAndTryRun() {
-        const bsdkPath = await this.getBsdkPath();
+        const versionInfo = await this.getBsdkVersionInfo();
 
         //if the path to bsc is different, spin down the old server and start a new one
-        if (bsdkPath !== this.selectedBscInfo.path) {
+        if (versionInfo !== this.selectedBscInfo.packageDir) {
             await this.disableLanguageServer();
         }
 
+        //ensure the version of the language server is installed and available
+
         //try to load the package version.
         try {
-            this.selectedBscInfo = {
-                path: bsdkPath,
-                // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-                version: fsExtra.readJsonSync(`${bsdkPath}/package.json`).version
-            };
+            this.selectedBscInfo = await this.ensureBscVersionInstalled(versionInfo);
         } catch (e) {
             console.error(e);
             //fall back to the embedded version, and show a popup
-            await vscode.window.showErrorMessage(`Can't find language server at "${bsdkPath}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            await vscode.window.showErrorMessage(`Can't find language server for "${versionInfo}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
@@ -440,47 +426,59 @@ export class LanguageServerManager {
         }
     }
 
+    public parseVersionInfo(versionInfo: string, cwd = process.cwd()): ParsedVersionInfo {
+        if (versionInfo === 'embedded') {
+            return {
+                type: 'dir',
+                value: this.embeddedBscInfo.packageDir
+            };
+        } else {
+            return this.localPackageManager.parseVersionInfo(versionInfo, cwd);
+        }
+    }
+
     /**
-     * Get the full path to the brighterscript module where the LanguageServer should be run.
-     * If `brightscript.bsdk` is a version number or a URL, install that version in global storage and return that path.
-     * if it's a relative path, resolve it to the workspace folder and return that path.
+     * Get the value for `brightscript.bsdk` from the following locations (in order). First one found wins:
+     * - use `brightscript.bsdk` value from the current `.code-workspace` file
+     * - if there is only 1 workspaceFolder with a `brightscript.bsdk` value, use that.
+     * - if there are multiple workspace folders with `brightscript.bsdk` values, prompt the user to pick which one to use
+     * - if there are no `brightscript.bsdk` values, use the embedded version
+     * @returns an absolute path to a directory for the bsdk, or the non-path value (i.e. a URL or a version number)
      */
-    private async getBsdkPath() {
-        //if there's a bsdk entry in the workspace settings, assume the path is relative to the workspace
+    private async getBsdkVersionInfo(): Promise<string> {
+
+        //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
-            let bsdk = vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk');
-            if (bsdk === 'embedded') {
-                return this.embeddedBscInfo.path;
+            let result = this.parseVersionInfo(
+                vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
+                path.dirname(vscode.workspace.workspaceFile.fsPath)
+            );
+            if (result) {
+                return result.value;
             }
-            let bscPath = await this.ensureBscVersionInstalled(bsdk);
-            return path.resolve(path.dirname(vscode.workspace.workspaceFile.fsPath), bscPath);
         }
 
-        const folderResults = new Set<string>();
-        //look for a bsdk entry in each of the workspace folders
-        for (const folder of vscode.workspace.workspaceFolders) {
-            const bsdk = vscode.workspace.getConfiguration('brightscript', folder).get<string>('bsdk');
-            if (bsdk) {
-                if (bsdk === 'embedded') {
-                    folderResults.add(this.embeddedBscInfo.path);
-                } else {
-                    let bscPath = await this.ensureBscVersionInstalled(bsdk);
-                    folderResults.add(
-                        path.resolve(folder.uri.fsPath, bscPath)
-                    );
-                }
+        //collect `brightscript.bsdk` setting value from each workspaceFolder
+        const folderResults = vscode.workspace.workspaceFolders.reduce((acc, workspaceFolder) => {
+            const versionInfo = vscode.workspace.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
+            if (parsed) {
+                acc.set(parsed.value, parsed);
             }
-        }
-        const values = [...folderResults.values()];
-        //there's no bsdk configuration in folder settings.
-        if (values.length === 0) {
-            return this.embeddedBscInfo.path;
+            return acc;
+        }, new Map<string, ParsedVersionInfo>());
+
+        //no results found, use the embedded version
+        if (folderResults.size === 0) {
+            return this.embeddedBscInfo.packageDir;
 
             //we have exactly one result. use it
-        } else if (values.length === 1) {
-            return values[0];
-        } else {
+        } else if (folderResults.size === 1) {
+            return [...folderResults.values()][0].value;
+
             //there were multiple versions. make the user pick which to use
+        } else {
+            //TODO should we prompt for just these items?
             return languageServerInfoCommand.selectBrighterScriptVersion();
         }
     }
@@ -495,122 +493,63 @@ export class LanguageServerManager {
     }
 
     /**
-     * Extract some info about the bsc version string
-     * @param version can be a semantic version, a URL, or a folder path
-     * @returns
-     */
-    private parseBscVersion(version: string) {
-        //if this is a URL
-        if (/^(http|https):\/\//.test(version)) {
-            //hash the URL to create a unique folder name. There is next to zero possibility these will clash, so the hash should be fine.
-            return {
-                folderName: `brighterscript-${md5(version.trim())}`,
-                packageJsonEntry: version.trim()
-            };
-
-            //this is a valid semantic version
-        } else if (semver.valid(version)) {
-            return {
-                folderName: `brighterscript-${version}`,
-                packageJsonEntry: version
-            };
-            //assume this is a folder path, return undefined
-        } else {
-            return undefined;
-        }
-    }
-
-    /**
      * Ensure that the specified bsc version is installed in the global storage directory.
      * @param version
      * @param retryCount the number of times we should retry before giving up
      * @returns full path to the root of where the brighterscript module is installed
      */
-    private ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
-        let timeout: ReturnType<typeof util.sleep>;
+    @OneAtATime({ timeout: 3 * 60 * 1000 })
+    private async ensureBscVersionInstalled(versionInfo: string, retryCount = 1, showProgress = true): Promise<BscInfo> {
+        const parsed = this.parseVersionInfo(versionInfo);
 
-        this.ensureBscVersionInstalledPromise = Promise.race([
-            //only block for a few minutes, then let the next one try
-            timeout = util.sleep(3 * 60 * 1000),
-            this.ensureBscVersionInstalledPromise
-        ]).then(() => {
-            return this._ensureBscVersionInstalled(bsdkEntry, retryCount, showProgress);
-        }).catch((error) => {
-            console.error(error);
-        }).finally(() => {
-            timeout.cancel();
-        });
-        return this.ensureBscVersionInstalledPromise;
-    }
-    private ensureBscVersionInstalledPromise = Promise.resolve<any>(undefined);
-
-    private async _ensureBscVersionInstalled(bsdkEntry: string, retryCount = 1, showProgress = true): Promise<string> {
-        const { folderName, packageJsonEntry } = this.parseBscVersion(bsdkEntry) ?? {};
-
-        //assume this is a folder path, return as-is
-        if (!folderName || !packageJsonEntry) {
-            return bsdkEntry;
+        //if this is a directory, use it as-is
+        if (parsed.type === 'dir') {
+            return {
+                packageDir: parsed.value,
+                version: fsExtra.readJsonSync(s`${parsed.value}/package.json`, { throws: false })?.version ?? parsed.value,
+                versionInfo: versionInfo
+            };
         }
 
         //install this version of brighterscript
-        return util.runWithProgress({
-            title: 'Installing brighterscript language server ' + packageJsonEntry,
-            location: vscode.ProgressLocation.Notification,
-            cancellable: false,
-            //show a progress spinner if configured to do so
-            showProgress: showProgress && !this.localPackageManager.isInstalled('brighterscript', packageJsonEntry)
-        }, async () => {
+        try {
+            const packageInfo = await util.runWithProgress({
+                title: 'Installing brighterscript language server ' + versionInfo,
+                location: vscode.ProgressLocation.Notification,
+                cancellable: false,
+                //show a progress spinner if configured to do so
+                showProgress: showProgress && !this.localPackageManager.isInstalled('brighterscript', versionInfo)
+            }, async () => {
+                return this.localPackageManager.install('brighterscript', versionInfo);
+            });
+            return {
+                packageDir: packageInfo.packageDir,
+                version: packageInfo.version,
+                versionInfo: versionInfo
+            };
 
-            return this.localPackageManager.install('brighterscript', packageJsonEntry);
-        });
-    }
+        } catch (e) {
+            if (retryCount > 0) {
+                console.error('Failed to install brighterscript', versionInfo, e);
 
-    /**
-     * Update the last-used date of a specific instance of brighterscript so we can prevent it from being cleaned up too soon
-     * @param bscPath
-     */
-    private async updateBscVersionUsageDate(bscPath: string, date = new Date()) {
-        const usage = this.context.globalState.get('bsc-usage', {});
-        usage[s`${bscPath}`] = date.getTime();
-        await this.context.globalState.update('bsc-usage', usage);
-    }
-
-    /**
-     * The number of days to retain a cached npm package before deleting it.
-     */
-    private get npmCacheRetentionDays() {
-        return vscode.workspace.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
+                //if the install failed for some reason, uninstall the package and try again
+                await this.localPackageManager.uninstall('brighterscript', versionInfo);
+                return await this.ensureBscVersionInstalled(versionInfo, retryCount - 1, showProgress);
+            } else {
+                throw e;
+            }
+        }
     }
 
     /**
      * Delete any brighterscript versions that haven't been used in a while
      */
-    public async deleteOutdatedBscVersions() {
-        //build a date that represents the cutoff date (i.e. 45 days ago)
-        const cutoffDate = dayjs().subtract(this.npmCacheRetentionDays, 'days');
+    private async deleteOutdatedBscVersions() {
+        const npmCacheRetentionDays = vscode.workspace.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
 
-        //get a list of bsc locations that have been recently used
-        const bscLocationsToKeep = Object.entries(
-            this.context.globalState.get<Record<string, number>>('bsc-usage', {})
-
-            //keep versions that have been used recently
-        ).filter(([, lastUsedTime]) => {
-            //if this version was used within the past 45 days, keep it
-            return dayjs(lastUsedTime).diff(cutoffDate) > 0;
-        }).map(x => x[0]);
-
-        //get a list of folders in our internal packages directory
-        const dirs = (await fsExtra.readdir(this.packagesDir));
-
-        //delete any dir not in the keep list
-        for (const dir of dirs) {
-            const fullDir = s`${this.packagesDir}/${dir}/node_modules/brighterscript`;
-            if (bscLocationsToKeep.includes(fullDir) === false) {
-                try {
-                    await fsExtra.remove(s`${this.packagesDir}/${dir}`);
-                } catch { }
-            }
-        }
+        //build the cutoff date (i.e. 45 days ago)
+        const cutoffDate = dayjs().subtract(npmCacheRetentionDays, 'days');
+        await this.localPackageManager.deletePackagesNotUsedSince(cutoffDate.toDate());
     }
 }
 
@@ -618,11 +557,50 @@ export const languageServerManager = new LanguageServerManager();
 
 interface BscInfo {
     /**
-     * The full path to the brighterscript module
+     * The full path to the brighterscript module (i.e. the folder where its `package.json` is located
      */
-    path: string;
+    packageDir: string;
     /**
-     * The version of the brighterscript module
+     * The versionInfo of the brighterscript module. Typically this is a semantic version, but it could be a URL or a folder path.
+     * Anything that can go inside a `package.json` file is acceptable as well
+     */
+    versionInfo: string;
+    /**
+     * The version of the brighterscript module from its package.json. This is displayed in the statusbar
      */
     version: string;
+}
+
+
+/**
+ * Force method calls to run one-at-a-time, waiting for the completion of the previous call before running the next.
+ */
+function OneAtATime(options: { timeout?: number }) {
+    return function OneAtATime(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+        let originalMethod = descriptor.value;
+
+        //wrap the original method
+        descriptor.value = function value(...args: any[]) {
+            //ensure the promise structure exists for this call
+            target.__oneAtATime ??= {};
+            target.__oneAtATime[propertyKey] ??= Promise.resolve();
+
+            const timer = util.sleep(options.timeout > 0 ? options.timeout : Number.MAX_SAFE_INTEGER);
+
+            return Promise.race([
+                //race for the last task to resolve
+                target.__oneAtATime[propertyKey].finally(() => {
+                    timer?.cancel?.();
+                }),
+                //race for the timeout to expire (we give up waiting for the previous task to complete)
+                timer.then(() => {
+                    //our timer fired before we had a chance to cancel it. Report the error and move on
+                    console.error(`timer expired waiting for the previous ${propertyKey} to complete. Running the next instance`, target);
+                })
+                //now we can move on to the actual task
+            ]).then(() => {
+                return originalMethod.apply(this, args);
+            });
+        };
+    };
 }

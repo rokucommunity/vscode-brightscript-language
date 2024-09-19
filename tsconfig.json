@@ -14,7 +14,9 @@
         "strictNullChecks": false,
         "noUnusedParameters": false,
         "allowSyntheticDefaultImports": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true
     },
     "include": [
         "src/**/*"

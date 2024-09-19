@@ -147,7 +147,7 @@ describe.only('LocalPackageManager', () => {
                 manager.install('is-even', '1.0.0')
             ]);
 
-            await manager.removePackageVersion('is-odd', '2.0.0');
+            await manager.uninstall('is-odd', '2.0.0');
 
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
             expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/2.0.0/node_modules/is-odd/package.json`)).to.be.false;
@@ -171,7 +171,7 @@ describe.only('LocalPackageManager', () => {
         });
 
         it('does not crash when removing missing package', async () => {
-            await manager.removePackageVersion('is-odd', '1.0.0');
+            await manager.uninstall('is-odd', '1.0.0');
         });
     });
 
@@ -277,15 +277,17 @@ describe.only('LocalPackageManager', () => {
 
             await manager.setUsage('is-odd', '1.0.0', now);
 
-            await manager.deletePackagesOlderThan(yesterday);
+            await manager.deletePackagesNotUsedSince(yesterday);
 
+            //package was not deleted
             expect(
                 manager.isInstalled('is-odd', '1.0.0')
             ).to.be.true;
 
             await manager.setUsage('is-odd', '1.0.0', now);
 
-            await manager.deletePackagesOlderThan(littleAfterNow);
+            await manager.deletePackagesNotUsedSince(littleAfterNow);
+            //package was deleted because it was not used since the cutoff date
             expect(
                 manager.isInstalled('is-odd', '1.0.0')
             ).to.be.false;
