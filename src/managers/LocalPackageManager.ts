@@ -4,7 +4,6 @@ import { standardizePath as s } from 'brighterscript';
 import { util } from '../util';
 import type { ExtensionContext } from 'vscode';
 import * as lodash from 'lodash';
-import { isPromise } from 'util/types';
 
 const USAGE_KEY = 'local-package-usage';
 

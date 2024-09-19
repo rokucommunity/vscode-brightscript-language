@@ -6,7 +6,6 @@ import { expect } from 'chai';
 import { util } from '../util';
 import * as dayjs from 'dayjs';
 import { vscode } from '../mockVscode.spec';
-import * as lodash from 'lodash';
 import { createSandbox } from 'sinon';
 const sinon = createSandbox();
 
@@ -57,6 +56,14 @@ describe.only('LocalPackageManager', () => {
 
     describe('install', function() {
         this.timeout(10_000);
+
+        it('actually works with real npm package', async () => {
+            //remove the mock npm install
+            sinon.restore();
+
+            await manager.install('is-odd', '1.0.0');
+            expect(fsExtra.pathExistsSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`)).to.be.true;
+        });
 
         it('installs a package when missing', async () => {
             await manager.install('is-odd', '1.0.0');
