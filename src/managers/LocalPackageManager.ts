@@ -4,6 +4,8 @@ import { standardizePath as s } from 'brighterscript';
 import { util } from '../util';
 import type { ExtensionContext } from 'vscode';
 import * as lodash from 'lodash';
+import * as md5 from 'md5';
+import * as semver from 'semver';
 
 const USAGE_KEY = 'local-package-usage';
 
@@ -146,6 +148,38 @@ export class LocalPackageManager {
     }
 
     /**
+     * Create a filesystem-safe name for the given version. This will be used as the directory name for the package version.
+     * Will also handle collisions with existing directories by appending a number to the end of the directory name if we already have
+     * a directory with the same name for this package
+     * @param version
+     * @returns
+     */
+    private getVersionDirName(packageName: string, version: string, catalog = this.getCatalog()) {
+        const existingVersionDirName = catalog.packages?.[packageName]?.[version]?.versionDirName;
+
+        //if there's already a directory for this package, return it
+        if (existingVersionDirName) {
+            return existingVersionDirName;
+        }
+
+        //this is a valid semver number, so we can use it as the directory name
+        if (semver.valid(version)) {
+            return version;
+        } else {
+
+            //hash the string to create a unique folder name. There is next to zero possibility these will clash, but we'll handle collisions anyway
+            const hash = md5(version.trim());
+            const existingHashes = Object.values(catalog.packages?.[packageName] ?? {}).map(x => x.versionDirName);
+            let newHash = hash;
+            let i = 0;
+            while (existingHashes.includes(newHash)) {
+                newHash = hash + i++;
+            }
+            return newHash;
+        }
+    }
+
+    /**
      * Get info about this package (regardless of whether it's installed or not).
      * If the package is not installed, all
      * @param packageName name of the package
@@ -155,7 +189,7 @@ export class LocalPackageManager {
      */
     private getPackageInfo(packageName: string, versionInfo: VersionInfo, catalog = this.getCatalog()): PackageInfo {
         //TODO derive a better name for some edge cases (like urls or tags)
-        const versionDirName = versionInfo;
+        const versionDirName = this.getVersionDirName(packageName, versionInfo, catalog);
 
         const rootDir = s`${this.storageLocation}/${packageName}/${versionDirName}`;
         const packageDir = s`${rootDir}/node_modules/${packageName}`;
@@ -268,7 +302,9 @@ export interface PackageInfo {
      */
     versionInfo: VersionInfo;
     /**
-     * The directory where this this package version will be installed (i.e. `${storageDir}/${packageName}/${versionDirName}`)
+     * The directory where the top-level folder for this package and version will be located. (i.e. `${storageDir}/${packageName}/${versionDirName}`).
+     * Due to how how we install packages, this will be the root directory for the package which contains a barebones `package.json` file,
+     * and once installed, will also contain the `node_modules/${packageName}` folder.
      */
     rootDir: string;
     /**

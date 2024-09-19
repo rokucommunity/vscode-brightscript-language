@@ -117,6 +117,26 @@ describe.only('LocalPackageManager', () => {
             expect(fsExtra.pathExistsSync(`${storageDir}/is-even/1.0.0/node_modules/is-even/package.json`)).to.be.true;
         });
 
+        // it('installs packages from a URL', async () => {
+        //     const url = 'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz';
+        //     await manager.install('brighterscript', url);
+        //     const info = manager['getPackageInfo']('brighterscript', url);
+        //     expect(
+        //         fsExtra.pathExistsSync(info.packageDir)
+        //     ).to.be.true;
+        // });
+    });
+
+    describe('getPackageInfo', () => {
+        it('transforms URLs into a filesystem-safe name', () => {
+            const info = manager['getPackageInfo'](
+                'brighterscript',
+                'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz'
+            );
+            expect(
+                info.versionDirName
+            ).to.match(/^[a-z0-9_]+$/i);
+        });
     });
 
     describe('remove', () => {
