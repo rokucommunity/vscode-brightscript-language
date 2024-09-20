@@ -66,7 +66,8 @@ export class Extension {
         );
 
         let localPackageManager = new LocalPackageManager(
-            s`${context.globalStorageUri.fsPath}/packages`
+            s`${context.globalStorageUri.fsPath}/packages`,
+            context
         );
 
         this.telemetryManager.sendStartupEvent();

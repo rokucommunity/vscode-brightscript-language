@@ -61,10 +61,10 @@ export const LANGUAGE_SERVER_NAME = 'BrighterScript Language Server';
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
-        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-        const version = require('brighterscript/package.json').version;
+        const brighterscriptDir = require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, '');
+        const version = fsExtra.readJsonSync(`${brighterscriptDir}/package.json`).version;
         this.embeddedBscInfo = {
-            packageDir: require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, ''),
+            packageDir: brighterscriptDir,
             versionInfo: version,
             version: version
         };
@@ -72,7 +72,13 @@ export class LanguageServerManager {
         this.selectedBscInfo = this.embeddedBscInfo;
     }
 
+    /**
+     * Information about the embedded brighterscript version
+     */
     public embeddedBscInfo: BscInfo;
+    /**
+     * Information about the currently selected brighterscript version (the one that's running right now)
+     */
     public selectedBscInfo: BscInfo;
 
     private context: vscode.ExtensionContext;

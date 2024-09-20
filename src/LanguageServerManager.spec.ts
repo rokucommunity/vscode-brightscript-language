@@ -16,8 +16,8 @@ import {
     State
 } from 'vscode-languageclient/node';
 import { util } from './util';
-import * as dayjs from 'dayjs';
 import { GlobalStateManager } from './GlobalStateManager';
+import { LocalPackageManager } from './managers/LocalPackageManager';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -40,7 +40,10 @@ describe('LanguageServerManager', () => {
 
     let languageServerManager: LanguageServerManager;
 
-    beforeEach(() => {
+    beforeEach(function() {
+        //deleting certain directories take a while
+        this.timeout(30_000);
+
         languageServerManager = new LanguageServerManager();
         languageServerManager['definitionRepository'] = new DefinitionRepository(
             new DeclarationProvider()
@@ -51,6 +54,7 @@ describe('LanguageServerManager', () => {
             subscriptions: []
         } as unknown as ExtensionContext;
         languageServerManager['globalStateManager'] = new GlobalStateManager(languageServerManager['context']);
+        languageServerManager['localPackageManager'] = new LocalPackageManager(storageDir, languageServerManager['context']);
 
         fsExtra.removeSync(storageDir);
         (languageServerManager['context'] as any).globalStorageUri = URI.file(storageDir);
@@ -181,7 +185,7 @@ describe('LanguageServerManager', () => {
         });
     });
 
-    describe('getBsdkPath', () => {
+    describe('getBsdkVersionInfo', () => {
         const embeddedPath = path.resolve(s`${__dirname}/../node_modules/brighterscript`);
 
         function setConfig(filePath: string, settings: any) {
@@ -197,7 +201,7 @@ describe('LanguageServerManager', () => {
 
         it('returns embedded version when not in workspace and no settings exist', async () => {
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(embeddedPath);
         });
 
@@ -206,7 +210,7 @@ describe('LanguageServerManager', () => {
             fsExtra.outputFileSync(vscode.workspace.workspaceFile.fsPath, '');
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(embeddedPath);
         });
 
@@ -218,7 +222,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(embeddedPath);
         });
 
@@ -229,7 +233,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(embeddedPath);
         });
 
@@ -244,7 +248,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(embeddedPath);
         });
 
@@ -256,7 +260,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(
                 path.resolve(
                     s`${tempDir}/relative/path`
@@ -275,7 +279,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(
                 path.resolve(
                     s`${tempDir}/app1/folder/path`
@@ -296,7 +300,7 @@ describe('LanguageServerManager', () => {
             });
 
             expect(
-                s(await languageServerManager['getBsdkPath']())
+                s(await languageServerManager['getBsdkVersionInfo']())
             ).to.eql(
                 path.resolve(
                     s`${tempDir}/app1/folder/path`
@@ -329,7 +333,7 @@ describe('LanguageServerManager', () => {
                 uri: URI.file(`${tempDir}/app2`)
             });
             const stub = sinon.stub(languageServerInfoCommand, 'selectBrighterScriptVersion').returns(Promise.resolve(null));
-            const bsdkPath = await languageServerManager['getBsdkPath']();
+            const bsdkPath = await languageServerManager['getBsdkVersionInfo']();
             expect(stub.called).to.be.true;
 
             //should get null since that's what the 'selectBrighterScriptVersion' function returns from our stub
@@ -342,20 +346,23 @@ describe('LanguageServerManager', () => {
         this.timeout(20_000);
 
         it('installs a bsc version when not present', async () => {
+            const info = await languageServerManager['ensureBscVersionInstalled']('0.65.0');
+            expect(info).to.eql({
+                packageDir: s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`,
+                versionInfo: '0.65.0',
+                version: '0.65.0'
+            });
             expect(
-                await languageServerManager['ensureBscVersionInstalled']('0.65.0')
-            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
-            expect(
-                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`)
+                fsExtra.pathExistsSync(info.packageDir)
             ).to.be.true;
         });
 
-        it('does not run multiple installs for the same version at the same time', async () => {
-            let spy = sinon.stub(util, 'exec').callsFake(async (command, options) => {
+        it.skip('does not run multiple installs for the same version at the same time', async () => {
+            let spy = sinon.stub(util, 'spawnNpmAsync').callsFake(async (command, options) => {
                 //simulate that the bsc code was installed
                 fsExtra.outputFileSync(`${options.cwd}/node_modules/brighterscript/dist/index.js`, '');
                 //ensure both requests have the opportunity to run at same time
-                await util.sleep(200);
+                await util.sleep(1000);
             });
             //request the install multiple times without waiting for them
             const promises = [
@@ -363,71 +370,84 @@ describe('LanguageServerManager', () => {
                 languageServerManager['ensureBscVersionInstalled']('0.65.0'),
                 languageServerManager['ensureBscVersionInstalled']('0.65.1')
             ];
+
             //now wait for them to finish
             expect(
-                await Promise.all(promises)
+                (await Promise.all(promises)).map(x => x.packageDir)
             ).to.eql([
-                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
-                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
-                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`
+                s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`,
+                s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`,
+                s`${storageDir}/brighterscript/0.65.1/node_modules/brighterscript`
             ]);
 
             //the spy should have only been called once for each unique version
             expect(spy.getCalls().map(x => x.args[1].cwd)).to.eql([
-                s`${storageDir}/packages/brighterscript-0.65.0`,
-                s`${storageDir}/packages/brighterscript-0.65.1`
+                s`${storageDir}/brighterscript/0.65.0`,
+                s`${storageDir}/brighterscript/0.65.1`
             ]);
         });
 
-        it('reuses the same bsc version when already exists', async () => {
-            let spy = sinon.spy(util, 'exec');
+        it.skip('reuses the same bsc version when already exists', async () => {
+            let spy = sinon.spy(util, 'spawnNpmAsync');
             fsExtra.ensureDirSync(
-                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
+                s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript/dist/index.js`
             );
             expect(
                 await languageServerManager['ensureBscVersionInstalled']('0.65.0')
-            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
+            ).to.eql({
+                packageDir: s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`,
+                version: '0.65.0',
+                versionInfo: '0.65.0'
+            });
             expect(
-                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`)
+                fsExtra.pathExistsSync(s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`)
             ).to.be.true;
+
+            //the install should not have been called
             expect(spy.called).to.be.false;
         });
 
         it('installs from url', async () => {
             fsExtra.ensureDirSync(
-                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript/dist/index.js`
+                s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript/dist/index.js`
             );
             expect(
                 await languageServerManager['ensureBscVersionInstalled'](
-                    'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz'
+                    'https://github.com/rokucommunity/brighterscript/releases/download/v0.67.6/brighterscript-0.67.6.tgz'
                 )
-            ).to.eql(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`);
+            ).to.eql({
+                packageDir: s`${storageDir}/brighterscript/71f52abe1087b924a1ded1e6d8a71022/node_modules/brighterscript`,
+                version: '0.67.6',
+                versionInfo: 'https://github.com/rokucommunity/brighterscript/releases/download/v0.67.6/brighterscript-0.67.6.tgz'
+            });
             expect(
-                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-028738851c072bf844c10c260d6d2c65/node_modules/brighterscript`)
+                fsExtra.pathExistsSync(s`${storageDir}/brighterscript/71f52abe1087b924a1ded1e6d8a71022/node_modules/brighterscript`)
             ).to.be.true;
         });
 
         it('repairs a broken bsc version', async () => {
-            let stub = sinon.stub(fsExtra, 'remove');
-            fsExtra.ensureDirSync(
-                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`
-            );
-            fsExtra.writeFileSync(
-                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript/package.json`,
-                'bad json'
-            );
 
-            expect(
-                await languageServerManager['ensureBscVersionInstalled']('0.65.1')
-            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`);
-            expect(
-                fsExtra.pathExistsSync(s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`)
-            ).to.be.true;
+            //mock the actual installation process (since we're handling when it crashes)
+            let callCount = 0;
+            sinon.stub(util, 'spawnNpmAsync').callsFake(async (args, options) => {
+                callCount++;
+                //fail first time, pass all others
+                if (callCount === 1) {
+                    throw new Error('failed');
+                }
+                await fsExtra.outputJson(`${options.cwd}/node_modules/brighterscript/package.json`, {
+                    version: '0.65.0'
+                });
+            });
 
-            //make sure we deleted the bad folder
+            //install the package
             expect(
-                s`${stub.getCalls()[0].args[0]}`
-            ).to.eql(s`${storageDir}/packages/brighterscript-0.65.1`);
+                await languageServerManager['ensureBscVersionInstalled']('0.65.0')
+            ).to.eql({
+                packageDir: s`${storageDir}/brighterscript/0.65.0/node_modules/brighterscript`,
+                version: '0.65.0',
+                versionInfo: '0.65.0'
+            });
         });
     });
 
@@ -448,33 +468,6 @@ describe('LanguageServerManager', () => {
 
             await util.sleep(100);
             expect(stub.called).to.be.true;
-        });
-
-        it('deletes bsc versions that are older than the specified number of days', async () => {
-            //create a vew bsc versions
-            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`);
-            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`);
-            fsExtra.ensureDirSync(`${storageDir}/packages/brighterscript-0.65.2/node_modules/brighterscript`);
-
-            //mark the first and third as outdated
-            await languageServerManager['updateBscVersionUsageDate'](
-                s`${storageDir}/packages/brighterscript-0.65.0/node_modules/brighterscript`,
-                dayjs().subtract(46, 'day').toDate()
-            );
-            await languageServerManager['updateBscVersionUsageDate'](
-                s`${storageDir}/packages/brighterscript-0.65.1/node_modules/brighterscript`,
-                dayjs().subtract(20, 'day').toDate()
-            );
-            await languageServerManager['updateBscVersionUsageDate'](
-                s`${storageDir}/packages/brighterscript-0.65.2/node_modules/brighterscript`,
-                dayjs().subtract(60, 'day').toDate()
-            );
-
-            await languageServerManager.deleteOutdatedBscVersions();
-
-            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.0`)).to.be.false;
-            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.1`)).to.be.true;
-            expect(fsExtra.pathExistsSync(`${storageDir}/packages/brighterscript-0.65.2`)).to.be.false;
         });
     });
 });

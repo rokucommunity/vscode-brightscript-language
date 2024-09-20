@@ -1,6 +1,11 @@
 import { EventEmitter } from 'eventemitter3';
 import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+import URI from 'vscode-uri';
 import * as path from 'path';
+import { standardizePath as s } from 'brighterscript';
+
+const cwd = s`${__dirname}/../`;
+const tempDir = s`${cwd}/.tmp`;
 
 //copied from vscode to help with unit tests
 enum QuickPickItemKind {
@@ -112,7 +117,7 @@ export let vscode = {
                 return this._data[key];
             }
         } as any,
-        globalStorageUri: undefined as Uri,
+        globalStorageUri: URI.file(tempDir),
         environmentVariableCollection: {} as any,
         logUri: undefined as Uri,
         logPath: '',

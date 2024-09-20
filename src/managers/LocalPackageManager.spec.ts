@@ -13,9 +13,9 @@ const sinon = createSandbox();
 const cwd = s`${__dirname}/../../`;
 const tempDir = s`${cwd}/.tmp`;
 
-describe.only('LocalPackageManager', () => {
+describe('LocalPackageManager', () => {
 
-    const packageUrl = 'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz';
+    const packageUrl = 'https://github.com/rokucommunity/brighterscript/releases/download/v0.67.6/brighterscript-0.67.6.tgz';
 
     const storageDir = s`${tempDir}/storage`;
     let manager: LocalPackageManager;
