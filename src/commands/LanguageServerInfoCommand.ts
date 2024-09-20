@@ -9,16 +9,21 @@ import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
 import * as relativeTime from 'dayjs/plugin/relativeTime';
 import { util } from '../util';
-import type { LocalPackageManager } from '../managers/LocalPackageManager';
+import { type LocalPackageManager } from '../managers/LocalPackageManager';
+import * as semver from 'semver';
 import { standardizePath as s } from 'brighterscript';
-import * as dayjs from 'dayjs';
 import type { QuickPickItem } from 'vscode';
+import * as dayjs from 'dayjs';
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
 
+    public localPackageManager: LocalPackageManager;
+
     public register(context: vscode.ExtensionContext, localPackageManager: LocalPackageManager) {
+        this.localPackageManager = localPackageManager;
+
         context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
                 label: `Change Selected BrighterScript Version`,
@@ -164,11 +169,30 @@ export class LanguageServerInfoCommand {
             description: '',
             detail: '',
             command: async () => {
-                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).map(x => ({
-                    label: x.version,
-                    value: x.version,
-                    description: dayjs(x.date).fromNow(true) + ' ago'
-                }));
+                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => !semver.prerelease(x.version)).map(x => {
+                    return {
+                        label: x.version,
+                        value: x.version,
+                        description: `${dayjs(x.date).fromNow(true)} ago`
+                    };
+                });
+                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+            }
+        } as any);
+
+        //get the full list of versions from npm
+        quickPickItems.push({
+            label: '$(package) Install from npm (insider builds)',
+            description: '',
+            detail: '',
+            command: async () => {
+                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => semver.prerelease(x.version)).map(x => {
+                    return {
+                        label: x.version,
+                        value: x.version,
+                        description: `${dayjs(x.date).fromNow(true)} ago`
+                    };
+                });
                 return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
             }
         } as any);

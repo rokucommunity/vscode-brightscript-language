@@ -309,15 +309,15 @@ describe('LocalPackageManager', () => {
     });
 
     describe('getVersionDirName', () => {
-        it('fetches the catalog when not supplied', async () => {
+        it('fetches the catalog when not supplied', () => {
             expect(
-                await manager['getVersionDirName']('brighterscript', '1.0.0')
+                manager['getVersionDirName']('brighterscript', '1.0.0')
             ).to.eql('1.0.0');
         });
 
-        it('creates a hash', async () => {
+        it('creates a hash', () => {
             expect(
-                await manager['getVersionDirName']('brighterscript', packageUrl)
+                manager['getVersionDirName']('brighterscript', packageUrl)
             ).to.eql(md5(packageUrl));
         });
 
@@ -333,12 +333,12 @@ describe('LocalPackageManager', () => {
 
             //ask for the dir name, it should come back with the hash of the packageUrl
             expect(
-                await manager['getVersionDirName']('brighterscript', packageUrl2)
+                manager['getVersionDirName']('brighterscript', packageUrl2)
             ).to.eql(md5(packageUrl));
 
             //now ask for the dir name, it should come with a number appended to it since that hash already exists
             expect(
-                await manager['getVersionDirName']('brighterscript', packageUrl)
+                manager['getVersionDirName']('brighterscript', packageUrl)
             ).to.eql(`${md5(packageUrl)}-1`);
         });
     });
