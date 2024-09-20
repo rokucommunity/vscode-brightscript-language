@@ -1,3 +1,4 @@
+import { vscode } from '../mockVscode.spec';
 import type { PackageCatalogPackageInfo } from './LocalPackageManager';
 import { LocalPackageManager } from './LocalPackageManager';
 import { standardizePath as s } from 'brighterscript';
@@ -5,7 +6,7 @@ import * as fsExtra from 'fs-extra';
 import { expect } from 'chai';
 import { util } from '../util';
 import * as dayjs from 'dayjs';
-import { vscode } from '../mockVscode.spec';
+import * as md5 from 'md5';
 import { createSandbox } from 'sinon';
 const sinon = createSandbox();
 
@@ -13,6 +14,8 @@ const cwd = s`${__dirname}/../../`;
 const tempDir = s`${cwd}/.tmp`;
 
 describe.only('LocalPackageManager', () => {
+
+    const packageUrl = 'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz';
 
     const storageDir = s`${tempDir}/storage`;
     let manager: LocalPackageManager;
@@ -129,10 +132,7 @@ describe.only('LocalPackageManager', () => {
 
     describe('getPackageInfo', () => {
         it('transforms URLs into a filesystem-safe name', () => {
-            const info = manager['getPackageInfo'](
-                'brighterscript',
-                'https://github.com/rokucommunity/brighterscript/releases/download/v0.0.0-packages/brighterscript-0.67.5-lsp-refactor.20240806164122.tgz'
-            );
+            const info = manager['getPackageInfo']('brighterscript', packageUrl);
             expect(
                 info.versionDirName
             ).to.match(/^[a-z0-9_]+$/i);
@@ -297,6 +297,170 @@ describe.only('LocalPackageManager', () => {
     describe('dispose', () => {
         it('works', () => {
             manager.dispose();
+        });
+    });
+
+    describe('getVersionDirName', () => {
+        it('fetches the catalog when not supplied', async () => {
+            expect(
+                await manager['getVersionDirName']('brighterscript', '1.0.0')
+            ).to.eql('1.0.0');
+        });
+
+        it('creates a hash', async () => {
+            expect(
+                await manager['getVersionDirName']('brighterscript', packageUrl)
+            ).to.eql(md5(packageUrl));
+        });
+
+        it('uses a pre-existing hash when available', async () => {
+            const packageUrl2 = `${packageUrl}2`;
+            //need to do some hackery here to force a hash to already exist (since hash collisions are hard to reproduce...)
+            await manager.install('brighterscript', packageUrl2);
+
+            await manager['withCatalog']((catalog) => {
+                //override the hash to be the hash of `packageUrl`
+                catalog.packages['brighterscript'][packageUrl2].versionDirName = md5(packageUrl);
+            });
+
+            //ask for the dir name, it should come back with the hash of the packageUrl
+            expect(
+                await manager['getVersionDirName']('brighterscript', packageUrl2)
+            ).to.eql(md5(packageUrl));
+
+            //now ask for the dir name, it should come with a number appended to it since that hash already exists
+            expect(
+                await manager['getVersionDirName']('brighterscript', packageUrl)
+            ).to.eql(`${md5(packageUrl)}-1`);
+        });
+    });
+
+    describe('parseVersionInfo', () => {
+        it('returns undefined for bad values', () => {
+            expect(
+                manager['parseVersionInfo'](undefined, process.cwd())
+            ).to.be.undefined;
+
+            expect(
+                manager['parseVersionInfo'](null, process.cwd())
+            ).to.be.undefined;
+
+            expect(
+                manager['parseVersionInfo']('', process.cwd())
+            ).to.be.undefined;
+
+            expect(
+                manager['parseVersionInfo'](' ', process.cwd())
+            ).to.be.undefined;
+        });
+        it('detects valid semver versions', () => {
+            expect(
+                manager['parseVersionInfo']('1.0.0', process.cwd())
+            ).to.eql({
+                value: '1.0.0',
+                type: 'semver-exact'
+            });
+
+            expect(
+                manager['parseVersionInfo']('1.0.0-alpha.2', process.cwd())
+            ).to.eql({
+                value: '1.0.0-alpha.2',
+                type: 'semver-exact'
+            });
+        });
+
+        it('detects valid semver version ranges', () => {
+            expect(
+                manager['parseVersionInfo']('~1.0.0', process.cwd())
+            ).to.eql({
+                value: '~1.0.0',
+                type: 'semver-range'
+            });
+
+            expect(
+                manager['parseVersionInfo']('^1.0.0', process.cwd())
+            ).to.eql({
+                value: '^1.0.0',
+                type: 'semver-range'
+            });
+
+            expect(
+                manager['parseVersionInfo']('1.2.x', process.cwd())
+            ).to.eql({
+                value: '1.2.x',
+                type: 'semver-range'
+            });
+
+            expect(
+                manager['parseVersionInfo']('1.2.0 || >=1.2.2 <1.3.0', process.cwd())
+            ).to.eql({
+                value: '1.2.0 || >=1.2.2 <1.3.0',
+                type: 'semver-range'
+            });
+        });
+
+        it('detects valid dist tags', () => {
+            expect(
+                manager['parseVersionInfo']('@next', process.cwd())
+            ).to.eql({
+                value: '@next',
+                type: 'dist-tag'
+            });
+        });
+
+        it('detects valid URLs', () => {
+            expect(
+                manager['parseVersionInfo']('https://github.com', process.cwd())
+            ).to.eql({
+                value: 'https://github.com',
+                type: 'url'
+            });
+
+            expect(
+                manager['parseVersionInfo'](packageUrl, process.cwd())
+            ).to.eql({
+                value: packageUrl,
+                type: 'url'
+            });
+        });
+
+        it('detects paths to tgz', () => {
+            expect(
+                manager['parseVersionInfo']('./something.tgz', process.cwd())
+            ).to.eql({
+                value: './something.tgz',
+                type: 'tgz-path'
+            });
+
+            expect(
+                manager['parseVersionInfo'](s`${tempDir}/thing.tgz`, process.cwd())
+            ).to.eql({
+                value: s`${tempDir}/thing.tgz`,
+                type: 'tgz-path'
+            });
+        });
+
+        it('detects paths to directories', () => {
+            expect(
+                manager['parseVersionInfo']('./something', s`${process.cwd()}`)
+            ).to.eql({
+                value: s`${process.cwd()}/something`,
+                type: 'dir'
+            });
+
+            expect(
+                manager['parseVersionInfo']('./something', cwd)
+            ).to.eql({
+                value: s`${cwd}/something`,
+                type: 'dir'
+            });
+
+            expect(
+                manager['parseVersionInfo'](s`${tempDir}/thing`, process.cwd())
+            ).to.eql({
+                value: s`${tempDir}/thing`,
+                type: 'dir'
+            });
         });
     });
 });

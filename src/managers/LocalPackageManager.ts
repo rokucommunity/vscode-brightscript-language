@@ -172,9 +172,9 @@ export class LocalPackageManager {
             const hash = md5(version.trim());
             const existingHashes = Object.values(catalog.packages?.[packageName] ?? {}).map(x => x.versionDirName);
             let newHash = hash;
-            let i = 0;
+            let i = 1;
             while (existingHashes.includes(newHash)) {
-                newHash = hash + i++;
+                newHash = `${hash}-${i++}`;
             }
             return newHash;
         }
@@ -289,9 +289,9 @@ export class LocalPackageManager {
                 value: versionInfo
             };
             //is a dist tag (like @next, @latest, etc...)
-        } else if (/^@[a-zA-Z][a-zA-Z0-9-_]*$/.test(versionInfo)) {
+        } else if (/^@[a-z0-9-_]*$/i.test(versionInfo)) {
             return {
-                type: 'semver-range',
+                type: 'dist-tag',
                 value: versionInfo
             };
 
