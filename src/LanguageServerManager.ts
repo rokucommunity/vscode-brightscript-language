@@ -133,7 +133,10 @@ export class LanguageServerManager {
 
         //dynamically enable or disable the language server based on user settings
         vscode.workspace.onDidChangeConfiguration(async (configuration) => {
-            await this.syncVersionAndTryRun();
+            //if we've changed the bsdk setting, restart the language server
+            if (configuration.affectsConfiguration('brightscript.bsdk')) {
+                await this.syncVersionAndTryRun();
+            }
         });
         await this.syncVersionAndTryRun();
     }

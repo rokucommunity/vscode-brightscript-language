@@ -461,11 +461,17 @@ class Util {
     spawnNpmAsync(args: Array<string | undefined>, options?: childProcess.SpawnOptions) {
         //filter out undefined args
         args = args.filter(arg => arg !== undefined);
-        return this.spawnAsync(
-            this.isWindowsPlatform() ? 'npm.cmd' : 'npm',
-            args,
-            options
-        );
+
+        if (this.isWindowsPlatform()) {
+            return this.spawnAsync('npm.cmd', args, {
+                ...options,
+                shell: true,
+                detached: false,
+                windowsHide: true
+            });
+        } else {
+            return this.spawnAsync('npm', args, options);
+        }
     }
 
     /**

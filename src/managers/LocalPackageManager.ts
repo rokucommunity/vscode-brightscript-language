@@ -67,14 +67,13 @@ export class LocalPackageManager {
 
         //if this package is already installed, skip the install
         if (packageInfo.isInstalled) {
-            return;
+            return packageInfo;
         }
-        const rootDir = s`${this.storageLocation}/${packageName}/${packageInfo.versionDirName}`;
 
-        fsExtra.ensureDirSync(rootDir);
+        fsExtra.ensureDirSync(packageInfo.rootDir);
 
         //write a simple package.json file referencing the version of brighterscript we want
-        await fsExtra.outputJson(`${rootDir}/package.json`, {
+        await fsExtra.outputJson(`${packageInfo.rootDir}/package.json`, {
             name: 'vscode-brighterscript-host',
             private: true,
             version: '1.0.0',
@@ -85,7 +84,7 @@ export class LocalPackageManager {
 
         //install the package
         await util.spawnNpmAsync(['install'], {
-            cwd: rootDir
+            cwd: packageInfo.rootDir
         });
 
         //update the catalog

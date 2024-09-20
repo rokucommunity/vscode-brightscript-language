@@ -82,7 +82,15 @@ describe('LocalPackageManager', () => {
                 customKey: 'test'
             });
 
-            await manager.install('is-odd', '1.0.0');
+            expect(
+                await manager.install('is-odd', '1.0.0')
+            ).to.include({
+                packageDir: s`${storageDir}/is-odd/1.0.0/node_modules/is-odd`,
+                packageName: 'is-odd',
+                rootDir: s`${storageDir}/is-odd/1.0.0`,
+                versionDirName: '1.0.0',
+                versionInfo: '1.0.0'
+            });
 
             expect(
                 fsExtra.readJsonSync(`${storageDir}/is-odd/1.0.0/node_modules/is-odd/package.json`).customKey
