@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.49.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.49.0...v2.49.1) - 2024-09-19
+### Fixed
+ - Roku Device View works again by upgrading to RTA with patch to use postman-request for screenshot triggering ([#589](https://github.com/rokucommunity/vscode-brightscript-language/pull/589))
+
+
+
 ## [2.49.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.48.6...v2.49.0) - 2024-09-06
 ### Added
  - Add syntax highlighting support for bsdoc tags ([#586](https://github.com/rokucommunity/vscode-brightscript-language/pull/586))
