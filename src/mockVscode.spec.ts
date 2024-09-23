@@ -1,6 +1,11 @@
 import { EventEmitter } from 'eventemitter3';
 import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+import URI from 'vscode-uri';
 import * as path from 'path';
+import { standardizePath as s } from 'brighterscript';
+
+const cwd = s`${__dirname}/../`;
+const tempDir = s`${cwd}/.tmp`;
 
 //copied from vscode to help with unit tests
 enum QuickPickItemKind {
@@ -34,6 +39,9 @@ export let vscode = {
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
+    ProgressLocation: {
+        Notification: 1
+    },
     QuickPickItemKind: QuickPickItemKind,
     StatusBarAlignment: {
         Left: 1,
@@ -96,8 +104,8 @@ export let vscode = {
             update: function(key: string, value: any) {
                 this._data[key] = value;
             },
-            get: function(key: string) {
-                return this._data[key];
+            get: function(key: string, defaultData) {
+                return this._data[key] ?? defaultData;
             }
         } as any,
         workspaceState: {
@@ -109,7 +117,7 @@ export let vscode = {
                 return this._data[key];
             }
         } as any,
-        globalStorageUri: undefined as Uri,
+        globalStorageUri: URI.file(tempDir),
         environmentVariableCollection: {} as any,
         logUri: undefined as Uri,
         logPath: '',
@@ -161,6 +169,9 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        withProgress: (options, action) => {
+            return action();
+        },
         showInputBox: () => { },
         createStatusBarItem: () => {
             return {
@@ -170,6 +181,7 @@ export let vscode = {
                 dispose: () => { }
             };
         },
+        onDidChangeWindowState: () => { },
         createQuickPick: () => {
             class QuickPick {
                 private emitter = new EventEmitter();

@@ -30,6 +30,8 @@ import { ViewProviderId } from './viewProviders/ViewProviderId';
 import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
+import { LocalPackageManager } from './managers/LocalPackageManager';
+import { standardizePath as s } from 'brighterscript';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -63,6 +65,11 @@ export class Extension {
             })
         );
 
+        let localPackageManager = new LocalPackageManager(
+            s`${context.globalStorageUri.fsPath}/packages`,
+            context
+        );
+
         this.telemetryManager.sendStartupEvent();
         let activeDeviceManager = new ActiveDeviceManager();
         let userInputManager = new UserInputManager(
@@ -75,7 +82,8 @@ export class Extension {
             this.whatsNewManager,
             context,
             activeDeviceManager,
-            userInputManager
+            userInputManager,
+            localPackageManager
         );
 
         this.rtaManager = new RtaManager(context);
@@ -102,7 +110,7 @@ export class Extension {
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
         //initialize the LanguageServerManager
-        void languageServerManager.init(context, definitionRepo);
+        void languageServerManager.init(context, definitionRepo, localPackageManager);
 
         //register a tree data provider for this extension's "RENDEZVOUS" view in the debug area
         let rendezvousViewProvider = new RendezvousViewProvider(context);

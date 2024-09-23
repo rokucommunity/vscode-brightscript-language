@@ -3,11 +3,26 @@ import { LANGUAGE_SERVER_NAME, languageServerManager } from '../LanguageServerMa
 import * as path from 'path';
 import * as resolve from 'resolve';
 import * as fsExtra from 'fs-extra';
+import { firstBy } from 'thenby';
+import { VscodeCommand } from './VscodeCommand';
+import URI from 'vscode-uri';
+import * as relativeTime from 'dayjs/plugin/relativeTime';
+import { util } from '../util';
+import { type LocalPackageManager } from '../managers/LocalPackageManager';
+import * as semver from 'semver';
+import { standardizePath as s } from 'brighterscript';
+import type { QuickPickItem } from 'vscode';
+import * as dayjs from 'dayjs';
+dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {
     public static commandName = 'extension.brightscript.languageServer.info';
 
-    public register(context: vscode.ExtensionContext) {
+    public localPackageManager: LocalPackageManager;
+
+    public register(context: vscode.ExtensionContext, localPackageManager: LocalPackageManager) {
+        this.localPackageManager = localPackageManager;
+
         context.subscriptions.push(vscode.commands.registerCommand(LanguageServerInfoCommand.commandName, async () => {
             const commands = [{
                 label: `Change Selected BrighterScript Version`,
@@ -21,6 +36,27 @@ export class LanguageServerInfoCommand {
                 label: `View language server logs`,
                 description: ``,
                 command: this.focusLanguageServerOutputChannel.bind(this)
+            }, {
+                label: `View BrighterScript version cache folder`,
+                description: ``,
+                command: async () => {
+                    await vscode.commands.executeCommand('revealFileInOS', URI.file(s`${localPackageManager.storageLocation}/brighterscript`));
+                }
+            }, {
+                label: `Remove cached brighterscript versions`,
+                description: ``,
+                command: async () => {
+                    await util.runWithProgress({
+                        title: 'Removing cached brighterscript versions'
+                    }, async () => {
+                        await vscode.commands.executeCommand(VscodeCommand.clearNpmPackageCache);
+                    });
+
+                    void vscode.window.showInformationMessage('All cached brighterscript versions have been removed');
+
+                    //restart the language server since we might have just removed the one we're using
+                    await this.restartLanguageServer();
+                }
             }];
 
             let selection = await vscode.window.showQuickPick(commands, { placeHolder: `BrighterScript Project Info` });
@@ -40,10 +76,11 @@ export class LanguageServerInfoCommand {
         await vscode.commands.executeCommand('extension.brightscript.languageServer.restart');
     }
 
-    private discoverBrighterScriptVersions(workspaceFolders: string[]): BscVersionInfo[] {
-        const versions: BscVersionInfo[] = [{
+    private discoverBrighterScriptVersions(workspaceFolders: string[]): QuickPickItemEnhanced[] {
+        const versions: QuickPickItemEnhanced[] = [{
             label: `Use VSCode's version`,
-            description: languageServerManager.embeddedBscInfo.version
+            description: languageServerManager.embeddedBscInfo.version,
+            value: 'embedded'
         }];
 
         //look for brighterscript in node_modules from all workspace folders
@@ -69,37 +106,99 @@ export class LanguageServerInfoCommand {
                 versions.push({
                     label: 'Use Workspace Version',
                     description: version,
-                    detail: bscPath.replace(/\\+/g, '/')
+                    detail: bscPath.replace(/\\+/g, '/'),
+                    value: bscPath.replace(/\\+/g, '/')
                 });
             }
         }
+
         return versions;
+    }
+
+    private async getBscVersionsFromNpm() {
+
+        const json = await util.exec(`npm view brighterscript time --json`);
+
+        const versions = JSON.parse(json);
+
+        //delete a few keys that aren't actual versions
+        delete versions.created;
+        delete versions.modified;
+
+        return Object.entries(versions)
+            .map(x => {
+                return {
+                    version: x[0],
+                    date: x[1] as string
+                };
+            })
+            .sort(firstBy(x => x.date, -1));
     }
 
     /**
      * If this changes the user/folder/workspace settings, that will trigger a reload of the language server so there's no need to
      * call the reload manually
      */
-    public async selectBrighterScriptVersion() {
-        const versions = this.discoverBrighterScriptVersions(
+    public async selectBrighterScriptVersion(): Promise<string> {
+        const quickPickItems = this.discoverBrighterScriptVersions(
             vscode.workspace.workspaceFolders.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath))
         );
-        let selection = await vscode.window.showQuickPick(versions, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` });
+
+        //start the request right now, we will leverage it later
+        const versionsFromNpmPromise = this.getBscVersionsFromNpm();
+
+        //get the full list of versions from npm
+        quickPickItems.push({
+            label: '$(package) Install from npm',
+            description: '',
+            detail: '',
+            command: async () => {
+                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => !semver.prerelease(x.version)).map(x => {
+                    return {
+                        label: x.version,
+                        value: x.version,
+                        description: `${dayjs(x.date).fromNow(true)} ago`
+                    };
+                });
+                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+            }
+        } as any);
+
+        //get the full list of versions from npm
+        quickPickItems.push({
+            label: '$(package) Install from npm (insider builds)',
+            description: '',
+            detail: '',
+            command: async () => {
+                let versionsFromNpm: QuickPickItemEnhanced[] = (await versionsFromNpmPromise).filter(x => semver.prerelease(x.version)).map(x => {
+                    return {
+                        label: x.version,
+                        value: x.version,
+                        description: `${dayjs(x.date).fromNow(true)} ago`
+                    };
+                });
+                return await vscode.window.showQuickPick(versionsFromNpm, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+            }
+        } as any);
+
+        let selection: QuickPickItemEnhanced = await vscode.window.showQuickPick(quickPickItems, { placeHolder: `Select the BrighterScript version used for BrightScript and BrighterScript language features` }) as any;
+
+        //if the selection has a command, run it before continuing;
+        selection = await selection?.command?.() ?? selection;
+
         if (selection) {
             const config = vscode.workspace.getConfiguration('brightscript');
-            //quickly clear the setting, then set it again so we are guaranteed to trigger a change event
-            await config.update('bsdk', undefined);
+            const currentValue = config.get<string>('bsdk') ?? 'embedded';
 
-            //if the user picked "use embedded version", then remove the setting
-            if (versions.indexOf(selection) === 0) {
-                //setting to undefined means "remove"
-                await config.update('bsdk', 'embedded');
-                return 'embedded';
+            //if the user chose the same value that's already there, just restart the language server
+            if (selection.value === currentValue) {
+                await this.restartLanguageServer();
+                //set the new value
             } else {
                 //save this to workspace/folder settings (vscode automatically decides if it goes into the code-workspace settings or the folder settings)
-                await config.update('bsdk', selection.detail);
-                return selection.detail;
+                await config.update('bsdk', selection.value);
             }
+            return selection.value;
         }
     }
 
@@ -113,10 +212,6 @@ export class LanguageServerInfoCommand {
     }
 }
 
-interface BscVersionInfo {
-    label: string;
-    description: string;
-    detail?: string;
-}
+type QuickPickItemEnhanced = QuickPickItem & { value: string; command?: () => Promise<QuickPickItemEnhanced> };
 
 export const languageServerInfoCommand = new LanguageServerInfoCommand();

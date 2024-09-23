@@ -70,6 +70,7 @@
         "iconv-lite": "0.4.24",
         "jszip": "^3.10.1",
         "just-throttle": "^4.0.1",
+        "md5": "^2.3.0",
         "net": "^1.0.2",
         "node-cache": "^4.2.0",
         "node-ssdp": "^4.0.0",
@@ -97,8 +98,10 @@
         "@types/clone-deep": "^4.0.3",
         "@types/fs-extra": "^5.0.4",
         "@types/glob": "^7.1.1",
+        "@types/lodash": "^4.17.7",
+        "@types/md5": "^2.3.5",
         "@types/mocha": "^7.0.2",
-        "@types/node": "^12.12.0",
+        "@types/node": "^20.14.10",
         "@types/node-ssdp": "^3.3.0",
         "@types/prompt": "^1.1.2",
         "@types/resolve": "^1.20.6",
@@ -114,11 +117,12 @@
         "chalk": "^4.1.2",
         "changelog-parser": "^2.8.0",
         "coveralls-next": "^4.2.0",
-        "dayjs": "^1.11.7",
+        "dayjs": "^1.11.12",
         "deferred": "^0.7.11",
         "eslint": "^8.10.0",
         "eslint-plugin-github": "^4.3.5",
         "eslint-plugin-no-only-tests": "^2.6.0",
+        "lodash": "^4.17.21",
         "mocha": "^9.1.3",
         "node-notifier": "^10.0.1",
         "nyc": "^15.0.0",
@@ -1810,6 +1814,12 @@
                         "description": "Path to the BrighterScript module to use for the BrightScript and BrighterScript language features",
                         "scope": "resource"
                     },
+                    "brightscript.npmCacheRetentionDays": {
+                        "type": "number",
+                        "description": "How long should the extension keep around unused extension-managed npm packages such as brighterscript",
+                        "default": 45,
+                        "scope": "resource"
+                    },
                     "brightscript.enableLanguageServer": {
                         "type": "boolean",
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
@@ -3082,6 +3092,12 @@
             {
                 "command": "extension.brightscript.openSceneGraphInspectorInPanel",
                 "title": "Open SceneGraph Inspector In New Window",
+                "category": "BrighterScript",
+                "icon": "$(link-external)"
+            },
+            {
+                "command": "extension.brightscript.clearNpmPackageCache",
+                "title": "Clear the extension's local node_modules cache",
                 "category": "BrighterScript",
                 "icon": "$(link-external)"
             }

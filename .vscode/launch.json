@@ -75,7 +75,7 @@
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
-                "0"
+                "987654"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }

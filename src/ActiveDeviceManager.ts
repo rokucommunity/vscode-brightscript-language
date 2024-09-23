@@ -261,8 +261,8 @@ class RokuFinder extends EventEmitter {
     }
 
     private readonly client: Client;
-    private intervalId: NodeJS.Timer | null = null;
-    private timeoutId: NodeJS.Timer | null = null;
+    private intervalId: NodeJS.Timeout | null = null;
+    private timeoutId: NodeJS.Timeout | null = null;
     private running = false;
 
     public start(timeout: number) {
