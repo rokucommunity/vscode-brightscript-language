@@ -42,7 +42,7 @@ describe('LanguageServerManager', () => {
 
     beforeEach(function() {
         //deleting certain directories take a while
-        this.timeout(30_000);
+        this.timeout(5 * 60 * 1000);
 
         languageServerManager = new LanguageServerManager();
         languageServerManager['definitionRepository'] = new DefinitionRepository(
@@ -343,7 +343,7 @@ describe('LanguageServerManager', () => {
 
     describe('ensureBscVersionInstalled', function() {
         //these tests take a long time (due to running `npm install`)
-        this.timeout(20_000);
+        this.timeout(5 * 60 * 1000);
 
         it('installs a bsc version when not present', async () => {
             const info = await languageServerManager['ensureBscVersionInstalled']('0.65.0');
