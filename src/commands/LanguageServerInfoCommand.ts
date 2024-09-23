@@ -117,35 +117,20 @@ export class LanguageServerInfoCommand {
     }
 
     private async getBscVersionsFromNpm() {
-        const versions = await new Promise((resolve, reject) => {
-            const process = childProcess.exec(`npm view brighterscript time --json`);
 
-            process.stdout.on('data', (data) => {
-                try {
-                    const versions = JSON.parse(data);
-                    delete versions.created;
-                    delete versions.modified;
-                    resolve(versions);
-                } catch (error) {
-                    reject(error);
-                }
-            });
+        const json = await util.exec(`npm view brighterscript time --json`);
 
-            process.stderr.on('data', (error) => {
-                reject(error);
-            });
+        const versions = JSON.parse(json);
 
-            process.on('exit', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Process exited with code ${code}`));
-                }
-            });
-        });
+        //delete a few keys that aren't actual versions
+        delete versions.created;
+        delete versions.modified;
+
         return Object.entries(versions)
             .map(x => {
                 return {
                     version: x[0],
-                    date: x[1]
+                    date: x[1] as string
                 };
             })
             .sort(firstBy(x => x.date, -1));

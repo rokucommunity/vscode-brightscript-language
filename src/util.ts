@@ -431,16 +431,19 @@ class Util {
         }
     }
 
-    public async exec(command: string, options?: childProcess.ExecOptions) {
-        await new Promise<void>((resolve, reject) => {
-            const process = childProcess.exec(command, options);
-            process.on('error', (err) => {
-                console.error(err);
-                reject(err);
-            });
-            process.on('close', (code) => {
-                if (code === 0) {
-                    resolve();
+    /**
+     * Execute a command and get a promise for when it finishes.
+     * @param command the command to execute
+     * @param options the options to pass to exec
+     * @returns the stdout if successful, or an error if failed
+     */
+    public async exec(command: string, options?: childProcess.ExecOptions): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            childProcess.exec(command, options, (error, stdout) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(stdout);
                 }
             });
         });
