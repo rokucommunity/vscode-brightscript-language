@@ -3,7 +3,6 @@ import { LANGUAGE_SERVER_NAME, languageServerManager } from '../LanguageServerMa
 import * as path from 'path';
 import * as resolve from 'resolve';
 import * as fsExtra from 'fs-extra';
-import * as childProcess from 'child_process';
 import { firstBy } from 'thenby';
 import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
