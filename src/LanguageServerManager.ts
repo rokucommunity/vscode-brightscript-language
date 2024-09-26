@@ -423,8 +423,8 @@ export class LanguageServerManager {
             this.selectedBscInfo = await this.ensureBscVersionInstalled(versionInfo);
         } catch (e) {
             console.error(e);
-            //fall back to the embedded version, and show a popup
-            await vscode.window.showErrorMessage(`Can't find language server for "${versionInfo}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            //fall back to the embedded version, and show a popup (don't await the popup because that blocks this flow)
+            void vscode.window.showErrorMessage(`Language server failure. Did you forget \`npm install\`? Using embedded version ${this.embeddedBscInfo.version}. Can't find language server for "${versionInfo}"`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
