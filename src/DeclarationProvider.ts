@@ -49,7 +49,7 @@ export class WorkspaceEncoding {
 
     public reset() {
         this.encoding = [];
-        for (const folder of vscode.workspace.workspaceFolders) {
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
             this.encoding.push([folder.uri.fsPath, this.getConfiguration(folder.uri)]);
         }
     }

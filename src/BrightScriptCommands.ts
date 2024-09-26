@@ -454,8 +454,8 @@ export class BrightScriptCommands {
         this.workspacePath = await this.context.workspaceState.get('workspacePath');
         //let folderUri: vscode.Uri;
         if (!this.workspacePath) {
-            if (vscode.workspace.workspaceFolders.length === 1) {
-                this.workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            if (vscode.workspace.workspaceFolders?.length === 1) {
+                this.workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
             } else {
                 //there are multiple workspaces, ask the user to specify which one they want to use
                 let workspaceFolder = await vscode.window.showWorkspaceFolderPick();
