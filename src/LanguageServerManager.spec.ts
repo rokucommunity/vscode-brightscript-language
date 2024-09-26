@@ -18,6 +18,7 @@ import {
 import { util } from './util';
 import { GlobalStateManager } from './GlobalStateManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { expectThrowsAsync } from './testHelpers.spec';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -344,6 +345,27 @@ describe('LanguageServerManager', () => {
     describe('ensureBscVersionInstalled', function() {
         //these tests take a long time (due to running `npm install`)
         this.timeout(5 * 60 * 1000);
+
+        it('returns info when absolute dir already exists', async () => {
+            const versionInfo = s`${tempDir}/node_modules/brighterscript`;
+            fsExtra.outputJsonSync(s`${tempDir}/node_modules/brighterscript/package.json`, {
+                version: '0.65.0'
+            });
+            expect(
+                await languageServerManager['ensureBscVersionInstalled'](versionInfo)
+            ).to.eql({
+                packageDir: s`${tempDir}/node_modules/brighterscript`,
+                versionInfo: versionInfo,
+                version: '0.65.0'
+            });
+        });
+
+        it('throws when dir does not exist', async () => {
+            const versionInfo = s`${tempDir}/node_modules/brighterscript`;
+            await expectThrowsAsync(async () => {
+                await languageServerManager['ensureBscVersionInstalled'](versionInfo);
+            }, `"${s(versionInfo)}" does not contain a package.json file`);
+        });
 
         it('installs a bsc version when not present', async () => {
             const info = await languageServerManager['ensureBscVersionInstalled']('0.65.0');
