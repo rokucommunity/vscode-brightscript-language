@@ -234,7 +234,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             folderUri = folder.uri;
 
             //if there's only one workspace, use that workspace's folder path
-        } else if (vscode.workspace.workspaceFolders.length === 1) {
+        } else if (vscode.workspace.workspaceFolders?.length === 1) {
             folderUri = vscode.workspace.workspaceFolders[0].uri;
         } else {
             //there are multiple workspaces, ask the user to specify which one they want to use

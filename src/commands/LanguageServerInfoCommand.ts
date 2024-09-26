@@ -141,7 +141,7 @@ export class LanguageServerInfoCommand {
      */
     public async selectBrighterScriptVersion(): Promise<string> {
         const quickPickItems = this.discoverBrighterScriptVersions(
-            vscode.workspace.workspaceFolders.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath))
+            vscode.workspace.workspaceFolders?.map(x => this.getWorkspaceOrFolderPath(x.uri.fsPath)) ?? []
         );
 
         //start the request right now, we will leverage it later

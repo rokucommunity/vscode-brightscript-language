@@ -468,14 +468,14 @@ export class LanguageServerManager {
         }
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
-        const folderResults = vscode.workspace.workspaceFolders.reduce((acc, workspaceFolder) => {
+        const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
             const versionInfo = vscode.workspace.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
             }
             return acc;
-        }, new Map<string, ParsedVersionInfo>());
+        }, new Map<string, ParsedVersionInfo>()) ?? new Map<string, ParsedVersionInfo>();
 
         //no results found, use the embedded version
         if (folderResults.size === 0) {
