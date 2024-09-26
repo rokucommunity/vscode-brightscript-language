@@ -423,8 +423,8 @@ export class LanguageServerManager {
             this.selectedBscInfo = await this.ensureBscVersionInstalled(versionInfo);
         } catch (e) {
             console.error(e);
-            //fall back to the embedded version, and show a popup
-            await vscode.window.showErrorMessage(`Can't find language server for "${versionInfo}". Did you forget to run \`npm install\`? Using embedded version v${this.embeddedBscInfo.version} instead.`);
+            //fall back to the embedded version, and show a popup (don't await the popup because that blocks this flow)
+            void vscode.window.showErrorMessage(`Language server failure. Did you forget \`npm install\`? Using embedded version ${this.embeddedBscInfo.version}. Can't find language server for "${versionInfo}"`);
             this.selectedBscInfo = this.embeddedBscInfo;
         }
 
@@ -439,7 +439,7 @@ export class LanguageServerManager {
         if (versionInfo === 'embedded') {
             return {
                 type: 'dir',
-                value: this.embeddedBscInfo.packageDir
+                value: s`${this.embeddedBscInfo.packageDir}`
             };
         } else {
             return this.localPackageManager.parseVersionInfo(versionInfo, cwd);
@@ -513,8 +513,12 @@ export class LanguageServerManager {
 
         //if this is a directory, use it as-is
         if (parsed.type === 'dir') {
+            //if the directory does not exist, throw an error
+            if (await fsExtra.pathExists(s`${parsed.value}/package.json`) === false) {
+                throw new Error(`"${parsed.value}" does not contain a package.json file`);
+            }
             return {
-                packageDir: parsed.value,
+                packageDir: s`${parsed.value}`,
                 version: fsExtra.readJsonSync(s`${parsed.value}/package.json`, { throws: false })?.version ?? parsed.value,
                 versionInfo: versionInfo
             };
