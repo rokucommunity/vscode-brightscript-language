@@ -85,18 +85,22 @@ export class ActiveDeviceManager {
         this.firstRequestForDevices = false;
         const devices = Object.values(
             this.deviceCache.mget(this.deviceCache.keys()) as Record<string, RokuDeviceDetails>
-        ).sort(firstBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
-            return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
-        }).thenBy((a: RokuDeviceDetails, b: RokuDeviceDetails) => {
-            if (a.id < b.id) {
-                return -1;
-            }
-            if (a.id > b.id) {
-                return 1;
-            }
-            // ids must be equal
-            return 0;
-        }));
+        ).sort(
+            firstBy<RokuDeviceDetails>((a, b) => {
+                return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
+            }).thenBy<RokuDeviceDetails>((a, b) => {
+                return a.deviceInfo['default-device-name'].localeCompare(b.deviceInfo['default-device-name']);
+            }).thenBy<RokuDeviceDetails>((a, b) => {
+                if (a.id < b.id) {
+                    return -1;
+                }
+                if (a.id > b.id) {
+                    return 1;
+                }
+                // ids must be equal
+                return 0;
+            })
+        );
         return devices;
     }
 
