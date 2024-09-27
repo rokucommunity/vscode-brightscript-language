@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.50.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.2...v2.50.3) - 2024-09-27
+### Fixed
+ - Consistent device list sorting and formatting. ([#596](https://github.com/rokucommunity/vscode-brightscript-language/pull/596))
+
+
+
 ## [2.50.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.1...v2.50.2) - 2024-09-27
 ### Fixed
  - crash when language server was missing ([#594](https://github.com/rokucommunity/vscode-brightscript-language/pull/594))
