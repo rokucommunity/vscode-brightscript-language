@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.50.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.0...v2.50.1) - 2024-09-27
+### Changed
+ - Fix crashes where `workspaceFolders` was undefined ([#593](https://github.com/rokucommunity/vscode-brightscript-language/pull/593))
+ - upgrade to [roku-debug@0.21.11](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02111---2024-09-25). Notable changes since 0.21.10:
+ - upgrade to [brighterscript@0.67.7](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0677---2024-09-25). Notable changes since 0.67.6:
+     - Ast node clone ([brighterscript#1281](https://github.com/rokucommunity/brighterscript/pull/1281))
+ - upgrade to [brighterscript-formatter@1.7.5](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#175---2024-09-26). Notable changes since 1.7.4:
+
+
+
 ## [2.50.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.49.1...v2.50.0) - 2024-09-23
 ### Added
  - ability to install a missing bsc version ([#583](https://github.com/rokucommunity/vscode-brightscript-language/pull/583))
