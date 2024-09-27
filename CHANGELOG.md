@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.50.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.1...v2.50.2) - 2024-09-27
+### Fixed
+ - crash when language server was missing ([#594](https://github.com/rokucommunity/vscode-brightscript-language/pull/594))
+
+
+
 ## [2.50.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.0...v2.50.1) - 2024-09-27
 ### Changed
  - Fix crashes where `workspaceFolders` was undefined ([#593](https://github.com/rokucommunity/vscode-brightscript-language/pull/593))
