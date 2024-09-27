@@ -5,6 +5,7 @@ import type {
 } from 'vscode';
 import * as vscode from 'vscode';
 import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
+import { icons } from '../icons';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -143,7 +144,12 @@ export class UserInputManager {
      * @returns a properly formatted host string
      */
     private createHostLabel(device: RokuDeviceDetails) {
-        return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
+        return [
+            device.deviceInfo['model-number'],
+            device.deviceInfo['user-device-name'],
+            `OS ${device.deviceInfo['software-version']}`,
+            device.ip
+        ].join(' – ');
     }
 
     /**
@@ -169,8 +175,9 @@ export class UserInputManager {
             //add the device
             items.push({
                 label: this.createHostLabel(lastUsedDevice),
-                device: lastUsedDevice
-            });
+                device: lastUsedDevice,
+                iconPath: icons.getDeviceType(lastUsedDevice)
+            } as any);
         }
 
         //add all other devices
@@ -185,7 +192,8 @@ export class UserInputManager {
                 //add the device
                 items.push({
                     label: this.createHostLabel(device),
-                    device: device
+                    device: device,
+                    iconPath: icons.getDeviceType(device)
                 });
             }
         }

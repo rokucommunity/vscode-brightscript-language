@@ -8,6 +8,7 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import type { RokuDeviceDetails } from '../ActiveDeviceManager';
 import { ActiveDeviceManager } from '../ActiveDeviceManager';
+import { icons } from '../icons';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -47,7 +48,8 @@ describe('UserInputManager', () => {
             deviceInfo: {
                 'user-device-name': 'roku1',
                 'serial-number': 'alpha',
-                'model-number': 'model1'
+                'model-number': 'model1',
+                'software-version': '11.5.0'
             },
             id: '1',
             ip: '1.1.1.1',
@@ -56,7 +58,8 @@ describe('UserInputManager', () => {
             deviceInfo: {
                 'user-device-name': 'roku2',
                 'serial-number': 'beta',
-                'model-number': 'model2'
+                'model-number': 'model2',
+                'software-version': '11.5.0'
             },
             id: '2',
             ip: '1.1.1.2',
@@ -65,14 +68,15 @@ describe('UserInputManager', () => {
             deviceInfo: {
                 'user-device-name': 'roku3',
                 'serial-number': 'charlie',
-                'model-number': 'model3'
+                'model-number': 'model3',
+                'software-version': '11.5.0'
             },
             id: '3',
             ip: '1.1.1.3',
             location: '???'
         }];
         function label(device: RokuDeviceDetails) {
-            return `${device.ip} | ${device.deviceInfo['user-device-name']} - ${device.deviceInfo['serial-number']} - ${device.deviceInfo['model-number']}`;
+            return `${device.deviceInfo['model-number']} – ${device.deviceInfo['user-device-name']} – OS ${device.deviceInfo['software-version']} – ${device.ip}`;
         }
 
         it('includes "manual', () => {
@@ -95,8 +99,9 @@ describe('UserInputManager', () => {
                     label: 'devices'
                 },
                 {
-                    label: '1.1.1.1 | roku1 - alpha - model1',
-                    device: devices[0]
+                    label: 'model1 – roku1 – OS 11.5.0 – 1.1.1.1',
+                    device: devices[0],
+                    iconPath: icons.setTopBox
                 },
                 {
                     kind: QuickPickItemKind.Separator,

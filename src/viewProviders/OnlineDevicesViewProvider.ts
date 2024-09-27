@@ -19,21 +19,12 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     ) {
         this.devices = [];
         this.activeDeviceManager.on('device-found', newDevice => {
-            if (!this.findDeviceById(newDevice.id)) {
-                // Add the device to the list
-                this.devices.push(newDevice);
-                this._onDidChangeTreeData.fire(null);
-            } else {
-                // Update the device
-                const foundIndex = this.devices.findIndex(device => device.id === newDevice.id);
-                this.devices[foundIndex] = newDevice;
-            }
+            this.devices = this.activeDeviceManager.getActiveDevices();
+            this._onDidChangeTreeData.fire(null);
         });
 
         this.activeDeviceManager.on('device-expired', device => {
-            // Remove the device from the list
-            const foundIndex = this.devices.findIndex(x => x.id === device.id);
-            this.devices.splice(foundIndex, 1);
+            this.devices = this.activeDeviceManager.getActiveDevices();
             this._onDidChangeTreeData.fire(null);
         });
     }
@@ -47,6 +38,14 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     private devices: Array<RokuDeviceDetails>;
 
+    private makeName(device: RokuDeviceDetails) {
+        return [
+            device.deviceInfo['model-number'],
+            device.deviceInfo['user-device-name'],
+            `OS ${device.deviceInfo['software-version']}`
+        ].join(' – ');
+    }
+
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             if (this.devices) {
@@ -54,20 +53,13 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 for (const device of this.devices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
-                        device.deviceInfo['user-device-name'] + ' - ' + this.concealString(device.deviceInfo['serial-number']),
+                        this.makeName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
                         device.id,
                         device.deviceInfo
                     );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']} | ${device.deviceInfo['user-device-location']}`;
-                    if (device.deviceInfo?.['is-stick']) {
-                        treeItem.iconPath = icons.streamingStick;
-                    } else if (device.deviceInfo?.['is-tv']) {
-                        treeItem.iconPath = icons.tv;
-                        //fall back to settop box in all other cases
-                    } else {
-                        treeItem.iconPath = icons.setTopBox;
-                    }
+                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
+                    treeItem.iconPath = icons.getDeviceType(device);
                     items.push(treeItem);
                 }
 
