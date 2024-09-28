@@ -2731,6 +2731,12 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.clearActiveDevice",
+                "title": "Clear Active Device",
+                "description": "Clear the BrightScript extension's active device.",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.toggleXML",
                 "title": "Toggle XML/BRS",
                 "category": "Brightscript"
