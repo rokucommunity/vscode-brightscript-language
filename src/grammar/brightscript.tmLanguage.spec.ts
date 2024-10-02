@@ -6,6 +6,31 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors m, m.top, m.global, and super correctly', async () => {
+        await testGrammar(`
+            super.doSomething()
+           '^^^^^ keyword.other.this.brs
+       `);
+
+        await testGrammar(`
+            this = m
+           '       ^ keyword.other.this.brs
+           '^^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+             m.global = true
+            '  ^^^^^^ keyword.other.this.brs
+            '^ keyword.other.this.brs
+        `);
+
+        await testGrammar(`
+            m.top.visible = true
+           '  ^^^ keyword.other.this.brs
+           '^ keyword.other.this.brs
+       `);
+    });
+
     it('colors alias statement properly', async () => {
         await testGrammar(`
              alias alpha = beta
