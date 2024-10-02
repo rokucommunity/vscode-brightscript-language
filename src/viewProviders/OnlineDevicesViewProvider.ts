@@ -129,6 +129,20 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 })
             );
 
+            result.unshift(
+                this.createDeviceInfoTreeItem({
+                    label: '⭐ Set as Active Device',
+                    parent: element,
+                    collapsibleState: vscode.TreeItemCollapsibleState.None,
+                    tooltip: 'Set as active device',
+                    command: {
+                        command: 'extension.brightscript.setActiveDevice',
+                        title: 'Set Active Device',
+                        arguments: [device.ip]
+                    }
+                })
+            );
+
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)
                 result.unshift(

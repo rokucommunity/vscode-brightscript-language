@@ -322,6 +322,23 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('setActiveDevice', async (device: string) => {
+            if (!device) {
+                device = await this.userInputManager.promptForHost();
+            }
+            if (!device) {
+                throw new Error('Tried to set active device but failed.');
+            } else {
+                await this.context.workspaceState.update('remoteHost', device);
+                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${device}`);
+            }
+        });
+
+        this.registerCommand('clearActiveDevice', async () => {
+            await this.context.workspaceState.update('remoteHost', '');
+            await vscode.window.showInformationMessage('BrightScript Language extension active device cleared');
+        });
+
         this.registerCommand('showReleaseNotes', () => {
             this.whatsNewManager.showReleaseNotes();
         });
