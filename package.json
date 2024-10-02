@@ -52,6 +52,7 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
+        "@rokucommunity/logger": "^0.3.9",
         "@types/request": "^2.48.12",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
