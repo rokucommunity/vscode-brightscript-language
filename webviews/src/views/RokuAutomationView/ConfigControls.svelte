@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     export let selectedConfig; // string
     export let configs; // array of configs
 
