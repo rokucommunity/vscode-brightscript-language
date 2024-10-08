@@ -5,11 +5,24 @@
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
+    import ConfigControls from './ConfigControls.svelte';
 
     window.vscode = acquireVsCodeApi();
 
+    let configs;
+    let selectedConfig;
     let loading = true;
     let currentRunningStep = -1;
+
+    $: if (!configs || configs.length === 0) {
+        selectedConfig = 'DEFAULT';
+        configs = [ { name: selectedConfig, steps: [{ type: 'sleep', value: '8' }] } ];
+    }
+
+    $: if (selectedConfig) {
+        steps = configs.find((c) => c.name === selectedConfig)?.steps ?? [];
+        storeConfigs(steps);
+    }
 
     const stepTypes = {
         sleep: {
@@ -54,11 +67,12 @@
 
     function storeConfigs(updatedSteps) {
         if(!loading) {
+            configs = [
+                { name: selectedConfig, steps: updatedSteps },
+                ...configs.filter((c) => c.name !== selectedConfig)
+            ]
             intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
-                configs: [{
-                    name: 'DEFAULT',
-                    steps: updatedSteps
-                }]
+                configs: configs
             });
         }
 
@@ -136,16 +150,9 @@
     }
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigsLoaded, (message) => {
-        const configs = message.context.configs;
-        if (configs) {
-            const config = configs[0];
-            steps = config.steps;
-        } else {
-            steps = [{
-                type: 'sleep',
-                value: '8'
-            }];
-        }
+        configs = message.context.configs;
+        selectedConfig = configs[0].name;
+        steps = configs[0].steps;
         loading = false;
     });
 
@@ -300,7 +307,8 @@
     {#if currentRunningStep >= 0}
         <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
     {:else}
-        <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
-        <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
+            <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
+            <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
+            <ConfigControls bind:selectedConfig={selectedConfig} bind:configs={configs} />
     {/if}
 </div>
