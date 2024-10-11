@@ -1,11 +1,11 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { intermediary } from '../../ExtensionIntermediary';
     import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
-    import ConfigControls from './ConfigControls.svelte';
+    import AutoRunsEditor from './AutoRunsEditor.svelte';
 
     window.vscode = acquireVsCodeApi();
 
@@ -13,15 +13,37 @@
     let selectedConfig;
     let loading = true;
     let currentRunningStep = -1;
+    let autoRunsEditor;
+
+    const editAutoRuns = async () => {
+        const retval = await autoRunsEditor.show({runs: configs, selectedRun: selectedConfig});
+        if (retval.ok) {
+            configs = retval.runs;
+            selectedConfig = retval.selectedRun;
+            validateState();
+            storeConfigs(steps);
+        }
+    };
+
+    const validateState = () => {
+        if (!configs || configs.length === 0) {
+            configs = [{ }];
+        }
+        if (!selectedConfig || configs.findIndex((c) => c.name === selectedConfig) === -1) {
+            if (!configs[0].name) {
+                configs[0].name = 'DEFAULT';
+            }
+            selectedConfig = configs[0].name;
+        }
+        let cfg = configs.find((c) => c.name === selectedConfig);
+        if (!cfg.steps) {
+            cfg.steps = [{ type: 'sleep', value: '8' }];
+        }
+        steps = cfg.steps;
+    };
 
     $: if (!configs || configs.length === 0) {
-        selectedConfig = 'DEFAULT';
-        configs = [ { name: selectedConfig, steps: [{ type: 'sleep', value: '8' }] } ];
-    }
-
-    $: if (selectedConfig) {
-        steps = configs.find((c) => c.name === selectedConfig)?.steps ?? [];
-        storeConfigs(steps);
+        validateState();
     }
 
     const stepTypes = {
@@ -66,12 +88,11 @@
     }[];
 
     function storeConfigs(updatedSteps) {
+        configs.find((c) => c.name === selectedConfig).steps = updatedSteps;
+
         if(!loading) {
-            configs = [
-                { name: selectedConfig, steps: updatedSteps },
-                ...configs.filter((c) => c.name !== selectedConfig)
-            ]
             intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
+                selectedConfig: selectedConfig,
                 configs: configs
             });
         }
@@ -151,8 +172,8 @@
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigsLoaded, (message) => {
         configs = message.context.configs;
-        selectedConfig = configs[0].name;
-        steps = configs[0].steps;
+        selectedConfig = message.context.selectedConfig;
+        validateState();
         loading = false;
     });
 
@@ -309,6 +330,7 @@
     {:else}
             <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
             <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
-            <ConfigControls bind:selectedConfig={selectedConfig} bind:configs={configs} />
+	        <AutoRunsEditor bind:this={autoRunsEditor} />
+	        <vscode-button class="editAutoRuns" on:click={editAutoRuns}>Current run: {selectedConfig}</vscode-button>
     {/if}
 </div>
