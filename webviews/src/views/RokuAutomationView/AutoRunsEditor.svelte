@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { allowedNodeEnvironmentFlags } from 'process';
+import { Trash, Copy, Edit } from 'svelte-codicons';
     let runs;
     let selectedRun;
     let dialog;
@@ -76,7 +78,9 @@
 
     function deleteRun() {
         if (!selectedRun || !runs || runs.length === 0) return;
-        runs = runs.filter((r) => r.name !== selectedRun);
+        if(confirm("Are you sure you want to delete this?")){
+            runs = runs.filter((r) => r.name !== selectedRun);
+        }
     }
 
     function moveUp() {
@@ -105,6 +109,10 @@
         getNameDialog.close(name);
     };
 
+    function closeDialog(){
+       console.log('closing dialog');
+    }
+
     const discardName = () => getNameDialog.close('');
 
     const selectText = e => e.target.select();
@@ -120,16 +128,19 @@
         flex-flow: column;
     }
     #dialog {
-        background-color: black;
+        color: var(--panel-view-foreground);
+        background-color: var(--panel-view-background);
+        border-color: var(--focus-border);
+        box-shadow: #00000052 7px 7px 5px;
+
     }
     #getNameDialog {
-        background-color: black;
+        background-color: red;
         border-style: solid;
         border-color: skyblue;
     }
     .page {
-        border-style: solid;
-        border-color: dodgerblue;
+        border: none;
     }
     .header {
         padding: 5px;
@@ -168,12 +179,39 @@
     }
 </style>
 
-<dialog id="dialog" bind:this={dialog}>
+<dialog id="dialog" bind:this={dialog} on:close={closeDialog}>
     <div class="page vertical-container">
         <div class="header vertical-container">
             <h2>Manage Autoruns</h2>
         </div>
         <div class="body vertical-container">
+            <table>
+                {#each runs as run}
+                <tr>
+                    <td>{run.name}</td>
+                    <td>
+                        <vscode-button appearance="icon" title="Add Step" aria-label="Add Step">
+                            <Edit />
+                        </vscode-button>
+                    </td>
+                    <td>
+                        <vscode-button appearance="icon" title="Add Step" aria-label="Add Step">
+                            <Copy />
+                        </vscode-button>
+                    </td>
+                    <td>
+                        <vscode-button appearance="icon" title="Add Step" aria-label="Add Step">
+                            <Trash />
+                        </vscode-button>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4">
+                        <vscode-divider />
+                    </td>
+                </tr>
+                {/each}
+            </table>
             <div class="panels horizontal-container">
                 <div class="long-panel vertical-container">
                     <vscode-dropdown size="10" value={selectedRun} on:change={(e) => selectedRun = e.target.value}>

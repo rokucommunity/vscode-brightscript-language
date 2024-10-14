@@ -1,7 +1,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
     import { intermediary } from '../../ExtensionIntermediary';
-    import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
+    import { Trash, Add, ArrowUp, ArrowDown, ListSelection } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
@@ -225,6 +225,10 @@
         lastStepDate = Date.now();
     });
 
+    function editName(){
+        prompt("What name");
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
@@ -268,6 +272,10 @@
 <svelte:window on:keydown={onKeydown} />
 
 <div id="container">
+   <h1 style="padding:0; margin: 0">Name of current run
+    <vscode-button  on:click={editAutoRuns}>
+        <ListSelection />
+    </vscode-button></h1>
     <table>
     {#each steps as step, index}
         <tr>
