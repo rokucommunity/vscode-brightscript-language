@@ -1,15 +1,50 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import { odc, intermediary } from '../../ExtensionIntermediary';
-    import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
+    import { intermediary } from '../../ExtensionIntermediary';
+    import { Trash, Add, ArrowUp, ArrowDown, ListSelection } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
+    import AutoRunsEditor from './AutoRunsEditor.svelte';
 
     window.vscode = acquireVsCodeApi();
 
+    let configs;
+    let selectedConfig;
     let loading = true;
     let currentRunningStep = -1;
+    let autoRunsEditor;
+
+    const editAutoRuns = async () => {
+        const retval = await autoRunsEditor.show({runs: configs, selectedRun: selectedConfig});
+        if (retval.ok) {
+            configs = retval.runs;
+            selectedConfig = retval.selectedRun;
+            validateState();
+            storeConfigs(steps);
+        }
+    };
+
+    const validateState = () => {
+        if (!configs || configs.length === 0) {
+            configs = [{ }];
+        }
+        if (!selectedConfig || configs.findIndex((c) => c.name === selectedConfig) === -1) {
+            if (!configs[0].name) {
+                configs[0].name = 'DEFAULT';
+            }
+            selectedConfig = configs[0].name;
+        }
+        let cfg = configs.find((c) => c.name === selectedConfig);
+        if (!cfg.steps) {
+            cfg.steps = [{ type: 'sleep', value: '8' }];
+        }
+        steps = cfg.steps;
+    };
+
+    $: if (!configs || configs.length === 0) {
+        validateState();
+    }
 
     const stepTypes = {
         sleep: {
@@ -53,12 +88,12 @@
     }[];
 
     function storeConfigs(updatedSteps) {
+        configs.find((c) => c.name === selectedConfig).steps = updatedSteps;
+
         if(!loading) {
             intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
-                configs: [{
-                    name: 'DEFAULT',
-                    steps: updatedSteps
-                }]
+                selectedConfig: selectedConfig,
+                configs: configs
             });
         }
 
@@ -136,16 +171,9 @@
     }
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigsLoaded, (message) => {
-        const configs = message.context.configs;
-        if (configs) {
-            const config = configs[0];
-            steps = config.steps;
-        } else {
-            steps = [{
-                type: 'sleep',
-                value: '8'
-            }];
-        }
+        configs = message.context.configs;
+        selectedConfig = message.context.selectedConfig;
+        validateState();
         loading = false;
     });
 
@@ -197,6 +225,10 @@
         lastStepDate = Date.now();
     });
 
+    function editName(){
+        prompt("What name");
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
@@ -240,6 +272,10 @@
 <svelte:window on:keydown={onKeydown} />
 
 <div id="container">
+   <h1 style="padding:0; margin: 0">Name of current run
+    <vscode-button  on:click={editAutoRuns}>
+        <ListSelection />
+    </vscode-button></h1>
     <table>
     {#each steps as step, index}
         <tr>
@@ -300,7 +336,9 @@
     {#if currentRunningStep >= 0}
         <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
     {:else}
-        <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
-        <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
+            <vscode-button id={0} on:click={runConfig}>Run</vscode-button>
+            <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
+	        <AutoRunsEditor bind:this={autoRunsEditor} />
+	        <vscode-button class="editAutoRuns" on:click={editAutoRuns}>Current run: {selectedConfig}</vscode-button>
     {/if}
 </div>
