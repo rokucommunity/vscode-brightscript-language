@@ -494,7 +494,7 @@ describe('LanguageServerManager', () => {
         });
     });
 
-    describe.only('getActiveRunsTooltipText', () => {
+    describe('getActiveRunsTooltipText', () => {
         it('returns empty string when no active runs', () => {
             expect(
                 languageServerManager['getActiveRunsTooltipText']([])
