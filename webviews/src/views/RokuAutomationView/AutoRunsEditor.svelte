@@ -289,7 +289,7 @@
 
 <div id="editor">
     <div id="selection">
-        <div id="selection-text">{selectedRun}</div>
+        <div id="selection-text" title={selectedRun}>{selectedRun}</div>
         <vscode-button
             id="selection-button"
             title="Edit Runs"
@@ -321,6 +321,7 @@
                             <td style="text-align: end;">
                                 <vscode-button
                                     id="copy-button"
+                                    title={`Copy '${run.name}'`}
                                     on:click={copyRun}
                                     appearance="icon"
                                     aria-label={run.name}>
@@ -328,6 +329,7 @@
                                 </vscode-button>
                                 <vscode-button
                                     id="delete-button"
+                                    title={`Delete '${run.name}'`}
                                     on:click={deleteRun}
                                     appearance="icon"
                                     aria-label={run.name}>
