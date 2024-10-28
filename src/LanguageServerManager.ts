@@ -20,6 +20,7 @@ import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
 import * as dayjs from 'dayjs';
 import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
+import { firstBy } from 'thenby';
 
 /**
  * Tracks the running/stopped state of the language server. When the lsp crashes, vscode will restart it. After the 5th crash, they'll leave it permanently crashed.
@@ -283,7 +284,8 @@ export class LanguageServerManager {
 
         const logger = new Logger();
         this.client.onNotification(NotificationName.busyStatus, (event: any) => {
-            this.setBusyStatus(event.status);
+            console.log(event);
+            this.updateStatusbar(event.status === BusyStatus.busy, event.activeRuns);
 
             //if the busy status takes too long, write a lsp log entry with details of what's still pending
             if (event.status === BusyStatus.busy) {
@@ -300,25 +302,56 @@ export class LanguageServerManager {
 
     }
 
-    private setBusyStatus(status: BusyStatus) {
-        if (status === BusyStatus.busy) {
-            this.updateStatusbar(true);
-        } else {
-            this.updateStatusbar(false);
-        }
-    }
-
     /**
      * Enable/disable the loading spinner on the statusbar item
      */
-    private updateStatusbar(isLoading: boolean) {
+    private updateStatusbar(isLoading: boolean, activeRuns?: ActiveRun[]) {
         //do nothing if we don't have a statusbar
         if (!this.statusbarItem) {
             return;
         }
         const icon = isLoading ? '$(sync~spin)' : '$(flame)';
         this.statusbarItem.text = `${icon} bsc-${this.selectedBscInfo.version}`;
-        this.statusbarItem.tooltip = `BrightScript Language Server: running`;
+        let tooltip = `BrightScript Language Server: ${isLoading ? 'working' : 'idle'}`;
+
+        //print any acdtive runs so devs know what is taking so long
+        if (activeRuns?.length > 0) {
+            tooltip += '\n' + this.getActiveRunsTooltipText(activeRuns);
+        }
+        this.statusbarItem.tooltip = tooltip;
+    }
+
+    private getActiveRunsTooltipText(activeRuns: ActiveRun[]) {
+        let tooltip = '';
+
+        //sort the runs so they're more consistent
+        const groups = activeRuns?.sort?.(
+            firstBy('scope').thenBy('label').thenBy('startTime')
+        ).reduce((groups, item) => {
+            if (!groups.has(item.scope)) {
+                groups.set(item.scope, []);
+            }
+            groups.get(item.scope).push(item);
+            return groups;
+        }, new Map<string, Array<typeof activeRuns[0]>>());
+
+        for (let [groupName, runsForGroup] of groups ?? []) {
+            if (!groupName || groupName?.trim() === 'undefined') {
+                groupName = 'general';
+            }
+
+            if (groupName) {
+                tooltip += `\n${groupName}:`;
+            }
+
+            for (const run of runsForGroup ?? []) {
+                let line = '\n\t';
+
+                line += `${run.label} (since ${new Date(run.startTime)?.toLocaleTimeString()})`;
+                tooltip += line;
+            }
+        }
+        return tooltip;
     }
 
     /**
@@ -616,4 +649,9 @@ function OneAtATime(options: { timeout?: number }) {
             });
         };
     };
+}
+interface ActiveRun {
+    label: string;
+    startTime: number;
+    scope?: string;
 }

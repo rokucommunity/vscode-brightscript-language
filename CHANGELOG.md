@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.50.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.3...v2.50.4) - 2024-10-18
+### Added
+ - ability to set a device as the current active device via the Deive tree view. ([#597](https://github.com/rokucommunity/vscode-brightscript-language/pull/597))
+### Changed
+ - Highlight `m.top` like `m`. ([#598](https://github.com/rokucommunity/vscode-brightscript-language/pull/598))
+ - upgrade to [roku-deploy@3.12.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3122---2024-10-18). Notable changes since 3.12.1:
+     - updated regex to find a signed package on `/plugin_package` page ([roku-deploy#176](https://github.com/rokucommunity/roku-deploy/pull/176))
+ - upgrade to [roku-debug@0.21.12](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02112---2024-10-18). Notable changes since 0.21.11:
+ - upgrade to [brighterscript@0.67.8](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0678---2024-10-18). Notable changes since 0.67.7:
+     - Fix namespace-relative transpile bug for standalone file ([brighterscript#1324](https://github.com/rokucommunity/brighterscript/pull/1324))
+     - Prevent crash when ProgramBuilder.run called with no options ([brighterscript#1316](https://github.com/rokucommunity/brighterscript/pull/1316))
+ - upgrade to [brighterscript-formatter@1.7.6](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#176---2024-10-18). Notable changes since 1.7.5:
+
+
+
 ## [2.50.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.2...v2.50.3) - 2024-09-27
 ### Fixed
  - Consistent device list sorting and formatting. ([#596](https://github.com/rokucommunity/vscode-brightscript-language/pull/596))

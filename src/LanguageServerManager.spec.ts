@@ -19,6 +19,7 @@ import { util } from './util';
 import { GlobalStateManager } from './GlobalStateManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
 import { expectThrowsAsync } from './testHelpers.spec';
+import undent from 'undent';
 const Module = require('module');
 const sinon = createSandbox();
 
@@ -490,6 +491,38 @@ describe('LanguageServerManager', () => {
 
             await util.sleep(100);
             expect(stub.called).to.be.true;
+        });
+    });
+
+    describe('getActiveRunsTooltipText', () => {
+        it('returns empty string when no active runs', () => {
+            expect(
+                languageServerManager['getActiveRunsTooltipText']([])
+            ).to.eql('');
+            expect(
+                languageServerManager['getActiveRunsTooltipText'](undefined as any)
+            ).to.eql('');
+            expect(
+                languageServerManager['getActiveRunsTooltipText']('' as any)
+            ).to.eql('');
+        });
+
+        it('prints unscoped events at top', () => {
+            let date = Date.now();
+            let dateText = new Date(date).toLocaleTimeString();
+            expect(
+                undent(
+                    languageServerManager['getActiveRunsTooltipText']([
+                        { label: 'scoped-validate', startTime: Date.now(), scope: 'prj1' },
+                        { label: 'validate', startTime: Date.now() }
+                    ])
+                )
+            ).to.eql(undent`
+                general:
+                \tvalidate (since ${dateText})
+                prj1:
+                \tscoped-validate (since ${dateText})
+            `);
         });
     });
 });
