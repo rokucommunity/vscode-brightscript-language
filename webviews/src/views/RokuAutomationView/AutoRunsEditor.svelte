@@ -66,6 +66,13 @@
         selectedRun = run;
     };
 
+    const moveSelection = (e) => {
+        if (["ArrowUp", "ArrowDown"].includes(e.key)) {
+            const index = runs.findIndex((r) => r.name === selectedRun) + (e.key === "ArrowUp" ? -1 : 1);
+            selectedRun = runs[(index + runs.length) % runs.length].name;
+        }
+    };
+
     const copyRun = (e) => {
         const run = getRunFromEvent(e);
         selectedRun = run;
@@ -330,7 +337,7 @@
     }
 </style>
 
-<div id="editor">
+<div id="editor" tabindex="-1" on:keydown={moveSelection}>
     <div id="selection">
         <div id="selection-text" title={selectedRun}>{selectedRun}</div>
         <vscode-button
