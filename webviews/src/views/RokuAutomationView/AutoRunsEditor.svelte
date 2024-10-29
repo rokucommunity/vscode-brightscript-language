@@ -1,5 +1,6 @@
 <script>
     import { Trash, Copy, TriangleDown } from 'svelte-codicons';
+    import { dropzone, draggable } from './dnd';
 
     export let runs;
     export let selectedRun;
@@ -63,17 +64,16 @@
     const selectRun = (e) => {
         const run = getRunFromEvent(e);
         selectedRun = run;
-        console.log(`selectRun row ${run}`);
     };
 
     const copyRun = (e) => {
         const run = getRunFromEvent(e);
         selectedRun = run;
-        console.log(`copyRun row ${run}`);
 
         showRunNameDialog(`Copy of ${run}`)
             .then((runName) => {
-                const steps = runs.find((r) => r.name === selectedRun)?.steps ?? [];
+                const steps =
+                    runs.find((r) => r.name === selectedRun)?.steps ?? [];
                 selectedRun = runName;
                 runs = [
                     { name: runName, steps: structuredClone(steps) },
@@ -102,22 +102,40 @@
                         return;
                     }
                     e.stopPropagation();
-                    confirmDialog.removeEventListener('click', confirmDialogCallback);
+                    confirmDialog.removeEventListener(
+                        'click',
+                        confirmDialogCallback
+                    );
                     confirmDialog.close();
                 })
             );
             confirmDialog.showModal();
-        }).then(() => {
-            runs = runs.filter((r) => r.name !== run);
-        }).catch(() => {
-            // do nothing
-        });
+        })
+            .then(() => {
+                runs = runs.filter((r) => r.name !== run);
+            })
+            .catch(() => {
+                // do nothing
+            });
+    };
+
+    const moveRun = (runName, index) => {
+        let currIndex = runs.findIndex((r) => r.name === runName);
+        if (currIndex < 0 || index < 0 || index > runs.length || currIndex === index) return;
+        const runToMove = runs[currIndex];
+
+        const newRunList = [
+            ...runs.slice(0, index),
+            runToMove,
+            ...runs.slice(index)
+        ];
+        newRunList.splice(currIndex < index ? currIndex : ++currIndex, 1);
+        runs = newRunList;
     };
 
     const addNewRun = () => {
         showRunNameDialog()
             .then((runName) => {
-                console.log(`======== addNewRun function, name=${runName}`);
                 selectedRun = runName;
                 runs = [
                     { name: runName, steps: [] },
@@ -125,18 +143,20 @@
                 ];
             })
             .catch((e) => {
-                console.log(`======== addNewRun function, do nothing`);
                 // do nothing
             });
     };
 
     const showRunNameDialog = (defaultRunName = null) => {
         runNameDialogValue = defaultRunName ?? '';
-        setTimeout(() => { runNameInput.setSelectionRange(0, runNameInput.value.length); }); // select text
+        setTimeout(() => {
+            runNameInput.setSelectionRange(0, runNameInput.value.length);
+        }); // select text
         return new Promise((resolve, reject) => {
             let cancelCallback, clickCallback, keyupCallback;
             const closeDialog = (e, runName = null) => {
-                if (runName === '' || runs.find((r) => r.name === runName)) return false; // name already exists
+                if (runName === '' || runs.find((r) => r.name === runName))
+                    return false; // name already exists
                 e.stopPropagation();
                 runNameDialog.close();
                 runNameDialog.removeEventListener('cancel', cancelCallback);
@@ -158,7 +178,10 @@
             runNameDialog.addEventListener(
                 'keyup',
                 (keyupCallback = (e) => {
-                    if (e.key === 'Enter' && closeDialog(e, runNameDialogValue)) {
+                    if (
+                        e.key === 'Enter' &&
+                        closeDialog(e, runNameDialogValue)
+                    ) {
                         resolve(runNameDialogValue);
                     } else {
                         return;
@@ -200,14 +223,13 @@
     }
 
     #content-container {
+        background-color: var(--vscode-editor-background);
         position: absolute;
         z-index: 1;
         width: calc(100% - 15px);
         height: calc(100% - 65px);
         display: flex;
         color: var(--vscode-editor-foreground);
-        background: var(--vscode-editor-background);
-        background-color: var(--vscode-editor-background);
         padding: 5px;
     }
 
@@ -285,6 +307,11 @@
     #RunNameDialog {
         width: 100%;
     }
+
+    .run-row > *:global(.droppable) {
+        outline: 0.2em dashed red;
+        outline-offset: -2px;
+    }
 </style>
 
 <div id="editor">
@@ -297,23 +324,36 @@
     </div>
     {#if showContent}
         <div id="content-container">
-            <div id="run-list">
+            <div
+                id="run-list"
+                use:dropzone={{
+                    onDropzone(runName) {
+                        moveRun(runName, runs.length);
+                    }
+                }}>
                 <table
                     width="100%"
                     cellspacing="0"
                     style="margin-bottom: auto;"
                     bind:this={runTable}>
-                    {#each runs as run}
+                    {#each runs as run, index}
                         <tr>
                             <td colspan="5">
                                 <vscode-divider />
                             </td>
                         </tr>
                         <tr
+                            class="run-row"
+                            use:dropzone={{
+                                onDropzone(runName) {
+                                    moveRun(runName, index);
+                                }
+                            }}
+                            use:draggable={run.name}
                             on:click={selectRun}
                             title={run.name}
                             id={run.name === selectedRun ? 'selected-tr' : ''}>
-                            <td>
+                            <td class="run-row-name">
                                 <span id="run-name">
                                     {run.name}
                                 </span>
@@ -357,8 +397,7 @@
             bind:this={runNameInput}
             placeholder="Enter run name"
             style="width: 100%;"
-            bind:value={runNameDialogValue}
-        />
+            bind:value={runNameDialogValue} />
     </div>
     <div class="button-group horizontal-container">
         <vscode-button id="OK" on:click={this.click}>OK</vscode-button>
