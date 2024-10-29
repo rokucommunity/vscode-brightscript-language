@@ -133,6 +133,22 @@
         runs = newRunList;
     };
 
+    const renameRun = (e) => {
+        const run = getRunFromEvent(e);
+        console.log(`Renaming run: ${run}`);
+        selectedRun = run;
+
+        showRunNameDialog(selectedRun)
+            .then((runName) => {
+                runs.find((r) => r.name === run).name = runName;
+                runs = runs;
+                selectedRun = runName;
+            })
+            .catch((e) => {
+                // do nothing
+            });
+    };
+
     const addNewRun = () => {
         showRunNameDialog()
             .then((runName) => {
@@ -351,6 +367,7 @@
                             }}
                             use:draggable={run.name}
                             on:click={selectRun}
+                            on:dblclick={renameRun}
                             title={run.name}
                             id={run.name === selectedRun ? 'selected-tr' : ''}>
                             <td class="run-row-name">
