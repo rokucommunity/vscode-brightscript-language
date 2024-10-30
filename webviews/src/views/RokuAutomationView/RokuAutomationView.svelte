@@ -17,11 +17,13 @@
 
     $: runs, selectedRun, updateRuns();
 
+    const getRunIndex = () => (runs ?? []).findIndex((r) => r.name === selectedRun);
+
     const updateRuns = () => {
         if (!runs || runs.length === 0) {
             runs = [{ }];
         }
-        if (!selectedRun || runs.findIndex((c) => c.name === selectedRun) === -1) {
+        if (!selectedRun || getRunIndex() === -1) {
             if (!runs[0].name) {
                 runs[0].name = 'DEFAULT';
             }
@@ -128,14 +130,14 @@
 
     function runConfig() {
         intermediary.sendCommand(ViewProviderCommand.runRokuAutomationConfig, {
-            configIndex: this.id
+            configIndex: getRunIndex().toString()
         });
     }
 
     function stopConfig() {
         if (!this) return;
         intermediary.sendCommand(ViewProviderCommand.stopRokuAutomationConfig, {
-            configIndex: this.id
+            configIndex: getRunIndex().toString()
         });
     }
 

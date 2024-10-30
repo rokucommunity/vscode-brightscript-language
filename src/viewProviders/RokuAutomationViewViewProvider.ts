@@ -26,7 +26,12 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.runRokuAutomationConfig, async (message) => {
             const index = message.context.configIndex;
-            await this.runRokuAutomationConfig(index);
+            try {
+                await this.runRokuAutomationConfig(index);
+            } catch (e) {
+                this.updateCurrentRunningStep(-1);
+                throw e;
+            }
             return true;
         });
 
