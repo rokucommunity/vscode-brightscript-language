@@ -5,51 +5,6 @@
     export let runs;
     export let selectedRun;
 
-    let runs1 = [
-        { name: 'run1', steps: [] },
-        { name: 'run2', steps: [] },
-        { name: 'run3', steps: [] },
-        { name: 'run4', steps: [] },
-        { name: 'run5', steps: [] },
-        { name: 'run6', steps: [] },
-        { name: 'run7', steps: [] },
-        { name: 'run8', steps: [] },
-        { name: 'run9', steps: [] },
-        { name: 'run10', steps: [] },
-        { name: 'run11', steps: [] },
-        { name: 'run12', steps: [] },
-        { name: 'run13', steps: [] },
-        { name: 'run14', steps: [] },
-        { name: 'run15', steps: [] },
-        { name: 'run16', steps: [] },
-        { name: 'run17', steps: [] },
-        { name: 'run18', steps: [] },
-        { name: 'run19', steps: [] },
-        { name: 'run20', steps: [] },
-        { name: 'run21', steps: [] },
-        { name: 'run22', steps: [] },
-        { name: 'run23', steps: [] },
-        { name: 'run24', steps: [] },
-        { name: 'run25', steps: [] },
-        { name: 'run26', steps: [] },
-        { name: 'run27', steps: [] },
-        { name: 'run28', steps: [] },
-        { name: 'run29', steps: [] },
-        { name: 'run30', steps: [] },
-        { name: 'run31', steps: [] },
-        { name: 'run32', steps: [] },
-        { name: 'run33', steps: [] },
-        { name: 'run34', steps: [] },
-        { name: 'run35', steps: [] },
-        { name: 'run36', steps: [] },
-        { name: 'run37', steps: [] },
-        { name: 'run38', steps: [] },
-        { name: 'run39', steps: [] }
-    ];
-    let selectedRun1 =
-        'Titlelksdjflk;asdjf;lkasdjf;lksdjf;lkjsdf;lkjsdf;lkjsdfkljdsflkdjsafsjdf;lkasdjfkldsjflkdsjfkldjfkldjfkdjfk';
-    let selectedRun2 = 'run7';
-
     let runTable;
     let runNameInput;
     let runNameDialog;
@@ -142,7 +97,6 @@
 
     const renameRun = (e) => {
         const run = getRunFromEvent(e);
-        console.log(`Renaming run: ${run}`);
         selectedRun = run;
 
         showRunNameDialog(selectedRun)
@@ -264,6 +218,10 @@
         overflow-y: auto;
     }
 
+    #run-list:global(.droppable) {
+        box-shadow: inset 0 0 0 2px red;
+    }
+
     #selected-tr {
         color: var(--vscode-editor-foreground);
         background-color: var(--vscode-button-background);
@@ -331,9 +289,8 @@
         width: 100%;
     }
 
-    .run-row > *:global(.droppable) {
-        outline: 0.2em dashed red;
-        outline-offset: -2px;
+    .run-row *:global(.droppable) {
+        border-top: 5px solid red;
     }
 </style>
 
@@ -377,7 +334,7 @@
                             on:dblclick={renameRun}
                             title={run.name}
                             id={run.name === selectedRun ? 'selected-tr' : ''}>
-                            <td class="run-row-name">
+                            <td>
                                 <span id="run-name">
                                     {run.name}
                                 </span>

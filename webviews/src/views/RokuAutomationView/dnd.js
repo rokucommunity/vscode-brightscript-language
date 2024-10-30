@@ -32,20 +32,16 @@ export function dropzone(node, options) {
     };
 
     function handleDragenter(e) {
-        console.log(`handleDragenter: ${e.target}`);
         if (!(e.target instanceof HTMLElement)) return;
-        console.log(`dragoverClass: ${state.dragoverClass}`);
         e.target.classList.add(state.dragoverClass);
     }
 
     function handleDragleave(e) {
-        console.log(`handleDragleave: ${e.target}`);
         if (!(e.target instanceof HTMLElement)) return;
         e.target.classList.remove(state.dragoverClass);
     }
 
     function handleDragover(e) {
-        console.log(`handleDragover: ${e.target}`);
         e.preventDefault();
         if (!e.dataTransfer) return;
         e.dataTransfer.dropEffect = state.dropEffect;
