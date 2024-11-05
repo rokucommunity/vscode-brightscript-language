@@ -1,40 +1,44 @@
-<script>
+<script lang="ts">
     import { Trash, Copy, TriangleDown } from 'svelte-codicons';
     import { dropzone, draggable } from './dnd';
 
-    export let runs;
-    export let selectedRun;
+    type Step = { type: string, value: string };
+    type Run = { name?: string, steps?: Step[] };
+    type Callback = (e: any) => void;
 
-    let runTable;
-    let runNameInput;
-    let runNameDialog;
-    let runNameDialogValue;
-    let confirmDialog;
-    let showContent = false;
+    export let runs: Run[];
+    export let selectedRun: string;
 
-    const toggleDropDown = () => {
+    let runTable: any;
+    let runNameInput: any;
+    let runNameDialog: any;
+    let runNameDialogValue: string;
+    let confirmDialog: any;
+    let showContent: boolean = false;
+
+    const toggleDropDown: () => void = () => {
         showContent = !showContent;
     };
 
-    const selectRun = (e) => {
-        const run = getRunFromEvent(e);
+    const selectRun: Callback = (e) => {
+        const run: string = getRunFromEvent(e);
         selectedRun = run;
     };
 
-    const moveSelection = (e) => {
+    const moveSelection: Callback = (e) => {
         if (["ArrowUp", "ArrowDown"].includes(e.key)) {
-            const index = runs.findIndex((r) => r.name === selectedRun) + (e.key === "ArrowUp" ? -1 : 1);
+            const index: number = runs.findIndex((r) => r.name === selectedRun) + (e.key === "ArrowUp" ? -1 : 1);
             selectedRun = runs[(index + runs.length) % runs.length].name;
         }
     };
 
-    const copyRun = (e) => {
-        const run = getRunFromEvent(e);
+    const copyRun: Callback = (e) => {
+        const run: string = getRunFromEvent(e);
         selectedRun = run;
 
         showRunNameDialog(`Copy of ${run}`)
-            .then((runName) => {
-                const steps =
+            .then((runName: string) => {
+                const steps: Step[] =
                     runs.find((r) => r.name === selectedRun)?.steps ?? [];
                 selectedRun = runName;
                 runs = [
@@ -47,17 +51,17 @@
             });
     };
 
-    const deleteRun = (e) => {
-        const run = getRunFromEvent(e);
+    const deleteRun: Callback = (e) => {
+        const run: string = getRunFromEvent(e);
         selectedRun = run;
         new Promise((resolve, reject) => {
-            let confirmDialogCallback;
+            let confirmDialogCallback: any;
             confirmDialog.addEventListener(
                 'click',
                 (confirmDialogCallback = (e) => {
-                    const button = e?.target?.id;
+                    const button: string = e?.target?.id;
                     if (button === 'YES') {
-                        resolve();
+                        resolve(e);
                     } else if (button === 'NO') {
                         reject();
                     } else {
@@ -81,12 +85,12 @@
             });
     };
 
-    const moveRun = (runName, index) => {
-        let currIndex = runs.findIndex((r) => r.name === runName);
+    const moveRun: (runName: string, index: number) => void = (runName, index) => {
+        let currIndex: number = runs.findIndex((r) => r.name === runName);
         if (currIndex < 0 || index < 0 || index > runs.length || currIndex === index) return;
-        const runToMove = runs[currIndex];
+        const runToMove: Run = runs[currIndex];
 
-        const newRunList = [
+        const newRunList: Run[] = [
             ...runs.slice(0, index),
             runToMove,
             ...runs.slice(index)
@@ -95,12 +99,12 @@
         runs = newRunList;
     };
 
-    const renameRun = (e) => {
-        const run = getRunFromEvent(e);
+    const renameRun: Callback = (e) => {
+        const run: string = getRunFromEvent(e);
         selectedRun = run;
 
         showRunNameDialog(selectedRun)
-            .then((runName) => {
+            .then((runName: string) => {
                 runs.find((r) => r.name === run).name = runName;
                 runs = runs;
                 selectedRun = runName;
@@ -110,9 +114,9 @@
             });
     };
 
-    const addNewRun = () => {
+    const addNewRun: () => void = () => {
         showRunNameDialog()
-            .then((runName) => {
+            .then((runName: string) => {
                 selectedRun = runName;
                 runs = [
                     { name: runName, steps: [] },
@@ -124,14 +128,14 @@
             });
     };
 
-    const showRunNameDialog = (defaultRunName = null) => {
+    const showRunNameDialog: (defaultRunName?: string) => any = (defaultRunName = null) => {
         runNameDialogValue = defaultRunName ?? '';
         setTimeout(() => {
             runNameInput.setSelectionRange(0, runNameInput.value.length);
         }); // select text
         return new Promise((resolve, reject) => {
-            let cancelCallback, clickCallback, keyupCallback;
-            const closeDialog = (e, runName = null) => {
+            let cancelCallback: Callback, clickCallback: Callback, keyupCallback: Callback;
+            const closeDialog: (e: any, runName?: string) => boolean = (e, runName = null) => {
                 if (runName === '' || runs.find((r) => r.name === runName))
                     return false; // name already exists
                 e.stopPropagation();
@@ -170,7 +174,7 @@
             runNameDialog.addEventListener(
                 'click',
                 (clickCallback = (e) => {
-                    const button = e?.target?.id;
+                    const button: string = e?.target?.id;
                     if (button === 'OK' && closeDialog(e, runNameDialogValue)) {
                         resolve(runNameDialogValue);
                     } else if (button === 'Cancel') {
@@ -185,7 +189,7 @@
         });
     };
 
-    const getRunFromEvent = (e) => {
+    const getRunFromEvent: (e: any) => string = (e) => {
         e.stopPropagation();
         return e.target.closest('tr').title;
     };
