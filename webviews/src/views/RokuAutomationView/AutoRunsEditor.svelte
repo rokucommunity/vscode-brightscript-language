@@ -16,23 +16,23 @@
     let confirmDialog: any;
     let showContent: boolean = false;
 
-    const toggleDropDown: () => void = () => {
+    function toggleDropDown() {
         showContent = !showContent;
     };
 
-    const selectRun: Callback = (e) => {
+    function selectRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
     };
 
-    const moveSelection: Callback = (e) => {
+    function moveSelection(e) {
         if (["ArrowUp", "ArrowDown"].includes(e.key)) {
             const index: number = runs.findIndex((r) => r.name === selectedRun) + (e.key === "ArrowUp" ? -1 : 1);
             selectedRun = runs[(index + runs.length) % runs.length].name;
         }
     };
 
-    const copyRun: Callback = (e) => {
+    function copyRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
 
@@ -51,7 +51,7 @@
             });
     };
 
-    const deleteRun: Callback = (e) => {
+    function deleteRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
         new Promise((resolve, reject) => {
@@ -85,7 +85,7 @@
             });
     };
 
-    const moveRun: (runName: string, index: number) => void = (runName, index) => {
+    function moveRun(runName, index) {
         let currIndex: number = runs.findIndex((r) => r.name === runName);
         if (currIndex < 0 || index < 0 || index > runs.length || currIndex === index) return;
         const runToMove: Run = runs[currIndex];
@@ -99,7 +99,7 @@
         runs = newRunList;
     };
 
-    const renameRun: Callback = (e) => {
+    function renameRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
 
@@ -114,7 +114,7 @@
             });
     };
 
-    const addNewRun: () => void = () => {
+    function addNewRun() {
         showRunNameDialog()
             .then((runName: string) => {
                 selectedRun = runName;
@@ -128,14 +128,14 @@
             });
     };
 
-    const showRunNameDialog: (defaultRunName?: string) => any = (defaultRunName = null) => {
+    function showRunNameDialog(defaultRunName = null) {
         runNameDialogValue = defaultRunName ?? '';
         setTimeout(() => {
             runNameInput.setSelectionRange(0, runNameInput.value.length);
         }); // select text
         return new Promise((resolve, reject) => {
             let cancelCallback: Callback, clickCallback: Callback, keyupCallback: Callback;
-            const closeDialog: (e: any, runName?: string) => boolean = (e, runName = null) => {
+            function closeDialog(e, runName = null) {
                 if (runName === '' || runs.find((r) => r.name === runName))
                     return false; // name already exists
                 e.stopPropagation();
@@ -189,7 +189,7 @@
         });
     };
 
-    const getRunFromEvent: (e: any) => string = (e) => {
+    function getRunFromEvent(e) {
         e.stopPropagation();
         return e.target.closest('tr').title;
     };

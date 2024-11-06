@@ -11,7 +11,6 @@
 
     type Step = { type: string, value: string };
     type Run = { name?: string, steps?: Step[] };
-    type Nullary = () => any;
 
     let runs: Run[];
     let selectedRun: string;
@@ -21,9 +20,11 @@
 
     $: runs, selectedRun, updateRuns();
 
-    const getRunIndex: Nullary = () => (runs ?? []).findIndex((r) => r.name === selectedRun);
+    function getRunIndex() {
+        return (runs ?? []).findIndex((r) => r.name === selectedRun)
+    };
 
-    const updateRuns: Nullary = () => {
+    function updateRuns() {
         if (!runs || runs.length === 0) {
             runs = [{ }];
         }
