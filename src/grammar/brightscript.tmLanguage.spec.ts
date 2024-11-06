@@ -31,6 +31,27 @@ describe('brightscript.tmlanguage.json', () => {
        `);
     });
 
+    it('does not color `top` as a variable name', async () => {
+        await testGrammar(`
+            top = true
+           '^^^ entity.name.variable.local.brs
+        `);
+    });
+
+    it('does not color `top` when part of another variable name', async () => {
+        await testGrammar(`
+             m.top1 = true
+            '  ^^^^ variable.other.object.property.brs
+            '^ keyword.other.this.brs
+        `);
+
+        await testGrammar(`
+            m.1top = true
+           '  ^^^^ variable.other.object.property.brs
+           '^ keyword.other.this.brs
+       `);
+    });
+
     it('colors alias statement properly', async () => {
         await testGrammar(`
              alias alpha = beta
