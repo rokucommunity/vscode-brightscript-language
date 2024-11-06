@@ -657,7 +657,7 @@
                     "name": "keyword.other.this.brs"
                 }
             },
-            "match": "(?i:(?<!\\.)\\b(m|super)\\b(?:\\s*\\.\\s*(top|global))?)"
+            "match": "(?i:(?<!\\.)\\b(m|super)\\b(?:\\s*\\.\\s*(top|global)\\b)?)"
         },
         "variables_and_params": {
             "match": "(?i:(?:\\b(new)\\s)?\\b(?<!\\.)([a-z_][a-z0-9_\\$%!#]*)\\b)",
