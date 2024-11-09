@@ -38,10 +38,12 @@
 
     async function copyRun(e) {
         const run: string = getRunFromEvent(e);
-        const runName: string = await showNameInputDialog(run, `Copy of ${run}`);
+        const runName: string = await showNameInputDialog(
+            run,
+            `Copy of ${run}`
+        );
         if (runName) {
-            const steps: Step[] =
-                runs.find((r) => r.name === run)?.steps ?? [];
+            const steps: Step[] = runs.find((r) => r.name === run)?.steps ?? [];
             selectedRun = runName;
             runs = [
                 { name: runName, steps: structuredClone(steps) },
@@ -125,7 +127,10 @@
         }
     }
 
-    async function showNameInputDialog(targetRun = "", defaultText = ""): Promise<string> {
+    async function showNameInputDialog(
+        targetRun = '',
+        defaultText = ''
+    ): Promise<string> {
         return new Promise((resolve) => {
             selectedRun = targetRun;
             nameInput.value = defaultText;
@@ -140,10 +145,13 @@
         const source: string = e.target.tagName;
         let retval: string = null;
 
-        if ((/BUTTON/i.test(source) && e.target.id === 'OK') || (/INPUT/i.test(source))) {
+        if (
+            (/BUTTON/i.test(source) && e.target.id === 'OK') ||
+            /INPUT/i.test(source)
+        ) {
             if (!isValidName) {
                 alertMessage = `Sorry, cannot use '${name}', please choose another name`;
-                setTimeout(() => alertDialog.showModal()) // add to task queue
+                setTimeout(() => alertDialog.showModal()); // add to task queue
                 nameInput.focus();
                 return;
             }
