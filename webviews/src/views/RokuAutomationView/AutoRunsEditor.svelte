@@ -202,7 +202,7 @@
     }
 
     #selection-text {
-        font-size: xx-large;
+        font-size: large;
         white-space: nowrap;
         width: 100%;
         text-overflow: ellipsis;
