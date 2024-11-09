@@ -15,7 +15,9 @@
     let nameInputDone: Callback;
     let alertDialog: HTMLDialogElement;
     let alertMessage: string;
-    let confirmDialog: any;
+    let confirmDialog: HTMLDialogElement;
+    let confirmMessage: string;
+    let confirmDone: Callback;
     let showContent: boolean = false;
 
     function toggleDropDown() {
@@ -52,38 +54,12 @@
         }
     }
 
-    function deleteRun(e) {
+    async function deleteRun(e) {
         const run: string = getRunFromEvent(e);
-        selectedRun = run;
-        new Promise((resolve, reject) => {
-            let confirmDialogCallback: any;
-            confirmDialog.addEventListener(
-                'click',
-                (confirmDialogCallback = (e) => {
-                    const button: string = e?.target?.id;
-                    if (button === 'YES') {
-                        resolve(e);
-                    } else if (button === 'NO') {
-                        reject();
-                    } else {
-                        return;
-                    }
-                    e.stopPropagation();
-                    confirmDialog.removeEventListener(
-                        'click',
-                        confirmDialogCallback
-                    );
-                    confirmDialog.close();
-                })
-            );
-            confirmDialog.showModal();
-        })
-            .then(() => {
-                runs = runs.filter((r) => r.name !== run);
-            })
-            .catch(() => {
-                // do nothing
-            });
+        if (await showConfirmDeleteDialog(run)) {
+            runs = runs.filter((r) => r.name !== run);
+        }
+        confirmDialog.close();
     }
 
     function moveRun(runName, index) {
@@ -125,6 +101,15 @@
             ];
             selectedRun = runName;
         }
+    }
+
+    async function showConfirmDeleteDialog(targetRun: string = ''): Promise<string> {
+        return new Promise((resolve) => {
+            selectedRun = targetRun;
+            confirmMessage = `Are you sure you want to delete '${targetRun}'?`;
+            confirmDialog.showModal();
+            confirmDone = resolve;
+        });
     }
 
     async function showNameInputDialog(
@@ -378,10 +363,10 @@
 </dialog>
 
 <dialog id="confirmDialog" bind:this={confirmDialog}>
-    <h3>Are you sure you want to delete this run?</h3>
+    <h3>{confirmMessage}</h3>
     <div class="button-group horizontal-container">
-        <vscode-button id="YES" on:click={this.click}>YES</vscode-button>
-        <vscode-button id="NO" on:click={this.click}>NO</vscode-button>
+        <vscode-button id="YES" on:click={() => confirmDone(true)}>YES</vscode-button>
+        <vscode-button id="NO" on:click={() => confirmDone(false)}>NO</vscode-button>
     </div>
 </dialog>
 
