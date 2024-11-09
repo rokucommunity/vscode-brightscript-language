@@ -2,54 +2,53 @@
     import { Trash, Copy, TriangleDown } from 'svelte-codicons';
     import { dropzone, draggable } from './dnd';
 
-    type Step = { type: string, value: string };
-    type Run = { name?: string, steps?: Step[] };
+    type Step = { type: string; value: string };
+    type Run = { name?: string; steps?: Step[] };
     type Callback = (e: any) => void;
 
     export let runs: Run[];
     export let selectedRun: string;
 
     let runTable: any;
-    let runNameInput: any;
-    let runNameDialog: any;
-    let runNameDialogValue: string;
+    let nameInput: HTMLInputElement;
+    let nameInputDialog: HTMLDialogElement;
+    let nameInputDone: Callback;
+    let alertDialog: HTMLDialogElement;
+    let alertMessage: string;
     let confirmDialog: any;
     let showContent: boolean = false;
 
     function toggleDropDown() {
         showContent = !showContent;
-    };
+    }
 
     function selectRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
-    };
+    }
 
     function moveSelection(e) {
-        if (["ArrowUp", "ArrowDown"].includes(e.key)) {
-            const index: number = runs.findIndex((r) => r.name === selectedRun) + (e.key === "ArrowUp" ? -1 : 1);
+        if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+            const index: number =
+                runs.findIndex((r) => r.name === selectedRun) +
+                (e.key === 'ArrowUp' ? -1 : 1);
             selectedRun = runs[(index + runs.length) % runs.length].name;
         }
-    };
+    }
 
-    function copyRun(e) {
+    async function copyRun(e) {
         const run: string = getRunFromEvent(e);
-        selectedRun = run;
-
-        showRunNameDialog(`Copy of ${run}`)
-            .then((runName: string) => {
-                const steps: Step[] =
-                    runs.find((r) => r.name === selectedRun)?.steps ?? [];
-                selectedRun = runName;
-                runs = [
-                    { name: runName, steps: structuredClone(steps) },
-                    ...runs.filter((r) => r.name !== runName)
-                ];
-            })
-            .catch((e) => {
-                // do nothing
-            });
-    };
+        const runName: string = await showNameInputDialog(run, `Copy of ${run}`);
+        if (runName) {
+            const steps: Step[] =
+                runs.find((r) => r.name === run)?.steps ?? [];
+            selectedRun = runName;
+            runs = [
+                { name: runName, steps: structuredClone(steps) },
+                ...runs.filter((r) => r.name !== runName)
+            ];
+        }
+    }
 
     function deleteRun(e) {
         const run: string = getRunFromEvent(e);
@@ -83,11 +82,17 @@
             .catch(() => {
                 // do nothing
             });
-    };
+    }
 
     function moveRun(runName, index) {
         let currIndex: number = runs.findIndex((r) => r.name === runName);
-        if (currIndex < 0 || index < 0 || index > runs.length || currIndex === index) return;
+        if (
+            currIndex < 0 ||
+            index < 0 ||
+            index > runs.length ||
+            currIndex === index
+        )
+            return;
         const runToMove: Run = runs[currIndex];
 
         const newRunList: Run[] = [
@@ -97,102 +102,62 @@
         ];
         newRunList.splice(currIndex < index ? currIndex : ++currIndex, 1);
         runs = newRunList;
-    };
+    }
 
-    function renameRun(e) {
+    async function renameRun(e) {
         const run: string = getRunFromEvent(e);
-        selectedRun = run;
+        const runName = await showNameInputDialog(run, `Copy of ${run}`);
+        if (runName) {
+            runs.find((r) => r.name === run).name = runName;
+            runs = runs;
+            selectedRun = runName;
+        }
+    }
 
-        showRunNameDialog(selectedRun)
-            .then((runName: string) => {
-                runs.find((r) => r.name === run).name = runName;
-                runs = runs;
-                selectedRun = runName;
-            })
-            .catch((e) => {
-                // do nothing
-            });
-    };
+    async function addNewRun() {
+        const runName = await showNameInputDialog();
+        if (runName) {
+            runs = [
+                { name: runName, steps: [] },
+                ...runs.filter((r) => r.name !== runName)
+            ];
+            selectedRun = runName;
+        }
+    }
 
-    function addNewRun() {
-        showRunNameDialog()
-            .then((runName: string) => {
-                selectedRun = runName;
-                runs = [
-                    { name: runName, steps: [] },
-                    ...runs.filter((r) => r.name !== runName)
-                ];
-            })
-            .catch((e) => {
-                // do nothing
-            });
-    };
-
-    function showRunNameDialog(defaultRunName = null) {
-        runNameDialogValue = defaultRunName ?? '';
-        setTimeout(() => {
-            runNameInput.setSelectionRange(0, runNameInput.value.length);
-        }); // select text
-        return new Promise((resolve, reject) => {
-            let cancelCallback: Callback, clickCallback: Callback, keyupCallback: Callback;
-            function closeDialog(e, runName = null) {
-                if (runName === '' || runs.find((r) => r.name === runName))
-                    return false; // name already exists
-                e.stopPropagation();
-                runNameDialog.close();
-                runNameDialog.removeEventListener('cancel', cancelCallback);
-                runNameDialog.removeEventListener('click', clickCallback);
-                runNameDialog.removeEventListener('keyup', keyupCallback);
-                return true;
-            };
-
-            // ESC key
-            runNameDialog.addEventListener(
-                'cancel',
-                (cancelCallback = (e) => {
-                    closeDialog(e);
-                    reject('');
-                })
-            );
-
-            // Enter key
-            runNameDialog.addEventListener(
-                'keyup',
-                (keyupCallback = (e) => {
-                    if (
-                        e.key === 'Enter' &&
-                        closeDialog(e, runNameDialogValue)
-                    ) {
-                        resolve(runNameDialogValue);
-                    } else {
-                        return;
-                    }
-                })
-            );
-
-            // button press
-            runNameDialog.addEventListener(
-                'click',
-                (clickCallback = (e) => {
-                    const button: string = e?.target?.id;
-                    if (button === 'OK' && closeDialog(e, runNameDialogValue)) {
-                        resolve(runNameDialogValue);
-                    } else if (button === 'Cancel') {
-                        closeDialog(e);
-                        reject('');
-                    } else {
-                        return;
-                    }
-                })
-            );
-            runNameDialog.showModal();
+    async function showNameInputDialog(targetRun = "", defaultText = ""): Promise<string> {
+        return new Promise((resolve) => {
+            selectedRun = targetRun;
+            nameInput.value = defaultText;
+            nameInputDialog.showModal();
+            nameInputDone = resolve;
         });
-    };
+    }
+
+    function onNameChange(e) {
+        const name: string = nameInput.value;
+        const isValidName: boolean = name && !runs.find((r) => r.name === name);
+        const source: string = e.target.tagName;
+        let retval: string = null;
+
+        if ((/BUTTON/i.test(source) && e.target.id === 'OK') || (/INPUT/i.test(source))) {
+            if (!isValidName) {
+                alertMessage = `Sorry, cannot use '${name}', please choose another name`;
+                setTimeout(() => alertDialog.showModal()) // add to task queue
+                nameInput.focus();
+                return;
+            }
+            retval = name;
+        }
+
+        setTimeout(() => nameInputDialog.close()); // add to task queue
+        nameInputDone(retval);
+    }
 
     function getRunFromEvent(e) {
         e.stopPropagation();
         return e.target.closest('tr').title;
-    };
+    }
 </script>
 
 <style>
@@ -289,8 +254,16 @@
         color: var(--vscode-editor-foreground);
     }
 
-    #RunNameDialog {
-        width: 100%;
+    #NameInput {
+        color: var(--vscode-editor-foreground);
+        background-color: var(--vscode-editor-background);
+        border-color: var(--vscode-button-background);
+        outline-color: var(--vscode-button-background);
+    }
+
+    #NameInputDialog {
+        color: var(--vscode-editor-foreground);
+        background-color: var(--vscode-editor-background);
     }
 
     .run-row *:global(.droppable) {
@@ -375,18 +348,24 @@
     {/if}
 </div>
 
-<dialog id="RunNameDialog" bind:this={runNameDialog}>
-    <h3>Enter Run Name</h3>
-    <div style="margin-bottom: 6px;">
+<dialog
+    id="NameInputDialog"
+    bind:this={nameInputDialog}
+    on:cancel={onNameChange}>
+    <h3 style="margin-top: -10px;">Enter Run Name</h3>
+    <div style="margin-bottom: 10px">
         <input
-            bind:this={runNameInput}
+            id="NameInput"
+            bind:this={nameInput}
             placeholder="Enter run name"
             style="width: 100%;"
-            bind:value={runNameDialogValue} />
+            on:focus={() => nameInput.select()}
+            on:keydown={(e) => e.key === 'Enter' && onNameChange(e)} />
     </div>
     <div class="button-group horizontal-container">
-        <vscode-button id="OK" on:click={this.click}>OK</vscode-button>
-        <vscode-button id="Cancel" on:click={this.click}>Cancel</vscode-button>
+        <vscode-button id="OK" on:click={onNameChange}>OK</vscode-button>
+        <vscode-button id="Cancel" on:click={onNameChange}
+            >Cancel</vscode-button>
     </div>
 </dialog>
 
@@ -395,5 +374,12 @@
     <div class="button-group horizontal-container">
         <vscode-button id="YES" on:click={this.click}>YES</vscode-button>
         <vscode-button id="NO" on:click={this.click}>NO</vscode-button>
+    </div>
+</dialog>
+
+<dialog id="alertDialog" bind:this={alertDialog}>
+    <h3>{alertMessage}</h3>
+    <div class="button-group horizontal-container">
+        <vscode-button id="OK" on:click={alertDialog.close()}>OK</vscode-button>
     </div>
 </dialog>
