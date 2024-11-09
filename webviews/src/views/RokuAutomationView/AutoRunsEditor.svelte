@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Trash, Copy, TriangleDown } from 'svelte-codicons';
+    import { Trash, Copy, Menu } from 'svelte-codicons';
     import { dropzone, draggable } from './dnd';
 
     type Step = { type: string; value: string };
@@ -270,7 +270,7 @@
         <vscode-button
             id="selection-button"
             title="Edit Runs"
-            on:click={toggleDropDown}><TriangleDown /></vscode-button>
+            on:click={toggleDropDown}><Menu /></vscode-button>
     </div>
     {#if showContent}
         <div id="content-container">
