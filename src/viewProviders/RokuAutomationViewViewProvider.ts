@@ -93,7 +93,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     }
 
     private isRecording = false;
-    private selectedConfig;
+    private selectedConfig: string;
     private rokuAutomationConfigs: {
         name: string;
         steps: {
