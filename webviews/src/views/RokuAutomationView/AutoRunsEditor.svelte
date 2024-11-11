@@ -1,6 +1,9 @@
 <script lang="ts">
-    import { Trash, Copy, Menu } from 'svelte-codicons';
+    import { Copy, DebugStart, DebugStop, Menu, Trash } from 'svelte-codicons';
     import { dropzone, draggable } from './dnd';
+    import { intermediary } from '../../ExtensionIntermediary';
+    import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
     type Step = { type: string; value: string };
     type Run = { name?: string; steps?: Step[] };
@@ -19,6 +22,13 @@
     let confirmMessage: string;
     let confirmDone: Callback;
     let showContent: boolean = false;
+    let activeRun: string = null;
+
+    intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
+        if (message.context.step === -1) {
+            activeRun = null;
+        }
+    });
 
     function toggleDropDown() {
         showContent = !showContent;
@@ -27,6 +37,26 @@
     function selectRun(e) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
+    }
+
+    function startRun(e) {
+        if (!activeRun) {
+            selectedRun = getRunFromEvent(e);
+            activeRun = selectedRun;
+            intermediary.sendCommand(ViewProviderCommand.runRokuAutomationConfig, {
+                configIndex: getRunIndex().toString()
+            });
+        }
+    }
+
+    function stopRun(e) {
+        const run = getRunFromEvent(e);
+        if (activeRun === run) {
+            selectedRun = run;
+            intermediary.sendCommand(ViewProviderCommand.stopRokuAutomationConfig, {
+                configIndex: getRunIndex().toString()
+            });
+        }
     }
 
     function moveSelection(e) {
@@ -151,6 +181,10 @@
         e.stopPropagation();
         return e.target.closest('tr').title;
     }
+
+    function getRunIndex() {
+        return (runs ?? []).findIndex((r) => r.name === selectedRun)
+    };
 </script>
 
 <style>
@@ -326,6 +360,26 @@
                                     aria-label={run.name}>
                                     <Trash />
                                 </vscode-button>
+                            {#if !activeRun || activeRun !== run.name}
+                                <vscode-button
+                                    id="play-start-button"
+                                    title={`Start '${run.name}'`}
+                                    on:click={startRun}
+                                    appearance="icon"
+                                    disabled={activeRun && activeRun !== run.name}
+                                    aria-label={run.name}>
+                                    <DebugStart />
+                                </vscode-button>
+                            {:else}
+                                <vscode-button
+                                    id="play-stop-button"
+                                    title={`Stop '${run.name}'`}
+                                    on:click={stopRun}
+                                    appearance="icon"
+                                    aria-label={run.name}>
+                                    <DebugStop />
+                                </vscode-button>
+                            {/if}
                             </td>
                         </tr>
                     {/each}
