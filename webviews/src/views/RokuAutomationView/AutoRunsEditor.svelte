@@ -12,7 +12,7 @@
     export let runs: Run[];
     export let selectedRun: string;
 
-    let runTable: any;
+    let runTable: HTMLTableElement;
     let nameInput: HTMLInputElement;
     let nameInputDialog: HTMLDialogElement;
     let nameInputDone: Callback;
@@ -34,12 +34,12 @@
         showContent = !showContent;
     }
 
-    function selectRun(e) {
+    function selectRun(e: MouseEvent) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
     }
 
-    function startRun(e) {
+    function startRun(e: MouseEvent) {
         if (!activeRun) {
             selectedRun = getRunFromEvent(e);
             activeRun = selectedRun;
@@ -49,7 +49,7 @@
         }
     }
 
-    function stopRun(e) {
+    function stopRun(e: MouseEvent) {
         const run = getRunFromEvent(e);
         if (activeRun === run) {
             selectedRun = run;
@@ -59,7 +59,7 @@
         }
     }
 
-    function moveSelection(e) {
+    function moveSelection(e: KeyboardEvent) {
         if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
             const index: number =
                 runs.findIndex((r) => r.name === selectedRun) +
@@ -68,7 +68,7 @@
         }
     }
 
-    async function copyRun(e) {
+    async function copyRun(e: MouseEvent) {
         const run: string = getRunFromEvent(e);
         const runName: string = await showNameInputDialog(
             run,
@@ -84,7 +84,7 @@
         }
     }
 
-    async function deleteRun(e) {
+    async function deleteRun(e: MouseEvent) {
         const run: string = getRunFromEvent(e);
         if (await showConfirmDeleteDialog(run)) {
             runs = runs.filter((r) => r.name !== run);
@@ -92,7 +92,7 @@
         confirmDialog.close();
     }
 
-    function moveRun(runName, index) {
+    function moveRun(runName: string, index: number) {
         let currIndex: number = runs.findIndex((r) => r.name === runName);
         if (
             currIndex < 0 ||
@@ -112,9 +112,9 @@
         runs = newRunList;
     }
 
-    async function renameRun(e) {
+    async function renameRun(e: Event) {
         const run: string = getRunFromEvent(e);
-        const runName = await showNameInputDialog(run, `Copy of ${run}`);
+        const runName = await showNameInputDialog(run, run);
         if (runName) {
             runs.find((r) => r.name === run).name = runName;
             runs = runs;
@@ -143,8 +143,8 @@
     }
 
     async function showNameInputDialog(
-        targetRun = '',
-        defaultText = ''
+        targetRun: string = '',
+        defaultText: string = ''
     ): Promise<string> {
         return new Promise((resolve) => {
             selectedRun = targetRun;
@@ -154,7 +154,7 @@
         });
     }
 
-    function onNameChange(e) {
+    function onNameChange(e: any) {
         const name: string = nameInput.value;
         const isValidName: boolean = name && !runs.find((r) => r.name === name);
         const source: string = e.target.tagName;
@@ -177,7 +177,7 @@
         nameInputDone(retval);
     }
 
-    function getRunFromEvent(e) {
+    function getRunFromEvent(e: any) {
         e.stopPropagation();
         return e.target.closest('tr').title;
     }
