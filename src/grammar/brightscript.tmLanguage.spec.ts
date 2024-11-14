@@ -535,6 +535,246 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('handles named function declarations', async () => {
+        await testGrammar(`
+             sub write()
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write ()
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write() as string
+            '               ^^^^^^ storage.type.brs
+            '            ^^ keyword.control.brs
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write(param as function) as string
+            '                                ^^^^^^ storage.type.brs
+            '                             ^^ keyword.control.brs
+            '                   ^^^^^^^^ storage.type.brs
+            '                ^^ keyword.control.brs
+            '          ^^^^^ entity.name.variable.local.brs
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles named public/protected/private function declarations', async () => {
+        await testGrammar(`
+             public sub write()
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             protected sub write()
+            '              ^^^^^ entity.name.function.brs
+            '          ^^^ keyword.declaration.function.brs
+            '^^^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             private sub write()
+            '            ^^^^^ entity.name.function.brs
+            '        ^^^ keyword.declaration.function.brs
+            '^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public sub write() as string
+            '                      ^^^^^^ storage.type.brs
+            '                   ^^ keyword.control.brs
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public sub write(param as function) as string
+            '                                       ^^^^^^ storage.type.brs
+            '                                    ^^ keyword.control.brs
+            '                          ^^^^^^^^ storage.type.brs
+            '                       ^^ keyword.control.brs
+            '                 ^^^^^ entity.name.variable.local.brs
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles named public/protected/private with override function declarations', async () => {
+        await testGrammar(`
+             public override sub write()
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             protected override sub write()
+            '                       ^^^^^ entity.name.function.brs
+            '                   ^^^ keyword.declaration.function.brs
+            '          ^^^^^^^^ storage.modifier.brs
+            '^^^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             private override sub write()
+            '                     ^^^^^ entity.name.function.brs
+            '                 ^^^ keyword.declaration.function.brs
+            '        ^^^^^^^^ storage.modifier.brs
+            '^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public override sub write() as string
+            '                               ^^^^^^ storage.type.brs
+            '                            ^^ keyword.control.brs
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public override sub write(param as function) as string
+            '                                                ^^^^^^ storage.type.brs
+            '                                             ^^ keyword.control.brs
+            '                                   ^^^^^^^^ storage.type.brs
+            '                                ^^ keyword.control.brs
+            '                          ^^^^^ entity.name.variable.local.brs
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles anon function declarations', async () => {
+        await testGrammar(`
+             var = function ()
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function()
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function() as string
+            '                    ^^^^^^ storage.type.brs
+            '                 ^^ keyword.control.brs
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function(param as function) as string
+            '                                     ^^^^^^ storage.type.brs
+            '                                  ^^ keyword.control.brs
+            '                        ^^^^^^^^ storage.type.brs
+            '                     ^^ keyword.control.brs
+            '               ^^^^^ entity.name.variable.local.brs
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = {
+                name: function() as string
+              '                     ^^^^^^ storage.type.brs
+              '                  ^^ keyword.control.brs
+              '       ^^^^^^^^ keyword.declaration.function.brs
+
+               end function
+              '^^^^^^^ keyword.declaration.function.brs
+             }
+        `);
+
+        await testGrammar(`
+             var = {
+                name: function(param as function) as string
+              '                                      ^^^^^^ storage.type.brs
+              '                                   ^^ keyword.control.brs
+              '                         ^^^^^^^^ storage.type.brs
+              '                      ^^ keyword.control.brs
+              '                ^^^^^ entity.name.variable.local.brs
+              '       ^^^^^^^^ keyword.declaration.function.brs
+
+               end function
+              '^^^^^^^ keyword.declaration.function.brs
+             }
+        `);
+    });
+
     it.skip('colorizes class fields properly', async () => {
         //TODO the properties have the wrong scope...this should get fixed when we improve the class textmate scope flow
         await testGrammar(`
