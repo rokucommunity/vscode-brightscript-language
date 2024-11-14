@@ -583,7 +583,6 @@ describe('brightscript.tmlanguage.json', () => {
     });
 });
 
-
 const registries = new Cache();
 async function testGrammar(testCaseText: string) {
     testCaseText = `' SYNTAX TEST "source.brs"  +AllowMiddleLineAssertions` + testCaseText;
