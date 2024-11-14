@@ -510,7 +510,7 @@
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function))(?:\\s+(?:\\(|([a-z_][a-z0-9_]*))))"
         },
         "field": {
             "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
@@ -731,7 +731,7 @@
                     "name": "entity.name.function.brs"
                 }
             },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?)"
+            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function))(?:\\s+(?:\\(|([a-z_][a-z0-9_]*))))"
         },
         "end_function": {
             "name": "keyword.declaration.function.brs",
