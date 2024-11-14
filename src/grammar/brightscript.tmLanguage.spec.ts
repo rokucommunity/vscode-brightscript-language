@@ -6,6 +6,73 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors numerics correctly', async () => {
+        await testGrammar(`
+            var = 1
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 1.1
+           '        ^ constant.numeric.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = .1
+           '       ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0x2
+           '      ^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 1.8e+308
+           '      ^^^^^^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0x2
+           '      ^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0%
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0!
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0#
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0&
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+    });
+
     it('colors m, m.top, m.global, and super correctly', async () => {
         await testGrammar(`
             super.doSomething()

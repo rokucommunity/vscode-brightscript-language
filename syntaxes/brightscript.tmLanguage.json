@@ -83,6 +83,9 @@
                     "include": "#function_call"
                 },
                 {
+                    "include": "#numeric_literal"
+                },
+                {
                     "include": "#object_properties"
                 },
                 {
@@ -581,8 +584,7 @@
                     ]
                 },
                 {
-                    "match": "\\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\\.?[0-9]*)|(\\.[0-9]+))((e|E)(\\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f)?\\b",
-                    "name": "constant.numeric.brs"
+                    "include": "#numeric_literal"
                 },
                 {
                     "patterns": [
@@ -603,6 +605,14 @@
                         }
                     },
                     "match": "(?i:\\b(invalid)\\b)"
+                }
+            ]
+        },
+        "numeric_literal": {
+            "patterns": [
+                {
+                    "match": "\\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\\.?[0-9]*)|(\\.[0-9]+))((e|E)(\\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f)?\\b",
+                    "name": "constant.numeric.brs"
                 }
             ]
         },
