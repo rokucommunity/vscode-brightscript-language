@@ -553,6 +553,101 @@ describe('brightscript.tmlanguage.json', () => {
             end class
         `);
     });
+
+    it('colorizes class_roku_builtin correctly', async () => {
+        async function testRokuClass (className: string) {
+            return testGrammar(`
+                var = createObject("${className}")
+               '                    ${'^'.repeat(className.length)} support.class.brs
+               '      ^^^^^^^^^^^^ entity.name.function.brs
+               '^^^ entity.name.variable.local.brs
+            `);
+        }
+
+        await testRokuClass('roAppInfo');
+        await testRokuClass('roAppManager');
+        await testRokuClass('roAppMemoryMonitor');
+        await testRokuClass('roAppMemoryMonitorEvent');
+        await testRokuClass('roArray');
+        await testRokuClass('roAssociativeArray');
+        await testRokuClass('roAudioGuide');
+        await testRokuClass('roAudioMetadata');
+        await testRokuClass('roAudioPlayer');
+        await testRokuClass('roAudioPlayerEvent');
+        await testRokuClass('roAudioResource');
+        await testRokuClass('roBitmap');
+        await testRokuClass('roBoolean');
+        await testRokuClass('roByteArray');
+        await testRokuClass('roCECStatus');
+        await testRokuClass('roCECStatusEvent');
+        await testRokuClass('roChannelStore');
+        await testRokuClass('roChannelStoreEvent');
+        await testRokuClass('roCompositor');
+        await testRokuClass('roDataGramSocket');
+        await testRokuClass('roDateTime');
+        await testRokuClass('roDeviceCrypto');
+        await testRokuClass('roDeviceInfo');
+        await testRokuClass('roDeviceInfoEvent');
+        await testRokuClass('roDouble');
+        await testRokuClass('roDsa');
+        await testRokuClass('roEVPCipher');
+        await testRokuClass('roEVPDigest');
+        await testRokuClass('roFileSystem');
+        await testRokuClass('roFileSystemEvent');
+        await testRokuClass('roFloat');
+        await testRokuClass('roFont');
+        await testRokuClass('roFontRegistry');
+        await testRokuClass('roFunction');
+        await testRokuClass('roHdmiStatus');
+        await testRokuClass('roHdmiStatusEvent');
+        await testRokuClass('roHMAC');
+        await testRokuClass('roHttpAgent');
+        await testRokuClass('roImageMetaData');
+        await testRokuClass('roInput');
+        await testRokuClass('roInputEvent');
+        await testRokuClass('roInt');
+        await testRokuClass('roInvalid');
+        await testRokuClass('roList');
+        await testRokuClass('roLocalization');
+        await testRokuClass('roLongInteger');
+        await testRokuClass('roMessagePort');
+        await testRokuClass('roMicrophone');
+        await testRokuClass('roMicrophoneEvent');
+        await testRokuClass('roPath');
+        await testRokuClass('roProgramGuide');
+        await testRokuClass('roRegex');
+        await testRokuClass('roRegion');
+        await testRokuClass('roRegistry');
+        await testRokuClass('roRegistrySection');
+        await testRokuClass('roRemoteInfo');
+        await testRokuClass('roRSA');
+        await testRokuClass('roScreen');
+        await testRokuClass('roSGNode');
+        await testRokuClass('roSGNodeEvent');
+        await testRokuClass('roSGScreen');
+        await testRokuClass('roSGScreenEvent');
+        await testRokuClass('roSocketAddress');
+        await testRokuClass('roSocketEvent');
+        await testRokuClass('roSprite');
+        await testRokuClass('roStreamSocket');
+        await testRokuClass('roString');
+        await testRokuClass('roSystemlog');
+        await testRokuClass('roSystemLogEvent');
+        await testRokuClass('roTextToSpeech');
+        await testRokuClass('roTextToSpeechEvent');
+        await testRokuClass('roTextureManager');
+        await testRokuClass('roTextureRequest');
+        await testRokuClass('roTextureRequestEvent');
+        await testRokuClass('roTimespan');
+        await testRokuClass('roUniversalControlEvent');
+        await testRokuClass('roUrlEvent');
+        await testRokuClass('roUrlTransfer');
+        await testRokuClass('roVideoPlayer');
+        await testRokuClass('roVideoPlayerEvent');
+        await testRokuClass('roXMLElement');
+        await testRokuClass('roXMLList');
+
+    });
 });
 
 const registries = new Cache();
