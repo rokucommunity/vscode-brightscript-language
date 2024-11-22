@@ -177,7 +177,7 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('pressVolumeUp', async () => {
-            await this.sendRemoteCommand('FindVolumeUp');
+            await this.sendRemoteCommand('VolumeUp');
         });
 
         this.registerCommand('pressPowerOff', async () => {
