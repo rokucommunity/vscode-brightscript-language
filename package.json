@@ -177,6 +177,7 @@
         "onCommand:extension.brightscript.pressVolumeDown",
         "onCommand:extension.brightscript.pressVolumeMute",
         "onCommand:extension.brightscript.pressVolumeUp",
+        "onCommand:extension.brightscript.setVolume",
         "onCommand:extension.brightscript.pressPowerOff",
         "onCommand:extension.brightscript.pressChannelUp",
         "onCommand:extension.brightscript.pressChannelDown",
@@ -2855,6 +2856,12 @@
             {
                 "command": "extension.brightscript.pressVolumeUp",
                 "title": "Press the VolumeUp button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.setVolume",
+                "title": "Set a target volume level by repeatedly pressing VolumeDown followed by VolumeUp buttons on the Roku remote",
+                "shortTitle": "Set Volume target volume level",
                 "category": "Brightscript"
             },
             {
