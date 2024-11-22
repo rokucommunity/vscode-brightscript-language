@@ -177,9 +177,15 @@
         "onCommand:extension.brightscript.pressVolumeDown",
         "onCommand:extension.brightscript.pressVolumeMute",
         "onCommand:extension.brightscript.pressVolumeUp",
+        "onCommand:extension.brightscript.setVolume",
         "onCommand:extension.brightscript.pressPowerOff",
         "onCommand:extension.brightscript.pressChannelUp",
         "onCommand:extension.brightscript.pressChannelDown",
+        "onCommand:extension.brightscript.pressBlue",
+        "onCommand:extension.brightscript.pressGreen",
+        "onCommand:extension.brightscript.pressRed",
+        "onCommand:extension.brightscript.pressYellow",
+        "onCommand:extension.brightscript.pressExit",
         "onCommand:extension.brightscript.changeTvInput",
         "onCommand:extension.brightscript.sendRemoteText",
         "onCommand:brighterscript.showPreview",
@@ -2858,6 +2864,12 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.setVolume",
+                "title": "Set the volume on a volume-enabled Roku device to the specified value (0-100)",
+                "shortTitle": "Set Volume target volume level",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressPowerOff",
                 "title": "Press the PowerOff button on the Roku remote",
                 "category": "Brightscript"
@@ -2875,6 +2887,31 @@
             {
                 "command": "extension.brightscript.pressChannelDown",
                 "title": "Press the ChannelDown button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressBlue",
+                "title": "Press the Blue button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressGreen",
+                "title": "Press the Green button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressRed",
+                "title": "Press the Red button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressYellow",
+                "title": "Press the Yellow button on the Roku remote",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.pressExit",
+                "title": "Press the Exit button on the Roku remote",
                 "category": "Brightscript"
             },
             {

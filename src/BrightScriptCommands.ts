@@ -177,7 +177,47 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('pressVolumeUp', async () => {
-            await this.sendRemoteCommand('FindVolumeUp');
+            await this.sendRemoteCommand('VolumeUp');
+        });
+
+        this.registerCommand('setVolume', async () => {
+            let result = await vscode.window.showInputBox({
+                placeHolder: 'The target volume level (0-100)',
+                value: '',
+                validateInput: (text: string) => {
+                    const num = Number(text);
+                    if (isNaN(num)) {
+                        return 'Value must be a number';
+                    } else if (num < 0 || num > 100) {
+                        return 'Please enter a number between 0 and 100';
+                    }
+                    return null;
+                }
+            });
+            const targetVolume = Number(result);
+
+            if (!isNaN(targetVolume)) {
+                await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Setting volume'
+                }, async (progress) => {
+                    const totalCommands = 100 + targetVolume;
+                    const incrementValue = 100 / totalCommands;
+                    let executedCommands = 0;
+
+                    for (let i = 0; i < 100; i++) {
+                        await this.sendRemoteCommand('VolumeDown');
+                        executedCommands++;
+                        progress.report({ increment: incrementValue, message: `decreasing volume - ${Math.round((executedCommands / totalCommands) * 100)}%` });
+                    }
+
+                    for (let i = 0; i < targetVolume; i++) {
+                        await this.sendRemoteCommand('VolumeUp');
+                        executedCommands++;
+                        progress.report({ increment: incrementValue, message: `increasing volume - ${Math.round((executedCommands / totalCommands) * 100)}%` });
+                    }
+                });
+            }
         });
 
         this.registerCommand('pressPowerOff', async () => {
@@ -194,6 +234,26 @@ export class BrightScriptCommands {
 
         this.registerCommand('pressChannelDown', async () => {
             await this.sendRemoteCommand('ChannelDown');
+        });
+
+        this.registerCommand('pressBlue', async () => {
+            await this.sendRemoteCommand('Blue');
+        });
+
+        this.registerCommand('pressGreen', async () => {
+            await this.sendRemoteCommand('Green');
+        });
+
+        this.registerCommand('pressRed', async () => {
+            await this.sendRemoteCommand('Red');
+        });
+
+        this.registerCommand('pressYellow', async () => {
+            await this.sendRemoteCommand('Yellow');
+        });
+
+        this.registerCommand('pressExit', async () => {
+            await this.sendRemoteCommand('Exit');
         });
 
         this.registerCommand('changeTvInput', async (host?: string) => {
