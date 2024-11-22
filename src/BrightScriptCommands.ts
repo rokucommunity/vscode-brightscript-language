@@ -236,6 +236,26 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand('ChannelDown');
         });
 
+        this.registerCommand('pressBlue', async () => {
+            await this.sendRemoteCommand('Blue');
+        });
+
+        this.registerCommand('pressGreen', async () => {
+            await this.sendRemoteCommand('Green');
+        });
+
+        this.registerCommand('pressRed', async () => {
+            await this.sendRemoteCommand('Red');
+        });
+
+        this.registerCommand('pressYellow', async () => {
+            await this.sendRemoteCommand('Yellow');
+        });
+
+        this.registerCommand('pressExit', async () => {
+            await this.sendRemoteCommand('Exit');
+        });
+
         this.registerCommand('changeTvInput', async (host?: string) => {
             const selectedInput = await vscode.window.showQuickPick([
                 'InputHDMI1',
