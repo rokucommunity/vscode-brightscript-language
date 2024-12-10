@@ -17,6 +17,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         super(context, dependencies);
 
         this.addMessageCommandCallback(ViewProviderCommand.storeRokuAutomationConfigs, async (message) => {
+            this.selectedConfig = message.context.selectedConfig;
             this.rokuAutomationConfigs = message.context.configs;
             // Make sure to use JSON.stringify or weird stuff happens
             await context.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(message.context));
@@ -25,7 +26,12 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
         this.addMessageCommandCallback(ViewProviderCommand.runRokuAutomationConfig, async (message) => {
             const index = message.context.configIndex;
-            await this.runRokuAutomationConfig(index);
+            try {
+                await this.runRokuAutomationConfig(index);
+            } catch (e) {
+                this.updateCurrentRunningStep(-1);
+                throw e;
+            }
             return true;
         });
 
@@ -87,6 +93,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     }
 
     private isRecording = false;
+    private selectedConfig: string;
     private rokuAutomationConfigs: {
         name: string;
         steps: {
@@ -153,10 +160,12 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         const json = this.extensionContext.workspaceState.get(WorkspaceStateKey.rokuAutomationConfigs);
         if (typeof json === 'string') {
             const result = JSON.parse(json);
+            this.selectedConfig = result.selectedConfig;
             this.rokuAutomationConfigs = result.configs;
         }
 
         const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
+            selectedConfig: this.selectedConfig,
             configs: this.rokuAutomationConfigs
         });
 
