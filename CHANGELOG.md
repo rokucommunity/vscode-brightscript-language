@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.50.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.4...v2.50.5) - 2024-11-06
+### Changed
+ - Show multi-line lsp progress details ([#600](https://github.com/rokucommunity/vscode-brightscript-language/pull/600))
+### Fixed
+ - Fix bug with m.top colorization ([#601](https://github.com/rokucommunity/vscode-brightscript-language/pull/601))
+
+
+
 ## [2.50.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.3...v2.50.4) - 2024-10-18
 ### Added
  - ability to set a device as the current active device via the Deive tree view. ([#597](https://github.com/rokucommunity/vscode-brightscript-language/pull/597))

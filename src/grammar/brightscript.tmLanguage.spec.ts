@@ -6,6 +6,73 @@ import { standardizePath as s } from 'brighterscript';
 const brightscriptTmlanguagePath = s`${__dirname}/../../syntaxes/brightscript.tmLanguage.json`;
 
 describe('brightscript.tmlanguage.json', () => {
+    it('colors numerics correctly', async () => {
+        await testGrammar(`
+            var = 1
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 1.1
+           '        ^ constant.numeric.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = .1
+           '       ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0x2
+           '      ^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 1.8e+308
+           '      ^^^^^^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0x2
+           '      ^^^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0%
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0!
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0#
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+            var = 0&
+           '       ^ source.brs
+           '      ^ constant.numeric.brs
+           '^^^ entity.name.variable.local.brs
+       `);
+    });
+
     it('colors m, m.top, m.global, and super correctly', async () => {
         await testGrammar(`
             super.doSomething()
@@ -27,6 +94,27 @@ describe('brightscript.tmlanguage.json', () => {
         await testGrammar(`
             m.top.visible = true
            '  ^^^ keyword.other.this.brs
+           '^ keyword.other.this.brs
+       `);
+    });
+
+    it('does not color `top` as a variable name', async () => {
+        await testGrammar(`
+            top = true
+           '^^^ entity.name.variable.local.brs
+        `);
+    });
+
+    it('does not color `top` when part of another variable name', async () => {
+        await testGrammar(`
+             m.top1 = true
+            '  ^^^^ variable.other.object.property.brs
+            '^ keyword.other.this.brs
+        `);
+
+        await testGrammar(`
+            m.1top = true
+           '  ^^^^ variable.other.object.property.brs
            '^ keyword.other.this.brs
        `);
     });
@@ -447,6 +535,246 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it('handles named function declarations', async () => {
+        await testGrammar(`
+             sub write()
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write ()
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write() as string
+            '               ^^^^^^ storage.type.brs
+            '            ^^ keyword.control.brs
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             sub write(param as function) as string
+            '                                ^^^^^^ storage.type.brs
+            '                             ^^ keyword.control.brs
+            '                   ^^^^^^^^ storage.type.brs
+            '                ^^ keyword.control.brs
+            '          ^^^^^ entity.name.variable.local.brs
+            '    ^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles named public/protected/private function declarations', async () => {
+        await testGrammar(`
+             public sub write()
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             protected sub write()
+            '              ^^^^^ entity.name.function.brs
+            '          ^^^ keyword.declaration.function.brs
+            '^^^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             private sub write()
+            '            ^^^^^ entity.name.function.brs
+            '        ^^^ keyword.declaration.function.brs
+            '^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public sub write() as string
+            '                      ^^^^^^ storage.type.brs
+            '                   ^^ keyword.control.brs
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public sub write(param as function) as string
+            '                                       ^^^^^^ storage.type.brs
+            '                                    ^^ keyword.control.brs
+            '                          ^^^^^^^^ storage.type.brs
+            '                       ^^ keyword.control.brs
+            '                 ^^^^^ entity.name.variable.local.brs
+            '           ^^^^^ entity.name.function.brs
+            '       ^^^ keyword.declaration.function.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles named public/protected/private with override function declarations', async () => {
+        await testGrammar(`
+             public override sub write()
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             protected override sub write()
+            '                       ^^^^^ entity.name.function.brs
+            '                   ^^^ keyword.declaration.function.brs
+            '          ^^^^^^^^ storage.modifier.brs
+            '^^^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             private override sub write()
+            '                     ^^^^^ entity.name.function.brs
+            '                 ^^^ keyword.declaration.function.brs
+            '        ^^^^^^^^ storage.modifier.brs
+            '^^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public override sub write() as string
+            '                               ^^^^^^ storage.type.brs
+            '                            ^^ keyword.control.brs
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             public override sub write(param as function) as string
+            '                                                ^^^^^^ storage.type.brs
+            '                                             ^^ keyword.control.brs
+            '                                   ^^^^^^^^ storage.type.brs
+            '                                ^^ keyword.control.brs
+            '                          ^^^^^ entity.name.variable.local.brs
+            '                    ^^^^^ entity.name.function.brs
+            '                ^^^ keyword.declaration.function.brs
+            '       ^^^^^^^^ storage.modifier.brs
+            '^^^^^^ storage.modifier.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles anon function declarations', async () => {
+        await testGrammar(`
+             var = function ()
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function()
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function() as string
+            '                    ^^^^^^ storage.type.brs
+            '                 ^^ keyword.control.brs
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = function(param as function) as string
+            '                                     ^^^^^^ storage.type.brs
+            '                                  ^^ keyword.control.brs
+            '                        ^^^^^^^^ storage.type.brs
+            '                     ^^ keyword.control.brs
+            '               ^^^^^ entity.name.variable.local.brs
+            '      ^^^^^^^^ keyword.declaration.function.brs
+            '^^^ entity.name.variable.local.brs
+
+             end function
+            '^^^^^^^ keyword.declaration.function.brs
+        `);
+
+        await testGrammar(`
+             var = {
+                name: function() as string
+              '                     ^^^^^^ storage.type.brs
+              '                  ^^ keyword.control.brs
+              '       ^^^^^^^^ keyword.declaration.function.brs
+
+               end function
+              '^^^^^^^ keyword.declaration.function.brs
+             }
+        `);
+
+        await testGrammar(`
+             var = {
+                name: function(param as function) as string
+              '                                      ^^^^^^ storage.type.brs
+              '                                   ^^ keyword.control.brs
+              '                         ^^^^^^^^ storage.type.brs
+              '                      ^^ keyword.control.brs
+              '                ^^^^^ entity.name.variable.local.brs
+              '       ^^^^^^^^ keyword.declaration.function.brs
+
+               end function
+              '^^^^^^^ keyword.declaration.function.brs
+             }
+        `);
+    });
+
     it.skip('colorizes class fields properly', async () => {
         //TODO the properties have the wrong scope...this should get fixed when we improve the class textmate scope flow
         await testGrammar(`
@@ -464,6 +792,101 @@ describe('brightscript.tmlanguage.json', () => {
                 '^^^ entity.name.variable.local.brs
             end class
         `);
+    });
+
+    it('colorizes class_roku_builtin correctly', async () => {
+        async function testRokuClass (className: string) {
+            return testGrammar(`
+                var = createObject("${className}")
+               '                    ${'^'.repeat(className.length)} support.class.brs
+               '      ^^^^^^^^^^^^ entity.name.function.brs
+               '^^^ entity.name.variable.local.brs
+            `);
+        }
+
+        await testRokuClass('roAppInfo');
+        await testRokuClass('roAppManager');
+        await testRokuClass('roAppMemoryMonitor');
+        await testRokuClass('roAppMemoryMonitorEvent');
+        await testRokuClass('roArray');
+        await testRokuClass('roAssociativeArray');
+        await testRokuClass('roAudioGuide');
+        await testRokuClass('roAudioMetadata');
+        await testRokuClass('roAudioPlayer');
+        await testRokuClass('roAudioPlayerEvent');
+        await testRokuClass('roAudioResource');
+        await testRokuClass('roBitmap');
+        await testRokuClass('roBoolean');
+        await testRokuClass('roByteArray');
+        await testRokuClass('roCECStatus');
+        await testRokuClass('roCECStatusEvent');
+        await testRokuClass('roChannelStore');
+        await testRokuClass('roChannelStoreEvent');
+        await testRokuClass('roCompositor');
+        await testRokuClass('roDataGramSocket');
+        await testRokuClass('roDateTime');
+        await testRokuClass('roDeviceCrypto');
+        await testRokuClass('roDeviceInfo');
+        await testRokuClass('roDeviceInfoEvent');
+        await testRokuClass('roDouble');
+        await testRokuClass('roDsa');
+        await testRokuClass('roEVPCipher');
+        await testRokuClass('roEVPDigest');
+        await testRokuClass('roFileSystem');
+        await testRokuClass('roFileSystemEvent');
+        await testRokuClass('roFloat');
+        await testRokuClass('roFont');
+        await testRokuClass('roFontRegistry');
+        await testRokuClass('roFunction');
+        await testRokuClass('roHdmiStatus');
+        await testRokuClass('roHdmiStatusEvent');
+        await testRokuClass('roHMAC');
+        await testRokuClass('roHttpAgent');
+        await testRokuClass('roImageMetaData');
+        await testRokuClass('roInput');
+        await testRokuClass('roInputEvent');
+        await testRokuClass('roInt');
+        await testRokuClass('roInvalid');
+        await testRokuClass('roList');
+        await testRokuClass('roLocalization');
+        await testRokuClass('roLongInteger');
+        await testRokuClass('roMessagePort');
+        await testRokuClass('roMicrophone');
+        await testRokuClass('roMicrophoneEvent');
+        await testRokuClass('roPath');
+        await testRokuClass('roProgramGuide');
+        await testRokuClass('roRegex');
+        await testRokuClass('roRegion');
+        await testRokuClass('roRegistry');
+        await testRokuClass('roRegistrySection');
+        await testRokuClass('roRemoteInfo');
+        await testRokuClass('roRSA');
+        await testRokuClass('roScreen');
+        await testRokuClass('roSGNode');
+        await testRokuClass('roSGNodeEvent');
+        await testRokuClass('roSGScreen');
+        await testRokuClass('roSGScreenEvent');
+        await testRokuClass('roSocketAddress');
+        await testRokuClass('roSocketEvent');
+        await testRokuClass('roSprite');
+        await testRokuClass('roStreamSocket');
+        await testRokuClass('roString');
+        await testRokuClass('roSystemlog');
+        await testRokuClass('roSystemLogEvent');
+        await testRokuClass('roTextToSpeech');
+        await testRokuClass('roTextToSpeechEvent');
+        await testRokuClass('roTextureManager');
+        await testRokuClass('roTextureRequest');
+        await testRokuClass('roTextureRequestEvent');
+        await testRokuClass('roTimespan');
+        await testRokuClass('roUniversalControlEvent');
+        await testRokuClass('roUrlEvent');
+        await testRokuClass('roUrlTransfer');
+        await testRokuClass('roVideoPlayer');
+        await testRokuClass('roVideoPlayerEvent');
+        await testRokuClass('roXMLElement');
+        await testRokuClass('roXMLList');
+
     });
 });
 
