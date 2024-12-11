@@ -279,6 +279,11 @@ export class LanguageServerManager {
         return this.ready();
     }
 
+    /**
+     * How many milliseconds to wait before showing a warning about the LSP being busy for too long
+     */
+    private busyStatusWarningThreshold = 60_000;
+
     private registerBusyStatusHandler() {
         let timeoutHandle: NodeJS.Timeout;
 
@@ -287,19 +292,19 @@ export class LanguageServerManager {
             console.log(event);
             this.updateStatusbar(event.status === BusyStatus.busy, event.activeRuns);
 
+            //clear any existing timeout
+            if (timeoutHandle) {
+                clearTimeout(timeoutHandle);
+            }
+
             //if the busy status takes too long, write a lsp log entry with details of what's still pending
             if (event.status === BusyStatus.busy) {
                 timeoutHandle = setTimeout(() => {
                     const delay = Date.now() - event.timestamp;
                     this.client.outputChannel.appendLine(`${logger.formatTimestamp(new Date())} language server has been 'busy' for ${delay}ms. most recent busyStatus event: ${JSON.stringify(event, undefined, 4)}`);
-                }, 60_000);
-
-                //clear any existing timeout
-            } else if (timeoutHandle) {
-                clearTimeout(timeoutHandle);
+                }, this.busyStatusWarningThreshold);
             }
         });
-
     }
 
     /**

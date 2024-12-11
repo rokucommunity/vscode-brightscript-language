@@ -4,9 +4,9 @@ import { LanguageServerManager } from './LanguageServerManager';
 import { expect } from 'chai';
 import { DefinitionRepository } from './DefinitionRepository';
 import { DeclarationProvider } from './DeclarationProvider';
-import type { ExtensionContext } from 'vscode';
+import type { ExtensionContext, Disposable } from 'vscode';
 import * as path from 'path';
-import { Deferred, standardizePath as s } from 'brighterscript';
+import { BusyStatus, Deferred, standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import URI from 'vscode-uri';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
@@ -523,6 +523,35 @@ describe('LanguageServerManager', () => {
                 prj1:
                 \tscoped-validate (since ${dateText})
             `);
+        });
+    });
+
+    describe('registerBusyStatusHandler', () => {
+        it('resets the timer anytime we get a new busy status', async () => {
+            languageServerManager['busyStatusWarningThreshold'] = 100;
+
+            let handler: any;
+            const client = {
+                onNotification: (method, h) => {
+                    handler = h;
+                    return undefined as Disposable;
+                },
+                outputChannel: {
+                    appendLine: sinon.stub()
+                }
+            };
+            languageServerManager['client'] = client as any;
+
+            languageServerManager['registerBusyStatusHandler']();
+
+            handler({ status: BusyStatus.busy });
+            handler({ status: BusyStatus.busy });
+            handler({ status: BusyStatus.busy });
+            handler({ status: BusyStatus.busy });
+
+            await util.sleep(200);
+            //we should only have 1 console print (for the final busy event we sent)
+            expect(client.outputChannel.appendLine.callCount).to.eql(1);
         });
     });
 });
