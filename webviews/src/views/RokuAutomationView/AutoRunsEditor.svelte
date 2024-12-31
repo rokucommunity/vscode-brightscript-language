@@ -219,7 +219,7 @@
     }
 
     #selected-tr {
-        color: var(--vscode-editor-foreground);
+        color: var(--vscode-button-foreground);
         background-color: var(--vscode-button-background);
     }
 
@@ -288,10 +288,6 @@
 
     #button-container > * {
         margin: 6px;
-    }
-
-    #close-button {
-        color: var(--vscode-editor-foreground);
     }
 
     #NameInput {
@@ -363,7 +359,7 @@
                                     on:click={copyRun}
                                     appearance="icon"
                                     aria-label={run.name}>
-                                    <Copy />
+                                    <Copy fill={run.name === selectedRun ? "white" : ""} />
                                 </vscode-button>
                                 <vscode-button
                                     id="delete-button"
@@ -371,7 +367,7 @@
                                     on:click={deleteRun}
                                     appearance="icon"
                                     aria-label={run.name}>
-                                    <Trash />
+                                    <Trash fill={run.name === selectedRun ? "white" : ""} />
                                 </vscode-button>
                             {#if !activeRun || activeRun !== run.name}
                                 <vscode-button
@@ -381,7 +377,7 @@
                                     appearance="icon"
                                     disabled={activeRun && activeRun !== run.name}
                                     aria-label={run.name}>
-                                    <DebugStart />
+                                    <DebugStart fill={run.name === selectedRun ? "white" : ""} />
                                 </vscode-button>
                             {:else}
                                 <vscode-button
@@ -390,7 +386,7 @@
                                     on:click={stopRun}
                                     appearance="icon"
                                     aria-label={run.name}>
-                                    <DebugStop />
+                                    <DebugStop fill={run.name === selectedRun ? "white" : ""} />
                                 </vscode-button>
                             {/if}
                             </td>
