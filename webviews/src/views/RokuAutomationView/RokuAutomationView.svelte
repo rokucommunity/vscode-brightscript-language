@@ -1,15 +1,47 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { intermediary } from '../../ExtensionIntermediary';
     import { Trash, Add, ArrowUp, ArrowDown } from 'svelte-codicons';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import NumberField from '../../shared/NumberField.svelte';
+    import AutoRunsEditor from './AutoRunsEditor.svelte';
 
     window.vscode = acquireVsCodeApi();
 
-    let loading = true;
-    let currentRunningStep = -1;
+    type Step = { type: string, value: string };
+    type Run = { name?: string, steps?: Step[] };
+
+    let runs: Run[];
+    let selectedRun: string;
+    let autoRunsEditor: any;
+    let loading: boolean = true;
+    let currentRunningStep: number = -1;
+    let showEditor: boolean = false;
+
+    $: runs, selectedRun, updateRuns();
+
+    function getRunIndex() {
+        return (runs ?? []).findIndex((r) => r.name === selectedRun)
+    };
+
+    function updateRuns() {
+        if (!runs || runs.length === 0) {
+            runs = [{ }];
+        }
+        if (!selectedRun || getRunIndex() === -1) {
+            if (!runs[0].name) {
+                runs[0].name = 'DEFAULT';
+            }
+            selectedRun = runs[0].name;
+        }
+        let cfg: Run = runs.find((c) => c.name === selectedRun);
+        if (!cfg.steps) {
+            cfg.steps = [{ type: 'sleep', value: '8' }];
+        }
+        steps = cfg.steps;
+        storeConfigs(steps);
+    };
 
     const stepTypes = {
         sleep: {
@@ -27,7 +59,7 @@
         }
     };
 
-    const availableKeys = {
+    const availableKeys: any = {
         Back: 'Back',
         Backspace: 'Backspace',
         Down: 'Down',
@@ -53,12 +85,13 @@
     }[];
 
     function storeConfigs(updatedSteps) {
-        if(!loading) {
+        const targetRun: Run = runs.find((r) => r.name === selectedRun);
+
+        if(!loading && targetRun) {
+            targetRun.steps = updatedSteps
             intermediary.sendCommand(ViewProviderCommand.storeRokuAutomationConfigs, {
-                configs: [{
-                    name: 'DEFAULT',
-                    steps: updatedSteps
-                }]
+                selectedConfig: selectedRun,
+                configs: runs
             });
         }
 
@@ -67,7 +100,7 @@
     }
 
     function onStepTypeChange() {
-        const step = steps[this.id];
+        const step: Step = steps[this.id];
         step.type = this.value;
         delete step.value;
 
@@ -75,7 +108,7 @@
     }
 
     function onStepValueChange() {
-        const step = steps[this.id];
+        const step: Step = steps[this.id];
         step.value = this.value;
 
         storeConfigs(steps);
@@ -103,30 +136,31 @@
 
     function runConfig() {
         intermediary.sendCommand(ViewProviderCommand.runRokuAutomationConfig, {
-            configIndex: this.id
+            configIndex: getRunIndex().toString()
         });
     }
 
     function stopConfig() {
+        if (!this) return;
         intermediary.sendCommand(ViewProviderCommand.stopRokuAutomationConfig, {
-            configIndex: this.id
+            configIndex: getRunIndex().toString()
         });
     }
 
     function moveStepUp() {
-        const step = steps.splice(this.id, 1)[0];
+        const step: Step = steps.splice(this.id, 1)[0];
         steps.splice(this.id - 1, 0, step);
         storeConfigs(steps);
     }
 
     function moveStepDown() {
-        const step = steps.splice(this.id, 1)[0];
+        const step: Step = steps.splice(this.id, 1)[0];
         steps.splice(+this.id + 1, 0, step);
         storeConfigs(steps);
     }
 
     function onKeydown(event) {
-        const key = event.key;
+        const key: any = event.key;
 
         switch (key) {
             case 'Escape':
@@ -134,22 +168,14 @@
                 break;
         }
     }
-
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigsLoaded, (message) => {
-        const configs = message.context.configs;
-        if (configs) {
-            const config = configs[0];
-            steps = config.steps;
-        } else {
-            steps = [{
-                type: 'sleep',
-                value: '8'
-            }];
-        }
+        runs = message.context.configs;
+        selectedRun = message.context.selectedConfig;
+        updateRuns();
         loading = false;
     });
 
-    let lastStepDate = Date.now();
+    let lastStepDate: number = Date.now();
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
         currentRunningStep = message.context.step;
         if (currentRunningStep === -1) {
@@ -160,7 +186,7 @@
 
     function addSleepStep() {
         // Figure out how long it has been since we last had a step
-        let elapsedTime = (Date.now() - lastStepDate) / 1000;
+        let elapsedTime: number = (Date.now() - lastStepDate) / 1000;
 
         // Round to the nearest tenth
         elapsedTime = (Math.round(elapsedTime * 10) / 10);
@@ -172,10 +198,10 @@
     }
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationKeyPressed, (message) => {
-        let {key, literalCharacter} = message.context;
+        let {key, literalCharacter}: any = message.context;
         if (literalCharacter) {
             // Check if we were typing somethign before and if so just add on to it
-            const lastStep = steps.at(-1);
+            const lastStep: Step = steps.at(-1);
             if (lastStep?.type === stepTypes.sendText.type) {
                 lastStep.value += key
             } else {
@@ -205,6 +231,7 @@
     table {
         border-spacing: 0;
         width: 100%;
+        padding-top: 2.5rem;
     }
 
     vscode-dropdown, vscode-text-field {
@@ -232,6 +259,12 @@
         margin-right: 5px;
     }
 
+    #editor {
+        position: fixed;
+        width: 100%;
+        z-index: 1;
+    }
+
     .stepTypeDropdown {
         min-width: 140px;
     }
@@ -240,6 +273,15 @@
 <svelte:window on:keydown={onKeydown} />
 
 <div id="container">
+    <div id="editor">
+        <AutoRunsEditor
+            bind:this={autoRunsEditor}
+            bind:runs={runs}
+            bind:selectedRun={selectedRun}
+            bind:showContent={showEditor}/>
+    </div>
+
+    {#if !showEditor}
     <table>
     {#each steps as step, index}
         <tr>
@@ -294,8 +336,10 @@
             </td>
         </tr>
     </table>
+    {/if}
 </div>
 
+{#if !showEditor}
 <div id="bottomFixed">
     {#if currentRunningStep >= 0}
         <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
@@ -304,3 +348,4 @@
         <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
     {/if}
 </div>
+{/if}
