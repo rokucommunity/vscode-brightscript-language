@@ -17,6 +17,7 @@
     let autoRunsEditor: any;
     let loading: boolean = true;
     let currentRunningStep: number = -1;
+    let showEditor: boolean = false;
 
     $: runs, selectedRun, updateRuns();
 
@@ -230,6 +231,7 @@
     table {
         border-spacing: 0;
         width: 100%;
+        padding-top: 2.5rem;
     }
 
     vscode-dropdown, vscode-text-field {
@@ -257,6 +259,12 @@
         margin-right: 5px;
     }
 
+    #editor {
+        position: fixed;
+        width: 100%;
+        z-index: 1;
+    }
+
     .stepTypeDropdown {
         min-width: 140px;
     }
@@ -265,10 +273,15 @@
 <svelte:window on:keydown={onKeydown} />
 
 <div id="container">
-    <AutoRunsEditor
-        bind:this={autoRunsEditor}
-        bind:runs={runs}
-        bind:selectedRun={selectedRun}/>
+    <div id="editor">
+        <AutoRunsEditor
+            bind:this={autoRunsEditor}
+            bind:runs={runs}
+            bind:selectedRun={selectedRun}
+            bind:showContent={showEditor}/>
+    </div>
+
+    {#if !showEditor}
     <table>
     {#each steps as step, index}
         <tr>
@@ -323,8 +336,10 @@
             </td>
         </tr>
     </table>
+    {/if}
 </div>
 
+{#if !showEditor}
 <div id="bottomFixed">
     {#if currentRunningStep >= 0}
         <vscode-button id={0} on:click={stopConfig}>Stop</vscode-button>
@@ -333,3 +348,4 @@
         <vscode-button id={0} on:click={clearConfig} appearance="secondary">Clear</vscode-button>
     {/if}
 </div>
+{/if}

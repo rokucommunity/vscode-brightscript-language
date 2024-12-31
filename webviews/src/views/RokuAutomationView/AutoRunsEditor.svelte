@@ -11,6 +11,7 @@
 
     export let runs: Run[];
     export let selectedRun: string;
+    export let showContent: boolean = false;
 
     let runTable: HTMLTableElement;
     let nameInput: HTMLInputElement;
@@ -21,7 +22,6 @@
     let confirmDialog: HTMLDialogElement;
     let confirmMessage: string;
     let confirmDone: Callback;
-    let showContent: boolean = false;
     let activeRun: string = null;
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
@@ -198,19 +198,19 @@
     #content-container {
         background-color: var(--vscode-editor-background);
         position: absolute;
-        z-index: 1;
-        width: calc(100% - 15px);
-        height: calc(100% - 65px);
+        width: 100vw;
+        height: 100vh;
         display: flex;
+        flex-direction: column;
         color: var(--vscode-editor-foreground);
-        padding: 5px;
+        overflow-y: auto;
     }
 
     #run-list {
+        display: flex;
         position: absolute;
         width: 100%;
-        height: calc(100% - 35px);
-        display: flex;
+        max-height: calc(100% - 75px);
         overflow-y: auto;
     }
 
@@ -262,19 +262,32 @@
         color: lightslategray;
     }
 
+    #run-name {
+        padding-left: 5px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        max-width: 250px;
+        white-space: nowrap;
+        display: block;
+    }
+
     #run-name:hover {
         cursor: pointer;
     }
 
     #button-container {
+        position: fixed;
+        bottom: 0;
         display: flex;
-        justify-content: center;
+        justify-content: left;
         width: 100%;
+        height: auto;
         margin-top: auto;
+        background-color: var(--vscode-editor-background);
     }
 
     #button-container > * {
-        margin-left: 5px;
+        margin: 6px;
     }
 
     #close-button {
