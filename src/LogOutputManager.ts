@@ -5,6 +5,7 @@ import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
 import * as fsExtra from 'fs-extra';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import stripAnsi from 'strip-ansi';
 
 export class LogLine {
     constructor(
@@ -258,6 +259,12 @@ export class LogOutputManager {
      */
     public appendLine(lineText: string, mustInclude = false): void {
         let lines = lineText.split(/\r?\n/g);
+
+        // Remove then last line if it's empty as a result of a trailing newline
+        if (lines[lines.length - 1] === '') {
+            lines.pop();
+        }
+
         for (let line of lines) {
             if (line !== '') {
                 if (!this.includeStackTraces) {
@@ -284,7 +291,9 @@ export class LogOutputManager {
                     }
                 }
             }
-            if (line) {
+            if (typeof line === 'string') {
+                // Strip ANSI color codes
+                line = stripAnsi(line);
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
                 if (this.shouldLineBeShown(logLine)) {
