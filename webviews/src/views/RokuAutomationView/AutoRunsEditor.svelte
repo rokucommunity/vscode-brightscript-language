@@ -37,6 +37,7 @@
     function selectRun(e: MouseEvent) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
+        console.log(`Selected run: ${run}`);
     }
 
     function startRun(e: MouseEvent) {
@@ -343,7 +344,7 @@
                                 }
                             }}
                             use:draggable={run.name}
-                            on:click={selectRun}
+                            on:click={(e) => {selectRun(e); toggleDropDown();}}
                             on:dblclick={renameRun}
                             title={run.name}
                             id={run.name === selectedRun ? 'selected-tr' : ''}>
