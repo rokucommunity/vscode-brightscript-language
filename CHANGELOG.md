@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.51.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.5...v2.51.0) - 2024-12-20
+### Added
+ - new remote commands ([#605](https://github.com/rokucommunity/vscode-brightscript-language/pull/605))
+ - `AppManager` `AppMemoryMonitor` `AppMemoryMonitorEvent` coloring ([#602](https://github.com/rokucommunity/vscode-brightscript-language/pull/602))
+### Changed
+ - upgrade to [roku-deploy@3.12.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3123---2024-12-06). Notable changes since 3.12.2:
+     - Fix issues with detecting "check for updates required" ([roku-deploy#181](https://github.com/rokucommunity/roku-deploy/pull/181))
+     - Identify when a 577 error is thrown, send a new developer friendly message ([roku-deploy#180](https://github.com/rokucommunity/roku-deploy/pull/180))
+ - upgrade to [roku-debug@0.21.13](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02113---2024-12-20). Notable changes since 0.21.12:
+     - Check for two error types. Make sure we do not double display an error ([roku-debug#204](https://github.com/rokucommunity/roku-debug/pull/204))
+     - Add `$children` virtual variables for `roSGNode` ([roku-debug#192](https://github.com/rokucommunity/roku-debug/pull/192))
+     - Add the missing `Diagnostic` props to `BSDebugDiagnostic` ([roku-debug#203](https://github.com/rokucommunity/roku-debug/pull/203))
+     - Upgrade dependencies ([roku-debug#202](https://github.com/rokucommunity/roku-debug/pull/202))
+ - upgrade to [brighterscript@0.68.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0682---2024-12-06). Notable changes since 0.67.8:
+     - Add more convenience exports from vscode-languageserver ([brighterscript#1359](https://github.com/rokucommunity/brighterscript/pull/1359))
+     - Fix bug with ternary transpile for indexed set ([brighterscript#1357](https://github.com/rokucommunity/brighterscript/pull/1357))
+     - Add Namespace Source Literals ([brighterscript#1353](https://github.com/rokucommunity/brighterscript/pull/1353))
+     - Enhance lexer to support long numeric literals with type designators ([brighterscript#1351](https://github.com/rokucommunity/brighterscript/pull/1351))
+     - Fix issues with the ast walkArray function ([brighterscript#1347](https://github.com/rokucommunity/brighterscript/pull/1347))
+     - Optimize ternary transpilation for assignments ([brighterscript#1341](https://github.com/rokucommunity/brighterscript/pull/1341))
+ - upgrade to [brighterscript-formatter@1.7.7](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#177---2024-12-20)
+### Fixed
+ - issues with busy spinner showing too many error messages ([#607](https://github.com/rokucommunity/vscode-brightscript-language/pull/607))
+ - syntax highlighting but for object functions ([#604](https://github.com/rokucommunity/vscode-brightscript-language/pull/604))
+ - numeric literal colorization ([#603](https://github.com/rokucommunity/vscode-brightscript-language/pull/603))
+
+
+
 ## [2.50.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.4...v2.50.5) - 2024-11-06
 ### Changed
  - Show multi-line lsp progress details ([#600](https://github.com/rokucommunity/vscode-brightscript-language/pull/600))
