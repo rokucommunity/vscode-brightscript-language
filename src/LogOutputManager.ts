@@ -260,7 +260,7 @@ export class LogOutputManager {
     public appendLine(lineText: string, mustInclude = false): void {
         let lines = lineText.split(/\r?\n/g);
 
-        // Remove then last line if it's empty as a result of a trailing newline
+        // Remove the last line if it's empty as a result of a trailing newline
         if (lines[lines.length - 1] === '') {
             lines.pop();
         }
