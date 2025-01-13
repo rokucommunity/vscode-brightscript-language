@@ -23,6 +23,7 @@
     let confirmMessage: string;
     let confirmDone: Callback;
     let activeRun: string = null;
+    let isSingleClick: boolean = true;
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
         if (message.context.step === -1) {
@@ -37,7 +38,6 @@
     function selectRun(e: MouseEvent) {
         const run: string = getRunFromEvent(e);
         selectedRun = run;
-        console.log(`Selected run: ${run}`);
     }
 
     function startRun(e: MouseEvent) {
@@ -344,8 +344,16 @@
                                 }
                             }}
                             use:draggable={run.name}
-                            on:click={(e) => {selectRun(e); toggleDropDown();}}
-                            on:dblclick={renameRun}
+                            on:click={(e) => {
+                                isSingleClick = true;
+                                setTimeout(() => {
+                                    if (isSingleClick) {
+                                        selectRun(e);
+                                        toggleDropDown();
+                                    }
+                                }, 250);
+                            }}
+                            on:dblclick={(e) => {isSingleClick = false; renameRun(e);}}
                             title={run.name}
                             id={run.name === selectedRun ? 'selected-tr' : ''}>
                             <td>

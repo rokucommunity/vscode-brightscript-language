@@ -45,6 +45,8 @@ export function dropzone(node, options) {
         e.preventDefault();
         if (!e.dataTransfer) return;
         e.dataTransfer.dropEffect = state.dropEffect;
+        console.log(`*** dragover: ${e.dataTransfer.dropEffect}`);
+        console.log(`Selected run: ${run}`);
     }
 
     function handleDrop(e) {
