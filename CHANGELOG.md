@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.52.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.51.0...v2.52.0) - 2025-01-13
+### Changed
+ - upgrade to [roku-debug@0.21.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02115---2025-01-13). Notable changes since 0.21.13:
+     - Better handling of split log messages ([roku-debug#206](https://github.com/rokucommunity/roku-debug/pull/206))
+     - variables improvements ([roku-debug#199](https://github.com/rokucommunity/roku-debug/pull/199))
+     - Caught uncaught exceptions ([roku-debug#198](https://github.com/rokucommunity/roku-debug/pull/198))
+ - upgrade to [brighterscript@0.68.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0683---2025-01-13). Notable changes since 0.68.2:
+     - Fix class transpile issue with child class constructor not inherriting parent params ([brighterscript#1390](https://github.com/rokucommunity/brighterscript/pull/1390))
+ - upgrade to [brighterscript-formatter@1.7.8](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#178---2025-01-13)
+### Fixed
+ - Retain original newlines in BrightScript Log output panel, and also strip ansii colors ([#609](https://github.com/rokucommunity/vscode-brightscript-language/pull/609))
+
+
+
 ## [2.51.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.50.5...v2.51.0) - 2024-12-20
 ### Added
  - new remote commands ([#605](https://github.com/rokucommunity/vscode-brightscript-language/pull/605))
