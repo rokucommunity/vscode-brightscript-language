@@ -84,6 +84,7 @@
         "roku-test-automation": "^2.0.10",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
+        "strip-ansi": "^5.2.0",
         "thenby": "^1.3.4",
         "undent": "^0.1.0",
         "uuid": "^9.0.1",
