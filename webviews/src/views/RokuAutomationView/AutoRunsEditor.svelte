@@ -24,6 +24,7 @@
     let confirmDone: Callback;
     let activeRun: string = null;
     let isSingleClick: boolean = true;
+    let dropTargetIndex: number = -1;
 
     intermediary.observeEvent(ViewProviderEvent.onRokuAutomationConfigStepChange, (message) => {
         if (message.context.step === -1) {
@@ -102,15 +103,22 @@
             currIndex === index
         )
             return;
-        const runToMove: Run = runs[currIndex];
 
-        const newRunList: Run[] = [
-            ...runs.slice(0, index),
-            runToMove,
-            ...runs.slice(index)
-        ];
-        newRunList.splice(currIndex < index ? currIndex : ++currIndex, 1);
-        runs = newRunList;
+        if (currIndex > index) {
+            runs = [
+                ...runs.slice(0, index),
+                runs[currIndex],
+                ...runs.slice(index, currIndex),
+                ...runs.slice(currIndex + 1)
+            ];
+        } else {
+            runs = [
+                ...runs.slice(0, currIndex),
+                ...runs.slice(currIndex + 1, index + 1),
+                runs[currIndex],
+                ...runs.slice(index + 1)
+            ];
+        }
     }
 
     async function renameRun(e: Event) {
@@ -215,10 +223,6 @@
         overflow-y: auto;
     }
 
-    #run-list:global(.droppable) {
-        box-shadow: inset 0 0 0 2px red;
-    }
-
     #selected-tr {
         color: var(--vscode-button-foreground);
         background-color: var(--vscode-button-background);
@@ -303,12 +307,35 @@
         background-color: var(--vscode-editor-background);
     }
 
-    .run-row *:global(.droppable) {
-        border-top: 5px solid red;
+    .run-row :global(.droppable) {
+        background-color: rgb(0 0 0 / 0.01);
+    }
+
+    .run-row-dropzone {
+        box-shadow: inset 0 0 0 3px white;
     }
 </style>
 
-<div id="editor" tabindex="-1" on:keydown={moveSelection}>
+<div id="editor"
+    use:dropzone={{
+        onDropzone(data, e) {
+            let moveToEnd = e.target.id === 'content-container';
+            moveRun(data, moveToEnd ? runs.length - 1 : 0);
+            dropTargetIndex = -1;
+        },
+        onDragenter(e) {
+            let dragOverElement = e?.target?.id;
+            if (dragOverElement) {
+                dropTargetIndex = dragOverElement === 'content-container' ? runs.length - 1 : 0;
+            }
+        },
+        onDragend(e) {
+            if (dropTargetIndex < 0) return;
+            moveRun(e.target.title, dropTargetIndex);
+            dropTargetIndex = -1;
+        }
+    }}
+    tabindex="-1" on:keydown={moveSelection}>
     <div id="selection">
         <div id="selection-text" title={selectedRun}>{selectedRun}</div>
         <vscode-button
@@ -318,13 +345,7 @@
     </div>
     {#if showContent}
         <div id="content-container">
-            <div
-                id="run-list"
-                use:dropzone={{
-                    onDropzone(runName) {
-                        moveRun(runName, runs.length);
-                    }
-                }}>
+            <div id="run-list">
                 <table
                     width="100%"
                     cellspacing="0"
@@ -336,14 +357,20 @@
                                 <vscode-divider />
                             </td>
                         </tr>
-                        <tr
-                            class="run-row"
+                        <tr class="run-row {dropTargetIndex === index ? 'run-row-dropzone' : ''}"
                             use:dropzone={{
                                 onDropzone(runName) {
                                     moveRun(runName, index);
-                                }
+                                    dropTargetIndex = -1;
+                                },
+                                onDragenter(e) {
+                                    if (e) {
+                                        dropTargetIndex = index;
+                                    }
+                                },
+                                onDragend() {}
                             }}
-                            use:draggable={run.name}
+                            use:draggable={[() => { selectedRun = run.name }, run.name]}
                             on:click={(e) => {
                                 isSingleClick = true;
                                 setTimeout(() => {
@@ -404,10 +431,8 @@
                 </table>
             </div>
             <div id="button-container">
-                <vscode-button id="add-button" on:click={addNewRun}
-                    >Add</vscode-button>
-                <vscode-button id="close-button" on:click={toggleDropDown}
-                    >Close</vscode-button>
+                <vscode-button id="add-button" on:click={addNewRun}>Add</vscode-button>
+                <vscode-button id="close-button" on:click={toggleDropDown}>Close</vscode-button>
             </div>
         </div>
     {/if}

@@ -1,21 +1,28 @@
 /* eslint-disable object-shorthand */
 /* eslint-disable curly */
-export function draggable(node, data) {
-    let state: any = data;
+export function draggable(node, [onDragstart, data]) {
+    let state: any = {
+        data: data,
+        onDragstart: onDragstart
+    };
 
     node.draggable = true;
     node.style.cursor = 'grab';
 
     function handleDragstart(e) {
         if (!e.dataTransfer) return;
-        e.dataTransfer.setData('text/plain', state);
+        e.dataTransfer.setData('text/plain', state.data);
+        state.onDragstart(e);
     }
 
     node.addEventListener('dragstart', handleDragstart);
 
     return {
-        update(data) {
-            state = data;
+        update([onDragstart, data]) {
+            state = {
+                data: data,
+                onDragstart: onDragstart
+            };
         },
 
         destroy() {
@@ -34,6 +41,8 @@ export function dropzone(node, options) {
     function handleDragenter(e) {
         if (!(e.target instanceof HTMLElement)) return;
         e.target.classList.add(state.dragoverClass);
+        state.onDragenter(e);
+        e.stopPropagation();
     }
 
     function handleDragleave(e) {
@@ -45,8 +54,6 @@ export function dropzone(node, options) {
         e.preventDefault();
         if (!e.dataTransfer) return;
         e.dataTransfer.dropEffect = state.dropEffect;
-        console.log(`*** dragover: ${e.dataTransfer.dropEffect}`);
-        console.log(`Selected run: ${run}`);
     }
 
     function handleDrop(e) {
@@ -59,9 +66,14 @@ export function dropzone(node, options) {
         e.stopPropagation();
     }
 
+    function handleDragend(e) {
+        state.onDragend(e);
+    }
+
     node.addEventListener('dragenter', handleDragenter);
     node.addEventListener('dragleave', handleDragleave);
     node.addEventListener('dragover', handleDragover);
+    node.addEventListener('dragend', handleDragend);
     node.addEventListener('drop', handleDrop);
 
     return {
@@ -77,6 +89,7 @@ export function dropzone(node, options) {
             node.removeEventListener('dragenter', handleDragenter);
             node.removeEventListener('dragleave', handleDragleave);
             node.removeEventListener('dragover', handleDragover);
+            node.removeEventListener('dragend', handleDragend);
             node.removeEventListener('drop', handleDrop);
         }
     };
