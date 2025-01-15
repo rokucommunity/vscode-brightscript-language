@@ -312,7 +312,7 @@
     }
 
     .run-row-dropzone {
-        box-shadow: inset 0 0 0 3px white;
+        box-shadow: inset 0 0 0 3px var(--vscode-editor-foreground);
     }
 </style>
 
