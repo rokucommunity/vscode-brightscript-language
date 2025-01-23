@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.52.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.0...v2.52.1) - 2025-01-22
+### Changed
+ - Support multiple named automations in the Roku Automations panel ([#599](https://github.com/rokucommunity/vscode-brightscript-language/pull/599))
+ - upgrade to [roku-deploy@3.12.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3124---2025-01-22). Notable changes since 3.12.3:
+     - fixed an issue with 577 error codes ([roku-deploy#182](https://github.com/rokucommunity/roku-deploy/pull/182))
+ - upgrade to [roku-debug@0.21.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02116---2025-01-22). Notable changes since 0.21.15:
+     - Uninitialize __brs_err__ when stepping or continuing ([roku-debug#207](https://github.com/rokucommunity/roku-debug/pull/207))
+ - upgrade to [brighterscript@0.68.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0684---2025-01-22). Notable changes since 0.68.3:
+
+
+
 ## [2.52.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.51.0...v2.52.0) - 2025-01-13
 ### Changed
  - upgrade to [roku-debug@0.21.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02115---2025-01-13). Notable changes since 0.21.13:
