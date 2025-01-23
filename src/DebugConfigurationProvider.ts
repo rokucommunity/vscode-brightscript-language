@@ -59,6 +59,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             autoRunSgDebugCommands: [],
             files: [...DefaultFiles],
             enableSourceMaps: true,
+            enableConsolePkgToSourcePathConversion: true,
             packagePort: 80,
             enableDebugProtocol: false,
             remotePort: 8060,
@@ -312,6 +313,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
         config.files = config.files ? config.files : this.configDefaults.files;
         config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
+        config.enableConsolePkgToSourcePathConversion = config.enableConsolePkgToSourcePathConversion === false ? false : this.configDefaults.enableConsolePkgToSourcePathConversion;
         config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
         config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
         config.logfilePath ??= null;
