@@ -894,7 +894,7 @@
                                 "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                                 "scope": "resource"
                             },
-                            "enableConsolePkgToSourcePathConversion": {
+                            "rewriteDevicePathsInLogs": {
                                 "type": "boolean",
                                 "default": true,
                                 "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
@@ -2016,7 +2016,7 @@
                         "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                         "scope": "resource"
                     },
-                    "brightscript.debug.enableConsolePkgToSourcePathConversion": {
+                    "brightscript.debug.rewriteDevicePathsInLogs": {
                         "type": "boolean",
                         "default": true,
                         "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
