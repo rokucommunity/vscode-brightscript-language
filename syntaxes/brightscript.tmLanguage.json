@@ -689,33 +689,6 @@
                 }
             }
         },
-        "if_with_paren": {
-            "begin": "(?i:(?<!\\.)(if)\\s*\\()",
-            "beginCaptures": {
-                "1": {
-                    "name": "keyword.control.brs"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#entire_language"
-                }
-            ],
-            "end": "\b(then)|\n",
-            "endCaptures": {
-                "1": {
-                    "name": "keyword.control.brs"
-                }
-            }
-        },
-        "function_call": {
-            "captures": {
-                "1": {
-                    "name": "entity.name.function.brs"
-                }
-            },
-            "match": "(?i:\\b([a-z_][a-z0-9_]*)[ \\t]*(?=\\())"
-        },
         "function_declaration": {
             "captures": {
                 "1": {
