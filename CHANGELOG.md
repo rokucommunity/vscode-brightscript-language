@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.53.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.1...v2.53.0) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.17](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02117---2025-01-31). Notable changes since 0.21.16:
+    - Add support for custom variables ([#209](https://github.com/rokucommunity/roku-debug/pull/209))
+    - Convert pkg path to file system path in logs ([#208](https://github.com/rokucommunity/roku-debug/pull/208))
+    - Fixed file path and unusable link issues on windows ([#213](https://github.com/rokucommunity/roku-debug/pull/213))
+    - Fixed a bug where some logs could get lost by the debugger ([#212](https://github.com/rokucommunity/roku-debug/pull/212))
+    - Fixed issue looking up primitive variables on hover ([#210](https://github.com/rokucommunity/roku-debug/pull/210))
+ - upgrade to [brighterscript-formatter@1.7.9](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#179---2025-01-31). Notable changes since 1.7.8:
+    - Fix indentation bug when brighterscript keywords are used as identifiers ([#96](https://github.com/rokucommunity/brighterscript-formatter/pull/96))
+
+
+
 ## [2.52.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.0...v2.52.1) - 2025-01-22
 ### Changed
  - Support multiple named automations in the Roku Automations panel ([#599](https://github.com/rokucommunity/vscode-brightscript-language/pull/599))
