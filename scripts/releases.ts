@@ -326,7 +326,7 @@ class Runner {
         startVersion = startVersion.startsWith('v') ? startVersion : 'v' + startVersion;
         endVersion = endVersion.startsWith('v') || endVersion === 'HEAD' ? endVersion : 'v' + endVersion;
         const project = this.getProject(projectName);
-        const commitMessages = execSync(`git log ${startVersion}...${endVersion} --oneline`, {
+        const commitMessages = execSync(`git log ${startVersion}...${endVersion} --oneline --first-parent`, {
             cwd: project?.dir
         }).toString()
             .split(/\r?\n/g)
