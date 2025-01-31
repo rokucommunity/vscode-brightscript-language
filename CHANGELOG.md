@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.53.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.0...v2.53.1) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.18](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02118---2025-01-31). Notable changes since 0.21.17:
+     - Fix ecp limited crash ([roku-debug#215](https://github.com/rokucommunity/roku-debug/pull/215))
+
+
+
 ## [2.53.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.1...v2.53.0) - 2025-01-31
 ### Changed
  - upgrade to [roku-debug@0.21.17](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02117---2025-01-31). Notable changes since 0.21.16:
