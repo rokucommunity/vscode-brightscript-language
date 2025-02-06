@@ -792,6 +792,16 @@
                                 "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
                                 "default": true
                             },
+                            "autoResolveVirtualVariables": {
+                                "type": "boolean",
+                                "description": "(Experimental) Enables automatic population of the virtual variables.",
+                                "default": false
+                            },
+                            "enhanceREPLCompletions": {
+                                "type": "boolean",
+                                "description": "Enables scanning deployment files for additional REPL completions,\nsuch as user-defined functions. This process runs in a background\nthread and may be resource-intensive.",
+                                "default": true
+                            },
                             "showHiddenVariables": {
                                 "type": "boolean",
                                 "description": "Show variables that are prefixed with a special prefix designated to be hidden",
@@ -2221,6 +2231,18 @@
                     "brightscript.debug.enableVariablesPanel": {
                         "type": "boolean",
                         "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                        "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.autoResolveVirtualVariables": {
+                        "type": "boolean",
+                        "description": "(Experimental) Enables automatic population of the virtual variables.",
+                        "default": false,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.enhanceREPLCompletions": {
+                        "type": "boolean",
+                        "description": "Enables scanning deployment files for additional REPL completions,\nsuch as user-defined functions. This process runs in a background\nthread and may be resource-intensive.",
                         "default": true,
                         "scope": "resource"
                     },
