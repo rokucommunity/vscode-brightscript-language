@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.54.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.1...v2.54.0) - 2025-02-06
+### Added
+ - variable and REPL launch config options ([#613](https://github.com/rokucommunity/vscode-brightscript-language/pull/613))
+### Changed
+ - upgrade to [roku-debug@0.21.19](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02119---2025-02-06). Notable changes since 0.21.18:
+     - Send the same start up logs for both debug console and output panel ([roku-debug#218](https://github.com/rokucommunity/roku-debug/pull/218))
+     - debugger REPL completions ([roku-debug#211](https://github.com/rokucommunity/roku-debug/pull/211))
+     - add more REPL completion trigger locations ([roku-debug#217](https://github.com/rokucommunity/roku-debug/pull/217))
+ - upgrade to [brighterscript@0.68.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0685---2025-02-06). Notable changes since 0.68.4:
+     - Add `validate` flag to ProgramBuilder.run() ([brighterscript#1409](https://github.com/rokucommunity/brighterscript/pull/1409))
+
+
+
 ## [2.53.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.0...v2.53.1) - 2025-01-31
 ### Changed
  - upgrade to [roku-debug@0.21.18](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02118---2025-01-31). Notable changes since 0.21.17:

@@ -53,6 +53,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             disableScreenSaver: true,
             retainStagingFolder: false,
             enableVariablesPanel: true,
+            autoResolveVirtualVariables: false,
+            enhanceREPLCompletions: true,
             showHiddenVariables: false,
             enableDebuggerAutoRecovery: false,
             stopDebuggerOnAppExit: false,
@@ -307,6 +309,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
         config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
         config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
+        config.autoResolveVirtualVariables = config.autoResolveVirtualVariables === true ? true : this.configDefaults.autoResolveVirtualVariables;
+        config.enhanceREPLCompletions = config.enhanceREPLCompletions === true ? true : this.configDefaults.enhanceREPLCompletions;
         config.showHiddenVariables = config.showHiddenVariables === true ? true : this.configDefaults.showHiddenVariables;
         config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
         config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
