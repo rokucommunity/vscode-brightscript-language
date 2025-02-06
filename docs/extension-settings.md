@@ -58,6 +58,16 @@ Give the ability to run a list of commands on port 8080 of the device at the sta
 This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 ### `brightscript.debug.enableSourceMaps`
 Defaults to `true`. if set to `false`, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+### `brightscript.debug.enableVariablesPanel`
+Defaults to `true`. Enables automatic population of the debug variable panel on a breakpoint or runtime errors
+### `brightscript.debug.autoResolveVirtualVariables` (Experimental)
+Defaults to `false`. Enables automatic population of the virtual variables.
+### `brightscript.debug.enhanceREPLCompletions`
+Defaults to `true`.
+
+Enables scanning deployment files for additional REPL completions,
+such as user-defined functions. This process runs in a background
+thread and may be resource-intensive.
 ### `brightscript.debug.enableDebugProtocol`
 If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
 ### `brightscript.extensionLogfilePath`
