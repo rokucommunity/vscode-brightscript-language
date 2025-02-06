@@ -5,6 +5,7 @@ import { VscodeCommand } from '../commands/VscodeCommand';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
 import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderCommand } from './ViewProviderCommand';
 
 export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAppOverlaysView;
@@ -15,6 +16,13 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
         const subscriptions = context.subscriptions;
 
         this.registerCommandWithWebViewNotifier(VscodeCommand.rokuAppOverlaysViewRemoveAllOverlays);
+
+        this.addMessageCommandCallback(ViewProviderCommand.openRokuFile, async (message) => {
+            const filePath = message.context.filePath;
+            await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(filePath));
+            await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+            return true;
+        });
 
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAppOverlaysViewAddNewOverlay, async () => {
             const options: vscode.OpenDialogOptions = {
@@ -27,6 +35,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 }
             };
             const filePath = (await vscode.window.showOpenDialog(options))[0]?.fsPath;
+            const imagePath = path.relative(this.webviewBasePath, filePath);
 
             const name = path.basename(filePath);
             const extension = path.extname(filePath);
@@ -36,7 +45,8 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 id: uuid(),
                 name: name,
                 sourcePath: filePath,
-                destinationFileName: destinationFileName
+                destinationFileName: destinationFileName,
+                imagePath: imagePath
             });
 
             this.postOrQueueMessage(message);

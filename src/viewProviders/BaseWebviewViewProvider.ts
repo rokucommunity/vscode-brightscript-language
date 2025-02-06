@@ -263,7 +263,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
             enableScripts: true,
 
             localResourceRoots: [
-                vscode.Uri.file(this.webviewBasePath)
+                vscode.Uri.file('/')
             ]
         };
         webview.html = await this.getHtmlForWebview();
@@ -294,7 +294,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
                     // Enable javascript in the webview
                     enableScripts: true,
                     localResourceRoots: [
-                        vscode.Uri.file(this.webviewBasePath)
+                        vscode.Uri.file('/')
                     ]
                 }
             );

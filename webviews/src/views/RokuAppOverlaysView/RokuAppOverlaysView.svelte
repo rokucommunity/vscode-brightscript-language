@@ -4,6 +4,7 @@
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import { NewFile, Trash } from 'svelte-codicons';
+    import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { WorkspaceStateKey } from '../../../../src/viewProviders/WorkspaceStateKey';
@@ -24,6 +25,7 @@
         destinationFileName: string;
         visible: boolean;
         opacity: number;
+        imagePath: string;
     }
 
     let overlays = [] as OverlayInfo[]
@@ -206,6 +208,11 @@
         }
     });
 
+    function onOpenFile(event) {
+        const pathContentsInfo = { filePath: event.target.id, type: 'file' };
+        intermediary.sendCommand(ViewProviderCommand.openRokuFile, pathContentsInfo);
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
@@ -219,6 +226,10 @@
         border-spacing: 0;
         width: 100%;
     }
+
+    img:hover {
+        cursor: pointer;
+    }
 </style>
 
 
@@ -230,6 +241,11 @@
                     <tr>
                         <td>
                             <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible} />
+                        </td>
+                        <td>
+                            <vscode-button id="{index}" appearance="icon" title="Open Overlay File" aria-label="Open Overlay File" on:click={onOpenFile}>
+                                <img src="{overlay.imagePath}" id="{overlay.sourcePath}" style="width:32px; min-width:16px; height:32px" />
+                            </vscode-button>
                         </td>
                         <td>
                             <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
