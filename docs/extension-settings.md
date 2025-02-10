@@ -69,7 +69,7 @@ Enables scanning deployment files for additional REPL completions,
 such as user-defined functions. This process runs in a background
 thread and may be resource-intensive.
 ### `brightscript.debug.enableDebugProtocol`
-If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
+Defaults to `true`. When enabled, the debugger will use the [BrightScript debug protocol](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) and will disable the telnet debugger. When not enabled, will use the legacy telnet debugger.
 ### `brightscript.extensionLogfilePath`
 File where the 'BrightScript Extension' output panel (i.e. debug logs for the extension) will be appended. If omitted, no file logging will be done. `${workspaceFolder}` is supported and will point to the first workspace found.
 ### `brightscript.remoteControlMode.enableActiveAnimation`
