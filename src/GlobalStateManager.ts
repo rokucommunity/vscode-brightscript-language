@@ -39,25 +39,6 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.lastSeenReleaseNotesVersion, value);
     }
 
-    public get debugProtocolPopupSnoozeUntilDate(): Date {
-        const epoch = this.context.globalState.get<number>(this.keys.debugProtocolPopupSnoozeUntilDate);
-        if (epoch) {
-            return new Date(epoch);
-        }
-    }
-    public set debugProtocolPopupSnoozeUntilDate(value: Date) {
-        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeUntilDate, value?.getTime());
-    }
-
-
-    public get debugProtocolPopupSnoozeValue(): boolean {
-        return this.context.globalState.get<boolean>(this.keys.debugProtocolPopupSnoozeValue);
-    }
-    public set debugProtocolPopupSnoozeValue(value: boolean) {
-        void this.context.globalState.update(this.keys.debugProtocolPopupSnoozeValue, value);
-    }
-
-
     public get sendRemoteTextHistory(): string[] {
         return this.context.globalState.get(this.keys.sendRemoteTextHistory) ?? [];
     }
