@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { promises as fs } from 'fs';
 import { v4 as uuid } from 'uuid';
 import { VscodeCommand } from '../commands/VscodeCommand';
 import { BaseRdbViewProvider } from './BaseRdbViewProvider';
@@ -35,7 +36,7 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 }
             };
             const filePath = (await vscode.window.showOpenDialog(options))[0]?.fsPath;
-            const imagePath = path.relative(this.webviewBasePath, filePath);
+            const imageData = await this.getDataUriFromFile(filePath);
 
             const name = path.basename(filePath);
             const extension = path.extname(filePath);
@@ -46,10 +47,21 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 name: name,
                 sourcePath: filePath,
                 destinationFileName: destinationFileName,
-                imagePath: imagePath
+                imageData: imageData
             });
 
             this.postOrQueueMessage(message);
         }));
+    }
+
+    async getDataUriFromFile(filePath) {
+        try {
+            const contents = await fs.readFile(filePath, { encoding: 'base64' });
+            const base64String = `data:image/png;base64, ${contents}`;
+            return base64String;
+        } catch (error) {
+            console.error(`Error reading or encoding file: ${error.message}`);
+            return null;
+        }
     }
 }

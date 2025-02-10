@@ -25,7 +25,7 @@
         destinationFileName: string;
         visible: boolean;
         opacity: number;
-        imagePath: string;
+        imageData: any;
     }
 
     let overlays = [] as OverlayInfo[]
@@ -244,7 +244,7 @@
                         </td>
                         <td>
                             <vscode-button id="{index}" appearance="icon" title="Open Overlay File" aria-label="Open Overlay File" on:click={onOpenFile}>
-                                <img src="{overlay.imagePath}" id="{overlay.sourcePath}" style="width:32px; min-width:16px; height:32px" />
+                                <img src="{overlay.imageData}" style="width:32px; min-width:16px; height:32px" />
                             </vscode-button>
                         </td>
                         <td>
