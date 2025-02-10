@@ -209,7 +209,8 @@
     });
 
     function onOpenFile(event) {
-        const pathContentsInfo = { filePath: event.target.id, type: 'file' };
+        const srcFilePath = event.target.getAttribute('data-file');
+        const pathContentsInfo = { filePath: srcFilePath, type: 'file' };
         intermediary.sendCommand(ViewProviderCommand.openRokuFile, pathContentsInfo);
     }
 
@@ -244,7 +245,7 @@
                         </td>
                         <td>
                             <vscode-button id="{index}" appearance="icon" title="Open Overlay File" aria-label="Open Overlay File" on:click={onOpenFile}>
-                                <img src="{overlay.imageData}" style="width:32px; min-width:16px; height:32px" />
+                                <img src="{overlay.imageData}" data-file="{overlay.sourcePath}" style="width:32px; min-width:16px; height:32px" />
                             </vscode-button>
                         </td>
                         <td>
