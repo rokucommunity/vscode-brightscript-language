@@ -319,6 +319,17 @@
 </ul>
 <a href="#brightscriptdebugraletrackertaskfilelocation"><h3 id="brightscriptdebugraletrackertaskfilelocation"><code>brightscript.debug.raleTrackerTaskFileLocation</code></h3></a><p>This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. <code>/Users/user/roku/TrackerTask/TrackerTask.xml</code>)</p>
 <a href="#brightscriptdebugenablesourcemaps"><h3 id="brightscriptdebugenablesourcemaps"><code>brightscript.debug.enableSourceMaps</code></h3></a><p>Defaults to <code>true</code>. if set to <code>false</code>, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you&#39;re noticing issues with the sourcemaps not working properly.</p>
+<a href="#brightscriptdebugrewritedevicepathsinlogs"><h3 id="brightscriptdebugrewritedevicepathsinlogs"><code>brightscript.debug.rewriteDevicePathsInLogs</code></h3></a><p>Defaults to <code>true</code>. If true, then any pkg path found in the device logs will be converted to a source location</p>
+<p>Supported formats:</p>
+<pre><code>pkg:/source/main.brs:10
+pkg:/source/main.brs(10)
+pkg:/source/main.brs:10:20
+pkg:/source/main.brs(10:20)
+...ce/main.brs:10
+...ce/main.brs(10)
+...ce/main.brs:10:20
+...ce/main.brs(10:20)
+</code></pre>
 <a href="#brightscriptdebugenablevariablespanel"><h3 id="brightscriptdebugenablevariablespanel"><code>brightscript.debug.enableVariablesPanel</code></h3></a><p>Defaults to <code>true</code>. Enables automatic population of the debug variable panel on a breakpoint or runtime errors</p>
 <a href="#brightscriptdebugautoresolvevirtualvariables-experimental"><h3 id="brightscriptdebugautoresolvevirtualvariables-experimental"><code>brightscript.debug.autoResolveVirtualVariables</code> (Experimental)</h3></a><p>Defaults to <code>false</code>. Enables automatic population of the virtual variables.</p>
 <a href="#brightscriptdebugenhancereplcompletions"><h3 id="brightscriptdebugenhancereplcompletions"><code>brightscript.debug.enhanceREPLCompletions</code></h3></a><p>Defaults to <code>true</code>.</p>
