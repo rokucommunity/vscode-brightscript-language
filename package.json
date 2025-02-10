@@ -904,6 +904,11 @@
                                 "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                                 "scope": "resource"
                             },
+                            "rewriteDevicePathsInLogs": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
+                            },
                             "emitChannelPublishedEvent": {
                                 "type": "boolean",
                                 "description": "Should the ChannelPublishedEvent be emitted. This is a hack for when certain roku devices become locked up as a result of this event being emitted. You probably don't need to set this",
@@ -2020,6 +2025,11 @@
                         "default": true,
                         "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                         "scope": "resource"
+                    },
+                    "brightscript.debug.rewriteDevicePathsInLogs": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
                     },
                     "brightscript.debug.logfilePath": {
                         "type": "string",

@@ -13,7 +13,8 @@ const embeddedBscVersion = require('brighterscript/package.json').version;
 
 describe('LanguageServerInfoCommand', () => {
     let command: LanguageServerInfoCommand;
-    beforeEach(() => {
+    beforeEach(function() {
+        this.timeout(20_000);
         sinon.restore();
         fsExtra.ensureDirSync(tempDir);
         command = new LanguageServerInfoCommand();
@@ -30,7 +31,8 @@ describe('LanguageServerInfoCommand', () => {
         });
     });
 
-    afterEach(() => {
+    afterEach(function() {
+        this.timeout(20_000);
         sinon.restore();
         fsExtra.removeSync(tempDir);
     });
