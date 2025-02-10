@@ -6,6 +6,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.54.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.1...v2.54.0) - 2025-02-06
+### Added
+ - variable and REPL launch config options ([#613](https://github.com/rokucommunity/vscode-brightscript-language/pull/613))
+### Changed
+ - upgrade to [roku-debug@0.21.19](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02119---2025-02-06). Notable changes since 0.21.18:
+     - Send the same start up logs for both debug console and output panel ([roku-debug#218](https://github.com/rokucommunity/roku-debug/pull/218))
+     - debugger REPL completions ([roku-debug#211](https://github.com/rokucommunity/roku-debug/pull/211))
+     - add more REPL completion trigger locations ([roku-debug#217](https://github.com/rokucommunity/roku-debug/pull/217))
+ - upgrade to [brighterscript@0.68.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0685---2025-02-06). Notable changes since 0.68.4:
+     - Add `validate` flag to ProgramBuilder.run() ([brighterscript#1409](https://github.com/rokucommunity/brighterscript/pull/1409))
+
+
+
+## [2.53.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.0...v2.53.1) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.18](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02118---2025-01-31). Notable changes since 0.21.17:
+     - Fix ecp limited crash ([roku-debug#215](https://github.com/rokucommunity/roku-debug/pull/215))
+
+
+
+## [2.53.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.1...v2.53.0) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.17](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02117---2025-01-31). Notable changes since 0.21.16:
+    - Add support for custom variables ([#209](https://github.com/rokucommunity/roku-debug/pull/209))
+    - Convert pkg path to file system path in logs ([#208](https://github.com/rokucommunity/roku-debug/pull/208))
+    - Fixed file path and unusable link issues on windows ([#213](https://github.com/rokucommunity/roku-debug/pull/213))
+    - Fixed a bug where some logs could get lost by the debugger ([#212](https://github.com/rokucommunity/roku-debug/pull/212))
+    - Fixed issue looking up primitive variables on hover ([#210](https://github.com/rokucommunity/roku-debug/pull/210))
+ - upgrade to [brighterscript-formatter@1.7.9](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#179---2025-01-31). Notable changes since 1.7.8:
+    - Fix indentation bug when brighterscript keywords are used as identifiers ([#96](https://github.com/rokucommunity/brighterscript-formatter/pull/96))
+
+
+
+## [2.52.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.0...v2.52.1) - 2025-01-22
+### Changed
+ - Support multiple named automations in the Roku Automations panel ([#599](https://github.com/rokucommunity/vscode-brightscript-language/pull/599))
+ - upgrade to [roku-deploy@3.12.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3124---2025-01-22). Notable changes since 3.12.3:
+     - fixed an issue with 577 error codes ([roku-deploy#182](https://github.com/rokucommunity/roku-deploy/pull/182))
+ - upgrade to [roku-debug@0.21.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02116---2025-01-22). Notable changes since 0.21.15:
+     - Uninitialize __brs_err__ when stepping or continuing ([roku-debug#207](https://github.com/rokucommunity/roku-debug/pull/207))
+ - upgrade to [brighterscript@0.68.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0684---2025-01-22). Notable changes since 0.68.3:
+
+
+
 ## [2.52.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.51.0...v2.52.0) - 2025-01-13
 ### Changed
  - upgrade to [roku-debug@0.21.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02115---2025-01-13). Notable changes since 0.21.13:

@@ -72,6 +72,16 @@ pkg:/source/main.brs(10:20)
 ...ce/main.brs:10:20
 ...ce/main.brs(10:20)
 ```
+### `brightscript.debug.enableVariablesPanel`
+Defaults to `true`. Enables automatic population of the debug variable panel on a breakpoint or runtime errors
+### `brightscript.debug.autoResolveVirtualVariables` (Experimental)
+Defaults to `false`. Enables automatic population of the virtual variables.
+### `brightscript.debug.enhanceREPLCompletions`
+Defaults to `true`.
+
+Enables scanning deployment files for additional REPL completions,
+such as user-defined functions. This process runs in a background
+thread and may be resource-intensive.
 ### `brightscript.debug.enableDebugProtocol`
 If true, the debugger will use the new BrightScript debug protocol and will disable the telnet debugger. See [the official documentation](https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md) for more details.
 ### `brightscript.extensionLogfilePath`
