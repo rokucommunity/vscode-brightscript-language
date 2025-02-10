@@ -38,8 +38,8 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
             const filePath = (await vscode.window.showOpenDialog(options))[0]?.fsPath;
             const imageData = await this.getDataUriFromFile(filePath);
 
-            const name = path.basename(filePath);
             const extension = path.extname(filePath);
+            const name = path.basename(filePath, extension);
             const destinationFileName = path.basename(filePath, extension) + '_' + Date.now() + extension;
 
             const message = this.createEventMessage(ViewProviderEvent.onRokuAppOverlayAdded, {
