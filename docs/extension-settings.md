@@ -58,6 +58,20 @@ Give the ability to run a list of commands on port 8080 of the device at the sta
 This is an absolute path to the TrackerTask.xml file to be injected into your Roku channel during a debug session. (i.e. `/Users/user/roku/TrackerTask/TrackerTask.xml`)
 ### `brightscript.debug.enableSourceMaps`
 Defaults to `true`. if set to `false`, then the debugger falls back to using line offsets (based on the number of breakpoints injected) to determine the actual line number. Only use this if you're noticing issues with the sourcemaps not working properly.
+### `brightscript.debug.rewriteDevicePathsInLogs`
+Defaults to `true`. If true, then any pkg path found in the device logs will be converted to a source location
+
+Supported formats:
+```
+pkg:/source/main.brs:10
+pkg:/source/main.brs(10)
+pkg:/source/main.brs:10:20
+pkg:/source/main.brs(10:20)
+...ce/main.brs:10
+...ce/main.brs(10)
+...ce/main.brs:10:20
+...ce/main.brs(10:20)
+```
 ### `brightscript.debug.enableVariablesPanel`
 Defaults to `true`. Enables automatic population of the debug variable panel on a breakpoint or runtime errors
 ### `brightscript.debug.autoResolveVirtualVariables` (Experimental)
