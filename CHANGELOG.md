@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.54.0...v2.55.0) - 2025-02-10
+### Added
+ - New lanuch config setting to enable/disable pkg path conversions in logs ([#610](https://github.com/rokucommunity/vscode-brightscript-language/pull/610))
+### Changed
+ - Enable debug protocol by default ([#615](https://github.com/rokucommunity/vscode-brightscript-language/pull/615))
+ - upgrade to [roku-debug@0.21.20](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02120---2025-02-10). Notable changes since 0.21.19:
+     - Updated the breakpoint manager to fail inline break point requests ([roku-debug#221](https://github.com/rokucommunity/roku-debug/pull/221))
+     - Feature/registry scope in variables pannel ([roku-debug#219](https://github.com/rokucommunity/roku-debug/pull/219))
+     - Bugfix/UI flicker on invalidated events ([roku-debug#220](https://github.com/rokucommunity/roku-debug/pull/220))
+ - upgrade to [brighterscript@0.69.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0690---2025-02-10). Notable changes since 0.68.5:
+     - Language Server Rewrite ([brighterscript#993](https://github.com/rokucommunity/brighterscript/pull/993))
+ - upgrade to [brighterscript-formatter@1.7.10](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1710---2025-02-10). Notable changes since 1.7.9:
+
+
+
 ## [2.54.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.1...v2.54.0) - 2025-02-06
 ### Added
  - variable and REPL launch config options ([#613](https://github.com/rokucommunity/vscode-brightscript-language/pull/613))
