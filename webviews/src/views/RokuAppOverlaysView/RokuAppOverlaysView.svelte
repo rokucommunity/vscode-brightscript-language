@@ -99,6 +99,11 @@
                 overlays = [overlayInfo, ...overlays];
             }
 
+            // load thumbnail data from disk
+            intermediary.sendCommand(ViewProviderCommand.loadRokuAppOverlaysThumbnails, {
+                overlays: overlays,
+                index: index !== undefined ? index : 0
+            });
         } catch (e) {
             debugger;
         }
@@ -206,6 +211,10 @@
                 await conditionallyDeployOverlay(overlay, index);
             }
         }
+    });
+
+    intermediary.observeEvent(ViewProviderEvent.onRokuAppOverlayThumbnailsLoaded, (message) => {
+        overlays = message.context.overlays;
     });
 
     function onOpenFile(event) {

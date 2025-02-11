@@ -7,5 +7,6 @@ export enum ViewProviderEvent {
     onRokuAutomationConfigsLoaded = 'onRokuAutomationConfigsLoaded',
     onRokuAutomationConfigStepChange = 'onRokuAutomationConfigStepChange',
     onRokuAutomationKeyPressed = 'onRokuAutomationKeyPressed',
-    onRokuAppOverlayAdded = 'onRokuAppOverlayAdded'
+    onRokuAppOverlayAdded = 'onRokuAppOverlayAdded',
+    onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded'
 }

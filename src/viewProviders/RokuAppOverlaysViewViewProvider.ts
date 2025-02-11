@@ -25,6 +25,24 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
             return true;
         });
 
+        this.addMessageCommandCallback(ViewProviderCommand.loadRokuAppOverlaysThumbnails, async (message) => {
+            return new Promise((resolve, reject) => {
+                const overlays = message.context.overlays;
+                const index = message.context.index;
+                this.getDataUriFromFile(overlays[index].sourcePath).then((imageData) => {
+                    overlays[index].imageData = imageData;
+                    const response = this.createEventMessage(ViewProviderEvent.onRokuAppOverlayThumbnailsLoaded, {
+                        overlays: overlays
+                    });
+                    this.postOrQueueMessage(response);
+                    resolve(true);
+                }).catch((e) => {
+                    console.error(`Error loading overlay thumbnails: ${e.message}`);
+                    reject(e);
+                });
+            });
+        });
+
         subscriptions.push(vscode.commands.registerCommand(VscodeCommand.rokuAppOverlaysViewAddNewOverlay, async () => {
             const options: vscode.OpenDialogOptions = {
                 canSelectMany: false,
@@ -36,8 +54,6 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 }
             };
             const filePath = (await vscode.window.showOpenDialog(options))[0]?.fsPath;
-            const imageData = await this.getDataUriFromFile(filePath);
-
             const extension = path.extname(filePath);
             const name = path.basename(filePath, extension);
             const destinationFileName = path.basename(filePath, extension) + '_' + Date.now() + extension;
@@ -46,15 +62,14 @@ export class RokuAppOverlaysViewViewProvider extends BaseRdbViewProvider {
                 id: uuid(),
                 name: name,
                 sourcePath: filePath,
-                destinationFileName: destinationFileName,
-                imageData: imageData
+                destinationFileName: destinationFileName
             });
 
             this.postOrQueueMessage(message);
         }));
     }
 
-    async getDataUriFromFile(filePath) {
+    private async getDataUriFromFile(filePath) {
         try {
             const contents = await fs.readFile(filePath, { encoding: 'base64' });
             const base64String = `data:image/png;base64, ${contents}`;
