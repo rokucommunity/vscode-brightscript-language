@@ -276,7 +276,7 @@
                             <table class="innerBox">
                                 <tr>
                                     <td>
-                                        <div class="srcPathLabel">{overlay.sourcePath}</div>
+                                        <div class="srcPathLabel" title="{overlay.sourcePath}">{overlay.sourcePath}</div>
                                     </td>
                                 </tr>
                                 <tr>
