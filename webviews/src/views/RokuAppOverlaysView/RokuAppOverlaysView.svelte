@@ -228,6 +228,18 @@
         width: 100%;
     }
 
+    .innerBox {
+        table-layout: fixed;
+        margin: 3px;
+    }
+
+    .srcPathLabel {
+        word-wrap: break-word;
+        overflow: hidden;
+        max-height: 50px;
+        font-size: 75%;
+    }
+
     img:hover {
         cursor: pointer;
     }
@@ -245,14 +257,25 @@
                         </td>
                         <td>
                             <vscode-button id="{index}" appearance="icon" title="Open Overlay File" aria-label="Open Overlay File" on:click={onOpenFile}>
-                                <img src="{overlay.imageData}" data-file="{overlay.sourcePath}" style="width:32px; min-width:16px; height:32px" />
+                                <img src="{overlay.imageData}" data-file="{overlay.sourcePath}" style="width:32px; min-width:32px; height:32px" />
                             </vscode-button>
                         </td>
                         <td>
                             <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
                         </td>
                         <td>
-                            <input id="{index.toString()}" type="range" min="0" max="100" value="{overlay.opacity * 100}" class="slider" on:input={onOverlayOpacityChange}>
+                            <table class="innerBox">
+                                <tr>
+                                    <td>
+                                        <div class="srcPathLabel">{overlay.sourcePath}</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <input id="{index.toString()}" type="range" min="0" max="100" value="{overlay.opacity * 100}" class="slider" on:input={onOverlayOpacityChange}>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                         <td>
                             <vscode-button id="{index}" appearance="icon" title="Delete Overlay" aria-label="Delete Overlay" on:click={deleteOverlay}>
@@ -261,7 +284,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td colspan="4">
+                        <td colspan="5">
                             <vscode-divider />
                         </td>
                     </tr>
