@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.0...v2.55.1) - 2025-02-11
+### Changed
+ - Fix launch config values that were inconsistantly set (and disable `enhanceREPLCompletions` until we can fix the crash) ([#616](https://github.com/rokucommunity/vscode-brightscript-language/pull/616))
+
+
+
 ## [2.55.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.54.0...v2.55.0) - 2025-02-10
 ### Added
  - New lanuch config setting to enable/disable pkg path conversions in logs ([#610](https://github.com/rokucommunity/vscode-brightscript-language/pull/610))
