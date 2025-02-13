@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.55.0",
+    "version": "2.55.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -800,7 +800,7 @@
                             "enhanceREPLCompletions": {
                                 "type": "boolean",
                                 "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
-                                "default": true
+                                "default": false
                             },
                             "showHiddenVariables": {
                                 "type": "boolean",
@@ -963,7 +963,7 @@
                             },
                             "enableDebugProtocol": {
                                 "type": "boolean",
-                                "default": false,
+                                "default": true,
                                 "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                             },
                             "logLevel": {
@@ -2016,7 +2016,7 @@
                     },
                     "brightscript.debug.enableDebugProtocol": {
                         "type": "boolean",
-                        "default": false,
+                        "default": true,
                         "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
                         "scope": "resource"
                     },
@@ -2253,7 +2253,7 @@
                     "brightscript.debug.enhanceREPLCompletions": {
                         "type": "boolean",
                         "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
-                        "default": true,
+                        "default": false,
                         "scope": "resource"
                     },
                     "brightscript.debug.envFile": {

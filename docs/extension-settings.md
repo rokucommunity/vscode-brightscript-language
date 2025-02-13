@@ -77,7 +77,7 @@ Defaults to `true`. Enables automatic population of the debug variable panel on 
 ### `brightscript.debug.autoResolveVirtualVariables` (Experimental)
 Defaults to `false`. Enables automatic population of the virtual variables.
 ### `brightscript.debug.enhanceREPLCompletions`
-Defaults to `true`.
+Defaults to `false`.
 
 Enables scanning deployment files for additional REPL completions,
 such as user-defined functions. This process runs in a background
