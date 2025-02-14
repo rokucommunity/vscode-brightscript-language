@@ -267,15 +267,14 @@
 
     .image {
         grid-area: image;
+        display: flex;
         justify-self: center;
         align-self: center;
         align-content: center;
         width: 50px;
         height: 50px;
-        margin: 5px;
-        text-align: center;
+        margin: 0px 5px;
         border: 1px solid var(--vscode-scrollbarSlider-background);
-        border-radius: 5px;
     }
     .image img {
         max-width: 50px;
