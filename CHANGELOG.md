@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.1...v2.55.2) - 2025-02-13
+### Changed
+ - upgrade to [roku-debug@0.21.21](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02121---2025-02-13). Notable changes since 0.21.20:
+     - Fixed a bug that would cause the stopOnEntry setting from always being respected when using restart debug session ([roku-debug#223](https://github.com/rokucommunity/roku-debug/pull/223))
+     - missing new lines in start up logs ([roku-debug#222](https://github.com/rokucommunity/roku-debug/pull/222))
+### Fixed
+ - Fix `enableDebugProtocol` and `enhanceREPLCompletions` autocomplete defaults ([#617](https://github.com/rokucommunity/vscode-brightscript-language/pull/617))
+
+
+
 ## [2.55.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.0...v2.55.1) - 2025-02-11
 ### Changed
  - Fix launch config values that were inconsistantly set (and disable `enhanceREPLCompletions` until we can fix the crash) ([#616](https://github.com/rokucommunity/vscode-brightscript-language/pull/616))
