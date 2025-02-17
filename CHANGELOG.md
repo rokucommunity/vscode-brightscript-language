@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.2...v2.55.3) - 2025-02-17
+### Changed
+ - Add thumbnail to Roku AppOverlays grid #549 ([#614](https://github.com/rokucommunity/vscode-brightscript-language/pull/614))
+ - upgrade to [roku-debug@0.21.22](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02122---2025-02-17). Notable changes since 0.21.21:
+     - Bump serialize-javascript and mocha ([roku-debug#224](https://github.com/rokucommunity/roku-debug/pull/224))
+     - Centralize ECP request processing ([roku-debug#225](https://github.com/rokucommunity/roku-debug/pull/225))
+     - Fixed an issue where the entry breakpoint could be hit by the end user if they manually restarted the app ([roku-debug#226](https://github.com/rokucommunity/roku-debug/pull/226))
+
+
+
 ## [2.55.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.1...v2.55.2) - 2025-02-13
 ### Changed
  - upgrade to [roku-debug@0.21.21](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02121---2025-02-13). Notable changes since 0.21.20:
