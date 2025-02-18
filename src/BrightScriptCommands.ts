@@ -16,6 +16,9 @@ import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
+import { createNewRokuProject } from './commands/createNewProject';
+
+
 
 export class BrightScriptCommands {
 
@@ -54,6 +57,13 @@ export class BrightScriptCommands {
         this.registerCommand('refreshDeviceList', (key: string) => {
             this.activeDeviceManager.refresh();
         });
+
+        // Register the new project creation command
+        this.context.subscriptions.push(
+            vscode.commands.registerCommand('extension.brightscript.createNewProject', () => {
+                return createNewRokuProject(this.context);
+            })
+        );
 
         this.registerCommand('sendRemoteText', async () => {
             let items: vscode.QuickPickItem[] = [];

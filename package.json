@@ -194,7 +194,9 @@
         "onCommand:extension.brightscript.captureScreenshot",
         "onCommand:extension.brightscript.rekeyDevice",
         "onCommand:extension.brightscript.createPackage",
+        "onCommand:extension.brightscript.createNewProject",
         "onCommand:extension.brightscript.rekeyAndPackage"
+
     ],
     "contributes": {
         "viewsContainers": {
@@ -420,7 +422,19 @@
                     "when": "webviewId == rokuDeviceView"
                 }
             ],
-            "commandPalette": []
+            "commandPalette": [
+                {
+                    "command": "extension.brightscript.createNewProject",
+                    "when": ""
+                }
+            ],
+            "welcome": [
+                {
+                    "command": "extension.brightscript.createNewProject",
+                    "when": "workbenchState == 'empty'",
+                    "group": "roku"
+                }
+            ]
         },
         "breakpoints": [
             {
@@ -2640,6 +2654,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.createNewProject",
+                "title": "Roku: Create New Project",
+                "category": "BrightScript"
+            },
+            {
                 "command": "extension.brightscript.bsprofPause",
                 "title": "bsprof-pause - Pause BS profiling",
                 "category": "Brightscript Debug"
@@ -4016,6 +4035,11 @@
                 "command": "extension.brightscript.setOutputIncludeFilter",
                 "key": "Win+Ctrl+i",
                 "mac": "Cmd+Ctrl+i"
+            },
+            {
+                "command": "extension.brightscript.createNewProject",
+                "title": "Roku: Create New Project",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.setOutputExcludeFilter",
