@@ -73,7 +73,11 @@ pkg:/source/main.brs(10:20)
 ...ce/main.brs(10:20)
 ```
 ### `brightscript.debug.enableVariablesPanel`
+_(deprecated) Use `deferScopeLoading` instead._
+
 Defaults to `true`. Enables automatic population of the debug variable panel on a breakpoint or runtime errors
+### `brightscript.debug.deferScopeLoading`
+Defaults to `false`. Will defer the population of the `Local` scope variables until the user expands it in the variables panel.
 ### `brightscript.debug.autoResolveVirtualVariables` (Experimental)
 Defaults to `false`. Enables automatic population of the virtual variables.
 ### `brightscript.debug.enhanceREPLCompletions`

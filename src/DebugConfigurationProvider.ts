@@ -55,6 +55,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         disableScreenSaver: true,
         retainStagingFolder: false,
         enableVariablesPanel: true,
+        deferScopeLoading: false,
         autoResolveVirtualVariables: false,
         enhanceREPLCompletions: false,
         showHiddenVariables: false,

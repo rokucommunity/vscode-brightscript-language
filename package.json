@@ -790,7 +790,13 @@
                             "enableVariablesPanel": {
                                 "type": "boolean",
                                 "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                                "deprecationMessage": "Use 'deferScopeLoading' instead.",
                                 "default": true
+                            },
+                            "deferScopeLoading": {
+                                "type": "boolean",
+                                "description": "Will defer the population of the 'Local' scope variables until the user expands it in the variables panel.",
+                                "default": false
                             },
                             "autoResolveVirtualVariables": {
                                 "type": "boolean",
@@ -2241,7 +2247,14 @@
                     "brightscript.debug.enableVariablesPanel": {
                         "type": "boolean",
                         "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                        "deprecationMessage": "Use 'deferScopeLoading' instead.",
                         "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.deferScopeLoading": {
+                        "type": "boolean",
+                        "description": "Will defer the population of the 'Local' scope variables until the user expands it in the variables panel.",
+                        "default": false,
                         "scope": "resource"
                     },
                     "brightscript.debug.autoResolveVirtualVariables": {
