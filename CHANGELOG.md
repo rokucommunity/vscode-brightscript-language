@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [v2.55.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.3...v2.55.4) - 2025-02-19
+### Changed
+ - Added new settings for deferred scope loading and updated telemetry with some missing settings ([#620](https://github.com/rokucommunity/vscode-brightscript-language/pull/620))
+ - upgrade to [roku-debug@0.21.23](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02123---2025-02-19). Notable changes since 0.21.22:
+     - Cleaned up the scopes flows and added the ability to defer the loading of the local scope ([roku-debug#227](https://github.com/rokucommunity/roku-debug/pull/227))
+     - Removed the random uuid virtual variable from device info ([roku-debug#228](https://github.com/rokucommunity/roku-debug/pull/228))
+
+
+
 ## [2.55.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.2...v2.55.3) - 2025-02-17
 ### Changed
  - Add thumbnail to Roku AppOverlays grid #549 ([#614](https://github.com/rokucommunity/vscode-brightscript-language/pull/614))
