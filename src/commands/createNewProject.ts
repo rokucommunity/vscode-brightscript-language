@@ -136,7 +136,6 @@ mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
 
 splash_screen_sd=pkg:/images/splash-screen_sd.jpg
 splash_screen_hd=pkg:/images/splash-screen_hd.jpg
-splash_screen_fhd=pkg:/images/splash-screen_fhd.jpg
 
 ui_resolutions=hd
     `.trim();
@@ -146,17 +145,15 @@ ui_resolutions=hd
 ' Main entry point
 sub main(args as Dynamic)
     screen = CreateObject("roSGScreen")
+    m.port = CreateObject("roMessagePort")
+    screen.setMessagePort(m.port)
+    
     scene = screen.CreateScene("MainScene")
     screen.show()
     
-    port = CreateObject("roMessagePort")
-    screen.setMessagePort(port)
-    
-    while true
-        msg = wait(0, port)
-        msgType = type(msg)
-        
-        if msgType = "roSGScreenEvent"
+    while(true)
+        msg = wait(0, m.port)
+        if type(msg) = "roSGScreenEvent"
             if msg.isScreenClosed()
                 return
             end if
@@ -221,9 +218,19 @@ A Roku BrightScript channel created with VS Code BrightScript extension.
 
 Use the VS Code BrightScript extension commands to build and deploy your channel:
 
-1. Press F1 or Ctrl+Shift+P
-2. Search for "Roku: Deploy"
-3. Follow the prompts to deploy to your development Roku device
+First, you'll need to configure your launch.json file for debugging. Here's how to set it up:
+
+In VS Code, go to the Run and Debug view (Ctrl+Shift+D or Cmd+Shift+D on Mac)
+Click "create a launch.json file"
+Select "BrightScript Debug: Launch" from the configuration dropdown
+
+For deployment:
+
+Press Ctrl+Shift+P (or Cmd+Shift+P on Mac)
+Type "BrightScript" and select "BrightScript: Deploy"
+Enter your Roku device's IP address and developer password when prompted
+
+
     `.trim();
 
     // Create .gitignore

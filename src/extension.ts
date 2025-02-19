@@ -32,6 +32,8 @@ import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
 import { standardizePath as s } from 'brighterscript';
+import { createNewRokuProject } from './commands/createNewProject';
+
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
