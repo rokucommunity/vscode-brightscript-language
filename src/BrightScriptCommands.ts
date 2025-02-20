@@ -18,8 +18,6 @@ import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheComm
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { createNewRokuProject } from './commands/createNewProject';
 
-
-
 export class BrightScriptCommands {
 
     constructor(
@@ -345,6 +343,11 @@ export class BrightScriptCommands {
                 await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
             }
         });
+        
+        this.registerCommand('createNewProject', () => {
+            return createNewRokuProject(this.context);
+        });
+
 
         this.registerCommand('openRegistryInBrowser', async (host: string) => {
             if (!host) {
