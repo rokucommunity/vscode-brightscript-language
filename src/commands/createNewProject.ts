@@ -179,7 +179,7 @@ async function createLaunchJson(projectPath: string) {
                 rootDir: '${workspaceFolder}',
                 enableDebuggerAutoRecovery: false,
                 stopOnEntry: false,
-                enableDebugProtocol: true,
+                enableDebugProtocol: true
             }
         ]
     };
