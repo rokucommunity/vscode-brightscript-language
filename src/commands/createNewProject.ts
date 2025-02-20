@@ -137,7 +137,7 @@ mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
 splash_screen_sd=pkg:/images/splash-screen_sd.jpg
 splash_screen_hd=pkg:/images/splash-screen_hd.jpg
 
-ui_resolutions=hd
+ui_resolutions=fhd
     `.trim();
 
     // Create main.brs - Channel entry point
