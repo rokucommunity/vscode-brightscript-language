@@ -224,7 +224,7 @@ splash_screen_hd=pkg:/images/splash-screen_hd.jpg
 splash_screen_hd=pkg:/images/splash-screen_fhd.jpg
 
 
-ui_resolutions=hd
+ui_resolutions=fhd
     `.trim();
 
     // Create main.brs - Channel entry point

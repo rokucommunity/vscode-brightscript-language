@@ -196,7 +196,6 @@
         "onCommand:extension.brightscript.createPackage",
         "onCommand:extension.brightscript.createNewProject",
         "onCommand:extension.brightscript.rekeyAndPackage"
-
     ],
     "contributes": {
         "viewsContainers": {
