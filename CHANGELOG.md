@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.4...v2.55.5) - 2025-02-21
+### Changed
+ - upgrade to [roku-debug@0.21.24](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02124---2025-02-21). Notable changes since 0.21.23:
+     - Rename roAudioPlayerEvent virtual vars, add missing roChannelStoreEvent virtual vars ([roku-debug#230](https://github.com/rokucommunity/roku-debug/pull/230))
+     - Add $contents virtual variable to roRegistrySection ([roku-debug#231](https://github.com/rokucommunity/roku-debug/pull/231))
+     - Temporary fix for virtual vars in hovers ([roku-debug#232](https://github.com/rokucommunity/roku-debug/pull/232))
+     - Removed the array virtual variables from list and xml list ([roku-debug#229](https://github.com/rokucommunity/roku-debug/pull/229))
+
+
+
 ## [v2.55.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.3...v2.55.4) - 2025-02-19
 ### Changed
  - Added new settings for deferred scope loading and updated telemetry with some missing settings ([#620](https://github.com/rokucommunity/vscode-brightscript-language/pull/620))
