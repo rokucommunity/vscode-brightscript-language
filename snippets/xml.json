@@ -62,7 +62,7 @@
         "body": [
             "<function name=\"${1:functionName}\" />"
         ],
-        "description": "Interface element"
+        "description": "Functional field"
     },
 
     "Script element": {
