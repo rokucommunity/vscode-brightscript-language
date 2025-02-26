@@ -888,6 +888,31 @@ describe('brightscript.tmlanguage.json', () => {
         await testRokuClass('roXMLList');
 
     });
+
+    it('does NOT colorize class_roku_builtin if exact match is not found', async () => {
+        async function testRokuClass (className: string) {
+            return testGrammar(`
+                var = createObject("${className}")
+               '                    ${'^'.repeat(className.length)} string.quoted.double.brs
+               '      ^^^^^^^^^^^^ entity.name.function.brs
+               '^^^ entity.name.variable.local.brs
+            `);
+        }
+
+        await testRokuClass('  roAppInfo');
+        await testRokuClass('&&roAppManager');
+        await testRokuClass('//roAppMemoryMonitor');
+        await testRokuClass('alpha.roAppMemoryMonitorEvent.data');
+        await testRokuClass('asdfroArray');
+        await testRokuClass('!!!roAssociativeArray');
+        await testRokuClass('890roAudioGuide');
+        await testRokuClass('$$ roAudioMetadata');
+        await testRokuClass('../roAudioMetadata   ');
+        await testRokuClass('(([]))roAudioMetadata.');
+        await testRokuClass('true roAudioMetadata\\b');
+        await testRokuClass('  roAudioMetadata   ');
+
+    });
 });
 
 const registries = new Cache();
