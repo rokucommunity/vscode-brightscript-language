@@ -1,6 +1,5 @@
 import { assert, expect } from 'chai';
 import * as path from 'path';
-import type { SinonStub } from 'sinon';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
@@ -12,8 +11,6 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import { ActiveDeviceManager } from './ActiveDeviceManager';
 import { rokuDeploy } from 'roku-deploy';
-import { GlobalStateManager } from './GlobalStateManager';
-import { util } from './util';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -35,12 +32,10 @@ describe('BrightScriptConfigurationProvider', () => {
 
     let configProvider: BrightScriptDebugConfigurationProvider;
     let folder: WorkspaceFolder;
-    let globalStateManager: GlobalStateManager;
     let userInputManager: UserInputManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
-        globalStateManager = new GlobalStateManager(vscode.context);
 
         folder = {
             uri: Uri.file(rootDir),
@@ -58,7 +53,6 @@ describe('BrightScriptConfigurationProvider', () => {
             activeDeviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
-            globalStateManager,
             userInputManager
         );
     });
@@ -329,77 +323,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 rootDir: '${env:TEST_ENV_VAR}/123'
             });
             expect(config.rootDir).to.eql('./somePath/123');
-        });
-    });
-
-    describe('processEnableDebugProtocolParameter', () => {
-        let value: string;
-        let stub: SinonStub;
-        beforeEach(() => {
-            stub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => {
-                return Promise.resolve(value) as any;
-            });
-        });
-
-        it('sets true when clicked "okay"', async () => {
-            value = 'Okay';
-            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(config.enableDebugProtocol).to.eql(true);
-        });
-
-        it('sets true and flips global state when clicked "okay"', async () => {
-            value = `Okay (ask less often)`;
-            expect(globalStateManager.debugProtocolPopupSnoozeUntilDate).to.eql(undefined);
-            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(config.enableDebugProtocol).to.eql(true);
-            //2 weeks after now
-            expect(
-                globalStateManager.debugProtocolPopupSnoozeUntilDate.getTime()
-            ).closeTo(Date.now() + (12 * 60 * 60 * 1000), 1000);
-            expect(globalStateManager.debugProtocolPopupSnoozeValue).to.eql(true);
-        });
-
-        it('sets false when clicked "No, use the telnet debugger"', async () => {
-            value = 'Use telnet';
-            const config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(config.enableDebugProtocol).to.eql(false);
-        });
-
-        it('thorws exception clicked "cancel"', async () => {
-            value = undefined;
-            let ex;
-            try {
-                await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            } catch (e) {
-                ex = e;
-            }
-            expect(ex?.message).to.eql('Debug session cancelled');
-        });
-
-        it('sets to true and does not prompt when "dont show again" was clicked', async () => {
-            value = `Okay (ask less often)`;
-            globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (60 * 1000));
-            globalStateManager.debugProtocolPopupSnoozeValue = true;
-            let config = await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            expect(config.enableDebugProtocol).to.eql(true);
-            expect(stub.called).to.be.false;
-        });
-
-        it('shows the issue picker when selected', async () => {
-            value = `Report an issue`;
-            const reportStub = sinon.stub(util, 'openIssueReporter').returns(Promise.resolve());
-
-            try {
-                await configProvider['processEnableDebugProtocolParameter']({} as any, { softwareVersion: '12.5.0' });
-            } catch (e) { }
-
-            expect(reportStub.called).to.be.true;
-        });
-
-        it('turns truthy values into true', async () => {
-            value = `Report an issue`;
-            const config = await configProvider['processEnableDebugProtocolParameter']({ enableDebugProtocol: {} } as any, { softwareVersion: '12.5.0' });
-            expect(config.enableDebugProtocol).to.be.true;
         });
     });
 });

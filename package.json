@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.52.0",
+    "version": "2.55.5",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -57,8 +57,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.68.3",
-        "brighterscript-formatter": "^1.7.8",
+        "brighterscript": "^0.69.0",
+        "brighterscript-formatter": "^1.7.10",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -79,8 +79,8 @@
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.21.15",
-        "roku-deploy": "^3.12.3",
+        "roku-debug": "^0.21.24",
+        "roku-deploy": "^3.12.4",
         "roku-test-automation": "^2.0.10",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
@@ -790,7 +790,23 @@
                             "enableVariablesPanel": {
                                 "type": "boolean",
                                 "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                                "deprecationMessage": "Use 'deferScopeLoading' instead.",
                                 "default": true
+                            },
+                            "deferScopeLoading": {
+                                "type": "boolean",
+                                "description": "Will defer the population of the 'Local' scope variables until the user expands it in the variables panel.",
+                                "default": false
+                            },
+                            "autoResolveVirtualVariables": {
+                                "type": "boolean",
+                                "description": "(Experimental) Enables automatic population of the virtual variables.",
+                                "default": false
+                            },
+                            "enhanceREPLCompletions": {
+                                "type": "boolean",
+                                "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
+                                "default": false
                             },
                             "showHiddenVariables": {
                                 "type": "boolean",
@@ -894,6 +910,11 @@
                                 "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                                 "scope": "resource"
                             },
+                            "rewriteDevicePathsInLogs": {
+                                "type": "boolean",
+                                "default": true,
+                                "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
+                            },
                             "emitChannelPublishedEvent": {
                                 "type": "boolean",
                                 "description": "Should the ChannelPublishedEvent be emitted. This is a hack for when certain roku devices become locked up as a result of this event being emitted. You probably don't need to set this",
@@ -948,7 +969,7 @@
                             },
                             "enableDebugProtocol": {
                                 "type": "boolean",
-                                "default": false,
+                                "default": true,
                                 "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md"
                             },
                             "logLevel": {
@@ -2001,7 +2022,7 @@
                     },
                     "brightscript.debug.enableDebugProtocol": {
                         "type": "boolean",
-                        "default": false,
+                        "default": true,
                         "description": "If true, the debugger will use the new BrightScript debug protocol, and will disable the telnet debugger. See this link for more details: https://developer.roku.com/en-ca/docs/developer-program/debugging/socket-based-debugger.md",
                         "scope": "resource"
                     },
@@ -2010,6 +2031,11 @@
                         "default": true,
                         "description": "If true, the debugger will read any available sourcemaps and attempt to convert debugger locations into their original source locations.",
                         "scope": "resource"
+                    },
+                    "brightscript.debug.rewriteDevicePathsInLogs": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "If true, then any pkg path found in the device logs will be converted to a source location\n\nSupported formats:\n- pkg:/source/main.brs:10\n- pkg:/source/main.brs(10)\n- pkg:/source/main.brs:10:20\n- pkg:/source/main.brs(10:20)\n- ...ce/main.brs:10\n- ...ce/main.brs(10)\n- ...ce/main.brs:10:20\n- ...ce/main.brs(10:20)"
                     },
                     "brightscript.debug.logfilePath": {
                         "type": "string",
@@ -2221,7 +2247,26 @@
                     "brightscript.debug.enableVariablesPanel": {
                         "type": "boolean",
                         "description": "Enables automatic population of the debug variable panel on a breakpoint or runtime errors.",
+                        "deprecationMessage": "Use 'deferScopeLoading' instead.",
                         "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.deferScopeLoading": {
+                        "type": "boolean",
+                        "description": "Will defer the population of the 'Local' scope variables until the user expands it in the variables panel.",
+                        "default": false,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.autoResolveVirtualVariables": {
+                        "type": "boolean",
+                        "description": "(Experimental) Enables automatic population of the virtual variables.",
+                        "default": false,
+                        "scope": "resource"
+                    },
+                    "brightscript.debug.enhanceREPLCompletions": {
+                        "type": "boolean",
+                        "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
+                        "default": false,
                         "scope": "resource"
                     },
                     "brightscript.debug.envFile": {

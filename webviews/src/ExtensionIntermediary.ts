@@ -105,7 +105,7 @@ class ExtensionIntermediary {
     }
 
     public getWorkspaceState(key: string, defaultValue: string | undefined = undefined) {
-        return this.sendCommand<any>(ViewProviderCommand.getWorkspaceState, {
+        return this.sendCommand(ViewProviderCommand.getWorkspaceState, {
             key: key,
             defaultValue: defaultValue
         });

@@ -4,6 +4,7 @@
     import { odc, intermediary } from '../../ExtensionIntermediary';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import { NewFile, Trash } from 'svelte-codicons';
+    import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { WorkspaceStateKey } from '../../../../src/viewProviders/WorkspaceStateKey';
@@ -24,6 +25,7 @@
         destinationFileName: string;
         visible: boolean;
         opacity: number;
+        imageData: any;
     }
 
     let overlays = [] as OverlayInfo[]
@@ -97,6 +99,11 @@
                 overlays = [overlayInfo, ...overlays];
             }
 
+            // load thumbnail data from disk
+            intermediary.sendCommand(ViewProviderCommand.loadRokuAppOverlaysThumbnails, {
+                overlays: overlays,
+                index: index !== undefined ? index : 0
+            });
         } catch (e) {
             debugger;
         }
@@ -206,56 +213,135 @@
         }
     });
 
+    intermediary.observeEvent(ViewProviderEvent.onRokuAppOverlayThumbnailsLoaded, (message) => {
+        overlays = message.context.overlays;
+    });
+
+    function onOpenFile(event) {
+        const srcFilePath = event.target.getAttribute('data-file');
+        const pathContentsInfo = { filePath: srcFilePath, type: 'file' };
+        intermediary.sendCommand(ViewProviderCommand.openRokuFile, pathContentsInfo);
+    }
+
     // Required by any view so we can know that the view is ready to receive messages
     intermediary.sendViewReady();
 </script>
 
 <style>
-    #container {
-        padding: 8px;
+    .container {
+        width:100%;
+        box-sizing: border-box;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 0.4fr 0.4fr 3.2fr 0.1fr 0.5fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 0px 0px;
+        min-width: 0;
+        min-height: 0;
+        grid-auto-flow: row;
+        grid-template-areas:
+            'checkbox image filepath filepath delete'
+            'checkbox image label slider delete';
     }
 
-    table {
-        border-spacing: 0;
+    .filepath {
+        grid-area: filepath;
+        justify-self: left;
+        align-self: center;
+        overflow: hidden;
+        min-width: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
         width: 100%;
+        direction: rtl;
+        text-align: left;
+        opacity: .5;
+    }
+
+    .checkbox {
+        grid-area: checkbox;
+        justify-self: center;
+        align-self: center;
+    }
+
+    .image {
+        grid-area: image;
+        display: flex;
+        justify-self: center;
+        align-self: center;
+        align-content: center;
+        width: 50px;
+        height: 50px;
+        margin: 0px 5px;
+        border: 1px solid var(--vscode-scrollbarSlider-background);
+    }
+    .image img {
+        max-width: 50px;
+        height: auto;
+        max-height: 50px;
+        margin: auto;
+    }
+
+    .label {
+        grid-area: label;
+        justify-self: left;
+        align-self: center;
+        width:100%;
+    }
+    .label vscode-text-field {
+        width:100%;
+    }
+
+    .slider {
+        grid-area: slider;
+        justify-self: center;
+        align-self: center;
+    }
+    .slider-input{
+        width: 75px;
+    }
+
+    .delete {
+        grid-area: delete;
+        justify-self: center;
+        align-self: center;
     }
 </style>
 
 
-<div id="container">
-    {#if odcAvailable}
-        {#if overlays.length }
-            <table>
-                {#each overlays as overlay, index}
-                    <tr>
-                        <td>
-                            <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible} />
-                        </td>
-                        <td>
-                            <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
-                        </td>
-                        <td>
-                            <input id="{index.toString()}" type="range" min="0" max="100" value="{overlay.opacity * 100}" class="slider" on:input={onOverlayOpacityChange}>
-                        </td>
-                        <td>
-                            <vscode-button id="{index}" appearance="icon" title="Delete Overlay" aria-label="Delete Overlay" on:click={deleteOverlay}>
-                                <Trash />
-                            </vscode-button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="4">
-                            <vscode-divider />
-                        </td>
-                    </tr>
-                {/each}
-            </table>
-        {:else}
-            <span style="padding:10px">
-                You haven't added any overlays. Add one by clicking <NewFile />
-            </span>
-        {/if}
+{#if odcAvailable}
+    {#if overlays.length }
+        {#each overlays as overlay, index}
+            <div class="container">
+                <div class="filepath" title="{overlay.sourcePath}">
+                    {overlay.sourcePath}
+                </div>
+                <div class="checkbox">
+                    <vscode-checkbox id="{index}" on:change={onOverlayVisibleChange} checked={overlay.visible} />
+                </div>
+                <div class="image">
+                    <img src="{overlay.imageData}" data-file="{overlay.sourcePath}"/>
+                </div>
+                <div class="label">
+                    <vscode-text-field id="{index}" on:input={onOverlayNameChange} value="{overlay.name}" />
+                </div>
+                <div class="slider">
+                    <input id="{index.toString()}" class="slider-input" type="range" min="0" max="100" value="{overlay.opacity * 100}" on:input={onOverlayOpacityChange}>
+                </div>
+                <div class="delete">
+                    <vscode-button id="{index}" appearance="icon" title="Delete Overlay" aria-label="Delete Overlay" on:click={deleteOverlay}>
+                        <Trash />
+                    </vscode-button>
+                </div>
+            </div>
+                <vscode-divider />
+        {/each}
     {:else}
-        <OdcSetupSteps />
+        <span style="padding:10px">
+            You haven't added any overlays. Add one by clicking <NewFile />
+        </span>
     {/if}
-</div>
+{:else}
+    <OdcSetupSteps />
+{/if}
