@@ -6,6 +6,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.4...v2.55.5) - 2025-02-21
+### Changed
+ - upgrade to [roku-debug@0.21.24](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02124---2025-02-21). Notable changes since 0.21.23:
+     - Rename roAudioPlayerEvent virtual vars, add missing roChannelStoreEvent virtual vars ([roku-debug#230](https://github.com/rokucommunity/roku-debug/pull/230))
+     - Add $contents virtual variable to roRegistrySection ([roku-debug#231](https://github.com/rokucommunity/roku-debug/pull/231))
+     - Temporary fix for virtual vars in hovers ([roku-debug#232](https://github.com/rokucommunity/roku-debug/pull/232))
+     - Removed the array virtual variables from list and xml list ([roku-debug#229](https://github.com/rokucommunity/roku-debug/pull/229))
+
+
+
+## [v2.55.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.3...v2.55.4) - 2025-02-19
+### Changed
+ - Added new settings for deferred scope loading and updated telemetry with some missing settings ([#620](https://github.com/rokucommunity/vscode-brightscript-language/pull/620))
+ - upgrade to [roku-debug@0.21.23](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02123---2025-02-19). Notable changes since 0.21.22:
+     - Cleaned up the scopes flows and added the ability to defer the loading of the local scope ([roku-debug#227](https://github.com/rokucommunity/roku-debug/pull/227))
+     - Removed the random uuid virtual variable from device info ([roku-debug#228](https://github.com/rokucommunity/roku-debug/pull/228))
+
+
+
+## [2.55.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.2...v2.55.3) - 2025-02-17
+### Changed
+ - Add thumbnail to Roku AppOverlays grid #549 ([#614](https://github.com/rokucommunity/vscode-brightscript-language/pull/614))
+ - upgrade to [roku-debug@0.21.22](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02122---2025-02-17). Notable changes since 0.21.21:
+     - Bump serialize-javascript and mocha ([roku-debug#224](https://github.com/rokucommunity/roku-debug/pull/224))
+     - Centralize ECP request processing ([roku-debug#225](https://github.com/rokucommunity/roku-debug/pull/225))
+     - Fixed an issue where the entry breakpoint could be hit by the end user if they manually restarted the app ([roku-debug#226](https://github.com/rokucommunity/roku-debug/pull/226))
+
+
+
+## [2.55.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.1...v2.55.2) - 2025-02-13
+### Changed
+ - upgrade to [roku-debug@0.21.21](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02121---2025-02-13). Notable changes since 0.21.20:
+     - Fixed a bug that would cause the stopOnEntry setting from always being respected when using restart debug session ([roku-debug#223](https://github.com/rokucommunity/roku-debug/pull/223))
+     - missing new lines in start up logs ([roku-debug#222](https://github.com/rokucommunity/roku-debug/pull/222))
+### Fixed
+ - Fix `enableDebugProtocol` and `enhanceREPLCompletions` autocomplete defaults ([#617](https://github.com/rokucommunity/vscode-brightscript-language/pull/617))
+
+
+
+## [2.55.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.0...v2.55.1) - 2025-02-11
+### Changed
+ - Fix launch config values that were inconsistantly set (and disable `enhanceREPLCompletions` until we can fix the crash) ([#616](https://github.com/rokucommunity/vscode-brightscript-language/pull/616))
+
+
+
+## [2.55.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.54.0...v2.55.0) - 2025-02-10
+### Added
+ - New lanuch config setting to enable/disable pkg path conversions in logs ([#610](https://github.com/rokucommunity/vscode-brightscript-language/pull/610))
+### Changed
+ - Enable debug protocol by default ([#615](https://github.com/rokucommunity/vscode-brightscript-language/pull/615))
+ - upgrade to [roku-debug@0.21.20](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02120---2025-02-10). Notable changes since 0.21.19:
+     - Updated the breakpoint manager to fail inline break point requests ([roku-debug#221](https://github.com/rokucommunity/roku-debug/pull/221))
+     - Feature/registry scope in variables pannel ([roku-debug#219](https://github.com/rokucommunity/roku-debug/pull/219))
+     - Bugfix/UI flicker on invalidated events ([roku-debug#220](https://github.com/rokucommunity/roku-debug/pull/220))
+ - upgrade to [brighterscript@0.69.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0690---2025-02-10). Notable changes since 0.68.5:
+     - Language Server Rewrite ([brighterscript#993](https://github.com/rokucommunity/brighterscript/pull/993))
+ - upgrade to [brighterscript-formatter@1.7.10](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1710---2025-02-10). Notable changes since 1.7.9:
+
+
+
+## [2.54.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.1...v2.54.0) - 2025-02-06
+### Added
+ - variable and REPL launch config options ([#613](https://github.com/rokucommunity/vscode-brightscript-language/pull/613))
+### Changed
+ - upgrade to [roku-debug@0.21.19](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02119---2025-02-06). Notable changes since 0.21.18:
+     - Send the same start up logs for both debug console and output panel ([roku-debug#218](https://github.com/rokucommunity/roku-debug/pull/218))
+     - debugger REPL completions ([roku-debug#211](https://github.com/rokucommunity/roku-debug/pull/211))
+     - add more REPL completion trigger locations ([roku-debug#217](https://github.com/rokucommunity/roku-debug/pull/217))
+ - upgrade to [brighterscript@0.68.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0685---2025-02-06). Notable changes since 0.68.4:
+     - Add `validate` flag to ProgramBuilder.run() ([brighterscript#1409](https://github.com/rokucommunity/brighterscript/pull/1409))
+
+
+
+## [2.53.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.53.0...v2.53.1) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.18](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02118---2025-01-31). Notable changes since 0.21.17:
+     - Fix ecp limited crash ([roku-debug#215](https://github.com/rokucommunity/roku-debug/pull/215))
+
+
+
+## [2.53.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.1...v2.53.0) - 2025-01-31
+### Changed
+ - upgrade to [roku-debug@0.21.17](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02117---2025-01-31). Notable changes since 0.21.16:
+    - Add support for custom variables ([#209](https://github.com/rokucommunity/roku-debug/pull/209))
+    - Convert pkg path to file system path in logs ([#208](https://github.com/rokucommunity/roku-debug/pull/208))
+    - Fixed file path and unusable link issues on windows ([#213](https://github.com/rokucommunity/roku-debug/pull/213))
+    - Fixed a bug where some logs could get lost by the debugger ([#212](https://github.com/rokucommunity/roku-debug/pull/212))
+    - Fixed issue looking up primitive variables on hover ([#210](https://github.com/rokucommunity/roku-debug/pull/210))
+ - upgrade to [brighterscript-formatter@1.7.9](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#179---2025-01-31). Notable changes since 1.7.8:
+    - Fix indentation bug when brighterscript keywords are used as identifiers ([#96](https://github.com/rokucommunity/brighterscript-formatter/pull/96))
+
+
+
+## [2.52.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.52.0...v2.52.1) - 2025-01-22
+### Changed
+ - Support multiple named automations in the Roku Automations panel ([#599](https://github.com/rokucommunity/vscode-brightscript-language/pull/599))
+ - upgrade to [roku-deploy@3.12.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3124---2025-01-22). Notable changes since 3.12.3:
+     - fixed an issue with 577 error codes ([roku-deploy#182](https://github.com/rokucommunity/roku-deploy/pull/182))
+ - upgrade to [roku-debug@0.21.16](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02116---2025-01-22). Notable changes since 0.21.15:
+     - Uninitialize __brs_err__ when stepping or continuing ([roku-debug#207](https://github.com/rokucommunity/roku-debug/pull/207))
+ - upgrade to [brighterscript@0.68.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0684---2025-01-22). Notable changes since 0.68.3:
+
+
+
 ## [2.52.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.51.0...v2.52.0) - 2025-01-13
 ### Changed
  - upgrade to [roku-debug@0.21.15](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02115---2025-01-13). Notable changes since 0.21.13:

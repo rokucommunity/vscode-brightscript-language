@@ -1,5 +1,4 @@
 import { util as bslangUtil } from 'brighterscript';
-import * as semver from 'semver';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -21,7 +20,6 @@ import type { ActiveDeviceManager } from './ActiveDeviceManager';
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
-import type { GlobalStateManager } from './GlobalStateManager';
 import type { UserInputManager } from './managers/UserInputManager';
 
 
@@ -32,51 +30,53 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
-        private globalStateManager: GlobalStateManager,
         private userInputManager: UserInputManager
     ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
-
-        this.configDefaults = {
-            type: 'brightscript',
-            name: 'BrightScript Debug: Launch',
-            host: '${promptForHost}',
-            password: '${promptForPassword}',
-            consoleOutput: 'normal',
-            request: 'launch',
-            stopOnEntry: false,
-            outDir: '${workspaceFolder}/out/',
-            retainDeploymentArchive: true,
-            injectRaleTrackerTask: false,
-            injectRdbOnDeviceComponent: false,
-            disableScreenSaver: true,
-            retainStagingFolder: false,
-            enableVariablesPanel: true,
-            showHiddenVariables: false,
-            enableDebuggerAutoRecovery: false,
-            stopDebuggerOnAppExit: false,
-            autoRunSgDebugCommands: [],
-            files: [...DefaultFiles],
-            enableSourceMaps: true,
-            packagePort: 80,
-            enableDebugProtocol: false,
-            remotePort: 8060,
-            rendezvousTracking: true,
-            deleteDevChannelBeforeInstall: false,
-            sceneGraphDebugCommandsPort: 8080,
-            remoteControlMode: {
-                activateOnSessionStart: false,
-                deactivateOnSessionEnd: false
-            }
-        };
     }
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
     public util = util;
 
-    private configDefaults: any;
+    private configDefaults: Partial<BrightScriptLaunchConfiguration> = {
+        type: 'brightscript',
+        name: 'BrightScript Debug: Launch',
+        host: '${promptForHost}',
+        password: '${promptForPassword}',
+        consoleOutput: 'normal',
+        request: 'launch',
+        stopOnEntry: false,
+        outDir: '${workspaceFolder}/out/',
+        retainDeploymentArchive: true,
+        injectRaleTrackerTask: false,
+        injectRdbOnDeviceComponent: false,
+        disableScreenSaver: true,
+        retainStagingFolder: false,
+        enableVariablesPanel: true,
+        deferScopeLoading: false,
+        autoResolveVirtualVariables: false,
+        enhanceREPLCompletions: false,
+        showHiddenVariables: false,
+        enableDebuggerAutoRecovery: false,
+        stopDebuggerOnAppExit: false,
+        autoRunSgDebugCommands: [],
+        files: [...DefaultFiles],
+        enableSourceMaps: true,
+        rewriteDevicePathsInLogs: true,
+        packagePort: 80,
+        enableDebugProtocol: true,
+        remotePort: 8060,
+        rendezvousTracking: true,
+        deleteDevChannelBeforeInstall: false,
+        sceneGraphDebugCommandsPort: 8080,
+        componentLibrariesPort: 8080,
+        remoteControlMode: {
+            activateOnSessionStart: false,
+            deactivateOnSessionEnd: false
+        }
+    };
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
@@ -115,11 +115,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
 
-            //TODO re-enable once we've fixed some of the debug protocol issues
-            // result = await this.processEnableDebugProtocolParameter(result, deviceInfo);
-
-            result.enableDebugProtocol ??= this.configDefaults.enableDebugProtocol;
-
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
             return result;
@@ -135,48 +130,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 deviceInfo
             );
         }
-    }
-
-    protected async processEnableDebugProtocolParameter(config: BrightScriptLaunchConfiguration, deviceInfo: DeviceInfo) {
-        if (config.enableDebugProtocol !== undefined || !semver.gte(deviceInfo?.softwareVersion ?? '0.0.0', '12.5.0')) {
-            config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
-            return config;
-        }
-
-        //auto-pick a value if user chose to snooze the popup
-        if (this.globalStateManager.debugProtocolPopupSnoozeUntilDate && this.globalStateManager.debugProtocolPopupSnoozeUntilDate > new Date()) {
-            config.enableDebugProtocol = this.globalStateManager.debugProtocolPopupSnoozeValue;
-            return config;
-        }
-
-        //enable the debug protocol by default if the user hasn't defined this prop, and the target RokuOS is 12.5 or greater
-        const result = await vscode.window.showInformationMessage('New Debug Protocol Enabled', {
-            modal: true,
-            detail: `We've activated Roku's debug protocol for this session (an alternative to the telnet debugger). This will become the default choice sometime in the future and may be implemented without additional notice. Your feedback during this testing phase is invaluable.`
-        }, 'Okay', `Okay (ask less often)`, 'Use telnet', 'Use telnet (ask less often)', 'Report an issue');
-
-        if (result === 'Okay') {
-            config.enableDebugProtocol = true;
-        } else if (result === `Okay (ask less often)`) {
-            config.enableDebugProtocol = true;
-            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
-            //snooze for 2 weeks
-            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (12 * 60 * 60 * 1000));
-        } else if (result === 'Use telnet') {
-            config.enableDebugProtocol = false;
-        } else if (result === 'Use telnet (ask less often)') {
-            config.enableDebugProtocol = false;
-            this.globalStateManager.debugProtocolPopupSnoozeValue = config.enableDebugProtocol;
-            //snooze for 12 hours
-            this.globalStateManager.debugProtocolPopupSnoozeUntilDate = new Date(Date.now() + (12 * 60 * 60 * 1000));
-        } else if (result === 'Report an issue') {
-            await util.openIssueReporter({ deviceInfo: deviceInfo });
-            throw new Error('Debug session cancelled');
-        } else {
-            throw new Error('Debug session cancelled');
-        }
-
-        return config;
     }
 
     /**
@@ -255,6 +208,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config = { ...bsconfig, ...config };
         }
 
+        config.cwd = folderUri.fsPath;
+
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
         //Check for depreciated Items
@@ -286,39 +241,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //create an empty array so it's easier to reason with downstream
             config.componentLibraries = [];
         }
-        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
+
+        // Apply any defaults to missing values
+        for (const key in this.configDefaults) {
+            config[key] ??= this.configDefaults[key];
+        }
+
+        // Run any required post processing after applying defaults
+        config.outDir = this.util.ensureTrailingSlash(config.outDir);
 
         // Pass along files needed by RDB to roku-debug
         config.rdbFilesBasePath = rta.utils.getDeviceFilesPath();
-
-        // Apply any defaults to missing values
-        config.type = config.type ? config.type : this.configDefaults.type;
-        config.name = config.name ? config.name : this.configDefaults.name;
-        config.host = config.host ? config.host : this.configDefaults.host;
-        config.password = config.password ? config.password : this.configDefaults.password;
-        config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
-        config.autoRunSgDebugCommands = config.autoRunSgDebugCommands ? config.autoRunSgDebugCommands : this.configDefaults.autoRunSgDebugCommands;
-        config.request = config.request ? config.request : this.configDefaults.request;
-        config.stopOnEntry ??= this.configDefaults.stopOnEntry;
-        config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
-        config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
-        config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
-        config.injectRdbOnDeviceComponent = config.injectRdbOnDeviceComponent === true ? true : this.configDefaults.injectRdbOnDeviceComponent;
-        config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
-        config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
-        config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
-        config.showHiddenVariables = config.showHiddenVariables === true ? true : this.configDefaults.showHiddenVariables;
-        config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
-        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
-        config.files = config.files ? config.files : this.configDefaults.files;
-        config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
-        config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
-        config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
-        config.logfilePath ??= null;
-        config.cwd = folderUri.fsPath;
-        config.rendezvousTracking = config.rendezvousTracking === false ? false : true;
-        config.deleteDevChannelBeforeInstall = config.deleteDevChannelBeforeInstall === true;
-        config.sceneGraphDebugCommandsPort = config.sceneGraphDebugCommandsPort ? config.sceneGraphDebugCommandsPort : this.configDefaults.sceneGraphDebugCommandsPort;
 
         //if packageTask is defined, make sure there's actually a task with that name defined
         if (config.packageTask) {
