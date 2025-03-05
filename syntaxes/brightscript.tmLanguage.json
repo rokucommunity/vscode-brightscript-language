@@ -80,6 +80,9 @@
                     "include": "#keyword_logical_operator"
                 },
                 {
+                    "include": "#keyword_return"
+                },
+                {
                     "include": "#function_call"
                 },
                 {
@@ -96,9 +99,6 @@
                 },
                 {
                     "include": "#m_and_global"
-                },
-                {
-                    "include": "#keyword_return"
                 },
                 {
                     "include": "#primitive_literal_expression"
