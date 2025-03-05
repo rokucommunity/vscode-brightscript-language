@@ -80,6 +80,9 @@
                     "include": "#keyword_logical_operator"
                 },
                 {
+                    "include": "#keyword_modifier"
+                },
+                {
                     "include": "#keyword_return"
                 },
                 {
@@ -649,6 +652,16 @@
             "match": "(?i:\\b(and|or|not)\\b)",
             "name": "keyword.operator.logical.word"
         },
+        "keyword_modifier": {
+            "comment": "Capture modifiers that alter the declaration of a type of variable.",
+            "match": "(?i:\\b(optional)\\b)",
+            "name": "keyword.modifier.word",
+            "captures": {
+                "1": {
+                    "name": "keyword.modifier.brs"
+                }
+            }
+        },
         "keyword_return": {
             "comment": "The return statements in functions",
             "captures": {
@@ -771,6 +784,9 @@
                 },
                 {
                     "include": "#interface_field"
+                },
+                {
+                    "include": "#keyword_modifier"
                 }
             ],
             "end": "(?i)[\\s\\t]*(end[\\s\\t]*interface)",
@@ -781,7 +797,7 @@
             }
         },
         "interface_field": {
-            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))?",
+            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))",
             "beginCaptures": {
                 "1": {
                     "name": "variable.object.property.brs"
