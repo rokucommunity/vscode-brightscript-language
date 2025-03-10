@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.5...v2.55.6) - 2025-03-10
+### Added
+ - Added snippet for functional fields ([#625](https://github.com/rokucommunity/vscode-brightscript-language/pull/625))
+### Changed
+ - Reenable the `enhanceREPLCompletions` launch option by default ([#630](https://github.com/rokucommunity/vscode-brightscript-language/pull/630))
+ - syntax highlighting updates to include all known brightscript & brightsign components ([#626](https://github.com/rokucommunity/vscode-brightscript-language/pull/626))
+ - upgrade to [roku-debug@0.21.25](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02125---2025-03-10). Notable changes since 0.21.24:
+     - Fix crash in bsc project when thread has error ([roku-debug#235](https://github.com/rokucommunity/roku-debug/pull/235))
+     - Fixed and issue where hasFocus and isInFocusChain virtual vars where missing on nodes ([roku-debug#234](https://github.com/rokucommunity/roku-debug/pull/234))
+ - upgrade to [brighterscript@0.69.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0691---2025-03-10). Notable changes since 0.69.0:
+     - Prevent running the lsp project in a worker thread ([brighterscript#1423](https://github.com/rokucommunity/brighterscript/pull/1423))
+### Fixed
+ - Fix brightscript object syntax highlighting ([#623](https://github.com/rokucommunity/vscode-brightscript-language/pull/623))
+
+
+
 ## [2.55.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.4...v2.55.5) - 2025-02-21
 ### Changed
  - upgrade to [roku-debug@0.21.24](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02124---2025-02-21). Notable changes since 0.21.23:
