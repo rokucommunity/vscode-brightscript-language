@@ -134,10 +134,10 @@
                     "include": "#operators"
                 },
                 {
-                    "include": "#support_functions"
+                    "include": "#variables_and_params"
                 },
                 {
-                    "include": "#variables_and_params"
+                    "include": "#support_functions"
                 },
                 {
                     "include": "#annotation"
