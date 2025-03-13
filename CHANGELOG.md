@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.6...v2.55.7) - 2025-03-13
+### Changed
+ - upgrade to [roku-debug@0.21.26](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02126---2025-03-13). Notable changes since 0.21.25:
+ - upgrade to [brighterscript@0.69.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0692---2025-03-13). Notable changes since 0.69.1:
+     - Significantly improve the performance of standardizePath ([brighterscript#1425](https://github.com/rokucommunity/brighterscript/pull/1425))
+     - Backport v1 typecast syntax to v0 ([brighterscript#1421](https://github.com/rokucommunity/brighterscript/pull/1421))
+ - upgrade to [brighterscript-formatter@1.7.11](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1711---2025-03-13). Notable changes since 1.7.10:
+
+
+
 ## [2.55.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.5...v2.55.6) - 2025-03-10
 ### Added
  - Added snippet for functional fields ([#625](https://github.com/rokucommunity/vscode-brightscript-language/pull/625))
