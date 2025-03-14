@@ -26,6 +26,9 @@
                     "include": "#if_with_paren"
                 },
                 {
+                    "include": "#while_with_paren"
+                },
+                {
                     "include": "#component_statement"
                 },
                 {
@@ -691,6 +694,25 @@
         },
         "if_with_paren": {
             "begin": "(?i:(?<!\\.)(if)\\s*\\()",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword.control.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#entire_language"
+                }
+            ],
+            "end": "\b(then)|\n",
+            "endCaptures": {
+                "1": {
+                    "name": "keyword.control.brs"
+                }
+            }
+        },
+        "while_with_paren": {
+            "begin": "(?i:(?<!\\.)(while)\\s*\\()",
             "beginCaptures": {
                 "1": {
                     "name": "keyword.control.brs"
