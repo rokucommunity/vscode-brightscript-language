@@ -3371,7 +3371,7 @@
             },
             {
                 "command": "extension.brightscript.pressRevButton",
-                "key": "PageDown",
+                "key": "PageUp",
                 "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
@@ -3399,7 +3399,7 @@
             },
             {
                 "command": "extension.brightscript.pressFwdButton",
-                "key": "PageUp",
+                "key": "PageDown",
                 "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
             },
             {
