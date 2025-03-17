@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.7...v2.55.8) - 2025-03-17
+### Changed
+ - Inverted keys `PageUp` and `PageDown` mapping on remote control mode ([#631](https://github.com/rokucommunity/vscode-brightscript-language/pull/631))
+ - upgrade to [roku-debug@0.21.27](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02127---2025-03-17). Notable changes since 0.21.26:
+     - Fixed TelnetAdapter reporting that it was a protocol adapter ([roku-debug#237](https://github.com/rokucommunity/roku-debug/pull/237))
+
+
+
 ## [2.55.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.6...v2.55.7) - 2025-03-13
 ### Changed
  - upgrade to [roku-debug@0.21.26](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02126---2025-03-13). Notable changes since 0.21.25:
