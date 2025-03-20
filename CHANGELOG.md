@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.8...v2.55.9) - 2025-03-20
+### Changed
+ - upgrade to [roku-debug@0.21.28](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02128---2025-03-20). Notable changes since 0.21.27:
+     - Limit the range of scopes ([roku-debug#240](https://github.com/rokucommunity/roku-debug/pull/240))
+     - Fixed some dup var names on datetime ([roku-debug#239](https://github.com/rokucommunity/roku-debug/pull/239))
+ - upgrade to [brighterscript@0.69.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0693---2025-03-20). Notable changes since 0.69.2:
+     - Fixed getClosestExpression bug to return undefined when position not found ([brighterscript#1433](https://github.com/rokucommunity/brighterscript/pull/1433))
+     - Adds Alias statement syntax from v1 to v0 ([brighterscript#1430](https://github.com/rokucommunity/brighterscript/pull/1430))
+ - upgrade to [brighterscript-formatter@1.7.12](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1712---2025-03-20)
+
+
+
 ## [2.55.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.7...v2.55.8) - 2025-03-17
 ### Changed
  - Inverted keys `PageUp` and `PageDown` mapping on remote control mode ([#631](https://github.com/rokucommunity/vscode-brightscript-language/pull/631))
