@@ -337,38 +337,142 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    /**
-     * @param test comment 123
-     */
+    describe('interfaces', () => {
+        it('handles comments following interface fields', async () => {
+            await testGrammar(`
+                interface Person
+                    name as string 'this is a comment
+                '                  ^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+                '           ^^^^^^ storage.type.brs
+                '        ^^ keyword.control.as.brs
+                '   ^^^^ variable.object.property.brs
 
-    it('handles comments following interface fields', async () => {
-        await testGrammar(`
-            interface Person
-                name as string 'this is a comment
-               '               ^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
-               '        ^^^^^^ storage.type.brs
-               '     ^^ keyword.control.as.brs
-               '^^ variable.object.property.brs
+                    name2 as string
+                '            ^^^^^^ storage.type.brs
+                '         ^^ keyword.control.as.brs
+                '   ^^^^^ variable.object.property.brs
+            `);
+        });
 
-               name as string
-              '        ^^^^^^ storage.type.brs
-              '     ^^ keyword.control.as.brs
-              '^^ variable.object.property.brs
-        `);
-    });
+        it('handles optional properly in interfaces', async () => {
+            await testGrammar(`
+                interface Person
+                 optional
+                '^^^^^^^^ variable.object.property.brs
+            `);
 
-    it('handles interface function with return type', async () => {
-        await testGrammar(`
-            interface Person
-                sub test() as string 'this is a comment
-               '                      ^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
-               '              ^^^^^^ storage.type.brs
-               '           ^^ keyword.control.as.brs
-               '         ^ punctuation.definition.parameters.end.brs
-               '        ^ punctuation.definition.parameters.begin.brs
-               '    ^^^^ entity.name.function.member.brs
-               '^^^ storage.type.function.brs
-        `);
+            await testGrammar(`
+                interface Person
+                    optional as optional
+                '               ^^^^^^^^ entity.name.type.brs
+                '            ^^ keyword.control.as.brs
+                '   ^^^^^^^^ variable.object.property.brs
+            `);
+
+            await testGrammar(`
+                interface Person
+                    optional optional
+                '            ^^^^^^^^ variable.object.property.brs
+                '   ^^^^^^^^ keyword.other.optional.brs
+            `);
+
+            await testGrammar(`
+                interface Person
+                    optional as string
+                '               ^^^^^^ storage.type.brs
+                '            ^^ keyword.control.as.brs
+                '   ^^^^^^^^ variable.object.property.brs
+            `);
+
+            await testGrammar(`
+                interface Person
+                    optional optional as optional
+                '                        ^^^^^^^^ entity.name.type.brs
+                '                     ^^ keyword.control.as.brs
+                '            ^^^^^^^^ variable.object.property.brs
+                '   ^^^^^^^^ keyword.other.optional.brs
+            `);
+
+            await testGrammar(`
+                interface Person
+                    optional name as string
+                '                    ^^^^^^ storage.type.brs
+                '                 ^^ keyword.control.as.brs
+                '            ^^^^ variable.object.property.brs
+                '   ^^^^^^^^ keyword.other.optional.brs
+            `);
+        });
+
+        it('colors class declaration property', async () => {
+            await testGrammar(`
+                 class Person
+                '      ^^^^^^ entity.name.type.class.brs
+                '^^^^^ storage.type.class.brs
+                 end class
+                '^^^^^^^^^ storage.type.class.brs
+            `);
+
+            await testGrammar(`
+                 class Person extends
+                '             ^^^^^^^ storage.modifier.brs
+                '      ^^^^^^ entity.name.type.class.brs
+                '^^^^^ storage.type.class.brs
+                 end class
+                '^^^^^^^^^ storage.type.class.brs
+            `);
+
+            await testGrammar(`
+                  class Person extends Alpha
+                 '                     ^^^^^ entity.other.inherited-class.brs
+                 '             ^^^^^^^ storage.modifier.brs
+                 '      ^^^^^^ entity.name.type.class.brs
+                 '^^^^^ storage.type.class.brs
+                 end class
+                '^^^^^^^^^ storage.type.class.brs
+            `);
+
+            await testGrammar(`
+                  class Person extends Alpha.Beta
+                 '                     ^^^^^^^^^^ entity.other.inherited-class.brs
+                 '             ^^^^^^^ storage.modifier.brs
+                 '      ^^^^^^ entity.name.type.class.brs
+                 '^^^^^ storage.type.class.brs
+                 end class
+                '^^^^^^^^^ storage.type.class.brs
+            `);
+        });
+
+        it('supports optional in class field', async () => {
+            await testGrammar(`
+                 class Person extends Alpha.Beta
+                    optional name
+                '            ^^^^ variable.object.property.brs
+                '   ^^^^^^^^ keyword.other.optional.brs
+                 end class
+            `);
+            await testGrammar(`
+                 class Person extends Alpha.Beta
+                    public optional name
+                '                   ^^^^ variable.object.property.brs
+                '          ^^^^^^^^ keyword.other.optional.brs
+                '   ^^^^^^ storage.modifier.brs
+                 end class
+            `);
+        });
+
+        it('handles interface function with return type', async () => {
+            await testGrammar(`
+                interface Person
+                    sub test() as string 'this is a comment
+                '                         ^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+                '                 ^^^^^^ storage.type.brs
+                '              ^^ keyword.control.as.brs
+                '            ^ punctuation.definition.parameters.end.brs
+                '           ^ punctuation.definition.parameters.begin.brs
+                '       ^^^^ entity.name.function.member.brs
+                '   ^^^ storage.type.function.brs
+            `);
+        });
     });
 
     describe('bsdoc', () => {
@@ -1124,4 +1228,5 @@ async function testGrammar(testCaseText: string) {
         const text = getErrorResultText('test.brs', testCase, result);
         throw new Error(`\nFound ${result.length} issues with grammar:\n${text}`);
     }
+    const thing = {};
 }
