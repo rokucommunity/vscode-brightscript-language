@@ -589,46 +589,46 @@ describe('brightscript.tmlanguage.json', () => {
         `);
 
         await testGrammar(`
-            thing = rnd()
+             thing = rnd()
             '        ^^^ entity.name.function.brs
             '      ^ keyword.operator.brs
             '^^^^^ entity.name.variable.local.brs
         `);
 
         await testGrammar(`
-            thing = rnd
+             thing = rnd
             '        ^^^ entity.name.variable.local.brs
             '      ^ keyword.operator.brs
-           '^^^^^ entity.name.variable.local.brs
+            '^^^^^ entity.name.variable.local.brs
 
-           rnd = rnd
+             rnd = rnd
             '      ^^^ entity.name.variable.local.brs
             '    ^ keyword.operator.brs
-           '^^^ entity.name.variable.local.brs
+            '^^^ entity.name.variable.local.brs
        `);
 
         await testGrammar(`
-            thing = rnd()
+             thing = rnd()
             '        ^^^ entity.name.function.brs
             '      ^ keyword.operator.brs
-           '^^^^^ entity.name.variable.local.brs
+            '^^^^^ entity.name.variable.local.brs
 
-           rnd = rnd
+             rnd = rnd
             '      ^^^ entity.name.variable.local.brs
             '    ^ keyword.operator.brs
-           '^^^ entity.name.variable.local.brs
+            '^^^ entity.name.variable.local.brs
        `);
 
         await testGrammar(`
-            rnd = rnd()
+             rnd = rnd()
             '      ^^^ entity.name.function.brs
             '    ^ keyword.operator.brs
             '^^^ entity.name.variable.local.brs
 
-           rnd = rnd
+             rnd = rnd
             '      ^^^ entity.name.variable.local.brs
             '    ^ keyword.operator.brs
-           '^^^ entity.name.variable.local.brs
+            '^^^ entity.name.variable.local.brs
        `);
 
         await testGrammar(`
@@ -644,7 +644,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -665,7 +665,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
                  return invalid
                 '       ^^^^^^^ constant.language.null.brs
@@ -691,7 +691,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -715,7 +715,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -739,7 +739,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -763,7 +763,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -788,7 +788,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -813,7 +813,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd = rnd
                 '      ^^^ entity.name.variable.local.brs
                 '    ^ keyword.operator.brs
-                 '^^^ entity.name.variable.local.brs
+                '^^^ entity.name.variable.local.brs
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
@@ -861,7 +861,7 @@ describe('brightscript.tmlanguage.json', () => {
                  rnd: {
                 '^^^ entity.name.variable.local.brs
 
-                    rnd: sub()
+                     rnd: sub()
                     '     ^^^ keyword.declaration.function.brs
                     '^^^ entity.name.variable.local.brs
 
@@ -874,7 +874,6 @@ describe('brightscript.tmlanguage.json', () => {
             }
         `);
     });
-
 
     it('handles named public/protected/private function declarations', async () => {
         await testGrammar(`
