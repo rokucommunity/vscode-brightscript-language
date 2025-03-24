@@ -6,6 +6,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.8...v2.55.9) - 2025-03-20
+### Changed
+ - upgrade to [roku-debug@0.21.28](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02128---2025-03-20). Notable changes since 0.21.27:
+     - Limit the range of scopes ([roku-debug#240](https://github.com/rokucommunity/roku-debug/pull/240))
+     - Fixed some dup var names on datetime ([roku-debug#239](https://github.com/rokucommunity/roku-debug/pull/239))
+ - upgrade to [brighterscript@0.69.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0693---2025-03-20). Notable changes since 0.69.2:
+     - Fixed getClosestExpression bug to return undefined when position not found ([brighterscript#1433](https://github.com/rokucommunity/brighterscript/pull/1433))
+     - Adds Alias statement syntax from v1 to v0 ([brighterscript#1430](https://github.com/rokucommunity/brighterscript/pull/1430))
+ - upgrade to [brighterscript-formatter@1.7.12](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1712---2025-03-20)
+
+
+
+## [2.55.8](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.7...v2.55.8) - 2025-03-17
+### Changed
+ - Inverted keys `PageUp` and `PageDown` mapping on remote control mode ([#631](https://github.com/rokucommunity/vscode-brightscript-language/pull/631))
+ - upgrade to [roku-debug@0.21.27](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02127---2025-03-17). Notable changes since 0.21.26:
+     - Fixed TelnetAdapter reporting that it was a protocol adapter ([roku-debug#237](https://github.com/rokucommunity/roku-debug/pull/237))
+
+
+
+## [2.55.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.6...v2.55.7) - 2025-03-13
+### Changed
+ - upgrade to [roku-debug@0.21.26](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02126---2025-03-13). Notable changes since 0.21.25:
+ - upgrade to [brighterscript@0.69.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0692---2025-03-13). Notable changes since 0.69.1:
+     - Significantly improve the performance of standardizePath ([brighterscript#1425](https://github.com/rokucommunity/brighterscript/pull/1425))
+     - Backport v1 typecast syntax to v0 ([brighterscript#1421](https://github.com/rokucommunity/brighterscript/pull/1421))
+ - upgrade to [brighterscript-formatter@1.7.11](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1711---2025-03-13). Notable changes since 1.7.10:
+
+
+
+## [2.55.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.5...v2.55.6) - 2025-03-10
+### Added
+ - Added snippet for functional fields ([#625](https://github.com/rokucommunity/vscode-brightscript-language/pull/625))
+### Changed
+ - Reenable the `enhanceREPLCompletions` launch option by default ([#630](https://github.com/rokucommunity/vscode-brightscript-language/pull/630))
+ - syntax highlighting updates to include all known brightscript & brightsign components ([#626](https://github.com/rokucommunity/vscode-brightscript-language/pull/626))
+ - upgrade to [roku-debug@0.21.25](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02125---2025-03-10). Notable changes since 0.21.24:
+     - Fix crash in bsc project when thread has error ([roku-debug#235](https://github.com/rokucommunity/roku-debug/pull/235))
+     - Fixed and issue where hasFocus and isInFocusChain virtual vars where missing on nodes ([roku-debug#234](https://github.com/rokucommunity/roku-debug/pull/234))
+ - upgrade to [brighterscript@0.69.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0691---2025-03-10). Notable changes since 0.69.0:
+     - Prevent running the lsp project in a worker thread ([brighterscript#1423](https://github.com/rokucommunity/brighterscript/pull/1423))
+### Fixed
+ - Fix brightscript object syntax highlighting ([#623](https://github.com/rokucommunity/vscode-brightscript-language/pull/623))
+
+
+
 ## [2.55.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.4...v2.55.5) - 2025-02-21
 ### Changed
  - upgrade to [roku-debug@0.21.24](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02124---2025-02-21). Notable changes since 0.21.23:
