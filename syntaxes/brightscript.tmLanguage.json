@@ -77,9 +77,6 @@
                     "include": "#keyword_logical_operator"
                 },
                 {
-                    "include": "#keyword_modifier"
-                },
-                {
                     "include": "#keyword_return"
                 },
                 {
@@ -656,16 +653,6 @@
             "comment": "Capture logical operators. ",
             "match": "(?i:\\b(and|or|not)\\b)",
             "name": "keyword.operator.logical.word"
-        },
-        "keyword_modifier": {
-            "comment": "Capture modifiers that alter the declaration of a type of variable.",
-            "match": "(?i:\\b(optional)\\b)",
-            "name": "keyword.modifier.word",
-            "captures": {
-                "1": {
-                    "name": "keyword.modifier.brs"
-                }
-            }
         },
         "keyword_return": {
             "comment": "The return statements in functions",
