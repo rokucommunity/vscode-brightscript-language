@@ -979,6 +979,619 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it(`handles interface field declarations`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 value
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations1`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 value as
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations2`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations3`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations4`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional value
+                '         ^^^^^ variable.object.property.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations5`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional value as
+                '               ^^ keyword.control.as.brs
+                '         ^^^^^ variable.object.property.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations6`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional value as Dynamic
+                '                  ^^^^^^^ storage.type.brs
+                '               ^^ keyword.control.as.brs
+                '         ^^^^^ variable.object.property.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations7`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations8`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional value
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations9`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional value as
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations10`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional value as Dynamic
+                '                           ^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations11`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations12`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public value
+                '       ^^^^^ variable.object.property.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations13`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public value as
+                '             ^^ keyword.control.as.brs
+                '       ^^^^^ variable.object.property.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations14`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public value as Dynamic
+                '                ^^^^^^^ storage.type.brs
+                '             ^^ keyword.control.as.brs
+                '       ^^^^^ variable.object.property.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations15`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations16`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional value
+                '                ^^^^^ variable.object.property.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations17`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional value as
+                '                      ^^ keyword.control.as.brs
+                '                ^^^^^ variable.object.property.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations18`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional value as Dynamic
+                '                         ^^^^^^^ storage.type.brs
+                '                      ^^ keyword.control.as.brs
+                '                ^^^^^ variable.object.property.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations19`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional optional
+                '                ^^^^^^^^ keyword.other.optional.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations20`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional optional as
+                '                         ^^ keyword.control.as.brs
+                '                ^^^^^^^^ keyword.other.optional.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations21`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional optional as Dynamic
+                '                            ^^^^^^^ storage.type.brs
+                '                         ^^ keyword.control.as.brs
+                '                ^^^^^^^^ keyword.other.optional.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations22`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 private optional
+                '        ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations23`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 private optional optional
+                '                 ^^^^^^^^ keyword.other.optional.brs
+                '        ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations24`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 private optional optional as
+                '                          ^^ keyword.control.as.brs
+                '                 ^^^^^^^^ keyword.other.optional.brs
+                '        ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations25`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 private optional optional as Dynamic
+                '                             ^^^^^^^ storage.type.brs
+                '                          ^^ keyword.control.as.brs
+                '                 ^^^^^^^^ keyword.other.optional.brs
+                '        ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations26`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations27`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations28`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '        ^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations29`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '        ^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '        ^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations30`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations31`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+                 optional optional value as Dynamic
+                '                           ^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations32`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public optional as Dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.as.brs
+                '       ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^ storage.modifier.brs
+                 optional optional value as Dynamic
+                '                           ^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations33`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations34`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+                 value as Dynamic
+                '         ^^^^^^^ storage.type.brs
+                '      ^^ keyword.control.as.brs
+                '^^^^^ variable.object.property.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations35`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional value as Dynamic
+                '                           ^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+                 optional optional value as Optional
+                '                           ^^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations36`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 optional optional value as Dynamic
+                '                           ^^^^^^^ storage.type.brs
+                '                        ^^ keyword.control.as.brs
+                '                  ^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+                 optional optional optional as Optional
+                '                              ^^^^^^^^ storage.type.brs
+                '                           ^^ keyword.control.as.brs
+                '                  ^^^^^^^^ variable.object.property.brs
+                '         ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
+    it(`handles interface field declarations37`, async () => {
+        await testGrammar(`
+             interface UI
+            '          ^^ entity.name.type.interface.brs
+            '^^^^^^^^^ storage.type.interface.brs
+                 public public public as Public
+                '                        ^^^^^^ storage.type.brs
+                '                     ^^ keyword.control.as.brs
+                '              ^^^^^^ variable.object.property.brs
+                '       ^^^^^^ keyword.other.optional.brs
+                '^^^^^^ keyword.other.optional.brs
+                optional optional optional as Public
+                '                             ^^^^^^^^ storage.type.brs
+                '                          ^^ keyword.control.as.brs
+                '                 ^^^^^^^^ variable.object.property.brs
+                '        ^^^^^^^^ keyword.other.optional.brs
+                '^^^^^^^ keyword.other.optional.brs
+             end interface
+            '^^^^^^^^^^^^^ storage.type.interface.brs
+        `);
+    });
+
     it('handles named public/protected/private function declarations', async () => {
         await testGrammar(`
              public sub write()

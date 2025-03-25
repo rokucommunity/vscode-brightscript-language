@@ -53,9 +53,6 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#method"
-                },
-                {
                     "include": "#field"
                 },
                 {
@@ -500,6 +497,9 @@
                     "include": "#class_or_interface_field"
                 },
                 {
+                    "include": "#method"
+                },
+                {
                     "include": "#entire_language"
                 }
             ]
@@ -514,7 +514,7 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs foxtrot"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
@@ -730,7 +730,7 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs alpha"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
@@ -745,10 +745,10 @@
         "inline_function_declaration": {
             "captures": {
                 "1": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs beta"
                 },
                 "2": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs charlie"
                 }
             },
             "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
@@ -808,9 +808,6 @@
                 },
                 {
                     "include": "#comment"
-                },
-                {
-                    "include": "#entire_language"
                 }
             ],
             "end": "\r?\n"
@@ -824,15 +821,20 @@
             },
             "patterns": [
                 {
+                    "include": "#field_initializer"
+                },
+                {
                     "include": "#type_expression"
                 }
             ],
-            "end": "\r?\n"
+            "end": "(?=\r?\n)"
         },
         "field_initializer": {
-            "begin": "\\b(=)",
+            "begin": "[ \\t]*(=)[ \\t]*",
             "beginCaptures": {
-                "1": {}
+                "1": {
+                    "name": "keyword.control.as.brs"
+                }
             },
             "patterns": [
                 {
@@ -869,7 +871,7 @@
             "match": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\())(\\))[\\s\\t]",
             "captures": {
                 "1": {
-                    "name": "storage.type.function.brs"
+                    "name": "storage.type.function.brs echo"
                 },
                 "2": {
                     "name": "entity.name.function.member.brs"
@@ -889,7 +891,7 @@
             "begin": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\()).*?(\\))[\\s\\t]+(as)",
             "beginCaptures": {
                 "1": {
-                    "name": "storage.type.function.brs"
+                    "name": "storage.type.function.brs delta"
                 },
                 "2": {
                     "name": "entity.name.function.member.brs"
@@ -960,7 +962,7 @@
         "type_expression": {
             "patterns": [
                 {
-                    "match": "(?i)(boolean|integer|longinteger|float|double|string)",
+                    "match": "(?i)\\b(boolean|integer|longinteger|float|double|string|dynamic)\\b",
                     "captures": {
                         "1": {
                             "name": "storage.type.brs"
@@ -968,10 +970,10 @@
                     }
                 },
                 {
-                    "match": "(?i)\\b([a-z0-9_]+)",
+                    "match": "(?i)\\b([a-z0-9_]+)\\b",
                     "captures": {
                         "1": {
-                            "name": "support.type.brs entity.name.type.brs"
+                            "name": "support.type.brs entity.name.type.brs bob"
                         }
                     }
                 }
