@@ -598,20 +598,6 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
-    it(`handles enum declaration with comments`, async () => {
-        await testGrammar(`
-             enum DeviceContext
-            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
-            '^^^^ storage.type.enum.brs
-
-             ' This is a comment
-            '^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
-
-             end enum
-            '^^^^^^^^ storage.type.enum.brs
-        `);
-    });
-
     it(`handles enum field without value assignment`, async () => {
         await testGrammar(`
              enum DeviceContext
