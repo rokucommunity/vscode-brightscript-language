@@ -1031,7 +1031,7 @@
             }
         },
         "bsdoc_return_and_type": {
-            "match": "(?i:\\s*(rem|'+)\\s*(@)(return)\\s+(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+.*))",
+            "match": "(?i:\\s*(rem|'+)\\s*(@)(return|returns)\\s+(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+.*)?)",
             "captures": {
                 "1": {
                     "name": "comment.line.apostrophe.brs"
