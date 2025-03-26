@@ -53,16 +53,10 @@
                     "include": "#end_namespace"
                 },
                 {
-                    "include": "#method"
-                },
-                {
                     "include": "#field"
                 },
                 {
                     "include": "#class_declaration"
-                },
-                {
-                    "include": "#end_class"
                 },
                 {
                     "include": "#preprocessor_keywords"
@@ -102,6 +96,9 @@
                 },
                 {
                     "include": "#primitive_literal_expression"
+                },
+                {
+                    "include": "#function_container"
                 },
                 {
                     "include": "#function_declaration"
@@ -476,10 +473,11 @@
             ]
         },
         "class_declaration": {
-            "match": "(?i:(class)\\s+([a-z0-9_]+)(?:\\s+(extends)(?:\\s+([a-z0-9_]+))?)?)",
-            "captures": {
+            "name": "meta.class.brs",
+            "begin": "(?i)^[ \\t]*(class)[ \\t]+([a-z0-9_]+)(?:[ \\t]+(extends)(?:[ \\t]+([a-z0-9_.]+))?)?\\s*",
+            "beginCaptures": {
                 "1": {
-                    "name": "keyword.other.class.brs"
+                    "name": "storage.type.class.brs"
                 },
                 "2": {
                     "name": "entity.name.type.class.brs"
@@ -488,11 +486,29 @@
                     "name": "storage.modifier.brs"
                 },
                 "4": {
-                    "name": "entity.name.type.class.brs"
+                    "name": "entity.other.inherited-class.brs"
                 }
-            }
+            },
+            "end": "(?i)(?<![_[:alnum:]])(?<!\\.)\\s*(end\\s*class)",
+            "endCaptures": {
+                "1": {
+                    "name": "storage.type.class.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#class_or_interface_field"
+                },
+                {
+                    "include": "#method"
+                },
+                {
+                    "include": "#entire_language"
+                }
+            ]
         },
         "method": {
+            "match": "(?i:)(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function)[^\\w])(?:\\s+([a-z_][a-z0-9_]*))?",
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
@@ -501,16 +517,15 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs method"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
                 }
-            },
-            "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function))(?:\\s+(?:\\(|([a-z_][a-z0-9_]*))))"
+            }
         },
         "field": {
-            "match": "(?i:(public|protected|private)\\s+([a-z0-9_]+))",
+            "match": "(?i)(public|protected|private)\\s+([a-z0-9_]+)",
             "captures": {
                 "1": {
                     "name": "storage.modifier.brs"
@@ -519,10 +534,6 @@
                     "name": "variable.object.property.brs"
                 }
             }
-        },
-        "end_class": {
-            "match": "(?i:\\s*(end\\s*class))",
-            "name": "storage.type.class.brs"
         },
         "preprocessor_keywords": {
             "patterns": [
@@ -708,7 +719,7 @@
         "function_call": {
             "captures": {
                 "1": {
-                    "name": "entity.name.function.brs"
+                    "name": "entity.name.function.brs call"
                 }
             },
             "match": "(?i:\\b([a-z_][a-z0-9_]*)[ \\t]*(?=\\())"
@@ -722,7 +733,7 @@
                     "name": "storage.modifier.brs"
                 },
                 "3": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs function_declaration"
                 },
                 "4": {
                     "name": "entity.name.function.brs"
@@ -730,20 +741,42 @@
             },
             "match": "(?i:(?:(public|protected|private)\\s+)?(?:(override)\\s+)?((?:sub|function))(?:\\s+(?:\\(|([a-z_][a-z0-9_]*))))"
         },
+        "function_container": {
+            "name": "meta.function.brs function_container",
+            "begin": "(?i)[ \\t]*\\b(?=function|sub)[ \\t]*\\b",
+            "beginCaptures": {},
+            "patterns": [
+                {
+                    "include": "#function_declaration"
+                },
+                {
+                    "include": "#inline_function_declaration"
+                },
+                {
+                    "include": "#entire_language"
+                }
+            ],
+            "end": "(?i)[ \\t]*(end[ \\t]*(sub|function))\\b",
+            "endCaptures": {
+                "1": {
+                    "name": "keyword.declaration.function.brs"
+                }
+            }
+        },
         "end_function": {
             "name": "keyword.declaration.function.brs",
-            "match": "(?i)[ \\t]*end\\s*(sub|function)"
+            "match": "(?i)[ \\t]*(end[ \\t]*(sub|function))"
         },
         "inline_function_declaration": {
             "captures": {
                 "1": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs inline_function_declaration"
                 },
                 "2": {
-                    "name": "keyword.declaration.function.brs"
+                    "name": "keyword.declaration.function.brs inline_function_declaration"
                 }
             },
-            "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
+            "match": "(?i)[^a-z0-9_\"](function|sub)[ \\t]*\\("
         },
         "interface_declaration": {
             "name": "meta.interface.brs",
@@ -767,7 +800,7 @@
                     "include": "#interface_function"
                 },
                 {
-                    "include": "#interface_field"
+                    "include": "#class_or_interface_field"
                 }
             ],
             "end": "(?i)[\\s\\t]*(end[\\s\\t]*interface)",
@@ -777,25 +810,80 @@
                 }
             }
         },
-        "interface_field": {
-            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[\\s\\t]*(as))?",
+        "class_or_interface_field": {
+            "__regex101": "https://regex101.com/r/vQxNAE/2",
+            "begin": "(?i)\\s*\\b(?:(public|protected|private)[ \\t]+(?!as))?(?:(optional)[ \\t]+(?!as))?([a-z0-9_]+)",
             "beginCaptures": {
                 "1": {
-                    "name": "variable.object.property.brs"
+                    "name": "storage.modifier.brs"
                 },
                 "2": {
-                    "name": "keyword.control.as.brs"
+                    "name": "keyword.other.optional.brs"
+                },
+                "3": {
+                    "name": "variable.object.property.brs"
                 }
             },
             "patterns": [
                 {
-                    "include": "#type_expression"
+                    "include": "#field_type_declaration"
+                },
+                {
+                    "include": "#field_initializer"
                 },
                 {
                     "include": "#comment"
                 }
             ],
             "end": "\r?\n"
+        },
+        "field_type_declaration": {
+            "begin": "(?i)(?:[ \\t]*(as))",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword.control.as.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#field_initializer"
+                },
+                {
+                    "include": "#type_expression"
+                }
+            ],
+            "end": "(?=\r?\n)"
+        },
+        "field_initializer": {
+            "begin": "[ \\t]*(=)[ \\t]*",
+            "beginCaptures": {
+                "1": {
+                    "name": "keyword.control.as.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#function_container"
+                },
+                {
+                    "include": "#entire_language"
+                }
+            ],
+            "end": "(?i)(?:(\\))|(\\])|(})(end[ \\t]function))",
+            "endCaptures": {
+                "1": {
+                    "name": "meta.brace.round.brs"
+                },
+                "2": {
+                    "name": "meta.brace.square.brs"
+                },
+                "3": {
+                    "name": "meta.objectliteral.brs"
+                },
+                "4": {
+                    "name": "keyword.declaration.function.source.brs"
+                }
+            }
         },
         "interface_function": {
             "patterns": [
@@ -811,7 +899,7 @@
             "match": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\())(\\))[\\s\\t]",
             "captures": {
                 "1": {
-                    "name": "storage.type.function.brs"
+                    "name": "storage.type.function.brs interface_function_plain"
                 },
                 "2": {
                     "name": "entity.name.function.member.brs"
@@ -831,7 +919,7 @@
             "begin": "(?i:\\s*\\b(function|sub)[\\s\\t]+([a-z0-9_]+)(\\()).*?(\\))[\\s\\t]+(as)",
             "beginCaptures": {
                 "1": {
-                    "name": "storage.type.function.brs"
+                    "name": "storage.type.function.brs interface_function_with_return_type"
                 },
                 "2": {
                     "name": "entity.name.function.member.brs"
@@ -902,7 +990,7 @@
         "type_expression": {
             "patterns": [
                 {
-                    "match": "(?i)(boolean|integer|longinteger|float|double|string)",
+                    "match": "(?i)\\b(boolean|integer|longinteger|float|double|string|dynamic)\\b",
                     "captures": {
                         "1": {
                             "name": "storage.type.brs"
@@ -910,10 +998,10 @@
                     }
                 },
                 {
-                    "match": "(?i)\\b([a-z0-9_]+)",
+                    "match": "(?i)\\b([a-z0-9_]+)\\b",
                     "captures": {
                         "1": {
-                            "name": "support.type.brs entity.name.type.brs"
+                            "name": "support.type.brs entity.name.type.brs bob"
                         }
                     }
                 }
