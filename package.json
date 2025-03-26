@@ -3201,228 +3201,228 @@
             {
                 "command": "extension.brightscript.pressBackButton",
                 "key": "Escape",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressBackButton",
                 "key": "Delete",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Ctrl+Delete",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Delete",
                 "mac": "Option+Delete",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Delete",
                 "mac": "Cmd+Delete",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressHomeButton",
                 "key": "Home",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressHomeButton",
                 "key": "Shift+Escape",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressHomeButton",
                 "key": "Ctrl+Escape",
                 "mac": "Cmd+Escape",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressInstantReplayButton",
                 "key": "Backspace",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressBackspaceButton",
                 "key": "Ctrl+Backspace",
                 "mac": "Cmd+Backspace",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Backspace",
                 "mac": "Option+Backspace",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Backspace",
                 "mac": "Ctrl+Backspace",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressUpButton",
                 "key": "Up",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Ctrl+Up",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Up",
                 "mac": "Option+Up",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Up",
                 "mac": "Cmd+Up",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressDownButton",
                 "key": "Down",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Ctrl+Down",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Down",
                 "mac": "Option+Down",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Down",
                 "mac": "Cmd+Down",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressRightButton",
                 "key": "Right",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressLeftButton",
                 "key": "Left",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressSelectButton",
                 "key": "Enter",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressPlayButton",
                 "key": "Ctrl+Enter",
                 "mac": "Cmd+Enter",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressPlayButton",
                 "key": "End",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Enter",
                 "mac": "Option+Enter",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Enter",
                 "mac": "Ctrl+Enter",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressPlayButton",
                 "key": "MediaPlayPause",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressRevButton",
                 "key": "Ctrl+Left",
                 "mac": "Cmd+Left",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Left",
                 "mac": "Option+Left",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Left",
                 "mac": "Ctrl+Left",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressRevButton",
                 "key": "PageUp",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressRevButton",
                 "key": "MediaTrackPrevious",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressFwdButton",
                 "key": "Ctrl+Right",
                 "mac": "Cmd+Right",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Alt+Right",
                 "mac": "Option+Right",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.doNothing",
                 "key": "Win+Right",
                 "mac": "Ctrl+Right",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressFwdButton",
                 "key": "PageDown",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressFwdButton",
                 "key": "MediaTrackNext",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressStarButton",
                 "key": "Ctrl+8",
                 "mac": "Cmd+8",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressStarButton",
                 "key": "Ctrl+Shift+8",
                 "mac": "Cmd+Shift+8",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.pressStarButton",
                 "key": "Insert",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.toggleRemoteControlMode",
@@ -3432,583 +3432,583 @@
             {
                 "command": "extension.brightscript.pressVolumeMute",
                 "key": "AudioVolumeMute",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+SPACE",
                 "key": "Space",
                 "args": " ",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+TAB",
                 "key": "Tab",
                 "args": "\t",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+!",
                 "key": "Shift+1",
                 "args": "!",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+@",
                 "key": "Shift+2",
                 "args": "@",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+#",
                 "key": "Shift+3",
                 "args": "#",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+$",
                 "key": "Shift+4",
                 "args": "$",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+%",
                 "key": "Shift+5",
                 "args": "%",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+^",
                 "key": "Shift+6",
                 "args": "^",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+&",
                 "key": "Shift+7",
                 "args": "&",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+*",
                 "key": "Shift+8",
                 "args": "*",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+(",
                 "key": "Shift+9",
                 "args": "(",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+)",
                 "key": "Shift+0",
                 "args": ")",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+'",
                 "key": "'",
                 "args": "'",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+\"",
                 "key": "Shift+'",
                 "args": "\"",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii++",
                 "key": "Shift+=",
                 "args": "+",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+,",
                 "key": ",",
                 "args": ",",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+-",
                 "key": "-",
                 "args": "-",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+.",
                 "key": ".",
                 "args": ".",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+/",
                 "key": "/",
                 "args": "/",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+0",
                 "key": "0",
                 "args": "0",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+1",
                 "key": "1",
                 "args": "1",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+2",
                 "key": "2",
                 "args": "2",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+3",
                 "key": "3",
                 "args": "3",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+4",
                 "key": "4",
                 "args": "4",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+5",
                 "key": "5",
                 "args": "5",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+6",
                 "key": "6",
                 "args": "6",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+7",
                 "key": "7",
                 "args": "7",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+8",
                 "key": "8",
                 "args": "8",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+9",
                 "key": "9",
                 "args": "9",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+:",
                 "key": "Shift+;",
                 "args": ":",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+;",
                 "key": ";",
                 "args": ";",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+<",
                 "key": "Shift+,",
                 "args": "<",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+=",
                 "key": "=",
                 "args": "=",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+>",
                 "key": "Shift+.",
                 "args": ">",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+?",
                 "key": "Shift+/",
                 "args": "?",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+A",
                 "key": "Shift+a",
                 "args": "A",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+B",
                 "key": "Shift+b",
                 "args": "B",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+C",
                 "key": "Shift+c",
                 "args": "C",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+D",
                 "key": "Shift+d",
                 "args": "D",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+E",
                 "key": "Shift+e",
                 "args": "E",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+F",
                 "key": "Shift+f",
                 "args": "F",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+G",
                 "key": "Shift+g",
                 "args": "G",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+H",
                 "key": "Shift+h",
                 "args": "H",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+I",
                 "key": "Shift+i",
                 "args": "I",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+J",
                 "key": "Shift+j",
                 "args": "J",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+K",
                 "key": "Shift+k",
                 "args": "K",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+L",
                 "key": "Shift+l",
                 "args": "L",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+M",
                 "key": "Shift+m",
                 "args": "M",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+N",
                 "key": "Shift+n",
                 "args": "N",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+O",
                 "key": "Shift+o",
                 "args": "O",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+P",
                 "key": "Shift+p",
                 "args": "P",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+Q",
                 "key": "Shift+q",
                 "args": "Q",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+R",
                 "key": "Shift+r",
                 "args": "R",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+S",
                 "key": "Shift+s",
                 "args": "S",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+T",
                 "key": "Shift+t",
                 "args": "T",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+U",
                 "key": "Shift+u",
                 "args": "U",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+V",
                 "key": "Shift+v",
                 "args": "V",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+W",
                 "key": "Shift+w",
                 "args": "W",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+X",
                 "key": "Shift+x",
                 "args": "X",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+Y",
                 "key": "Shift+y",
                 "args": "Y",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+Z",
                 "key": "Shift+z",
                 "args": "Z",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+[",
                 "key": "[",
                 "args": "[",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+\\",
                 "key": "\\",
                 "args": "\\",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+]",
                 "key": "]",
                 "args": "]",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+_",
                 "key": "Shift+-",
                 "args": "_",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+`",
                 "key": "`",
                 "args": "`",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+a",
                 "key": "a",
                 "args": "a",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+b",
                 "key": "b",
                 "args": "b",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+c",
                 "key": "c",
                 "args": "c",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+d",
                 "key": "d",
                 "args": "d",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+e",
                 "key": "e",
                 "args": "e",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+f",
                 "key": "f",
                 "args": "f",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+g",
                 "key": "g",
                 "args": "g",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+h",
                 "key": "h",
                 "args": "h",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+i",
                 "key": "i",
                 "args": "i",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+j",
                 "key": "j",
                 "args": "j",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+k",
                 "key": "k",
                 "args": "k",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+l",
                 "key": "l",
                 "args": "l",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+m",
                 "key": "m",
                 "args": "m",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+n",
                 "key": "n",
                 "args": "n",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+o",
                 "key": "o",
                 "args": "o",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+p",
                 "key": "p",
                 "args": "p",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+q",
                 "key": "q",
                 "args": "q",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+r",
                 "key": "r",
                 "args": "r",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+s",
                 "key": "s",
                 "args": "s",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+t",
                 "key": "t",
                 "args": "t",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+u",
                 "key": "u",
                 "args": "u",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+v",
                 "key": "v",
                 "args": "v",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+w",
                 "key": "w",
                 "args": "w",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+x",
                 "key": "x",
                 "args": "x",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+y",
                 "key": "y",
                 "args": "y",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+z",
                 "key": "z",
                 "args": "z",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+{",
                 "key": "Shift+[",
                 "args": "{",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+|",
                 "key": "Shift+\\",
                 "args": "|",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+}",
                 "key": "Shift+]",
                 "args": "}",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.sendAscii+~",
                 "key": "Shift+`",
                 "args": "~",
-                "when": "!searchInputBoxFocus && !findInputFocussed && !inCommandsPicker && !inQuickOpen && brightscript.isRemoteControlMode"
+                "when": "(editorFocus || focusedView == 'workbench.panel.output') && brightscript.isRemoteControlMode"
             },
             {
                 "command": "extension.brightscript.markLogOutput",
