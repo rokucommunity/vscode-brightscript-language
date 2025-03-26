@@ -977,6 +977,9 @@
                     "include": "#bsdoc_param_and_type"
                 },
                 {
+                    "include": "#bsdoc_return_and_type"
+                },
+                {
                     "include": "#bsdoc_generic"
                 }
             ]
@@ -1023,6 +1026,32 @@
                     "name": "variable.other.bsdoc"
                 },
                 "8": {
+                    "name": "comment.block.documentation.brs"
+                }
+            }
+        },
+        "bsdoc_return_and_type": {
+            "match": "(?i:\\s*(rem|'+)\\s*(@)(return|returns)\\s+(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+.*)?)",
+            "captures": {
+                "1": {
+                    "name": "comment.line.apostrophe.brs"
+                },
+                "2": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "3": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "4": {
+                    "name": "punctuation.definition.bracket.curly.begin.bsdoc"
+                },
+                "5": {
+                    "name": " comment.block.documentation.brs entity.name.type.instance.bsdoc"
+                },
+                "6": {
+                    "name": "punctuation.definition.bracket.curly.end.bsdoc"
+                },
+                "7": {
                     "name": "comment.block.documentation.brs"
                 }
             }
