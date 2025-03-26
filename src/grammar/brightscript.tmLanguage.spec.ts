@@ -486,6 +486,58 @@ describe('brightscript.tmlanguage.json', () => {
             `);
         });
 
+        it('colorizes @return', async () => {
+            await testGrammar(`
+                t'@return
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @returns', async () => {
+            await testGrammar(`
+                t'@returns
+                '  ^^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with type', async () => {
+            await testGrammar(`
+                t'@return {boolean}
+                '                 ^ punctuation.definition.bracket.curly.end.bsdoc
+                '          ^^^^^^^ entity.name.type.instance.bsdoc
+                '         ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with comment', async () => {
+            await testGrammar(`
+                t'@return this is a comment
+                '         ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with type and comment', async () => {
+            await testGrammar(`
+                t'@return {boolean} this is a comment
+                '                   ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '                 ^ punctuation.definition.bracket.curly.end.bsdoc
+                '          ^^^^^^^ entity.name.type.instance.bsdoc
+                '         ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
     });
 
     it.skip('handles `as Function` parameters properly', async () => {
