@@ -697,6 +697,41 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it(`handles annotations in enums`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             @primary() one = 1
+            '                 ^ constant.numeric.brs
+            '               ^ keyword.operator.assignment.brs
+            '           ^^^ variable.object.enummember.brs
+            '        ^^ meta.enum.declaration.brs
+            ' ^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @secondary()
+            '          ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @tertiary() ' This is a comment
+            '            ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '         ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             two = 2
+            '      ^ constant.numeric.brs
+            '    ^ keyword.operator.assignment.brs
+            '^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
     it('handles named function declarations', async () => {
         await testGrammar(`
              sub write()
