@@ -587,6 +587,151 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it(`handles named enum declaration`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field without value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with string type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = "hello world"
+            '        ^^^^^^^^^^^^^ string.quoted.double.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with numeric type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = 84
+            '        ^^ constant.numeric.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with bool type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = true
+            '        ^^^^ constant.language.boolean.true.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             value2 = false
+            '         ^^^^^ constant.language.boolean.false.brs
+            '       ^ keyword.operator.assignment.brs
+            '^^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with comments after value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = true ' This is a comment
+            '             ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '        ^^^^ constant.language.boolean.true.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with comments after no-value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value ' This is a comment
+            '      ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles annotations in enums`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             @primary() one = 1
+            '                 ^ constant.numeric.brs
+            '               ^ keyword.operator.assignment.brs
+            '           ^^^ variable.object.enummember.brs
+            '        ^^ meta.enum.declaration.brs
+            ' ^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @secondary()
+            '          ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @tertiary() ' This is a comment
+            '            ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '         ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             two = 2
+            '      ^ constant.numeric.brs
+            '    ^ keyword.operator.assignment.brs
+            '^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
     it('handles named function declarations', async () => {
         await testGrammar(`
              sub write()

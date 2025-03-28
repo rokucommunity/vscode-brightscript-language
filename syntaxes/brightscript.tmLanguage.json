@@ -875,21 +875,7 @@
                     "include": "#annotation"
                 },
                 {
-                    "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[ \\t]*(=))?",
-                    "beginCaptures": {
-                        "1": {
-                            "name": "variable.object.enummember.brs"
-                        },
-                        "2": {
-                            "name": "keyword.operator.assignment.brs"
-                        }
-                    },
-                    "patterns": [
-                        {
-                            "include": "#primitive_literal_expression"
-                        }
-                    ],
-                    "end": "\r?\n"
+                    "include": "#enum_field"
                 }
             ],
             "end": "(?i)[ \\t]*(end[ \\t]*enum)",
@@ -898,6 +884,29 @@
                     "name": "storage.type.enum.brs"
                 }
             }
+        },
+        "enum_field":  {
+            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[ \\t]*(=))?",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.object.enummember.brs"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#primitive_literal_expression"
+                },
+                {
+                    "include": "#comment"
+                },
+                {
+                    "include": "#annotation"
+                }
+            ],
+            "end": "\r?\n"
         },
         "type_expression": {
             "patterns": [
