@@ -806,7 +806,7 @@
                             "enhanceREPLCompletions": {
                                 "type": "boolean",
                                 "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
-                                "default": false
+                                "default": true
                             },
                             "showHiddenVariables": {
                                 "type": "boolean",
@@ -2266,7 +2266,7 @@
                     "brightscript.debug.enhanceREPLCompletions": {
                         "type": "boolean",
                         "description": "Enables scanning deployment files for additional REPL completions, such as user-defined functions. This process runs in a background thread and may be resource-intensive.",
-                        "default": false,
+                        "default": true,
                         "scope": "resource"
                     },
                     "brightscript.debug.envFile": {
