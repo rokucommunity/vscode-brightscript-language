@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.10](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.9...v2.55.10) - 2025-04-03
+### Changed
+ - track `bsConst` telemetry usage in `launch.json` ([#636](https://github.com/rokucommunity/vscode-brightscript-language/pull/636))
+ - upgrade to [roku-debug@0.21.29](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02129---2025-04-03). Notable changes since 0.21.28:
+     - fix launch race bug ([roku-debug#241](https://github.com/rokucommunity/roku-debug/pull/241))
+ - upgrade to [brighterscript@0.69.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0695---2025-04-03). Notable changes since 0.69.3:
+     - more safely wrap expressions for template string transpile ([brighterscript#1445](https://github.com/rokucommunity/brighterscript/pull/1445))
+     - support plugin factory detecting brighterscript version ([brighterscript#1438](https://github.com/rokucommunity/brighterscript/pull/1438))
+### Fixed
+ - incorrect default for `enhanceREPLCompletions` ([#637](https://github.com/rokucommunity/vscode-brightscript-language/pull/637))
+ - syntax highlighting for comment in enum statement ([#635](https://github.com/rokucommunity/vscode-brightscript-language/pull/635))
+ - bsdoc return and type syntax highlighting ([#634](https://github.com/rokucommunity/vscode-brightscript-language/pull/634))
+ - syntax highlighting on AA function names ([#627](https://github.com/rokucommunity/vscode-brightscript-language/pull/627))
+
+
+
 ## [2.55.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.8...v2.55.9) - 2025-03-20
 ### Changed
  - upgrade to [roku-debug@0.21.28](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02128---2025-03-20). Notable changes since 0.21.27:
