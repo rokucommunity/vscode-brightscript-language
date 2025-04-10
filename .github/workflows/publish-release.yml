@@ -13,6 +13,6 @@ jobs:
     if: startsWith( github.head_ref, 'release/') && (github.event.pull_request.merged == true)
     uses: rokucommunity/workflows/.github/workflows/publish-release.yml@master
     with:
-      release-type: "npm" # "vsce"
+      release-type: "vsce"
       ref: ${{ github.event.pull_request.merge_commit_sha }}
     secrets: inherit
