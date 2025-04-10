@@ -54,6 +54,11 @@ export class RemoteControlManager {
         const currentMode = vscodeContextManager.get<boolean>('brightscript.isRemoteControlMode', false);
         await this.setRemoteControlMode(!currentMode, initiator);
 
+        // Only move focus when we have enabled remote mode
+        if (!this.isEnabled) {
+            return;
+        }
+
         //focus the active text editor (if there is one)
         if (vscode.window.activeTextEditor?.document) {
             await vscode.window.showTextDocument(vscode.window.activeTextEditor.document);
