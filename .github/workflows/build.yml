@@ -25,4 +25,4 @@ jobs:
       - run: npm run test
       # disable coverage for now (because coveralls is down right now)
       #- run: npm run publish-coverage
-      - run: npm run package
+      - run: npm run create-package
