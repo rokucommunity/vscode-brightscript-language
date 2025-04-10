@@ -39,7 +39,7 @@
         "test:nocover": "mocha",
         "publish-coverage": "nyc report --reporter=text-lcov | coveralls",
         "check-extraneous": "npm list --production --parseable --depth=99999",
-        "package": "vsce package",
+        "package": "npm run build && vsce package",
         "package-local": "node scripts/package-local.js",
         "publish": "vsce publish",
         "clean": "rimraf dist",
