@@ -875,21 +875,7 @@
                     "include": "#annotation"
                 },
                 {
-                    "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[ \\t]*(=))?",
-                    "beginCaptures": {
-                        "1": {
-                            "name": "variable.object.enummember.brs"
-                        },
-                        "2": {
-                            "name": "keyword.operator.assignment.brs"
-                        }
-                    },
-                    "patterns": [
-                        {
-                            "include": "#primitive_literal_expression"
-                        }
-                    ],
-                    "end": "\r?\n"
+                    "include": "#enum_field"
                 }
             ],
             "end": "(?i)[ \\t]*(end[ \\t]*enum)",
@@ -898,6 +884,29 @@
                     "name": "storage.type.enum.brs"
                 }
             }
+        },
+        "enum_field":  {
+            "begin": "(?i)\\s*\\b([a-z0-9_]+)(?:[ \\t]*(=))?",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.object.enummember.brs"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment.brs"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#primitive_literal_expression"
+                },
+                {
+                    "include": "#comment"
+                },
+                {
+                    "include": "#annotation"
+                }
+            ],
+            "end": "\r?\n"
         },
         "type_expression": {
             "patterns": [
@@ -977,6 +986,9 @@
                     "include": "#bsdoc_param_and_type"
                 },
                 {
+                    "include": "#bsdoc_return_and_type"
+                },
+                {
                     "include": "#bsdoc_generic"
                 }
             ]
@@ -1023,6 +1035,32 @@
                     "name": "variable.other.bsdoc"
                 },
                 "8": {
+                    "name": "comment.block.documentation.brs"
+                }
+            }
+        },
+        "bsdoc_return_and_type": {
+            "match": "(?i:\\s*(rem|'+)\\s*(@)(return|returns)\\s+(?:(\\{)\\s*([^\\}]+)\\s*(\\}))?\\s*([a-z0-9_.]+.*)?)",
+            "captures": {
+                "1": {
+                    "name": "comment.line.apostrophe.brs"
+                },
+                "2": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "3": {
+                    "name": "punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc"
+                },
+                "4": {
+                    "name": "punctuation.definition.bracket.curly.begin.bsdoc"
+                },
+                "5": {
+                    "name": " comment.block.documentation.brs entity.name.type.instance.bsdoc"
+                },
+                "6": {
+                    "name": "punctuation.definition.bracket.curly.end.bsdoc"
+                },
+                "7": {
                     "name": "comment.block.documentation.brs"
                 }
             }

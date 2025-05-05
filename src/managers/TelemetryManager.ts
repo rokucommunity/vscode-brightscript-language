@@ -61,6 +61,7 @@ export class TelemetryManager implements Disposable {
             isDeepLinkUrlDefined: isDefined(initialConfig.deepLinkUrl),
             isStagingFolderPathDefined: isDefined(initialConfig.stagingFolderPath),
             isLogfilePathDefined: isDefined(initialConfig.logfilePath),
+            isBsConstDefined: isDefined(initialConfig.bsConst),
             isExtensionLogfilePathDefined: isDefined(
                 vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),

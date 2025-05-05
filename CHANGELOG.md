@@ -6,6 +6,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.55.11](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.10...v2.55.11) - 2025-04-10
+### Changed
+ - (chore) Migration to Shared CI ([#638](https://github.com/rokucommunity/vscode-brightscript-language/pull/638))
+ - upgrade to [@rokucommunity/logger@0.3.10](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0310---2025-03-26). Notable changes since 0.3.9:
+     - Added the ability to turn off timestamps in the output and fixed a potental crash if the format string was empty ([logger#11](https://github.com/rokucommunity/logger/pull/11))
+ - upgrade to [brighterscript@0.69.6](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0696---2025-04-09). Notable changes since 0.69.5:
+     - Updated the type definition of the `InStr` global callable ([brighterscript#1456](https://github.com/rokucommunity/brighterscript/pull/1456))
+ - upgrade to [roku-debug@0.21.31](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02131---2025-04-10). Notable changes since 0.21.29:
+     - updated usages of socket `addListener` to `on` ([roku-debug#247](https://github.com/rokucommunity/roku-debug/pull/247))
+     - Better logs around socket connections with the device ([roku-debug#246](https://github.com/rokucommunity/roku-debug/pull/246))
+     - Explicitly set the version of the package glob ([roku-debug#244](https://github.com/rokucommunity/roku-debug/pull/244))
+
+
+
+## [2.55.10](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.9...v2.55.10) - 2025-04-03
+### Changed
+ - track `bsConst` telemetry usage in `launch.json` ([#636](https://github.com/rokucommunity/vscode-brightscript-language/pull/636))
+ - upgrade to [roku-debug@0.21.29](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02129---2025-04-03). Notable changes since 0.21.28:
+     - fix launch race bug ([roku-debug#241](https://github.com/rokucommunity/roku-debug/pull/241))
+ - upgrade to [brighterscript@0.69.5](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0695---2025-04-03). Notable changes since 0.69.3:
+     - more safely wrap expressions for template string transpile ([brighterscript#1445](https://github.com/rokucommunity/brighterscript/pull/1445))
+     - support plugin factory detecting brighterscript version ([brighterscript#1438](https://github.com/rokucommunity/brighterscript/pull/1438))
+### Fixed
+ - incorrect default for `enhanceREPLCompletions` ([#637](https://github.com/rokucommunity/vscode-brightscript-language/pull/637))
+ - syntax highlighting for comment in enum statement ([#635](https://github.com/rokucommunity/vscode-brightscript-language/pull/635))
+ - bsdoc return and type syntax highlighting ([#634](https://github.com/rokucommunity/vscode-brightscript-language/pull/634))
+ - syntax highlighting on AA function names ([#627](https://github.com/rokucommunity/vscode-brightscript-language/pull/627))
+
+
+
 ## [2.55.9](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.8...v2.55.9) - 2025-03-20
 ### Changed
  - upgrade to [roku-debug@0.21.28](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02128---2025-03-20). Notable changes since 0.21.27:
