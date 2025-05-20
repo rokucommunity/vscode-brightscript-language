@@ -9,6 +9,7 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { WorkspaceStateKey } from './WorkspaceStateKey';
+import { readFileSync, writeFileSync } from 'fs';
 
 export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAutomationView;
@@ -45,6 +46,85 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
                 this.postOrQueueMessage(message);
             }
+        });
+
+        this.registerCommand(VscodeCommand.rokuAutomationViewLoadAutomation, async () => {
+            if (this.isRecording) {
+                // Only allow loading when we aren't currently recording
+                await this.setIsRecording(false);
+            }
+
+            // macOS does not have a title bar on the open dialog so we need to show a warning message
+            if (process.platform === 'darwin') {
+                const confirm = await vscode.window.showWarningMessage(
+                    'This will replace all currently loaded automation scripts. Continue?',
+                    { modal: true },
+                    'Yes'
+                );
+                if (confirm !== 'Yes') {
+                    return;
+                }
+            }
+
+            vscode.window.showOpenDialog({
+                title: 'Load Automation Scripts (Warning: This will replace all currently loaded scripts)',
+                filters: {
+                    'JSON': ['json'],
+                    'All Files': ['*']
+                },
+                defaultUri: vscode.Uri.file('automation.json'),
+                canSelectMany: false
+            }).then(async (filePath) => {
+                if (!filePath) {
+                    return;
+                }
+                try {
+                    const data = readFileSync(filePath[0].fsPath, 'utf8');
+                    const result = JSON.parse(data);
+                    this.selectedConfig = result.selectedConfig;
+                    this.rokuAutomationConfigs = result.configs;
+                    await this.extensionContext.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(result));
+                    const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
+                        selectedConfig: this.selectedConfig,
+                        configs: this.rokuAutomationConfigs
+                    });
+
+                    this.postOrQueueMessage(message);
+
+                    this.updateCurrentRunningStep();
+                    this.onLoadAutomation();
+                    vscode.window.showInformationMessage('Automation loaded successfully from ' + filePath[0].fsPath);
+                } catch (err) {
+                    vscode.window.showErrorMessage('Failed to load automation: ' + (err as Error).message);
+                }
+            });
+        });
+
+        this.registerCommand(VscodeCommand.rokuAutomationViewExportAutomation, async () => {
+            vscode.window.showInformationMessage('Exporting automation data...');
+
+            if (this.isRecording) {
+                // Only allow exporting when we aren't currently recording
+                await this.setIsRecording(false);
+            }
+            vscode.window.showSaveDialog({
+                title: 'Export Automation scripts',
+                filters: {
+                    'JSON': ['json'],
+                    'All Files': ['*']
+                },
+                defaultUri: vscode.Uri.file('automation.json')
+            }).then(async (filePath) => {
+                if (!filePath) {
+                    return;
+                }
+                try {
+                    writeFileSync(filePath.fsPath, JSON.stringify({ selectedConfig: this.selectedConfig, configs: this.rokuAutomationConfigs }, null, 2));
+                    vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
+                } catch (err) {
+                    vscode.window.showErrorMessage('Failed to export automation: ' + (err as Error).message);
+                }
+            });
         });
 
         this.registerCommand(VscodeCommand.rokuAutomationViewStartRecording, async () => {
@@ -172,5 +252,23 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.postOrQueueMessage(message);
 
         this.updateCurrentRunningStep();
+    }
+
+    protected onLoadAutomation() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationLoadAutomation, {
+            selectedConfig: this.selectedConfig,
+            configs: this.rokuAutomationConfigs
+        });
+
+        this.postOrQueueMessage(message);
+    }
+
+    protected onExportAutomation() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationExportAutomation, {
+            selectedConfig: this.selectedConfig,
+            configs: this.rokuAutomationConfigs
+        });
+
+        this.postOrQueueMessage(message);
     }
 }
