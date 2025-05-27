@@ -5,7 +5,7 @@ export enum ViewProviderEvent {
     onRegistryUpdated = 'onRegistryUpdated',
     onStoredNodeReferencesUpdated = 'onStoredNodeReferencesUpdated',
     onRokuAutomationConfigsLoaded = 'onRokuAutomationConfigsLoaded',
-    onRokuAutomationLoadAutomation = 'onRokuAutomationLoadAutomation',
+    onRokuAutomationImportAutomation = 'onRokuAutomationImportAutomation',
     onRokuAutomationExportAutomation = 'onRokuAutomationExportAutomation',
     onRokuAutomationConfigStepChange = 'onRokuAutomationConfigStepChange',
     onRokuAutomationKeyPressed = 'onRokuAutomationKeyPressed',

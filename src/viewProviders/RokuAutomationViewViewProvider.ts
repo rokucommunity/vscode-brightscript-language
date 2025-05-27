@@ -9,7 +9,7 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { WorkspaceStateKey } from './WorkspaceStateKey';
-import { readFileSync, writeFileSync } from 'fs';
+import * as fsExtra from 'fs-extra';
 
 export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAutomationView;
@@ -48,16 +48,17 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             }
         });
 
-        this.registerCommand(VscodeCommand.rokuAutomationViewLoadAutomation, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewImportAutomation, async () => {
             if (this.isRecording) {
-                // Only allow loading when we aren't currently recording
-                await this.setIsRecording(false);
+                // Only allow importing when we aren't currently recording
+                vscode.window.showInformationMessage('Cannot import automation scripts while recording. Please stop recording first.');
+                return;
             }
 
             // macOS does not have a title bar on the open dialog so we need to show a warning message
             if (process.platform === 'darwin') {
                 const confirm = await vscode.window.showWarningMessage(
-                    'This will replace all currently loaded automation scripts. Continue?',
+                    'This will replace all automation scripts. Continue importing?',
                     { modal: true },
                     'Yes'
                 );
@@ -66,38 +67,39 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 }
             }
 
-            vscode.window.showOpenDialog({
-                title: 'Load Automation Scripts (Warning: This will replace all currently loaded scripts)',
+            const filePath = await vscode.window.showOpenDialog({
+                title: 'Import Automation Scripts (Warning: This will replace all currently loaded scripts)',
                 filters: {
                     'JSON': ['json'],
                     'All Files': ['*']
                 },
                 defaultUri: vscode.Uri.file('automation.json'),
                 canSelectMany: false
-            }).then(async (filePath) => {
-                if (!filePath) {
-                    return;
-                }
-                try {
-                    const data = readFileSync(filePath[0].fsPath, 'utf8');
-                    const result = JSON.parse(data);
-                    this.selectedConfig = result.selectedConfig;
-                    this.rokuAutomationConfigs = result.configs;
-                    await this.extensionContext.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(result));
-                    const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
-                        selectedConfig: this.selectedConfig,
-                        configs: this.rokuAutomationConfigs
-                    });
+            })
 
-                    this.postOrQueueMessage(message);
+            if (!filePath) {
+                return;
+            }
 
-                    this.updateCurrentRunningStep();
-                    this.onLoadAutomation();
-                    vscode.window.showInformationMessage('Automation loaded successfully from ' + filePath[0].fsPath);
-                } catch (err) {
-                    vscode.window.showErrorMessage('Failed to load automation: ' + (err as Error).message);
-                }
-            });
+            try {
+                const data = fsExtra.readFileSync(filePath[0].fsPath, 'utf8');
+                const result = JSON.parse(data);
+                this.selectedConfig = result.selectedConfig;
+                this.rokuAutomationConfigs = result.configs;
+                await this.extensionContext.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(result));
+                const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
+                    selectedConfig: this.selectedConfig,
+                    configs: this.rokuAutomationConfigs
+                });
+
+                this.postOrQueueMessage(message);
+
+                this.updateCurrentRunningStep();
+                this.onImportAutomation();
+                vscode.window.showInformationMessage('Automation scripts imported successfully from ' + filePath[0].fsPath);
+            } catch (err) {
+                vscode.window.showErrorMessage('Failed to import automation: ' + (err as Error).message);
+            }
         });
 
         this.registerCommand(VscodeCommand.rokuAutomationViewExportAutomation, async () => {
@@ -105,26 +107,54 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
             if (this.isRecording) {
                 // Only allow exporting when we aren't currently recording
-                await this.setIsRecording(false);
+                vscode.window.showInformationMessage('Cannot export automation scripts while recording. Please stop recording first.');
+                return;
             }
-            vscode.window.showSaveDialog({
+
+            // Set the default save location to be the current workspace folder
+            let defaultUri = vscode.Uri.file('automation.json');
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                // Use the first workspace folder
+                defaultUri = vscode.Uri.joinPath(
+                    vscode.workspace.workspaceFolders[0].uri,
+                    'automation.json'
+                );
+            }
+
+            const filePath = await vscode.window.showSaveDialog({
                 title: 'Export Automation scripts',
                 filters: {
                     'JSON': ['json'],
                     'All Files': ['*']
                 },
-                defaultUri: vscode.Uri.file('automation.json')
-            }).then(async (filePath) => {
-                if (!filePath) {
-                    return;
-                }
-                try {
-                    writeFileSync(filePath.fsPath, JSON.stringify({ selectedConfig: this.selectedConfig, configs: this.rokuAutomationConfigs }, null, 2));
-                    vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
-                } catch (err) {
-                    vscode.window.showErrorMessage('Failed to export automation: ' + (err as Error).message);
-                }
+                defaultUri: defaultUri,
             });
+
+            if (!filePath) {
+                return;
+            }
+
+            try {
+                // format the json to put each step on a single line for easier editing
+                // Changing the code formatting modifies the json output. Not sure how to fix that.
+                const json = `{
+  "selectedConfig": ${JSON.stringify(this.selectedConfig)},
+  "configs": [
+    ${this.rokuAutomationConfigs.map(config =>
+      `{
+        "name": ${JSON.stringify(config.name)},
+        "steps": [${config.steps?.length ? '\n' + config.steps.map(step =>
+          `          {"type": ${JSON.stringify(step.type)},"value": ${JSON.stringify(step.value)}}`
+        ).join(',\n') + '\n      ' : ''}]
+      }`
+    ).join(',\n    ')}
+  ]
+}`;
+                fsExtra.outputFileSync(filePath.fsPath, json);
+                vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
+            } catch (err) {
+                vscode.window.showErrorMessage('Failed to export automation: ' + (err as Error).message);
+            }
         });
 
         this.registerCommand(VscodeCommand.rokuAutomationViewStartRecording, async () => {
@@ -254,8 +284,8 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.updateCurrentRunningStep();
     }
 
-    protected onLoadAutomation() {
-        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationLoadAutomation, {
+    protected onImportAutomation() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationImportAutomation, {
             selectedConfig: this.selectedConfig,
             configs: this.rokuAutomationConfigs
         });
