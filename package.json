@@ -380,11 +380,10 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.rokuAutomationView.loadAutomation",
+                    "command": "extension.brightscript.rokuAutomationView.importAutomation",
                     "when": "view == rokuAutomationView",
                     "group": "navigation@2"
                 },
-
                 {
                     "command": "extension.brightscript.rokuFileSystemView.refresh",
                     "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
@@ -3101,8 +3100,8 @@
                 "icon": "$(pass-filled)"
             },
             {
-                "command": "extension.brightscript.rokuAutomationView.loadAutomation",
-                "title": "Load automation script",
+                "command": "extension.brightscript.rokuAutomationView.importAutomation",
+                "title": "Import automation script",
                 "category": "BrighterScript",
                 "icon": "$(file-directory)"
             },
