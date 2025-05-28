@@ -51,7 +51,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.registerCommand(VscodeCommand.rokuAutomationViewImportAllAutomations, async () => {
             if (this.isRecording) {
                 // Only allow importing when we aren't currently recording
-                vscode.window.showInformationMessage('Cannot import automation scripts while recording. Please stop recording first.');
+                void vscode.window.showInformationMessage('Cannot import automation scripts while recording. Please stop recording first.');
                 return;
             }
 
@@ -75,7 +75,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 },
                 defaultUri: vscode.Uri.file('automation.json'),
                 canSelectMany: false
-            })
+            });
 
             if (!filePath) {
                 return;
@@ -96,18 +96,18 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
 
                 this.updateCurrentRunningStep();
                 this.onImportAllAutomations();
-                vscode.window.showInformationMessage('Automation scripts imported successfully from ' + filePath[0].fsPath);
+                void vscode.window.showInformationMessage('Automation scripts imported successfully from ' + filePath[0].fsPath);
             } catch (err) {
-                vscode.window.showErrorMessage('Failed to import automations: ' + (err as Error).message);
+                void vscode.window.showErrorMessage('Failed to import automations: ' + (err as Error).message);
             }
         });
 
         this.registerCommand(VscodeCommand.rokuAutomationViewExportAllAutomations, async () => {
-            vscode.window.showInformationMessage('Exporting automation data...');
+            void vscode.window.showInformationMessage('Exporting automation data...');
 
             if (this.isRecording) {
                 // Only allow exporting when we aren't currently recording
-                vscode.window.showInformationMessage('Cannot export automation scripts while recording. Please stop recording first.');
+                void vscode.window.showInformationMessage('Cannot export automation scripts while recording. Please stop recording first.');
                 return;
             }
 
@@ -127,7 +127,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                     'JSON': ['json'],
                     'All Files': ['*']
                 },
-                defaultUri: defaultUri,
+                defaultUri: defaultUri
             });
 
             if (!filePath) {
@@ -135,25 +135,17 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             }
 
             try {
-                // format the json to put each step on a single line for easier editing
-                // Changing the code formatting modifies the json output. Not sure how to fix that.
-                const json = `{
-  "selectedConfig": ${JSON.stringify(this.selectedConfig)},
-  "configs": [
-    ${this.rokuAutomationConfigs.map(config =>
-      `{
-        "name": ${JSON.stringify(config.name)},
-        "steps": [${config.steps?.length ? '\n' + config.steps.map(step =>
-          `          {"type": ${JSON.stringify(step.type)},"value": ${JSON.stringify(step.value)}}`
-        ).join(',\n') + '\n      ' : ''}]
-      }`
-    ).join(',\n    ')}
-  ]
-}`;
+                const obj =
+                {
+                    selectedConfig: this.selectedConfig,
+                    configs: this.rokuAutomationConfigs
+                };
+                const json = JSON.stringify(obj, null, 4);
+
                 fsExtra.outputFileSync(filePath.fsPath, json);
-                vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
+                void vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
             } catch (err) {
-                vscode.window.showErrorMessage('Failed to export automation scripts: ' + (err as Error).message);
+                void vscode.window.showErrorMessage('Failed to export automation scripts: ' + (err as Error).message);
             }
         });
 
