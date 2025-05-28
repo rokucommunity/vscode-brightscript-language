@@ -375,6 +375,16 @@
                     "group": "navigation@2"
                 },
                 {
+                    "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
+                    "when": "view == rokuAutomationView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
+                    "when": "view == rokuAutomationView",
+                    "group": "navigation@2"
+                },
+                {
                     "command": "extension.brightscript.rokuFileSystemView.refresh",
                     "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
@@ -3088,6 +3098,18 @@
                 "title": "Disable autorun on deploy",
                 "category": "BrighterScript",
                 "icon": "$(pass-filled)"
+            },
+            {
+                "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
+                "title": "Import all automation scripts",
+                "category": "BrighterScript",
+                "icon": "$(file-directory)"
+            },
+            {
+                "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
+                "title": "Export all automation scripts",
+                "category": "BrighterScript",
+                "icon": "$(desktop-download)"
             },
             {
                 "command": "extension.brightscript.rokuFileSystemView.refresh",
