@@ -48,7 +48,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
             }
         });
 
-        this.registerCommand(VscodeCommand.rokuAutomationViewImportAutomation, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewImportAllAutomations, async () => {
             if (this.isRecording) {
                 // Only allow importing when we aren't currently recording
                 vscode.window.showInformationMessage('Cannot import automation scripts while recording. Please stop recording first.');
@@ -95,14 +95,14 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 this.postOrQueueMessage(message);
 
                 this.updateCurrentRunningStep();
-                this.onImportAutomation();
+                this.onImportAllAutomations();
                 vscode.window.showInformationMessage('Automation scripts imported successfully from ' + filePath[0].fsPath);
             } catch (err) {
-                vscode.window.showErrorMessage('Failed to import automation: ' + (err as Error).message);
+                vscode.window.showErrorMessage('Failed to import automations: ' + (err as Error).message);
             }
         });
 
-        this.registerCommand(VscodeCommand.rokuAutomationViewExportAutomation, async () => {
+        this.registerCommand(VscodeCommand.rokuAutomationViewExportAllAutomations, async () => {
             vscode.window.showInformationMessage('Exporting automation data...');
 
             if (this.isRecording) {
@@ -153,7 +153,7 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 fsExtra.outputFileSync(filePath.fsPath, json);
                 vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
             } catch (err) {
-                vscode.window.showErrorMessage('Failed to export automation: ' + (err as Error).message);
+                vscode.window.showErrorMessage('Failed to export automation scripts: ' + (err as Error).message);
             }
         });
 
@@ -284,8 +284,8 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.updateCurrentRunningStep();
     }
 
-    protected onImportAutomation() {
-        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationImportAutomation, {
+    protected onImportAllAutomations() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationImportAllAutomations, {
             selectedConfig: this.selectedConfig,
             configs: this.rokuAutomationConfigs
         });
@@ -293,8 +293,8 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.postOrQueueMessage(message);
     }
 
-    protected onExportAutomation() {
-        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationExportAutomation, {
+    protected onExportAllAutomations() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationExportAllAutomations, {
             selectedConfig: this.selectedConfig,
             configs: this.rokuAutomationConfigs
         });

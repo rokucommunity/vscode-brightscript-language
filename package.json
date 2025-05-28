@@ -375,12 +375,12 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.rokuAutomationView.exportAutomation",
+                    "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
                     "when": "view == rokuAutomationView",
                     "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.rokuAutomationView.importAutomation",
+                    "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
                     "when": "view == rokuAutomationView",
                     "group": "navigation@2"
                 },
@@ -3100,14 +3100,14 @@
                 "icon": "$(pass-filled)"
             },
             {
-                "command": "extension.brightscript.rokuAutomationView.importAutomation",
-                "title": "Import automation script",
+                "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
+                "title": "Import all automation scripts",
                 "category": "BrighterScript",
                 "icon": "$(file-directory)"
             },
             {
-                "command": "extension.brightscript.rokuAutomationView.exportAutomation",
-                "title": "Export automation script",
+                "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
+                "title": "Export all automation scripts",
                 "category": "BrighterScript",
                 "icon": "$(desktop-download)"
             },
