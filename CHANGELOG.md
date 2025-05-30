@@ -6,6 +6,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.56.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.55.11...v2.56.0) - 2025-05-30
+### Added
+ - Added support for Exporting and Importing automation scripts. ([#644](https://github.com/rokucommunity/vscode-brightscript-language/pull/644))
+### Changed
+ - Shared CI Support Prerelease ([#642](https://github.com/rokucommunity/vscode-brightscript-language/pull/642))
+ - Shared CI Support Prerelease ([#641](https://github.com/rokucommunity/vscode-brightscript-language/pull/641))
+ - upgrade to [@rokucommunity/logger@0.3.11](https://github.com/rokucommunity/logger/blob/master/CHANGELOG.md#0311---2025-05-05). Notable changes since 0.3.10:
+     - Merge pull request #12 from rokucommunity/migrate-to-shared-ci ([f43e5a4](https://github.com/rokucommunity/vscode-brightscript-language/commit/f43e5a4))
+ - upgrade to [brighterscript@0.69.9](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0699---2025-05-09). Notable changes since 0.69.6:
+     - removed no-throw-literal lint rule ([#1489](https://github.com/rokucommunity/vscode-brightscript-language/pull/1489))
+     - Add `bsc0` cli binary name ([#1490](https://github.com/rokucommunity/vscode-brightscript-language/pull/1490))
+     - Shared CI Support Prerelease ([#1483](https://github.com/rokucommunity/vscode-brightscript-language/pull/1483))
+     - Shared CI Support Prerelease ([#1475](https://github.com/rokucommunity/vscode-brightscript-language/pull/1475))
+     - Prevent runtime crash for non-referencable funcs in ternary and null coalescing ([#1474](https://github.com/rokucommunity/vscode-brightscript-language/pull/1474))
+     - Fix `removeParameterTypes` compile errors for return types ([#1414](https://github.com/rokucommunity/vscode-brightscript-language/pull/1414))
+     - Remove `npm ci` from the `package` npm script since it's redundant ([#1461](https://github.com/rokucommunity/vscode-brightscript-language/pull/1461))
+     - Flag incorrect return statements in functions and subs ([#1463](https://github.com/rokucommunity/vscode-brightscript-language/pull/1463))
+ - upgrade to [brighterscript-formatter@1.7.14](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1714---2025-05-12). Notable changes since 1.7.12:
+     - chore: Remove merged check on publish releases in shared CI ([#103](https://github.com/rokucommunity/vscode-brightscript-language/pull/103))
+     - Shared CI Add Job for Required Checks ([#101](https://github.com/rokucommunity/vscode-brightscript-language/pull/101))
+     - Bump micromatch from 4.0.4 to 4.0.8 ([#95](https://github.com/rokucommunity/vscode-brightscript-language/pull/95))
+     - Bump @babel/runtime from 7.24.5 to 7.26.10 ([#99](https://github.com/rokucommunity/vscode-brightscript-language/pull/99))
+     - Migrate to Shared CI ([#100](https://github.com/rokucommunity/vscode-brightscript-language/pull/100))
+ - upgrade to [roku-debug@0.21.35](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#02135---2025-05-30). Notable changes since 0.21.31:
+     - Removed `isClockValid` virtual variable ([#262](https://github.com/rokucommunity/vscode-brightscript-language/pull/262))
+     - Shared CI: Remove merged check on publish releases ([#260](https://github.com/rokucommunity/vscode-brightscript-language/pull/260))
+     - Fix telnet-still-in-use issues ([#259](https://github.com/rokucommunity/vscode-brightscript-language/pull/259))
+     - Add better status check for releases. Tweak README ([#256](https://github.com/rokucommunity/vscode-brightscript-language/pull/256))
+     - Shared CI Support Prerelease ([#254](https://github.com/rokucommunity/vscode-brightscript-language/pull/254))
+     - Force allowHalfOpen to false on all sockets ([#251](https://github.com/rokucommunity/vscode-brightscript-language/pull/251))
+     - Bump @babel/runtime from 7.24.5 to 7.27.0 ([#252](https://github.com/rokucommunity/vscode-brightscript-language/pull/252))
+     - Update package.json ([#249](https://github.com/rokucommunity/vscode-brightscript-language/pull/249))
+     - Added better telnet socket in use detection ([#250](https://github.com/rokucommunity/vscode-brightscript-language/pull/250))
+ - upgrade to [roku-deploy@3.12.5](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3125---2025-05-05). Notable changes since 3.12.4:
+     - Add missing template workflows for shared ci ([#189](https://github.com/rokucommunity/vscode-brightscript-language/pull/189))
+     - Shared CI Support Prerelease ([#185](https://github.com/rokucommunity/vscode-brightscript-language/pull/185))
+### Fixed
+ - Fix: Update JSON parsing in formatValues to not handle strings that look like numbers and booleans to avoid registry updates failing when sent to the device ([#645](https://github.com/rokucommunity/vscode-brightscript-language/pull/645))
+ - Fix the release-type for the publish workflow ([#640](https://github.com/rokucommunity/vscode-brightscript-language/pull/640))
+
+
+
 ## [2.55.11](https://github.com/rokucommunity/vscode-brightscript-language/compare/v2.55.10...v2.55.11) - 2025-04-10
 ### Changed
  - (chore) Migration to Shared CI ([#638](https://github.com/rokucommunity/vscode-brightscript-language/pull/638))
