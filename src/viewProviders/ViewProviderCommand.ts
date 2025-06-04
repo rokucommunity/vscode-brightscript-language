@@ -14,6 +14,8 @@ export enum ViewProviderCommand {
     stopRokuAutomationConfig = 'stopRokuAutomationConfig',
     storeRokuAppOverlays = 'storeRokuAppOverlays',
     storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
+    exportRokuAutomationConfigs = 'exportRokuAutomationConfigs',
+    loadRokuAutomationConfigs = 'loadRokuAutomationConfigs',
     updateWorkspaceState = 'updateWorkspaceState',
     viewReady = 'viewReady'
 }

@@ -9,6 +9,7 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { WorkspaceStateKey } from './WorkspaceStateKey';
+import * as fsExtra from 'fs-extra';
 
 export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
     public readonly id = ViewProviderId.rokuAutomationView;
@@ -44,6 +45,107 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
                 });
 
                 this.postOrQueueMessage(message);
+            }
+        });
+
+        this.registerCommand(VscodeCommand.rokuAutomationViewImportAllAutomations, async () => {
+            if (this.isRecording) {
+                // Only allow importing when we aren't currently recording
+                void vscode.window.showInformationMessage('Cannot import automation scripts while recording. Please stop recording first.');
+                return;
+            }
+
+            // macOS does not have a title bar on the open dialog so we need to show a warning message
+            if (process.platform === 'darwin') {
+                const confirm = await vscode.window.showWarningMessage(
+                    'This will replace all automation scripts. Continue importing?',
+                    { modal: true },
+                    'Yes'
+                );
+                if (confirm !== 'Yes') {
+                    return;
+                }
+            }
+
+            const filePath = await vscode.window.showOpenDialog({
+                title: 'Import Automation Scripts (Warning: This will replace all currently loaded scripts)',
+                filters: {
+                    'JSON': ['json'],
+                    'All Files': ['*']
+                },
+                defaultUri: vscode.Uri.file('automation.json'),
+                canSelectMany: false
+            });
+
+            if (!filePath) {
+                return;
+            }
+
+            try {
+                const data = fsExtra.readFileSync(filePath[0].fsPath, 'utf8');
+                const result = JSON.parse(data);
+                this.selectedConfig = result.selectedConfig;
+                this.rokuAutomationConfigs = result.configs;
+                await this.extensionContext.workspaceState.update(WorkspaceStateKey.rokuAutomationConfigs, JSON.stringify(result));
+                const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationConfigsLoaded, {
+                    selectedConfig: this.selectedConfig,
+                    configs: this.rokuAutomationConfigs
+                });
+
+                this.postOrQueueMessage(message);
+
+                this.updateCurrentRunningStep();
+                this.onImportAllAutomations();
+                void vscode.window.showInformationMessage('Automation scripts imported successfully from ' + filePath[0].fsPath);
+            } catch (err) {
+                void vscode.window.showErrorMessage('Failed to import automations: ' + (err as Error).message);
+            }
+        });
+
+        this.registerCommand(VscodeCommand.rokuAutomationViewExportAllAutomations, async () => {
+            void vscode.window.showInformationMessage('Exporting automation data...');
+
+            if (this.isRecording) {
+                // Only allow exporting when we aren't currently recording
+                void vscode.window.showInformationMessage('Cannot export automation scripts while recording. Please stop recording first.');
+                return;
+            }
+
+            // Set the default save location to be the current workspace folder
+            let defaultUri = vscode.Uri.file('automation.json');
+            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                // Use the first workspace folder
+                defaultUri = vscode.Uri.joinPath(
+                    vscode.workspace.workspaceFolders[0].uri,
+                    'automation.json'
+                );
+            }
+
+            const filePath = await vscode.window.showSaveDialog({
+                title: 'Export Automation scripts',
+                filters: {
+                    'JSON': ['json'],
+                    'All Files': ['*']
+                },
+                defaultUri: defaultUri
+            });
+
+            if (!filePath) {
+                return;
+            }
+
+            try {
+                const obj =
+                {
+                    selectedConfig: this.selectedConfig,
+                    configs: this.rokuAutomationConfigs
+                };
+                const json = JSON.stringify(obj, null, 4);
+
+                fsExtra.outputFileSync(filePath.fsPath, json);
+                void vscode.window.showInformationMessage('Automation exported successfully to ' + filePath.fsPath);
+            } catch (err) {
+                void vscode.window.showErrorMessage('Failed to export automation scripts: ' + (err as Error).message);
             }
         });
 
@@ -172,5 +274,23 @@ export class RokuAutomationViewViewProvider extends BaseRdbViewProvider {
         this.postOrQueueMessage(message);
 
         this.updateCurrentRunningStep();
+    }
+
+    protected onImportAllAutomations() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationImportAllAutomations, {
+            selectedConfig: this.selectedConfig,
+            configs: this.rokuAutomationConfigs
+        });
+
+        this.postOrQueueMessage(message);
+    }
+
+    protected onExportAllAutomations() {
+        const message = this.createEventMessage(ViewProviderEvent.onRokuAutomationExportAllAutomations, {
+            selectedConfig: this.selectedConfig,
+            configs: this.rokuAutomationConfigs
+        });
+
+        this.postOrQueueMessage(message);
     }
 }
