@@ -45,6 +45,12 @@ export class TelemetryManager implements Disposable {
 
         this.reporter.sendTelemetryEvent('startDebugSession', {
             enableDebugProtocol: boolToString(initialConfig.enableDebugProtocol),
+            enableVariablesPanel: boolToString(initialConfig.enableVariablesPanel),
+            deferScopeLoading: boolToString(initialConfig.deferScopeLoading),
+            autoResolveVirtualVariables: boolToString(initialConfig.autoResolveVirtualVariables),
+            enhanceREPLCompletions: boolToString(initialConfig.enhanceREPLCompletions),
+            rewriteDevicePathsInLogs: boolToString(initialConfig.rewriteDevicePathsInLogs),
+            showHiddenVariables: boolToString(initialConfig.showHiddenVariables),
             debugConnectionType: debugConnectionType?.toString(),
             retainDeploymentArchive: boolToString(initialConfig.retainDeploymentArchive),
             retainStagingFolder: boolToString(initialConfig.retainStagingFolder),
@@ -55,6 +61,7 @@ export class TelemetryManager implements Disposable {
             isDeepLinkUrlDefined: isDefined(initialConfig.deepLinkUrl),
             isStagingFolderPathDefined: isDefined(initialConfig.stagingFolderPath),
             isLogfilePathDefined: isDefined(initialConfig.logfilePath),
+            isBsConstDefined: isDefined(initialConfig.bsConst),
             isExtensionLogfilePathDefined: isDefined(
                 vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),

@@ -13,6 +13,8 @@ export enum VscodeCommand {
     rokuAutomationViewDisableAutorunOnDeploy = 'extension.brightscript.rokuAutomationView.disableAutorunOnDeploy',
     rokuAutomationViewStartRecording = 'extension.brightscript.rokuAutomationView.startRecording',
     rokuAutomationViewStopRecording = 'extension.brightscript.rokuAutomationView.stopRecording',
+    rokuAutomationViewImportAllAutomations = 'extension.brightscript.rokuAutomationView.importAllAutomations',
+    rokuAutomationViewExportAllAutomations = 'extension.brightscript.rokuAutomationView.exportAllAutomations',
     enableRemoteControlMode = 'extension.brightscript.enableRemoteControlMode',
     disableRemoteControlMode = 'extension.brightscript.disableRemoteControlMode',
     rokuAppOverlaysViewAddNewOverlay = 'extension.brightscript.rokuAppOverlaysView.addNewOverlay',

@@ -486,6 +486,58 @@ describe('brightscript.tmlanguage.json', () => {
             `);
         });
 
+        it('colorizes @return', async () => {
+            await testGrammar(`
+                t'@return
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @returns', async () => {
+            await testGrammar(`
+                t'@returns
+                '  ^^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with type', async () => {
+            await testGrammar(`
+                t'@return {boolean}
+                '                 ^ punctuation.definition.bracket.curly.end.bsdoc
+                '          ^^^^^^^ entity.name.type.instance.bsdoc
+                '         ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with comment', async () => {
+            await testGrammar(`
+                t'@return this is a comment
+                '         ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
+
+        it('colorizes @return with type and comment', async () => {
+            await testGrammar(`
+                t'@return {boolean} this is a comment
+                '                   ^^^^^^^^^^^^^^^^^ comment.block.documentation.brs
+                '                 ^ punctuation.definition.bracket.curly.end.bsdoc
+                '          ^^^^^^^ entity.name.type.instance.bsdoc
+                '         ^ punctuation.definition.bracket.curly.begin.bsdoc
+                '  ^^^^^^ storage.type.class.bsdoc
+                ' ^ storage.type.class.bsdoc
+                '^ comment.line.apostrophe.brs
+            `);
+        });
     });
 
     it.skip('handles `as Function` parameters properly', async () => {
@@ -535,6 +587,151 @@ describe('brightscript.tmlanguage.json', () => {
         `);
     });
 
+    it(`handles named enum declaration`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field without value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with string type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = "hello world"
+            '        ^^^^^^^^^^^^^ string.quoted.double.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with numeric type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = 84
+            '        ^^ constant.numeric.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with bool type`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = true
+            '        ^^^^ constant.language.boolean.true.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             value2 = false
+            '         ^^^^^ constant.language.boolean.false.brs
+            '       ^ keyword.operator.assignment.brs
+            '^^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with comments after value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value = true ' This is a comment
+            '             ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '        ^^^^ constant.language.boolean.true.brs
+            '      ^ keyword.operator.assignment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles enum field with comments after no-value assignment`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             value ' This is a comment
+            '      ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '^^^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
+    it(`handles annotations in enums`, async () => {
+        await testGrammar(`
+             enum DeviceContext
+            '     ^^^^^^^^^^^^^ entity.name.type.enum.brs
+            '^^^^ storage.type.enum.brs
+
+             @primary() one = 1
+            '                 ^ constant.numeric.brs
+            '               ^ keyword.operator.assignment.brs
+            '           ^^^ variable.object.enummember.brs
+            '        ^^ meta.enum.declaration.brs
+            ' ^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @secondary()
+            '          ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             @tertiary() ' This is a comment
+            '            ^^^^^^^^^^^^^^^^^^^ punctuation.definition.comment.brs
+            '         ^^ meta.enum.declaration.brs
+            ' ^^^^^^^^ meta.function-call.brs
+            '^ punctuation.decorator.brs
+
+             two = 2
+            '      ^ constant.numeric.brs
+            '    ^ keyword.operator.assignment.brs
+            '^^^ variable.object.enummember.brs
+
+             end enum
+            '^^^^^^^^ storage.type.enum.brs
+        `);
+    });
+
     it('handles named function declarations', async () => {
         await testGrammar(`
              sub write()
@@ -577,6 +774,301 @@ describe('brightscript.tmlanguage.json', () => {
 
              end sub
             '^^^^^^^ keyword.declaration.function.brs
+        `);
+    });
+
+    it('handles function & variable declarations using reserved function names', async () => {
+        await testGrammar(`
+             thing = rnd
+            '        ^^^ entity.name.variable.local.brs
+            '      ^ keyword.operator.brs
+            '^^^^^ entity.name.variable.local.brs
+        `);
+
+        await testGrammar(`
+             thing = rnd()
+            '        ^^^ entity.name.function.brs
+            '      ^ keyword.operator.brs
+            '^^^^^ entity.name.variable.local.brs
+        `);
+
+        await testGrammar(`
+             thing = rnd
+            '        ^^^ entity.name.variable.local.brs
+            '      ^ keyword.operator.brs
+            '^^^^^ entity.name.variable.local.brs
+
+             rnd = rnd
+            '      ^^^ entity.name.variable.local.brs
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+             thing = rnd()
+            '        ^^^ entity.name.function.brs
+            '      ^ keyword.operator.brs
+            '^^^^^ entity.name.variable.local.brs
+
+             rnd = rnd
+            '      ^^^ entity.name.variable.local.brs
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+             rnd = rnd()
+            '      ^^^ entity.name.function.brs
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+
+             rnd = rnd
+            '      ^^^ entity.name.variable.local.brs
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+       `);
+
+        await testGrammar(`
+             sub rnd()
+            '    ^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             function rnd() as dynamic
+            '                  ^^^^^^^ storage.type.brs
+            '               ^^ keyword.control.brs
+            '         ^^^ entity.name.function.brs
+            '^^^^^^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+                 return invalid
+                '       ^^^^^^^ constant.language.null.brs
+                '^^^^^^ keyword.control.flow.return.brs
+
+             end function
+            '^^^^^^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub nameless(rnd as dynamic)
+            '                    ^^^^^^^ storage.type.brs
+            '                 ^^ keyword.control.brs
+            '             ^^^ entity.name.variable.local.brs
+            '    ^^^^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub nameless(rnd = rnd as dynamic)
+            '                          ^^^^^^^ storage.type.brs
+            '                       ^^ keyword.control.brs
+            '                   ^^^ entity.name.variable.local.brs
+            '                 ^ keyword.operator.brs
+            '             ^^^ entity.name.variable.local.brs
+            '    ^^^^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub nameless(rnd = rnd() as dynamic)
+            '                            ^^^^^^^ storage.type.brs
+            '                         ^^ keyword.control.brs
+            '                   ^^^ entity.name.function.brs
+            '                 ^ keyword.operator.brs
+            '             ^^^ entity.name.variable.local.brs
+            '    ^^^^^^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub rnd(rnd = rnd as dynamic)
+            '                     ^^^^^^^ storage.type.brs
+            '                  ^^ keyword.control.brs
+            '              ^^^ entity.name.variable.local.brs
+            '            ^ keyword.operator.brs
+            '        ^^^ entity.name.variable.local.brs
+            '    ^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub rnd(randomVal as Dynamic, rnd as dynamic)
+            '                                     ^^^^^^^ storage.type.brs
+            '                                  ^^ keyword.control.brs
+            '                              ^^^ entity.name.variable.local.brs
+            '                     ^^^^^^^ storage.type.brs
+            '                  ^^ keyword.control.brs
+            '        ^^^^^^^^^ entity.name.variable.local.brs
+            '    ^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             sub rnd(randomVal as Dynamic, rnd() as function)
+            '                                       ^^^^^^^^ storage.type.brs
+            '                                    ^^ keyword.control.brs
+            '                              ^^^ entity.name.function.brs
+            '                     ^^^^^^^ storage.type.brs
+            '                  ^^ keyword.control.brs
+            '        ^^^^^^^^^ entity.name.variable.local.brs
+            '    ^^^ entity.name.function.brs
+            '^^^ keyword.declaration.function.brs
+
+                 thing = rnd
+                '        ^^^ entity.name.variable.local.brs
+                '      ^ keyword.operator.brs
+                '^^^^^ entity.name.variable.local.brs
+
+                 rnd = rnd
+                '      ^^^ entity.name.variable.local.brs
+                '    ^ keyword.operator.brs
+                '^^^ entity.name.variable.local.brs
+
+             end sub
+            '^^^^^^^ keyword.declaration.function.brs
+       `);
+
+        await testGrammar(`
+             val = {
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+
+                 rnd: sub()
+                '     ^^^ keyword.declaration.function.brs
+                '^^^ entity.name.variable.local.brs
+
+                 end sub
+                '^^^^^^^ keyword.declaration.function.brs
+            }
+        `);
+
+        await testGrammar(`
+             val = {
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+
+                 rnd: function() as dynamic
+                '                   ^^^^^^^ storage.type.brs
+                '                ^^ keyword.control.brs
+                '     ^^^^^^^^ keyword.declaration.function.brs
+                '^^^ entity.name.variable.local.brs
+
+                 return invalid
+                '       ^^^^^^^ constant.language.null.brs
+                '^^^^^^ keyword.control.flow.return.brs
+
+                 end function
+                '^^^^^^^^^^^^ keyword.declaration.function.brs
+            }
+        `);
+
+        await testGrammar(`
+             val = {
+            '    ^ keyword.operator.brs
+            '^^^ entity.name.variable.local.brs
+
+                 rnd: {
+                '^^^ entity.name.variable.local.brs
+
+                     rnd: sub()
+                    '     ^^^ keyword.declaration.function.brs
+                    '^^^ entity.name.variable.local.brs
+
+                     end sub
+                    '^^^^^^^ keyword.declaration.function.brs
+                 }
+
+                 end sub
+                '^^^^^^^ keyword.declaration.function.brs
+            }
         `);
     });
 
@@ -808,84 +1300,304 @@ describe('brightscript.tmlanguage.json', () => {
         await testRokuClass('roAppManager');
         await testRokuClass('roAppMemoryMonitor');
         await testRokuClass('roAppMemoryMonitorEvent');
+        await testRokuClass('roAppendFile');
         await testRokuClass('roArray');
+        await testRokuClass('roAssetCollection');
+        await testRokuClass('roAssetFetcher');
+        await testRokuClass('roAssetFetcherEvent');
+        await testRokuClass('roAssetFetcherProgressEvent');
+        await testRokuClass('roAssetPool');
+        await testRokuClass('roAssetPoolFiles');
+        await testRokuClass('roAssetRealizer');
+        await testRokuClass('roAssetRealizerEvent');
         await testRokuClass('roAssociativeArray');
+        await testRokuClass('roAudioConfiguration');
+        await testRokuClass('roAudioEvent');
+        await testRokuClass('roAudioEventMx');
         await testRokuClass('roAudioGuide');
         await testRokuClass('roAudioMetadata');
+        await testRokuClass('roAudioOutput');
         await testRokuClass('roAudioPlayer');
         await testRokuClass('roAudioPlayerEvent');
+        await testRokuClass('roAudioPlayerMx');
         await testRokuClass('roAudioResource');
         await testRokuClass('roBitmap');
+        await testRokuClass('roBlockCipher');
         await testRokuClass('roBoolean');
+        await testRokuClass('roBrSub');
+        await testRokuClass('roBrightPackage');
+        await testRokuClass('roBtClient');
+        await testRokuClass('roBtClientEvent');
+        await testRokuClass('roBtClientManager');
+        await testRokuClass('roBtClientManagerEvent');
+        await testRokuClass('roBtManager');
         await testRokuClass('roByteArray');
         await testRokuClass('roCECStatus');
         await testRokuClass('roCECStatusEvent');
+        await testRokuClass('roCanvasWidget');
+        await testRokuClass('roCaptionRenderer');
+        await testRokuClass('roCaptionRendererEvent');
+        await testRokuClass('roCecInterface');
+        await testRokuClass('roCecRxFrameEvent');
+        await testRokuClass('roCecTxCompleteEvent');
+        await testRokuClass('roChannelManager');
         await testRokuClass('roChannelStore');
         await testRokuClass('roChannelStoreEvent');
+        await testRokuClass('roCharDisplay');
+        await testRokuClass('roClockWidget');
+        await testRokuClass('roCodeRegistrationScreen');
+        await testRokuClass('roCodeRegistrationScreenEvent');
         await testRokuClass('roCompositor');
+        await testRokuClass('roConfigurationElements');
+        await testRokuClass('roControlDown');
+        await testRokuClass('roControlPort');
+        await testRokuClass('roControlUp');
+        await testRokuClass('roCreateFile');
         await testRokuClass('roDataGramSocket');
+        await testRokuClass('roDatagramEvent');
+        await testRokuClass('roDatagramReceiver');
+        await testRokuClass('roDatagramSender');
+        await testRokuClass('roDatagramSocket');
         await testRokuClass('roDateTime');
         await testRokuClass('roDeviceCrypto');
+        await testRokuClass('roDeviceCustomization');
         await testRokuClass('roDeviceInfo');
         await testRokuClass('roDeviceInfoEvent');
+        await testRokuClass('roDiskErrorEvent');
+        await testRokuClass('roDiskMonitor');
         await testRokuClass('roDouble');
         await testRokuClass('roDsa');
         await testRokuClass('roEVPCipher');
         await testRokuClass('roEVPDigest');
+        await testRokuClass('roElectron');
+        await testRokuClass('roElectronEvent');
         await testRokuClass('roFileSystem');
         await testRokuClass('roFileSystemEvent');
         await testRokuClass('roFloat');
         await testRokuClass('roFont');
+        await testRokuClass('roFontMetrics');
         await testRokuClass('roFontRegistry');
         await testRokuClass('roFunction');
+        await testRokuClass('roGPIOButton');
+        await testRokuClass('roGPIOControlPort');
+        await testRokuClass('roGlobal');
+        await testRokuClass('roGpioButton');
+        await testRokuClass('roGpioControlPort');
+        await testRokuClass('roGridScreen');
+        await testRokuClass('roGridScreenEvent');
+        await testRokuClass('roHMAC');
+        await testRokuClass('roHashGenerator');
+        await testRokuClass('roHdmiHotPlugEvent');
+        await testRokuClass('roHdmiInputChanged');
+        await testRokuClass('roHdmiOutputChanged');
         await testRokuClass('roHdmiStatus');
         await testRokuClass('roHdmiStatusEvent');
-        await testRokuClass('roHMAC');
+        await testRokuClass('roHtmlWidget');
+        await testRokuClass('roHtmlWidgetEvent');
         await testRokuClass('roHttpAgent');
+        await testRokuClass('roHttpEvent');
+        await testRokuClass('roHttpServer');
+        await testRokuClass('roIRDownEvent');
+        await testRokuClass('roIRRepeatEvent');
+        await testRokuClass('roIRUpEvent');
+        await testRokuClass('roIRReceiver');
+        await testRokuClass('roIRRemote');
+        await testRokuClass('roIRRemotePress');
+        await testRokuClass('roIRTransmitCompleteEvent');
+        await testRokuClass('roIRTransmitter');
+        await testRokuClass('roImageBuffer');
+        await testRokuClass('roImageCanvas');
+        await testRokuClass('roImageCanvasEvent');
         await testRokuClass('roImageMetaData');
+        await testRokuClass('roImageMetadata');
+        await testRokuClass('roImagePlayer');
+        await testRokuClass('roImageWidget');
         await testRokuClass('roInput');
         await testRokuClass('roInputEvent');
         await testRokuClass('roInt');
+        await testRokuClass('roIntrinsicDouble');
         await testRokuClass('roInvalid');
+        await testRokuClass('roJRE');
+        await testRokuClass('roKeyStore');
+        await testRokuClass('roKeyboard');
+        await testRokuClass('roKeyboardPress');
+        await testRokuClass('roKeyboardScreen');
+        await testRokuClass('roKeyboardScreenEvent');
         await testRokuClass('roList');
+        await testRokuClass('roListScreen');
+        await testRokuClass('roListScreenEvent');
         await testRokuClass('roLocalization');
         await testRokuClass('roLongInteger');
+        await testRokuClass('roMediaServer');
+        await testRokuClass('roMediaStreamer');
+        await testRokuClass('roMediaStreamerEvent');
+        await testRokuClass('roMessageDialog');
+        await testRokuClass('roMessageDialogEvent');
         await testRokuClass('roMessagePort');
         await testRokuClass('roMicrophone');
         await testRokuClass('roMicrophoneEvent');
+        await testRokuClass('roMimeStream');
+        await testRokuClass('roMimeStreamEvent');
+        await testRokuClass('roNetworkAdvertisement');
+        await testRokuClass('roNetworkAttached');
+        await testRokuClass('roNetworkConfiguration');
+        await testRokuClass('roNetworkDetached');
+        await testRokuClass('roNetworkDiscovery');
+        await testRokuClass('roNetworkHotplug');
+        await testRokuClass('roNetworkStatistics');
+        await testRokuClass('roNetworkTimeEvent');
+        await testRokuClass('roNodeJs');
+        await testRokuClass('roNodeJsEvent');
+        await testRokuClass('roOneLineDialog');
+        await testRokuClass('roOneLineDialogEvent');
+        await testRokuClass('roOpenVpn');
+        await testRokuClass('roParagraphScreen');
+        await testRokuClass('roParagraphScreenEvent');
+        await testRokuClass('roPassKey');
         await testRokuClass('roPath');
+        await testRokuClass('roPinEntryDialog');
+        await testRokuClass('roPinEntryDialogEvent');
+        await testRokuClass('roPosterScreen');
+        await testRokuClass('roPosterScreenEvent');
+        await testRokuClass('roPowerEvent');
+        await testRokuClass('roPowerManager');
         await testRokuClass('roProgramGuide');
+        await testRokuClass('roPtp');
+        await testRokuClass('roPtpEvent');
+        await testRokuClass('roQuadravoxButton');
+        await testRokuClass('roQuadravoxSNS5');
+        await testRokuClass('roRSA');
+        await testRokuClass('roRSSArticle');
+        await testRokuClass('roRSSParser');
+        await testRokuClass('roReadFile');
+        await testRokuClass('roReadWriteFile');
+        await testRokuClass('roRectangle');
         await testRokuClass('roRegex');
         await testRokuClass('roRegion');
         await testRokuClass('roRegistry');
         await testRokuClass('roRegistrySection');
         await testRokuClass('roRemoteInfo');
-        await testRokuClass('roRSA');
-        await testRokuClass('roScreen');
+        await testRokuClass('roResourceManager');
+        await testRokuClass('roRssArticle');
+        await testRokuClass('roRssParser');
+        await testRokuClass('roRtspStream');
+        await testRokuClass('roRtspStreamEvent');
         await testRokuClass('roSGNode');
         await testRokuClass('roSGNodeEvent');
         await testRokuClass('roSGScreen');
         await testRokuClass('roSGScreenEvent');
+        await testRokuClass('roScreen');
+        await testRokuClass('roSearchHistory');
+        await testRokuClass('roSearchScreen');
+        await testRokuClass('roSearchScreenEvent');
+        await testRokuClass('roSequenceMatchEvent');
+        await testRokuClass('roSequenceMatcher');
+        await testRokuClass('roSerialPort');
+        await testRokuClass('roSlideShow');
+        await testRokuClass('roSlideShowEvent');
+        await testRokuClass('roSnmpAgent');
+        await testRokuClass('roSnmpEvent');
         await testRokuClass('roSocketAddress');
         await testRokuClass('roSocketEvent');
+        await testRokuClass('roSpringboardScreen');
+        await testRokuClass('roSpringboardScreenEvent');
         await testRokuClass('roSprite');
+        await testRokuClass('roSqliteDatabase');
+        await testRokuClass('roSqliteEvent');
+        await testRokuClass('roSqliteStatement');
+        await testRokuClass('roStorageAttached');
+        await testRokuClass('roStorageDetached');
+        await testRokuClass('roStorageHotplug');
+        await testRokuClass('roStorageInfo');
+        await testRokuClass('roStreamByteEvent');
+        await testRokuClass('roStreamConnectResultEvent');
+        await testRokuClass('roStreamEndEvent');
+        await testRokuClass('roStreamLineEvent');
+        await testRokuClass('roStreamQueue');
+        await testRokuClass('roStreamQueueEvent');
         await testRokuClass('roStreamSocket');
         await testRokuClass('roString');
-        await testRokuClass('roSystemlog');
+        await testRokuClass('roSyncManager');
+        await testRokuClass('roSyncManagerEvent');
+        await testRokuClass('roSyncPool');
+        await testRokuClass('roSyncPoolEvent');
+        await testRokuClass('roSyncPoolFiles');
+        await testRokuClass('roSyncPoolProgressEvent');
+        await testRokuClass('roSyncSpec');
+        await testRokuClass('roSystemLog');
         await testRokuClass('roSystemLogEvent');
+        await testRokuClass('roSystemTime');
+        await testRokuClass('roTCPConnectEvent');
+        await testRokuClass('roTCPServer');
+        await testRokuClass('roTCPStream');
+        await testRokuClass('roTextField');
+        await testRokuClass('roTextScreen');
+        await testRokuClass('roTextScreenEvent');
         await testRokuClass('roTextToSpeech');
         await testRokuClass('roTextToSpeechEvent');
+        await testRokuClass('roTextWidget');
+        await testRokuClass('roTextWidgetEvent');
         await testRokuClass('roTextureManager');
         await testRokuClass('roTextureRequest');
         await testRokuClass('roTextureRequestEvent');
+        await testRokuClass('roTimeSpan');
+        await testRokuClass('roTimer');
+        await testRokuClass('roTimerEvent');
         await testRokuClass('roTimespan');
+        await testRokuClass('roTouchCalibrationEvent');
+        await testRokuClass('roTouchEvent');
+        await testRokuClass('roTouchScreen');
+        await testRokuClass('roTuner');
+        await testRokuClass('roTunerEvent');
+        await testRokuClass('roUPnPActionResult');
+        await testRokuClass('roUPnPController');
+        await testRokuClass('roUPnPDevice');
+        await testRokuClass('roUPnPSearchEvent');
+        await testRokuClass('roUPnPService');
+        await testRokuClass('roUPnPServiceEvent');
         await testRokuClass('roUniversalControlEvent');
         await testRokuClass('roUrlEvent');
         await testRokuClass('roUrlTransfer');
+        await testRokuClass('roUsbFilesystem');
+        await testRokuClass('roUsbHidEmulator');
+        await testRokuClass('roUsbHidLedEmulatorEvent');
+        await testRokuClass('roUsbPowerControl');
+        await testRokuClass('roVideoEvent');
+        await testRokuClass('roVideoInput');
+        await testRokuClass('roVideoMode');
         await testRokuClass('roVideoPlayer');
         await testRokuClass('roVideoPlayerEvent');
+        await testRokuClass('roVideoScreen');
+        await testRokuClass('roVideoScreenEvent');
+        await testRokuClass('roVirtualMemory');
+        await testRokuClass('roWriteFile');
         await testRokuClass('roXMLElement');
         await testRokuClass('roXMLList');
+
+    });
+
+    it('does NOT colorize class_roku_builtin if exact match is not found', async () => {
+        async function testRokuClass (className: string) {
+            return testGrammar(`
+                var = createObject("${className}")
+               '                    ${'^'.repeat(className.length)} string.quoted.double.brs
+               '      ^^^^^^^^^^^^ entity.name.function.brs
+               '^^^ entity.name.variable.local.brs
+            `);
+        }
+
+        await testRokuClass('  roAppInfo');
+        await testRokuClass('&&roAppManager');
+        await testRokuClass('//roAppMemoryMonitor');
+        await testRokuClass('alpha.roAppMemoryMonitorEvent.data');
+        await testRokuClass('asdfroArray');
+        await testRokuClass('!!!roAssociativeArray');
+        await testRokuClass('890roAudioGuide');
+        await testRokuClass('$$ roAudioMetadata');
+        await testRokuClass('../roAudioMetadata   ');
+        await testRokuClass('(([]))roAudioMetadata.');
+        await testRokuClass('true roAudioMetadata\\b');
+        await testRokuClass('  roAudioMetadata   ');
 
     });
 });

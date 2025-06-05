@@ -5,6 +5,7 @@ export enum ViewProviderCommand {
     getStoredRokuAppOverlays = 'getStoredRokuAppOverlays',
     getWorkspaceState = 'getWorkspaceState',
     openRokuFile = 'openRokuFile',
+    loadRokuAppOverlaysThumbnails = 'loadRokuAppOverlaysThumbnails',
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',
     sendReplRequest = 'sendReplRequest',
@@ -13,6 +14,8 @@ export enum ViewProviderCommand {
     stopRokuAutomationConfig = 'stopRokuAutomationConfig',
     storeRokuAppOverlays = 'storeRokuAppOverlays',
     storeRokuAutomationConfigs = 'storeRokuAutomationConfigs',
+    exportRokuAutomationConfigs = 'exportRokuAutomationConfigs',
+    loadRokuAutomationConfigs = 'loadRokuAutomationConfigs',
     updateWorkspaceState = 'updateWorkspaceState',
     viewReady = 'viewReady'
 }

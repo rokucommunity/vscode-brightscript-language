@@ -1,0 +1,26 @@
+name: Make Release Artifacts
+
+on:
+  pull_request:
+    types:
+      - reopened
+      - opened
+      - synchronize
+
+jobs:
+  run:
+    if: startsWith( github.head_ref, 'release/')
+    uses: rokucommunity/workflows/.github/workflows/make-release-artifacts.yml@master
+    with:
+      branch: ${{ github.event.pull_request.head.ref }}
+      node-version: "18.18.2"
+      artifact-paths: "*.vsix"
+    secrets: inherit
+
+  success-or-skip:
+    if: always()
+    needs: [run]
+    runs-on: ubuntu-latest
+    steps:
+      - run: if [ "${{ needs.run.result }}" = "failure" ]; then exit 1; fi
+
