@@ -1844,9 +1844,35 @@
                 "id": "projectSettings",
                 "title": "Project Settings",
                 "properties": {
-                    "brightscript.configFile": {
-                        "type": "string",
-                        "description": "Path to the bsconfig.json for this project. This is an absolute path, or a path relative to ${workspaceFolder}.",
+                    "brightscript.projects": {
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "description": "Path to a project directory or bsconfig.json. This is an absolute path, or a path relative to ${workspaceFolder}."
+                                },
+                                {
+                                    "type": "object",
+                                    "description": "A project object that contains a path to a project directory or bsconfig.json, and an optional name and disabled flag.",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string",
+                                            "description": "Path to the project directory or bsconfig.json."
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "description": "Optional name for the project."
+                                        },
+                                        "disabled": {
+                                            "type": "boolean",
+                                            "description": "If true, the project will be disabled."
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "description": "Set of projects to load instead of automatic discovery.",
                         "scope": "resource"
                     },
                     "brightscript.bsdk": {
@@ -1869,6 +1895,12 @@
                     "brightscript.languageServer.enableThreading": {
                         "type": "boolean",
                         "description": "Should the projects in this workspace be run in their own dedicated worker threads, or all run on the main thread",
+                        "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.languageServer.enableDiscovery": {
+                        "type": "boolean",
+                        "description": "Should the projects in this workspace be discovered automatically",
                         "default": true,
                         "scope": "resource"
                     },
