@@ -1898,7 +1898,7 @@
                         "default": true,
                         "scope": "resource"
                     },
-                    "brightscript.languageServer.enableDiscovery": {
+                    "brightscript.languageServer.enableProjectDiscovery": {
                         "type": "boolean",
                         "description": "Should the projects in this workspace be discovered automatically",
                         "default": true,
