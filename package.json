@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.57.0",
+    "version": "2.57.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -58,7 +58,7 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.69.11",
+        "brighterscript": "^0.69.12",
         "brighterscript-formatter": "^1.7.16",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
