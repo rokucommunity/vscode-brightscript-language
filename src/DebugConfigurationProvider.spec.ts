@@ -53,7 +53,8 @@ describe('BrightScriptConfigurationProvider', () => {
             activeDeviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
-            userInputManager
+            userInputManager,
+            null // BrightScriptCommands is not used in this test (help!)
         );
     });
 
