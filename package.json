@@ -1890,6 +1890,13 @@
                         "type": "boolean",
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
                         "default": true,
+                        "scope": "resource",
+                        "deprecationMessage": "Use 'brightscript.languageServer.enable' instead. This setting will be removed in a future version."
+                    },
+                    "brightscript.languageServer.enable": {
+                        "type": "boolean",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
+                        "default": true,
                         "scope": "resource"
                     },
                     "brightscript.languageServer.enableThreading": {
