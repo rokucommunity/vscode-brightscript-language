@@ -229,7 +229,9 @@ export class LogOutputManager {
             this.appendLine(e.body.line);
 
         } else if (isPopupMessageEvent(e)) {
-            this.showMessage(e.body.message, e.body.severity, e.body.modal);
+            this.showMessage(e.body.message, e.body.severity, e.body.modal, ...e.body.actions).catch((err) => {
+                console.error('Error showing popup message', err);
+            });
 
         } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
@@ -245,13 +247,17 @@ export class LogOutputManager {
         }
     }
 
-    private showMessage(message: string, severity: string, modal: boolean) {
+    private async showMessage(message: string, severity: string, modal: boolean, ...actions: string[]) {
         const methods = {
             error: vscode.window.showErrorMessage,
             info: vscode.window.showInformationMessage,
             warn: vscode.window.showWarningMessage
         };
-        methods[severity](message, { modal: modal });
+        const response = await methods[severity](message, { modal: modal }, ...actions);
+        if (response === 'Stop Debugger') {
+            console.log('Debug sessions stopped by user');
+            await vscode.debug.stopDebugging();
+        }
     }
 
     /**
