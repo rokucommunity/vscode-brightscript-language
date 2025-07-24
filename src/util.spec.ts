@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as sinonActual from 'sinon';
 
 import { util } from './util';
+import { vscode } from './mockVscode.spec';
 let sinon = sinonActual.createSandbox();
 
 beforeEach(() => {
@@ -324,6 +325,40 @@ describe('Util', () => {
                 ['charlie', { value: 'def', originalValue: '456' }],
                 ['delta', { value: 123, originalValue: 123 }]
             ]);
+        });
+    });
+
+    describe('getConfigurationValueIfDefined', () => {
+        it('returns undefined when not specified in the config', () => {
+            expect(
+                util.getConfigurationValueIfDefined('brightscript.notThere')
+            ).to.be.undefined;
+        });
+
+        it('returns default value when not specified in the config', () => {
+            expect(
+                util.getConfigurationValueIfDefined('brightscript.notThere', true)
+            ).to.eql(true);
+        });
+
+        it('returns undefined even if there is a default value globally', () => {
+            sinon.stub(vscode.workspace, 'getConfiguration').returns({
+                inspect: () => {
+                    return {
+                        defaultLanguageValue: undefined,
+                        defaultValue: true,
+                        globalLanguageValue: undefined,
+                        globalValue: undefined,
+                        workspaceFolderLanguageValue: undefined,
+                        workspaceFolderValue: undefined,
+                        workspaceLanguageValue: undefined,
+                        workspaceValue: undefined
+                    };
+                }
+            } as any);
+            expect(
+                util.getConfigurationValueIfDefined('brightscript.notThere')
+            ).to.be.undefined;
         });
     });
 });

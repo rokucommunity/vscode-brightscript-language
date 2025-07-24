@@ -433,21 +433,8 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        let settings = vscode.workspace.getConfiguration('brightscript');
-
-        // Priority: new setting -> old setting -> default (true)
-        const newSetting = settings.get<boolean>('languageServer.enable');
-        if (newSetting !== undefined) {
-            return newSetting;
-        }
-
-        const oldSetting = settings.get<boolean>('enableLanguageServer');
-        if (oldSetting !== undefined) {
-            return oldSetting;
-        }
-
-        // Default to true if neither setting is defined
-        return true;
+        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enable') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
+        return result;
     }
 
     public async getTranspiledFileContents(pathAbsolute: string) {

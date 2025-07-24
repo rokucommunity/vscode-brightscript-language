@@ -585,6 +585,10 @@ describe('LanguageServerManager', () => {
             vscode.workspace._configuration['brightscript.enableLanguageServer'] = false;
 
             expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.false;
+
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = true;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
         });
 
         it('returns default true when both settings are undefined', () => {
