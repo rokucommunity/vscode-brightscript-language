@@ -23,7 +23,7 @@ import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -204,10 +204,6 @@ export class Extension {
             this.diagnosticManager.clear();
         });
 
-        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
-            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
-        });
-
         let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
@@ -232,6 +228,7 @@ export class Extension {
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
@@ -287,6 +284,23 @@ export class Extension {
                 }
             }
         }
+
+        try {
+            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
+        } catch (err) {
+            console.error('Error handling custom event', e, err);
+        }
+    }
+
+    private async showMessage(e: any) {
+        const methods = {
+            error: vscode.window.showErrorMessage,
+            info: vscode.window.showInformationMessage,
+            warn: vscode.window.showWarningMessage
+        };
+        return {
+            selectedAction: await Promise.resolve(methods[e.body.severity](e.body.message, { modal: e.body.modal }, ...e.body.actions))
+        };
     }
 
     private async processCustomRequestEvent(event: CustomRequestEvent, session: vscode.DebugSession) {
@@ -294,12 +308,16 @@ export class Extension {
             let response: any;
             if (isExecuteTaskCustomRequest(event)) {
                 response = await this.executeTask(event.body.task);
+            } else if (isShowPopupMessageCustomRequest(event)) {
+                response = await this.showMessage(event);
             }
+            //send the response back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: event.body.requestId,
                 ...response ?? {}
             });
         } catch (e) {
+            //send the error back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: e.body.requestId,
                 error: {
