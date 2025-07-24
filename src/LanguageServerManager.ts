@@ -141,7 +141,7 @@ export class LanguageServerManager {
 
             //if the language server enable setting changed, restart the language server
             if (configuration.affectsConfiguration('brightscript.enableLanguageServer') ||
-                configuration.affectsConfiguration('brightscript.languageServer.enable')) {
+                configuration.affectsConfiguration('brightscript.languageServer.enabled')) {
                 await this.syncVersionAndTryRun();
             }
         });
@@ -433,7 +433,7 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enable') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
+        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enabled') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
         return result;
     }
 
