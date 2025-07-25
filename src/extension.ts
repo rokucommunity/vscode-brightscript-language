@@ -299,7 +299,7 @@ export class Extension {
             warn: vscode.window.showWarningMessage
         };
         return {
-            selectedAction: await Promise.resolve(methods[e.body.severity](e.body.message, { modal: e.body.modal }, ...e.body.actions))
+            selectedAction: await methods[e.body.severity](e.body.message, { modal: e.body.modal }, ...(e?.body?.actions ?? []))
         };
     }
 
@@ -316,13 +316,13 @@ export class Extension {
                 requestId: event.body.requestId,
                 ...response ?? {}
             });
-        } catch (e) {
+        } catch (error) {
             //send the error back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
-                requestId: e.body.requestId,
+                requestId: event.body.requestId,
                 error: {
-                    message: e?.message,
-                    stack: e?.stack
+                    message: error?.message,
+                    stack: error?.stack
                 }
             });
         }
