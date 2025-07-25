@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        How to Install
+        Variable Substitutions
     </title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
     <link rel="stylesheet" href="style.css" />
@@ -291,26 +291,99 @@
             
         </div>
         <div id="content">
-            <a href="#installation"><h2 id="installation">Installation</h2></a><a href="#from-vscode"><h3 id="from-vscode">From VSCode</h3></a><ol>
-<li><p>Search for &quot;BrightScript&quot; in the vscode extensions tab</p>
+            <a href="#variable-substitutions"><h1 id="variable-substitutions">Variable Substitutions</h1></a><p>BrightScript extension supports variable substitutions in launch.json configurations to make your debugging workflow more flexible and dynamic.</p>
+<a href="#overview"><h2 id="overview">Overview</h2></a><p>Variable substitutions allow you to avoid hardcoding values in your launch configurations. Instead of specifying static IP addresses or passwords, you can use variables that are resolved at runtime.</p>
+<a href="#available-variable-substitutions"><h2 id="available-variable-substitutions">Available Variable Substitutions</h2></a><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>${promptForHost}</code></td>
+<td>Prompts you to enter or select a host IP address</td>
+<td>Shows input dialog or device picker when debugging starts</td>
+</tr>
+<tr>
+<td><code>${promptForPassword}</code></td>
+<td>Prompts you to enter the device password</td>
+<td>Shows password input dialog when debugging starts</td>
+</tr>
+<tr>
+<td><code>${activeHost}</code></td>
+<td>Uses the currently active device</td>
+<td>Automatically uses pre-configured device, or prompts if none set</td>
+</tr>
+<tr>
+<td><code>${host}</code></td>
+<td>References the resolved host value</td>
+<td>Can be used in other fields like <code>deepLinkUrl</code></td>
+</tr>
+</tbody></table>
+<a href="#promptforhost---interactive-host-selection"><h2 id="promptforhost---interactive-host-selection"><code>${promptForHost}</code> - Interactive Host Selection</h2></a><p>The most common variable substitution. When used, VS Code will:</p>
+<ul>
+<li>Show a list of discovered Roku devices (if device discovery is enabled)</li>
+<li>Allow manual IP entry</li>
+<li>Remember the last used device</li>
+</ul>
+<pre><code class="language-json">{
+    &quot;host&quot;: &quot;${promptForHost}&quot;
+}
+</code></pre>
+<a href="#promptforpassword---interactive-password-entry"><h2 id="promptforpassword---interactive-password-entry"><code>${promptForPassword}</code> - Interactive Password Entry</h2></a><p>Prompts for the developer password when debugging starts:</p>
+<pre><code class="language-json">{
+    &quot;password&quot;: &quot;${promptForPassword}&quot;
+}
+</code></pre>
+<a href="#activehost---smart-device-selection"><h2 id="activehost---smart-device-selection"><code>${activeHost}</code> - Smart Device Selection</h2></a><p><strong>New!</strong> Uses the currently active device without prompting, but gracefully falls back to prompting if no device is set. This provides the best of both worlds: convenience when you have a preferred device, flexibility when you don&#39;t.</p>
+<a href="#basic-usage"><h3 id="basic-usage">Basic Usage</h3></a><pre><code class="language-json">{
+    &quot;version&quot;: &quot;0.2.0&quot;,
+    &quot;configurations&quot;: [
+        {
+            &quot;type&quot;: &quot;brightscript&quot;,
+            &quot;name&quot;: &quot;Launch with Current Device&quot;,
+            &quot;request&quot;: &quot;launch&quot;,
+            &quot;host&quot;: &quot;${activeHost}&quot;,
+            &quot;password&quot;: &quot;${promptForPassword}&quot;,
+            &quot;rootDir&quot;: &quot;${workspaceFolder}&quot;,
+            &quot;files&quot;: [
+                &quot;manifest&quot;,
+                &quot;source/**/*.*&quot;,
+                &quot;components/**/*.*&quot;,
+                &quot;images/**/*.*&quot;
+            ]
+        }
+    ]
+}
+</code></pre>
+<a href="#requirements"><h3 id="requirements">Requirements</h3></a><p>To use <code>${activeHost}</code> optimally, you should set an active device using one of these methods:</p>
+<ol>
+<li><p><strong>Via Command Palette:</strong></p>
+<ul>
+<li>Open Command Palette (<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>)</li>
+<li>Type &quot;BrightScript: Set Active Device&quot;</li>
+<li>Enter the IP address of your Roku device</li>
+</ul>
 </li>
-<li><p>Click &quot;Install&quot;</p>
- <a href="https://user-images.githubusercontent.com/2544493/160644565-cdb1770d-bd12-4d1f-9749-50705ea9fdd8.png" target="_blank">
-     <img src="https://user-images.githubusercontent.com/2544493/160644565-cdb1770d-bd12-4d1f-9749-50705ea9fdd8.png" />
- </a></li>
-</ol>
-<a href="#from-github"><h3 id="from-github">From GitHub</h3></a><ol>
-<li><p>Navigate our github releases page: <a href="https://github.com/rokucommunity/vscode-brightscript-language/releases">https://github.com/rokucommunity/vscode-brightscript-language/releases</a></p>
+<li><p><strong>Via Device List:</strong></p>
+<ul>
+<li>Use the Roku Devices view in the sidebar to select a device (if device discovery is enabled)</li>
+</ul>
 </li>
-<li><p>Download the latest release version <code>vsix</code>. For example:</p>
- <a href="https://user-images.githubusercontent.com/2544493/160646649-fe007989-0107-4741-93f6-0df4bacb7ee4.png" target="_blank">
-     <img src="https://user-images.githubusercontent.com/2544493/160646649-fe007989-0107-4741-93f6-0df4bacb7ee4.png" />
- </a></li>
-<li><p>In the VSCode extension cab, open the <code>...</code> menu, click <code>Install from VSIX...</code> and select the vsix downloaded from step 2</p>
- <a href="https://user-images.githubusercontent.com/2544493/160647083-eed865c6-d550-46bb-9896-9521c181ab09.png" target="_blank">
-     <img src="https://user-images.githubusercontent.com/2544493/160647083-eed865c6-d550-46bb-9896-9521c181ab09.png" />
- </a></li>
+<li><p><strong>Via Debugging Session:</strong></p>
+<ul>
+<li>The active device is automatically set when you start a debugging session with <code>${promptForHost}</code></li>
+</ul>
+</li>
 </ol>
+<a href="#fallback-handling"><h3 id="fallback-handling">Fallback Handling</h3></a><p>If you use <code>${activeHost}</code> but no active device is set, it will automatically fallback to prompting for host selection (same behavior as <code>${promptForHost}</code>).</p>
+<p>This provides a seamless experience:</p>
+<ul>
+<li><strong>When active device is set</strong>: Uses it automatically without prompting</li>
+<li><strong>When no active device</strong>: Falls back to the device picker/input dialog</li>
+</ul>
             <div id="footer"></div>
         </div>
     </div>
