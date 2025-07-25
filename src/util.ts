@@ -514,6 +514,25 @@ class Util {
     public isNonEmptyString(value: any): value is string {
         return typeof value === 'string' && value.trim() !== '';
     }
+
+    public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {
+        const [, configurationKey, settingKey] = /(.+?)\.([^\.]+)$/.exec(key) ?? [];
+        let settings = vscode.workspace.getConfiguration(configurationKey);
+        const inspection = settings.inspect(settingKey);
+
+        if (
+            inspection.defaultLanguageValue !== undefined ||
+            inspection.globalLanguageValue !== undefined ||
+            inspection.globalValue !== undefined ||
+            inspection.workspaceFolderLanguageValue !== undefined ||
+            inspection.workspaceFolderValue !== undefined ||
+            inspection.workspaceLanguageValue !== undefined ||
+            inspection.workspaceValue !== undefined
+        ) {
+            return settings.get(settingKey, defaultValue);
+        }
+        return defaultValue;
+    }
 }
 
 const util = new Util();
