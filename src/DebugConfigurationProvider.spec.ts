@@ -54,7 +54,7 @@ describe('BrightScriptConfigurationProvider', () => {
             null,
             vscode.window.createOutputChannel('Extension'),
             userInputManager,
-            null // BrightScriptCommands is not used in this test (help!)
+            null // BrightScriptCommands is not used in this test
         );
     });
 
