@@ -21,6 +21,7 @@ import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
+import type { BrightScriptCommands } from './BrightScriptCommands';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -30,7 +31,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
-        private userInputManager: UserInputManager
+        private userInputManager: UserInputManager,
+        private brightScriptCommands: BrightScriptCommands
     ) {
         this.context = context;
         this.activeDeviceManager = activeDeviceManager;
@@ -429,6 +431,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             } else {
                 config.host = await this.userInputManager.promptForHostManual();
             }
+        } else if (config.host.trim() === '${activeHost}') {
+            // Get the current remote host from workspace state (it will prompt for host as a fallback)
+            config.host = await this.brightScriptCommands.getRemoteHost();
         }
 
         //check the host and throw error if not provided or update the workspace to set last host
