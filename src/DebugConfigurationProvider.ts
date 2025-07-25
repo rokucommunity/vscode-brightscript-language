@@ -431,7 +431,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             } else {
                 config.host = await this.userInputManager.promptForHostManual();
             }
-        } else if (config.host.trim() === '${currentRemoteHost}') {
+        } else if (config.host.trim() === '${activeHost}') {
             // Get the current remote host from workspace state (it will prompt for host as a fallback)
             config.host = await this.brightScriptCommands.getRemoteHost();
         }

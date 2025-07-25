@@ -12,7 +12,7 @@ Variable substitutions allow you to avoid hardcoding values in your launch confi
 |----------|-------------|----------|
 | `${promptForHost}` | Prompts you to enter or select a host IP address | Shows input dialog or device picker when debugging starts |
 | `${promptForPassword}` | Prompts you to enter the device password | Shows password input dialog when debugging starts |
-| `${currentRemoteHost}` | Uses the currently active device | Automatically uses pre-configured device, or prompts if none set |
+| `${activeHost}` | Uses the currently active device | Automatically uses pre-configured device, or prompts if none set |
 | `${host}` | References the resolved host value | Can be used in other fields like `deepLinkUrl` |
 
 ## `${promptForHost}` - Interactive Host Selection
@@ -38,7 +38,7 @@ Prompts for the developer password when debugging starts:
 }
 ```
 
-## `${currentRemoteHost}` - Smart Device Selection
+## `${activeHost}` - Smart Device Selection
 
 **New!** Uses the currently active device without prompting, but gracefully falls back to prompting if no device is set. This provides the best of both worlds: convenience when you have a preferred device, flexibility when you don't.
 
@@ -52,7 +52,7 @@ Prompts for the developer password when debugging starts:
             "type": "brightscript",
             "name": "Launch with Current Device",
             "request": "launch",
-            "host": "${currentRemoteHost}",
+            "host": "${activeHost}",
             "password": "${promptForPassword}",
             "rootDir": "${workspaceFolder}",
             "files": [
@@ -68,7 +68,7 @@ Prompts for the developer password when debugging starts:
 
 ### Requirements
 
-To use `${currentRemoteHost}` optimally, you should set an active device using one of these methods:
+To use `${activeHost}` optimally, you should set an active device using one of these methods:
 
 1. **Via Command Palette:**
    - Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
@@ -83,7 +83,7 @@ To use `${currentRemoteHost}` optimally, you should set an active device using o
 
 ### Fallback Handling
 
-If you use `${currentRemoteHost}` but no active device is set, it will automatically fallback to prompting for host selection (same behavior as `${promptForHost}`).
+If you use `${activeHost}` but no active device is set, it will automatically fallback to prompting for host selection (same behavior as `${promptForHost}`).
 
 This provides a seamless experience:
 - **When active device is set**: Uses it automatically without prompting
