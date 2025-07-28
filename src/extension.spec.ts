@@ -83,4 +83,74 @@ describe('extension', () => {
         await extension.activate(vscode.context);
         expect(spy.getCalls().length).to.be.greaterThan(0);
     });
+
+    it('show message even when no actions are provided', async () => {
+        const event = {
+            seq: 1,
+            type: 'event',
+            event: 'CustomRequestEvent',
+            body: {
+                name: 'showPopupMessage',
+                message: 'Test message',
+                severity: 'info',
+                modal: false,
+                actions: []
+            }
+        };
+        let selectedAction;
+        const session = {
+            customRequest: sinon.stub().callsFake((_, response) => {
+                selectedAction = response?.selectedAction;
+                return Promise.resolve(response);
+            })
+        };
+
+        const vscodeinfostub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => { });
+
+        await extensionInstance['processCustomRequestEvent'](event, session as any);
+        const args = vscodeinfostub.getCall(0).args;
+        expect(args.at(0)).to.be.equal('Test message');
+        expect(args.at(1)).to.be.deep.equal({ modal: false });
+        expect(selectedAction).to.be.undefined;
+
+        expect(vscodeinfostub.calledOnce).to.be.true;
+    });
+
+    it('show message and handle action response', async () => {
+        const actions = ['OK', 'Cancel'];
+        const event = {
+            seq: 1,
+            type: 'event',
+            event: 'CustomRequestEvent',
+            body: {
+                name: 'showPopupMessage',
+                message: 'Test message',
+                severity: 'info',
+                modal: false,
+                actions: actions
+            }
+        };
+        let selectedAction;
+        const session = {
+            customRequest: sinon.stub().callsFake((_, response) => {
+                selectedAction = response.selectedAction;
+                return Promise.resolve(response);
+            })
+        };
+
+        const vscodeinfostub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => {
+            return actions[0];
+        });
+
+        await extensionInstance['processCustomRequestEvent'](event, session as any);
+        const args = vscodeinfostub.getCall(0).args;
+        expect(args.at(0)).to.be.equal('Test message');
+        expect(args.at(1)).to.be.deep.equal({ modal: false });
+        expect(args.at(2)).to.be.equal(actions[0]);
+        expect(args.at(3)).to.be.equal(actions[1]);
+        expect(selectedAction).to.be.equal(actions[0]);
+
+        expect(vscodeinfostub.calledOnce).to.be.true;
+    });
+
 });
