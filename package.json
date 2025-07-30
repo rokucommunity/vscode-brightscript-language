@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.55.11",
+    "version": "2.57.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -53,13 +53,13 @@
         "sync-launch-settings": "ts-node scripts/sync-launch-settings.ts"
     },
     "dependencies": {
-        "@rokucommunity/logger": "^0.3.10",
+        "@rokucommunity/logger": "^0.3.11",
         "@types/request": "^2.48.12",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.69.6",
-        "brighterscript-formatter": "^1.7.12",
+        "brighterscript": "^0.69.12",
+        "brighterscript-formatter": "^1.7.16",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -80,8 +80,8 @@
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.21.31",
-        "roku-deploy": "^3.12.4",
+        "roku-debug": "^0.21.37",
+        "roku-deploy": "^3.12.6",
         "roku-test-automation": "^2.2.0",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
@@ -375,6 +375,16 @@
                     "group": "navigation@2"
                 },
                 {
+                    "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
+                    "when": "view == rokuAutomationView",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
+                    "when": "view == rokuAutomationView",
+                    "group": "navigation@2"
+                },
+                {
                     "command": "extension.brightscript.rokuFileSystemView.refresh",
                     "when": "view == rokuFileSystemView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
@@ -448,7 +458,7 @@
                             },
                             "deepLinkUrl": {
                                 "type": "string",
-                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${activeHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
                                 "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
                             },
                             "password": {
@@ -1834,9 +1844,35 @@
                 "id": "projectSettings",
                 "title": "Project Settings",
                 "properties": {
-                    "brightscript.configFile": {
-                        "type": "string",
-                        "description": "Path to the bsconfig.json for this project. This is an absolute path, or a path relative to ${workspaceFolder}.",
+                    "brightscript.projects": {
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string",
+                                    "description": "Path to a project directory or bsconfig.json. This is an absolute path, or a path relative to ${workspaceFolder}."
+                                },
+                                {
+                                    "type": "object",
+                                    "description": "A project object that contains a path to a project directory or bsconfig.json, and an optional name and disabled flag.",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string",
+                                            "description": "Path to the project directory or bsconfig.json."
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "description": "Optional name for the project."
+                                        },
+                                        "disabled": {
+                                            "type": "boolean",
+                                            "description": "If true, the project will be disabled."
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "description": "Set of projects to load instead of automatic discovery.",
                         "scope": "resource"
                     },
                     "brightscript.bsdk": {
@@ -1854,11 +1890,24 @@
                         "type": "boolean",
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
                         "default": true,
+                        "scope": "resource",
+                        "deprecationMessage": "Use 'brightscript.languageServer.enabled' instead. This setting will be removed in a future version."
+                    },
+                    "brightscript.languageServer.enabled": {
+                        "type": "boolean",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
+                        "default": true,
                         "scope": "resource"
                     },
                     "brightscript.languageServer.enableThreading": {
                         "type": "boolean",
                         "description": "Should the projects in this workspace be run in their own dedicated worker threads, or all run on the main thread",
+                        "default": true,
+                        "scope": "resource"
+                    },
+                    "brightscript.languageServer.enableProjectDiscovery": {
+                        "type": "boolean",
+                        "description": "Should the projects in this workspace be discovered automatically",
                         "default": true,
                         "scope": "resource"
                     },
@@ -2052,7 +2101,7 @@
                     },
                     "brightscript.debug.deepLinkUrl": {
                         "type": "string",
-                        "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                        "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${activeHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
                         "default": "http://${host}:8060/launch/dev?${promptForQueryParams}",
                         "scope": "resource"
                     },
@@ -3088,6 +3137,18 @@
                 "title": "Disable autorun on deploy",
                 "category": "BrighterScript",
                 "icon": "$(pass-filled)"
+            },
+            {
+                "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
+                "title": "Import all automation scripts",
+                "category": "BrighterScript",
+                "icon": "$(file-directory)"
+            },
+            {
+                "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
+                "title": "Export all automation scripts",
+                "category": "BrighterScript",
+                "icon": "$(desktop-download)"
             },
             {
                 "command": "extension.brightscript.rokuFileSystemView.refresh",

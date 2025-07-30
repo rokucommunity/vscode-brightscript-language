@@ -138,6 +138,12 @@ export class LanguageServerManager {
             if (configuration.affectsConfiguration('brightscript.bsdk')) {
                 await this.syncVersionAndTryRun();
             }
+
+            //if the language server enable setting changed, restart the language server
+            if (configuration.affectsConfiguration('brightscript.enableLanguageServer') ||
+                configuration.affectsConfiguration('brightscript.languageServer.enabled')) {
+                await this.syncVersionAndTryRun();
+            }
         });
         await this.syncVersionAndTryRun();
     }
@@ -427,9 +433,8 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        let settings = vscode.workspace.getConfiguration('brightscript');
-        let value = settings.enableLanguageServer === false ? false : true;
-        return value;
+        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enabled') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
+        return result;
     }
 
     public async getTranspiledFileContents(pathAbsolute: string) {

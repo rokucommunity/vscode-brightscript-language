@@ -554,4 +554,59 @@ describe('LanguageServerManager', () => {
             expect(client.outputChannel.appendLine.callCount).to.eql(1);
         });
     });
+
+    describe('isLanguageServerEnabledInSettings', () => {
+        beforeEach(() => {
+            // Clear configuration before each test
+            vscode.workspace._configuration = {};
+        });
+
+        it('returns true when new setting is true', () => {
+            vscode.workspace._configuration['brightscript.languageServer.enabled'] = true;
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = false;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
+        });
+
+        it('returns false when new setting is false', () => {
+            vscode.workspace._configuration['brightscript.languageServer.enabled'] = false;
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = true;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.false;
+        });
+
+        it('falls back to old setting when new setting is undefined', () => {
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = true;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
+        });
+
+        it('falls back to old setting false when new setting is undefined', () => {
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = false;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.false;
+
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = true;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
+        });
+
+        it('returns default true when both settings are undefined', () => {
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
+        });
+
+        it('prioritizes new setting over old setting when both are defined', () => {
+            vscode.workspace._configuration['brightscript.languageServer.enabled'] = false;
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = true;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.false;
+        });
+
+        it('prioritizes new setting over old setting when both are true', () => {
+            vscode.workspace._configuration['brightscript.languageServer.enabled'] = true;
+            vscode.workspace._configuration['brightscript.enableLanguageServer'] = false;
+
+            expect(languageServerManager.isLanguageServerEnabledInSettings()).to.be.true;
+        });
+    });
 });
