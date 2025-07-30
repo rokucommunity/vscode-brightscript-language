@@ -1,12 +1,13 @@
 export enum ViewProviderEvent {
-    onTreeNodeFocused = 'onTreeNodeFocused',
+    onNodeFocused = 'onNodeFocused',
     onDeviceAvailabilityChange = 'onDeviceAvailabilityChange',
     onVscodeCommandReceived = 'onVscodeCommandReceived',
     onRegistryUpdated = 'onRegistryUpdated',
-    onStoredNodeReferencesUpdated = 'onStoredNodeReferencesUpdated',
+    onStoredAppUIUpdated = 'onStoredAppUIUpdated',
     onRokuAutomationConfigsLoaded = 'onRokuAutomationConfigsLoaded',
     onRokuAutomationConfigStepChange = 'onRokuAutomationConfigStepChange',
     onRokuAutomationKeyPressed = 'onRokuAutomationKeyPressed',
     onRokuAppOverlayAdded = 'onRokuAppOverlayAdded',
-    onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded'
+    onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded',
+    onVscodeContextSet = 'onVscodeContextSet'
 }

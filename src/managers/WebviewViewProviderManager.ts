@@ -89,6 +89,7 @@ export class WebviewViewProviderManager {
 
     // Mainly for communicating between webviews
     public sendMessageToWebviews(viewIds: string | string[], message) {
+        // console.log(`WebviewViewProviderManager: sendMessageToWebviews: ${viewIds} ${JSON.stringify(message)}`);
         if (typeof viewIds === 'string') {
             viewIds = [viewIds];
         }

@@ -5,16 +5,16 @@
     import { utils } from '../../utils';
     import { Eye, EyeClosed, DebugBreakpointDataUnverified, Move, Issues, Trash } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
-    import type { TreeNodeWithBase } from '../../shared/types';
     import { createEventDispatcher } from 'svelte';
-    import type { TreeNode } from 'roku-test-automation';
+    import type { AppUIResponseChild } from 'roku-test-automation';
     const dispatch = createEventDispatcher();
 
-    export let treeNode: TreeNodeWithBase;
+    export let appUIResponseChild: AppUIResponseChild | undefined;
+
     export let depth = 0;
     let self: HTMLDivElement;
 
-    const expandedStorageKey = `expanded:${treeNode.keyPath}`;
+    const expandedStorageKey = `expanded:${appUIResponseChild.keyPath}`;
     export let expanded = utils.getStorageBooleanValue(expandedStorageKey);
     $: {
         if (expanded) {
@@ -24,20 +24,20 @@
         }
     }
 
-    export let expandTreeNode: TreeNodeWithBase | undefined;
+    export let expandNode: AppUIResponseChild | null;
     $: {
-        // We we want the only variable in the reactive statement to be expandTreeNode or else it will also trigger when expanded changes as well
-        expandTreeNodeChecks(expandTreeNode);
+        // We we want the only variable in the reactive statement to be expandNode or else it will also trigger when expanded changes as well
+        expandNodeChecks(expandNode);
     }
 
-    function expandTreeNodeChecks(expandTreeNode) {
-        if (!expandTreeNode) {
+    function expandNodeChecks(proposedExpandNode: AppUIResponseChild | undefined) {
+        if (!proposedExpandNode) {
             // Don't want to run on empty keypaths as these are at the base level and should stay expanded
-            if (treeNode.keyPath) {
+            if (appUIResponseChild.keyPath) {
                 expanded = false
             }
         } else {
-            expanded = doTreeNodesMatch(treeNode, expandTreeNode);
+            expanded = doNodesMatch(appUIResponseChild, proposedExpandNode);
 
             if (expanded) {
                 // We need to expand all the parents before we can calculate how far we need to scroll down
@@ -45,7 +45,7 @@
 
                 const scrollToElement = (element) => {
                     const offset = getOffset(element);
-                    document.getElementById('container').scrollTo({
+                    document.getElementById('nodeTree').scrollTo({
                         left: 0,
                         top: offset.top - 90,
                         behavior: 'auto'
@@ -58,29 +58,31 @@
         }
     }
 
-
     let selected = false;
-    export let selectTreeNode: TreeNodeWithBase | undefined;
+    export let selectNode: AppUIResponseChild | null;
     $: {
-        selected = doTreeNodesMatch(treeNode, selectTreeNode);
+        selected = doNodesMatch(appUIResponseChild, selectNode);
     }
 
-    $: hasChildren = treeNode.children.length > 0;
+    let hasChildren = false;
+    $: {
+        let result = false;
 
-    function doTreeNodesMatch(treeNodeA: TreeNodeWithBase, treeNodeB: TreeNodeWithBase | undefined) {
-        if (treeNodeB) {
-            if (treeNodeA.parentRef >= 0 && (treeNodeB.parentRef >= 0 || treeNodeB.parentRef === undefined)) {
-                // Use key path to compare if we have a parentRef
-                if (treeNodeA.keyPath === treeNodeB.keyPath && treeNodeB.base === treeNodeB.base) {
-                    return true;
-                }
-            } else {
-                // Else use ref
-                if (treeNodeA.ref === treeNodeB.ref) {
-                    return true;
-                }
+        if (appUIResponseChild && appUIResponseChild.children && appUIResponseChild.children.length > 0) {
+            result = true;
+        }
+
+        hasChildren = result;
+    }
+
+    function doNodesMatch(nodeA: AppUIResponseChild, nodeB: AppUIResponseChild | undefined) {
+        if (nodeB) {
+            if (nodeA.keyPath === nodeB.keyPath && nodeA.base === nodeB.base) {
+                // console.log('Nodes match', nodeA.keyPath, nodeB.keyPath, nodeB.base === nodeB.base);
+                return true;
             }
         }
+
         return false;
     }
 
@@ -106,28 +108,24 @@
 
     function open() {
         // Optimization since we don't need the whole tree to be sent
-        dispatch('openNode', {...treeNode, children: []});
+        dispatch('openNode', utils.getShallowCloneOfAppUIResponseChild(appUIResponseChild));
     }
 
-    function treeNodeFocused() {
+    function nodeFocused() {
         let detail = null;
-        if (treeNode.sceneRect) {
-            detail = {...treeNode, children: []}
+        if (appUIResponseChild.sceneRect) {
+            // Optimization since we don't need the whole tree to be sent
+            detail = utils.getShallowCloneOfAppUIResponseChild(appUIResponseChild);
         }
-        // Optimization since we don't need the whole tree to be sent
-        dispatch('treeNodeFocused', detail);
+        dispatch('nodeFocused', detail);
     }
 
     function onNodeMouseEnter() {
-        // Useful while debugging
-        // console.log(treeNode);
-        // console.log('rect:', treeNode.rect);
-        // console.log('sceneRect:', treeNode.sceneRect);
-        treeNodeFocused();
+        nodeFocused();
     }
 
     function onNodeMouseLeave() {
-        dispatch('treeNodeFocused', null);
+        dispatch('nodeFocused', null);
     }
 
     let lastXScreenPosition;
@@ -145,27 +143,33 @@
             return;
         }
 
-        const translation = treeNode.translation;
-        translation[0] += Math.floor(e.x - lastXScreenPosition);
-        translation[1] += Math.floor(e.y - lastYScreenPosition);
+        const translationCopy = [...appUIResponseChild.translation]
+        translationCopy[0] += Math.floor(e.x - lastXScreenPosition);
+        translationCopy[1] += Math.floor(e.y - lastYScreenPosition);
 
         lastXScreenPosition = e.x;
         lastYScreenPosition = e.y;
 
-        await odc.setValue({
-            base: 'nodeRef',
-            keyPath: `${treeNode.ref}.translation`,
-            value: translation
-        }, {timeout: 300});
+        await setNodeValue('translation', translationCopy, {timeout: 300});
+
+        appUIResponseChild.translation = translationCopy;
     }
 
     async function toggleNodeVisiblity() {
+        await setNodeValue('visible', !appUIResponseChild.visible);
+        appUIResponseChild.visible = !appUIResponseChild.visible;
+    }
+
+    async function setNodeValue(field: string, value: any, options = {}) {
+        if (appUIResponseChild.base === 'appUI') {
+            utils.convertAppUIKeyPathToSceneKeyPath(appUIResponseChild)
+        }
+
         await odc.setValue({
-            base: 'nodeRef',
-            keyPath: `${treeNode.ref}.visible`,
-            value: !treeNode.visible
-        });
-        treeNode.visible = !treeNode.visible;
+            base: appUIResponseChild.base,
+            keyPath: `${appUIResponseChild.keyPath}.${field}`,
+            value
+        }, options);
     }
 
     function onChildExpanded() {
@@ -175,20 +179,21 @@
 
     async function focusNode() {
         await odc.focusNode({
-            keyPath: treeNode.keyPath
+            base: appUIResponseChild.base,
+            keyPath: appUIResponseChild.keyPath
         });
     }
 
     async function removeNode() {
         await odc.removeNode({
-            keyPath: treeNode.keyPath
+            keyPath: appUIResponseChild.keyPath
         });
-        dispatch('nodeRemoved', treeNode);
+        dispatch('nodeRemoved', appUIResponseChild);
     }
 
-    function onChildNodeRemoved(event: CustomEvent<TreeNode>) {
-        const removedChildTreeNode = event.detail;
-        treeNode.children = treeNode.children.filter(child => child.keyPath !== removedChildTreeNode.keyPath);
+    function onChildNodeRemoved(event: CustomEvent<AppUIResponseChild>) {
+        const removedChildNode = event.detail;
+        appUIResponseChild.children = appUIResponseChild.children.filter(child => child.keyPath !== removedChildNode.keyPath);
     }
 </script>
 
@@ -280,22 +285,22 @@
             {/if}
         </span>
         <span class="nodeName">
-            {treeNode.subtype}{#if treeNode.id.length > 0}&nbsp;id: {treeNode.id}{/if}
+            {appUIResponseChild?.subtype}{#if appUIResponseChild && appUIResponseChild.id && appUIResponseChild.id.length > 0}&nbsp;id: {appUIResponseChild.id}{/if}
         </span>
     </div>
     <div class="actions">
-        {#if treeNode.parentRef >= 0}
+        {#if appUIResponseChild.keyPath}
             <span title="Remove Node" class="icon-button" on:click|stopPropagation={removeNode}>
                 <Trash />
             </span>
         {/if}
-        {#if treeNode.visible !== undefined}
+        {#if appUIResponseChild.visible !== undefined}
             <span title="Focus Node" class="icon-button" on:click|stopPropagation={focusNode}>
                 <Issues />
             </span>
         {/if}
 
-        {#if treeNode.translation !== undefined}
+        {#if appUIResponseChild.translation !== undefined}
             <span
                 title="Move Node Position"
                 class="icon-button"
@@ -305,23 +310,25 @@
                 <Move />
             </span>
         {/if}
-        {#if treeNode.visible !== undefined}
-            <span title="{treeNode.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
-                {#if treeNode.visible}<Eye />{:else}<EyeClosed />{/if}
+        {#if appUIResponseChild.visible !== undefined}
+            <span title="{appUIResponseChild.visible ? 'Hide Node' : 'Show Node'}" class="icon-button" on:click|stopPropagation={toggleNodeVisiblity}>
+                {#if appUIResponseChild.visible}<Eye />{:else}<EyeClosed />{/if}
             </span>
         {/if}
     </div>
 </div>
 <div class="children" class:hide={!expanded}>
-    {#each treeNode.children as treeNodeChild}
-        <svelte:self
-            on:openNode
-            on:treeNodeFocused
-            on:childExpanded={onChildExpanded}
-            on:nodeRemoved={onChildNodeRemoved}
-            depth={depth + 1}
-            treeNode={treeNodeChild}
-            selectTreeNode={selectTreeNode}
-            expandTreeNode={expandTreeNode} />
-    {/each}
+    {#if hasChildren}
+        {#each appUIResponseChild.children as appUIResponseChildChild}
+            <svelte:self
+                on:openNode
+                on:nodeFocused
+                on:childExpanded={onChildExpanded}
+                on:nodeRemoved={onChildNodeRemoved}
+                bind:selectNode
+                        bind:expandNode
+                depth={depth + 1}
+                appUIResponseChild={appUIResponseChildChild} />
+        {/each}
+    {/if}
 </div>

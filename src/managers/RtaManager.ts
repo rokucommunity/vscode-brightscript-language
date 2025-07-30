@@ -24,7 +24,7 @@ export class RtaManager {
     public device?: rta.RokuDevice;
 
     private webviewViewProviderManager?: WebviewViewProviderManager;
-    private lastStoreNodesResponse: Awaited<ReturnType<typeof rta.odc.storeNodeReferences>>;
+    private lastAppUIResponse: rta.AppUIResponse | undefined;
 
     public setupRtaWithConfig(config: { host: string; password: string; logLevel?: string; disableScreenSaver?: boolean; injectRdbOnDeviceComponent?: boolean }) {
         const enableDebugging = ['info', 'debug', 'trace'].includes(config.logLevel);
@@ -67,20 +67,7 @@ export class RtaManager {
     public async sendOdcRequest(requestorId: string, command: string, context: { args: any; options: any }) {
         const { args, options } = context;
 
-        if (command === rta.RequestType.storeNodeReferences) {
-            this.lastStoreNodesResponse = await rta.odc.storeNodeReferences(args, options);
-
-            const viewIds = [];
-            if (requestorId === ViewProviderId.rokuDeviceView) {
-                viewIds.push(ViewProviderId.sceneGraphInspectorView);
-            } else if (requestorId === ViewProviderId.sceneGraphInspectorView) {
-                viewIds.push(ViewProviderId.rokuDeviceView);
-            }
-            this.webviewViewProviderManager.sendMessageToWebviews(viewIds, {
-                event: ViewProviderEvent.onStoredNodeReferencesUpdated
-            });
-            return this.lastStoreNodesResponse;
-        } else if (command === rta.RequestType.writeFile) {
+        if (command === rta.RequestType.writeFile) {
             // We can't access files from the webview so we just store the path and access it in node instead
             const directoryPath = path.dirname(args.destinationPath);
             // We always try to make the directory. Doesn't fail if it already exists
@@ -97,12 +84,30 @@ export class RtaManager {
         }
     }
 
-    public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
-        this.webviewViewProviderManager = manager;
+    public async getAppUI(requestorId: string) {
+        await this.sendOdcRequest(requestorId, 'assignElementIdOnAllNodes', { args: {}, options: {} });
+        this.lastAppUIResponse = await rta.ecp.getAppUI();
+
+        const viewIds = [];
+        if (requestorId === ViewProviderId.rokuDeviceView) {
+            viewIds.push(ViewProviderId.sceneGraphInspectorView);
+        } else if (requestorId === ViewProviderId.sceneGraphInspectorView) {
+            viewIds.push(ViewProviderId.rokuDeviceView);
+        }
+
+        // We want to notify the other view providers that the app UI has been updated. Not sending actual payload to avoid overhead if they aren't interested in it
+        this.webviewViewProviderManager.sendMessageToWebviews(viewIds, {
+            event: ViewProviderEvent.onStoredAppUIUpdated
+        });
+        return this.lastAppUIResponse;
     }
 
-    public getStoredNodeReferences() {
-        return this.lastStoreNodesResponse;
+    public getStoredAppUI() {
+        return this.lastAppUIResponse;
+    }
+
+    public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
+        this.webviewViewProviderManager = manager;
     }
 
     private updateDeviceAvailabilityOnWebViewProviders() {

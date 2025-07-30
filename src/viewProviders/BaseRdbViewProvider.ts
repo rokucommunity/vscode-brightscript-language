@@ -48,10 +48,26 @@ export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
             return Promise.resolve(true);
         });
 
-        this.addMessageCommandCallback(ViewProviderCommand.getStoredNodeReferences, (message) => {
-            const response = this.dependencies.rtaManager.getStoredNodeReferences();
+        this.addMessageCommandCallback(ViewProviderCommand.getStoredAppUI, (message) => {
+            const response = this.dependencies.rtaManager.getStoredAppUI();
             this.postOrQueueMessage(this.createResponseMessage(message, response));
             return Promise.resolve(true);
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.getAppUI, async (message) => {
+            try {
+                const appUIResponse = await this.dependencies.rtaManager.getAppUI(this.id);
+
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: true,
+                    response: appUIResponse
+                }));
+            } catch (e) {
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: false
+                }));
+            }
+            return true;
         });
     }
 

@@ -1,21 +1,20 @@
 <script lang="ts">
     import { ArrowLeft } from 'svelte-codicons';
     import Chevron from '../../shared/Chevron.svelte';
-    import type { TreeNodeWithBase } from '../../shared/types';
+    import type { AppUIResponse, AppUIResponseChild } from 'roku-test-automation';
 
     export let showNodeCountByType: boolean;
+
     export let nodeCountByType = {} as {
         [key: string]: number;
     };
-    export let flatTree = [] as TreeNodeWithBase[];
-    export let inspectNodeTreeNode: TreeNodeWithBase | null;
+
+    export let appUIResponse: AppUIResponse;
+
+    export let inspectNode: AppUIResponseChild | null;
 
     let nodesByType = {} as {
-        [key: string]: TreeNodeWithBase[];
-    };
-
-    let nodeCountByTypeNotInTree = {} as {
-        [key: string]: number;
+        [key: string]: AppUIResponseChild[];
     };
 
     function close() {
@@ -26,28 +25,32 @@
         const nodeSubtype = this.id;
         if (nodesByType[nodeSubtype]) {
             nodesByType[nodeSubtype] = null;
-            nodeCountByTypeNotInTree[nodeSubtype] = 0;
         } else {
-            const nodes = [];
-            for (const treeNode of flatTree) {
-                // debugger;
-                if (treeNode.subtype === nodeSubtype) {
-                    nodes.push(treeNode);
-                }
-            }
-            nodeCountByTypeNotInTree[nodeSubtype] = nodeCountByType[nodeSubtype] - nodes.length;;
-            nodesByType[nodeSubtype] = nodes;
+            nodesByType[nodeSubtype] = buildNodeListforSubtype(nodeSubtype, appUIResponse.screen.children);
         }
     }
 
+    function buildNodeListforSubtype(nodeSubtype: string, children?: AppUIResponseChild[], nodes = []) {
+        for (const node of children ?? []) {
+            if (node.subtype === nodeSubtype) {
+                nodes.push(node);
+            }
+
+            buildNodeListforSubtype(nodeSubtype, node.children, nodes);
+        }
+
+        return nodes;
+    }
+
     function onNodeClicked() {
-        const nodeRef = this.id;
-        inspectNodeTreeNode = flatTree[nodeRef];
+        const nodeSubTypeAndPosition = this.id.split('.');
+
+        inspectNode = nodesByType[nodeSubTypeAndPosition[0]][+nodeSubTypeAndPosition[1]];
     }
 
     function onKeydown(event) {
         // Don't handle anything if we're not the top detail view
-        if (inspectNodeTreeNode) {
+        if (inspectNode) {
             return;
         }
 
@@ -125,18 +128,14 @@
     <div id="nodesOfTypeContainer">
         {#each Object.entries(nodeCountByType) as [key, value]}
             <div id={key} class="nodesOfTypeItem" on:click={toggleShowNodes}>
-                <Chevron expanded={!!nodesByType[key] || !!nodeCountByTypeNotInTree[key]} />
+                <Chevron expanded={!!nodesByType[key]} />
                 <div>{key} ({value})</div>
                 <div style="clear: both" />
             </div>
 
             {#each nodesByType[key] ?? [] as node, i}
-                <vscode-button id={node.ref} class="nodeOfType" appearance="secondary" title={node.keyPath} on:click={onNodeClicked}>{node.id ? `#${node.id}` : `${i}`}</vscode-button>
+                <vscode-button id="{key}.{i}" class="nodeOfType" appearance="secondary" title={node.keyPath ?? 'No key path available'} on:click={onNodeClicked}>{i}</vscode-button>
             {/each}
-
-            {#if nodeCountByTypeNotInTree[key] > 0}
-                <div class="nodeOfType">{`${nodeCountByTypeNotInTree[key]} node(s) not in scene tree`}</div>
-            {/if}
             <div style="clear: both" />
         {/each}
     </div>

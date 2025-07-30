@@ -7,21 +7,22 @@
     import NumberField from '../../shared/NumberField.svelte';
     import Chevron from '../../shared/Chevron.svelte';
     import Loader from '../../shared/Loader.svelte';
-    import type { TreeNodeWithBase } from '../../shared/types';
-    export let inspectNodeTreeNode: TreeNodeWithBase | null;
-    let lastInspectNodeTreeNode;
+    import type { AppUIResponseChild } from 'roku-test-automation';
+    export let inspectNode: AppUIResponseChild | null;
+    let lastInspectNode;
     $: {
         // For some reason this is getting triggered twice so we do a check to see if the value is the same and only call refresh if it is different
-        if (lastInspectNodeTreeNode !== inspectNodeTreeNode) {
-            lastInspectNodeTreeNode = inspectNodeTreeNode;
+        if (lastInspectNode !== inspectNode) {
+            lastInspectNode = inspectNode;
             refresh();
         }
     }
     export let showFullscreen: boolean;
 
     let loading = false;
+    let error: Error | null = null;
 
-    let inspectChildNodeTreeNode: TreeNodeWithBase | null;
+    let inspectChildNode: AppUIResponseChild | null;
     let showKeyPathInfo = utils.getStorageBooleanValue('showKeyPathInfo');
     $: {
         utils.setStorageValue('showKeyPathInfo', showKeyPathInfo);
@@ -34,7 +35,7 @@
         if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
         }
-        inspectNodeTreeNode = null;
+        inspectNode = null;
     }
 
     let numberInputsStep = '1';
@@ -72,23 +73,23 @@
     }
 
     async function refresh() {
-        if (!inspectNodeTreeNode) {
+        error = null;
+        if (!inspectNode) {
             return;
         }
 
         loading = true;
 
-        // We're switching to using reusable key path instead of nodeRef as the default unless we aren't part of the node tree or global
         try {
-            if (inspectNodeTreeNode.base != 'global' && inspectNodeTreeNode.parentRef < 0) {
-                throw('fallback to nodeRef');
+            if (inspectNode.base === 'appUI') {
+                utils.convertAppUIKeyPathToSceneKeyPath(inspectNode)
             }
 
             const { results } = await odc.getNodesInfo({
                 requests: {
                     request: {
-                        base: inspectNodeTreeNode.base,
-                        keyPath: inspectNodeTreeNode.keyPath
+                        base: inspectNode.base,
+                        keyPath: inspectNode.keyPath
                     }
                 }
             });
@@ -96,26 +97,25 @@
             fields = nodeInfoResponse.fields;
             children = nodeInfoResponse.children;
         } catch (e) {
-            // If that fails then we fallback to using nodeRef if available
-            if (inspectNodeTreeNode.ref < 0) {
-                throw e;
-            }
-
-            if(inspectNodeTreeNode.parentRef >= 0) {
-                console.warn('getNodesInfo failed with key path. Falling back to nodeRef', inspectNodeTreeNode);
-            }
-
-            const { results } = await odc.getNodesInfo({
-                requests: {
-                    request: {
-                        base: 'nodeRef',
-                        keyPath: inspectNodeTreeNode.ref.toString()
-                    }
+            if (!inspectNode.uiElementId) {
+                error = e;
+            } else {
+                try {
+                    const { results } = await odc.getNodesInfo({
+                        requests: {
+                            request: {
+                                base: 'elementId',
+                                keyPath: inspectNode.uiElementId
+                            }
+                        }
+                    });
+                    nodeInfoResponse = results.request;
+                    fields = nodeInfoResponse.fields;
+                    children = nodeInfoResponse.children;
+                } catch (e) {
+                    error = e;
                 }
-            });
-            nodeInfoResponse = results.request;
-            fields = nodeInfoResponse.fields;
-            children = nodeInfoResponse.children;
+            }
         }
 
         loading = false;
@@ -156,42 +156,34 @@
     }
 
     async function setValue(fieldKeyPath: string, value: any) {
-        // We're switching to using reusable key path instead of nodeRef as the default unless we aren't part of the node tree
         try {
-            if (inspectNodeTreeNode.parentRef < 0) {
-                throw('fallback to nodeRef');
-            }
-
             await odc.setValue({
-                base: inspectNodeTreeNode.base,
-                keyPath: `${inspectNodeTreeNode.keyPath}.${fieldKeyPath}`,
+                base: inspectNode.base,
+                keyPath: `${inspectNode.keyPath}.${fieldKeyPath}`,
                 value: value,
             });
         } catch (e) {
-            // If that fails then we fallback to using nodeRef if available
-            if (inspectNodeTreeNode.ref < 0) {
+            if (!inspectNode.uiElementId) {
                 throw e;
             }
 
-            if(inspectNodeTreeNode.parentRef >= 0) {
-                console.warn('setValue failed with key path. Falling back to nodeRef', inspectNodeTreeNode);
-            }
-
+            // If that fails then we fallback to using elementId if available
             odc.setValue({
-                base: inspectNodeTreeNode.base,
-                keyPath: `${inspectNodeTreeNode.keyPath}.${fieldKeyPath}`,
+                base: 'elementId',
+                keyPath: inspectNode.uiElementId,
                 value: value,
             });
         }
     }
 
     function onNodeClicked() {
+        const keyPath = inspectNode.keyPath ? inspectNode.keyPath + '.' + this.id : this.id
+        debugger;
         // We make our own node tree object to pass to the next NodeDetailPage
-        inspectChildNodeTreeNode = {
+        inspectChildNode = {
             subtype: this.textContent,
-            base: inspectNodeTreeNode.base,
-            ref: -1,
-            keyPath: inspectNodeTreeNode.keyPath ? inspectNodeTreeNode.keyPath + '.' + this.id : this.id
+            base: inspectNode.base,
+            keyPath: keyPath
         }
     }
 
@@ -262,7 +254,7 @@
 
     function onKeydown(event) {
         // Don't handle anything if we're not the top detail view
-        if (inspectChildNodeTreeNode) {
+        if (inspectChildNode) {
             return;
         }
         const key = event.key;
@@ -432,12 +424,18 @@
     .hide {
         display: none;
     }
+
+    #errorMessage {
+        font-weight: bold;
+        color: rgb(216, 71, 71);
+        padding: 10px;
+    }
 </style>
 
 <svelte:window
     on:keydown={onKeydown}
     on:keyup={onKeyup} />
-    <div id="container" class:hide={inspectChildNodeTreeNode}>
+    <div id="container" class:hide={inspectChildNode}>
     {#if loading}
         <Loader />
     {:else}
@@ -450,7 +448,7 @@
                     <ArrowLeft />
                 </vscode-button>
 
-                <span id="nodeSubtype">{inspectNodeTreeNode.subtype}</span>
+                <span id="nodeSubtype">{inspectNode.subtype}</span>
                 <vscode-checkbox
                     appearance="icon"
                     class="inline"
@@ -462,7 +460,7 @@
                     on:click={refresh}>
                     <Refresh />
                 </vscode-button>
-                {#if inspectNodeTreeNode?.keyPath}
+                {#if inspectNode?.keyPath}
                     <vscode-button
                         appearance="icon"
                         title="Show Key Path Info"
@@ -479,221 +477,171 @@
                 </vscode-button>
             </section>
         </div>
-    {#if showKeyPathInfo && inspectNodeTreeNode.keyPath}
+    {#if showKeyPathInfo && inspectNode.keyPath}
         <div id="baseKeyPathContainer">
-            "base": "scene",<br>
-            "keyPath": "{inspectNodeTreeNode.keyPath}"
-        </div>
-    {/if}
-    {#if children.length > 0}
-        <div id="childrenContainer">
-            <span on:click={toggleChildrenExpanded}>
-                <Chevron
-                expanded={childrenExpanded} />
-            </span>
-            <div id="childrenTitle">children ({children.length})</div>
-            <div style="clear: both" />
-            <div class:hide={!childrenExpanded}>
-                {#each children as child, i}
-                    <div class="childItem">
-                        <span class="index">{i}:</span>
-                        <vscode-button id={String(i)} on:click={onNodeClicked} appearance="secondary">{child.subtype}</vscode-button>
-                    </div>
-                {/each}
-            </div>
+            "base": "{inspectNode.base}",<br>
+            "keyPath": "{inspectNode.keyPath}"
         </div>
     {/if}
 
-        <table>
-            {#each Object.entries(fields) as [id, field]}
-                <tr>
-                    <td>
-                        <label for={id}>{@html formatFieldTitle(id)}</label>
-                        <!-- {field.type} {field.fieldType} {field.value} -->
-                    </td>
-                    <td>
-                        <vscode-button
-                            appearance="icon"
-                            class="resetValueButton hide"
-                            title="Reset value"
-                            on:click={onResetValueButtonClicked}>
-                            <Discard />
-                        </vscode-button>
-                    </td>
-                    <td>
-                    {#if field.value === null}
-                        Invalid
-                    {:else if field.fieldType === 'vector2d'}
-                        <NumberField
-                            {id}
-                            class="xValue fieldValue"
-                            title="Hold down shift to increment faster"
-                            step={id === 'scale' ? '0.1' : numberInputsStep}
-                            value={field.value[0]}
-                            on:input={onVector2dFieldChange} />
-                        <NumberField
-                            {id}
-                            class="yValue fieldValue"
-                            value={field.value[1]}
-                            title="Hold down shift to increment faster"
-                            step={id === 'scale' ? '0.1' : numberInputsStep}
-                            on:input={onVector2dFieldChange} />
-                        {#if id !== 'scale'}
+    {#if error}
+        <div id="errorMessage">{error.message}</div>
+    {:else}
+            {#if children.length > 0}
+                <div id="childrenContainer">
+                    <span on:click={toggleChildrenExpanded}>
+                        <Chevron
+                        expanded={childrenExpanded} />
+                    </span>
+                    <div id="childrenTitle">children ({children.length})</div>
+                    <div style="clear: both" />
+                    <div class:hide={!childrenExpanded}>
+                        {#each children as child, i}
+                            <div class="childItem">
+                                <span class="index">{i}:</span>
+                                <vscode-button id={String(i)} on:click={onNodeClicked} appearance="secondary">{child.subtype}</vscode-button>
+                            </div>
+                        {/each}
+                    </div>
+                </div>
+            {/if}
+
+            <table>
+                {#each Object.entries(fields) as [id, field]}
+                    <tr>
+                        <td>
+                            <label for={id}>{@html formatFieldTitle(id)}</label>
+                            <!-- {field.type} {field.fieldType} {field.value} -->
+                        </td>
+                        <td>
                             <vscode-button
                                 appearance="icon"
-                                on:pointerdown={onMoveNodePositionDown}
-                                on:pointermove={throttle(onMoveNodePosition, 33)}
-                                on:pointerup={onMoveNodePositionUp}>
-                                <Move />
+                                class="resetValueButton hide"
+                                title="Reset value"
+                                on:click={onResetValueButtonClicked}>
+                                <Discard />
                             </vscode-button>
-                        {/if}
-                    {:else if field.fieldType === 'color'}
-                        <ColorField
-                            {id}
-                            integerColor={field.value}
-                            on:input={onColorFieldChange} />
-                    {:else if field.type === 'roBoolean'}
-                        <vscode-checkbox
-                            id={id}
-                            class="fieldValue"
-                            checked={field.value}
-                            on:click={onBooleanFieldClick} />
-                    {:else if field.type === 'roFloat' || field.type === 'roInt'}
-                        <NumberField
-                            title="Hold down shift to increment faster"
-                            step={numberInputsStep}
-                            id={id}
-                            class="fieldValue"
-                            value="{field.value}"
-                            on:input={onNumberFieldChange} />
-                    {:else if field.type === 'roAssociativeArray'}
-                        <strong
-                            {id}
-                            class="braceOrBracket"
-                            on:click={toggleShowingBraceOrBracketContent}>
-                            &lbrace;
-                            {#if !expandedCollectionFields[id]}&rbrace;{/if}
-                        </strong>
-                    {:else if field.type === 'roArray'}
-                        <strong
-                            {id}
-                            class="braceOrBracket"
-                            on:click={toggleShowingBraceOrBracketContent}>
-                            [
-                            {#if !expandedCollectionFields[id]}]{/if}
-                        </strong>
-                    {:else if field.type === 'roSGNode' || field.fieldType === 'node'}
-                        <vscode-button id={id} on:click={onNodeClicked} appearance="secondary">{field.value.subtype}</vscode-button>
-                    {:else if field.type === 'roString' || field.fieldType == 'string'}
-                        <vscode-text-field
-                            rows="1"
-                            class="fieldValue textField"
-                            id={id}
-                            value={field.value}
-                            on:input={onStringFieldChange} />
-                    {:else}
-                        <vscode-text-field id={id} class="fieldValue" value={field.value} rows="1" disabled />
-                    {/if}
-                    </td>
-                </tr>
-
-                {#if field.fieldType === 'vector2d' || !expandedCollectionFields[id]}
-                    <!--- Do not show in this case-->
-                {:else if field.type === 'roArray'}
-                    {#each field.value as item, collectionItemId}
-                        <tr class="collectionItem">
-                            <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
-                            <td>
+                        </td>
+                        <td>
+                        {#if field.value === null}
+                            Invalid
+                        {:else if field.fieldType === 'vector2d'}
+                            <NumberField
+                                {id}
+                                class="xValue fieldValue"
+                                title="Hold down shift to increment faster"
+                                step={id === 'scale' ? '0.1' : numberInputsStep}
+                                value={field.value[0]}
+                                on:input={onVector2dFieldChange} />
+                            <NumberField
+                                {id}
+                                class="yValue fieldValue"
+                                value={field.value[1]}
+                                title="Hold down shift to increment faster"
+                                step={id === 'scale' ? '0.1' : numberInputsStep}
+                                on:input={onVector2dFieldChange} />
+                            {#if id !== 'scale'}
                                 <vscode-button
                                     appearance="icon"
-                                    class="resetValueButton hide"
-                                    title="Reset value"
-                                    on:click={onResetValueButtonClicked}>
-                                    <Discard />
+                                    on:pointerdown={onMoveNodePositionDown}
+                                    on:pointermove={throttle(onMoveNodePosition, 33)}
+                                    on:pointerup={onMoveNodePositionUp}>
+                                    <Move />
                                 </vscode-button>
-                            </td>
-                            <td>
-                            {#if utils.isObjectWithProperty(item, 'subtype')}
-                                <vscode-button
-                                    id="{id}.{collectionItemId}"
-                                    appearance="secondary"
-                                    on:click={onNodeClicked}>
-                                    {item.subtype}
-                                </vscode-button>
-                            {:else if typeof item === 'object'}
-                                <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
-                            {:else if typeof item === 'number'}
-                                <NumberField
-                                    id="{id}.{collectionItemId}"
-                                    value={item.toString()} />
-                            {:else if typeof item === 'boolean'}
-                                <vscode-checkbox
-                                    id="{id}.{collectionItemId}"
-                                    checked={item}
-                                    on:click={onBooleanFieldClick} />
-                            {:else}
-                                <vscode-text-field
-                                    id="{id}.{collectionItemId}"
-                                    class="textField"
-                                    value={item}
-                                    on:input={onStringFieldChange} />
                             {/if}
-                            </td>
-                        </tr>
-                    {/each}
-                    <tr>
-                        <td></td>
-                        <td></td>
-                        <td>
+                        {:else if field.fieldType === 'color'}
+                            <ColorField
+                                {id}
+                                integerColor={field.value}
+                                on:input={onColorFieldChange} />
+                        {:else if field.type === 'roBoolean'}
+                            <vscode-checkbox
+                                id={id}
+                                class="fieldValue"
+                                checked={field.value}
+                                on:click={onBooleanFieldClick} />
+                        {:else if field.type === 'roFloat' || field.type === 'roInt'}
+                            <NumberField
+                                title="Hold down shift to increment faster"
+                                step={numberInputsStep}
+                                id={id}
+                                class="fieldValue"
+                                value="{field.value}"
+                                on:input={onNumberFieldChange} />
+                        {:else if field.type === 'roAssociativeArray'}
                             <strong
                                 {id}
                                 class="braceOrBracket"
                                 on:click={toggleShowingBraceOrBracketContent}>
-                                ]
+                                &lbrace;
+                                {#if !expandedCollectionFields[id]}&rbrace;{/if}
                             </strong>
+                        {:else if field.type === 'roArray'}
+                            <strong
+                                {id}
+                                class="braceOrBracket"
+                                on:click={toggleShowingBraceOrBracketContent}>
+                                [
+                                {#if !expandedCollectionFields[id]}]{/if}
+                            </strong>
+                        {:else if field.type === 'roSGNode' || field.fieldType === 'node'}
+                            <vscode-button id={id} on:click={onNodeClicked} appearance="secondary">{field.value.subtype}</vscode-button>
+                        {:else if field.type === 'roString' || field.fieldType == 'string'}
+                            <vscode-text-field
+                                rows="1"
+                                class="fieldValue textField"
+                                id={id}
+                                value={field.value}
+                                on:input={onStringFieldChange} />
+                        {:else}
+                            <vscode-text-field id={id} class="fieldValue" value={field.value} rows="1" disabled />
+                        {/if}
                         </td>
                     </tr>
-                {:else if field.type === 'roAssociativeArray'}
-                    {#each Object.entries(field.value) as [collectionItemId, item]}
-                        <tr class="collectionItem">
-                            <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
-                            <td>
-                                <vscode-button
-                                    appearance="icon"
-                                    class="resetValueButton hide"
-                                    title="Reset value"
-                                    on:click={onResetValueButtonClicked}>
-                                    <Discard />
-                                </vscode-button>
-                            </td>
-                            <td>
-                            {#if utils.isObjectWithProperty(item, 'subtype')}
-                                <vscode-button
-                                    appearance="secondary"
-                                    id="{id}.{collectionItemId}"
-                                    on:click={onNodeClicked}
-                                    >{item.subtype}</vscode-button>
-                            {:else if typeof item === 'boolean'}
-                                <vscode-checkbox
-                                    id="{id}.{collectionItemId}"
-                                    checked={item}
-                                    on:click={onBooleanFieldClick} />
-                            {:else if typeof item === 'object'}
-                                <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
-                            {:else if typeof item === 'number'}
-                                <NumberField
-                                    class="inline"
-                                    id="{id}.{collectionItemId}"
-                                    value={item.toString()} />
-                            {:else}
-                                <vscode-text-field
-                                    id="{id}.{collectionItemId}"
-                                    class="textField"
-                                    value={item}
-                                    on:input={onStringFieldChange} />
-                            {/if}
-                            </td>
-                        </tr>
+
+                    {#if field.fieldType === 'vector2d' || !expandedCollectionFields[id]}
+                        <!--- Do not show in this case-->
+                    {:else if field.type === 'roArray'}
+                        {#each field.value as item, collectionItemId}
+                            <tr class="collectionItem">
+                                <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
+                                <td>
+                                    <vscode-button
+                                        appearance="icon"
+                                        class="resetValueButton hide"
+                                        title="Reset value"
+                                        on:click={onResetValueButtonClicked}>
+                                        <Discard />
+                                    </vscode-button>
+                                </td>
+                                <td>
+                                {#if utils.isObjectWithProperty(item, 'subtype')}
+                                    <vscode-button
+                                        id="{id}.{collectionItemId}"
+                                        appearance="secondary"
+                                        on:click={onNodeClicked}>
+                                        {item.subtype}
+                                    </vscode-button>
+                                {:else if typeof item === 'object'}
+                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
+                                {:else if typeof item === 'number'}
+                                    <NumberField
+                                        id="{id}.{collectionItemId}"
+                                        value={item.toString()} />
+                                {:else if typeof item === 'boolean'}
+                                    <vscode-checkbox
+                                        id="{id}.{collectionItemId}"
+                                        checked={item}
+                                        on:click={onBooleanFieldClick} />
+                                {:else}
+                                    <vscode-text-field
+                                        id="{id}.{collectionItemId}"
+                                        class="textField"
+                                        value={item}
+                                        on:input={onStringFieldChange} />
+                                {/if}
+                                </td>
+                            </tr>
                         {/each}
                         <tr>
                             <td></td>
@@ -703,17 +651,72 @@
                                     {id}
                                     class="braceOrBracket"
                                     on:click={toggleShowingBraceOrBracketContent}>
-                                    &rbrace;
+                                    ]
                                 </strong>
                             </td>
                         </tr>
-                {/if}
-            {/each}
-        </table>
+                    {:else if field.type === 'roAssociativeArray'}
+                        {#each Object.entries(field.value) as [collectionItemId, item]}
+                            <tr class="collectionItem">
+                                <td class="collectionItemId">{@html formatFieldTitle(collectionItemId)}</td>
+                                <td>
+                                    <vscode-button
+                                        appearance="icon"
+                                        class="resetValueButton hide"
+                                        title="Reset value"
+                                        on:click={onResetValueButtonClicked}>
+                                        <Discard />
+                                    </vscode-button>
+                                </td>
+                                <td>
+                                {#if utils.isObjectWithProperty(item, 'subtype')}
+                                    <vscode-button
+                                        appearance="secondary"
+                                        id="{id}.{collectionItemId}"
+                                        on:click={onNodeClicked}
+                                        >{item.subtype}</vscode-button>
+                                {:else if typeof item === 'boolean'}
+                                    <vscode-checkbox
+                                        id="{id}.{collectionItemId}"
+                                        checked={item}
+                                        on:click={onBooleanFieldClick} />
+                                {:else if typeof item === 'object'}
+                                    <vscode-text-area readonly cols="30" resize="both" value="{JSON.stringify(item)}" />
+                                {:else if typeof item === 'number'}
+                                    <NumberField
+                                        class="inline"
+                                        id="{id}.{collectionItemId}"
+                                        value={item.toString()} />
+                                {:else}
+                                    <vscode-text-field
+                                        id="{id}.{collectionItemId}"
+                                        class="textField"
+                                        value={item}
+                                        on:input={onStringFieldChange} />
+                                {/if}
+                                </td>
+                            </tr>
+                            {/each}
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td>
+                                    <strong
+                                        {id}
+                                        class="braceOrBracket"
+                                        on:click={toggleShowingBraceOrBracketContent}>
+                                        &rbrace;
+                                    </strong>
+                                </td>
+                            </tr>
+                    {/if}
+                {/each}
+            </table>
+        {/if}
     {/if}
     </div>
-{#if inspectChildNodeTreeNode}
+{#if inspectChildNode}
     <svelte:self
-        bind:inspectNodeTreeNode={inspectChildNodeTreeNode}
+        bind:inspectNode={inspectChildNode}
         showFullscreen={showFullscreen} />
 {/if}

@@ -1,6 +1,6 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { intermediary } from '../../ExtensionIntermediary';
     import SettingsPage from './SettingsPage.svelte';
     import Loader from '../../shared/Loader.svelte';
     import { utils } from '../../utils';
@@ -9,39 +9,30 @@
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
-    import { SettingsGear, Issues, Refresh } from 'svelte-codicons';
+    import { SettingsGear, Issues, Refresh, Play, DebugPause } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
-    import type { TreeNode } from 'roku-test-automation';
-    import type { TreeNodeWithBase } from '../../shared/types';
+    import type { AppUIResponse, AppUIResponseChild } from 'roku-test-automation';
 
     window.vscode = acquireVsCodeApi();
     let loading = false;
     let error: Error | null;
     let showSettingsPage = false;
-    let inspectNodeTreeNode: TreeNodeWithBase | null;
+
     let totalNodeCount = 0;
     let showNodeCountByType = false;
     let nodeCountByType = {} as Record<string, number>;
-    let rootTree = [] as TreeNodeWithBase[];
-    let flatTree = [] as TreeNodeWithBase[];
+    let appUIResponse: AppUIResponse;
 
-    const globalNode: TreeNodeWithBase = {
-        id: '',
+    const globalNode: AppUIResponseChild = {
         subtype: 'Global',
-        /** This is the reference to the index it was stored at that we can use in later calls. If -1 we don't have one. */
-        ref: -1,
-        /** Same as ref but for the parent  */
-        parentRef: -1,
-        /** Used to determine the position of this node in its parent if applicable */
-        position: -1,
-        children: [],
         keyPath: '',
-        base: 'global'
+        base: 'global',
     };
 
-    let selectTreeNode: TreeNodeWithBase | undefined;
-    let expandTreeNode: TreeNodeWithBase | undefined;
+    let inspectNode: AppUIResponseChild | null;
+    let selectNode: AppUIResponseChild | null;
+    let expandNode: AppUIResponseChild | null;
 
     let containerWidth = -1
     let shouldDisplaySideBySide = false;
@@ -49,45 +40,86 @@
         shouldDisplaySideBySide = (containerWidth > 600) && !showNodeCountByType;
     }
 
-    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async () => {
-        loading = true;
-        const result = await intermediary.getStoredNodeReferences();
-        rootTree = result.rootTree as TreeNodeWithBase[];
-        flatTree = result.flatTree as TreeNodeWithBase[];
+    // When device view is inspecting nodes, we let it handle updating the node tree
+    let isDeviceViewInspecting = false;
 
-        //insert the global node to the top of the rootNodes list
-        rootTree.unshift(globalNode);
+    let executionTime: number;
+    let nodeTreeAutoRefreshTimer;
+    let enableNodeTreeAutoRefresh = utils.getStorageBooleanValue('enableNodeTreeAutoRefresh', true);
+    $:{
+        intermediary.setVscodeContext('brightscript.sceneGraphInspectorView.enableNodeTreeAutoRefresh', enableNodeTreeAutoRefresh);
+        utils.setStorageValue('enableNodeTreeAutoRefresh', enableNodeTreeAutoRefresh);
 
-        totalNodeCount = result.totalNodes ?? 0;
-        nodeCountByType = result.nodeCountByType;
-        loading = false;
+        if (nodeTreeAutoRefreshTimer) {
+            clearInterval(nodeTreeAutoRefreshTimer);
+            nodeTreeAutoRefreshTimer = null;
+        }
+
+        if (enableNodeTreeAutoRefresh) {
+            nodeTreeAutoRefreshTimer = setInterval(async () => {
+                if (isDeviceViewInspecting) {
+                    // If the device view is inspecting nodes, we don't want to refresh the node tree
+                    return;
+                }
+
+                const startTime = performance.now();
+                await refresh(false, true);
+                const endTime = performance.now();
+                executionTime = endTime - startTime;
+            }, 1000)
+        }
+    }
+
+    intermediary.observeEvent(ViewProviderEvent.onStoredAppUIUpdated, async (message) => {
+        refresh(true, true)
     });
 
-    async function refresh() {
-        loading = true;
-        // We store and then unset and then reset to reload the node again
-        const temp = inspectNodeTreeNode;
-        inspectNodeTreeNode = null;
-        inspectNodeTreeNode = temp;
+    intermediary.observeEvent(ViewProviderEvent.onVscodeContextSet, async (message) => {
+        const context = message.context;
+        if (context.key === 'brightscript.rokuDeviceView.isInspectingNodes') {
+            isDeviceViewInspecting = context.value;
+        }
+    });
 
-        rootTree = [];
+    function toggleNodeTreeAutoRefresh() {
+        enableNodeTreeAutoRefresh = !enableNodeTreeAutoRefresh;
+    }
+
+    function userRefresh() {
+        // on click complains about refresh having wrong params so we use this wrapper
+        refresh(false, false);
+    }
+
+    async function refresh(useStoredAppUI, automaticRefresh) {
+        if (!automaticRefresh) {
+            loading = true;
+
+            // We store and then unset and then reset to reload the node again
+            const temp = inspectNode;
+            inspectNode = null;
+            inspectNode = temp;
+        }
 
         try {
-            const result = await odc.storeNodeReferences({
-                includeNodeCountInfo: utils.getStorageBooleanValue('includeNodeCountInfo', true),
-                includeArrayGridChildren: utils.getStorageBooleanValue('includeArrayGridChildren', true),
-                includeBoundingRectInfo: true
-            }, {
-                timeout: 15000
-            });
-            utils.debugLog(`Store node references took ${result.timeTaken}ms`);
-            rootTree = result.rootTree as TreeNodeWithBase[];
-            flatTree = result.flatTree as TreeNodeWithBase[];
+            let response: AppUIResponse;
+            if (useStoredAppUI) {
+                response = await intermediary.getStoredAppUI();
+            } else {
+                response = await intermediary.getAppUI();
+            }
 
-            //insert the global node to the top of the rootNodes list
-            rootTree.unshift(globalNode);
+            const children = response.screen.children;
 
-            totalNodeCount = result.totalNodes ?? 0;
+            // Insert the global node at the top
+            children.unshift(globalNode);
+
+            response.screen.children = children;
+
+            appUIResponse = response;
+
+            const result = calculateTotalNodeCount(children);
+
+            totalNodeCount = result.totalNodeCount ?? 0;
             nodeCountByType = result.nodeCountByType;
             error = null;
         } catch (e) {
@@ -97,25 +129,55 @@
         loading = false;
     }
 
+    function calculateTotalNodeCount(children?: AppUIResponseChild[], result = {
+        totalNodeCount:0,
+        nodeCountByType: {}
+    }) {
+        for (const child of children ?? []) {
+            result.totalNodeCount++;
+
+            if (result.nodeCountByType[child.subtype]) {
+                result.nodeCountByType[child.subtype]++;
+            } else {
+                result.nodeCountByType[child.subtype] = 1;
+            }
+
+            calculateTotalNodeCount(child.children, result);
+        }
+
+        return result;
+    }
+
     async function showFocusedNode() {
-        await refresh();
         // Won't fire again if the value didn't actually change so it won't expand the children out without this
-        selectTreeNode = undefined;
-        expandTreeNode = undefined;
-        const returnFocusedArrayGridChild = utils.getStorageBooleanValue('includeArrayGridChildren', true)
-        const {keyPath} = await odc.getFocusedNode({
-            includeRef: returnFocusedArrayGridChild, // Currently returnFocusedArrayGridChild also relies on includeRef being enabled in RTA. Will update in future version to not require this at the call site
-            returnFocusedArrayGridChild: returnFocusedArrayGridChild,
-            includeNode: false
-        });
+        selectNode = undefined;
+        expandNode = undefined;
 
-        selectTreeNode = {
-            keyPath: keyPath
-        };
+        await refresh(false, false);
 
-        expandTreeNode = {
-            keyPath: keyPath
-        };
+        for (const childNode of appUIResponse.screen.children) {
+            let node = findFocusedNode(childNode);
+            if (node) {
+                node = utils.getShallowCloneOfAppUIResponseChild(node);
+                selectNode = node;
+                expandNode = node;
+            }
+        }
+    }
+
+    function findFocusedNode(parentNode: AppUIResponseChild): AppUIResponseChild | null {
+        if (parentNode.focused) {
+            for (const childNode of parentNode.children ?? []) {
+                const focusedNode = findFocusedNode(childNode);
+                if (focusedNode) {
+                    return focusedNode;
+                }
+            }
+
+            return parentNode;
+        }
+
+        return null;
     }
 
     function openSettings() {
@@ -131,31 +193,32 @@
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         odcAvailable = message.context.odcAvailable;
         if (odcAvailable) {
-            refresh();
+            refresh(false, false);
         } else {
             loading = false;
         }
     });
 
-    function onOpenNode(event: CustomEvent<TreeNode>) {
-        const treeNode = event.detail;
-        inspectNodeTreeNode = treeNode;
-        selectTreeNode = treeNode;
+    function onOpenNode(event: CustomEvent<AppUIResponseChild>) {
+        const node = event.detail;
+        inspectNode = node;
+        selectNode = node;
     }
 
-    intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
+    intermediary.observeEvent(ViewProviderEvent.onNodeFocused, (message) => {
         const context = message.context;
-        selectTreeNode = context.treeNode;
-        expandTreeNode = context.treeNode;
+        selectNode = context.node;
+        expandNode = context.node;
 
         if (context.shouldOpen) {
-            inspectNodeTreeNode = context.treeNode;
+            inspectNode = context.node;
         }
     });
 
-    function onTreeNodeFocused(event: CustomEvent<TreeNode>) {
-        const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
-            treeNode: event.detail
+    function onNodeFocused(event: CustomEvent<AppUIResponseChild>) {
+        const message = intermediary.createEventMessage(ViewProviderEvent.onNodeFocused,
+        {
+            node: event.detail
         });
 
         intermediary.sendMessageToWebviews(ViewProviderId.rokuDeviceView, message);
@@ -269,11 +332,13 @@
     {#if showSettingsPage}
         <SettingsPage bind:showSettingsPage />
     {/if}
+
     {#if showNodeCountByType}
-        <span class:hide={inspectNodeTreeNode}>
-            <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType bind:flatTree bind:inspectNodeTreeNode />
+        <span class:hide={inspectNode}>
+            <NodeCountByTypePage bind:showNodeCountByType bind:nodeCountByType bind:appUIResponse bind:inspectNode />
         </span>
     {/if}
+
     {#if loading}
         <Loader />
     {:else if !odcAvailable}
@@ -299,11 +364,11 @@
             need to handle that part. If you are still having issues even with these
             steps, check to make sure you're seeing this line in your device logs
             <span class="codeSnippet">[RTA][INFO] OnDeviceComponent init</span>
-            <p><button on:click={refresh}>Retry</button></p>
+            <p><button on:click={userRefresh}>Retry</button></p>
             <OdcSetManualIpAddress />
         </div>
     {:else}
-        <div id="header" class:hide={inspectNodeTreeNode && !shouldDisplaySideBySide}>
+        <div id="header" class:hide={inspectNode && !shouldDisplaySideBySide}>
             <div id="drop-shadow-blocker" />
             <span
                 class="icon-button"
@@ -311,12 +376,27 @@
                 on:click={showFocusedNode}>
                 <Issues />
             </span>
-            <span class="icon-button" title="Refresh" on:click={refresh}>
-                <Refresh />
-            </span>
+
+            {#if enableNodeTreeAutoRefresh}
+                <span class="icon-button" title="Disable automatically updating the node tree" on:click={toggleNodeTreeAutoRefresh}>
+                    <DebugPause />
+                </span>
+            {:else}
+                <span class="icon-button" title="Refresh" on:click={userRefresh}>
+                    <Refresh />
+                </span>
+
+                {#if !isDeviceViewInspecting}
+                    <span class="icon-button" title="Enable automatically updating the node tree" on:click={toggleNodeTreeAutoRefresh}>
+                        <Play />
+                    </span>
+                {/if}
+            {/if}
+
             <span class="icon-button" title="Settings" on:click={openSettings}>
                 <SettingsGear />
             </span>
+
             {#if totalNodeCount > 0}
                 <div id="nodeCountDetails">
                     Nodes: <span
@@ -324,25 +404,30 @@
                         on:click={openNodeCountByType}>{totalNodeCount}</span>
                 </div>
             {/if}
+
+            <!-- Useful for debugging leaving around for now. May eventually give an option to toggle this -->
+            <!-- &nbsp; Refresh took {executionTime?.toFixed(2)} ms -->
         </div>
 
-        <div id="nodeTree" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}" >
+        <div id="nodeTree" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {inspectNode && !shouldDisplaySideBySide ? 'hide' : ''}" >
             <div id="nodeTreeContent">
-                {#each rootTree as rootNode}
-                    <Branch
-                        on:openNode={onOpenNode}
-                        on:treeNodeFocused={onTreeNodeFocused}
-                        bind:selectTreeNode
-                        bind:expandTreeNode
-                        treeNode={rootNode}
-                        expanded={true} />
-                {/each}
+                {#if appUIResponse?.screen?.children}
+                    {#each appUIResponse.screen.children as appUIResponseChild}
+                        <Branch
+                            on:openNode={onOpenNode}
+                            on:nodeFocused={onNodeFocused}
+                            bind:selectNode
+                            bind:expandNode
+                            appUIResponseChild={appUIResponseChild}
+                            expanded={true} />
+                    {/each}
+                {/if}
             </div>
         </div>
-        <div id="detailContainer" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {!inspectNodeTreeNode && !shouldDisplaySideBySide ? 'hide' : ''}">
-            {#if inspectNodeTreeNode}
+        <div id="detailContainer" class="{shouldDisplaySideBySide ? 'sideBySide' : 'fullscreen'} {!inspectNode && !shouldDisplaySideBySide ? 'hide' : ''}">
+            {#if inspectNode}
                 <NodeDetailPage
-                    bind:inspectNodeTreeNode
+                    bind:inspectNode
                     showFullscreen={!shouldDisplaySideBySide} />
             {:else if shouldDisplaySideBySide}
                 <div style="margin-top: var(--headerHeight); padding: 10px;">Select a node to inspect it</div>
