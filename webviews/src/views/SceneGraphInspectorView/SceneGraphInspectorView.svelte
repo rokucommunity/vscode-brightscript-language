@@ -9,7 +9,7 @@
     import NodeDetailPage from './NodeDetailPage.svelte';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
-    import { SettingsGear, Issues, Refresh, Play, DebugPause } from 'svelte-codicons';
+    import { SettingsGear, Issues, Refresh, Play, DebugPause, StopCircle } from 'svelte-codicons';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import type { AppUIResponse, AppUIResponseChild } from 'roku-test-automation';
@@ -33,6 +33,8 @@
     let inspectNode: AppUIResponseChild | null;
     let selectNode: AppUIResponseChild | null;
     let expandNode: AppUIResponseChild | null;
+
+    let followFocusedNode = false;
 
     let containerWidth = -1
     let shouldDisplaySideBySide = false;
@@ -66,6 +68,10 @@
                 await refresh(false, true);
                 const endTime = performance.now();
                 executionTime = endTime - startTime;
+
+                if (followFocusedNode) {
+                    showFocusedNodeCore();
+                }
             }, 1000)
         }
     }
@@ -86,7 +92,7 @@
     }
 
     function userRefresh() {
-        // on click complains about refresh having wrong params so we use this wrapper
+        // on:click complains about refresh having wrong params so we use this wrapper
         refresh(false, false);
     }
 
@@ -148,21 +154,43 @@
         return result;
     }
 
+    let showFocusedNodeSingleClickTimeout;
     async function showFocusedNode() {
-        // Won't fire again if the value didn't actually change so it won't expand the children out without this
-        selectNode = undefined;
-        expandNode = undefined;
+        clearTimeout(showFocusedNodeSingleClickTimeout);
+        showFocusedNodeSingleClickTimeout = setTimeout(async () => {
+            // Won't fire again if the value didn't actually change so it won't expand the children out without this
+            selectNode = undefined;
+            expandNode = undefined;
 
-        await refresh(false, false);
+            await refresh(false, false);
 
+            showFocusedNodeCore();
+        }, 500);
+    }
+
+    function showFocusedNodeCore() {
         for (const childNode of appUIResponse.screen.children) {
             let node = findFocusedNode(childNode);
             if (node) {
                 node = utils.getShallowCloneOfAppUIResponseChild(node);
-                selectNode = node;
-                expandNode = node;
+
+                if ((node.base !== 'appUI' && node.base !== selectNode?.base) || node.keyPath !== selectNode?.keyPath) {
+                    // If the focused node is not the same as the currently selected node, we want to inspect it
+                    selectNode = node;
+                    expandNode = node;
+                    inspectNode = node;
+                }
             }
         }
+    }
+
+    function enableFollowFocusedNode() {
+        followFocusedNode = true;
+        clearTimeout(showFocusedNodeSingleClickTimeout);
+    }
+
+    function disableFollowFocusedNode() {
+        followFocusedNode = false;
     }
 
     function findFocusedNode(parentNode: AppUIResponseChild): AppUIResponseChild | null {
@@ -370,12 +398,23 @@
     {:else}
         <div id="header" class:hide={inspectNode && !shouldDisplaySideBySide}>
             <div id="drop-shadow-blocker" />
-            <span
-                class="icon-button"
-                title="Show Focused Node"
-                on:click={showFocusedNode}>
-                <Issues />
-            </span>
+
+            {#if followFocusedNode}
+                <span
+                    class="icon-button"
+                    title="Stop following focused node"
+                    on:click={disableFollowFocusedNode}>
+                    <StopCircle />
+                </span>
+            {:else}
+                <span
+                    class="icon-button"
+                    title="Show Focused Node"
+                    on:click={showFocusedNode}
+                    on:dblclick={enableFollowFocusedNode}>
+                    <Issues />
+                </span>
+            {/if}
 
             {#if enableNodeTreeAutoRefresh}
                 <span class="icon-button" title="Disable automatically updating the node tree" on:click={toggleNodeTreeAutoRefresh}>
