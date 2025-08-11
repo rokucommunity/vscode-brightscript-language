@@ -77,7 +77,7 @@
 
     function doNodesMatch(nodeA: AppUIResponseChild, nodeB: AppUIResponseChild | undefined) {
         if (nodeB) {
-            if (nodeA.keyPath === nodeB.keyPath && nodeA.base === nodeB.base) {
+            if (nodeA.keyPath === nodeB.keyPath && (nodeA.base === nodeB.base || (nodeA.base === 'appUI' || nodeB.base === 'appUI'))) {
                 // console.log('Nodes match', nodeA.keyPath, nodeB.keyPath, nodeB.base === nodeB.base);
                 return true;
             }
