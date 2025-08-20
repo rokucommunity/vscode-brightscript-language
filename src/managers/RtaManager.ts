@@ -80,7 +80,8 @@ export class RtaManager {
                 path: args.destinationPath
             }, options);
         } else {
-            return this.onDeviceComponent[command](args, options);
+            const result = await this.onDeviceComponent[command](args, options);
+            return result;
         }
     }
 

@@ -82,7 +82,7 @@
 
         try {
             if (inspectNode.base === 'appUI') {
-                utils.convertAppUIKeyPathToSceneKeyPath(inspectNode)
+                await utils.convertAppUIKeyPathToSceneKeyPath(inspectNode);
             }
 
             const { results } = await odc.getNodesInfo({
@@ -93,6 +93,7 @@
                     }
                 }
             });
+
             nodeInfoResponse = results.request;
             fields = nodeInfoResponse.fields;
             children = nodeInfoResponse.children;

@@ -18,6 +18,8 @@
         requestScreenshot();
     });
 
+    let shouldRepositionNodeInfo = false;
+
     let screenshotUrl = '';
 
     let isInspectingNodes = false;
@@ -142,6 +144,9 @@
         const offset = getOffset(this);
         const imageX = event.x - offset.left;
         const imageY = event.y - offset.top;
+
+        // If we are in the bottom half of the image we want to reposition the node info to the top
+        shouldRepositionNodeInfo = imageY > imageHeight / 2;
 
         nodeSelectionCursorLeft = imageX;
         nodeSelectionCursorTop = imageY;
@@ -337,6 +342,11 @@
         color: #FFFFFF;
     }
 
+    #nodeInfo.reposition {
+        bottom: auto;
+        top: 0;
+    }
+
     #nodeInfo b {
         color: #AAAAAA;
     }
@@ -396,7 +406,7 @@
 </div>
 
 {#if focusedNode}
-    <div id="nodeInfo">
+    <div id="nodeInfo" class:reposition={shouldRepositionNodeInfo}>
         {#if currentPositionMatches.length}
             {currentPositionMatchesIndex + 1} of {currentPositionMatches.length} <span class="note">(use arrow keys to see others)</span><br>
         {/if}

@@ -162,7 +162,7 @@
 
     async function setNodeValue(field: string, value: any, options = {}) {
         if (appUIResponseChild.base === 'appUI') {
-            utils.convertAppUIKeyPathToSceneKeyPath(appUIResponseChild)
+            await utils.convertAppUIKeyPathToSceneKeyPath(appUIResponseChild)
         }
 
         await odc.setValue({

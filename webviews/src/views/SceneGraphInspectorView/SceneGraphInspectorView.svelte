@@ -176,6 +176,7 @@
 
                 if ((node.base !== 'appUI' && node.base !== selectNode?.base) || node.keyPath !== selectNode?.keyPath) {
                     // If the focused node is not the same as the currently selected node, we want to inspect it
+
                     selectNode = node;
                     expandNode = node;
                     inspectNode = node;
@@ -186,6 +187,9 @@
 
     function enableFollowFocusedNode() {
         followFocusedNode = true;
+
+        // We also want to turn update as well
+        enableNodeTreeAutoRefresh = true;
         clearTimeout(showFocusedNodeSingleClickTimeout);
     }
 
@@ -193,16 +197,22 @@
         followFocusedNode = false;
     }
 
-    function findFocusedNode(parentNode: AppUIResponseChild): AppUIResponseChild | null {
-        if (parentNode.focused) {
+    function findFocusedNode(parentNode: AppUIResponseChild, keepRecursing = false): AppUIResponseChild | null {
+        if (parentNode.focused || keepRecursing) {
+            if (parentNode.subtype === 'RowListItem') {
+                keepRecursing = true;
+            }
+
             for (const childNode of parentNode.children ?? []) {
-                const focusedNode = findFocusedNode(childNode);
+                const focusedNode = findFocusedNode(childNode, keepRecursing);
                 if (focusedNode) {
                     return focusedNode;
                 }
             }
 
-            return parentNode;
+            if (parentNode.focused) {
+                return parentNode;
+            }
         }
 
         return null;
