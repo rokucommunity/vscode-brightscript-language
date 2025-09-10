@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.57.1",
+    "version": "2.58.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -58,8 +58,8 @@
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
         "backoff": "^2.5.0",
-        "brighterscript": "^0.69.12",
-        "brighterscript-formatter": "^1.7.16",
+        "brighterscript": "^0.69.13",
+        "brighterscript-formatter": "^1.7.17",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
         "dotenv": "^6.2.0",
@@ -458,7 +458,7 @@
                             },
                             "deepLinkUrl": {
                                 "type": "string",
-                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                                "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${activeHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
                                 "default": "http://${host}:8060/launch/dev?${promptForQueryParams}"
                             },
                             "password": {
@@ -1890,6 +1890,13 @@
                         "type": "boolean",
                         "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
                         "default": true,
+                        "scope": "resource",
+                        "deprecationMessage": "Use 'brightscript.languageServer.enabled' instead. This setting will be removed in a future version."
+                    },
+                    "brightscript.languageServer.enabled": {
+                        "type": "boolean",
+                        "description": "Enable the Language Server, which includes things like syntax checking, intellisense, completions, etc.",
+                        "default": true,
                         "scope": "resource"
                     },
                     "brightscript.languageServer.enableThreading": {
@@ -2094,7 +2101,7 @@
                     },
                     "brightscript.debug.deepLinkUrl": {
                         "type": "string",
-                        "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
+                        "description": "A full deep link url to start the debugging session. There's no pretty way of launching directly to a deep link, so the app must be side-loaded, it auto-runs, we stop the app, and then launch it again using the deep link. You may use ${promptForHost}, ${activeHost}, ${host}, ${promptForQueryParams} which only asks for the URL-encoded querystring, and ${promptForDeepLinkUrl} to enter the entire deep link url at launch-time.",
                         "default": "http://${host}:8060/launch/dev?${promptForQueryParams}",
                         "scope": "resource"
                     },
