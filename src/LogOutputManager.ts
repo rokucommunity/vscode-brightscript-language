@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
+import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
@@ -228,9 +228,6 @@ export class LogOutputManager {
             }
             this.appendLine(e.body.line);
 
-        } else if (isPopupMessageEvent(e)) {
-            this.showMessage(e.body.message, e.body.severity, e.body.modal);
-
         } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
             this.isNextBreakpointSkipped = false;
@@ -243,15 +240,6 @@ export class LogOutputManager {
             }
 
         }
-    }
-
-    private showMessage(message: string, severity: string, modal: boolean) {
-        const methods = {
-            error: vscode.window.showErrorMessage,
-            info: vscode.window.showInformationMessage,
-            warn: vscode.window.showWarningMessage
-        };
-        methods[severity](message, { modal: modal });
     }
 
     /**
