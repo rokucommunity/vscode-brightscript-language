@@ -17,7 +17,7 @@ jobs:
         run: echo "TOKEN=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
       #trigger the build on vscode-brightscript-language
       - name: Build vsix for branch "${{ github.head_ref}}"
-        uses: aurelien-baudet/workflow-dispatch@v2.1.1
+        uses: the-actions-org/workflow-dispatch@v4
         id: create-vsix
         with:
           workflow: create-vsix
