@@ -82,7 +82,7 @@
         "resolve": "^1.22.8",
         "roku-debug": "^0.22.0",
         "roku-deploy": "^3.12.6",
-        "roku-test-automation": "^2.0.10",
+        "roku-test-automation": "^2.2.1",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
         "strip-ansi": "^5.2.0",
@@ -321,17 +321,17 @@
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
-                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCaptureAutoRefresh",
                     "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
-                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCapture && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "when": "view == rokuDeviceView && !brightscript.rokuDeviceView.enableScreenshotCaptureAutoRefresh && !brightscript.rokuDeviceView.isInspectingNodes",
                     "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
-                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.enableScreenshotCapture && !brightscript.rokuDeviceView.isInspectingNodes",
+                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.enableScreenshotCaptureAutoRefresh",
                     "group": "navigation@2"
                 },
                 {
@@ -351,7 +351,7 @@
                 },
                 {
                     "command": "extension.brightscript.disconnectFromDevice",
-                    "when": "view == rokuDeviceView && brightscript.rokuDeviceView.isOnDeviceComponentAvailable",
+                    "when": "view == rokuDeviceView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@5"
                 },
                 {

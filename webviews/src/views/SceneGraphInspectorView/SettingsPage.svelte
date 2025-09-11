@@ -8,21 +8,6 @@
         utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
 
-    let includeNodeCountInfo = utils.getStorageBooleanValue('includeNodeCountInfo', true);
-    $: {
-        utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
-    }
-
-    let includeArrayGridChildren = utils.getStorageBooleanValue('includeArrayGridChildren', true);
-    $: {
-        if (includeArrayGridChildren) {
-            includeNodeCountInfo = true;
-        }
-        utils.setStorageValue(
-            'includeArrayGridChildren',
-            includeArrayGridChildren
-        );
-    }
 
     function close() {
         showSettingsPage = false;
@@ -100,18 +85,6 @@
             <div class="title">Debug Logging</div>
             <VscodeCheckbox bind:value={enableDebugLogging}>
                 Enable debug logging
-            </VscodeCheckbox>
-        </li>
-        <li>
-            <div class="title">Include Node Counts</div>
-            <VscodeCheckbox bind:value={includeNodeCountInfo}>
-                Load the total and type-based node counts. (Disabled by default to improve performance)</VscodeCheckbox>
-        </li>
-        <li>
-            <div class="title">Include ArrayGrid Children</div>
-            <VscodeCheckbox bind:value={includeArrayGridChildren}>
-                Load ArrayGrid (RowList, MarkupGrid, etc) children when
-                possible. (Disabled by default to improve performance)
             </VscodeCheckbox>
         </li>
     </ul>

@@ -1,12 +1,12 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <script lang="ts">
-    import { odc, intermediary } from '../../ExtensionIntermediary';
+    import { intermediary } from '../../ExtensionIntermediary';
     import OdcSetManualIpAddress from '../../shared/OdcSetManualIpAddress.svelte';
     import { ViewProviderId } from '../../../../src/viewProviders/ViewProviderId';
     import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
     import { ViewProviderCommand } from '../../../../src/viewProviders/ViewProviderCommand';
-    import type { TreeNode, FindNodesAtLocationArgs } from 'roku-test-automation';
-    import { OnDeviceComponent } from 'roku-test-automation/client/dist/OnDeviceComponent';
+    import type { AppUIResponseChild, AppUIResponse } from 'roku-test-automation';
+    import { utils as rtaUtils } from 'roku-test-automation/client/dist/utils';
     import { VscodeCommand } from '../../../../src/commands/VscodeCommand';
     import { utils } from '../../utils';
 
@@ -15,32 +15,22 @@
     let deviceAvailable = false;
     intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, (message) => {
         deviceAvailable = message.context.deviceAvailable;
-        if (deviceAvailable) {
-            // We want to always request a screenshot when someone first opens the panel so we are forcing it
-            requestScreenshot(true);
-        }
+        requestScreenshot();
     });
 
-    let wasRunningScreenshotCaptureBeforeInspect: boolean | undefined;
+    let shouldRepositionNodeInfo = false;
 
     let screenshotUrl = '';
 
-    let screenshotOutOfDate = false;
-
     let isInspectingNodes = false;
     $:{
-        // Gets called on initial load even though value is already false so we use undefined value on wasRunningScreenshotCaptureBeforeInspect to avoid issues
-        if (!isInspectingNodes && wasRunningScreenshotCaptureBeforeInspect !== undefined) {
-            enableScreenshotCapture = wasRunningScreenshotCaptureBeforeInspect;
-            requestScreenshot();
-        }
-        intermediary.setVscodeContext('brightscript.rokuDeviceView.isInspectingNodes', isInspectingNodes);
+        intermediary.setVscodeContext('brightscript.rokuDeviceView.isInspectingNodes', isInspectingNodes, ViewProviderId.sceneGraphInspectorView);
     }
 
-    let enableScreenshotCapture = utils.getStorageBooleanValue('enableScreenshotCapture', true);
+    let enableScreenshotCaptureAutoRefresh = utils.getStorageBooleanValue('enableScreenshotCaptureAutoRefresh', true);
     $:{
-        intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCapture', enableScreenshotCapture);
-        utils.setStorageValue('enableScreenshotCapture', enableScreenshotCapture);
+        intermediary.setVscodeContext('brightscript.rokuDeviceView.enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
+        utils.setStorageValue('enableScreenshotCaptureAutoRefresh', enableScreenshotCaptureAutoRefresh);
     }
 
     // We can't observe the image height directly so we observe the surrounding div instead
@@ -68,46 +58,43 @@
     }
 
     let mouseIsOverView = false;
-    let lastFocusedTreeNodeRef = -1;
-    let focusedTreeNode: TreeNode | null;
+    let lastFocusedNodeKeyPath: string;
+    let focusedNode: AppUIResponseChild | null;
+    let currentPositionMatches: AppUIResponseChild[] = [];
+    let currentPositionMatchesIndex = 0;
+
     $: {
         if (mouseIsOverView && isInspectingNodes) {
-            if (focusedTreeNode && lastFocusedTreeNodeRef !== focusedTreeNode.ref) {
-                lastFocusedTreeNodeRef = focusedTreeNode.ref;
-                sendOnTreeNodeFocusedEvent(focusedTreeNode);
+            if (focusedNode && lastFocusedNodeKeyPath !== focusedNode.keyPath) {
+                lastFocusedNodeKeyPath = focusedNode.keyPath;
+                sendOnNodeFocusedEvent(focusedNode);
             }
         }
     }
 
-    function sendOnTreeNodeFocusedEvent(treeNode, shouldOpen = false) {
+    function sendOnNodeFocusedEvent(node: AppUIResponseChild, shouldOpen = false) {
         if (!shouldOpen) {
-            treeNode = {
+            node = {
                 // Optimization since we only need the keyPath for linking with the sceneGraphInspectorView unless we are opening that node
-                keyPath: treeNode?.keyPath
-            }
+                base: node.base,
+                keyPath: node.keyPath
+            } as any;
         }
-        const message = intermediary.createEventMessage(ViewProviderEvent.onTreeNodeFocused, {
-            // Keeping outer treeNode structure just so the events being sent from this view to the sceneGraphInspectorView are the same as we receive
-            treeNode: treeNode,
+
+        const message = intermediary.createEventMessage(ViewProviderEvent.onNodeFocused, {
+            node: node,
             shouldOpen: shouldOpen
         });
         intermediary.sendMessageToWebviews(ViewProviderId.sceneGraphInspectorView, message);
     }
 
-    intermediary.observeEvent(ViewProviderEvent.onTreeNodeFocused, (message) => {
-        focusedTreeNode = message.context.treeNode;
+    intermediary.observeEvent(ViewProviderEvent.onNodeFocused, (message) => {
+        currentPositionMatches = [];
+        focusedNode = message.context.node;
     });
 
-    intermediary.observeEvent(ViewProviderEvent.onStoredNodeReferencesUpdated, async (message) => {
-        if (focusedTreeNode) {
-            const result = await intermediary.getStoredNodeReferences();
-            for (const treeNode of result.flatTree) {
-                if (treeNode.keyPath === focusedTreeNode.keyPath) {
-                    focusedTreeNode = treeNode;
-                    break;
-                }
-            }
-        }
+    intermediary.observeEvent(ViewProviderEvent.onStoredAppUIUpdated, async (message) => {
+        lastAppUiResponse = await intermediary.getStoredAppUI();
     });
 
     let nodeSelectionCursorLeft = 0;
@@ -115,23 +102,27 @@
 
     let nodeTop: number;
     $: {
-        nodeTop = focusedTreeNode?.sceneRect.y * imageSizeAdjust;
+        nodeTop = focusedNode?.sceneRect.y * imageSizeAdjust;
     }
 
     let nodeLeft: number;
     $: {
-        nodeLeft = focusedTreeNode?.sceneRect.x * imageSizeAdjust;
+        nodeLeft = focusedNode?.sceneRect.x * imageSizeAdjust;
     }
 
     let nodeWidth: number;
     $: {
-        nodeWidth = focusedTreeNode?.sceneRect.width * imageSizeAdjust;
+        nodeWidth = focusedNode?.sceneRect.width * imageSizeAdjust;
     }
 
     let nodeHeight: number;
     $: {
-        nodeHeight = focusedTreeNode?.sceneRect.height * imageSizeAdjust;
+        nodeHeight = focusedNode?.sceneRect.height * imageSizeAdjust;
     }
+
+    let lastFindNodesAtLocationCoordinates;
+
+    let lastAppUiResponse: AppUIResponse;
 
     function getOffset(obj){
         let left = obj.offsetLeft;
@@ -145,11 +136,8 @@
         return {left, top};
     }
 
-    let lastFindNodesAtLocationArgs;
-    const onDeviceComponent = new OnDeviceComponent({} as any);
-    let lastStoreNodesResponse;
     async function onImageMouseMove(event) {
-        if (!isInspectingNodes || !lastStoreNodesResponse) {
+        if (!isInspectingNodes || !lastAppUiResponse) {
             return;
         }
 
@@ -157,25 +145,34 @@
         const imageX = event.x - offset.left;
         const imageY = event.y - offset.top;
 
+        // If we are in the bottom half of the image we want to reposition the node info to the top
+        shouldRepositionNodeInfo = imageY > imageHeight / 2;
+
         nodeSelectionCursorLeft = imageX;
         nodeSelectionCursorTop = imageY;
 
         const x = Math.round(imageX / imageWidth * 1920);
         const y = Math.round(imageY / imageHeight * 1080);
 
-        if (lastFindNodesAtLocationArgs && lastFindNodesAtLocationArgs.x === x && lastFindNodesAtLocationArgs.y === y) {
+        if (lastFindNodesAtLocationCoordinates && lastFindNodesAtLocationCoordinates.x === x && lastFindNodesAtLocationCoordinates.y === y) {
             return;
         }
 
-        const args: FindNodesAtLocationArgs = {
+        lastFindNodesAtLocationCoordinates = {
             x: x,
-            y: y,
-            nodeTreeResponse: lastStoreNodesResponse
-        }
-        lastFindNodesAtLocationArgs = args;
+            y: y
+        };
+        // console.log(lastAppUiResponse);
+        // console.log('findNodesAtLocation', x, y);
 
-        const {matches} = await onDeviceComponent.findNodesAtLocation(args);
-        focusedTreeNode = matches[0];
+        const {matches} = await rtaUtils.findNodesAtLocation({appUIResponse: lastAppUiResponse, x: x, y: y});
+        // console.log('matches', matches);
+
+        currentPositionMatches = matches;
+
+        currentPositionMatchesIndex = 0;
+
+        focusedNode = currentPositionMatches[currentPositionMatchesIndex];
     }
 
     function onMouseEnter() {
@@ -188,8 +185,8 @@
 
     function onMouseDown() {
         // We want to send one last event that will also trigger the node
-        if(isInspectingNodes && focusedTreeNode) {
-            sendOnTreeNodeFocusedEvent(focusedTreeNode, true);
+        if(isInspectingNodes && focusedNode) {
+            sendOnNodeFocusedEvent(focusedNode, true);
         }
 
         isInspectingNodes = false;
@@ -200,38 +197,25 @@
     intermediary.observeEvent(ViewProviderEvent.onVscodeCommandReceived, async (message) => {
         const name = message.context.commandName;
         if (name === VscodeCommand.rokuDeviceViewEnableNodeInspector) {
-            wasRunningScreenshotCaptureBeforeInspect = enableScreenshotCapture;
             isInspectingNodes = true;
-            enableScreenshotCapture = true;
-            requestScreenshot();
-            enableScreenshotCapture = false;
 
-            lastStoreNodesResponse = await odc.storeNodeReferences({
-                includeNodeCountInfo: true,
-                includeArrayGridChildren: true,
-                includeBoundingRectInfo: true
-            });
-        } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
-            enableScreenshotCapture = false;
-        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture || name === VscodeCommand.rokuDeviceViewDisableNodeInspector) {
-            isInspectingNodes = false;
-            enableScreenshotCapture = true;
-            requestScreenshot();
-        } else if (name === VscodeCommand.rokuDeviceViewRefreshScreenshot) {
-            enableScreenshotCapture = true;
-            requestScreenshot();
-            enableScreenshotCapture = false;
+            if (!enableScreenshotCaptureAutoRefresh) {
 
-            if (isInspectingNodes) {
-                lastStoreNodesResponse = await odc.storeNodeReferences({
-                    includeNodeCountInfo: true,
-                    includeArrayGridChildren: true,
-                    includeBoundingRectInfo: true
-                });
+                // We only need to request screenshot if we are not already capturing
+                await requestScreenshot();
             }
+        } else if (name === VscodeCommand.rokuDeviceViewDisableNodeInspector) {
+            isInspectingNodes = false;
+        } else if (name === VscodeCommand.rokuDeviceViewPauseScreenshotCapture) {
+            enableScreenshotCaptureAutoRefresh = false;
+        } else if (name === VscodeCommand.rokuDeviceViewResumeScreenshotCapture) {
+            enableScreenshotCaptureAutoRefresh = true;
+            await requestScreenshot();
+        } else if (name === VscodeCommand.rokuDeviceViewRefreshScreenshot) {
+            await requestScreenshot();
         } else if (name === VscodeCommand.rokuDeviceViewCopyScreenshot) {
             if(!currentScreenshot) {
-                await requestScreenshot(true);
+                await requestScreenshot();
             }
 
             // Need time for the DOM to become focused before clipboard seems to work
@@ -244,18 +228,22 @@
         }
     });
 
-    let screenshotOutOfDateTimeOut;
     let currentlyCapturingScreenshot = false;
-    async function requestScreenshot(force = false) {
-        if (!enableScreenshotCapture || !deviceAvailable) {
-            if (!force || currentlyCapturingScreenshot) {
-                return;
-            }
+    async function requestScreenshot() {
+        if (!deviceAvailable || currentlyCapturingScreenshot) {
+            return;
         }
-        currentlyCapturingScreenshot = true;
+
         try {
+            currentlyCapturingScreenshot = true;
             const {success, arrayBuffer} = await intermediary.sendCommand(ViewProviderCommand.getScreenshot);
+            currentlyCapturingScreenshot = false;
+
             if (success) {
+                if (isInspectingNodes) {
+                    lastAppUiResponse = await intermediary.getAppUI();
+                }
+
                 currentScreenshot = new Blob(
                     [new Uint8Array(arrayBuffer)],
                     { type: 'image/png' } // jpg isn't supported for clipboard and png seems to work for both so ¯\_(ツ)_/¯
@@ -263,35 +251,52 @@
                 const newScreenshotUrl = URL.createObjectURL(currentScreenshot);
                 URL.revokeObjectURL(screenshotUrl);
                 screenshotUrl = newScreenshotUrl;
-                currentlyCapturingScreenshot = false;
 
-                requestScreenshot();
-                screenshotOutOfDate = false;
-                clearTimeout(screenshotOutOfDateTimeOut);
-                screenshotOutOfDateTimeOut = undefined;
-            } else {
-                if (!screenshotOutOfDateTimeOut) {
-                    screenshotOutOfDateTimeOut = setTimeout(() => {
-                        // screenshotOutOfDate = true;
-                        console.log('screenshot out of date')
-                    }, 10000);
+                if (enableScreenshotCaptureAutoRefresh) {
+                    requestScreenshot();
                 }
+            } else {
                 setTimeout(() => {
                     requestScreenshot();
                 }, 200);
             }
-        } finally {
+        } catch(e) {
             currentlyCapturingScreenshot = false;
+            console.error('Error requesting screenshot', e);
+
+            setTimeout(() => {
+                requestScreenshot();
+            }, 200);
         }
     }
 
     function onKeydown(event) {
         const key = event.key;
-
         switch (key) {
+            case 'ArrowUp':
+            case 'ArrowLeft':
+                if (currentPositionMatches) {
+                    if (currentPositionMatchesIndex > 0) {
+                        currentPositionMatchesIndex--;
+                        focusedNode = currentPositionMatches[currentPositionMatchesIndex];
+                    }
+
+                    event.preventDefault();
+                }
+                break;
+            case 'ArrowDown':
+            case 'ArrowRight':
+                if (currentPositionMatches) {
+                    if (currentPositionMatchesIndex < currentPositionMatches.length - 1) {
+                        currentPositionMatchesIndex++;
+                        focusedNode = currentPositionMatches[currentPositionMatchesIndex];
+                    }
+
+                    event.preventDefault();
+                }
+                break;
             case 'Escape':
                 isInspectingNodes = false;
-                focusedTreeNode = null;
                 break;
         }
     }
@@ -328,11 +333,18 @@
     }
 
     #nodeInfo {
-        left: 0;
+        right: 0;
         bottom: 0;
+        position: absolute;
         background-color: #00000055;
         padding: 10px;
+        text-align: right;
         color: #FFFFFF;
+    }
+
+    #nodeInfo.reposition {
+        bottom: auto;
+        top: 0;
     }
 
     #nodeInfo b {
@@ -344,10 +356,6 @@
         box-shadow: 2px 2px black;
     }
 
-    .screenshotOutOfDate {
-        opacity: 0.3;
-    }
-
     .isInspectingNodes #nodeSelectionCursor {
         position: absolute;
         width: 6px;
@@ -355,6 +363,10 @@
         background-color: black;
         margin-left: -3px;
         margin-top: -3px;
+    }
+
+    .note {
+        font-size: 9px;
     }
 
     .hide {
@@ -367,26 +379,16 @@
     {#if deviceAvailable}
     <div
         id="screenshotContainer"
-        class:screenshotOutOfDate="{screenshotOutOfDate}"
         class:isInspectingNodes="{isInspectingNodes}"
         bind:clientWidth={screenshotContainerWidth}
         bind:clientHeight={screenshotContainerHeight}
         on:mousemove={onImageMouseMove}
         on:mousedown={onMouseDown}
         data-vscode-context={'{"preventDefaultContextMenuItems": true}'}>
-        {#if focusedTreeNode}
-            <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
-            <div id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
 
-            <div id="nodeInfo">
-                <b>subtype:</b> {focusedTreeNode.subtype},
-                <b>id:</b> {focusedTreeNode.id}<br>
-                <b>x:</b> {focusedTreeNode.sceneRect.x},
-                <b>y:</b> {focusedTreeNode.sceneRect.y},
-                <b>width:</b> {focusedTreeNode.sceneRect.width},
-                <b>height:</b> {focusedTreeNode.sceneRect.height}
-            </div>
-        {/if}
+        <div class:hide={!mouseIsOverView} id="nodeSelectionCursor" style="left: {nodeSelectionCursorLeft}px; top: {nodeSelectionCursorTop}px;" />
+        <div class:hide={!focusedNode} id="nodeOutline" style="left: {nodeLeft}px; top: {nodeTop}px; width: {nodeWidth}px; height: {nodeHeight}px" />
+
         <!-- only show image if we have a url to avoid showing as broken image -->
         {#if screenshotUrl}
             <img
@@ -402,3 +404,20 @@
         </div>
     {/if}
 </div>
+
+{#if focusedNode}
+    <div id="nodeInfo" class:reposition={shouldRepositionNodeInfo}>
+        {#if currentPositionMatches.length}
+            {currentPositionMatchesIndex + 1} of {currentPositionMatches.length} <span class="note">(use arrow keys to see others)</span><br>
+        {/if}
+        {#if focusedNode.keyPath}
+            {focusedNode.keyPath}<br>
+        {/if}
+        <b>subtype:</b> {focusedNode.subtype},
+        {#if focusedNode.id}<b>id:</b> {focusedNode.id}{/if}
+        <b>x:</b> {focusedNode.sceneRect.x},
+        <b>y:</b> {focusedNode.sceneRect.y},
+        <b>width:</b> {focusedNode.sceneRect.width},
+        <b>height:</b> {focusedNode.sceneRect.height}
+    </div>
+{/if}
