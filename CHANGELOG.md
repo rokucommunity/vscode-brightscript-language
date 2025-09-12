@@ -8,21 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.59.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.58.0...v2.59.0) - 2025-09-12
 ### Changed
- - Update SceneGraph Inspector to use new method for building tree and other improvements ([#661](https://github.com/rokucommunity/vscode-brightscript-language/pull/661))
+ - Update SceneGraph Inspector to use new `AppUI` method for building tree and other improvements ([#661](https://github.com/rokucommunity/vscode-brightscript-language/pull/661))
  - Support actions on the popup message event ([#659](https://github.com/rokucommunity/vscode-brightscript-language/pull/659))
  - upgrade to [brighterscript@0.70.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0701---2025-09-11). Notable changes since 0.69.13:
      - Flag param names that are reserved words ([#1556](https://github.com/rokucommunity/vscode-brightscript-language/pull/1556))
      - Fix for adding files on beforeProgramValidate ([#1568](https://github.com/rokucommunity/vscode-brightscript-language/pull/1568))
      - Fix typdef generation of default param func ([#1551](https://github.com/rokucommunity/vscode-brightscript-language/pull/1551))
      - Support transpiling class methods as named functions ([#1548](https://github.com/rokucommunity/vscode-brightscript-language/pull/1548))
-     - chore: update regex-literal docs about escaping the forward slash ([#1549](https://github.com/rokucommunity/vscode-brightscript-language/pull/1549))
  - upgrade to [brighterscript-formatter@1.7.18](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1718---2025-09-12). Notable changes since 1.7.17:
  - upgrade to [roku-debug@0.22.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0221---2025-09-11). Notable changes since 0.21.38:
-     - Bump brace-expansion from 1.1.11 to 1.1.12 ([#272](https://github.com/rokucommunity/vscode-brightscript-language/pull/272))
      - Better handling when the telnet debugger freezes ([#268](https://github.com/rokucommunity/vscode-brightscript-language/pull/268))
      - Add more logs to track how long each step takes while sideloading ([#270](https://github.com/rokucommunity/vscode-brightscript-language/pull/270))
  - upgrade to [roku-deploy@3.13.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3130---2025-08-04). Notable changes since 3.12.6:
-     - chore: Support dispatch workflows ([#198](https://github.com/rokucommunity/vscode-brightscript-language/pull/198))
      - Add standards-compliant User-Agent header ([#203](https://github.com/rokucommunity/vscode-brightscript-language/pull/203))
 
 
