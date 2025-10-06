@@ -3087,67 +3087,67 @@
             {
                 "command": "extension.brightscript.rokuRegistry.refreshRegistry",
                 "title": "Refresh Registry",
-                "category": "Roku Registry",
+                "category": "BrightScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.clearRegistry",
                 "title": "Clear Registry",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(trash)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.importRegistry",
                 "title": "Import Registry",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(arrow-down)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.exportRegistry",
                 "title": "Export Registry",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(browser)"
             },
             {
                 "command": "extension.brightscript.openRegistryInBrowser",
                 "title": "Open device registry in a browser",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(arrow-up)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.startRecording",
                 "title": "Start Recording",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(record)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.stopRecording",
                 "title": "Stop Recording",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(debug-stop)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.enableAutorunOnDeploy",
                 "title": "Enable Autorun on deploy",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(pass)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.disableAutorunOnDeploy",
                 "title": "Disable autorun on deploy",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(pass-filled)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.importAllAutomations",
                 "title": "Import all automation scripts",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(file-directory)"
             },
             {
                 "command": "extension.brightscript.rokuAutomationView.exportAllAutomations",
                 "title": "Export all automation scripts",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(desktop-download)"
             },
             {
@@ -3159,36 +3159,36 @@
             {
                 "command": "extension.brightscript.rokuAppOverlaysView.addNewOverlay",
                 "title": "Add New Overlay",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(new-file)"
             },
             {
                 "command": "extension.brightscript.rokuAppOverlaysView.removeAllOverlays",
                 "title": "Remove All Overlays",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(trash)"
             },
             {
                 "command": "extension.brightscript.languageServer.restart",
                 "title": "Restart Language Server",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.languageServer.info",
                 "title": "View BrighterScript LanguageServer Info",
-                "category": "BrighterScript"
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.enableNodeInspector",
                 "title": "Inspect nodes",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(inspect)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.disableNodeInspector",
                 "title": "Stop inspecting nodes",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "./images/icons/inspect-active.svg"
             },
             {
@@ -3209,48 +3209,48 @@
             {
                 "command": "extension.brightscript.captureScreenshot",
                 "title": "Capture Screenshot",
-                "category": "BrighterScript"
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.pauseScreenshotCapture",
                 "title": "Device View: Pause Screenshot Capture",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(debug-pause)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.resumeScreenshotCapture",
                 "title": "Device View: Resume Screenshot Capture",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(debug-start)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.refreshScreenshot",
                 "title": "Device View: Refresh Screenshot",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(refresh)"
             },
             {
                 "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
                 "title": "Copy Screenshot",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(clippy)"
             },
             {
                 "command": "extension.brightscript.disconnectFromDevice",
                 "title": "Disconnect From Roku Device",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(debug-disconnect)"
             },
             {
                 "command": "extension.brightscript.openSceneGraphInspectorInPanel",
                 "title": "Open SceneGraph Inspector In New Window",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(link-external)"
             },
             {
                 "command": "extension.brightscript.clearNpmPackageCache",
                 "title": "Clear the extension's local node_modules cache",
-                "category": "BrighterScript",
+                "category": "BrightScript",
                 "icon": "$(link-external)"
             }
         ],
