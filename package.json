@@ -149,7 +149,6 @@
     "main": "./dist/extension",
     "browser": "./dist/extension-web",
     "activationEvents": [
-        "onDebug",
         "onLanguage:xml",
         "workspaceContains:**/manifest",
         "workspaceContains:**/bsconfig.json"
