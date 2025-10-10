@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.59.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.59.0...v2.59.1) - 2025-10-10
 ### Changed
  - upgrade to [brighterscript@0.70.2](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0702---2025-10-10). Notable changes since 0.70.1:
-     - Add manual entries for roUtils and roRenderThreadQueue ([#1574](https://github.com/rokucommunity/vscode-brightscript-language/pull/1574))
-     - Roku sdk updates ([#1573](https://github.com/rokucommunity/vscode-brightscript-language/pull/1573))
- - upgrade to [brighterscript-formatter@1.7.19](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1719---2025-10-10). Notable changes since 1.7.18:
- - upgrade to [roku-debug@0.22.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0222---2025-10-10). Notable changes since 0.22.1:
+     - Add info for brightscript components `roUtils` and `roRenderThreadQueue` ([#1574](https://github.com/rokucommunity/brighterscript/pull/1574))
+     - Roku sdk updates ([#1573](https://github.com/rokucommunity/brighterscript/pull/1573))
+ - upgrade to [brighterscript-formatter@1.7.19](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1719---2025-10-10)
+ - upgrade to [roku-debug@0.22.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0222---2025-10-10)
 ### Fixed
  - Fix incorrect command categories ([#665](https://github.com/rokucommunity/vscode-brightscript-language/pull/665))
 ### Removed
- - Remove unnecessary activation events ([#666](https://github.com/rokucommunity/vscode-brightscript-language/pull/666))
+ - (chore) Remove unnecessary activation events ([#666](https://github.com/rokucommunity/vscode-brightscript-language/pull/666))
 
 
 
