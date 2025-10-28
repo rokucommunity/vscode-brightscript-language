@@ -116,6 +116,9 @@
                     "include": "#interface_declaration"
                 },
                 {
+                    "include": "#function_param_ish"
+                },
+                {
                     "include": "#storage_types"
                 },
                 {
@@ -745,9 +748,20 @@
             },
             "match": "(?i)[^a-z0-9_\"](function|sub)\\s*\\("
         },
+        "function_param_ish": {
+            "match": "(?i:)(?<=[\\(,])[ \\t]*\\b([a-z0-9_]+)[ \\t]+(as\\b)",
+            "captures": {
+                "1": {
+                    "name": "variable.parameter.brs"
+                },
+                "2": {
+                    "name": "keyword.control.as.brs"
+                }
+            }
+        },
         "interface_declaration": {
             "name": "meta.interface.brs",
-            "begin": "(?i)\\b[\\s\\t]*(interface)[\\s\\t]+([a-zA-Z0-9_]+)\\b",
+            "begin": "(?i)^[\\s\\t]*(interface)[\\s\\t]+([a-zA-Z0-9_]+)\\b",
             "beginCaptures": {
                 "1": {
                     "name": "storage.type.interface.brs"
