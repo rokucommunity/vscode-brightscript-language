@@ -11,17 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - upgrade to [brighterscript@0.70.3](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0703---2025-10-31). Notable changes since 0.70.2:
      - Fix crash when bsc plugin in worker loads another version of bsc ([#1579](https://github.com/rokucommunity/brighterscript/pull/1579))
      - Fix recursive const and enum resolution during transpilation ([#1578](https://github.com/rokucommunity/brighterscript/pull/1578))
-     - chore: support OIDC for publishing ([#1582](https://github.com/rokucommunity/brighterscript/pull/1582))
  - upgrade to [roku-debug@0.22.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0223---2025-10-31). Notable changes since 0.22.2:
-     - chore: suppport OIDC for publishing ([#277](https://github.com/rokucommunity/roku-debug/pull/277))
      - Change ecp logging to `trace` to make lower level logs more useful ([#276](https://github.com/rokucommunity/roku-debug/pull/276))
  - upgrade to [roku-deploy@3.14.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3144---2025-10-30). Notable changes since 3.13.0:
-     - chore: Update package.json repository to support provenance ([#218](https://github.com/rokucommunity/roku-deploy/pull/218))
-     - Add specific error classes for reboot and check for updates functions ([#216](https://github.com/rokucommunity/roku-deploy/pull/216))
-     - Add pull-request write permissions ([#214](https://github.com/rokucommunity/roku-deploy/pull/214))
-     - Chore: Update publish-release permissions to content: write ([#213](https://github.com/rokucommunity/roku-deploy/pull/213))
-     - Add the OIDC permissions to the dispatching workflow ([#211](https://github.com/rokucommunity/roku-deploy/pull/211))
-     - Add 'rebootDevice' and 'checkForUpdate' functionality for supported OS versions ([#208](https://github.com/rokucommunity/roku-deploy/pull/208))
 ### Fixed
  - Fix bug where param named interface breaks syntax highlighting ([#670](https://github.com/rokucommunity/vscode-brightscript-language/pull/670))
 
