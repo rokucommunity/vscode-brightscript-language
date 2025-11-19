@@ -80,8 +80,8 @@
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.22.3",
-        "roku-deploy": "^3.14.4",
+        "roku-debug": "^0.22.4",
+        "roku-deploy": "^3.15.0",
         "roku-test-automation": "^2.2.1",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
@@ -506,6 +506,11 @@
                                             "examples": [
                                                 "${workspaceFolder}/LibDir/"
                                             ]
+                                        },
+                                        "install": {
+                                            "type": "boolean",
+                                            "description": "Should this component library be installed onto the Roku device during the sideloading process? Component libraries are installed in the order they're found in this array, so it is recommended to keep all `install: true` component libraries at the top of the array. \n\nTo utilize this component library in your application, set `dcl_channel_ids=DCLHelloLib:devlib_dcl_1` (where 1 is the 1-based position in this array)",
+                                            "default": false
                                         },
                                         "outFile": {
                                             "type": "string",
