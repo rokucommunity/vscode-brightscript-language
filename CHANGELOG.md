@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.60.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.59.2...v2.60.0) - 2025-11-19
-### Changed
- - Support installing DCLs ([#672](https://github.com/rokucommunity/vscode-brightscript-language/pull/672))
+### Added
+ - Support for installing component libraries onto device during launch ([#672](https://github.com/rokucommunity/vscode-brightscript-language/pull/672))
  - upgrade to [roku-debug@0.22.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0224---2025-11-19). Notable changes since 0.22.3:
      - Add ability to install component libraries on device ([#279](https://github.com/rokucommunity/roku-debug/pull/279))
  - upgrade to [roku-deploy@3.15.0](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3150---2025-11-17). Notable changes since 3.14.4:
