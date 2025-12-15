@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 
@@ -35,9 +36,25 @@ export class CaptureScreenshotCommand {
                 location: vscode.ProgressLocation.Notification
             }, async () => {
                 try {
+                    let screenshotDir = vscode.workspace.getConfiguration('brightscript').get<string>('screenshotDir');
+                    if (screenshotDir) {
+                        let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                        if (vscode.workspace.workspaceFolders?.length > 1) {
+                            const workspaceFolder = await vscode.window.showWorkspaceFolderPick();
+                            if (workspaceFolder) {
+                                workspacePath = workspaceFolder.uri.fsPath;
+                            }
+                        }
+
+                        screenshotDir = screenshotDir.replace('${workspaceFolder}', workspacePath);
+                        screenshotDir = path.resolve(workspacePath ?? process.cwd(), screenshotDir);
+                    }
+
+
                     let screenshotPath = await rokuDeploy.takeScreenshot({
                         host: host,
-                        password: password
+                        password: password,
+                        ...(screenshotDir && { outDir: screenshotDir })
                     });
                     if (screenshotPath) {
                         void vscode.window.showInformationMessage(`Screenshot saved at: ` + screenshotPath);
