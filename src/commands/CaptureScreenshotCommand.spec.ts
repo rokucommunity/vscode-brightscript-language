@@ -7,7 +7,7 @@ import URI from 'vscode-uri';
 
 const sinon = createSandbox();
 
-describe.only('CaptureScreenshotCommand', () => {
+describe('CaptureScreenshotCommand', () => {
     let command: CaptureScreenshotCommand;
     let context = vscode.context;
     let workspace = vscode.workspace;
@@ -24,17 +24,16 @@ describe.only('CaptureScreenshotCommand', () => {
     });
 
     it('uses temp dir when screenshotDir is not defined', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
 
         await command['captureScreenshot']('1.1.1.1');
+
         expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password' });
     });
 
     it('uses screenshotDir with single workspace', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         workspace._configuration = {
             'brightscript.screenshotDir': '${workspaceFolder}/screenshots'
@@ -48,12 +47,12 @@ describe.only('CaptureScreenshotCommand', () => {
         ];
 
         await command['captureScreenshot']('1.1.1.1');
+
         expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace/screenshots' });
     });
 
     it('uses relative screenshotDir with single workspace', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         workspace._configuration = {
             'brightscript.screenshotDir': 'screenshots'
@@ -67,12 +66,12 @@ describe.only('CaptureScreenshotCommand', () => {
         ];
 
         await command['captureScreenshot']('1.1.1.1');
+
         expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace/screenshots' });
     });
 
     it('uses screenshotDir with multiple workspace', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         const workspaceFolders = [
             {
@@ -98,8 +97,7 @@ describe.only('CaptureScreenshotCommand', () => {
     });
 
     it('uses relative screenshotDir with multiple workspace', async () => {
-        await context.workspaceState.update('remoteHost', '1.1.1.1');
-        await context.workspaceState.update('remotePassword', 'password');
+        sinon.stub(command as any, 'getHostAndPassword').callsFake(() => Promise.resolve({ host: '1.1.1.1', password: 'password' }));
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         const workspaceFolders = [
             {

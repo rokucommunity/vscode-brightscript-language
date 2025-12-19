@@ -15,7 +15,7 @@ export class CaptureScreenshotCommand {
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.captureScreenshot', this.captureScreenshot.bind(this)));
     }
 
-    private async captureScreenshot(hostParam?: string) {
+    private async getHostAndPassword(hostParam?: string): Promise<{ host: string; password: string }> {
         let host: string;
         let password: string;
 
@@ -37,6 +37,12 @@ export class CaptureScreenshotCommand {
                 });
             }
         }
+
+        return { host: host, password: password };
+    }
+
+    private async captureScreenshot(hostParam?: string) {
+        const { host, password } = await this.getHostAndPassword(hostParam);
 
         await vscode.window.withProgress({
             title: `Capturing screenshot from '${host}'`,
