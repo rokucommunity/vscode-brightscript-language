@@ -252,6 +252,9 @@ export let vscode = {
         },
         showOpenDialog: () => {
             return Promise.resolve([]);
+        },
+        showWorkspaceFolderPick: () => {
+            return Promise.resolve(undefined);
         }
     },
     CompletionItemKind: {
