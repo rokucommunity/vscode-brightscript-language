@@ -5,6 +5,9 @@ import { BrightScriptCommands } from '../BrightScriptCommands';
 import * as rokuDeploy from 'roku-deploy';
 import { expect } from 'chai';
 import URI from 'vscode-uri';
+import { standardizePath as s } from 'brighterscript';
+
+const cwd = s`${process.cwd()}`;
 
 const sinon = createSandbox();
 
@@ -82,7 +85,7 @@ describe('CaptureScreenshotCommand', () => {
         };
         workspace.workspaceFolders = [
             {
-                uri: URI.file('/workspace'),
+                uri: URI.file(s`${cwd}/workspace`),
                 name: 'test-workspace',
                 index: 0
             }
@@ -90,7 +93,7 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace/screenshots' });
+        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses relative screenshotDir with single workspace', async () => {
@@ -101,7 +104,7 @@ describe('CaptureScreenshotCommand', () => {
         };
         workspace.workspaceFolders = [
             {
-                uri: URI.file('/workspace'),
+                uri: URI.file(s`${cwd}/workspace`),
                 name: 'test-workspace',
                 index: 0
             }
@@ -109,7 +112,7 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace/screenshots' });
+        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace/screenshots` });
     });
 
     it('uses screenshotDir with multiple workspace', async () => {
@@ -117,12 +120,12 @@ describe('CaptureScreenshotCommand', () => {
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         const workspaceFolders = [
             {
-                uri: URI.file('/workspace'),
+                uri: URI.file(s`${cwd}/workspace1`),
                 name: 'test-workspace',
                 index: 0
             },
             {
-                uri: URI.file('/workspace2'),
+                uri: URI.file(s`${cwd}/workspace2`),
                 name: 'test-workspace2',
                 index: 1
             }
@@ -135,7 +138,7 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace2/screenshots' });
+        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
     });
 
     it('uses relative screenshotDir with multiple workspace', async () => {
@@ -143,12 +146,12 @@ describe('CaptureScreenshotCommand', () => {
         const stub = sinon.stub(rokuDeploy, 'takeScreenshot').returns(Promise.resolve('screenshot.png'));
         const workspaceFolders = [
             {
-                uri: URI.file('/workspace'),
+                uri: URI.file(s`${cwd}/workspace1`),
                 name: 'test-workspace',
                 index: 0
             },
             {
-                uri: URI.file('/workspace2'),
+                uri: URI.file(s`${cwd}/workspace2`),
                 name: 'test-workspace2',
                 index: 1
             }
@@ -161,6 +164,6 @@ describe('CaptureScreenshotCommand', () => {
 
         await command['captureScreenshot']();
 
-        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: '/workspace2/screenshots' });
+        expect(stub.getCall(0).args[0]).to.eql({ host: '1.1.1.1', password: 'password', outDir: s`${cwd}/workspace2/screenshots` });
     });
 });
