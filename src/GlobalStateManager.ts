@@ -13,8 +13,8 @@ export class GlobalStateManager {
         lastSeenReleaseNotesVersion: 'lastSeenReleaseNotesVersion',
         sendRemoteTextHistory: 'sendRemoteTextHistory',
         debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
-        debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue'
-
+        debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
+        knownDeviceIps: 'knownDeviceIps'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -66,6 +66,26 @@ export class GlobalStateManager {
 
             this.sendRemoteTextHistory = history;
         }
+    }
+
+    public get knownDeviceIps(): string[] {
+        return this.context.globalState.get(this.keys.knownDeviceIps) || [];
+    }
+
+    public set knownDeviceIps(ips: string[]) {
+        void this.context.globalState.update(this.keys.knownDeviceIps, ips);
+    }
+
+    public addKnownDeviceIp(ip: string) {
+        const ips = this.knownDeviceIps;
+        if (!ips.includes(ip)) {
+            ips.push(ip);
+            this.knownDeviceIps = ips;
+        }
+    }
+
+    public removeKnownDeviceIp(ip: string) {
+        this.knownDeviceIps = this.knownDeviceIps.filter((knownIp) => knownIp !== ip);
     }
 
     /**
