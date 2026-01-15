@@ -2691,7 +2691,7 @@
                 },
                 "brightscript.screenshotDir": {
                     "type": "string",
-                    "description": "Directory path where screenshots will be saved. If omitted, screenshots will be saved to the OS's temporary directory. Relative paths (e.g., \"debug/screenshots\") are resolved relative to the workspace folder. ${workspaceFolder} is also supported and will point to the first workspace found.",
+                    "description": "Directory path where screenshots will be saved. If omitted, screenshots will be saved to the OS's temporary directory. Supports absolute paths (e.g., \"/Users/username/Desktop\" on macOS, \"C:\\\\Users\\\\username\\\\Desktop\" on Windows) and relative paths (e.g., \"debug/screenshots\" or \"debug\\\\screenshots\" on Windows) which are resolved relative to the workspace folder. ${workspaceFolder} is also supported and will point to the first workspace found.",
                     "scope": "resource"
                 }
             }
