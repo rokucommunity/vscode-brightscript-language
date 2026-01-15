@@ -11,6 +11,7 @@ import {
     window, workspace
 } from 'vscode';
 import type * as vscode from 'vscode';
+import * as path from 'path';
 
 export class Formatter implements DocumentRangeFormattingEditProvider {
 
@@ -19,13 +20,24 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
         //TODO is there anything we can to do to better detect when the same file is used in multiple workspaces?
         //vscode seems to pick the lowest workspace (or perhaps the last workspace?)
         const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
+        let userSettingsOptions = workspace.getConfiguration('brightscript.format');
+        const configFile = userSettingsOptions.get<string>('configFile');
+
+        // Resolve the config file path if specified
+        let bsfmtPath: string | undefined;
+        if (configFile) {
+            // Resolve relative to workspace folder, or process.cwd() if no workspace
+            // Note: path.resolve() handles absolute paths correctly (returns them as-is)
+            const basePath = workspaceFolder?.uri.fsPath ?? process.cwd();
+            bsfmtPath = path.resolve(basePath, configFile);
+        }
 
         let bsfmtOptions = new Runner().getBsfmtOptions({
-            cwd: workspaceFolder.uri.fsPath,
+            cwd: workspaceFolder?.uri.fsPath ?? process.cwd(),
             //we just want bsfmt options...but files is mandatory. Don't worry, we won't actually use it.
-            files: []
+            files: [],
+            ...(bsfmtPath && { bsfmtPath: bsfmtPath })
         });
-        let userSettingsOptions = workspace.getConfiguration('brightscript.format');
 
         try {
             let text = document.getText();

@@ -24,6 +24,8 @@ If true, a space is inserted to the left of an opening function declaration pare
 if true, empty curly braces will contain exactly 1 whitespace char (i.e. `{ }`). If false, there will be zero whitespace chars between empty curly braces (i.e. `{}`)
 ### `brightscript.format.sortImports`
 if true, import statements will be sorted alphabetically.
+### `brightscript.format.configFile`
+Path to a custom `bsfmt.json` configuration file relative to the workspace folder. If not specified, the formatter will look for `bsfmt.json` in the workspace root.
 ### `brightscript.output.includeStackTraces`
 If set to true, will print stack trace or breakpoint info in the log output. Set to false to avoid noisy logs - you'll still get the traces in the debug console, in any case
 ### `brightscript.output.focusOnLaunch`
