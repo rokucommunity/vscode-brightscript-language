@@ -49,6 +49,7 @@ export class Extension {
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
     private diagnosticManager = new DiagnosticManager();
+    private logOutputManager: LogOutputManager;
 
     public async activate(context: vscode.ExtensionContext) {
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
@@ -105,7 +106,7 @@ export class Extension {
 
         let docLinkProvider = new LogDocumentLinkProvider();
 
-        const logOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
+        this.logOutputManager = new LogOutputManager(this.outputChannel, context, docLinkProvider, declarationProvider);
 
         const definitionRepo = new DefinitionRepository(declarationProvider);
 
@@ -175,21 +176,14 @@ export class Extension {
 
         //give the launch config to the link provider any time we launch the app
         vscode.debug.onDidReceiveDebugSessionCustomEvent((e) => {
-            return this.debugSessionCustomEventHandler(e, context, docLinkProvider, logOutputManager, rendezvousViewProvider);
+            return this.debugSessionCustomEventHandler(e, context, docLinkProvider, this.logOutputManager, rendezvousViewProvider);
         });
 
         //register all commands for this extension
         this.brightScriptCommands.registerCommands();
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
-        vscode.debug.onDidStartDebugSession((e) => {
-            //if this is a brightscript debug session
-            if (e.type === 'brightscript') {
-                logOutputManager.onDidStartDebugSession();
-                this.webviewViewProviderManager.onDidStartDebugSession(e);
-            }
-            this.diagnosticManager.clear();
-        });
+        vscode.debug.onDidStartDebugSession(this.onDidStartDebugSession.bind(this));
 
         vscode.debug.onDidTerminateDebugSession((e) => {
             //if this is a brightscript debug session
@@ -225,6 +219,57 @@ export class Extension {
 
         await this.whatsNewManager.showWelcomeOrWhatsNewIfRequired();
         //await languageServerPromise;
+    }
+
+    private onDidStartDebugSession(e: vscode.DebugSession) {
+        //if this is a brightscript debug session
+        if (e.type === 'brightscript') {
+            this.logOutputManager.onDidStartDebugSession();
+            this.webviewViewProviderManager.onDidStartDebugSession(e);
+
+            const tsPath = this.getTsPath(e.configuration.rootDir);
+            if (tsPath) {
+                this.attachJsDebugger(e.configuration as any, tsPath).catch(e => console.error(e));
+            }
+        }
+        this.diagnosticManager.clear();
+    }
+
+    private getTsPath(rootDir: string) {
+        const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
+        const tsPath = /.*ts_path[ \t]*=[ \t]*(.*?)[\r\n]/ig.exec(contents);
+        return tsPath?.[1]?.trim();
+    }
+
+    private async attachJsDebugger(launchConfig: BrightScriptLaunchConfiguration, tsPath: string) {
+        tsPath = tsPath.replace(/\s*pkg:/, '');
+        const tsDir = path.dirname(tsPath);
+        const rootDir = launchConfig.rootDir;
+        const workspaceFolders = vscode.workspace.workspaceFolders || [];
+
+        try {
+            const debugConfig: vscode.DebugConfiguration = {
+                type: 'node',
+                name: 'Debug Roku JavaScript',
+                request: 'attach',
+                cwd: launchConfig.rootDir,
+                address: launchConfig.host,
+                port: 9999,
+                resolveSourceMapLocations: [`${rootDir}/dist-dev/bundle/**`, `${rootDir}/**`],
+                outFiles: [`${rootDir}/dist-dev/bundle/*.js`],
+                remoteRoot: '/source/compiled',
+                localRoot: `${rootDir}/dist-dev/bundle`
+            };
+
+            const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
+            return !!success;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    private toForwardSlash(thePath: string) {
+        return thePath?.replace(/[\/\\]+/g, '/').replace(/\/+$/, '');
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
