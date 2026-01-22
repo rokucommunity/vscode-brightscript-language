@@ -35,6 +35,9 @@ export class UserInputManager {
 
         const discoveryTime = 5_000;
 
+        const scanTimeoutMs = 7000;
+        let scanTimeoutId: NodeJS.Timeout | null = null;
+
         //create the quickpick item
         const quickPick = vscode.window.createQuickPick();
         disposables.push(quickPick);
@@ -75,6 +78,12 @@ export class UserInputManager {
             quickPick.value = options?.defaultValue;
         }
         quickPick.show();
+
+        //set a timeout to automatically start scanning for devices after a short delay
+        scanTimeoutId = setTimeout(() => {
+            void this.activeDeviceManager.discoverAll(discoveryTime);
+        }, scanTimeoutMs);
+
         const refreshList = () => {
             const items = this.createHostQuickPickList(
                 this.activeDeviceManager.getActiveDevices(),
@@ -82,6 +91,12 @@ export class UserInputManager {
                 itemCache
             );
             quickPick.items = items;
+            quickPick.buttons = [
+                {
+                    iconPath: new vscode.ThemeIcon('refresh'),
+                    tooltip: 'Scan for devices'
+                }
+            ];
 
             // update the busy spinner based on how long it's been since the last discovered device
             quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
@@ -125,6 +140,15 @@ export class UserInputManager {
                     }
                     quickPick.dispose();
                 }
+            }
+        });
+
+        quickPick.onDidTriggerButton(button => {
+            if (button.tooltip === 'Scan for devices') {
+                quickPick.busy = true;
+                void this.activeDeviceManager.discoverAll(discoveryTime).finally(() => {
+                    quickPick.busy = false;
+                });
             }
         });
         //run the list refresh once to show the popup
@@ -205,7 +229,7 @@ export class UserInputManager {
 
         // allow user to manually type an IP address
         items.push(
-            { label: 'Enter manually', device: { id: manualHostItemId } } as any
+            { label: manualLabel, device: { id: manualHostItemId } } as any
         );
 
         // replace items with their cached versions if found (to maintain references)
