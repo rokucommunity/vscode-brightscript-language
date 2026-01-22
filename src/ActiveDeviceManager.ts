@@ -11,7 +11,6 @@ import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
 import { rokuDeploy } from 'roku-deploy';
 import type { GlobalStateManager } from './GlobalStateManager';
-import { last } from 'lodash';
 
 const DEFAULT_TIMEOUT = 10000;
 
@@ -40,12 +39,35 @@ export class ActiveDeviceManager {
             this.processEnabledState();
         });
 
+        vscode.window.onDidChangeWindowState((state) => {
+            if (state.focused) {
+                this.notifyFocusGained();
+            } else {
+                this.notifyFocusLost();
+            }
+        });
+
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
         //anytime a device leaves the cache (either expired or manually deleted)
         this.deviceCache.on('del', (deviceId, device) => {
             void this.emit('device-expired', device);
         });
         this.processEnabledState();
+
+        this.systemSleepDetector = new SystemSleepDetector(() => {
+            console.log('System sleep detected, refreshing device list');
+            //TODO send SSDP broadcast
+        });
+        this.networkChangeDetector = new NetworkChangeDetector(() => {
+            console.log('Network change detected, refreshing device list');
+            //TODO send SSDP broadcast
+        });
+
+        //TODO get the device IPs from the current device list
+        this.deviceHealthMonitor = new DeviceHealthMonitor(() => ['192.168.0.20'], () => {
+            console.log('\tDevice health check failed, refreshing device list');
+            //TODO send SSDP broadcast
+        });
     }
 
     private emitter = new EventEmitter();
@@ -189,9 +211,15 @@ export class ActiveDeviceManager {
     private lastDiscoveredDeviceDate: Date;
 
 
+    private discoveryPromise: Promise<string[]> | null = null;
     // Discover all Roku devices on the network and watch for new ones that connect
-    private discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
-        return new Promise((resolve, reject) => {
+    public discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
+        if (this.discoveryPromise !== null) {
+            //already discovering
+            return this.discoveryPromise;
+        }
+
+        this.discoveryPromise = new Promise((resolve, reject) => {
             const finder = new RokuFinder();
             const devices: string[] = [];
 
@@ -214,11 +242,14 @@ export class ActiveDeviceManager {
                 if (devices.length === 0) {
                     // console.info(`Could not find any Roku devices after ${timeout / 1000} seconds`);
                 }
+                this.discoveryPromise = null;
                 resolve(devices);
             });
 
             finder.start(timeout);
         });
+
+        return this.discoveryPromise;
     }
 
     /**
@@ -288,6 +319,24 @@ export class ActiveDeviceManager {
         if (this.passiveDiscovery) {
             this.passiveDiscovery.stop();
         }
+    }
+
+    private systemSleepDetector: SystemSleepDetector;
+    private networkChangeDetector: NetworkChangeDetector;
+    private deviceHealthMonitor: DeviceHealthMonitor;
+
+    private notifyFocusGained() {
+        console.log('Window gained focus');
+        this?.systemSleepDetector?.onFocusGain();
+        this?.networkChangeDetector?.onFocusGain();
+        this?.deviceHealthMonitor?.onFocusGain();
+    }
+
+    private notifyFocusLost() {
+        console.log('Window lost focus');
+        this?.systemSleepDetector?.onFocusLost();
+        this?.networkChangeDetector?.onFocusLost();
+        this?.deviceHealthMonitor?.onFocusLost();
     }
 
 }
@@ -572,6 +621,7 @@ abstract class FocusAwareMonitorBase {
     protected abstract doWork(): void;
 
     executeTask() {
+        this.doWork();
         this.lastExecutionTime = Date.now();
         this.setTimer();
     }
@@ -621,17 +671,16 @@ class DeviceHealthMonitor extends FocusAwareMonitorBase {
         console.log('Checking device health...');
         const deviceIps = this.getDeviceIps();
         const pingPromises = deviceIps.map(ip => {
-            console.log(`Pinging device at IP: ${ip}`);
-            return rokuDeploy.getDeviceInfo({ host: ip });
+            console.log(`\tPinging device at IP: ${ip}`);
+            return rokuDeploy.getDeviceInfo({ host: ip, timeout: 5000 });
         });
 
         Promise.allSettled(pingPromises).then(results => {
-            for (const [index, result] of results.entries()) {
-                if (result.status === 'fulfilled') {
-                    console.log(`Device at IP ${deviceIps[index]} is healthy.`);
-                } else {
-                    console.warn(`Device at IP ${deviceIps[index]} is unreachable: ${result.reason}`);
-                }
+            if (results.some(result => result.status === 'rejected')) {
+                this.onDeviceHealthFailed();
+            }
+            for (const result of results) {
+                console.log(`\t${JSON.stringify(result)}`);
             }
         }).catch(err => {
             console.error('Error checking device health:', err);
@@ -646,15 +695,16 @@ class DeviceHealthMonitor extends FocusAwareMonitorBase {
 class SystemSleepDetector extends FocusAwareMonitorBase {
     private gapThreshold = 120000; // 2 minutes
     private onSleepDetected: () => void;
-
+    private count = 0;
     constructor(onSleepDetected: () => void) {
         super();
-        this.interval = 60000; // Check every 1 minutes
+        this.interval = 60000; // Check every 1 minute
         this.onSleepDetected = onSleepDetected;
     }
 
     protected doWork() {
-        if (Date.now() - this.lastExecutionTime > this.gapThreshold) {
+        console.log(`Checking for system sleep... ${++this.count}`);
+        if (Date.now() - this.lastExecutionTime > this.gapThreshold && this.lastExecutionTime !== 0) {
             this.onSleepDetected();
         }
     }

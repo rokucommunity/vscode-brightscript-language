@@ -71,7 +71,7 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        let activeDeviceManager = new ActiveDeviceManager();
+        let activeDeviceManager = new ActiveDeviceManager(this.globalStateManager);
         let userInputManager = new UserInputManager(
             activeDeviceManager
         );
