@@ -1,4 +1,3 @@
-import * as backoff from 'backoff';
 import * as os from 'os';
 import { EventEmitter } from 'eventemitter3';
 import * as NodeCache from 'node-cache';
@@ -17,7 +16,6 @@ const DEFAULT_TIMEOUT = 10000;
 export class ActiveDeviceManager {
 
     constructor(globalStateManage: GlobalStateManager) {
-        this.isRunning = false;
         this.firstRequestForDevices = true;
 
         this.globalStateManager = globalStateManage;
@@ -30,13 +28,24 @@ export class ActiveDeviceManager {
             this.enabled = config.deviceDiscovery?.enabled;
             this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
 
-            //if the `concealDeviceInfo` setting was changed, refresh the list
-            if (event.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
-                //stop (which clears the list), and then the `processEnabledState` below will re-start it if enabled
-                this.stop();
+            //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
+            if (event.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+                if (this.enabled) {
+                    void this.activateMonitoring();
+                    void this.queryKnownDevices();
+                } else {
+                    void this.deactivateMonitoring();
+                }
             }
 
-            this.processEnabledState();
+            //if the `concealDeviceInfo` setting was changed, refresh the list
+            if (event.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
+                if (this.enabled) {
+                    void this.queryKnownDevices();
+                    void this.discoverAll();
+                }
+            }
+
         });
 
         vscode.window.onDidChangeWindowState((state) => {
@@ -47,27 +56,42 @@ export class ActiveDeviceManager {
             }
         });
 
-        this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
+        this.deviceCache = new NodeCache({ stdTTL: 0, checkperiod: 0 });
+
+        this.deviceCache.on('set', (deviceId, device) => {
+            void this.emit('device-found', device);
+            this.globalStateManager.addKnownDeviceIp((device as RokuDeviceDetails).ip);
+        });
+
         //anytime a device leaves the cache (either expired or manually deleted)
         this.deviceCache.on('del', (deviceId, device) => {
             void this.emit('device-expired', device);
+            this.globalStateManager.removeKnownDeviceIp((device as RokuDeviceDetails).ip);
         });
-        this.processEnabledState();
 
         this.systemSleepDetector = new SystemSleepDetector(() => {
             console.log('System sleep detected, refreshing device list');
-            //TODO send SSDP broadcast
+            this.discoverAll();
         });
         this.networkChangeDetector = new NetworkChangeDetector(() => {
             console.log('Network change detected, refreshing device list');
-            //TODO send SSDP broadcast
+            this.discoverAll();
         });
 
-        //TODO get the device IPs from the current device list
-        this.deviceHealthMonitor = new DeviceHealthMonitor(() => ['192.168.0.20'], () => {
-            console.log('\tDevice health check failed, refreshing device list');
-            //TODO send SSDP broadcast
-        });
+        this.deviceHealthMonitor = new DeviceHealthMonitor(
+            () => this.getActiveDevices(),
+            (failedDevices: RokuDeviceDetails[]) => {
+                for (const device of failedDevices) {
+                    this.deviceCache.del(device.id);
+                }
+                console.log('\tDevice health check failed, refreshing device list');
+                this.discoverAll();
+            });
+
+        if (this.enabled) {
+            this.activateMonitoring();
+            this.queryKnownDevices();
+        }
     }
 
     private emitter = new EventEmitter();
@@ -103,8 +127,25 @@ export class ActiveDeviceManager {
     public enabled: boolean;
     private showInfoMessages: boolean;
     private deviceCache: NodeCache;
-    private exponentialBackoff: any;
-    private isRunning: boolean;
+
+    private async activateMonitoring() {
+        if (!vscode.window.state.focused) {
+            return;
+        }
+        this.systemSleepDetector.start();
+        this.networkChangeDetector.start();
+        this.deviceHealthMonitor.start();
+
+        await this.startPassiveListener();
+    }
+
+    private deactivateMonitoring() {
+        this.systemSleepDetector.stop();
+        this.networkChangeDetector.stop();
+        this.deviceHealthMonitor.stop();
+
+        this.stopPassiveListener();
+    }
 
     /**
      * Get a list of all devices discovered on the network
@@ -151,52 +192,7 @@ export class ActiveDeviceManager {
      * Clear the list and re-scan the whole network for devices
      */
     public refresh() {
-        this.stop();
-        this.start();
-    }
-
-    // Will ether stop or start the watching process based on the running state and user settings
-    private processEnabledState() {
-        if (this.enabled && !this.isRunning) {
-            this.start();
-        } else if (!this.enabled && this.isRunning) {
-            this.stop();
-        }
-    }
-
-    private stop() {
-        if (this.exponentialBackoff) {
-            this.exponentialBackoff.reset();
-        }
-
-        this.deviceCache.del(
-            this.deviceCache.keys()
-        );
-        this.deviceCache.flushAll();
-        this.isRunning = false;
-    }
-
-    /**
-     * Begin searching and watching for devices
-     */
-    private start() {
-        if (!this.isRunning) {
-            this.exponentialBackoff = backoff.exponential({
-                randomisationFactor: 0,
-                initialDelay: 2000,
-                maxDelay: 60000
-            });
-
-            void this.discoverAll(1000);
-
-            this.exponentialBackoff.on('ready', (eventNumber, delay) => {
-                void this.discoverAll(delay);
-                this.exponentialBackoff.backoff();
-            });
-
-            this.exponentialBackoff.backoff();
-            this.isRunning = true;
-        }
+        this.discoverAll();
     }
 
     /**
@@ -213,7 +209,7 @@ export class ActiveDeviceManager {
 
     private discoveryPromise: Promise<string[]> | null = null;
     // Discover all Roku devices on the network and watch for new ones that connect
-    public discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
+    public async discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
         if (this.discoveryPromise !== null) {
             //already discovering
             return this.discoveryPromise;
@@ -234,7 +230,6 @@ export class ActiveDeviceManager {
                     }
                     this.deviceCache.set(device.id, device);
                     devices.push(device.id);
-                    this.emit('device-found', device);
                 }
             });
 
@@ -257,7 +252,7 @@ export class ActiveDeviceManager {
      */
     private async queryKnownDevices() {
         const knownIps = this.globalStateManager.knownDeviceIps;
-        for (const ip of knownIps) {
+        await Promise.all(knownIps.map(async (ip) => {
             try {
                 const deviceInfo = await rokuDeploy.getDeviceInfo({ host: ip });
                 //sanitize the data
@@ -272,14 +267,11 @@ export class ActiveDeviceManager {
                     deviceInfo: deviceInfo as any
                 };
                 this.deviceCache.set(device.id, device);
-
-                //TODO should we emit an event here?
-                this.emit('device-found', device);
             } catch (e) {
-                //could not reach device at this ip, ignore
-                //TODO should we remove it from the known list?
+                //Device isn't in the cache, remove it from known devices
+                void this.globalStateManager.removeKnownDeviceIp(ip);
             }
-        }
+        }));
     }
 
     private passiveDiscovery: PassiveRokuDiscovery;
@@ -299,7 +291,6 @@ export class ActiveDeviceManager {
                     }
                 }
                 this.deviceCache.set(device.id, device);
-                this.emit('device-found', device);
             });
 
             this.passiveDiscovery.on('lost', (ip: string) => {
@@ -326,17 +317,19 @@ export class ActiveDeviceManager {
     private deviceHealthMonitor: DeviceHealthMonitor;
 
     private notifyFocusGained() {
-        console.log('Window gained focus');
         this?.systemSleepDetector?.onFocusGain();
         this?.networkChangeDetector?.onFocusGain();
         this?.deviceHealthMonitor?.onFocusGain();
+
+        this.passiveDiscovery?.onFocusGain();
     }
 
     private notifyFocusLost() {
-        console.log('Window lost focus');
         this?.systemSleepDetector?.onFocusLost();
         this?.networkChangeDetector?.onFocusLost();
         this?.deviceHealthMonitor?.onFocusLost();
+
+        this.passiveDiscovery?.onFocusLost();
     }
 
 }
@@ -390,7 +383,6 @@ class RokuFinder extends EventEmitter {
     }
 
     private readonly client: Client;
-    private intervalId: NodeJS.Timeout | null = null;
     private timeoutId: NodeJS.Timeout | null = null;
     private running = false;
 
@@ -406,13 +398,14 @@ class RokuFinder extends EventEmitter {
             this.emit('timeout');
         };
 
+        // UDP is unreliable, so we search multiple times
         search();
-        this.intervalId = setInterval(search, 1000);
+        setTimeout(search, 100);
+        setTimeout(search, 200);
         this.timeoutId = setTimeout(done, timeout);
     }
 
     public stop() {
-        clearInterval(this.intervalId);
         clearTimeout(this.timeoutId);
         this.running = false;
         this.client.stop();
@@ -428,87 +421,99 @@ class PassiveRokuDiscovery extends EventEmitter {
     constructor() {
         super();
 
-        this.server = new Server({
-            //Bind sockets to each discovered interface explicitly instead of relying on the system
-            explicitSocketBind: true
-        });
+        this.server = new Server();
 
         this.server.on('advertise-alive', (headers: SsdpHeaders) => {
-            void this.processSsdpAdvertisement(headers);
+            void this.processSsdpNotify(headers);
         });
-
         this.server.on('advertise-bye', (headers: SsdpHeaders) => {
-            this.processSsdpBye(headers);
+            void this.processSsdpNotify(headers);
         });
     }
 
     private readonly server: Server;
     private running = false;
+    private focused = true;
+
+    private queuedNotifications: any[] = [];
 
     /**
-     * Process an SSDP advertisement (device announcing its presence)
+     * Process an SSDP notification (device announcing its presence)
      */
-    private async processSsdpAdvertisement(headers: SsdpHeaders) {
+    private async processSsdpNotify(data: any) {
         if (!this.running) {
             return;
         }
 
-        const { NT, LOCATION, USN } = headers;
+        const nts = data.NTS;
+        const nt = data.NT;
+        const location = data.LOCATION;
+        const usn = data.USN;
 
-        // Check if this is a Roku device by examining NT (Notification Type) or USN
-        const isRoku = NT?.toString().includes('roku') || USN?.toString().includes('roku');
-        if (!LOCATION || !isRoku) {
+        // Check if this is a Roku device
+        const isRoku = nt?.includes('roku') || usn?.includes('roku');
+        if (!isRoku) {
             return;
         }
 
-        try {
-            const url = new URL(LOCATION.toString());
-            const deviceInfo = await rokuDeploy.getDeviceInfo({
-                host: url.hostname,
-                remotePort: parseInt(url.port ?? '8060')
-            });
-
-            //sanitize the data
-            for (const key in deviceInfo) {
-                deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
+        // Handle device leaving (ssdp:byebye)
+        if (nts === 'ssdp:byebye') {
+            if (location) {
+                try {
+                    const url = new URL(location);
+                    if (this.focused) {
+                        this.emit('lost', url.hostname);
+                    } else {
+                        this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== url.hostname);
+                        this.queuedNotifications.push({
+                            'Notification': 'lost',
+                            'hostname': url.hostname
+                        });
+                    }
+                } catch {
+                    // Invalid URL, ignore
+                }
             }
+            return;
+        }
 
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-            if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
-                const device: RokuDeviceDetails = {
-                    location: url.origin,
-                    ip: url.hostname,
-                    id: deviceInfo['device-id']?.toString?.(),
-                    deviceInfo: deviceInfo as any
-                };
-                this.emit('found', device);
+        // Handle device announcing (ssdp:alive)
+        if (nts === 'ssdp:alive' && location) {
+            try {
+                const url = new URL(location);
+                const deviceInfo = await rokuDeploy.getDeviceInfo({
+                    host: url.hostname,
+                    remotePort: parseInt(url.port ?? '8060')
+                });
+
+                // Sanitize the data
+                for (const key in deviceInfo) {
+                    deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
+                }
+
+                let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+                let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+                if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
+                    const device: RokuDeviceDetails = {
+                        location: url.origin,
+                        ip: url.hostname,
+                        id: deviceInfo['device-id']?.toString?.(),
+                        deviceInfo: deviceInfo as any
+                    };
+                    if (this.focused) {
+                        this.emit('found', device);
+                    } else {
+                        this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== url.hostname);
+                        this.queuedNotifications.push({
+                            'Notification': 'found',
+                            'device': device,
+                            'hostname': url.hostname
+                        });
+                    }
+                }
+            } catch (e) {
+                // Could not reach device, ignore
             }
-        } catch (e) {
-            // Could not reach device, ignore
-        }
-    }
-
-    /**
-     * Process an SSDP bye announcement (device leaving the network)
-     */
-    private processSsdpBye(headers: SsdpHeaders) {
-        if (!this.running) {
-            return;
-        }
-
-        const { NT, LOCATION, USN } = headers;
-
-        const isRoku = NT?.toString().includes('roku') || USN?.toString().includes('roku');
-        if (!LOCATION || !isRoku) {
-            return;
-        }
-
-        try {
-            const url = new URL(LOCATION.toString());
-            this.emit('lost', url.hostname);
-        } catch {
-            // Invalid URL, ignore
         }
     }
 
@@ -530,6 +535,24 @@ class PassiveRokuDiscovery extends EventEmitter {
             this.running = false;
             this.server.stop();
         }
+    }
+
+    public onFocusGain(): void {
+        if (!this.focused && this.queuedNotifications.length > 0) {
+            for (const notification of this.queuedNotifications) {
+                if (notification.Notification === 'found') {
+                    this.emit('found', notification.device);
+                } else {
+                    this.emit('lost', notification.hostname);
+                }
+            }
+            this.queuedNotifications = [];
+        }
+        this.focused = true;
+    }
+
+    public onFocusLost(): void {
+        this.focused = false;
     }
 }
 
@@ -660,31 +683,33 @@ abstract class FocusAwareMonitorBase {
  * Monitor the health of Roku devices
  */
 class DeviceHealthMonitor extends FocusAwareMonitorBase {
-    private onDeviceHealthFailed: () => void;
-    constructor(private getDeviceIps: () => string[], onDeviceHealthFailed: () => void) {
+    private onDeviceHealthFailed: (failedDevices: RokuDeviceDetails[]) => void;
+    constructor(
+        private getDevices: () => RokuDeviceDetails[],
+        onDeviceHealthFailed: (failedDevices: RokuDeviceDetails[]) => void
+    ) {
+
         super();
-        this.interval = 300000; // Check every 5 minutes
+        this.interval = 10000; // Check every 5 minutes
         this.onDeviceHealthFailed = onDeviceHealthFailed;
     }
 
     protected doWork() {
         console.log('Checking device health...');
-        const deviceIps = this.getDeviceIps();
-        const pingPromises = deviceIps.map(ip => {
-            console.log(`\tPinging device at IP: ${ip}`);
-            return rokuDeploy.getDeviceInfo({ host: ip, timeout: 5000 });
+        const devices = this.getDevices();
+        const pingPromises = devices.map(device => {
+            console.log(`\tPinging device at IP: ${device.ip}`);
+            return rokuDeploy.getDeviceInfo({ host: device.ip, timeout: 5000 });
         });
 
         Promise.allSettled(pingPromises).then(results => {
-            if (results.some(result => result.status === 'rejected')) {
-                this.onDeviceHealthFailed();
-            }
-            for (const result of results) {
-                console.log(`\t${JSON.stringify(result)}`);
+            const failedDevices = devices.filter((_, index) => results[index].status === 'rejected');
+            if (failedDevices.length > 0) {
+                this.onDeviceHealthFailed(failedDevices);
             }
         }).catch(err => {
             console.error('Error checking device health:', err);
-            this.onDeviceHealthFailed();
+            this.onDeviceHealthFailed(devices);
         });
     }
 }

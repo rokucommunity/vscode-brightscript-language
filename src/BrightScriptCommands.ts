@@ -55,6 +55,10 @@ export class BrightScriptCommands {
             this.activeDeviceManager.refresh();
         });
 
+        this.registerCommand('rescanDevices', async () => {
+            await this.activeDeviceManager.discoverAll();
+        });
+
         this.registerCommand('sendRemoteText', async () => {
             let items: vscode.QuickPickItem[] = [];
             for (const item of new GlobalStateManager(this.context).sendRemoteTextHistory) {
