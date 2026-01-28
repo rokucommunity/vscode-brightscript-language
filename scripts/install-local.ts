@@ -46,7 +46,7 @@ class InstallLocalRunner {
             ]
         },
         {
-            name: 'vscode-brightscript-language',
+            name: 'vscode-brightscript-language-rsg',
             dependencies: [
                 'roku-deploy',
                 'brighterscript',
@@ -77,7 +77,7 @@ class InstallLocalRunner {
         }
 
         this.printHeader(project.name);
-        let projectDir = `${cwd}/${project.name}`;
+        let projectDir = path.join(cwd, project.name);
 
         //if the project doesn't exist, clone it from github
         if (!fsExtra.pathExistsSync(projectDir)) {
@@ -125,7 +125,7 @@ class InstallLocalRunner {
         project.processed = true;
     }
 
-    private printHeader(name) {
+    private printHeader(name: string) {
         const length = 80;
         let text = '\n';
 
@@ -142,9 +142,9 @@ class InstallLocalRunner {
 
     private execSync(command: string, options?: childProcess.ExecSyncOptions) {
         options = {
-            cwd: cwd,
             stdio: enableVerboseLogging ? 'inherit' : 'ignore',
-            ...options ?? {}
+            ...options ?? {},
+            cwd: options?.cwd ?? cwd
         };
         if (enableVerboseLogging) {
             console.log(command, options);

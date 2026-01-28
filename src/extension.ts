@@ -243,7 +243,7 @@ export class Extension {
 
     private async attachJsDebugger(launchConfig: BrightScriptLaunchConfiguration, tsPath: string) {
         tsPath = tsPath.replace(/\s*pkg:/, '');
-        const tsDir = path.dirname(tsPath);
+        // const tsDir = path.dirname(tsPath);
         const rootDir = launchConfig.rootDir;
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
 
@@ -264,13 +264,14 @@ export class Extension {
             const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
             return !!success;
         } catch (e) {
+            console.error(e);
             return false;
         }
     }
 
-    private toForwardSlash(thePath: string) {
-        return thePath?.replace(/[\/\\]+/g, '/').replace(/\/+$/, '');
-    }
+    // private toForwardSlash(thePath: string) {
+    //     return thePath?.replace(/[\/\\]+/g, '/').replace(/\/+$/, '');
+    // }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
 
