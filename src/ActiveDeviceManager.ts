@@ -34,7 +34,7 @@ export class ActiveDeviceManager {
                     void this.activateMonitoring();
                     void this.queryKnownDevices();
                 } else {
-                    void this.deactivateMonitoring();
+                    this.deactivateMonitoring();
                 }
             }
 
@@ -71,34 +71,69 @@ export class ActiveDeviceManager {
 
         this.systemSleepDetector = new SystemSleepDetector(() => {
             console.log('System sleep detected, refreshing device list');
-            this.discoverAll();
+            this.setNeedFutureBroadcast();
         });
         this.networkChangeDetector = new NetworkChangeDetector(() => {
             console.log('Network change detected, refreshing device list');
-            this.discoverAll();
+            this.setNeedFutureBroadcast();
         });
 
-        this.deviceHealthMonitor = new DeviceHealthMonitor(
-            () => this.getActiveDevices(),
-            (failedDevices: RokuDeviceDetails[]) => {
-                for (const device of failedDevices) {
-                    this.deviceCache.del(device.id);
-                }
-                console.log('\tDevice health check failed, refreshing device list');
-                this.discoverAll();
-            });
-
         if (this.enabled) {
-            this.activateMonitoring();
-            this.queryKnownDevices();
+            void this.activateMonitoring();
+            void this.queryKnownDevices();
+            const knownIps = this.globalStateManager.knownDeviceIps;
+            if (knownIps.length === 0) {
+                void this.discoverAll();
+            } else {
+                this.setNeedFutureBroadcast();
+            }
         }
     }
 
     private emitter = new EventEmitter();
     private globalStateManager: GlobalStateManager;
 
+    /**
+     * Flag indicating that monitors have detected a condition requiring a broadcast
+     * (e.g., network change, wake from sleep). Consumed by UI components when opened.
+     */
+    private _needFutureBroadcast = false;
+
+    public get needsFutureBroadcast(): boolean {
+        return this._needFutureBroadcast;
+    }
+
+    /**
+     * Set the flag indicating a broadcast is needed. Emits 'need-future-broadcast' event
+     * when the flag flips from false to true.
+     */
+    public setNeedFutureBroadcast(): void {
+        if (!this._needFutureBroadcast) {
+            this._needFutureBroadcast = true;
+            this.emitter.emit('need-future-broadcast');
+        }
+    }
+
+    /**
+     * Clear the flag after a broadcast has been triggered
+     */
+    public clearNeedFutureBroadcast(): void {
+        this._needFutureBroadcast = false;
+    }
+
+    private lastBroadcastDate: Date | null = null;
+    get timeSinceLastBroadcast(): number {
+        if (!this.lastBroadcastDate) {
+            return 0;
+        }
+        return Date.now() - this.lastBroadcastDate.getTime();
+    }
+
+    private BROADCAST_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
     public on(eventName: 'device-expired', handler: (device: RokuDeviceDetails) => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'device-found', handler: (device: RokuDeviceDetails) => void, disposables?: Disposable[]): () => void;
+    public on(eventName: 'need-future-broadcast', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: string, handler: (payload: any) => void, disposables?: Disposable[]): () => void {
         this.emitter.on(eventName, handler);
         const unsubscribe = () => {
@@ -134,7 +169,6 @@ export class ActiveDeviceManager {
         }
         this.systemSleepDetector.start();
         this.networkChangeDetector.start();
-        this.deviceHealthMonitor.start();
 
         await this.startPassiveListener();
     }
@@ -142,7 +176,6 @@ export class ActiveDeviceManager {
     private deactivateMonitoring() {
         this.systemSleepDetector.stop();
         this.networkChangeDetector.stop();
-        this.deviceHealthMonitor.stop();
 
         this.stopPassiveListener();
     }
@@ -192,7 +225,7 @@ export class ActiveDeviceManager {
      * Clear the list and re-scan the whole network for devices
      */
     public refresh() {
-        this.discoverAll();
+        void this.discoverAll();
     }
 
     /**
@@ -214,6 +247,7 @@ export class ActiveDeviceManager {
             //already discovering
             return this.discoveryPromise;
         }
+        this.lastBroadcastDate = new Date();
 
         this.discoveryPromise = new Promise((resolve, reject) => {
             const finder = new RokuFinder();
@@ -269,7 +303,7 @@ export class ActiveDeviceManager {
                 this.deviceCache.set(device.id, device);
             } catch (e) {
                 //Device isn't in the cache, remove it from known devices
-                void this.globalStateManager.removeKnownDeviceIp(ip);
+                this.globalStateManager.removeKnownDeviceIp(ip);
             }
         }));
     }
@@ -314,12 +348,10 @@ export class ActiveDeviceManager {
 
     private systemSleepDetector: SystemSleepDetector;
     private networkChangeDetector: NetworkChangeDetector;
-    private deviceHealthMonitor: DeviceHealthMonitor;
 
     private notifyFocusGained() {
         this?.systemSleepDetector?.onFocusGain();
         this?.networkChangeDetector?.onFocusGain();
-        this?.deviceHealthMonitor?.onFocusGain();
 
         this.passiveDiscovery?.onFocusGain();
     }
@@ -327,7 +359,6 @@ export class ActiveDeviceManager {
     private notifyFocusLost() {
         this?.systemSleepDetector?.onFocusLost();
         this?.networkChangeDetector?.onFocusLost();
-        this?.deviceHealthMonitor?.onFocusLost();
 
         this.passiveDiscovery?.onFocusLost();
     }
@@ -676,41 +707,6 @@ abstract class FocusAwareMonitorBase {
 
     onFocusLost(): void {
         this.stop();
-    }
-}
-
-/**
- * Monitor the health of Roku devices
- */
-class DeviceHealthMonitor extends FocusAwareMonitorBase {
-    private onDeviceHealthFailed: (failedDevices: RokuDeviceDetails[]) => void;
-    constructor(
-        private getDevices: () => RokuDeviceDetails[],
-        onDeviceHealthFailed: (failedDevices: RokuDeviceDetails[]) => void
-    ) {
-
-        super();
-        this.interval = 10000; // Check every 5 minutes
-        this.onDeviceHealthFailed = onDeviceHealthFailed;
-    }
-
-    protected doWork() {
-        console.log('Checking device health...');
-        const devices = this.getDevices();
-        const pingPromises = devices.map(device => {
-            console.log(`\tPinging device at IP: ${device.ip}`);
-            return rokuDeploy.getDeviceInfo({ host: device.ip, timeout: 5000 });
-        });
-
-        Promise.allSettled(pingPromises).then(results => {
-            const failedDevices = devices.filter((_, index) => results[index].status === 'rejected');
-            if (failedDevices.length > 0) {
-                this.onDeviceHealthFailed(failedDevices);
-            }
-        }).catch(err => {
-            console.error('Error checking device health:', err);
-            this.onDeviceHealthFailed(devices);
-        });
     }
 }
 
