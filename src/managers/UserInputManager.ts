@@ -30,6 +30,15 @@ export class UserInputManager {
      * Prompt the user to pick a host from a list of devices
      */
     public async promptForHost(options?: { defaultValue?: string }) {
+        let hasBroadcastThisSession = false;
+        const shouldBroadcast =
+            this.activeDeviceManager.needsFutureBroadcast ||
+            this.activeDeviceManager.timeSinceLastBroadcast > 60000;
+        if (shouldBroadcast) {
+            this.activeDeviceManager.discoverAll().catch(() => { });
+            hasBroadcastThisSession = true;
+        }
+
         const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
@@ -81,6 +90,9 @@ export class UserInputManager {
 
         //set a timeout to automatically start scanning for devices after a short delay
         scanTimeoutId = setTimeout(() => {
+            if (hasBroadcastThisSession) {
+                return;
+            }
             void this.activeDeviceManager.discoverAll(discoveryTime);
         }, scanTimeoutMs);
 
@@ -119,13 +131,21 @@ export class UserInputManager {
         //anytime the device picker adds/removes a device, update the list
         this.activeDeviceManager.on('device-found', refreshList, disposables);
         this.activeDeviceManager.on('device-expired', refreshList, disposables);
+        this.activeDeviceManager.on('need-future-broadcast', () => {
+            hasBroadcastThisSession = true;
+            if (scanTimeoutId) {
+                clearTimeout(scanTimeoutId);
+                scanTimeoutId = null;
+            }
+            this.activeDeviceManager.discoverAll(discoveryTime).catch(() => { });
+        }, disposables);
 
         quickPick.onDidHide(() => {
             dispose();
             deferred.reject(new Error('No host was selected'));
         });
 
-        quickPick.onDidChangeSelection(selection => {
+        quickPick.onDidChangeSelection(async (selection) => {
             const selectedItem = selection[0];
             if (selectedItem) {
                 if (selectedItem.kind === vscode.QuickPickItemKind.Separator) {
@@ -135,6 +155,11 @@ export class UserInputManager {
                         deferred.resolve({ manual: true });
                     } else {
                         const device = (selectedItem as any).device as RokuDeviceDetails;
+                        const isHealthy = await this.activeDeviceManager.checkDeviceHealth(device);
+                        if (!isHealthy) {
+                            await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
+                            return;
+                        }
                         this.activeDeviceManager.lastUsedDevice = device;
                         deferred.resolve(device);
                     }

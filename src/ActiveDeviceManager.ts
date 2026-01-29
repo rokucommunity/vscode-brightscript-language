@@ -243,6 +243,8 @@ export class ActiveDeviceManager {
     private discoveryPromise: Promise<string[]> | null = null;
     // Discover all Roku devices on the network and watch for new ones that connect
     public async discoverAll(timeout: number = DEFAULT_TIMEOUT): Promise<string[]> {
+        this.clearNeedFutureBroadcast();
+
         if (this.discoveryPromise !== null) {
             //already discovering
             return this.discoveryPromise;
@@ -363,6 +365,40 @@ export class ActiveDeviceManager {
         this.passiveDiscovery?.onFocusLost();
     }
 
+    public async checkDeviceHealth(device: RokuDeviceDetails): Promise<boolean> {
+        if (await this.isDeviceResponding(device)) {
+            return true;
+        } else {
+            this.deviceCache.del(device.id);
+            this.healthCheckAllDevices().catch(() => { });
+            this.discoverAll().catch(() => { });
+            return false;
+
+        }
+    }
+
+    private async isDeviceResponding(device: RokuDeviceDetails): Promise<boolean> {
+        try {
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: device.ip,
+                remotePort: parseInt(new URL(device.location).port ?? '8060')
+            });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    private async healthCheckAllDevices(): Promise<void> {
+        const devices = this.getActiveDevices();
+        await Promise.all(devices.map(async (device) => {
+            const isHealthy = await this.isDeviceResponding(device);
+            if (!isHealthy) {
+                this.deviceCache.del(device.id);
+                this.discoverAll().catch(() => { });
+            }
+        }));
+    }
 }
 
 class RokuFinder extends EventEmitter {
