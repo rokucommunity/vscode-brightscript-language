@@ -121,11 +121,7 @@ export class Extension {
         const onlineDevicesTreeView = vscode.window.createTreeView(ViewProviderId.onlineDevicesView, {
             treeDataProvider: onlineDevicesViewProvider
         });
-        onlineDevicesTreeView.onDidChangeVisibility(e => {
-            if (e.visible) {
-                activeDeviceManager.discoverAll().catch(() => { });
-            }
-        });
+        onlineDevicesViewProvider.setTreeView(onlineDevicesTreeView);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {

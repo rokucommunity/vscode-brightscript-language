@@ -27,6 +27,29 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             this.devices = this.activeDeviceManager.getActiveDevices();
             this._onDidChangeTreeData.fire(null);
         });
+
+        this.activeDeviceManager.on('need-future-broadcast', () => {
+            if (!this.visible) {
+                return;
+            }
+            this.activeDeviceManager.discoverAll().catch(() => { });
+        });
+    }
+
+    private visible = false;
+
+    public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
+        treeView.onDidChangeVisibility(e => {
+            const shouldBroadcast =
+                this.activeDeviceManager.needsFutureBroadcast ||
+                this.activeDeviceManager.timeSinceLastBroadcast > 300000;
+            if (e.visible) {
+                if (shouldBroadcast) {
+                    this.activeDeviceManager.discoverAll().catch(() => { });
+                }
+            }
+            this.visible = e.visible;
+        });
     }
 
     /**
@@ -97,6 +120,9 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
 
             const device = this.findDeviceById(element.key);
+            if (device) {
+                this.activeDeviceManager.checkDeviceHealthIfStale(device).catch(() => { });
+            }
 
             if (device.deviceInfo['is-tv']) {
                 result.unshift(

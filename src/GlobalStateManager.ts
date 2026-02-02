@@ -14,7 +14,7 @@ export class GlobalStateManager {
         sendRemoteTextHistory: 'sendRemoteTextHistory',
         debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
-        knownDeviceIps: 'knownDeviceIps'
+        knownDeviceIpsByNetwork: 'knownDeviceIpsByNetwork'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -68,24 +68,25 @@ export class GlobalStateManager {
         }
     }
 
-    public get knownDeviceIps(): string[] {
-        return this.context.globalState.get(this.keys.knownDeviceIps) || [];
+    public getKnownDeviceIpsByNetwork(network: string): string[] {
+        return this.context.globalState.get(this.keys.knownDeviceIpsByNetwork[network]) || [];
     }
 
-    public set knownDeviceIps(ips: string[]) {
-        void this.context.globalState.update(this.keys.knownDeviceIps, ips);
+    public setKnownDeviceIpsByNetwork(network: string, ips: string[]) {
+        void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, ips);
     }
 
-    public addKnownDeviceIp(ip: string) {
-        const ips = this.knownDeviceIps;
+    public addKnownDeviceIp(network: string, ip: string) {
+        const ips = this.getKnownDeviceIpsByNetwork(network);
         if (!ips.includes(ip)) {
             ips.push(ip);
-            this.knownDeviceIps = ips;
+            this.setKnownDeviceIpsByNetwork(network, ips);
         }
     }
 
-    public removeKnownDeviceIp(ip: string) {
-        this.knownDeviceIps = this.knownDeviceIps.filter((knownIp) => knownIp !== ip);
+    public removeKnownDeviceIp(network: string, ip: string) {
+        const ips = this.getKnownDeviceIpsByNetwork(network);
+        this.setKnownDeviceIpsByNetwork(network, ips.filter((knownIp) => knownIp !== ip));
     }
 
     /**
