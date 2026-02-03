@@ -28,6 +28,11 @@ export class ActiveDeviceManager {
     private lastHealthCheckTime = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
+    /**
+     * If timeSinceLastBroadcast exceeds this threshold, a new broadcast should be triggered
+     */
+    public static readonly BROADCAST_STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
     private _needFutureBroadcast = false;
 
     public firstRequestForDevices: boolean;
@@ -95,9 +100,11 @@ export class ActiveDeviceManager {
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.enabled) {
+                    this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                     void this.queryKnownDevices();
                 } else {
+                    this.systemSleepMonitor.stop();
                     this.deactivateMonitoring();
                 }
             }
@@ -151,6 +158,9 @@ export class ActiveDeviceManager {
 
     private initializeIfEnabled() {
         if (this.enabled) {
+            // Sleep monitor runs all the time when enabled (ignores focus state)
+            this.systemSleepMonitor.start();
+
             this.activateMonitoring().then(async () => {
                 await this.queryKnownDevices();
                 const knownIps = this.globalStateManager.getKnownDeviceIpsByNetwork(this.networkId);
@@ -219,10 +229,10 @@ export class ActiveDeviceManager {
     }
 
     /**
-     * Clear the list and re-scan the whole network for devices
+     * Re-scan the network for devices and health-check existing ones
      */
     public refresh() {
-        this.deviceCache.flushAll();
+        this.healthCheckAllDevices().catch(() => { });
         this.discoverAll();
     }
 
@@ -272,16 +282,13 @@ export class ActiveDeviceManager {
         if (!vscode.window.state.focused) {
             return;
         }
-        this.systemSleepMonitor.start();
         this.networkChangeMonitor.start();
 
         await this.startRokuFinder();
     }
 
     private deactivateMonitoring() {
-        this.systemSleepMonitor.stop();
         this.networkChangeMonitor.stop();
-
         this.stopRokuFinder();
     }
 

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import { ActiveDeviceManager, type RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -42,7 +42,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         treeView.onDidChangeVisibility(e => {
             const shouldBroadcast =
                 this.activeDeviceManager.needsFutureBroadcast ||
-                this.activeDeviceManager.timeSinceLastBroadcast > 300000;
+                this.activeDeviceManager.timeSinceLastBroadcast > ActiveDeviceManager.BROADCAST_STALE_THRESHOLD_MS;
             if (e.visible) {
                 if (shouldBroadcast) {
                     this.activeDeviceManager.discoverAll();

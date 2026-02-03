@@ -4,7 +4,7 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import { ActiveDeviceManager, type RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 
 /**
@@ -33,7 +33,7 @@ export class UserInputManager {
         let hasBroadcastThisSession = false;
         const shouldBroadcast =
             this.activeDeviceManager.needsFutureBroadcast ||
-            this.activeDeviceManager.timeSinceLastBroadcast > 60000;
+            this.activeDeviceManager.timeSinceLastBroadcast > ActiveDeviceManager.BROADCAST_STALE_THRESHOLD_MS;
         if (shouldBroadcast) {
             this.activeDeviceManager.discoverAll();
             hasBroadcastThisSession = true;
