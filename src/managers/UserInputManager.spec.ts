@@ -6,8 +6,8 @@ import { UserInputManager, manualHostItemId } from './UserInputManager';
 import { vscode } from '../mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import type { RokuDeviceDetails } from '../ActiveDeviceManager';
-import { ActiveDeviceManager } from '../ActiveDeviceManager';
+import type { RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import { ActiveDeviceManager } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 
 const sinon = createSandbox();

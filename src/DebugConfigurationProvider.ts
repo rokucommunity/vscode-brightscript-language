@@ -15,7 +15,7 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';

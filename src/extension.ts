@@ -4,7 +4,7 @@ import { extensions } from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';

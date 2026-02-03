@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
+import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -32,7 +32,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             if (!this.visible) {
                 return;
             }
-            this.activeDeviceManager.discoverAll().catch(() => { });
+            this.activeDeviceManager.discoverAll();
         });
     }
 
@@ -45,7 +45,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 this.activeDeviceManager.timeSinceLastBroadcast > 300000;
             if (e.visible) {
                 if (shouldBroadcast) {
-                    this.activeDeviceManager.discoverAll().catch(() => { });
+                    this.activeDeviceManager.discoverAll();
                 }
             }
             this.visible = e.visible;

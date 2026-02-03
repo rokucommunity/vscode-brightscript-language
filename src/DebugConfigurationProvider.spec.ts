@@ -9,7 +9,7 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
 import { rokuDeploy } from 'roku-deploy';
 
 const sinon = createSandbox();

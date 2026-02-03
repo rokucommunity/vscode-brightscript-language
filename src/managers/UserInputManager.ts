@@ -4,7 +4,7 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../ActiveDeviceManager';
+import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 
 /**
@@ -35,7 +35,7 @@ export class UserInputManager {
             this.activeDeviceManager.needsFutureBroadcast ||
             this.activeDeviceManager.timeSinceLastBroadcast > 60000;
         if (shouldBroadcast) {
-            this.activeDeviceManager.discoverAll().catch(() => { });
+            this.activeDeviceManager.discoverAll();
             hasBroadcastThisSession = true;
         }
 
@@ -93,7 +93,7 @@ export class UserInputManager {
             if (hasBroadcastThisSession) {
                 return;
             }
-            void this.activeDeviceManager.discoverAll(discoveryTime);
+            this.activeDeviceManager.discoverAll();
         }, scanTimeoutMs);
 
         const refreshList = () => {
@@ -137,7 +137,7 @@ export class UserInputManager {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            this.activeDeviceManager.discoverAll(discoveryTime).catch(() => { });
+            this.activeDeviceManager.discoverAll();
         }, disposables);
 
         quickPick.onDidHide(() => {
@@ -171,9 +171,11 @@ export class UserInputManager {
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === 'Scan for devices') {
                 quickPick.busy = true;
-                void this.activeDeviceManager.discoverAll(discoveryTime).finally(() => {
+                this.activeDeviceManager.discoverAll();
+                //TODO discuss with bronely
+                setTimeout(() => {
                     quickPick.busy = false;
-                });
+                }, 2000);
             }
         });
         //run the list refresh once to show the popup

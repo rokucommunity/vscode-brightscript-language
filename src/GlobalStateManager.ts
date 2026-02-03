@@ -69,11 +69,18 @@ export class GlobalStateManager {
     }
 
     public getKnownDeviceIpsByNetwork(network: string): string[] {
-        return this.context.globalState.get(this.keys.knownDeviceIpsByNetwork[network]) || [];
+        const networks = this.context.globalState.get<Record<string, string[]>>(this.keys.knownDeviceIpsByNetwork) || {};
+        return networks[network] || [];
     }
 
     public setKnownDeviceIpsByNetwork(network: string, ips: string[]) {
-        void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, ips);
+        const networks = this.context.globalState.get(this.keys.knownDeviceIpsByNetwork) || {};
+        if (ips.length === 0) {
+            delete networks[network];
+        } else {
+            networks[network] = ips;
+        }
+        void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, networks);
     }
 
     public addKnownDeviceIp(network: string, ip: string) {
