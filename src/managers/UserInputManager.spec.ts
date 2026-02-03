@@ -8,6 +8,7 @@ import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
 import type { RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { ActiveDeviceManager } from '../deviceDiscovery/ActiveDeviceManager';
+import { GlobalStateManager } from '../GlobalStateManager';
 import { icons } from '../icons';
 
 const sinon = createSandbox();
@@ -32,9 +33,14 @@ describe('UserInputManager', () => {
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
 
-        //prevent the 'start' method from actually running
-        sinon.stub(ActiveDeviceManager.prototype as any, 'start').callsFake(() => { });
-        let activeDeviceManager = new ActiveDeviceManager();
+        //prevent the ActiveDeviceManager from actually running
+        sinon.stub(ActiveDeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
+        sinon.stub(ActiveDeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(ActiveDeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(ActiveDeviceManager.prototype as any, 'setupDeviceCache').callsFake(() => { });
+        sinon.stub(ActiveDeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        let globalStateManager = new GlobalStateManager(vscode.context);
+        let activeDeviceManager = new ActiveDeviceManager(globalStateManager);
         userInputManager = new UserInputManager(activeDeviceManager);
     });
 
