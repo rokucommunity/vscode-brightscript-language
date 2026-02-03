@@ -1,27 +1,26 @@
 /**
- * Monitor for system sleep/wake events
+ * Monitor for system sleep/wake events by detecting gaps in timer execution
  */
 export class SystemSleepMonitor {
-    protected timer: NodeJS.Timeout | null = null;
-    protected lastExecutionTime = 0;
-    private interval = 60000;
+
+    private timer: NodeJS.Timeout | null = null;
+    private lastExecutionTime = 0;
+    private interval = 60000; // 1 minute
     private gapThreshold = 120000; // 2 minutes
 
     constructor(private onSleepDetected: () => void) { }
 
-    start() {
-        console.log('SystemSleepDetector started');
+    public start(): void {
         this.lastExecutionTime = Date.now();
         this.timer = setInterval(() => {
             if (Date.now() - this.lastExecutionTime > this.gapThreshold && this.lastExecutionTime !== 0) {
                 this.onSleepDetected();
             }
             this.lastExecutionTime = Date.now();
-            console.log(`SystemSleepDetector heartbeat at ${new Date().toLocaleTimeString()}`);
         }, this.interval);
     }
-    stop() {
-        console.log('SystemSleepDetector stopped');
+
+    public stop(): void {
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = null;

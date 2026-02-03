@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as md5 from 'md5';
 
 /**
- * Monitor for network changes by checking IP addresses
+ * Generate a hash of current network interfaces for detecting network changes
  */
 export function getNetworkHash(): string {
     const interfaces = os.networkInterfaces();
@@ -23,13 +23,16 @@ export function getNetworkHash(): string {
     return md5(parts.sort().join('|'));
 }
 
+/**
+ * Monitor for network changes by polling IP addresses
+ */
 export class NetworkChangeMonitor {
+
     private previousIps = new Set<string>();
     private onNetworkChanged: () => void;
-
     private timer: NodeJS.Timeout | null = null;
     private lastExecutionTime = 0;
-    private interval = 8000; // default to 2 minutes
+    private interval = 8000; // 8 seconds
 
     constructor(onNetworkChanged: () => void) {
         this.onNetworkChanged = onNetworkChanged;
@@ -37,18 +40,7 @@ export class NetworkChangeMonitor {
         this.previousIps = this.getCurrentIps();
     }
 
-    executeTask() {
-        this.doWork();
-        this.lastExecutionTime = Date.now();
-        this.setTimer();
-    }
-
-    setTimer() {
-        this.stop(); // Ensure no existing timer is running
-        this.timer = setTimeout(() => this.executeTask(), this.interval);
-    }
-
-    start(): void {
+    public start(): void {
         const now = Date.now();
         if (now - this.lastExecutionTime > this.interval) {
             this.executeTask();
@@ -57,22 +49,33 @@ export class NetworkChangeMonitor {
         }
     }
 
-    stop() {
+    public stop(): void {
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = null;
         }
     }
 
-    onFocusGain(): void {
+    public onFocusGain(): void {
         this.start();
     }
 
-    onFocusLost(): void {
+    public onFocusLost(): void {
         this.stop();
     }
 
-    protected doWork() {
+    private executeTask() {
+        this.doWork();
+        this.lastExecutionTime = Date.now();
+        this.setTimer();
+    }
+
+    private setTimer() {
+        this.stop(); // Ensure no existing timer is running
+        this.timer = setTimeout(() => this.executeTask(), this.interval);
+    }
+
+    private doWork() {
         const currentIps = this.getCurrentIps();
 
         // Check if IPs changed
@@ -80,13 +83,6 @@ export class NetworkChangeMonitor {
         const removed = [...this.previousIps].filter(ip => !currentIps.has(ip));
 
         if (added.length > 0 || removed.length > 0) {
-            console.log('Network change detected');
-            if (added.length > 0) {
-                console.log(`  Added IPs: ${added.join(', ')}`);
-            }
-            if (removed.length > 0) {
-                console.log(`  Removed IPs: ${removed.join(', ')}`);
-            }
             this.onNetworkChanged();
         }
 

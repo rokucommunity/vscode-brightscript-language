@@ -7,6 +7,12 @@ import type { RokuDeviceDetails } from './ActiveDeviceManager';
 
 export class RokuFinder extends EventEmitter {
 
+    private readonly client: Client;
+    private readonly server: Server;
+    private running = false;
+    private focused = true;
+    private queuedNotifications: QueuedNotification[] = [];
+
     constructor() {
         super();
 
@@ -29,12 +35,6 @@ export class RokuFinder extends EventEmitter {
         });
     }
 
-    private readonly client: Client;
-    private readonly server: Server;
-    private running = false;
-    private focused = true;
-    private queuedNotifications: any[] = [];
-
     public scan() {
         const search = () => {
             void this.client.search('roku:ecp');
@@ -46,6 +46,44 @@ export class RokuFinder extends EventEmitter {
         setTimeout(search, 200);
     }
 
+    /**
+     * Start listening for SSDP advertisements
+     */
+    public async start() {
+        if (!this.running) {
+            this.running = true;
+            await this.server.start();
+        }
+    }
+
+    /**
+     * Stop listening for SSDP advertisements
+     */
+    public stop() {
+        if (this.running) {
+            this.running = false;
+            this.server.stop();
+        }
+    }
+
+    public onFocusGain(): void {
+        if (!this.focused && this.queuedNotifications.length > 0) {
+            for (const notification of this.queuedNotifications) {
+                if (notification.type === 'found') {
+                    this.emit('found', notification.device);
+                } else {
+                    this.emit('lost', notification.hostname);
+                }
+            }
+            this.queuedNotifications = [];
+        }
+        this.focused = true;
+    }
+
+    public onFocusLost(): void {
+        this.focused = false;
+    }
+
     private async processSsdpResponse(headers: SsdpHeaders) {
         if (!this.running) {
             return;
@@ -53,27 +91,8 @@ export class RokuFinder extends EventEmitter {
 
         const { ST, LOCATION } = headers;
         if (LOCATION && ST?.includes('roku')) {
-            const url = new URL(LOCATION);
-            const deviceInfo = await rokuDeploy.getDeviceInfo({
-                host: url.hostname,
-                remotePort: parseInt(url.port ?? '8060')
-            });
-
-            //sanitize the data
-            for (const key in deviceInfo) {
-                deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
-            }
-
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-            if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
-                const url = new URL(LOCATION);
-                const device: RokuDeviceDetails = {
-                    location: url.origin,
-                    ip: url.hostname,
-                    id: deviceInfo['device-id']?.toString?.(),
-                    deviceInfo: deviceInfo as any
-                };
+            const device = await this.fetchDeviceDetails(LOCATION);
+            if (device) {
                 this.emit('found', device);
             }
         }
@@ -103,15 +122,7 @@ export class RokuFinder extends EventEmitter {
             if (location) {
                 try {
                     const url = new URL(location);
-                    if (this.focused) {
-                        this.emit('lost', url.hostname);
-                    } else {
-                        this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== url.hostname);
-                        this.queuedNotifications.push({
-                            'Notification': 'lost',
-                            'hostname': url.hostname
-                        });
-                    }
+                    this.emitOrQueue('lost', url.hostname);
                 } catch {
                     // Invalid URL, ignore
                 }
@@ -121,78 +132,70 @@ export class RokuFinder extends EventEmitter {
 
         // Handle device announcing (ssdp:alive)
         if (nts === 'ssdp:alive' && location) {
-            try {
-                const url = new URL(location);
-                const deviceInfo = await rokuDeploy.getDeviceInfo({
-                    host: url.hostname,
-                    remotePort: parseInt(url.port ?? '8060')
-                });
-
-                // Sanitize the data
-                for (const key in deviceInfo) {
-                    deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
-                }
-
-                let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-                let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-                if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
-                    const device: RokuDeviceDetails = {
-                        location: url.origin,
-                        ip: url.hostname,
-                        id: deviceInfo['device-id']?.toString?.(),
-                        deviceInfo: deviceInfo as any
-                    };
-                    if (this.focused) {
-                        this.emit('found', device);
-                    } else {
-                        this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== url.hostname);
-                        this.queuedNotifications.push({
-                            'Notification': 'found',
-                            'device': device,
-                            'hostname': url.hostname
-                        });
-                    }
-                }
-            } catch (e) {
-                // Could not reach device, ignore
+            const device = await this.fetchDeviceDetails(location);
+            if (device) {
+                this.emitOrQueue('found', device.ip, device);
             }
-        }
-    }
-    /**
-     * Start listening for SSDP advertisements
-     */
-    public async start() {
-        if (!this.running) {
-            this.running = true;
-            await this.server.start();
         }
     }
 
     /**
-     * Stop listening for SSDP advertisements
+     * Fetch device info from a Roku device and build RokuDeviceDetails
      */
-    public stop() {
-        if (this.running) {
-            this.running = false;
-            this.server.stop();
-        }
-    }
+    private async fetchDeviceDetails(location: string): Promise<RokuDeviceDetails | null> {
+        try {
+            const url = new URL(location);
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: url.hostname,
+                remotePort: parseInt(url.port ?? '8060')
+            });
 
-    public onFocusGain(): void {
-        if (!this.focused && this.queuedNotifications.length > 0) {
-            for (const notification of this.queuedNotifications) {
-                if (notification.Notification === 'found') {
-                    this.emit('found', notification.device);
-                } else {
-                    this.emit('lost', notification.hostname);
-                }
+            // Sanitize the data
+            for (const key in deviceInfo) {
+                deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
             }
-            this.queuedNotifications = [];
+
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+
+            if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
+                return {
+                    location: url.origin,
+                    ip: url.hostname,
+                    id: deviceInfo['device-id']?.toString?.(),
+                    deviceInfo: deviceInfo as any
+                };
+            }
+            return null;
+        } catch {
+            // Could not reach device
+            return null;
         }
-        this.focused = true;
     }
 
-    public onFocusLost(): void {
-        this.focused = false;
+    /**
+     * Emit an event immediately if focused, otherwise queue it for later
+     */
+    private emitOrQueue(type: 'found', hostname: string, device: RokuDeviceDetails): void;
+    private emitOrQueue(type: 'lost', hostname: string): void;
+    private emitOrQueue(type: 'found' | 'lost', hostname: string, device?: RokuDeviceDetails): void {
+        // Remove any existing notification for this hostname
+        this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== hostname);
+
+        if (this.focused) {
+            if (type === 'found') {
+                this.emit('found', device);
+            } else {
+                this.emit('lost', hostname);
+            }
+        } else {
+            this.queuedNotifications.push({ type: type, hostname: hostname, device: device });
+        }
     }
+}
+
+interface QueuedNotification {
+    type: 'found' | 'lost';
+    hostname: string;
+    device?: RokuDeviceDetails;
 }
