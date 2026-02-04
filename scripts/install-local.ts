@@ -40,13 +40,15 @@ class InstallLocalRunner {
         },
         {
             name: 'roku-debug',
+            repositoryUrl: 'https://github.com/rokucommunity/roku-debug-rsg',
             dependencies: [
                 'roku-deploy',
                 'brighterscript'
             ]
         },
         {
-            name: 'vscode-brightscript-language-rsg',
+            name: 'vscode-brightscript-language',
+            repositoryUrl: 'https://github.com/rokucommunity/vscode-brightscript-language-rsg',
             dependencies: [
                 'roku-deploy',
                 'brighterscript',
@@ -81,7 +83,8 @@ class InstallLocalRunner {
 
         //if the project doesn't exist, clone it from github
         if (!fsExtra.pathExistsSync(projectDir)) {
-            this.execSync(`git clone https://github.com/rokucommunity/${project.name}`);
+            const repositoryUrl = project.repositoryUrl ?? `https://github.com/rokucommunity/${project.name}`;
+            this.execSync(`git clone ${repositoryUrl} ${project.name}`, { cwd: cwd });
 
             //if --pull was provided, fetch and pull latest for each repo
         } else if (pull === true) {
@@ -159,6 +162,8 @@ class InstallLocalRunner {
 
 interface Project {
     name: string;
+
+    repositoryUrl?: string;
     dependencies: string[];
     processed?: boolean;
 }

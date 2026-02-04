@@ -24,7 +24,7 @@ jobs:
           ref: master
           wait-for-completion: true
           display-workflow-run-url: true
-          repo: rokucommunity/vscode-brightscript-language
+          repo: rokucommunity/vscode-brightscript-language-rsg
           token: ${{ env.TOKEN }}
           inputs: '{ "branch": "${{ github.head_ref }}"}'
       #add a comment on the PR

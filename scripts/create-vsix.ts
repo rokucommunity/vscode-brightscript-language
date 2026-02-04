@@ -14,12 +14,14 @@ const projects = [{
     dependencies: ['roku-deploy']
 }, {
     name: 'roku-debug',
+    repositoryUrl: 'https://github.com/rokucommunity/roku-debug-rsg',
     dependencies: ['roku-deploy', 'brighterscript']
 }, {
     name: 'brighterscript-formatter',
     dependencies: ['brighterscript']
 }, {
     name: 'vscode-brightscript-language',
+    repositoryUrl: 'https://github.com/rokucommunity/vscode-brightscript-language-rsg',
     dependencies: ['brighterscript', 'roku-debug', 'brighterscript-formatter', 'roku-deploy']
 }] as Project[];
 
@@ -73,6 +75,7 @@ function processProject(project: Project, branch: string) {
 
 interface Project {
     name: string;
+    repositoryUrl?: string;
     dependencies: string[];
     packagePath?: string;
     processed: boolean;
@@ -82,7 +85,8 @@ interface Project {
  * Determine if a repo has a branch with the given name
  */
 function hasBranch(project: Project, branch: string) {
-    const output = childProcess.execSync(`git ls-remote --heads ${baseUrl}/${project.name}`).toString();
+    const repoUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
+    const output = childProcess.execSync(`git ls-remote --heads ${repoUrl}`).toString();
     const regexp = new RegExp(`refs/heads/${escapeRegExp(branch)}\\b`);
     return !!regexp.exec(output);
 }
@@ -92,7 +96,7 @@ function escapeRegExp(string: string) {
 }
 
 function clone(project: Project, branch: string) {
-    const url = `${baseUrl}/${project.name}`;
+    const url = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
     log(`Cloning ${url}`);
     execSync(`git clone ${url} ${project.name}`);
     execSync(`git checkout ${branch}`, {
@@ -123,7 +127,7 @@ function log(message: string) {
     console.log(`\n${chalk.blueBright(message)}\n`);
 }
 
-export function s(stringParts, ...expressions: any[]) {
+export function s(stringParts: any, ...expressions: any[]) {
     let result: string[] = [];
     for (let i = 0; i < stringParts.length; i++) {
         result.push(stringParts[i], expressions[i]);
