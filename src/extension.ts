@@ -237,7 +237,8 @@ export class Extension {
 
     private getTsPath(rootDir: string) {
         const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
-        const tsPath = /.*ts_path[ \t]*=[ \t]*(.*?)[\r\n]/ig.exec(contents);
+        // https://regex101.com/r/qgLxGh/1
+        const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
         return tsPath?.[1]?.trim();
     }
 
@@ -246,7 +247,8 @@ export class Extension {
         // const tsDir = path.dirname(tsPath);
         const rootDir = launchConfig.rootDir;
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
-
+        const remoteRoot = path.normalize(path.dirname(tsPath));
+        const localRoot = path.normalize(path.join(rootDir, remoteRoot));
         try {
             const debugConfig: vscode.DebugConfiguration = {
                 type: 'node',
@@ -255,10 +257,15 @@ export class Extension {
                 cwd: launchConfig.rootDir,
                 address: launchConfig.host,
                 port: 9999,
-                resolveSourceMapLocations: [`${rootDir}/dist-dev/bundle/**`, `${rootDir}/**`],
-                outFiles: [`${rootDir}/dist-dev/bundle/*.js`],
-                remoteRoot: '/source/compiled',
-                localRoot: `${rootDir}/dist-dev/bundle`
+                sourceMaps: true,
+                //this allows us to resolve sourcemaps from ANYWHERE
+                resolveSourceMapLocations: null,
+                // If source maps are enabled, these glob patterns specify the generated JavaScript files. If a pattern starts with `!` the files are excluded. If not specified, the generated code is expected in the same directory as its source.
+                outFiles: [`${localRoot}/*.js`],
+                //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
+                remoteRoot: remoteRoot,
+                // where the currently-running javascript (bundled) files live on this system
+                localRoot: localRoot
             };
 
             const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
