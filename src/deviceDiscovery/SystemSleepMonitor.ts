@@ -12,18 +12,23 @@ export class SystemSleepMonitor {
 
     public start(): void {
         this.lastExecutionTime = Date.now();
-        this.timer = setInterval(() => {
-            if (Date.now() - this.lastExecutionTime > this.gapThreshold && this.lastExecutionTime !== 0) {
-                this.onSleepDetected();
-            }
-            this.lastExecutionTime = Date.now();
-        }, this.interval);
+        this.scheduleNext();
     }
 
     public stop(): void {
         if (this.timer) {
-            clearInterval(this.timer);
+            clearTimeout(this.timer);
             this.timer = null;
         }
+    }
+
+    private scheduleNext(): void {
+        this.timer = setTimeout(() => {
+            if (Date.now() - this.lastExecutionTime > this.gapThreshold) {
+                this.onSleepDetected();
+            }
+            this.lastExecutionTime = Date.now();
+            this.scheduleNext();
+        }, this.interval);
     }
 }
