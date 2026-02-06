@@ -32,7 +32,7 @@ export class NetworkChangeMonitor {
     private onNetworkChanged: () => void;
     private timer: NodeJS.Timeout | null = null;
     private lastExecutionTime = 0;
-    private interval = 8000; // 8 seconds
+    private interval = 180000; // 3 minutes
 
     constructor(onNetworkChanged: () => void) {
         this.onNetworkChanged = onNetworkChanged;
