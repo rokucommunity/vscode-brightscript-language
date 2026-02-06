@@ -182,6 +182,9 @@ export let vscode = {
             };
         },
         onDidChangeWindowState: () => { },
+        createTreeView: () => ({
+            onDidChangeVisibility: () => { }
+        }),
         createQuickPick: () => {
             class QuickPick {
                 private emitter = new EventEmitter();
