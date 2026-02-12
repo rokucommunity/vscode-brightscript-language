@@ -24,7 +24,7 @@ describe('SystemSleepMonitor', () => {
 
     describe('normal operation', () => {
         let clock: sinon.SinonFakeTimers;
-        const INTERVAL = 60000; // 1 minute
+        const INTERVAL = 1 * 60 * 1_000; // 1 minute
 
         beforeEach(() => {
             clock = sinon.useFakeTimers();
@@ -50,13 +50,13 @@ describe('SystemSleepMonitor', () => {
         });
 
         it('fires callback when sleep is detected (gap exceeds threshold)', () => {
-            const GAP_THRESHOLD = 120000; // 2 minutes
+            const GAP_THRESHOLD = 2 * 60 * 1_000; // 2 minutes
 
             monitor = new SystemSleepMonitor(callback);
             monitor.start(); // lastExecutionTime = 0
 
             // Simulate sleep: jump time forward without firing timers
-            clock.setSystemTime(GAP_THRESHOLD + 1000);
+            clock.setSystemTime(GAP_THRESHOLD + 1_000);
 
             // Now tick to fire the interval - it should see the gap
             clock.tick(INTERVAL);
@@ -67,7 +67,7 @@ describe('SystemSleepMonitor', () => {
 
     describe('stop', () => {
         let clock: sinon.SinonFakeTimers;
-        const INTERVAL = 60000;
+        const INTERVAL = 1 * 60 * 1_000; // 1 minute
 
         beforeEach(() => {
             clock = sinon.useFakeTimers();

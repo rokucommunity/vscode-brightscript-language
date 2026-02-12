@@ -69,16 +69,21 @@ export class GlobalStateManager {
     }
 
     public getKnownDeviceIpsByNetwork(network: string): string[] {
-        const networks = this.context.globalState.get<Record<string, string[]>>(this.keys.knownDeviceIpsByNetwork) || {};
-        return networks[network] || [];
+        const networks = this.context.globalState.get<Record<string, KnownNetworkEntry>>(this.keys.knownDeviceIpsByNetwork) || {};
+        const ips = networks[network]?.ips || [];
+        if (ips.length !== 0) {
+            networks[network] = { ips: ips, lastSeen: Date.now() };
+            void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, this.expireOldKnownDeviceIps(networks));
+        }
+        return ips;
     }
 
-    public setKnownDeviceIpsByNetwork(network: string, ips: string[]) {
-        const networks = this.context.globalState.get(this.keys.knownDeviceIpsByNetwork) || {};
+    private setKnownDeviceIpsByNetwork(network: string, ips: string[]) {
+        const networks = this.context.globalState.get<Record<string, KnownNetworkEntry>>(this.keys.knownDeviceIpsByNetwork) || {};
         if (ips.length === 0) {
             delete networks[network];
         } else {
-            networks[network] = ips;
+            networks[network] = { ips: ips, lastSeen: Date.now() };
         }
         void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, networks);
     }
@@ -93,7 +98,21 @@ export class GlobalStateManager {
 
     public removeKnownDeviceIp(network: string, ip: string) {
         const ips = this.getKnownDeviceIpsByNetwork(network);
-        this.setKnownDeviceIpsByNetwork(network, ips.filter((knownIp) => knownIp !== ip));
+        if (ips.includes(ip)) {
+            this.setKnownDeviceIpsByNetwork(network, ips.filter((knownIp) => knownIp !== ip));
+        }
+    }
+
+    private KNOWN_NETWORK_ENTRY_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
+
+    private expireOldKnownDeviceIps(networks: Record<string, KnownNetworkEntry>): Record<string, KnownNetworkEntry> {
+        const now = Date.now();
+        for (const network in networks) {
+            if (now - networks[network].lastSeen > this.KNOWN_NETWORK_ENTRY_EXPIRATION) {
+                delete networks[network];
+            }
+        }
+        return networks;
     }
 
     /**
@@ -105,4 +124,9 @@ export class GlobalStateManager {
             this[key] = undefined;
         }
     }
+}
+
+interface KnownNetworkEntry {
+    ips: string[];
+    lastSeen: number;
 }

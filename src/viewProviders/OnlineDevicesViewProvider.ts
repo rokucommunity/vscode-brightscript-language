@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import { ActiveDeviceManager, type RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -28,11 +28,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             this._onDidChangeTreeData.fire(null);
         });
 
-        this.activeDeviceManager.on('need-future-broadcast', () => {
+        this.activeDeviceManager.on('scanNeeded-changed', () => {
             if (!this.visible) {
                 return;
             }
-            this.activeDeviceManager.discoverAll();
+            this.activeDeviceManager.refresh();
         });
     }
 
@@ -40,15 +40,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
         treeView.onDidChangeVisibility(e => {
-            const shouldBroadcast =
-                this.activeDeviceManager.needsFutureBroadcast ||
-                this.activeDeviceManager.timeSinceLastBroadcast > ActiveDeviceManager.BROADCAST_STALE_THRESHOLD_MS;
-            if (e.visible) {
-                if (shouldBroadcast) {
-                    this.activeDeviceManager.discoverAll();
-                }
-            }
             this.visible = e.visible;
+            if (!this.visible) {
+                return;
+            }
+            this.activeDeviceManager.refresh();
         });
     }
 

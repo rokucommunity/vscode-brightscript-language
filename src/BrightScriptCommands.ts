@@ -55,8 +55,8 @@ export class BrightScriptCommands {
             this.activeDeviceManager.refresh();
         });
 
-        this.registerCommand('rescanDevices', async () => {
-            await this.activeDeviceManager.discoverAll();
+        this.registerCommand('rescanDevices', () => {
+            this.activeDeviceManager.refresh(true);
         });
 
         this.registerCommand('sendRemoteText', async () => {

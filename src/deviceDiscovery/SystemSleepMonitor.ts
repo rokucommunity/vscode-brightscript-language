@@ -5,8 +5,8 @@ export class SystemSleepMonitor {
 
     private timer: NodeJS.Timeout | null = null;
     private lastExecutionTime = 0;
-    private interval = 60000; // 1 minute
-    private gapThreshold = 120000; // 2 minutes
+    private interval = 1 * 60 * 1_000; // 1 minute
+    private gapThreshold = 2 * 60 * 1_000; // 2 minutes
 
     constructor(private onSleepDetected: () => void) { }
 
@@ -24,11 +24,12 @@ export class SystemSleepMonitor {
 
     private scheduleNext(): void {
         this.timer = setTimeout(() => {
-            if (Date.now() - this.lastExecutionTime > this.gapThreshold) {
+            const lastExecutionTime = this.lastExecutionTime;
+            this.lastExecutionTime = Date.now();
+            this.scheduleNext(); // Schedule next execution before calling callback to ensure consistent intervals
+            if (Date.now() - lastExecutionTime > this.gapThreshold) {
                 this.onSleepDetected();
             }
-            this.lastExecutionTime = Date.now();
-            this.scheduleNext();
         }, this.interval);
     }
 }

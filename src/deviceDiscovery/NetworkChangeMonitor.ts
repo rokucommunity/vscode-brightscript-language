@@ -28,16 +28,16 @@ export function getNetworkHash(): string {
  */
 export class NetworkChangeMonitor {
 
-    private previousIps = new Set<string>();
     private onNetworkChanged: () => void;
     private timer: NodeJS.Timeout | null = null;
     private lastExecutionTime = 0;
-    private interval = 180000; // 3 minutes
+    private interval = 3 * 60 * 1_000; // 3 minutes
+    private previousNetworkHash = '';
 
     constructor(onNetworkChanged: () => void) {
         this.onNetworkChanged = onNetworkChanged;
         // Take initial snapshot
-        this.previousIps = this.getCurrentIps();
+        this.previousNetworkHash = getNetworkHash();
     }
 
     public start(): void {
@@ -56,14 +56,6 @@ export class NetworkChangeMonitor {
         }
     }
 
-    public onFocusGain(): void {
-        this.start();
-    }
-
-    public onFocusLost(): void {
-        this.stop();
-    }
-
     private executeTask() {
         this.doWork();
         this.lastExecutionTime = Date.now();
@@ -72,43 +64,15 @@ export class NetworkChangeMonitor {
 
     private setTimer() {
         this.stop(); // Ensure no existing timer is running
-        this.timer = setTimeout(() => this.executeTask(), this.interval);
+        this.timer = setTimeout(() => this.executeTask(), this.interval - (Date.now() - this.lastExecutionTime));
     }
 
     private doWork() {
-        const currentIps = this.getCurrentIps();
-
-        // Check if IPs changed
-        const added = [...currentIps].filter(ip => !this.previousIps.has(ip));
-        const removed = [...this.previousIps].filter(ip => !currentIps.has(ip));
-
-        if (added.length > 0 || removed.length > 0) {
-            this.onNetworkChanged();
+        const currentNetworkHash = getNetworkHash();
+        if (currentNetworkHash === this.previousNetworkHash) {
+            return; // No change detected
         }
-
-        this.previousIps = currentIps;
-    }
-
-    /**
-     * Get current IPv4 addresses, excluding loopback and link-local
-     */
-    private getCurrentIps(): Set<string> {
-        const ips = new Set<string>();
-        const interfaces = os.networkInterfaces();
-
-        for (const name of Object.keys(interfaces)) {
-            for (const net of interfaces[name] ?? []) {
-                // Skip non-IPv4, internal (loopback), and link-local addresses
-                if (
-                    net.family === 'IPv4' &&
-                    !net.internal &&
-                    !net.address.startsWith('169.254.') // link-local
-                ) {
-                    ips.add(net.address);
-                }
-            }
-        }
-
-        return ips;
+        this.onNetworkChanged();
+        this.previousNetworkHash = currentNetworkHash;
     }
 }

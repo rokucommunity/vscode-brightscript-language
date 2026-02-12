@@ -3,7 +3,7 @@ import * as sinon from 'sinon';
 import * as os from 'os';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 
-const DEFAULT_TIMEOUT = 180000; // 3 minutes
+const DEFAULT_TIMEOUT = 3 * 60 * 1_000; // 3 minutes
 
 describe('NetworkChangeMonitor', () => {
     let networkInterfacesStub: sinon.SinonStub;
@@ -204,39 +204,6 @@ describe('NetworkChangeMonitor', () => {
                 expect(callback.called).to.be.false;
             });
 
-            it('excludes link-local addresses (169.254.x.x)', () => {
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '192.168.1.100',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-
-                // Add a link-local address - should be ignored
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '192.168.1.100',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }],
-                    'en1': [{
-                        address: '169.254.1.1',
-                        netmask: '255.255.0.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(DEFAULT_TIMEOUT);
-
-                expect(callback.called).to.be.false;
-            });
         });
 
         describe('stop', () => {
@@ -264,47 +231,6 @@ describe('NetworkChangeMonitor', () => {
             it('is safe to call when not started', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 expect(() => monitor.stop()).to.not.throw();
-            });
-        });
-
-        describe('focus handling', () => {
-            it('onFocusGain starts monitoring', () => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.onFocusGain();
-
-                // Change the network
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.50',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(DEFAULT_TIMEOUT);
-
-                expect(callback.calledOnce).to.be.true;
-            });
-
-            it('onFocusLost stops monitoring', () => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-                monitor.onFocusLost();
-
-                // Change the network
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.50',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(DEFAULT_TIMEOUT);
-
-                expect(callback.called).to.be.false;
             });
         });
     });

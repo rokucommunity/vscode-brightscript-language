@@ -53,70 +53,63 @@ describe('ActiveDeviceManager', () => {
         sinon.restore();
     });
 
-    describe('needsFutureBroadcast', () => {
-        it('emits event when changed from false to true', () => {
+    describe('setScanNeeded', () => {
+        it('emits event when scanNeeded is false', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
-            manager.on('need-future-broadcast', eventSpy);
+            manager.on('scanNeeded-changed', eventSpy);
 
-            manager.needsFutureBroadcast = true;
+            manager.setScanNeeded();
 
             expect(eventSpy.calledOnce).to.be.true;
         });
 
-        it('does not emit event when changed from true to true', () => {
+        it('does not emit event when scanNeeded is already true', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
-            manager.needsFutureBroadcast = true; // Set to true first
+            manager.setScanNeeded(); // Set to true first
 
             const eventSpy = sinon.spy();
-            manager.on('need-future-broadcast', eventSpy);
+            manager.on('scanNeeded-changed', eventSpy);
 
-            manager.needsFutureBroadcast = true; // Set to true again
+            manager.setScanNeeded(); // Set to true again
 
             expect(eventSpy.called).to.be.false;
         });
 
-        it('does not emit event when changed from true to false', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
-            manager.needsFutureBroadcast = true;
-
-            const eventSpy = sinon.spy();
-            manager.on('need-future-broadcast', eventSpy);
-
-            manager.needsFutureBroadcast = false;
-
-            expect(eventSpy.called).to.be.false;
-        });
-
-        it('does not emit event when changed from false to false', () => {
+        it('emits event again after refresh resets the flag', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
-            manager.on('need-future-broadcast', eventSpy);
+            manager.on('scanNeeded-changed', eventSpy);
 
-            manager.needsFutureBroadcast = false;
+            manager.setScanNeeded();
+            expect(eventSpy.calledOnce).to.be.true;
 
-            expect(eventSpy.called).to.be.false;
+            // refresh() clears the scanNeeded flag internally
+            manager.refresh(true);
+
+            manager.setScanNeeded();
+            expect(eventSpy.calledTwice).to.be.true;
         });
     });
 
-    describe('timeSinceLastBroadcast', () => {
+    describe('timeSinceLastScan', () => {
         it('returns 0 when no broadcast has occurred', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
-            expect(manager.timeSinceLastBroadcast).to.equal(0);
+            expect(manager.timeSinceLastScan).to.equal(0);
         });
 
-        it('returns elapsed time after discoverAll', () => {
+        it('returns elapsed time after refresh', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new ActiveDeviceManager(mockGlobalStateManager);
 
-                manager.discoverAll();
+                manager.refresh(true);
 
-                clock.tick(5000);
+                clock.tick(5_000);
 
-                expect(manager.timeSinceLastBroadcast).to.be.greaterThanOrEqual(5000);
+                expect(manager.timeSinceLastScan).to.be.greaterThanOrEqual(5_000);
             } finally {
                 clock.restore();
             }
@@ -135,23 +128,24 @@ describe('ActiveDeviceManager', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
 
             const handler = sinon.spy();
-            const unsubscribe = manager.on('need-future-broadcast', handler);
+            const unsubscribe = manager.on('scanNeeded-changed', handler);
 
-            manager.needsFutureBroadcast = true;
+            manager.setScanNeeded();
             expect(handler.calledOnce).to.be.true;
 
             unsubscribe();
 
-            manager.needsFutureBroadcast = false;
-            manager.needsFutureBroadcast = true;
-            expect(handler.calledOnce).to.be.true; // Still just one call
+            // Reset via refresh and try again
+            manager.refresh(true);
+            manager.setScanNeeded();
+            expect(handler.calledOnce).to.be.true; // Still just one call (unsubscribed)
         });
 
         it('adds to disposables array if provided', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
 
             const disposables: any[] = [];
-            manager.on('need-future-broadcast', () => { }, disposables);
+            manager.on('scanNeeded-changed', () => { }, disposables);
 
             expect(disposables.length).to.equal(1);
             expect(disposables[0]).to.have.property('dispose');
@@ -229,25 +223,35 @@ describe('ActiveDeviceManager', () => {
         });
     });
 
-    describe('discoverAll', () => {
-        it('sets needsFutureBroadcast to false', () => {
+    describe('refresh', () => {
+        it('resets scanNeeded flag (allows event to fire again)', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
-            manager.needsFutureBroadcast = true;
 
-            manager.discoverAll();
+            const eventSpy = sinon.spy();
+            manager.on('scanNeeded-changed', eventSpy);
 
-            expect(manager.needsFutureBroadcast).to.be.false;
+            manager.setScanNeeded();
+            expect(eventSpy.calledOnce).to.be.true;
+
+            // Before refresh, calling setScanNeeded again should not emit
+            manager.setScanNeeded();
+            expect(eventSpy.calledOnce).to.be.true;
+
+            // After refresh, the flag is reset so event should fire again
+            manager.refresh(true);
+            manager.setScanNeeded();
+            expect(eventSpy.calledTwice).to.be.true;
         });
 
-        it('sets lastBroadcastDate', () => {
+        it('sets lastScanDate', () => {
             manager = new ActiveDeviceManager(mockGlobalStateManager);
 
-            expect(manager.timeSinceLastBroadcast).to.equal(0);
+            expect(manager.timeSinceLastScan).to.equal(0);
 
-            manager.discoverAll();
+            manager.refresh(true);
 
-            // After discoverAll, timeSinceLastBroadcast should be very small (just happened)
-            expect(manager.timeSinceLastBroadcast).to.be.lessThan(100);
+            // After refresh, timeSinceLastScan should be very small (just happened)
+            expect(manager.timeSinceLastScan).to.be.lessThan(100);
         });
     });
 
@@ -281,7 +285,7 @@ describe('ActiveDeviceManager', () => {
                 expect(checkHealthSpy.calledOnce).to.be.true;
 
                 // Advance past cooldown (5 minutes)
-                clock.tick((5 * 60 * 1000) + 1);
+                clock.tick((5 * 60 * 1_000) + 1);
 
                 // Second call - should check again
                 await manager.checkDeviceHealthIfStale(device);
@@ -307,9 +311,9 @@ describe('ActiveDeviceManager', () => {
         });
     });
 
-    describe('BROADCAST_STALE_THRESHOLD_MS', () => {
+    describe('STALE_SCAN_THRESHOLD_MS', () => {
         it('is 30 minutes', () => {
-            expect(ActiveDeviceManager.BROADCAST_STALE_THRESHOLD_MS).to.equal(30 * 60 * 1000);
+            expect(ActiveDeviceManager.STALE_SCAN_THRESHOLD_MS).to.equal(30 * 60 * 1_000);
         });
     });
 });
