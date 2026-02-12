@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -15,24 +15,19 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     public readonly id = ViewProviderId.onlineDevicesView;
 
     constructor(
-        private activeDeviceManager: ActiveDeviceManager
+        private deviceManager: DeviceManager
     ) {
         this.devices = [];
-        this.activeDeviceManager.on('device-found', newDevice => {
-            this.devices = this.activeDeviceManager.getActiveDevices();
+        this.deviceManager.on('devices-changed', () => {
+            this.devices = this.deviceManager.getActiveDevices();
             this._onDidChangeTreeData.fire(null);
         });
 
-        this.activeDeviceManager.on('device-expired', device => {
-            this.devices = this.activeDeviceManager.getActiveDevices();
-            this._onDidChangeTreeData.fire(null);
-        });
-
-        this.activeDeviceManager.on('scanNeeded-changed', () => {
+        this.deviceManager.on('scanNeeded-changed', () => {
             if (!this.visible) {
                 return;
             }
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh();
         });
     }
 
@@ -44,7 +39,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             if (!this.visible) {
                 return;
             }
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh();
         });
     }
 
@@ -78,7 +73,20 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                         device.deviceInfo
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
-                    treeItem.iconPath = icons.getDeviceType(device);
+
+                    // Set icon based on device state
+                    if (device.deviceState === 'pending') {
+                        treeItem.description = '$(loading~spin)';
+                        treeItem.iconPath = new vscode.ThemeIcon('circle-outline');
+                    } else if (device.deviceState === 'offline') {
+                        treeItem.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('errorForeground'));
+                    } else {
+                        treeItem.iconPath = icons.getDeviceType(device);
+                    }
+
+                    // Enable inline refresh button on hover
+                    treeItem.contextValue = 'device';
+
                     items.push(treeItem);
                 }
 
@@ -117,7 +125,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
             const device = this.findDeviceById(element.key);
             if (device) {
-                this.activeDeviceManager.checkDeviceHealthIfStale(device).catch(() => { });
+                this.deviceManager.checkDeviceHealthIfStale(device).catch(() => { });
             }
 
             if (device.deviceInfo['is-tv']) {

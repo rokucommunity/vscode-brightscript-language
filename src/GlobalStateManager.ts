@@ -14,7 +14,8 @@ export class GlobalStateManager {
         sendRemoteTextHistory: 'sendRemoteTextHistory',
         debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
-        knownDeviceIpsByNetwork: 'knownDeviceIpsByNetwork'
+        lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
+        deviceCache: 'deviceCache'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -68,47 +69,77 @@ export class GlobalStateManager {
         }
     }
 
-    public getKnownDeviceIpsByNetwork(network: string): string[] {
-        const networks = this.context.globalState.get<Record<string, KnownNetworkEntry>>(this.keys.knownDeviceIpsByNetwork) || {};
-        const ips = networks[network]?.ips || [];
-        if (ips.length !== 0) {
-            networks[network] = { ips: ips, lastSeen: Date.now() };
-            void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, this.expireOldKnownDeviceIps(networks));
+    public getLastSeenDeviceIds(network: string): string[] {
+        const networks = this.context.globalState.get<Record<string, LastSeenNetworkEntry>>(this.keys.lastSeenDevicesByNetwork) || {};
+        const deviceIds = networks[network]?.deviceIds || [];
+        if (deviceIds.length !== 0) {
+            networks[network] = { deviceIds: deviceIds, lastSeen: Date.now() };
+            void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, this.expireOldLastSeenNetworks(networks));
         }
-        return ips;
+        return deviceIds;
     }
 
-    private setKnownDeviceIpsByNetwork(network: string, ips: string[]) {
-        const networks = this.context.globalState.get<Record<string, KnownNetworkEntry>>(this.keys.knownDeviceIpsByNetwork) || {};
-        if (ips.length === 0) {
+    private setLastSeenDeviceIds(network: string, deviceIds: string[]) {
+        const networks = this.context.globalState.get<Record<string, LastSeenNetworkEntry>>(this.keys.lastSeenDevicesByNetwork) || {};
+        if (deviceIds.length === 0) {
             delete networks[network];
         } else {
-            networks[network] = { ips: ips, lastSeen: Date.now() };
+            networks[network] = { deviceIds: deviceIds, lastSeen: Date.now() };
         }
-        void this.context.globalState.update(this.keys.knownDeviceIpsByNetwork, networks);
+        void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, networks);
     }
 
-    public addKnownDeviceIp(network: string, ip: string) {
-        const ips = this.getKnownDeviceIpsByNetwork(network);
-        if (!ips.includes(ip)) {
-            ips.push(ip);
-            this.setKnownDeviceIpsByNetwork(network, ips);
-        }
-    }
-
-    public removeKnownDeviceIp(network: string, ip: string) {
-        const ips = this.getKnownDeviceIpsByNetwork(network);
-        if (ips.includes(ip)) {
-            this.setKnownDeviceIpsByNetwork(network, ips.filter((knownIp) => knownIp !== ip));
+    public addLastSeenDevice(network: string, deviceId: string) {
+        const deviceIds = this.getLastSeenDeviceIds(network);
+        if (!deviceIds.includes(deviceId)) {
+            deviceIds.push(deviceId);
+            this.setLastSeenDeviceIds(network, deviceIds);
         }
     }
 
-    private KNOWN_NETWORK_ENTRY_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
+    public removeLastSeenDevice(network: string, deviceId: string) {
+        const deviceIds = this.getLastSeenDeviceIds(network);
+        if (deviceIds.includes(deviceId)) {
+            this.setLastSeenDeviceIds(network, deviceIds.filter((id) => id !== deviceId));
+        }
+    }
 
-    private expireOldKnownDeviceIps(networks: Record<string, KnownNetworkEntry>): Record<string, KnownNetworkEntry> {
+    // #region Device Cache
+
+    /**
+     * Get cached device details by deviceId
+     */
+    public getCachedDevice(deviceId: string): CachedDevice | undefined {
+        const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
+        return cache[deviceId];
+    }
+
+    /**
+     * Cache device details for future sessions
+     */
+    public setCachedDevice(deviceId: string, device: CachedDevice): void {
+        const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
+        cache[deviceId] = device;
+        void this.context.globalState.update(this.keys.deviceCache, cache);
+    }
+
+    /**
+     * Remove a device from the cache
+     */
+    public removeCachedDevice(deviceId: string): void {
+        const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
+        delete cache[deviceId];
+        void this.context.globalState.update(this.keys.deviceCache, cache);
+    }
+
+    // #endregion Device Cache
+
+    private LAST_SEEN_NETWORK_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
+
+    private expireOldLastSeenNetworks(networks: Record<string, LastSeenNetworkEntry>): Record<string, LastSeenNetworkEntry> {
         const now = Date.now();
         for (const network in networks) {
-            if (now - networks[network].lastSeen > this.KNOWN_NETWORK_ENTRY_EXPIRATION) {
+            if (now - networks[network].lastSeen > this.LAST_SEEN_NETWORK_EXPIRATION) {
                 delete networks[network];
             }
         }
@@ -126,7 +157,17 @@ export class GlobalStateManager {
     }
 }
 
-interface KnownNetworkEntry {
-    ips: string[];
+interface LastSeenNetworkEntry {
+    deviceIds: string[];
     lastSeen: number;
+}
+
+/**
+ * Cached device details (RokuDeviceDetails without transient deviceState)
+ */
+export interface CachedDevice {
+    location: string;
+    id: string;
+    ip: string;
+    deviceInfo: Record<string, any>;
 }

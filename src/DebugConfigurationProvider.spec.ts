@@ -9,7 +9,7 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { GlobalStateManager } from './GlobalStateManager';
 import { rokuDeploy } from 'roku-deploy';
 
@@ -44,19 +44,18 @@ describe('BrightScriptConfigurationProvider', () => {
             index: 0
         };
 
-        //prevent the ActiveDeviceManager from actually running
-        sinon.stub(ActiveDeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupDeviceCache').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        //prevent the DeviceManager from actually running
+        sinon.stub(DeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
         let globalStateManager = new GlobalStateManager(vscode.context);
-        let activeDeviceManager = new ActiveDeviceManager(globalStateManager);
-        userInputManager = new UserInputManager(activeDeviceManager);
+        let deviceManager = new DeviceManager(globalStateManager);
+        userInputManager = new UserInputManager(deviceManager);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
-            activeDeviceManager,
+            deviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
             userInputManager,

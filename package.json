@@ -376,6 +376,13 @@
                     "group": "navigation@2"
                 }
             ],
+            "view/item/context": [
+                {
+                    "command": "extension.brightscript.refreshDevice",
+                    "when": "view == onlineDevicesView && viewItem == device",
+                    "group": "inline"
+                }
+            ],
             "webview/context": [
                 {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
@@ -3037,6 +3044,12 @@
             {
                 "command": "extension.brightscript.refreshDeviceList",
                 "title": "Refresh",
+                "category": "BrightScript",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.refreshDevice",
+                "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
             },

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { RokuDeviceDetails } from './deviceDiscovery/ActiveDeviceManager';
+import type { RokuDeviceDetails } from './deviceDiscovery/DeviceManager';
 
 export const icons = {
     streamingStick: {

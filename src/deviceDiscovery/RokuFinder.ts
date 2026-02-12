@@ -3,7 +3,7 @@ import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
 import * as vscode from 'vscode';
 import { rokuDeploy } from 'roku-deploy';
-import type { RokuDeviceDetails } from './ActiveDeviceManager';
+import type { RokuDeviceDetails } from './DeviceManager';
 
 export class RokuFinder extends EventEmitter {
 
@@ -70,7 +70,7 @@ export class RokuFinder extends EventEmitter {
         if (!this.focused && this.queuedNotifications.length > 0) {
             for (const notification of this.queuedNotifications) {
                 if (notification.type === 'found') {
-                    this.emit('found', notification.device);
+                    this.emit('found', notification.device, notification.options);
                 } else {
                     this.emit('lost', notification.hostname);
                 }
@@ -93,7 +93,7 @@ export class RokuFinder extends EventEmitter {
         if (LOCATION && ST?.includes('roku')) {
             const device = await this.fetchDeviceDetails(LOCATION);
             if (device) {
-                this.emit('found', device);
+                this.emit('found', device, { isAlive: false });
             }
         }
     }
@@ -134,7 +134,7 @@ export class RokuFinder extends EventEmitter {
         if (nts === 'ssdp:alive' && location) {
             const device = await this.fetchDeviceDetails(location);
             if (device) {
-                this.emitOrQueue('found', device.ip, device);
+                this.emitOrQueue('found', device.ip, device, { isAlive: true });
             }
         }
     }
@@ -163,6 +163,7 @@ export class RokuFinder extends EventEmitter {
                     location: url.origin,
                     ip: url.hostname,
                     id: deviceInfo['device-id']?.toString?.(),
+                    deviceState: 'online',
                     deviceInfo: deviceInfo as any
                 };
             }
@@ -176,26 +177,31 @@ export class RokuFinder extends EventEmitter {
     /**
      * Emit an event immediately if focused, otherwise queue it for later
      */
-    private emitOrQueue(type: 'found', hostname: string, device: RokuDeviceDetails): void;
+    private emitOrQueue(type: 'found', hostname: string, device: RokuDeviceDetails, options: FoundEventOptions): void;
     private emitOrQueue(type: 'lost', hostname: string): void;
-    private emitOrQueue(type: 'found' | 'lost', hostname: string, device?: RokuDeviceDetails): void {
+    private emitOrQueue(type: 'found' | 'lost', hostname: string, device?: RokuDeviceDetails, options?: FoundEventOptions): void {
         // Remove any existing notification for this hostname
         this.queuedNotifications = this.queuedNotifications.filter(n => n.hostname !== hostname);
 
         if (this.focused) {
             if (type === 'found') {
-                this.emit('found', device);
+                this.emit('found', device, options);
             } else {
                 this.emit('lost', hostname);
             }
         } else {
-            this.queuedNotifications.push({ type: type, hostname: hostname, device: device });
+            this.queuedNotifications.push({ type: type, hostname: hostname, device: device, options: options });
         }
     }
+}
+
+export interface FoundEventOptions {
+    isAlive: boolean;
 }
 
 interface QueuedNotification {
     type: 'found' | 'lost';
     hostname: string;
     device?: RokuDeviceDetails;
+    options?: FoundEventOptions;
 }

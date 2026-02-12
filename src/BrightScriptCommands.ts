@@ -10,7 +10,7 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
@@ -23,7 +23,7 @@ export class BrightScriptCommands {
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
+        private deviceManager: DeviceManager,
         private userInputManager: UserInputManager,
         private localPackageManager: LocalPackageManager
     ) {
@@ -52,11 +52,19 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh();
         });
 
         this.registerCommand('rescanDevices', () => {
-            this.activeDeviceManager.refresh(true);
+            this.deviceManager.refresh(true);
+        });
+
+        // Refresh a single device (inline button on hover in devices panel)
+        this.registerCommand('refreshDevice', async (item: { key: string }) => {
+            const device = this.deviceManager.getDeviceById(item.key);
+            if (device) {
+                await this.deviceManager.checkDeviceHealth(device);
+            }
         });
 
         this.registerCommand('sendRemoteText', async () => {

@@ -4,7 +4,7 @@ import { extensions } from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
-import { ActiveDeviceManager } from './deviceDiscovery/ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
@@ -71,9 +71,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        let activeDeviceManager = new ActiveDeviceManager(this.globalStateManager);
+        let deviceManager = new DeviceManager(this.globalStateManager);
         let userInputManager = new UserInputManager(
-            activeDeviceManager
+            deviceManager
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
@@ -81,7 +81,7 @@ export class Extension {
             this.remoteControlManager,
             this.whatsNewManager,
             context,
-            activeDeviceManager,
+            deviceManager,
             userInputManager,
             localPackageManager
         );
@@ -117,7 +117,7 @@ export class Extension {
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
+        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(deviceManager);
         const onlineDevicesTreeView = vscode.window.createTreeView(ViewProviderId.onlineDevicesView, {
             treeDataProvider: onlineDevicesViewProvider
         });
@@ -149,7 +149,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, deviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

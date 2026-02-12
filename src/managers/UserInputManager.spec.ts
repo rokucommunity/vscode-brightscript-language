@@ -2,12 +2,12 @@ import { expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
 import { QuickPickItemKind } from 'vscode';
-import { UserInputManager, manualHostItemId } from './UserInputManager';
+import { UserInputManager, manualHostItemId, scanForDevicesItemId } from './UserInputManager';
 import { vscode } from '../mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import type { RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
-import { ActiveDeviceManager } from '../deviceDiscovery/ActiveDeviceManager';
+import type { RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
+import { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import { GlobalStateManager } from '../GlobalStateManager';
 import { icons } from '../icons';
 
@@ -33,15 +33,14 @@ describe('UserInputManager', () => {
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
 
-        //prevent the ActiveDeviceManager from actually running
-        sinon.stub(ActiveDeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupDeviceCache').callsFake(() => { });
-        sinon.stub(ActiveDeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        //prevent the DeviceManager from actually running
+        sinon.stub(DeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
         let globalStateManager = new GlobalStateManager(vscode.context);
-        let activeDeviceManager = new ActiveDeviceManager(globalStateManager);
-        userInputManager = new UserInputManager(activeDeviceManager);
+        let deviceManager = new DeviceManager(globalStateManager);
+        userInputManager = new UserInputManager(deviceManager);
     });
 
     afterEach(() => {
@@ -59,7 +58,8 @@ describe('UserInputManager', () => {
             },
             id: '1',
             ip: '1.1.1.1',
-            location: '???'
+            location: '???',
+            deviceState: 'online'
         }, {
             deviceInfo: {
                 'user-device-name': 'roku2',
@@ -69,7 +69,8 @@ describe('UserInputManager', () => {
             },
             id: '2',
             ip: '1.1.1.2',
-            location: '???'
+            location: '???',
+            deviceState: 'online'
         }, {
             deviceInfo: {
                 'user-device-name': 'roku3',
@@ -79,20 +80,28 @@ describe('UserInputManager', () => {
             },
             id: '3',
             ip: '1.1.1.3',
-            location: '???'
+            location: '???',
+            deviceState: 'online'
         }];
         function label(device: RokuDeviceDetails) {
             return `${device.deviceInfo['model-number']} – ${device.deviceInfo['user-device-name']} – OS ${device.deviceInfo['software-version']} – ${device.ip}`;
         }
 
-        it('includes "manual', () => {
+        it('includes "manual" and "scan" options', () => {
             expect(
                 userInputManager['createHostQuickPickList']([], undefined)
             ).to.eql([{
                 label: 'Enter manually',
                 device: {
                     id: manualHostItemId
-                }
+                },
+                iconPath: new vscode.ThemeIcon('keyboard')
+            }, {
+                label: 'Scan for devices',
+                device: {
+                    id: scanForDevicesItemId
+                },
+                iconPath: new vscode.ThemeIcon('radio-tower')
             }]);
         });
 
@@ -116,7 +125,14 @@ describe('UserInputManager', () => {
                     label: 'Enter manually',
                     device: {
                         id: manualHostItemId
-                    }
+                    },
+                    iconPath: new vscode.ThemeIcon('keyboard')
+                }, {
+                    label: 'Scan for devices',
+                    device: {
+                        id: scanForDevicesItemId
+                    },
+                    iconPath: new vscode.ThemeIcon('radio-tower')
                 }]
             );
         });
@@ -131,11 +147,12 @@ describe('UserInputManager', () => {
                 label(devices[0]),
                 label(devices[2]),
                 ' ',
-                'Enter manually'
+                'Enter manually',
+                'Scan for devices'
             ]);
         });
 
-        it('includes the spinner text when "last used" and "other devices" separators are both present', () => {
+        it('includes action items when "last used" and "other devices" separators are both present', () => {
             expect(
                 userInputManager['createHostQuickPickList'](devices, devices[1]).map(x => x.label)
             ).to.eql([
@@ -145,11 +162,12 @@ describe('UserInputManager', () => {
                 label(devices[0]),
                 label(devices[2]),
                 ' ',
-                'Enter manually'
+                'Enter manually',
+                'Scan for devices'
             ]);
         });
 
-        it('includes the spinner text if "devices" separator is present', () => {
+        it('includes action items when "devices" separator is present', () => {
             expect(
                 userInputManager['createHostQuickPickList'](devices, null).map(x => x.label)
             ).to.eql([
@@ -158,26 +176,29 @@ describe('UserInputManager', () => {
                 label(devices[1]),
                 label(devices[2]),
                 ' ',
-                'Enter manually'
+                'Enter manually',
+                'Scan for devices'
             ]);
         });
 
-        it('includes the spinner text if only "last used" separator is present', () => {
+        it('includes action items when only "last used" separator is present', () => {
             expect(
                 userInputManager['createHostQuickPickList']([devices[0]], devices[0]).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[0]),
                 ' ',
-                'Enter manually'
+                'Enter manually',
+                'Scan for devices'
             ]);
         });
 
-        it('includes the spinner text when no other device entries are present', () => {
+        it('includes action items when no devices are present', () => {
             expect(
                 userInputManager['createHostQuickPickList']([], null).map(x => x.label)
             ).to.eql([
-                'Enter manually'
+                'Enter manually',
+                'Scan for devices'
             ]);
         });
     });

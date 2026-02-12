@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { vscode } from '../mockVscode.spec';
-import type { RokuDeviceDetails } from './ActiveDeviceManager';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { RokuDeviceDetails } from './DeviceManager';
+import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 
-describe('ActiveDeviceManager', () => {
-    let manager: ActiveDeviceManager;
+describe('DeviceManager', () => {
+    let manager: DeviceManager;
     let mockGlobalStateManager: any;
 
     function createMockDevice(overrides: Partial<RokuDeviceDetails> & { deviceInfo?: Partial<RokuDeviceDetails['deviceInfo']> } = {}): RokuDeviceDetails {
@@ -14,6 +14,7 @@ describe('ActiveDeviceManager', () => {
             location: 'http://192.168.1.100:8060',
             ip: '192.168.1.100',
             id: 'device-123',
+            deviceState: 'online',
             deviceInfo: {
                 'default-device-name': 'Roku Express',
                 'device-id': 'device-123',
@@ -28,9 +29,12 @@ describe('ActiveDeviceManager', () => {
     beforeEach(() => {
         // Mock GlobalStateManager
         mockGlobalStateManager = {
-            getKnownDeviceIpsByNetwork: sinon.stub().returns([]),
-            addKnownDeviceIp: sinon.stub(),
-            removeKnownDeviceIp: sinon.stub()
+            getLastSeenDeviceIds: sinon.stub().returns([]),
+            addLastSeenDevice: sinon.stub(),
+            removeLastSeenDevice: sinon.stub(),
+            getCachedDevice: sinon.stub().returns(undefined),
+            setCachedDevice: sinon.stub(),
+            removeCachedDevice: sinon.stub()
         };
 
         // Mock vscode configuration
@@ -55,7 +59,7 @@ describe('ActiveDeviceManager', () => {
 
     describe('setScanNeeded', () => {
         it('emits event when scanNeeded is false', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
             manager.on('scanNeeded-changed', eventSpy);
@@ -66,7 +70,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('does not emit event when scanNeeded is already true', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
             manager.setScanNeeded(); // Set to true first
 
             const eventSpy = sinon.spy();
@@ -78,7 +82,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('emits event again after refresh resets the flag', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
             manager.on('scanNeeded-changed', eventSpy);
@@ -96,14 +100,14 @@ describe('ActiveDeviceManager', () => {
 
     describe('timeSinceLastScan', () => {
         it('returns 0 when no broadcast has occurred', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
             expect(manager.timeSinceLastScan).to.equal(0);
         });
 
         it('returns elapsed time after refresh', () => {
             const clock = sinon.useFakeTimers();
             try {
-                manager = new ActiveDeviceManager(mockGlobalStateManager);
+                manager = new DeviceManager(mockGlobalStateManager);
 
                 manager.refresh(true);
 
@@ -118,14 +122,14 @@ describe('ActiveDeviceManager', () => {
 
     describe('timeSinceLastDiscoveredDevice', () => {
         it('returns 0 when no device has been discovered', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
             expect(manager.timeSinceLastDiscoveredDevice).to.equal(0);
         });
     });
 
     describe('on', () => {
         it('registers handler and returns unsubscribe function', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const handler = sinon.spy();
             const unsubscribe = manager.on('scanNeeded-changed', handler);
@@ -142,7 +146,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('adds to disposables array if provided', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const disposables: any[] = [];
             manager.on('scanNeeded-changed', () => { }, disposables);
@@ -154,12 +158,12 @@ describe('ActiveDeviceManager', () => {
 
     describe('getActiveDevices', () => {
         it('returns empty array when no devices', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
             expect(manager.getActiveDevices()).to.deep.equal([]);
         });
 
         it('sets firstRequestForDevices to false', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
             expect(manager.firstRequestForDevices).to.be.true;
 
             manager.getActiveDevices();
@@ -168,7 +172,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('sorts devices: sticks first, then boxes, then TVs', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const tv = createMockDevice({
                 id: 'tv-1',
@@ -184,9 +188,9 @@ describe('ActiveDeviceManager', () => {
             });
 
             // Add devices in wrong order
-            manager['deviceCache'].set(tv.id, tv);
-            manager['deviceCache'].set(box.id, box);
-            manager['deviceCache'].set(stick.id, stick);
+            manager['devices'].push(tv);
+            manager['devices'].push(box);
+            manager['devices'].push(stick);
 
             const devices = manager.getActiveDevices();
 
@@ -196,7 +200,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('sorts by name within same form factor', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const boxB = createMockDevice({
                 id: 'box-b',
@@ -211,9 +215,9 @@ describe('ActiveDeviceManager', () => {
                 deviceInfo: { 'default-device-name': 'Roku C', 'is-tv': false, 'is-stick': false }
             });
 
-            manager['deviceCache'].set(boxB.id, boxB);
-            manager['deviceCache'].set(boxC.id, boxC);
-            manager['deviceCache'].set(boxA.id, boxA);
+            manager['devices'].push(boxB);
+            manager['devices'].push(boxC);
+            manager['devices'].push(boxA);
 
             const devices = manager.getActiveDevices();
 
@@ -225,7 +229,7 @@ describe('ActiveDeviceManager', () => {
 
     describe('refresh', () => {
         it('resets scanNeeded flag (allows event to fire again)', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const eventSpy = sinon.spy();
             manager.on('scanNeeded-changed', eventSpy);
@@ -244,7 +248,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('sets lastScanDate', () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             expect(manager.timeSinceLastScan).to.equal(0);
 
@@ -257,7 +261,7 @@ describe('ActiveDeviceManager', () => {
 
     describe('checkDeviceHealthIfStale', () => {
         it('skips check if within cooldown period', async () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
             const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
@@ -275,7 +279,7 @@ describe('ActiveDeviceManager', () => {
             // Start at non-zero time so first check triggers (now - 0 > cooldown)
             const clock = sinon.useFakeTimers(Date.now());
             try {
-                manager = new ActiveDeviceManager(mockGlobalStateManager);
+                manager = new DeviceManager(mockGlobalStateManager);
 
                 const device = createMockDevice();
                 const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
@@ -296,7 +300,7 @@ describe('ActiveDeviceManager', () => {
         });
 
         it('returns true without checking if within cooldown', async () => {
-            manager = new ActiveDeviceManager(mockGlobalStateManager);
+            manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
             sinon.stub(manager, 'checkDeviceHealth').resolves(false);
@@ -313,7 +317,213 @@ describe('ActiveDeviceManager', () => {
 
     describe('STALE_SCAN_THRESHOLD_MS', () => {
         it('is 30 minutes', () => {
-            expect(ActiveDeviceManager.STALE_SCAN_THRESHOLD_MS).to.equal(30 * 60 * 1_000);
+            expect(DeviceManager.STALE_SCAN_THRESHOLD_MS).to.equal(30 * 60 * 1_000);
+        });
+    });
+
+    describe('scan events', () => {
+        it('emits scan-started when scan begins', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const scanStartedSpy = sinon.spy();
+                manager.on('scan-started', scanStartedSpy);
+
+                manager.refresh(true);
+
+                expect(scanStartedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits scan-ended after min duration and settle time', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const scanEndedSpy = sinon.spy();
+                manager.on('scan-ended', scanEndedSpy);
+
+                manager.refresh(true);
+
+                // Not ended yet - neither timer has fired
+                expect(scanEndedSpy.called).to.be.false;
+
+                // Advance past settle time (1.5s) but not min time (3s)
+                clock.tick(1_500);
+                expect(scanEndedSpy.called).to.be.false;
+
+                // Advance to min time (3s total) - settle already fired, now min fires
+                clock.tick(1_500);
+                expect(scanEndedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('waits for settle timer even after min duration', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const scanEndedSpy = sinon.spy();
+                manager.on('scan-ended', scanEndedSpy);
+
+                manager.refresh(true);
+
+                // Add device at 2.9s to reset settle timer (before min time fires at 3s)
+                clock.tick(2_900);
+                manager['upsertDevice'](createMockDevice({ id: 'new-device' }));
+
+                // Min timer fires at 3s, but settle timer was reset to 2.9s + 1.5s = 4.4s
+                clock.tick(100); // Now at 3s
+                expect(scanEndedSpy.called).to.be.false; // Still waiting for settle
+
+                // Advance to just before new settle timer fires
+                clock.tick(1_400); // Now at 4.4s
+                expect(scanEndedSpy.calledOnce).to.be.true; // Settle fired, scan ends
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not start new scan if already scanning', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const scanStartedSpy = sinon.spy();
+                manager.on('scan-started', scanStartedSpy);
+
+                manager.refresh(true);
+                expect(scanStartedSpy.calledOnce).to.be.true;
+
+                // Try to start another scan while one is in progress
+                manager.refresh(true);
+                expect(scanStartedSpy.calledOnce).to.be.true; // Still just one call
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('can start new scan after previous scan ends', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const scanStartedSpy = sinon.spy();
+                const scanEndedSpy = sinon.spy();
+                manager.on('scan-started', scanStartedSpy);
+                manager.on('scan-ended', scanEndedSpy);
+
+                manager.refresh(true);
+                expect(scanStartedSpy.calledOnce).to.be.true;
+
+                // Complete the scan
+                clock.tick(3_000); // min + settle both complete
+                expect(scanEndedSpy.calledOnce).to.be.true;
+
+                // Now can start a new scan
+                manager.refresh(true);
+                expect(scanStartedSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
+    describe('devices-changed event', () => {
+        it('emits when device is added', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                manager['upsertDevice'](createMockDevice());
+
+                // Event is debounced, so not fired immediately
+                expect(devicesChangedSpy.called).to.be.false;
+
+                // Advance past debounce time (100ms)
+                clock.tick(100);
+                expect(devicesChangedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits when device is removed', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                // Add a device first
+                const device = createMockDevice();
+                manager['devices'].push(device);
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                manager['removeDevice'](device.id);
+
+                // Advance past debounce time
+                clock.tick(100);
+                expect(devicesChangedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('debounces multiple rapid changes into single event', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                // Add multiple devices rapidly
+                manager['upsertDevice'](createMockDevice({ id: 'device-1' }));
+                clock.tick(50); // 50ms - within debounce window
+                manager['upsertDevice'](createMockDevice({ id: 'device-2' }));
+                clock.tick(50); // 100ms total, but debounce reset at 50ms
+                manager['upsertDevice'](createMockDevice({ id: 'device-3' }));
+
+                // Still within debounce window from last upsert
+                expect(devicesChangedSpy.called).to.be.false;
+
+                // Advance past debounce time from last upsert
+                clock.tick(100);
+                expect(devicesChangedSpy.calledOnce).to.be.true; // Only one event
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not emit when window is not focused', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: false };
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                manager['upsertDevice'](createMockDevice());
+
+                clock.tick(100);
+                expect(devicesChangedSpy.called).to.be.false;
+            } finally {
+                clock.restore();
+            }
         });
     });
 });

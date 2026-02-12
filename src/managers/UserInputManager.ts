@@ -4,7 +4,7 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { ActiveDeviceManager, RokuDeviceDetails } from '../deviceDiscovery/ActiveDeviceManager';
+import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 
 /**
@@ -17,14 +17,11 @@ const manualLabel = 'Enter manually';
  */
 export const scanForDevicesItemId = `${Number.MAX_SAFE_INTEGER - 1}`;
 const scanForDevicesLabel = 'Scan for devices';
-const scanningForDevicesLabel = 'Scanning...';
-
-const scanForDeviceBusyTime = 5_000;
 
 export class UserInputManager {
 
     public constructor(
-        private activeDeviceManager: ActiveDeviceManager
+        private deviceManager: DeviceManager
     ) { }
 
     public async promptForHostManual() {
@@ -46,21 +43,20 @@ export class UserInputManager {
 
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.activeDeviceManager.refresh();
-        let isScanning = false;
-        this.activeDeviceManager.on('scanNeeded-changed', () => {
+        let hasScanned = this.deviceManager.refresh();
+        this.deviceManager.on('scanNeeded-changed', () => {
             hasScanned = true;
             if (scanTimeoutId) {
                 clearTimeout(scanTimeoutId);
                 scanTimeoutId = null;
             }
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh();
         }, disposables);
         scanTimeoutId = setTimeout(() => {
             if (hasScanned) {
                 return;
             }
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh();
         }, scanTimeoutMs);
 
         //create the quickpick item
@@ -84,29 +80,18 @@ export class UserInputManager {
                 } else {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
-                    } else if (selectedDevice.label === scanningForDevicesLabel) {
-                        // do nothing if they click the "Scanning..." item since that is just a status and not actionable
-                        return;
                     } else if (selectedDevice.label === scanForDevicesLabel) {
-                        isScanning = true;
-                        quickPick.busy = true;
-                        refreshList();
-                        this.activeDeviceManager.refresh(true);
-                        setTimeout(() => {
-                            isScanning = false;
-                            quickPick.busy = false;
-                            refreshList();
-                        }, scanForDeviceBusyTime);
+                        this.deviceManager.refresh(true);
                         return;
                     } else {
                         const device = (selectedDevice as any).device as RokuDeviceDetails;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
-                        const isHealthy = await this.activeDeviceManager.checkDeviceHealth(device);
+                        const isHealthy = await this.deviceManager.checkDeviceHealth(device);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
                             return;
                         }
-                        this.activeDeviceManager.lastUsedDevice = device;
+                        this.deviceManager.lastUsedDevice = device;
                         deferred.resolve(device);
                     }
                     quickPick.dispose();
@@ -152,10 +137,9 @@ export class UserInputManager {
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
-                this.activeDeviceManager.getActiveDevices(),
-                this.activeDeviceManager.lastUsedDevice,
-                itemCache,
-                isScanning
+                this.deviceManager.getActiveDevices(),
+                this.deviceManager.lastUsedDevice,
+                itemCache
             );
             quickPick.items = items;
             quickPick.buttons = [
@@ -177,9 +161,17 @@ export class UserInputManager {
             // quickPick.show();
         };
 
-        //anytime the device picker adds/removes a device, update the list
-        this.activeDeviceManager.on('device-found', refreshList, disposables);
-        this.activeDeviceManager.on('device-expired', refreshList, disposables);
+        //anytime the device list changes, update the list
+        this.deviceManager.on('devices-changed', refreshList, disposables);
+
+        // Show busy indicator during scan
+        this.deviceManager.on('scan-started', () => {
+            quickPick.busy = true;
+        }, disposables);
+
+        this.deviceManager.on('scan-ended', () => {
+            quickPick.busy = false;
+        }, disposables);
 
         quickPick.onDidHide(() => {
             dispose();
@@ -188,15 +180,7 @@ export class UserInputManager {
 
         quickPick.onDidTriggerButton(button => {
             if (button.tooltip === 'Scan for devices') {
-                isScanning = true;
-                quickPick.busy = true;
-                refreshList();
-                this.activeDeviceManager.refresh(true);
-                setTimeout(() => {
-                    isScanning = false;
-                    quickPick.busy = false;
-                    refreshList();
-                }, scanForDeviceBusyTime);
+                this.deviceManager.refresh(true);
             }
         });
 
@@ -231,8 +215,7 @@ export class UserInputManager {
     private createHostQuickPickList(
         devices: RokuDeviceDetails[],
         lastUsedDevice: RokuDeviceDetails,
-        cache = new Map<string, QuickPickHostItem>(),
-        isScanning = false
+        cache = new Map<string, QuickPickHostItem>()
     ) {
         //the collection of items we will eventually return
         let items: QuickPickHostItem[] = [];

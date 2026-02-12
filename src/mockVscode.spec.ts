@@ -409,6 +409,9 @@ export let vscode = {
         public value: string;
     },
     ThemeColor: class { },
+    ThemeIcon: class {
+        constructor(public id: string, public color?: any) { }
+    },
     Uri: {
         file: (src: string) => {
             return {
