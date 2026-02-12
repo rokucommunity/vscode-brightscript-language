@@ -132,6 +132,20 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.deviceCache, cache);
     }
 
+    /**
+     * Clear all cached devices
+     */
+    public clearDeviceCache(): void {
+        void this.context.globalState.update(this.keys.deviceCache, undefined);
+    }
+
+    /**
+     * Clear all last seen devices for all networks
+     */
+    public clearLastSeenDevices(): void {
+        void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, undefined);
+    }
+
     // #endregion Device Cache
 
     private LAST_SEEN_NETWORK_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days

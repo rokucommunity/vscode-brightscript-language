@@ -328,6 +328,17 @@ export class BrightScriptCommands {
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
         });
 
+        // Test commands for device discovery
+        this.registerCommand('clearDeviceCache', async () => {
+            new GlobalStateManager(this.context).clearDeviceCache();
+            await vscode.window.showInformationMessage('Device cache cleared');
+        });
+
+        this.registerCommand('clearLastSeenDevices', async () => {
+            new GlobalStateManager(this.context).clearLastSeenDevices();
+            await vscode.window.showInformationMessage('Last seen devices cleared');
+        });
+
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
                 if (util.isNullish(value)) {

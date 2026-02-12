@@ -2797,6 +2797,18 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.clearDeviceCache",
+                "title": "Clear Device Cache",
+                "description": "Clear cached device information used for device discovery.",
+                "category": "Brightscript"
+            },
+            {
+                "command": "extension.brightscript.clearLastSeenDevices",
+                "title": "Clear Last Seen Devices",
+                "description": "Clear the list of last seen devices for all networks.",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.clearActiveDevice",
                 "title": "Clear Active Device",
                 "description": "Clear the BrightScript extension's active device.",
