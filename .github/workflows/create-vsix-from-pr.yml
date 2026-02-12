@@ -3,7 +3,7 @@ on:
     types: [labeled, unlabeled, synchronize]
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: contains(github.event.pull_request.labels.*.name, 'create-vsix')
     steps:
       # Get a bot token so the bot's name shows up on all our actions
@@ -21,7 +21,7 @@ jobs:
         id: create-vsix
         with:
           workflow: create-vsix
-          ref: master
+          ref: rsg
           wait-for-completion: true
           display-workflow-run-url: true
           repo: rokucommunity/vscode-brightscript-language
