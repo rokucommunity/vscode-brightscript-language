@@ -65,7 +65,7 @@ export class DeviceManager {
 
     public get timeSinceLastScan(): number {
         if (!this.lastScanDate) {
-            return 0;
+            return Infinity; // Never scanned, so always stale
         }
         return Date.now() - this.lastScanDate.getTime();
     }

@@ -99,9 +99,9 @@ describe('DeviceManager', () => {
     });
 
     describe('timeSinceLastScan', () => {
-        it('returns 0 when no broadcast has occurred', () => {
+        it('returns Infinity when no scan has occurred', () => {
             manager = new DeviceManager(mockGlobalStateManager);
-            expect(manager.timeSinceLastScan).to.equal(0);
+            expect(manager.timeSinceLastScan).to.equal(Infinity);
         });
 
         it('returns elapsed time after refresh', () => {
@@ -250,7 +250,7 @@ describe('DeviceManager', () => {
         it('sets lastScanDate', () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
-            expect(manager.timeSinceLastScan).to.equal(0);
+            expect(manager.timeSinceLastScan).to.equal(Infinity);
 
             manager.refresh(true);
 
