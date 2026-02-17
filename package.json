@@ -90,7 +90,8 @@
         "undent": "^0.1.0",
         "uuid": "^9.0.1",
         "vscode-languageclient": "^7.0.0",
-        "vscode-uri": "^1.0.6"
+        "vscode-uri": "^1.0.8",
+        "xml2js": "^0.6.2"
     },
     "devDependencies": {
         "@deboxsoft/cpx": "^1.5.0",
@@ -151,7 +152,8 @@
     "activationEvents": [
         "onLanguage:xml",
         "workspaceContains:**/manifest",
-        "workspaceContains:**/bsconfig.json"
+        "workspaceContains:**/bsconfig.json",
+        "onDebug"
     ],
     "contributes": {
         "viewsContainers": {
@@ -168,6 +170,13 @@
                 {
                     "id": "onlineDevicesView",
                     "name": "Devices"
+                }
+            ],
+            "explorer": [
+                {
+                    "type": "webview",
+                    "id": "rokuPerfettoControlWebviewView",
+                    "name": "Perfetto Control"
                 }
             ],
             "debug": [
@@ -230,6 +239,16 @@
                 }
             ],
             "debug/toolBar": [
+                {
+                    "command": "extension.brightscript.startTracing",
+                    "group": "navigation@100",
+                    "when": "inDebugMode && !brightscript.tracingActive"
+                },
+                {
+                    "command": "extension.brightscript.stopTracing",
+                    "group": "navigation@100",
+                    "when": "inDebugMode && brightscript.tracingActive"
+                },
                 {
                     "command": "extension.brightscript.captureSnapshot",
                     "group": "navigation@100",
@@ -401,6 +420,21 @@
             ],
             "commandPalette": []
         },
+        "customEditors": [
+            {
+                "viewType": "perfTraceViewer.editor",
+                "displayName": "Performance Trace Viewer",
+                "selector": [
+                {
+                    "filenamePattern": "*.pftrace"
+                },
+                {
+                    "filenamePattern": "*.perfetto-trace"
+                }
+                ],
+                "priority": "default"
+            }
+        ],
         "breakpoints": [
             {
                 "language": "brightscript"
@@ -921,6 +955,46 @@
                                 "type": "boolean",
                                 "description": "If true, will terminate the debug session if app exit is detected. This option is ignored when enableDebugProtocol is set to true. This currently relies on 9.1+ launch beacon notifications, so will not work on a pre 9.1 device.",
                                 "default": true
+                            },
+                            "profiling": {
+                                "type": "object",
+                                "description": "Configuration for profiling functionality",
+                                "default": {
+                                    "perfettoEvent": {
+                                        "enable": true,
+                                        "dir": "${workspaceFolder}/profiling",
+                                        "filename": "${appTitle}_${timestamp}.perfetto-trace",
+                                        "connectOnStart": false
+                                    }
+                                },
+                                "properties": {
+                                    "perfettoEvent": {
+                                        "type": "object",
+                                        "description": "Configuration for Perfetto event profiling",
+                                        "properties": {
+                                            "enable": {
+                                                "type": "boolean",
+                                                "description": "Should Perfetto event profiling be enabled",
+                                                "default": true
+                                            },
+                                            "dir": {
+                                                "type": "string",
+                                                "description": "Directory where profile files should be stored",
+                                                "default": "${workspaceFolder}/profiling"
+                                            },
+                                            "filename": {
+                                                "type": "string",
+                                                "description": "The name of the profile file. Can include variables like ${appTitle} and ${timestamp}",
+                                                "default": "${appTitle}_${timestamp}.perfetto-trace"
+                                            },
+                                            "connectOnStart": {
+                                                "type": "boolean",
+                                                "description": "Should profiling connect automatically on debug session start",
+                                                "default": false
+                                            }
+                                        }
+                                    }
+                                }
                             },
                             "enableSourceMaps": {
                                 "type": "boolean",
@@ -2425,6 +2499,47 @@
                         "default": true,
                         "scope": "resource"
                     },
+                    "brightscript.debug.profiling": {
+                        "type": "object",
+                        "description": "Configuration for profiling functionality",
+                        "default": {
+                            "perfettoEvent": {
+                                "enable": true,
+                                "dir": "${workspaceFolder}/profiling",
+                                "filename": "${appTitle}_${timestamp}.perfetto-trace",
+                                "connectOnStart": false
+                            }
+                        },
+                        "properties": {
+                            "perfettoEvent": {
+                                "type": "object",
+                                "description": "Configuration for Perfetto event profiling",
+                                "properties": {
+                                    "enable": {
+                                        "type": "boolean",
+                                        "description": "Should Perfetto event profiling be enabled",
+                                        "default": true
+                                    },
+                                    "dir": {
+                                        "type": "string",
+                                        "description": "Directory where profile files should be stored",
+                                        "default": "${workspaceFolder}/profiling"
+                                    },
+                                    "filename": {
+                                        "type": "string",
+                                        "description": "The name of the profile file. Can include variables like ${appTitle} and ${timestamp}",
+                                        "default": "${appTitle}_${timestamp}.perfetto-trace"
+                                    },
+                                    "connectOnStart": {
+                                        "type": "boolean",
+                                        "description": "Should profiling connect automatically on debug session start",
+                                        "default": false
+                                    }
+                                }
+                            }
+                        },
+                        "scope": "resource"
+                    },
                     "brightscript.debug.packagePort": {
                         "type": "number",
                         "description": "The port used for package-related requests. This is mainly used for things like emulators, or when your roku is behind a firewall with a port-forward.",
@@ -2704,6 +2819,16 @@
             }
         ],
         "commands": [
+            {
+                "command": "extension.brightscript.startTracing",
+                "title": "Start Perfetto Tracing",
+                "icon": "./images/icons/record-red.svg"
+            },
+            {
+                "command": "extension.brightscript.stopTracing",
+                "title": "Stop Perfetto Tracing",
+                "icon": "./images/icons/stop-tracing.svg"
+            },
             {
                 "command": "extension.brightscript.captureSnapshot",
                 "title": "Capture heap snapshot",

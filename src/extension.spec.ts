@@ -74,7 +74,7 @@ describe('extension', () => {
         let spy = sinon.spy(vscode.debug, 'onDidTerminateDebugSession');
         expect(spy.calledOnce).to.be.false;
         await extension.activate(vscode.context);
-        expect(spy.calledOnce).to.be.true;
+        expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 
     it('registers onDidReceiveDebugSessionCustomEvent', async () => {

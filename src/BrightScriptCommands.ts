@@ -17,6 +17,7 @@ import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { heapSnapshotCommands } from './HeapSnapshotCommand';
+import { perfettoControlCommands } from './PerfettoControlCommands';
 
 export class BrightScriptCommands {
 
@@ -45,6 +46,9 @@ export class BrightScriptCommands {
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
         clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
         heapSnapshotCommands.registerHeapSnapshotCommands(this.context);
+        perfettoControlCommands.registerPerfettoControlCommands(
+            this.context
+        );
 
         this.registerGeneralCommands();
 

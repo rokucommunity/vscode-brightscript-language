@@ -1,0 +1,25 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="16"
+  height="16"
+  viewBox="0 0 24 24"
+  fill="none"
+>
+  <!-- Outer circle (20% thicker) -->
+  <circle
+    cx="12"
+    cy="12"
+    r="10"
+    stroke="#8B0000"
+    stroke-width="2.4"
+    fill="none"
+  />
+
+  <!-- Inner filled circle (bigger) -->
+  <circle
+    cx="12"
+    cy="12"
+    r="6"
+    fill="#8B0000"
+  />
+</svg>

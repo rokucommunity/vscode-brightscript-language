@@ -326,7 +326,6 @@ export class RekeyAndPackageCommand {
         }
     }
 
-
     private async packageFromRokuDeploy(rokuDeployOptions) {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
@@ -361,13 +360,19 @@ export class RekeyAndPackageCommand {
             selectedConfig = configurations[selectedIndex];
         }
 
+        let workspacePath = await this.brightScriptCommands.getWorkspacePath();
         if (selectedConfig.rootDir?.includes('${workspaceFolder}')) {
-            await this.brightScriptCommands.getWorkspacePath();
-            let workspacePath = this.brightScriptCommands.workspacePath;
-
             selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', workspacePath));
         }
         rokuDeployOptions.packageConfig = 'launch.json: ' + selectedConfig.rootDir;
+
+        if (selectedConfig?.profiling?.perfettoEvent?.dir?.includes('${workspaceFolder}')) {
+            selectedConfig.profiling.perfettoEvent.dir = path.normalize(selectedConfig.profiling.perfettoEvent.dir.replace('${workspaceFolder}', workspacePath));
+        }
+
+        if (selectedConfig?.profiling?.perfettoEvent && !selectedConfig.profiling.perfettoEvent.dir) {
+            selectedConfig.profiling.perfettoEvent.dir = `${workspacePath}/profiling`;
+        }
 
         if (!selectedConfig.host.includes('${')) {
             rokuDeployOptions.host = selectedConfig.host;
