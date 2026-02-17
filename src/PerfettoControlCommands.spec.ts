@@ -123,9 +123,6 @@ describe('PerfettoControlCommands', () => {
 
             await onDidReceiveDebugSessionCustomEventCallback(event);
 
-            expect((vscode.window.showInformationMessage as sinon.SinonStub).calledWith(
-                'Heap snapshot captured successfully!'
-            )).to.be.true;
             expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
                 'setContext',
                 'brightscript.capturingSnapshot',

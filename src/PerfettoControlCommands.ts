@@ -26,7 +26,6 @@ export class PerfettoControlCommands {
                             false
                         );
                     } else if (status === 'snapshotCaptured') {
-                        vscode.window.showInformationMessage('Heap snapshot captured successfully!');
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.capturingSnapshot',
