@@ -9,7 +9,7 @@ export class PerfettoControlCommands {
         context.subscriptions.push(
             vscode.debug.onDidReceiveDebugSessionCustomEvent(async (event) => {
 
-                // Handle Perfetto tracing events (started, stopped, errors, unexpected close, etc.)
+                // Handle Perfetto tracing events (started, stopped, errors, unexpected close, snapshotCaptured, etc.)
                 if (event.event === 'PerfettoTracingEvent') {
                     const { status, message } = event.body;
                     if (status === 'started') {
@@ -23,6 +23,13 @@ export class PerfettoControlCommands {
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.tracingActive',
+                            false
+                        );
+                    } else if (status === 'snapshotCaptured') {
+                        vscode.window.showInformationMessage('Heap snapshot captured successfully!');
+                        await vscode.commands.executeCommand(
+                            'setContext',
+                            'brightscript.capturingSnapshot',
                             false
                         );
                     }
@@ -98,6 +105,40 @@ export class PerfettoControlCommands {
                         void vscode.window.showErrorMessage(`Failed to stop tracing: ${e?.message || e}`);
                     }
                 }
+            )
+        );
+
+        // Start capturing snapshot
+        context.subscriptions.push(
+            vscode.commands.registerCommand(
+                'extension.brightscript.captureSnapshot',
+                async () => {
+                    const session = vscode.debug.activeDebugSession;
+
+                    if (!session) {
+                        void vscode.window.showErrorMessage('No active debug session');
+                        return;
+                    }
+
+                    try {
+                        await session.customRequest('captureSnapshot');
+                        await vscode.commands.executeCommand(
+                            'setContext',
+                            'brightscript.capturingSnapshot',
+                            true
+                        );
+                    } catch (e) {
+                        void vscode.window.showErrorMessage(`Failed to capture snapshot: ${e?.message || e}`);
+                    }
+                }
+            )
+        );
+
+        // Register capturing snapshot button (disabled, shows "Capturing snapshot..." tooltip when clicked)
+        context.subscriptions.push(
+            vscode.commands.registerCommand(
+                'extension.brightscript.capturingSnapshot',
+                () => {}
             )
         );
     }

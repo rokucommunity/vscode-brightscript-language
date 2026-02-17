@@ -61,9 +61,11 @@ describe('PerfettoControlCommands', () => {
         it('registers all event listeners and commands', () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
-            expect(mockContext.subscriptions.length).to.equal(4);
+            expect(mockContext.subscriptions.length).to.equal(6);
             expect(registeredCommands.has('extension.brightscript.startTracing')).to.be.true;
             expect(registeredCommands.has('extension.brightscript.stopTracing')).to.be.true;
+            expect(registeredCommands.has('extension.brightscript.captureSnapshot')).to.be.true;
+            expect(registeredCommands.has('extension.brightscript.capturingSnapshot')).to.be.true;
         });
     });
 
@@ -106,6 +108,28 @@ describe('PerfettoControlCommands', () => {
 
             expect((vscode.window.showWarningMessage as sinon.SinonStub).calledWith(
                 'Perfetto tracing closed: WebSocket closed unexpectedly'
+            )).to.be.true;
+        });
+
+        it('shows info message and resets capturingSnapshot context on snapshotCaptured status', async () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+
+            const event = {
+                event: 'PerfettoTracingEvent',
+                body: {
+                    status: 'snapshotCaptured'
+                }
+            };
+
+            await onDidReceiveDebugSessionCustomEventCallback(event);
+
+            expect((vscode.window.showInformationMessage as sinon.SinonStub).calledWith(
+                'Heap snapshot captured successfully!'
+            )).to.be.true;
+            expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
+                'setContext',
+                'brightscript.capturingSnapshot',
+                false
             )).to.be.true;
         });
     });
@@ -292,6 +316,81 @@ describe('PerfettoControlCommands', () => {
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
                 'Failed to stop tracing: Session terminated'
             )).to.be.true;
+        });
+    });
+
+    describe('captureSnapshot command', () => {
+        it('shows error when no active debug session', async () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+            (vscode.debug as any).activeDebugSession = undefined;
+
+            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
+            await captureSnapshotCommand();
+
+            expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
+                'No active debug session'
+            )).to.be.true;
+        });
+
+        it('captures snapshot and sets context', async () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+
+            const mockSession = {
+                customRequest: sinon.stub().resolves({ message: 'Snapshot captured' })
+            };
+            (vscode.debug as any).activeDebugSession = mockSession;
+
+            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
+            await captureSnapshotCommand();
+
+            expect(mockSession.customRequest.calledWith('captureSnapshot')).to.be.true;
+            expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
+                'setContext',
+                'brightscript.capturingSnapshot',
+                true
+            )).to.be.true;
+        });
+
+        it('shows error when capture snapshot fails with exception', async () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+
+            const mockSession = {
+                customRequest: sinon.stub().rejects(new Error('Tracing not active'))
+            };
+            (vscode.debug as any).activeDebugSession = mockSession;
+
+            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
+            await captureSnapshotCommand();
+
+            expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
+                'Failed to capture snapshot: Tracing not active'
+            )).to.be.true;
+        });
+
+        it('shows error when customRequest throws', async () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+
+            const mockSession = {
+                customRequest: sinon.stub().rejects(new Error('WebSocket not connected'))
+            };
+            (vscode.debug as any).activeDebugSession = mockSession;
+
+            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
+            await captureSnapshotCommand();
+
+            expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
+                'Failed to capture snapshot: WebSocket not connected'
+            )).to.be.true;
+        });
+    });
+
+    describe('capturingSnapshot command', () => {
+        it('does nothing (disabled button placeholder)', () => {
+            perfettoControlCommands.registerPerfettoControlCommands(mockContext);
+
+            const capturingSnapshotCommand = registeredCommands.get('extension.brightscript.capturingSnapshot');
+            // Should not throw
+            capturingSnapshotCommand();
         });
     });
 });
