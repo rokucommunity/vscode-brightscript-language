@@ -64,7 +64,7 @@ describe('PerfettoControlCommands', () => {
             expect(mockContext.subscriptions.length).to.equal(6);
             expect(registeredCommands.has('extension.brightscript.startTracing')).to.be.true;
             expect(registeredCommands.has('extension.brightscript.stopTracing')).to.be.true;
-            expect(registeredCommands.has('extension.brightscript.captureSnapshot')).to.be.true;
+            expect(registeredCommands.has('extension.brightscript.captureHeapSnapshot')).to.be.true;
             expect(registeredCommands.has('extension.brightscript.capturingSnapshot')).to.be.true;
         });
     });
@@ -111,13 +111,13 @@ describe('PerfettoControlCommands', () => {
             )).to.be.true;
         });
 
-        it('shows info message and resets capturingSnapshot context on snapshotCaptured status', async () => {
+        it('shows info message and resets capturingSnapshot context on heapSnapshotCaptured status', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
             const event = {
                 event: 'PerfettoTracingEvent',
                 body: {
-                    status: 'snapshotCaptured'
+                    status: 'heapSnapshotCaptured'
                 }
             };
 
@@ -316,13 +316,13 @@ describe('PerfettoControlCommands', () => {
         });
     });
 
-    describe('captureSnapshot command', () => {
+    describe('captureHeapSnapshot command', () => {
         it('shows error when no active debug session', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
             (vscode.debug as any).activeDebugSession = undefined;
 
-            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
-            await captureSnapshotCommand();
+            const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
+            await captureHeapSnapshotCommand();
 
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
                 'No active debug session'
@@ -337,10 +337,10 @@ describe('PerfettoControlCommands', () => {
             };
             (vscode.debug as any).activeDebugSession = mockSession;
 
-            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
-            await captureSnapshotCommand();
+            const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
+            await captureHeapSnapshotCommand();
 
-            expect(mockSession.customRequest.calledWith('captureSnapshot')).to.be.true;
+            expect(mockSession.customRequest.calledWith('captureHeapSnapshot')).to.be.true;
             expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
                 'setContext',
                 'brightscript.capturingSnapshot',
@@ -356,8 +356,8 @@ describe('PerfettoControlCommands', () => {
             };
             (vscode.debug as any).activeDebugSession = mockSession;
 
-            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
-            await captureSnapshotCommand();
+            const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
+            await captureHeapSnapshotCommand();
 
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
                 'Failed to capture snapshot: Tracing not active'
@@ -372,8 +372,8 @@ describe('PerfettoControlCommands', () => {
             };
             (vscode.debug as any).activeDebugSession = mockSession;
 
-            const captureSnapshotCommand = registeredCommands.get('extension.brightscript.captureSnapshot');
-            await captureSnapshotCommand();
+            const captureHeapSnapshotCommand = registeredCommands.get('extension.brightscript.captureHeapSnapshot');
+            await captureHeapSnapshotCommand();
 
             expect((vscode.window.showErrorMessage as sinon.SinonStub).calledWith(
                 'Failed to capture snapshot: WebSocket not connected'

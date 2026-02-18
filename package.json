@@ -250,7 +250,7 @@
                     "when": "inDebugMode && brightscript.tracingActive"
                 },
                 {
-                    "command": "extension.brightscript.captureSnapshot",
+                    "command": "extension.brightscript.captureHeapSnapshot",
                     "group": "navigation@101",
                     "when": "inDebugMode && brightscript.tracingActive && !brightscript.capturingSnapshot"
                 },
@@ -425,12 +425,12 @@
                 "viewType": "perfTraceViewer.editor",
                 "displayName": "Performance Trace Viewer",
                 "selector": [
-                {
-                    "filenamePattern": "*.pftrace"
-                },
-                {
-                    "filenamePattern": "*.perfetto-trace"
-                }
+                    {
+                        "filenamePattern": "*.pftrace"
+                    },
+                    {
+                        "filenamePattern": "*.perfetto-trace"
+                    }
                 ],
                 "priority": "default"
             }
@@ -2830,7 +2830,7 @@
                 "icon": "./images/icons/stop-tracing.svg"
             },
             {
-                "command": "extension.brightscript.captureSnapshot",
+                "command": "extension.brightscript.captureHeapSnapshot",
                 "title": "Capture heap snapshot",
                 "icon": "./images/icons/capture-snapshot.svg"
             },

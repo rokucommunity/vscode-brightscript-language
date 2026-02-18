@@ -9,7 +9,7 @@ export class PerfettoControlCommands {
         context.subscriptions.push(
             vscode.debug.onDidReceiveDebugSessionCustomEvent(async (event) => {
 
-                // Handle Perfetto tracing events (started, stopped, errors, unexpected close, snapshotCaptured, etc.)
+                // Handle Perfetto tracing events (started, stopped, errors, unexpected close, heapSnapshotCaptured, etc.)
                 if (event.event === 'PerfettoTracingEvent') {
                     const { status, message } = event.body;
                     if (status === 'started') {
@@ -25,12 +25,14 @@ export class PerfettoControlCommands {
                             'brightscript.tracingActive',
                             false
                         );
-                    } else if (status === 'snapshotCaptured') {
+                    } else if (status === 'heapSnapshotCaptured') {
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.capturingSnapshot',
                             false
                         );
+                    } else if (status === 'enableError') {
+                        void vscode.window.showErrorMessage(`Failed to enable Perfetto tracing: ${message}`);
                     }
                 }
             })
@@ -41,7 +43,7 @@ export class PerfettoControlCommands {
             vscode.debug.onDidTerminateDebugSession(async (session) => {
                 if (session.type === 'brightscript') {
                     try {
-                        await session.customRequest('stopTracing');
+                        await session.customRequest('stopPerfettoTracing');
                     } catch (e) {
                         console.log('Could not stop tracing on session end:', e);
                     }
@@ -67,7 +69,7 @@ export class PerfettoControlCommands {
                     }
 
                     try {
-                        await session.customRequest('startTracing');
+                        await session.customRequest('startPerfettoTracing');
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.tracingActive',
@@ -93,7 +95,7 @@ export class PerfettoControlCommands {
                     }
 
                     try {
-                        await session.customRequest('stopTracing');
+                        await session.customRequest('stopPerfettoTracing');
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.tracingActive',
@@ -110,7 +112,7 @@ export class PerfettoControlCommands {
         // Start capturing snapshot
         context.subscriptions.push(
             vscode.commands.registerCommand(
-                'extension.brightscript.captureSnapshot',
+                'extension.brightscript.captureHeapSnapshot',
                 async () => {
                     const session = vscode.debug.activeDebugSession;
 
@@ -120,7 +122,7 @@ export class PerfettoControlCommands {
                     }
 
                     try {
-                        await session.customRequest('captureSnapshot');
+                        await session.customRequest('captureHeapSnapshot');
                         await vscode.commands.executeCommand(
                             'setContext',
                             'brightscript.capturingSnapshot',
