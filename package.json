@@ -960,7 +960,7 @@
                                 "type": "object",
                                 "description": "Configuration for profiling functionality",
                                 "default": {
-                                    "perfettoEvent": {
+                                    "tracing": {
                                         "enable": true,
                                         "dir": "${workspaceFolder}/profiling",
                                         "filename": "${appTitle}_${timestamp}.perfetto-trace",
@@ -968,7 +968,7 @@
                                     }
                                 },
                                 "properties": {
-                                    "perfettoEvent": {
+                                    "tracing": {
                                         "type": "object",
                                         "description": "Configuration for Perfetto event profiling",
                                         "properties": {
@@ -2503,7 +2503,7 @@
                         "type": "object",
                         "description": "Configuration for profiling functionality",
                         "default": {
-                            "perfettoEvent": {
+                            "tracing": {
                                 "enable": true,
                                 "dir": "${workspaceFolder}/profiling",
                                 "filename": "${appTitle}_${timestamp}.perfetto-trace",
@@ -2511,7 +2511,7 @@
                             }
                         },
                         "properties": {
-                            "perfettoEvent": {
+                            "tracing": {
                                 "type": "object",
                                 "description": "Configuration for Perfetto event profiling",
                                 "properties": {

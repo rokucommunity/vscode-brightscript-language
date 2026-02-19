@@ -64,7 +64,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         enableDebuggerAutoRecovery: false,
         stopDebuggerOnAppExit: false,
         profiling: {
-            perfettoEvent: {
+            tracing: {
                 enable: true,
                 dir: '${workspaceFolder}/profiling',
                 filename: '${appTitle}_${timestamp}.perfetto-trace',

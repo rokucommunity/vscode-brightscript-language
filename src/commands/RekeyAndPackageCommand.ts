@@ -366,12 +366,12 @@ export class RekeyAndPackageCommand {
         }
         rokuDeployOptions.packageConfig = 'launch.json: ' + selectedConfig.rootDir;
 
-        if (selectedConfig?.profiling?.perfettoEvent?.dir?.includes('${workspaceFolder}')) {
-            selectedConfig.profiling.perfettoEvent.dir = path.normalize(selectedConfig.profiling.perfettoEvent.dir.replace('${workspaceFolder}', workspacePath));
+        if (selectedConfig?.profiling?.tracing?.dir?.includes('${workspaceFolder}')) {
+            selectedConfig.profiling.tracing.dir = path.normalize(selectedConfig.profiling.tracing.dir.replace('${workspaceFolder}', workspacePath));
         }
 
-        if (selectedConfig?.profiling?.perfettoEvent && !selectedConfig.profiling.perfettoEvent.dir) {
-            selectedConfig.profiling.perfettoEvent.dir = `${workspacePath}/profiling`;
+        if (selectedConfig?.profiling?.tracing && !selectedConfig.profiling.tracing.dir) {
+            selectedConfig.profiling.tracing.dir = `${workspacePath}/profiling`;
         }
 
         if (!selectedConfig.host.includes('${')) {
