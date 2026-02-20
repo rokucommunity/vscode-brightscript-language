@@ -184,19 +184,7 @@ export class Extension {
         sceneGraphDebugCommands.registerCommands(context, this.sceneGraphDebugChannel);
 
         vscode.debug.onDidStartDebugSession(this.onDidStartDebugSession.bind(this));
-
-        vscode.debug.onDidTerminateDebugSession((e) => {
-            //if this is a brightscript debug session
-            if (e.type === 'brightscript') {
-                this.chanperfStatusBar.hide();
-                const config = e.configuration as BrightScriptLaunchConfiguration;
-                if (config.remoteControlMode?.deactivateOnSessionEnd) {
-                    void this.remoteControlManager.setRemoteControlMode(false, 'launch');
-                }
-                this.webviewViewProviderManager.onDidTerminateDebugSession(e);
-            }
-            this.diagnosticManager.clear();
-        });
+        vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession.bind(this));
 
         let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
@@ -221,28 +209,54 @@ export class Extension {
         //await languageServerPromise;
     }
 
-    private onDidStartDebugSession(e: vscode.DebugSession) {
+    private onDidStartDebugSession(debugSession: DebugSessionWithLinks) {
         //if this is a brightscript debug session
-        if (e.type === 'brightscript') {
+        if (debugSession.type === 'brightscript') {
             this.logOutputManager.onDidStartDebugSession();
-            this.webviewViewProviderManager.onDidStartDebugSession(e);
+            this.webviewViewProviderManager.onDidStartDebugSession(debugSession);
+            const configuration = debugSession.configuration as BrightScriptLaunchConfiguration;
 
-            const tsPath = this.getTsPath(e.configuration.rootDir);
+            const tsPath = this.getTsPath(configuration.rootDir);
             if (tsPath) {
-                this.attachJsDebugger(e.configuration as any, tsPath).catch(e => console.error(e));
+                this.attachJsDebugger(debugSession as any, tsPath).catch(e => console.error(e));
+            }
+            this.diagnosticManager.clear();
+        }
+
+        //if this session has linked sessions, set up the reverse link
+        if (debugSession.configuration.linkedSessions?.size > 0) {
+            for (const linkedSession of debugSession.configuration.linkedSessions) {
+                //attach this new session to all its linked session
+                linkedSession.configuration.linkedSessions ??= new Set<DebugSessionWithLinks>();
+                linkedSession.configuration.linkedSessions.add(debugSession);
             }
         }
+    }
+
+    private async onDidTerminateDebugSession(debugSession: DebugSessionWithLinks) {
+        //if this is a brightscript debug session
+        if (debugSession.type === 'brightscript') {
+            this.chanperfStatusBar.hide();
+            const config = debugSession.configuration as BrightScriptLaunchConfiguration;
+            if (config.remoteControlMode?.deactivateOnSessionEnd) {
+                void this.remoteControlManager.setRemoteControlMode(false, 'launch');
+            }
+            this.webviewViewProviderManager.onDidTerminateDebugSession(debugSession);
+        }
         this.diagnosticManager.clear();
+
+        //terminate any linked debug sessions
+        for (const linkedSession of debugSession.configuration?.linkedSessions ?? []) {
+            try {
+                await vscode.debug.stopDebugging(linkedSession);
+            } catch (e) {
+                console.error(`Error stopping linked debug session with id ${linkedSession.id}`, e);
+            }
+        }
     }
 
-    private getTsPath(rootDir: string) {
-        const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
-        // https://regex101.com/r/qgLxGh/1
-        const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
-        return tsPath?.[1]?.trim();
-    }
-
-    private async attachJsDebugger(launchConfig: BrightScriptLaunchConfiguration, tsPath: string) {
+    private async attachJsDebugger(parentSession: DebugSessionWithLinks, tsPath: string) {
+        const launchConfig = parentSession.configuration as BrightScriptLaunchConfiguration;
         tsPath = tsPath.replace(/\s*pkg:/, '');
         // const tsDir = path.dirname(tsPath);
         const rootDir = launchConfig.rootDir;
@@ -252,7 +266,8 @@ export class Extension {
         try {
             const debugConfig: vscode.DebugConfiguration = {
                 type: 'node',
-                name: 'Debug Roku JavaScript',
+                //use the same debug config name as the parent, but suffix with (JS) so we can identify the JS debug session in the UI
+                name: `${parentSession.configuration.name} (JS)`,
                 request: 'attach',
                 cwd: launchConfig.rootDir,
                 address: launchConfig.host,
@@ -265,7 +280,10 @@ export class Extension {
                 //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
                 remoteRoot: remoteRoot,
                 // where the currently-running javascript (bundled) files live on this system
-                localRoot: localRoot
+                localRoot: localRoot,
+
+                //link sessions for coordinated cleanup. (this is a custom prop we are adding)
+                linkedSessions: [parentSession]
             };
 
             const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
@@ -276,9 +294,12 @@ export class Extension {
         }
     }
 
-    // private toForwardSlash(thePath: string) {
-    //     return thePath?.replace(/[\/\\]+/g, '/').replace(/\/+$/, '');
-    // }
+    private getTsPath(rootDir: string) {
+        const contents = fsExtra.readFileSync(`${rootDir}/manifest`).toString();
+        // https://regex101.com/r/qgLxGh/1
+        const tsPath = /ts_path[ \t]*=[ \t]*(.*)?(?=[\r?\n]|$)/ig.exec(contents);
+        return tsPath?.[1]?.trim();
+    }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
 
@@ -421,4 +442,13 @@ export class Extension {
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);
+}
+
+/**
+ * Debug session that also supports linking other debug sessions together in its configuration (for joint shutdown)
+ */
+interface DebugSessionWithLinks extends vscode.DebugSession {
+    configuration: vscode.DebugConfiguration & {
+        linkedSessions?: Set<DebugSessionWithLinks>;
+    };
 }
