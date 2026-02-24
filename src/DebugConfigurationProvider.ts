@@ -446,11 +446,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
+    private getPasswordFromStaticDevice(host: string): string {
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        const devices = (config?.devices ?? []) as Array<{ host: string; password?: string }>;
+        const device = devices.find(x => x?.host === host);
+        return device?.password;
+    }
+
     /**
      * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
      * @param config  current config object
      */
     private async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
+        const staticPassword = this.getPasswordFromStaticDevice(config.host);
+
+        if (staticPassword) {
+            config.password = staticPassword;
+        }
+
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
             config.password = await this.openInputBox('The developer account password for your Roku device.');

@@ -33,7 +33,11 @@ export class ActiveDeviceManager {
             }
 
             this.processEnabledState();
+
+            this.processStaticDevices().catch(e => console.error(e));
         });
+        this.processStaticDevices().catch(e => console.error(e));
+
 
         this.deviceCache = new NodeCache({ stdTTL: 3600, checkperiod: 120 });
         //anytime a device leaves the cache (either expired or manually deleted)
@@ -41,6 +45,43 @@ export class ActiveDeviceManager {
             void this.emit('device-expired', device);
         });
         this.processEnabledState();
+    }
+
+    private staticDevices: RokuDeviceDetails[] = [];
+    /**
+     * Include any hardcoded devices from the user's config. This allows devs to curate their own list to augment the list we already have.
+     */
+    private async processStaticDevices() {
+        const result = [];
+        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        const devices = (config?.devices ?? []) as Array<{ host: string }>;
+
+        for (const staticDevice of devices) {
+
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: staticDevice.host,
+                remotePort: parseInt('8060')
+            });
+
+            //sanitize the data
+            for (const key in deviceInfo) {
+                deviceInfo[key] = rokuDeploy.normalizeDeviceInfoFieldValue(deviceInfo[key]);
+            }
+
+            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            let includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+            if (includeNonDeveloperDevices || deviceInfo['developer-enabled']) {
+                const url = new URL(`http://${staticDevice.host}:8060`);
+                const device: RokuDeviceDetails = {
+                    location: url.origin,
+                    ip: url.hostname,
+                    id: deviceInfo['device-id']?.toString?.(),
+                    deviceInfo: deviceInfo as any
+                };
+                result.push(device);
+            }
+        }
+        this.staticDevices = result;
     }
 
     private emitter = new EventEmitter();
@@ -83,9 +124,13 @@ export class ActiveDeviceManager {
      */
     public getActiveDevices(): RokuDeviceDetails[] {
         this.firstRequestForDevices = false;
-        const devices = Object.values(
-            this.deviceCache.mget(this.deviceCache.keys()) as Record<string, RokuDeviceDetails>
-        ).sort(
+        let devices = Object.values(this.deviceCache.mget(this.deviceCache.keys()) as Record<string, RokuDeviceDetails>);
+        //augment with the static devices (static devices will override discovered devices with the same id)
+        devices = [
+            ...this.staticDevices,
+            ...devices.filter(d => !this.staticDevices.some(s => s.ip === d.ip))
+        ];
+        devices.sort(
             firstBy<RokuDeviceDetails>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
             }).thenBy<RokuDeviceDetails>((a, b) => {
