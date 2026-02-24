@@ -541,7 +541,7 @@ export class DeviceManager {
         const devices = this.getActiveDevices();
         let needsScan = false;
         await Promise.all(devices.map(async (device) => {
-            const isHealthy = await this.isDeviceResponding(device);
+            const isHealthy = await this.checkDeviceHealth(device);
             if (!isHealthy) {
                 this.removeDevice(device.id);
                 needsScan = true;

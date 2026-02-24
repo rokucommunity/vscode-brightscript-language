@@ -32,6 +32,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
     }
 
     private visible = false;
+    private scanProgressResolver: (() => void) | null = null;
 
     public setTreeView(treeView: vscode.TreeView<vscode.TreeItem>) {
         treeView.onDidChangeVisibility(e => {
@@ -41,6 +42,39 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             }
             this.deviceManager.refresh();
         });
+
+        this.deviceManager.on('scan-started', () => {
+            this.showScanProgress();
+        });
+
+        this.deviceManager.on('scan-ended', () => {
+            this.endScanProgress();
+        });
+    }
+
+    private showScanProgress() {
+        // If already showing progress, don't start another
+        if (this.scanProgressResolver) {
+            return;
+        }
+
+        void vscode.window.withProgress(
+            {
+                location: { viewId: this.id }
+            },
+            () => {
+                return new Promise<void>((resolve) => {
+                    this.scanProgressResolver = resolve;
+                });
+            }
+        );
+    }
+
+    private endScanProgress() {
+        if (this.scanProgressResolver) {
+            this.scanProgressResolver();
+            this.scanProgressResolver = null;
+        }
     }
 
     /**
@@ -76,8 +110,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
                     // Set icon based on device state
                     if (device.deviceState === 'pending') {
-                        treeItem.description = '$(loading~spin)';
-                        treeItem.iconPath = new vscode.ThemeIcon('circle-outline');
+                        treeItem.iconPath = new vscode.ThemeIcon('loading~spin', new vscode.ThemeColor('disabledForeground'));
                     } else if (device.deviceState === 'offline') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('errorForeground'));
                     } else {

@@ -52,7 +52,7 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.deviceManager.refresh();
+            this.deviceManager.refresh(true);
         });
 
         this.registerCommand('rescanDevices', () => {
