@@ -96,6 +96,10 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
+            // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
+            if (this.devices.length === 0) {
+                this.devices = this.deviceManager.getActiveDevices();
+            }
             if (this.devices) {
                 let items: DeviceTreeItem[] = [];
                 for (const device of this.devices) {

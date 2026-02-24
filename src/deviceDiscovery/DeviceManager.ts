@@ -153,8 +153,8 @@ export class DeviceManager {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
+            this.loadLastSeenDevices();
             this.activateMonitoring().then(() => {
-                this.loadLastSeenDevices();
                 const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
                     this.refresh();
