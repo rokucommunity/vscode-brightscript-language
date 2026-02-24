@@ -81,10 +81,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     };
 
     /**
-     * Massage a debug configuration just before a debug session is being launched,
+ * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+    public async resolveDebugConfigurationWithSubstitutedVariables(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
         let deviceInfo: DeviceInfo;
         let result: BrightScriptLaunchConfiguration;
         try {
