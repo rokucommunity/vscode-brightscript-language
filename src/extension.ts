@@ -209,7 +209,15 @@ export class Extension {
         //await languageServerPromise;
     }
 
+    /**
+     * Track active debug sessions for telemetry/UI purposes
+     */
+    private debugSessions = new Set<DebugSessionWithLinks>();
+
     private onDidStartDebugSession(debugSession: DebugSessionWithLinks) {
+        //add to our active sessions for tracking
+        this.debugSessions.add(debugSession);
+
         //if this is a brightscript debug session
         if (debugSession.type === 'brightscript') {
             this.logOutputManager.onDidStartDebugSession();
@@ -218,22 +226,16 @@ export class Extension {
 
             const tsPath = this.getTsPath(configuration.rootDir);
             if (tsPath) {
-                this.attachJsDebugger(debugSession as any, tsPath).catch(e => console.error(e));
+                this.attachJsDebugger(debugSession, tsPath).catch(e => console.error(e));
             }
             this.diagnosticManager.clear();
-        }
-
-        //if this session has linked sessions, set up the reverse link
-        if (debugSession.configuration.linkedSessions?.size > 0) {
-            for (const linkedSession of debugSession.configuration.linkedSessions) {
-                //attach this new session to all its linked session
-                linkedSession.configuration.linkedSessions ??= new Set<DebugSessionWithLinks>();
-                linkedSession.configuration.linkedSessions.add(debugSession);
-            }
         }
     }
 
     private async onDidTerminateDebugSession(debugSession: DebugSessionWithLinks) {
+        //remove from our tracking first
+        this.debugSessions.delete(debugSession);
+
         //if this is a brightscript debug session
         if (debugSession.type === 'brightscript') {
             this.chanperfStatusBar.hide();
@@ -263,35 +265,47 @@ export class Extension {
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
         const remoteRoot = path.normalize(path.dirname(tsPath));
         const localRoot = path.normalize(path.join(rootDir, remoteRoot));
-        try {
-            const debugConfig: vscode.DebugConfiguration = {
-                type: 'node',
-                //use the same debug config name as the parent, but suffix with (JS) so we can identify the JS debug session in the UI
-                name: `${parentSession.configuration.name} (JS)`,
-                request: 'attach',
-                cwd: launchConfig.rootDir,
-                address: launchConfig.host,
-                port: 9999,
-                sourceMaps: true,
-                //this allows us to resolve sourcemaps from ANYWHERE
-                resolveSourceMapLocations: null,
-                // If source maps are enabled, these glob patterns specify the generated JavaScript files. If a pattern starts with `!` the files are excluded. If not specified, the generated code is expected in the same directory as its source.
-                outFiles: [`${localRoot}/*.js`],
-                //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
-                remoteRoot: remoteRoot,
-                // where the currently-running javascript (bundled) files live on this system
-                localRoot: localRoot,
 
-                //link sessions for coordinated cleanup. (this is a custom prop we are adding)
-                linkedSessions: [parentSession]
-            };
+        // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
+        // So there's a window where the parent debug session stops while this is still trying to attach.
+        // To more quickly close the node debugger in that situation, we will run much shorter "attach" windows
+        // in a loop until we successfully attach or until the parent session ends.
 
-            const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
-            return !!success;
-        } catch (e) {
-            console.error(e);
-            return false;
+        while (this.debugSessions.has(parentSession)) {
+            try {
+                const debugConfig: vscode.DebugConfiguration = {
+                    type: 'node',
+                    //use the same debug config name as the parent, but suffix with (JS) so we can identify the JS debug session in the UI
+                    name: `${parentSession.configuration.name} (JS)`,
+                    request: 'attach',
+                    cwd: launchConfig.rootDir,
+                    address: launchConfig.host,
+                    port: 9999,
+                    timeout: 2_000, // Shorter timeout for retry loop
+                    sourceMaps: true,
+                    //this allows us to resolve sourcemaps from ANYWHERE
+                    resolveSourceMapLocations: null,
+                    // If source maps are enabled, these glob patterns specify the generated JavaScript files. If a pattern starts with `!` the files are excluded. If not specified, the generated code is expected in the same directory as its source.
+                    outFiles: [`${localRoot}/*.js`],
+                    //Absolute path to the remote directory containing the program. (what path the debugger will send to US, which will be translated to localRoot by the node debugger)
+                    remoteRoot: remoteRoot,
+                    // where the currently-running javascript (bundled) files live on this system
+                    localRoot: localRoot,
+
+                    //link sessions for coordinated cleanup. (this is a custom prop we are adding)
+                    linkedSessions: [parentSession]
+                };
+
+                const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
+                if (success) {
+                    return true;
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
+        // Parent session ended while we were trying to attach
+        return false;
     }
 
     private getTsPath(rootDir: string) {
