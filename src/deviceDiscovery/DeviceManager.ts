@@ -31,7 +31,7 @@ export class DeviceManager {
 
     // Debounce for devices-changed event
     private devicesChangedDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 100;
+    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
 
     // Scan state management
     private readonly SCAN_MIN_DURATION_MS = 3_000;
@@ -295,6 +295,17 @@ export class DeviceManager {
     }
 
     /**
+     * Emit devices-changed event immediately without debouncing
+     */
+    private emitDevicesChangedImmediate(): void {
+        if (this.devicesChangedDebounceTimer) {
+            clearTimeout(this.devicesChangedDebounceTimer);
+            this.devicesChangedDebounceTimer = null;
+        }
+        this.emitter.emit('devices-changed');
+    }
+
+    /**
      * Trigger health checks for devices in 'pending' state.
      * Runs asynchronously - doesn't block the caller.
      */
@@ -307,13 +318,18 @@ export class DeviceManager {
     }
 
     /**
-     * Update a device's state and emit change event
+     * Update a device's state and emit change event.
+     * Pending state emits immediately for instant UI feedback; other states are debounced.
      */
     private updateDeviceState(deviceId: string, state: DeviceState): void {
         const device = this.devices.find(d => d.id === deviceId);
         if (device && device.deviceState !== state) {
             device.deviceState = state;
-            this.emitDevicesChanged();
+            if (state === 'pending') {
+                this.emitDevicesChangedImmediate();
+            } else {
+                this.emitDevicesChanged();
+            }
         }
     }
 

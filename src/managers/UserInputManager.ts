@@ -39,8 +39,6 @@ export class UserInputManager {
         const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
-        const discoveryTime = 5_000;
-
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
         let hasScanned = this.deviceManager.refresh();

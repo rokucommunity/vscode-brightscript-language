@@ -10,16 +10,30 @@ import { ViewProviderId } from './ViewProviderId';
  */
 let treeItemKeySequence = 0;
 
+/**
+ * URI scheme used for device tree items to enable FileDecorationProvider
+ */
+const DEVICE_URI_SCHEME = 'roku-device';
+
 export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     public readonly id = ViewProviderId.onlineDevicesView;
 
+    private decorationProvider: DeviceDecorationProvider;
+
     constructor(
         private deviceManager: DeviceManager
     ) {
-        this.devices = [];
+        this.decorationProvider = new DeviceDecorationProvider();
+        vscode.window.registerFileDecorationProvider(this.decorationProvider);
+
+        // Pre-populate devices and decorations so they're ready before first render
+        this.devices = this.deviceManager.getActiveDevices();
+        this.decorationProvider.updateDevices(this.devices);
+
         this.deviceManager.on('devices-changed', () => {
             this.devices = this.deviceManager.getActiveDevices();
+            this.decorationProvider.updateDevices(this.devices);
             this._onDidChangeTreeData.fire(null);
         });
 
@@ -99,6 +113,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
                 this.devices = this.deviceManager.getActiveDevices();
+                this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {
                 let items: DeviceTreeItem[] = [];
@@ -112,10 +127,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
 
+                    // Set resourceUri to enable FileDecorationProvider for text coloring
+                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.id}`);
+
                     // Set icon based on device state
-                    if (device.deviceState === 'pending') {
-                        treeItem.iconPath = new vscode.ThemeIcon('loading~spin', new vscode.ThemeColor('disabledForeground'));
-                    } else if (device.deviceState === 'offline') {
+                    if (device.deviceState === 'offline') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('errorForeground'));
                     } else {
                         treeItem.iconPath = icons.getDeviceType(device);
@@ -352,5 +368,46 @@ class DeviceInfoTreeItem extends vscode.TreeItem {
         public command?: vscode.Command
     ) {
         super(label, collapsibleState);
+    }
+}
+
+/**
+ * Provides file decorations for device tree items to color text based on device state
+ */
+class DeviceDecorationProvider implements vscode.FileDecorationProvider {
+    private _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[]>();
+    readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+    private deviceStates = new Map<string, string>();
+
+    updateDevices(devices: RokuDeviceDetails[]): void {
+        const changedUris: vscode.Uri[] = [];
+        for (const device of devices) {
+            const oldState = this.deviceStates.get(device.id);
+            if (oldState !== device.deviceState) {
+                this.deviceStates.set(device.id, device.deviceState);
+                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.id}`));
+            }
+        }
+        if (changedUris.length > 0) {
+            this._onDidChangeFileDecorations.fire(changedUris);
+        }
+    }
+
+    provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+        if (uri.scheme !== DEVICE_URI_SCHEME) {
+            return undefined;
+        }
+
+        const deviceId = uri.path.slice(1); // Remove leading slash
+        const state = this.deviceStates.get(deviceId);
+
+        if (state === 'pending') {
+            return {
+                color: new vscode.ThemeColor('disabledForeground')
+            };
+        }
+
+        return undefined;
     }
 }
