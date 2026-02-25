@@ -65,7 +65,7 @@ describe('PerfettoControlCommands', () => {
             expect(registeredCommands.has('extension.brightscript.startTracing')).to.be.true;
             expect(registeredCommands.has('extension.brightscript.stopTracing')).to.be.true;
             expect(registeredCommands.has('extension.brightscript.captureHeapSnapshot')).to.be.true;
-            expect(registeredCommands.has('extension.brightscript.capturingSnapshot')).to.be.true;
+            expect(registeredCommands.has('extension.brightscript.heapSnapshotActive')).to.be.true;
         });
     });
 
@@ -111,7 +111,7 @@ describe('PerfettoControlCommands', () => {
             )).to.be.true;
         });
 
-        it('shows info message and resets capturingSnapshot context on heapSnapshotCaptured status', async () => {
+        it('shows info message and resets heapSnapshotActive context on heapSnapshotCaptured status', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
             const event = {
@@ -125,7 +125,7 @@ describe('PerfettoControlCommands', () => {
 
             expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
                 'setContext',
-                'brightscript.capturingSnapshot',
+                'brightscript.heapSnapshotActive',
                 false
             )).to.be.true;
         });
@@ -343,7 +343,7 @@ describe('PerfettoControlCommands', () => {
             expect(mockSession.customRequest.calledWith('captureHeapSnapshot')).to.be.true;
             expect((vscode.commands.executeCommand as sinon.SinonStub).calledWith(
                 'setContext',
-                'brightscript.capturingSnapshot',
+                'brightscript.heapSnapshotActive',
                 true
             )).to.be.true;
         });
@@ -381,13 +381,13 @@ describe('PerfettoControlCommands', () => {
         });
     });
 
-    describe('capturingSnapshot command', () => {
+    describe('heapSnapshotActive command', () => {
         it('does nothing (disabled button placeholder)', () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
-            const capturingSnapshotCommand = registeredCommands.get('extension.brightscript.capturingSnapshot');
+            const heapSnapshotActiveCommand = registeredCommands.get('extension.brightscript.heapSnapshotActive');
             // Should not throw
-            capturingSnapshotCommand();
+            heapSnapshotActiveCommand();
         });
     });
 });

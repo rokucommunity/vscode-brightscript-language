@@ -1,52 +1,42 @@
 import * as vscode from 'vscode';
-import type { CancellationToken, TextDocument, Webview, WebviewPanel } from 'vscode';
+import type { CancellationToken, Webview, WebviewPanel } from 'vscode';
 
 
-export class PerfettoEditorProvider implements vscode.CustomEditorProvider<any> {
-    constructor(
-        private context: vscode.ExtensionContext
-    ) {
-
-    }
-
+export class PerfettoEditorProvider implements vscode.CustomReadonlyEditorProvider {
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        return vscode.window.registerCustomEditorProvider('brightscript.perfettoViewer', new PerfettoEditorProvider(context), {
+        return vscode.window.registerCustomEditorProvider('brightscript.perfettoViewer', new PerfettoEditorProvider(), {
             webviewOptions: {
                 retainContextWhenHidden: true
             }
         });
     }
 
-    public resolveCustomTextEditor(document: TextDocument, webviewPanel: WebviewPanel, token: CancellationToken) {
+    public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: CancellationToken): vscode.CustomDocument {
+        return { uri: uri, dispose: () => { } };
+    }
+
+    public resolveCustomEditor(document: vscode.CustomDocument, webviewPanel: WebviewPanel, _token: CancellationToken) {
         webviewPanel.webview.options = {
             enableScripts: true
         };
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
         let isPerfettoReady = false;
         const sendUpdate = async () => {
-            const filename = document.fileName;
-            webviewPanel.title = `Perf Trace Viewer - ${filename}`;
+            const filename = document.uri.fsPath;
             let fileData = await vscode.workspace.fs.readFile(document.uri);
             if (isPerfettoReady) {
                 void webviewPanel.webview.postMessage({
                     type: 'update',
                     perfetto: {
                         buffer: fileData.buffer,
-                        title: document.fileName,
-                        fileName: document.fileName,
+                        title: filename,
+                        fileName: filename,
                         keepApiOpen: true
                     }
                 });
             }
         };
-        const disposable = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.uri.toString() === document.uri.toString()) {
-                void sendUpdate();
-            }
-        });
-        webviewPanel.onDidDispose(() => {
-            disposable.dispose();
-        });
+        webviewPanel.onDidDispose(() => { });
         webviewPanel.webview.onDidReceiveMessage(message => {
             if (message.type === 'PERFETTO_READY') {
                 isPerfettoReady = true;

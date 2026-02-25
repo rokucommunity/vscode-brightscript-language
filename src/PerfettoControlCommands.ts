@@ -1,79 +1,74 @@
 import * as vscode from 'vscode';
 import { vscodeContextManager } from './managers/VscodeContextManager';
+import { isProfilingEnabledEvent, isProfilingStartEvent, isProfilingStopEvent, isProfilingErrorEvent } from 'roku-debug';
 
 export class PerfettoControlCommands {
 
     public registerPerfettoControlCommands(
         context: vscode.ExtensionContext
     ) {
-        // Auto-start tracing after the channel is published (app is deployed and ready)
         context.subscriptions.push(
-            vscode.debug.onDidReceiveDebugSessionCustomEvent(async (event) => {
-
-                // Handle Perfetto tracing events (started, stopped, errors, unexpected close, heapSnapshotCaptured, etc.)
-                if (event.event === 'PerfettoTracingEvent') {
-                    const { status, message } = event.body;
-                    if (status === 'started') {
-                        await vscodeContextManager.set('brightscript.tracingActive', true);
-                    } else if (status === 'error' || status === 'closed') {
-                        void vscode.window.showWarningMessage(`Perfetto tracing ${status}: ${message}`);
-                        await vscodeContextManager.set('brightscript.tracingActive', false);
-                    } else if (status === 'heapSnapshotCaptured') {
-                        await vscodeContextManager.set('brightscript.capturingSnapshot', false);
-                    } else if (status === 'enableError') {
-                        void vscode.window.showErrorMessage(`Failed to enable Perfetto tracing: ${message}`);
+            vscode.debug.onDidReceiveDebugSessionCustomEvent(async (event: unknown) => {
+                //set various context keys based on profiling events to control visibility and state of UI elements (buttons, status bar items, etc.)
+                if (isProfilingEnabledEvent(event)) {
+                    if (event.body.types.includes('trace')) {
+                        void vscodeContextManager.set('brightscript.tracingEnabled', true);
                     }
+                    if (event.body.types.includes('heapSnapshot')) {
+                        void vscodeContextManager.set('brightscript.heapSnapshotEnabled', true);
+                    }
+                } else if (isProfilingStartEvent(event)) {
+                    if (event.body.type === 'trace') {
+                        await vscodeContextManager.set('brightscript.tracingActive', true);
+                    } else if (event.body.type === 'heapSnapshot') {
+                        await vscodeContextManager.set('brightscript.heapSnapshotActive', true);
+                    }
+
+                } else if (isProfilingStopEvent(event)) {
+                    if (event.body.type === 'trace') {
+                        await vscodeContextManager.set('brightscript.tracingActive', false);
+
+                    } else if (event.body.type === 'heapSnapshot') {
+                        void vscodeContextManager.set('brightscript.heapSnapshotActive', false);
+                    }
+                    //open the profile in an editor
+                    if (event.body.result) {
+                        void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(event.body.result));
+                    }
+
+                } else if (isProfilingErrorEvent(event)) {
+                    void vscode.window.showErrorMessage(`Profiling error: ${event.body.error.message}`);
                 }
             })
         );
 
-        context.subscriptions.push(vscode.debug.onDidStartDebugSession((e) => {
-            void vscodeContextManager.set('brightscript.tracingActive', false);
-
-            //show recording buttons in the debug bar when tracing is enabled
-            if (e.configuration?.profiling?.tracing?.enable) {
-                void vscodeContextManager.set('brightscript.tracingEnabled', true);
-            }
-        }));
-
-        // Auto-stop tracing when debug session ends
-        context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(async (session) => {
+        function cleanContext(session: vscode.DebugSession) {
             if (session.type === 'brightscript') {
-
-                //hide recording buttons in the debug bar at end of debug session
                 void vscodeContextManager.set('brightscript.tracingEnabled', false);
                 void vscodeContextManager.set('brightscript.tracingActive', false);
-                void vscodeContextManager.set('brightscript.capturingSnapshot', false);
-
-                try {
-                    await session.customRequest('stopPerfettoTracing');
-                } catch (e) {
-                    console.log('Could not stop tracing on session end:', e);
-                }
+                void vscodeContextManager.set('brightscript.heapSnapshotActive', false);
             }
-        }));
+        }
+        //hide profiling-related buttons at the start and end of the session
+        context.subscriptions.push(vscode.debug.onDidStartDebugSession(cleanContext));
+        context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(cleanContext));
 
         // Start tracing
         context.subscriptions.push(
-            vscode.commands.registerCommand(
-                'extension.brightscript.startTracing',
+            vscode.commands.registerCommand('extension.brightscript.startTracing',
                 async () => {
                     const session = vscode.debug.activeDebugSession;
 
                     if (!session) {
-                        void vscode.window.showErrorMessage('No active debug session');
+                        void vscode.window.showErrorMessage(`Cannot start tracing: there's no active debug session`);
                         return;
                     }
 
                     try {
                         await session.customRequest('startPerfettoTracing');
-                        await vscode.commands.executeCommand(
-                            'setContext',
-                            'brightscript.tracingActive',
-                            true
-                        );
+                        await vscodeContextManager.set('brightscript.tracingActive', true);
                     } catch (e) {
-                        void vscode.window.showErrorMessage(`Failed to start tracing: ${e?.message || e}`);
+                        console.error(`Failed to start tracing`, e);
                     }
                 }
             )
@@ -81,67 +76,46 @@ export class PerfettoControlCommands {
 
         // Stop tracing
         context.subscriptions.push(
-            vscode.commands.registerCommand(
-                'extension.brightscript.stopTracing',
+            vscode.commands.registerCommand('extension.brightscript.stopTracing',
                 async () => {
                     const session = vscode.debug.activeDebugSession;
-
                     if (!session) {
-                        void vscode.window.showErrorMessage('No active debug session');
                         return;
                     }
 
                     try {
                         await session.customRequest('stopPerfettoTracing');
-                        await vscode.commands.executeCommand(
-                            'setContext',
-                            'brightscript.tracingActive',
-                            false
-                        );
-                        this.openInSimpleBrowser('https://ui.perfetto.dev/#!');
                     } catch (e) {
-                        void vscode.window.showErrorMessage(`Failed to stop tracing: ${e?.message || e}`);
+                        console.error(`Failed to stop tracing:`, e);
                     }
                 }
             )
         );
 
+        async function captureHeapSnapshot() {
+            const session = vscode.debug.activeDebugSession;
+
+            if (!session) {
+                void vscode.window.showErrorMessage(`Cannot capture heap snapshot: there's no active debug session`);
+                return;
+            }
+
+            try {
+                await session.customRequest('captureHeapSnapshot');
+            } catch (e) {
+                console.error(`Failed to capture snapshot:`, e);
+            }
+        };
+
         // Start capturing snapshot
         context.subscriptions.push(
-            vscode.commands.registerCommand(
-                'extension.brightscript.captureHeapSnapshot',
-                async () => {
-                    const session = vscode.debug.activeDebugSession;
-
-                    if (!session) {
-                        void vscode.window.showErrorMessage('No active debug session');
-                        return;
-                    }
-
-                    try {
-                        await session.customRequest('captureHeapSnapshot');
-                        await vscodeContextManager.set('brightscript.capturingSnapshot', true);
-                    } catch (e) {
-                        void vscode.window.showErrorMessage(`Failed to capture snapshot: ${e?.message || e}`);
-                    }
-                }
-            )
+            vscode.commands.registerCommand('extension.brightscript.captureHeapSnapshot', captureHeapSnapshot)
         );
 
         // Register capturing snapshot button (disabled, shows "Capturing snapshot..." tooltip when clicked)
         context.subscriptions.push(
-            vscode.commands.registerCommand(
-                'extension.brightscript.capturingSnapshot',
-                () => { }
-            )
+            vscode.commands.registerCommand('extension.brightscript.heapSnapshotActive', captureHeapSnapshot)
         );
-    }
-
-    /**
-     * Open URL in VS Code's built-in Simple Browser (new tab inside VS Code)
-     */
-    private openInSimpleBrowser(url: string): void {
-        void vscode.commands.executeCommand('simpleBrowser.show', url);
     }
 }
 

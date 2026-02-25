@@ -49,7 +49,6 @@ export class Extension {
     private brightScriptCommands: BrightScriptCommands;
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
-    public perfettoEditorProvider: PerfettoEditorProvider;
     private diagnosticManager = new DiagnosticManager();
 
     public async activate(context: vscode.ExtensionContext) {
@@ -92,7 +91,7 @@ export class Extension {
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
 
-        this.perfettoEditorProvider = new PerfettoEditorProvider(context);
+        PerfettoEditorProvider.register(context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
