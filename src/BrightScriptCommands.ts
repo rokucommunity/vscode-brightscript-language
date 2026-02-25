@@ -44,9 +44,7 @@ export class BrightScriptCommands {
         captureScreenshotCommand.register(this.context, this);
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
         clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
-        perfettoControlCommands.registerPerfettoControlCommands(
-            this.context
-        );
+        perfettoControlCommands.registerPerfettoControlCommands(this.context);
 
         this.registerGeneralCommands();
 

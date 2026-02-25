@@ -235,22 +235,22 @@
                 {
                     "command": "extension.brightscript.startTracing",
                     "group": "navigation@100",
-                    "when": "inDebugMode && !brightscript.tracingActive"
+                    "when": "inDebugMode && brightscript.tracingEnabled && !brightscript.tracingActive"
                 },
                 {
                     "command": "extension.brightscript.stopTracing",
                     "group": "navigation@100",
-                    "when": "inDebugMode && brightscript.tracingActive"
+                    "when": "inDebugMode && brightscript.tracingEnabled && brightscript.tracingActive"
                 },
                 {
                     "command": "extension.brightscript.captureHeapSnapshot",
                     "group": "navigation@101",
-                    "when": "inDebugMode && brightscript.tracingActive && !brightscript.capturingSnapshot"
+                    "when": "inDebugMode && brightscript.tracingEnabled && !brightscript.capturingSnapshot"
                 },
                 {
                     "command": "extension.brightscript.capturingSnapshot",
                     "group": "navigation@101",
-                    "when": "inDebugMode && brightscript.tracingActive && brightscript.capturingSnapshot"
+                    "when": "inDebugMode && brightscript.tracingEnabled && brightscript.capturingSnapshot"
                 }
             ],
             "view/title": [
@@ -2825,7 +2825,7 @@
             {
                 "command": "extension.brightscript.captureHeapSnapshot",
                 "title": "Capture heap snapshot",
-                "icon": "./images/icons/capture-snapshot.svg"
+                "icon": "$(device-camera)"
             },
             {
                 "command": "extension.brightscript.capturingSnapshot",
