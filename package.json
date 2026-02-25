@@ -415,8 +415,8 @@
         },
         "customEditors": [
             {
-                "viewType": "perfTraceViewer.editor",
-                "displayName": "Performance Trace Viewer",
+                "viewType": "brightscript.perfettoViewer",
+                "displayName": "Perfetto Viewer",
                 "selector": [
                     {
                         "filenamePattern": "*.pftrace"
