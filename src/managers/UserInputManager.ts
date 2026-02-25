@@ -63,6 +63,14 @@ export class UserInputManager {
         quickPick.placeholder = `Please Select a Roku or manually type an IP address`;
         quickPick.keepScrollPosition = true;
 
+        // Track multiple busy sources (scan, health check) with a counter
+        let busyCount = 0;
+        const setBusy = (isBusy: boolean) => {
+            busyCount += isBusy ? 1 : -1;
+            busyCount = Math.max(0, busyCount); // Prevent negative
+            quickPick.busy = busyCount > 0;
+        };
+
         function dispose() {
             for (const disposable of disposables) {
                 disposable.dispose();
@@ -84,7 +92,9 @@ export class UserInputManager {
                     } else {
                         const device = (selectedDevice as any).device as RokuDeviceDetails;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
+                        setBusy(true);
                         const isHealthy = await this.deviceManager.checkDeviceHealth(device);
+                        setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
                             return;
@@ -164,11 +174,11 @@ export class UserInputManager {
 
         // Show busy indicator during scan
         this.deviceManager.on('scan-started', () => {
-            quickPick.busy = true;
+            setBusy(true);
         }, disposables);
 
         this.deviceManager.on('scan-ended', () => {
-            quickPick.busy = false;
+            setBusy(false);
         }, disposables);
 
         quickPick.onDidHide(() => {
