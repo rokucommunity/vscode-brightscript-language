@@ -429,6 +429,9 @@ export class DeviceManager {
      * Devices are added as 'pending' - health checks happen lazily when UI requests devices.
      */
     private loadLastSeenDevices() {
+        // Clear existing devices before loading cached ones for the current network
+        this.devices = [];
+
         const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
         for (const deviceId of lastSeenDeviceIds) {
             const cached = this.globalStateManager.getCachedDevice(deviceId);
