@@ -58,9 +58,9 @@ export class DeviceManager {
      */
     public setScanNeeded() {
         if (!this.scanNeeded) {
+            this.scanNeeded = true;
             this.emitter.emit('scanNeeded-changed');
         }
-        this.scanNeeded = true;
     }
 
     public get timeSinceLastScan(): number {
@@ -536,6 +536,12 @@ export class DeviceManager {
             this.devices = this.devices.filter(d => d.id !== deviceId);
             this.globalStateManager.removeCachedDevice(deviceId);
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.id);
+
+            // Clear lastUsedDevice if the removed device was the last used
+            if (this.lastUsedDevice?.id === deviceId) {
+                this.lastUsedDevice = null;
+            }
+
             if (vscode.window.state.focused) {
                 this.emitDevicesChanged();
             }
