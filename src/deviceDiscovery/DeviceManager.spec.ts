@@ -450,8 +450,8 @@ describe('DeviceManager', () => {
                 // Event is debounced, so not fired immediately
                 expect(devicesChangedSpy.called).to.be.false;
 
-                // Advance past debounce time (100ms)
-                clock.tick(100);
+                // Advance past debounce time (400ms)
+                clock.tick(400);
                 expect(devicesChangedSpy.calledOnce).to.be.true;
             } finally {
                 clock.restore();
@@ -473,8 +473,8 @@ describe('DeviceManager', () => {
 
                 manager['removeDevice'](device.id);
 
-                // Advance past debounce time
-                clock.tick(100);
+                // Advance past debounce time (400ms)
+                clock.tick(400);
                 expect(devicesChangedSpy.calledOnce).to.be.true;
             } finally {
                 clock.restore();
@@ -492,16 +492,16 @@ describe('DeviceManager', () => {
 
                 // Add multiple devices rapidly
                 manager['upsertDevice'](createMockDevice({ id: 'device-1' }));
-                clock.tick(50); // 50ms - within debounce window
+                clock.tick(100); // 100ms - within 400ms debounce window
                 manager['upsertDevice'](createMockDevice({ id: 'device-2' }));
-                clock.tick(50); // 100ms total, but debounce reset at 50ms
+                clock.tick(100); // 200ms total, but debounce reset at 100ms
                 manager['upsertDevice'](createMockDevice({ id: 'device-3' }));
 
                 // Still within debounce window from last upsert
                 expect(devicesChangedSpy.called).to.be.false;
 
-                // Advance past debounce time from last upsert
-                clock.tick(100);
+                // Advance past debounce time from last upsert (400ms)
+                clock.tick(400);
                 expect(devicesChangedSpy.calledOnce).to.be.true; // Only one event
             } finally {
                 clock.restore();
@@ -524,6 +524,195 @@ describe('DeviceManager', () => {
             } finally {
                 clock.restore();
             }
+        });
+    });
+
+    describe('checkDeviceHealth', () => {
+        it('sets device to pending during health check', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice();
+            manager['devices'].push(device);
+
+            // Stub isDeviceResponding to delay so we can check pending state
+            let resolveHealth: (value: boolean) => void;
+            const healthPromise = new Promise<boolean>(resolve => {
+                resolveHealth = resolve;
+            });
+            sinon.stub(manager as any, 'isDeviceResponding').returns(healthPromise);
+
+            const checkPromise = manager.checkDeviceHealth(device);
+
+            // Device should be pending during check
+            expect(manager['devices'][0].deviceState).to.equal('pending');
+
+            resolveHealth(true);
+            await checkPromise;
+
+            // Device should be online after successful check
+            expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('removes device when health check fails', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice();
+            manager['devices'].push(device);
+
+            sinon.stub(manager as any, 'isDeviceResponding').returns(Promise.resolve(false));
+
+            const result = await manager.checkDeviceHealth(device);
+
+            expect(result).to.be.false;
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('returns true when device is healthy', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device = createMockDevice();
+            manager['devices'].push(device);
+
+            sinon.stub(manager as any, 'isDeviceResponding').returns(Promise.resolve(true));
+
+            const result = await manager.checkDeviceHealth(device);
+
+            expect(result).to.be.true;
+        });
+    });
+
+    describe('removeDevice', () => {
+        it('clears lastUsedDevice when removed device matches', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const device = createMockDevice();
+                manager['devices'].push(device);
+                manager.lastUsedDevice = device;
+
+                expect(manager.lastUsedDevice).to.equal(device);
+
+                manager['removeDevice'](device.id);
+
+                expect(manager.lastUsedDevice).to.be.null;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not clear lastUsedDevice when different device is removed', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const device1 = createMockDevice({ id: 'device-1' });
+                const device2 = createMockDevice({ id: 'device-2' });
+                manager['devices'].push(device1, device2);
+                manager.lastUsedDevice = device1;
+
+                manager['removeDevice'](device2.id);
+
+                expect(manager.lastUsedDevice).to.equal(device1);
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('removes device from cache and lastSeenDevices', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+                (vscode.window as any).state = { focused: true };
+
+                const device = createMockDevice();
+                manager['devices'].push(device);
+
+                manager['removeDevice'](device.id);
+
+                expect(mockGlobalStateManager.removeCachedDevice.calledWith(device.id)).to.be.true;
+                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.id)).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
+    describe('loadLastSeenDevices', () => {
+        it('clears existing devices before loading', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            // Add a device manually
+            const existingDevice = createMockDevice({ id: 'existing' });
+            manager['devices'].push(existingDevice);
+
+            // Setup cache to return a different device
+            mockGlobalStateManager.getLastSeenDeviceIds.returns(['cached-device']);
+            mockGlobalStateManager.getCachedDevice.returns({
+                id: 'cached-device',
+                ip: '192.168.1.200',
+                location: 'http://192.168.1.200:8060',
+                deviceInfo: { 'default-device-name': 'Cached Roku' }
+            });
+
+            manager['loadLastSeenDevices']();
+
+            // Should only have the cached device, not the existing one
+            expect(manager['devices'].length).to.equal(1);
+            expect(manager['devices'][0].id).to.equal('cached-device');
+        });
+
+        it('loads cached devices as pending state', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            mockGlobalStateManager.getLastSeenDeviceIds.returns(['device-1']);
+            mockGlobalStateManager.getCachedDevice.returns({
+                id: 'device-1',
+                ip: '192.168.1.100',
+                location: 'http://192.168.1.100:8060',
+                deviceInfo: { 'default-device-name': 'Test Roku' }
+            });
+
+            manager['loadLastSeenDevices']();
+
+            expect(manager['devices'][0].deviceState).to.equal('pending');
+        });
+
+        it('removes stale entries when cache returns undefined', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            mockGlobalStateManager.getLastSeenDeviceIds.returns(['stale-device']);
+            mockGlobalStateManager.getCachedDevice.returns(undefined);
+
+            manager['loadLastSeenDevices']();
+
+            expect(manager['devices'].length).to.equal(0);
+            expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', 'stale-device')).to.be.true;
+        });
+    });
+
+    describe('getDeviceById', () => {
+        it('returns device when found', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device = createMockDevice({ id: 'target-device' });
+            manager['devices'].push(device);
+
+            const result = manager.getDeviceById('target-device');
+
+            expect(result).to.equal(device);
+        });
+
+        it('returns undefined when not found', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const result = manager.getDeviceById('nonexistent');
+
+            expect(result).to.be.undefined;
         });
     });
 });

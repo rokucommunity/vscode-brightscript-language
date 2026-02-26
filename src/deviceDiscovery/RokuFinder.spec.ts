@@ -149,9 +149,19 @@ describe('RokuFinder', () => {
             expect(foundSpy.called).to.be.false;
         });
 
-        it('ignores responses when not running', async () => {
+        it('processes scan responses even when passive listener not started', async () => {
             finder = new RokuFinder();
-            // Don't call start()
+            // Don't call start() - passive listener is off, but scans should still work
+
+            // Stub fetchDeviceDetails to return a device directly
+            const mockDevice = {
+                location: 'http://192.168.1.100:8060',
+                ip: '192.168.1.100',
+                id: 'ABC123',
+                deviceState: 'online' as const,
+                deviceInfo: mockDeviceInfo
+            };
+            sinon.stub(finder as any, 'fetchDeviceDetails').returns(Promise.resolve(mockDevice));
 
             const foundSpy = sinon.spy();
             finder.on('found', foundSpy);
@@ -163,7 +173,8 @@ describe('RokuFinder', () => {
 
             await flushPromises();
 
-            expect(foundSpy.called).to.be.false;
+            // Scan responses should work regardless of passive listener state
+            expect(foundSpy.calledOnce).to.be.true;
         });
     });
 

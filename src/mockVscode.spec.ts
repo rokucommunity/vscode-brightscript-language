@@ -182,6 +182,7 @@ export let vscode = {
             };
         },
         onDidChangeWindowState: () => { },
+        registerFileDecorationProvider: () => ({ dispose: () => { } }),
         createTreeView: () => ({
             onDidChangeVisibility: () => { }
         }),
