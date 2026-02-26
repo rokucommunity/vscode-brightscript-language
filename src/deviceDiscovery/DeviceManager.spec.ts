@@ -581,6 +581,131 @@ describe('DeviceManager', () => {
 
             expect(result).to.be.true;
         });
+
+        it('ignores stale health check response when newer check completes first', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice();
+            manager['devices'].push(device);
+
+            // Create two controllable promises for the health checks
+            let resolveSlowCheck: (value: boolean) => void;
+            let resolveFastCheck: (value: boolean) => void;
+            const slowCheckPromise = new Promise<boolean>(resolve => {
+                resolveSlowCheck = resolve;
+            });
+            const fastCheckPromise = new Promise<boolean>(resolve => {
+                resolveFastCheck = resolve;
+            });
+
+            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
+            isDeviceRespondingStub.onFirstCall().returns(slowCheckPromise);
+            isDeviceRespondingStub.onSecondCall().returns(fastCheckPromise);
+
+            // Start first (slow) health check - will return unhealthy
+            const slowResult = manager.checkDeviceHealth(device);
+
+            // Start second (fast) health check - will return healthy
+            const fastResult = manager.checkDeviceHealth(device);
+
+            // Fast check completes first with healthy result
+            resolveFastCheck(true);
+            await fastResult;
+
+            // Device should be online (fast check succeeded)
+            expect(manager['devices'].length).to.equal(1);
+            expect(manager['devices'][0].deviceState).to.equal('online');
+
+            // Slow check completes later with unhealthy result
+            resolveSlowCheck(false);
+            await slowResult;
+
+            // Device should STILL be online - slow check result was ignored (stale)
+            expect(manager['devices'].length).to.equal(1);
+            expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('applies latest health check result when slower check completes last', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice();
+            manager['devices'].push(device);
+
+            let resolveFirstCheck: (value: boolean) => void;
+            let resolveSecondCheck: (value: boolean) => void;
+            const firstCheckPromise = new Promise<boolean>(resolve => {
+                resolveFirstCheck = resolve;
+            });
+            const secondCheckPromise = new Promise<boolean>(resolve => {
+                resolveSecondCheck = resolve;
+            });
+
+            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
+            isDeviceRespondingStub.onFirstCall().returns(firstCheckPromise);
+            isDeviceRespondingStub.onSecondCall().returns(secondCheckPromise);
+
+            // Start first health check
+            const firstResult = manager.checkDeviceHealth(device);
+
+            // Start second health check
+            const secondResult = manager.checkDeviceHealth(device);
+
+            // First check completes with healthy (but is now stale)
+            resolveFirstCheck(true);
+            await firstResult;
+
+            // Device state update from first check should be ignored (stale)
+            // Device should still be pending from second check
+            expect(manager['devices'][0].deviceState).to.equal('pending');
+
+            // Second check completes with unhealthy
+            resolveSecondCheck(false);
+            await secondResult;
+
+            // Device should be removed (latest check failed)
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('tracks sequence numbers independently per device', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device1 = createMockDevice({ id: 'device-1' });
+            const device2 = createMockDevice({ id: 'device-2' });
+            manager['devices'].push(device1, device2);
+
+            let resolveDevice1: (value: boolean) => void;
+            let resolveDevice2: (value: boolean) => void;
+            const device1Promise = new Promise<boolean>(resolve => {
+                resolveDevice1 = resolve;
+            });
+            const device2Promise = new Promise<boolean>(resolve => {
+                resolveDevice2 = resolve;
+            });
+
+            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
+            isDeviceRespondingStub.withArgs(sinon.match({ id: 'device-1' })).returns(device1Promise);
+            isDeviceRespondingStub.withArgs(sinon.match({ id: 'device-2' })).returns(device2Promise);
+
+            // Start health checks for both devices
+            const result1 = manager.checkDeviceHealth(device1);
+            const result2 = manager.checkDeviceHealth(device2);
+
+            // Device 2 completes first (healthy)
+            resolveDevice2(true);
+            await result2;
+
+            // Device 1 completes second (healthy)
+            resolveDevice1(true);
+            await result1;
+
+            // Both devices should be online - sequence numbers are independent
+            expect(manager['devices'].length).to.equal(2);
+            expect(manager['devices'].find(d => d.id === 'device-1').deviceState).to.equal('online');
+            expect(manager['devices'].find(d => d.id === 'device-2').deviceState).to.equal('online');
+        });
     });
 
     describe('removeDevice', () => {
