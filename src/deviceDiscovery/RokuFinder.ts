@@ -85,10 +85,6 @@ export class RokuFinder extends EventEmitter {
     }
 
     private async processSsdpResponse(headers: SsdpHeaders) {
-        if (!this.running) {
-            return;
-        }
-
         const { ST, LOCATION } = headers;
         if (LOCATION && ST?.includes('roku')) {
             const device = await this.fetchDeviceDetails(LOCATION);
