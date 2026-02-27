@@ -12,7 +12,9 @@ describe('GlobalStateManager', () => {
         mockContext = {
             globalState: {
                 get: (key: string) => storage[key],
-                update: (key: string, value: any) => { storage[key] = value; }
+                update: (key: string, value: any) => {
+                    storage[key] = value;
+                }
             }
         };
         manager = new GlobalStateManager(mockContext);
