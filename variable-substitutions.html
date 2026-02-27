@@ -317,6 +317,11 @@
 <td>Automatically uses pre-configured device, or prompts if none set</td>
 </tr>
 <tr>
+<td><code>${activeHostPassword}</code></td>
+<td>Uses the password for the currently active device</td>
+<td>Automatically uses device-specific password, or falls back to global password</td>
+</tr>
+<tr>
 <td><code>${host}</code></td>
 <td>References the resolved host value</td>
 <td>Can be used in other fields like <code>deepLinkUrl</code></td>
@@ -383,6 +388,36 @@
 <ul>
 <li><strong>When active device is set</strong>: Uses it automatically without prompting</li>
 <li><strong>When no active device</strong>: Falls back to the device picker/input dialog</li>
+</ul>
+<a href="#activehostpassword---device-specific-password"><h2 id="activehostpassword---device-specific-password"><code>${activeHostPassword}</code> - Device-Specific Password</h2></a><p>Uses the password stored for the currently active device. This allows different devices to have different developer passwords while maintaining the convenience of automatic password selection.</p>
+<a href="#basic-usage-1"><h3 id="basic-usage-1">Basic Usage</h3></a><pre><code class="language-json">{
+    &quot;version&quot;: &quot;0.2.0&quot;,
+    &quot;configurations&quot;: [
+        {
+            &quot;name&quot;: &quot;Launch&quot;,
+            &quot;type&quot;: &quot;brightscript&quot;,
+            &quot;request&quot;: &quot;launch&quot;,
+            &quot;host&quot;: &quot;${activeHost}&quot;,
+            &quot;password&quot;: &quot;${activeHostPassword}&quot;
+        }
+    ]
+}
+</code></pre>
+<a href="#setting-device-passwords"><h3 id="setting-device-passwords">Setting Device Passwords</h3></a><p>To use <code>${activeHostPassword}</code> effectively, you should set passwords for individual devices:</p>
+<ol>
+<li><strong>Via Device List:</strong><ul>
+<li>Open the Roku Devices view in the sidebar</li>
+<li>Expand a device to see its options</li>
+<li>Click &quot;🔑 Set Device Password&quot; </li>
+<li>Enter the developer password for that specific device</li>
+</ul>
+</li>
+</ol>
+<a href="#fallback-handling-1"><h3 id="fallback-handling-1">Fallback Handling</h3></a><p>If you use <code>${activeHostPassword}</code> but no password is set for the active device, it will automatically fall back to the global password setting.</p>
+<p>This provides flexibility:</p>
+<ul>
+<li><strong>When device-specific password is set</strong>: Uses it automatically</li>
+<li><strong>When no device password</strong>: Falls back to global password configuration</li>
 </ul>
             <div id="footer"></div>
         </div>
