@@ -17,6 +17,7 @@ afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
     vscode.context.globalState['_data'] = {};
+    vscode.context.workspaceState['_data'] = {};
 });
 
 export let vscode = {
@@ -172,7 +173,9 @@ export let vscode = {
         withProgress: (options, action) => {
             return action();
         },
-        showInputBox: () => { },
+        showInputBox: () => {
+            return Promise.resolve(undefined);
+        },
         createStatusBarItem: () => {
             return {
                 clear: () => { },
@@ -252,6 +255,9 @@ export let vscode = {
         },
         showOpenDialog: () => {
             return Promise.resolve([]);
+        },
+        showWorkspaceFolderPick: () => {
+            return Promise.resolve(undefined);
         }
     },
     CompletionItemKind: {
