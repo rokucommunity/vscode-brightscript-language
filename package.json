@@ -419,7 +419,7 @@
                             },
                             "password": {
                                 "type": "string",
-                                "description": "The password for the developer page on the target Roku",
+                                "description": "The password for the developer page on the target Roku. You may use ${promptForPassword} to prompt for password, or ${activeHostPassword} to use the password set for the active device.",
                                 "default": "${promptForPassword}"
                             },
                             "rootDir": {
@@ -2102,7 +2102,7 @@
                     },
                     "brightscript.debug.password": {
                         "type": "string",
-                        "description": "The password for the developer page on the target Roku",
+                        "description": "The password for the developer page on the target Roku. You may use ${promptForPassword} to prompt for password, or ${activeHostPassword} to use the password set for the active device.",
                         "default": "${promptForPassword}",
                         "scope": "resource"
                     },

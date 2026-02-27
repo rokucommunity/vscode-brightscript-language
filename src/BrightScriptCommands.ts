@@ -394,6 +394,27 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('setDevicePassword', async (deviceIp: string) => {
+            if (!deviceIp) {
+                throw new Error('Device IP is required to set password.');
+            }
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the developer account password for this device',
+                password: true,
+                prompt: `Set password for device: ${deviceIp}`
+            });
+
+            if (password !== undefined) {
+                await this.setDevicePassword(deviceIp, password);
+                if (password) {
+                    await vscode.window.showInformationMessage(`Password set for device: ${deviceIp}`);
+                } else {
+                    await vscode.window.showInformationMessage(`Password cleared for device: ${deviceIp}`);
+                }
+            }
+        });
+
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('remoteHost', '');
             await vscode.window.showInformationMessage('BrightScript Language extension active device cleared');
@@ -542,6 +563,51 @@ export class BrightScriptCommands {
             }
         }
         return this.workspacePath;
+    }
+
+    /**
+     * Store a password for a specific device
+     * @param deviceIp The IP address of the device
+     * @param password The password to store for this device
+     */
+    public async setDevicePassword(deviceIp: string, password: string) {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        devicePasswords[deviceIp] = password;
+        await this.context.workspaceState.update('devicePasswords', devicePasswords);
+    }
+
+    /**
+     * Get the password for a specific device
+     * @param deviceIp The IP address of the device
+     * @returns The password for the device, or undefined if not set
+     */
+    public async getDevicePassword(deviceIp: string): Promise<string | undefined> {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        return devicePasswords[deviceIp];
+    }
+
+    /**
+     * Get the password for the currently active device
+     * @returns The password for the active device, or falls back to global password
+     */
+    public async getActiveHostPassword(): Promise<string | undefined> {
+        const activeHost = this.context.workspaceState.get<string>('remoteHost');
+        if (activeHost && typeof activeHost === 'string') {
+            const devicePassword = await this.getDevicePassword(activeHost);
+            if (devicePassword) {
+                return devicePassword;
+            }
+        }
+        // Fallback to global password
+        return this.getRemotePassword(false);
+    }
+
+    /**
+     * Get all device passwords from storage
+     * @returns Object mapping device IPs to passwords
+     */
+    private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
+        return await this.context.workspaceState.get('devicePasswords') || {};
     }
 
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {
