@@ -1,6 +1,5 @@
 import { EventEmitter } from 'eventemitter3';
 import { URL } from 'url';
-import { util } from '../util';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
