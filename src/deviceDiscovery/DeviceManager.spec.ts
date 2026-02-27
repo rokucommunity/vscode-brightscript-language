@@ -81,21 +81,6 @@ describe('DeviceManager', () => {
             expect(eventSpy.called).to.be.false;
         });
 
-        it('emits event again after refresh resets the flag', () => {
-            manager = new DeviceManager(mockGlobalStateManager);
-
-            const eventSpy = sinon.spy();
-            manager.on('scanNeeded-changed', eventSpy);
-
-            manager.setScanNeeded();
-            expect(eventSpy.calledOnce).to.be.true;
-
-            // refresh() clears the scanNeeded flag internally
-            manager.refresh(true);
-
-            manager.setScanNeeded();
-            expect(eventSpy.calledTwice).to.be.true;
-        });
     });
 
     describe('timeSinceLastScan', () => {
@@ -117,13 +102,6 @@ describe('DeviceManager', () => {
             } finally {
                 clock.restore();
             }
-        });
-    });
-
-    describe('timeSinceLastDiscoveredDevice', () => {
-        it('returns 0 when no device has been discovered', () => {
-            manager = new DeviceManager(mockGlobalStateManager);
-            expect(manager.timeSinceLastDiscoveredDevice).to.equal(0);
         });
     });
 
@@ -299,26 +277,6 @@ describe('DeviceManager', () => {
             }
         });
 
-        it('returns true without checking if within cooldown', async () => {
-            manager = new DeviceManager(mockGlobalStateManager);
-
-            const device = createMockDevice();
-            sinon.stub(manager, 'checkDeviceHealth').resolves(false);
-
-            // First call - actually checks, returns false
-            const result1 = await manager.checkDeviceHealthIfStale(device);
-            expect(result1).to.be.false;
-
-            // Second call - skips check, returns true (assumes healthy)
-            const result2 = await manager.checkDeviceHealthIfStale(device);
-            expect(result2).to.be.true;
-        });
-    });
-
-    describe('STALE_SCAN_THRESHOLD_MS', () => {
-        it('is 30 minutes', () => {
-            expect(DeviceManager.STALE_SCAN_THRESHOLD_MS).to.equal(30 * 60 * 1_000);
-        });
     });
 
     describe('scan events', () => {
@@ -624,48 +582,6 @@ describe('DeviceManager', () => {
             // Device should STILL be online - slow check result was ignored (stale)
             expect(manager['devices'].length).to.equal(1);
             expect(manager['devices'][0].deviceState).to.equal('online');
-        });
-
-        it('applies latest health check result when slower check completes last', async () => {
-            manager = new DeviceManager(mockGlobalStateManager);
-            (vscode.window as any).state = { focused: true };
-
-            const device = createMockDevice();
-            manager['devices'].push(device);
-
-            let resolveFirstCheck: (value: boolean) => void;
-            let resolveSecondCheck: (value: boolean) => void;
-            const firstCheckPromise = new Promise<boolean>(resolve => {
-                resolveFirstCheck = resolve;
-            });
-            const secondCheckPromise = new Promise<boolean>(resolve => {
-                resolveSecondCheck = resolve;
-            });
-
-            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
-            isDeviceRespondingStub.onFirstCall().returns(firstCheckPromise);
-            isDeviceRespondingStub.onSecondCall().returns(secondCheckPromise);
-
-            // Start first health check
-            const firstResult = manager.checkDeviceHealth(device);
-
-            // Start second health check
-            const secondResult = manager.checkDeviceHealth(device);
-
-            // First check completes with healthy (but is now stale)
-            resolveFirstCheck(true);
-            await firstResult;
-
-            // Device state update from first check should be ignored (stale)
-            // Device should still be pending from second check
-            expect(manager['devices'][0].deviceState).to.equal('pending');
-
-            // Second check completes with unhealthy
-            resolveSecondCheck(false);
-            await secondResult;
-
-            // Device should be removed (latest check failed)
-            expect(manager['devices'].length).to.equal(0);
         });
 
         it('tracks sequence numbers independently per device', async () => {

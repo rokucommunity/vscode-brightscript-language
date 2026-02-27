@@ -206,6 +206,80 @@ describe('NetworkChangeMonitor', () => {
 
         });
 
+        describe('start after long stop', () => {
+            it('handles restart after being stopped longer than the interval', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Let it run for one full interval
+                clock.tick(DEFAULT_TIMEOUT);
+                expect(callback.called).to.be.false; // No network change
+
+                // Stop the monitor
+                monitor.stop();
+
+                // Advance time well past another interval (e.g., 2x the interval)
+                clock.tick(DEFAULT_TIMEOUT * 2);
+
+                // Change the network while stopped
+                networkInterfacesStub.returns({
+                    'en0': [{
+                        address: '10.0.0.50',
+                        netmask: '255.255.255.0',
+                        family: 'IPv4',
+                        internal: false
+                    }]
+                });
+
+                // Restart the monitor
+                monitor.start();
+
+                // The callback should fire immediately since we've been stopped > interval
+                // and the network changed
+                expect(callback.calledOnce).to.be.true;
+            });
+
+            it('computes correct remaining time when restarted within interval', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Let it run for one full interval
+                clock.tick(DEFAULT_TIMEOUT);
+
+                // Stop after a short time (less than full interval)
+                clock.tick(DEFAULT_TIMEOUT / 2);
+                monitor.stop();
+
+                // Advance only a small amount (still within the "remaining" time)
+                clock.tick(DEFAULT_TIMEOUT / 4);
+
+                // Restart - should NOT immediately execute since we're within the interval
+                monitor.start();
+
+                // Change network
+                networkInterfacesStub.returns({
+                    'en0': [{
+                        address: '10.0.0.50',
+                        netmask: '255.255.255.0',
+                        family: 'IPv4',
+                        internal: false
+                    }]
+                });
+
+                // Callback should NOT have fired yet
+                expect(callback.called).to.be.false;
+
+                // Now advance to when the timer should fire
+                // We should need to wait: interval - (time since last execution)
+                // Last execution was at DEFAULT_TIMEOUT
+                // We're now at DEFAULT_TIMEOUT + DEFAULT_TIMEOUT/2 + DEFAULT_TIMEOUT/4 = 1.75 * DEFAULT_TIMEOUT
+                // Remaining should be: interval - 0.75*interval = 0.25*interval
+                clock.tick((DEFAULT_TIMEOUT / 4) + 1);
+
+                expect(callback.calledOnce).to.be.true;
+            });
+        });
+
         describe('stop', () => {
             it('prevents future checks', () => {
                 monitor = new NetworkChangeMonitor(callback);

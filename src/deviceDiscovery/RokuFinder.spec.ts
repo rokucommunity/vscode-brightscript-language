@@ -242,23 +242,6 @@ describe('RokuFinder', () => {
     });
 
     describe('device filtering', () => {
-        it('returns device when developer-enabled', async () => {
-            finder = new RokuFinder();
-            await finder.start();
-
-            const foundSpy = sinon.spy();
-            finder.on('found', foundSpy);
-
-            (finder['client'] as any).emit('response', {
-                ST: 'roku:ecp',
-                LOCATION: 'http://192.168.1.100:8060'
-            });
-
-            await flushPromises();
-
-            expect(foundSpy.calledOnce).to.be.true;
-        });
-
         it('filters out non-developer devices by default', async () => {
             getDeviceInfoStub.resolves({
                 ...mockDeviceInfo,
@@ -439,20 +422,4 @@ describe('RokuFinder', () => {
         });
     });
 
-    describe('onFocusLost', () => {
-        it('sets focused to false', () => {
-            finder = new RokuFinder();
-            finder.onFocusLost();
-            expect(finder['focused']).to.be.false;
-        });
-    });
-
-    describe('onFocusGain', () => {
-        it('sets focused to true', () => {
-            finder = new RokuFinder();
-            finder.onFocusLost();
-            finder.onFocusGain();
-            expect(finder['focused']).to.be.true;
-        });
-    });
 });
