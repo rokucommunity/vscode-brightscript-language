@@ -24,7 +24,7 @@ export class DeviceManager {
     private lastDiscoveredDeviceDate: Date;
     private finder: RokuFinder = new RokuFinder();
     private lastHealthCheckTime = new Map<string, number>();
-    private healthCheckSequence = new Map<string, number>();
+    private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 5_000; // 5 seconds
 
@@ -233,10 +233,10 @@ export class DeviceManager {
         return false;
     }
 
-    private async performHealthCheckForDevice(device: RokuDeviceDetails): Promise<boolean> {
-        // Increment and capture sequence number to handle concurrent health checks
-        const currentSeq = (this.healthCheckSequence.get(device.id) ?? 0) + 1;
-        this.healthCheckSequence.set(device.id, currentSeq);
+    private async resolveDevice(device: RokuDeviceDetails): Promise<boolean> {
+        // Increment and capture sequence number to handle concurrent refresh calls
+        const currentSeq = (this.resolveDeviceSequence.get(device.id) ?? 0) + 1;
+        this.resolveDeviceSequence.set(device.id, currentSeq);
 
         // Set to pending during health check with immediate UI feedback
         const existingDevice = this.devices.find(d => d.id === device.id);
@@ -265,7 +265,7 @@ export class DeviceManager {
         }
 
         // Only apply result if this is still the latest request for this device
-        if (this.healthCheckSequence.get(device.id) !== currentSeq) {
+        if (this.resolveDeviceSequence.get(device.id) !== currentSeq) {
             // Stale response - a newer check was started, ignore this result
             return !!freshDevice;
         }
@@ -280,7 +280,7 @@ export class DeviceManager {
     }
 
     public async checkDeviceHealth(device: RokuDeviceDetails): Promise<boolean> {
-        const isHealthy = await this.performHealthCheckForDevice(device);
+        const isHealthy = await this.resolveDevice(device);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
             this.refresh(this.passiveScanPermitted);
@@ -302,7 +302,7 @@ export class DeviceManager {
         const devices = this.getActiveDevices();
         let needsScan = false;
         await Promise.all(devices.map(async (device) => {
-            const isHealthy = await this.performHealthCheckForDevice(device);
+            const isHealthy = await this.resolveDevice(device);
             if (!isHealthy) {
                 this.removeDevice(device.id);
                 needsScan = true;
