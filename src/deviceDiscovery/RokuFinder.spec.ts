@@ -12,9 +12,9 @@ describe('RokuFinder', () => {
     const mockDeviceInfo = {
         'device-id': 'ABC123',
         'default-device-name': 'Roku Express',
-        'developer-enabled': true,
-        'is-stick': false,
-        'is-tv': false
+        'developer-enabled': 'true',
+        'is-stick': 'false',
+        'is-tv': 'false'
     };
 
     // Helper to flush pending promises
@@ -245,7 +245,7 @@ describe('RokuFinder', () => {
         it('filters out non-developer devices by default', async () => {
             getDeviceInfoStub.resolves({
                 ...mockDeviceInfo,
-                'developer-enabled': false
+                'developer-enabled': 'false'
             });
 
             finder = new RokuFinder();
@@ -267,7 +267,7 @@ describe('RokuFinder', () => {
         it('includes non-developer devices when setting is enabled', async () => {
             getDeviceInfoStub.resolves({
                 ...mockDeviceInfo,
-                'developer-enabled': false
+                'developer-enabled': 'false'
             });
 
             getConfigurationStub.returns({

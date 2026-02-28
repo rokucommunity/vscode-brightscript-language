@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
+import { rokuDeploy } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import type { RokuDeviceDetails } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
@@ -18,8 +19,8 @@ describe('DeviceManager', () => {
             deviceInfo: {
                 'default-device-name': 'Roku Express',
                 'device-id': 'device-123',
-                'is-stick': false,
-                'is-tv': false,
+                'is-stick': 'false',
+                'is-tv': 'false',
                 ...overrides.deviceInfo
             },
             ...overrides
@@ -154,15 +155,15 @@ describe('DeviceManager', () => {
 
             const tv = createMockDevice({
                 id: 'tv-1',
-                deviceInfo: { 'default-device-name': 'Roku TV', 'is-tv': true, 'is-stick': false }
+                deviceInfo: { 'default-device-name': 'Roku TV', 'is-tv': 'true', 'is-stick': 'false' }
             });
             const stick = createMockDevice({
                 id: 'stick-1',
-                deviceInfo: { 'default-device-name': 'Roku Stick', 'is-tv': false, 'is-stick': true }
+                deviceInfo: { 'default-device-name': 'Roku Stick', 'is-tv': 'false', 'is-stick': 'true' }
             });
             const box = createMockDevice({
                 id: 'box-1',
-                deviceInfo: { 'default-device-name': 'Roku Express', 'is-tv': false, 'is-stick': false }
+                deviceInfo: { 'default-device-name': 'Roku Express', 'is-tv': 'false', 'is-stick': 'false' }
             });
 
             // Add devices in wrong order
@@ -182,15 +183,15 @@ describe('DeviceManager', () => {
 
             const boxB = createMockDevice({
                 id: 'box-b',
-                deviceInfo: { 'default-device-name': 'Roku B', 'is-tv': false, 'is-stick': false }
+                deviceInfo: { 'default-device-name': 'Roku B', 'is-tv': 'false', 'is-stick': 'false' }
             });
             const boxA = createMockDevice({
                 id: 'box-a',
-                deviceInfo: { 'default-device-name': 'Roku A', 'is-tv': false, 'is-stick': false }
+                deviceInfo: { 'default-device-name': 'Roku A', 'is-tv': 'false', 'is-stick': 'false' }
             });
             const boxC = createMockDevice({
                 id: 'box-c',
-                deviceInfo: { 'default-device-name': 'Roku C', 'is-tv': false, 'is-stick': false }
+                deviceInfo: { 'default-device-name': 'Roku C', 'is-tv': 'false', 'is-stick': 'false' }
             });
 
             manager['devices'].push(boxB);
@@ -493,19 +494,19 @@ describe('DeviceManager', () => {
             const device = createMockDevice();
             manager['devices'].push(device);
 
-            // Stub isDeviceResponding to delay so we can check pending state
-            let resolveHealth: (value: boolean) => void;
-            const healthPromise = new Promise<boolean>(resolve => {
+            // Stub rokuDeploy.getDeviceInfo to delay so we can check pending state
+            let resolveHealth: (value: any) => void;
+            const healthPromise = new Promise<any>(resolve => {
                 resolveHealth = resolve;
             });
-            sinon.stub(manager as any, 'isDeviceResponding').returns(healthPromise);
+            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(healthPromise);
 
             const checkPromise = manager.checkDeviceHealth(device);
 
             // Device should be pending during check
             expect(manager['devices'][0].deviceState).to.equal('pending');
 
-            resolveHealth(true);
+            resolveHealth(device.deviceInfo);
             await checkPromise;
 
             // Device should be online after successful check
@@ -519,7 +520,7 @@ describe('DeviceManager', () => {
             const device = createMockDevice();
             manager['devices'].push(device);
 
-            sinon.stub(manager as any, 'isDeviceResponding').returns(Promise.resolve(false));
+            sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
             const result = await manager.checkDeviceHealth(device);
 
@@ -533,7 +534,7 @@ describe('DeviceManager', () => {
             const device = createMockDevice();
             manager['devices'].push(device);
 
-            sinon.stub(manager as any, 'isDeviceResponding').returns(Promise.resolve(true));
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(device.deviceInfo);
 
             const result = await manager.checkDeviceHealth(device);
 
@@ -547,19 +548,22 @@ describe('DeviceManager', () => {
             const device = createMockDevice();
             manager['devices'].push(device);
 
+            // Stub refresh to prevent cascade of health checks
+            sinon.stub(manager, 'refresh');
+
             // Create two controllable promises for the health checks
-            let resolveSlowCheck: (value: boolean) => void;
-            let resolveFastCheck: (value: boolean) => void;
-            const slowCheckPromise = new Promise<boolean>(resolve => {
-                resolveSlowCheck = resolve;
+            let rejectSlowCheck: (err: Error) => void;
+            let resolveFastCheck: (value: any) => void;
+            const slowCheckPromise = new Promise<any>((_resolve, reject) => {
+                rejectSlowCheck = reject;
             });
-            const fastCheckPromise = new Promise<boolean>(resolve => {
+            const fastCheckPromise = new Promise<any>(resolve => {
                 resolveFastCheck = resolve;
             });
 
-            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
-            isDeviceRespondingStub.onFirstCall().returns(slowCheckPromise);
-            isDeviceRespondingStub.onSecondCall().returns(fastCheckPromise);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+            getDeviceInfoStub.onFirstCall().returns(slowCheckPromise);
+            getDeviceInfoStub.onSecondCall().returns(fastCheckPromise);
 
             // Start first (slow) health check - will return unhealthy
             const slowResult = manager.checkDeviceHealth(device);
@@ -568,7 +572,7 @@ describe('DeviceManager', () => {
             const fastResult = manager.checkDeviceHealth(device);
 
             // Fast check completes first with healthy result
-            resolveFastCheck(true);
+            resolveFastCheck(device.deviceInfo);
             await fastResult;
 
             // Device should be online (fast check succeeded)
@@ -576,7 +580,7 @@ describe('DeviceManager', () => {
             expect(manager['devices'][0].deviceState).to.equal('online');
 
             // Slow check completes later with unhealthy result
-            resolveSlowCheck(false);
+            rejectSlowCheck(new Error('Device not responding'));
             await slowResult;
 
             // Device should STILL be online - slow check result was ignored (stale)
@@ -592,29 +596,32 @@ describe('DeviceManager', () => {
             const device2 = createMockDevice({ id: 'device-2' });
             manager['devices'].push(device1, device2);
 
-            let resolveDevice1: (value: boolean) => void;
-            let resolveDevice2: (value: boolean) => void;
-            const device1Promise = new Promise<boolean>(resolve => {
+            // Stub refresh to prevent cascade of health checks
+            sinon.stub(manager, 'refresh');
+
+            let resolveDevice1: (value: any) => void;
+            let resolveDevice2: (value: any) => void;
+            const device1Promise = new Promise<any>(resolve => {
                 resolveDevice1 = resolve;
             });
-            const device2Promise = new Promise<boolean>(resolve => {
+            const device2Promise = new Promise<any>(resolve => {
                 resolveDevice2 = resolve;
             });
 
-            const isDeviceRespondingStub = sinon.stub(manager as any, 'isDeviceResponding');
-            isDeviceRespondingStub.withArgs(sinon.match({ id: 'device-1' })).returns(device1Promise);
-            isDeviceRespondingStub.withArgs(sinon.match({ id: 'device-2' })).returns(device2Promise);
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+            getDeviceInfoStub.onFirstCall().returns(device1Promise);
+            getDeviceInfoStub.onSecondCall().returns(device2Promise);
 
             // Start health checks for both devices
             const result1 = manager.checkDeviceHealth(device1);
             const result2 = manager.checkDeviceHealth(device2);
 
             // Device 2 completes first (healthy)
-            resolveDevice2(true);
+            resolveDevice2(device2.deviceInfo);
             await result2;
 
             // Device 1 completes second (healthy)
-            resolveDevice1(true);
+            resolveDevice1(device1.deviceInfo);
             await result1;
 
             // Both devices should be online - sequence numbers are independent

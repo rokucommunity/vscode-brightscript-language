@@ -34,7 +34,7 @@ describe('UserInputManager', () => {
         fsExtra.emptyDirSync(tempDir);
 
         //prevent the DeviceManager from actually running
-        sinon.stub(DeviceManager.prototype as any, 'initializeIfEnabled').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'initialize').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });

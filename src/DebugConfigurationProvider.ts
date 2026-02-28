@@ -426,7 +426,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.deviceManager.enabled) {
+            if (this.deviceManager.passiveScanPermitted) {
                 config.host = await this.userInputManager.promptForHost();
             } else {
                 config.host = await this.userInputManager.promptForHostManual();

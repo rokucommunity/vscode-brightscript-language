@@ -18,9 +18,9 @@ export const icons = {
      * Get the correct icon for the device type
      */
     getDeviceType: (device: RokuDeviceDetails) => {
-        if (device.deviceInfo?.['is-stick']) {
+        if (device.deviceInfo?.['is-stick'] === 'true') {
             return icons.streamingStick;
-        } else if (device.deviceInfo?.['is-tv']) {
+        } else if (device.deviceInfo?.['is-tv'] === 'true') {
             return icons.tv;
             //fall back to settop box in all other cases
         } else {

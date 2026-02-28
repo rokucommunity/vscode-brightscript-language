@@ -3,7 +3,7 @@ import { URL } from 'url';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy } from 'roku-deploy';
+import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
@@ -49,7 +49,7 @@ export class DeviceManager {
 
     public firstRequestForDevices: boolean;
     public lastUsedDevice: RokuDeviceDetails;
-    public enabled: boolean;
+    public passiveScanPermitted: boolean;
 
     /**
      * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
@@ -91,25 +91,20 @@ export class DeviceManager {
         this.setupConfiguration();
         this.setupWindowFocusHandling();
         this.setupMonitors();
-        this.initializeIfEnabled();
+        this.initialize();
     }
 
     private setupConfiguration() {
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.enabled = config.deviceDiscovery?.enabled;
-        this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
-
-        vscode.workspace.onDidChangeConfiguration((event) => {
+        const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.enabled = config.deviceDiscovery?.enabled;
+            this.passiveScanPermitted = config.deviceDiscovery?.enabled;
             this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
-            if (event.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
-                if (this.enabled) {
+            if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+                if (this.passiveScanPermitted) {
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
-                    this.loadLastSeenDevices();
                 } else {
                     this.systemSleepMonitor.stop();
                     this.deactivateMonitoring();
@@ -117,12 +112,12 @@ export class DeviceManager {
             }
 
             //if the `concealDeviceInfo` setting was changed, refresh the UI (no reload needed)
-            if (event.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
-                if (this.enabled) {
-                    this.emitDevicesChanged();
-                }
+            if (event?.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
+                this.emitDevicesChanged();
             }
-        });
+        };
+        vscode.workspace.onDidChangeConfiguration(applyConfig);
+        applyConfig();
     }
 
     private setupWindowFocusHandling() {
@@ -146,12 +141,13 @@ export class DeviceManager {
         });
     }
 
-    private initializeIfEnabled() {
-        if (this.enabled) {
+    private initialize() {
+        this.loadLastSeenDevices();
+
+        if (this.passiveScanPermitted) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
-            this.loadLastSeenDevices();
             this.activateMonitoring().then(() => {
                 const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
@@ -164,8 +160,6 @@ export class DeviceManager {
     }
 
     // #endregion Constructor
-
-    // #region Public Methods
 
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
@@ -239,30 +233,59 @@ export class DeviceManager {
         return false;
     }
 
-    public async checkDeviceHealth(device: RokuDeviceDetails): Promise<boolean> {
+    private async performHealthCheckForDevice(device: RokuDeviceDetails): Promise<boolean> {
         // Increment and capture sequence number to handle concurrent health checks
         const currentSeq = (this.healthCheckSequence.get(device.id) ?? 0) + 1;
         this.healthCheckSequence.set(device.id, currentSeq);
 
-        // Set to pending during health check (note: could cause UI flickering if checks are frequent)
-        this.updateDeviceState(device.id, 'pending');
+        // Set to pending during health check with immediate UI feedback
+        const existingDevice = this.devices.find(d => d.id === device.id);
+        if (existingDevice && existingDevice.deviceState !== 'pending') {
+            existingDevice.deviceState = 'pending';
+            this.emitDevicesChangedImmediate();
+        }
 
-        const isHealthy = await this.isDeviceResponding(device);
+        // Fetch latest device info from the network
+        let freshDevice: RokuDeviceDetails | undefined;
+        try {
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: device.ip,
+                remotePort: parseInt(new URL(device.location).port ?? '8060'),
+                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
+            });
+            freshDevice = {
+                location: device.location,
+                ip: device.ip,
+                id: device.id,
+                deviceState: 'online',
+                deviceInfo: deviceInfo
+            };
+        } catch {
+            freshDevice = undefined;
+        }
 
         // Only apply result if this is still the latest request for this device
         if (this.healthCheckSequence.get(device.id) !== currentSeq) {
             // Stale response - a newer check was started, ignore this result
-            return isHealthy;
+            return !!freshDevice;
         }
 
-        if (isHealthy) {
-            this.updateDeviceState(device.id, 'online');
+        if (freshDevice) {
+            this.upsertDevice(freshDevice);
             return true;
         } else {
             this.removeDevice(device.id);
-            this.refresh(true);
             return false;
         }
+    }
+
+    public async checkDeviceHealth(device: RokuDeviceDetails): Promise<boolean> {
+        const isHealthy = await this.performHealthCheckForDevice(device);
+        if (!isHealthy) {
+            // force a scan if passive scan is permitted
+            this.refresh(this.passiveScanPermitted);
+        }
+        return isHealthy;
     }
 
     public async checkDeviceHealthIfStale(device: RokuDeviceDetails): Promise<boolean> {
@@ -275,9 +298,20 @@ export class DeviceManager {
         return true;
     }
 
-    // #endregion Public Methods
-
-    // #region Private Methods
+    private async healthCheckAllDevices(): Promise<void> {
+        const devices = this.getActiveDevices();
+        let needsScan = false;
+        await Promise.all(devices.map(async (device) => {
+            const isHealthy = await this.performHealthCheckForDevice(device);
+            if (!isHealthy) {
+                this.removeDevice(device.id);
+                needsScan = true;
+            }
+        }));
+        if (needsScan) {
+            this.discoverAll(this.passiveScanPermitted);
+        }
+    }
 
     /**
      * Emit devices-changed event with debouncing to avoid rapid-fire updates
@@ -312,22 +346,6 @@ export class DeviceManager {
         for (const device of pendingDevices) {
             // Fire and forget - health check updates state and emits events when done
             this.checkDeviceHealthIfStale(device).catch(() => { });
-        }
-    }
-
-    /**
-     * Update a device's state and emit change event.
-     * Pending state emits immediately for instant UI feedback; other states are debounced.
-     */
-    private updateDeviceState(deviceId: string, state: DeviceState): void {
-        const device = this.devices.find(d => d.id === deviceId);
-        if (device && device.deviceState !== state) {
-            device.deviceState = state;
-            if (state === 'pending') {
-                this.emitDevicesChangedImmediate();
-            } else {
-                this.emitDevicesChanged();
-            }
         }
     }
 
@@ -413,10 +431,10 @@ export class DeviceManager {
     }
 
     private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
-        if (device.deviceInfo['is-stick']) {
+        if (device.deviceInfo['is-stick'] === 'true') {
             return 0;
         }
-        if (device.deviceInfo['is-tv']) {
+        if (device.deviceInfo['is-tv'] === 'true') {
             return 2;
         }
         return 1;
@@ -546,36 +564,6 @@ export class DeviceManager {
             }
         }
     }
-
-    private async isDeviceResponding(device: RokuDeviceDetails): Promise<boolean> {
-        try {
-            await rokuDeploy.getDeviceInfo({
-                host: device.ip,
-                remotePort: parseInt(new URL(device.location).port ?? '8060'),
-                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-            });
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
-
-    private async healthCheckAllDevices(): Promise<void> {
-        const devices = this.getActiveDevices();
-        let needsScan = false;
-        await Promise.all(devices.map(async (device) => {
-            const isHealthy = await this.checkDeviceHealth(device);
-            if (!isHealthy) {
-                this.removeDevice(device.id);
-                needsScan = true;
-            }
-        }));
-        if (needsScan) {
-            this.discoverAll(true);
-        }
-    }
-
-    // #endregion Private Methods
 }
 
 export type DeviceState = 'offline' | 'pending' | 'online';
@@ -585,75 +573,5 @@ export interface RokuDeviceDetails {
     id: string;
     ip: string;
     deviceState: DeviceState;
-    deviceInfo: {
-        'udn'?: string;
-        'serial-number'?: string;
-        'device-id'?: string;
-        'advertising-id'?: string;
-        'vendor-name'?: string;
-        'model-name'?: string;
-        'model-number'?: string;
-        'model-region'?: string;
-        'is-tv'?: boolean;
-        'is-stick'?: boolean;
-        'ui-resolution'?: string;
-        'supports-ethernet'?: boolean;
-        'wifi-mac'?: string;
-        'wifi-driver'?: string;
-        'has-wifi-extender'?: boolean;
-        'has-wifi-5G-support'?: boolean;
-        'can-use-wifi-extender'?: boolean;
-        'ethernet-mac'?: string;
-        'network-type'?: string;
-        'network-name'?: string;
-        'friendly-device-name'?: string;
-        'friendly-model-name'?: string;
-        'default-device-name'?: string;
-        'user-device-name'?: string;
-        'user-device-location'?: string;
-        'build-number'?: string;
-        'software-version'?: string;
-        'software-build'?: number;
-        'secure-device'?: boolean;
-        'language'?: string;
-        'country'?: string;
-        'locale'?: string;
-        'time-zone-auto'?: boolean;
-        'time-zone'?: string;
-        'time-zone-name'?: string;
-        'time-zone-tz'?: string;
-        'time-zone-offset'?: number;
-        'clock-format'?: string;
-        'uptime'?: number;
-        'power-mode'?: string;
-        'supports-suspend'?: boolean;
-        'supports-find-remote'?: boolean;
-        'find-remote-is-possible'?: boolean;
-        'supports-audio-guide'?: boolean;
-        'supports-rva'?: boolean;
-        'developer-enabled'?: boolean;
-        'keyed-developer-id'?: string;
-        'search-enabled'?: boolean;
-        'search-channels-enabled'?: boolean;
-        'voice-search-enabled'?: boolean;
-        'notifications-enabled'?: boolean;
-        'notifications-first-use'?: boolean;
-        'supports-private-listening'?: boolean;
-        'headphones-connected'?: boolean;
-        'supports-audio-settings'?: boolean;
-        'supports-ecs-textedit'?: boolean;
-        'supports-ecs-microphone'?: boolean;
-        'supports-wake-on-wlan'?: boolean;
-        'supports-airplay'?: boolean;
-        'has-play-on-roku'?: boolean;
-        'has-mobile-screensaver'?: boolean;
-        'support-url'?: string;
-        'grandcentral-version'?: string;
-        'trc-version'?: number;
-        'trc-channel-version'?: string;
-        'davinci-version'?: string;
-        'av-sync-calibration-enabled'?: number;
-        // Anything they might add that we do not know about
-        [key: string]: any;
-    };
+    deviceInfo: DeviceInfoRaw;
 }

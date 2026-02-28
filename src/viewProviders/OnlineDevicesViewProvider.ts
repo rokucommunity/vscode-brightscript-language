@@ -181,7 +181,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
                 this.deviceManager.checkDeviceHealthIfStale(device).catch(() => { });
             }
 
-            if (device.deviceInfo['is-tv']) {
+            if (device.deviceInfo['is-tv'] === 'true') {
                 result.unshift(
                     this.createDeviceInfoTreeItem({
                         label: '📺 Switch TV Input',
