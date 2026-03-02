@@ -35,9 +35,6 @@ export class DeviceManager {
     private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 5_000; // 5 seconds
-
-    // Debounce for devices-changed event
-    private devicesChangedDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
 
     // Scan state management
@@ -233,7 +230,7 @@ export class DeviceManager {
         const existingDevice = this.devices.find(d => d.id === device.id);
         if (existingDevice && existingDevice.deviceState !== 'pending') {
             existingDevice.deviceState = 'pending';
-            this.emitDevicesChangedImmediate();
+            this.emitDevicesChanged();
         }
 
         // Fetch latest device info from the network
@@ -292,6 +289,10 @@ export class DeviceManager {
     private async healthCheckAllDevices(): Promise<void> {
         const devices = this.getActiveDevices();
         let needsScan = false;
+        for (const device of devices) {
+            device.deviceState = 'pending';
+        }
+        this.emitDevicesChanged();
         await Promise.all(devices.map(async (device) => {
             const isHealthy = await this.resolveDevice(device);
             if (!isHealthy) {
@@ -304,29 +305,9 @@ export class DeviceManager {
         }
     }
 
-    /**
-     * Emit devices-changed event with debouncing to avoid rapid-fire updates
-     */
-    private emitDevicesChanged(): void {
-        if (this.devicesChangedDebounceTimer) {
-            clearTimeout(this.devicesChangedDebounceTimer);
-        }
-        this.devicesChangedDebounceTimer = setTimeout(() => {
-            this.devicesChangedDebounceTimer = null;
-            this.emitter.emit('devices-changed');
-        }, this.DEVICES_CHANGED_DEBOUNCE_MS);
-    }
-
-    /**
-     * Emit devices-changed event immediately without debouncing
-     */
-    private emitDevicesChangedImmediate(): void {
-        if (this.devicesChangedDebounceTimer) {
-            clearTimeout(this.devicesChangedDebounceTimer);
-            this.devicesChangedDebounceTimer = null;
-        }
+    private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
-    }
+    }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
     /**
      * Trigger health checks for devices in 'pending' state.
@@ -408,11 +389,7 @@ export class DeviceManager {
     }
 
     private async activateMonitoring() {
-        if (!vscode.window.state.focused) {
-            return;
-        }
         this.networkChangeMonitor.start();
-
         await this.startRokuFinder();
     }
 
@@ -548,9 +525,7 @@ export class DeviceManager {
                 this.lastUsedDevice = null;
             }
 
-            if (vscode.window.state.focused) {
-                this.emitDevicesChanged();
-            }
+            this.emitDevicesChanged();
         }
     }
 }
@@ -563,4 +538,30 @@ export interface RokuDeviceDetails {
     ip: string;
     deviceState: DeviceState;
     deviceInfo: DeviceInfoRaw;
+}
+
+function throttleBounce<T extends (...args: any[]) => void>(
+    callback: T,
+    threshold: number
+): (...args: Parameters<T>) => void {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: Parameters<T> | undefined;
+    function onTimer() {
+        if (pending) {
+            callback(...pending);
+            pending = undefined;
+            timer = setTimeout(onTimer, threshold);
+        } else {
+            timer = undefined;
+        }
+    }
+
+    return (...args: Parameters<T>) => {
+        if (!timer) {
+            callback(...args);
+            timer = setTimeout(onTimer, threshold);
+        } else {
+            pending = args;
+        }
+    };
 }
