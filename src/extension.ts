@@ -272,6 +272,8 @@ export class Extension {
         // in a loop until we successfully attach or until the parent session ends.
 
         while (this.debugSessions.has(parentSession)) {
+            //rewrite the debug session name to indicate it's the BRS session (this is just for user clarity in the UI, it has no functional effect)
+            parentSession.name = `${parentSession.name.replace(/ \(BRS\)$/, '')} (BRS)`;
             try {
                 const debugConfig: vscode.DebugConfiguration = {
                     type: 'node',
