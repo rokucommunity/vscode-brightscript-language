@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.60.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.60.0...v2.60.1) - 2025-12-01
+### Added
+ - Add `packageTask`, `packagePath`, `packageUploadOverrides` complib launch schema info ([#675](https://github.com/rokucommunity/vscode-brightscript-language/pull/675))
+### Changed
+ - upgrade to [roku-debug@0.22.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0225---2025-12-01). Notable changes since 0.22.4:
+     - Support packageTask, packagePath, packageUploadOverrides for complibs ([#282](https://github.com/rokucommunity/roku-debug/pull/282))
+
+
+
 ## [2.60.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.59.2...v2.60.0) - 2025-11-19
 ### Added
  - Support for installing component libraries onto device during launch ([#672](https://github.com/rokucommunity/vscode-brightscript-language/pull/672))

@@ -459,6 +459,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             } else {
                 await this.context.workspaceState.update('remotePassword', config.password);
             }
+        } else if (config.password.trim() === '${activeHostPassword}') {
+            // Get the password for the current active device
+            config.password = await this.brightScriptCommands.getActiveHostPassword();
+            if (!config.password) {
+                throw new Error('Debug session terminated: no password set for active device.');
+            }
         }
 
         return config;
