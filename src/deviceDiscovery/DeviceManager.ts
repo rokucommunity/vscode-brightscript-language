@@ -10,8 +10,16 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 
 export class DeviceManager {
+    constructor(globalStateManager: GlobalStateManager) {
+        this.globalStateManager = globalStateManager;
+        this.firstRequestForDevices = true;
+        this.networkId = getNetworkHash();
 
-    // #region Properties
+        this.setupConfiguration();
+        this.setupWindowFocusHandling();
+        this.setupMonitors();
+        this.initialize();
+    }
 
     private emitter = new EventEmitter();
     private globalStateManager: GlobalStateManager;
@@ -79,21 +87,6 @@ export class DeviceManager {
         return Date.now() - this.lastDiscoveredDeviceDate.getTime();
     }
 
-    // #endregion Properties
-
-    // #region Constructor
-
-    constructor(globalStateManager: GlobalStateManager) {
-        this.globalStateManager = globalStateManager;
-        this.firstRequestForDevices = true;
-        this.networkId = getNetworkHash();
-
-        this.setupConfiguration();
-        this.setupWindowFocusHandling();
-        this.setupMonitors();
-        this.initialize();
-    }
-
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
@@ -158,8 +151,6 @@ export class DeviceManager {
             }).catch(() => { });
         }
     }
-
-    // #endregion Constructor
 
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
@@ -536,12 +527,10 @@ export class DeviceManager {
             this.resetSettleTimer();
         }
 
-        if (vscode.window.state.focused) {
-            if (isNewDevice) {
-                this.globalStateManager.addLastSeenDevice(this.networkId, device.id);
-            }
-            this.emitDevicesChanged();
+        if (isNewDevice) {
+            this.globalStateManager.addLastSeenDevice(this.networkId, device.id);
         }
+        this.emitDevicesChanged();
     }
 
     /**
