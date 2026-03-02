@@ -5,7 +5,10 @@ import * as chalk from 'chalk';
 
 const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
-const baseUrl = 'https://github.com/rokucommunity';
+const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+const baseUrl = githubToken
+    ? `https://${githubToken}@github.com/rokucommunity`
+    : 'https://github.com/rokucommunity';
 const projects = [{
     name: 'roku-deploy',
     dependencies: []
@@ -81,11 +84,18 @@ interface Project {
     processed: boolean;
 }
 
+function injectToken(url: string) {
+    if (!githubToken) {
+        return url;
+    }
+    return url.replace(/^https:\/\/(?!.*@)/, `https://${githubToken}@`);
+}
+
 /**
  * Determine if a repo has a branch with the given name
  */
 function hasBranch(project: Project, branch: string) {
-    const repoUrl = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
+    const repoUrl = injectToken(project.repositoryUrl ?? `${baseUrl}/${project.name}`);
     const output = childProcess.execSync(`git ls-remote --heads ${repoUrl}`).toString();
     const regexp = new RegExp(`refs/heads/${escapeRegExp(branch)}\\b`);
     return !!regexp.exec(output);
@@ -96,8 +106,8 @@ function escapeRegExp(string: string) {
 }
 
 function clone(project: Project, branch: string) {
-    const url = project.repositoryUrl ?? `${baseUrl}/${project.name}`;
-    log(`Cloning ${url}`);
+    const url = injectToken(project.repositoryUrl ?? `${baseUrl}/${project.name}`);
+    log(`Cloning ${url.replace(githubToken ?? '', '***')}`);
     execSync(`git clone ${url} ${project.name}`);
     execSync(`git checkout ${branch}`, {
         cwd: project.name
