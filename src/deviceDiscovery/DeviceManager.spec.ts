@@ -399,18 +399,16 @@ describe('DeviceManager', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(mockGlobalStateManager);
-                (vscode.window as any).state = { focused: true };
+
+                // Wait for initial throttle window from constructor's loadLastSeenDevices
+                clock.tick(400);
 
                 const devicesChangedSpy = sinon.spy();
                 manager.on('devices-changed', devicesChangedSpy);
 
                 manager['upsertDevice'](createMockDevice());
 
-                // Event is debounced, so not fired immediately
-                expect(devicesChangedSpy.called).to.be.false;
-
-                // Advance past debounce time (400ms)
-                clock.tick(400);
+                // First call after throttle window emits immediately
                 expect(devicesChangedSpy.calledOnce).to.be.true;
             } finally {
                 clock.restore();
@@ -421,65 +419,53 @@ describe('DeviceManager', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(mockGlobalStateManager);
-                (vscode.window as any).state = { focused: true };
 
                 // Add a device first
                 const device = createMockDevice();
                 manager['devices'].push(device);
+
+                // Wait for initial throttle window from constructor's loadLastSeenDevices
+                clock.tick(400);
 
                 const devicesChangedSpy = sinon.spy();
                 manager.on('devices-changed', devicesChangedSpy);
 
                 manager['removeDevice'](device.id);
 
-                // Advance past debounce time (400ms)
-                clock.tick(400);
+                // First call after throttle window emits immediately
                 expect(devicesChangedSpy.calledOnce).to.be.true;
             } finally {
                 clock.restore();
             }
         });
 
-        it('debounces multiple rapid changes into single event', () => {
+        it('throttles multiple rapid changes', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(mockGlobalStateManager);
-                (vscode.window as any).state = { focused: true };
+
+                // Wait for initial throttle window from constructor's loadLastSeenDevices
+                clock.tick(400);
 
                 const devicesChangedSpy = sinon.spy();
                 manager.on('devices-changed', devicesChangedSpy);
 
-                // Add multiple devices rapidly
+                // First call emits immediately
                 manager['upsertDevice'](createMockDevice({ id: 'device-1' }));
-                clock.tick(100); // 100ms - within 400ms debounce window
+                expect(devicesChangedSpy.calledOnce).to.be.true;
+
+                // Subsequent calls within throttle window are queued
+                clock.tick(100);
                 manager['upsertDevice'](createMockDevice({ id: 'device-2' }));
-                clock.tick(100); // 200ms total, but debounce reset at 100ms
+                clock.tick(100);
                 manager['upsertDevice'](createMockDevice({ id: 'device-3' }));
 
-                // Still within debounce window from last upsert
-                expect(devicesChangedSpy.called).to.be.false;
+                // Still just one emit (subsequent calls queued)
+                expect(devicesChangedSpy.calledOnce).to.be.true;
 
-                // Advance past debounce time from last upsert (400ms)
-                clock.tick(400);
-                expect(devicesChangedSpy.calledOnce).to.be.true; // Only one event
-            } finally {
-                clock.restore();
-            }
-        });
-
-        it('does not emit when window is not focused', () => {
-            const clock = sinon.useFakeTimers();
-            try {
-                manager = new DeviceManager(mockGlobalStateManager);
-                (vscode.window as any).state = { focused: false };
-
-                const devicesChangedSpy = sinon.spy();
-                manager.on('devices-changed', devicesChangedSpy);
-
-                manager['upsertDevice'](createMockDevice());
-
-                clock.tick(100);
-                expect(devicesChangedSpy.called).to.be.false;
+                // After throttle window, the last queued call emits
+                clock.tick(200); // 400ms total from first call
+                expect(devicesChangedSpy.calledTwice).to.be.true;
             } finally {
                 clock.restore();
             }
