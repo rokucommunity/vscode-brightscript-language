@@ -749,4 +749,125 @@ describe('DeviceManager', () => {
             expect(result).to.be.undefined;
         });
     });
+
+    describe('processDiscoveredIp', () => {
+        const mockDeviceInfo = {
+            'device-id': 'test-device-123',
+            'default-device-name': 'Roku Express',
+            'developer-enabled': 'true',
+            'is-stick': 'false',
+            'is-tv': 'false'
+        };
+
+        it('fetches device info and upserts device', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(manager['devices'].length).to.equal(1);
+            expect(manager['devices'][0].ip).to.equal('192.168.1.100');
+            expect(manager['devices'][0].id).to.equal('test-device-123');
+            expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('filters non-developer devices by default', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                ...mockDeviceInfo,
+                'developer-enabled': 'false'
+            } as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('includes non-developer devices when setting enabled', async () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true
+                }
+            } as any);
+
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                ...mockDeviceInfo,
+                'developer-enabled': 'false'
+            } as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(manager['devices'].length).to.equal(1);
+        });
+
+        it('handles string "true" for developer-enabled', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                ...mockDeviceInfo,
+                'developer-enabled': 'true'
+            } as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(manager['devices'].length).to.equal(1);
+        });
+
+        it('handles network errors gracefully', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Network error'));
+
+            // Should not throw
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('shows toast for isAlive new devices when showInfoMessages enabled', async () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
+
+            await manager['processDiscoveredIp']('192.168.1.100', true);
+
+            expect(showInfoStub.calledOnce).to.be.true;
+            expect(showInfoStub.firstCall.args[0]).to.include('Roku Express');
+        });
+
+        it('does not show toast for scan responses', async () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
+
+            await manager['processDiscoveredIp']('192.168.1.100', false);
+
+            expect(showInfoStub.called).to.be.false;
+        });
+    });
 });

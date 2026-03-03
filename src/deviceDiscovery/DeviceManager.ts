@@ -322,6 +322,52 @@ export class DeviceManager {
     }
 
     /**
+     * Process a discovered IP address from SSDP.
+     * Fetches device info, applies filtering, and upserts if valid.
+     */
+    private async processDiscoveredIp(ip: string, isAlive: boolean): Promise<void> {
+        const location = `http://${ip}:8060`;
+
+        try {
+            const deviceInfo = await rokuDeploy.getDeviceInfo({
+                host: ip,
+                remotePort: 8060,
+                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
+            });
+
+            const config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+            const developerEnabled = deviceInfo['developer-enabled'] === 'true';
+
+            if (!includeNonDeveloperDevices && !developerEnabled) {
+                return;
+            }
+
+            const deviceId = deviceInfo['device-id']?.toString?.();
+            const isNewDevice = !this.devices.find(d => d.id === deviceId);
+
+            const device: RokuDeviceDetails = {
+                location: location,
+                ip: ip,
+                id: deviceId,
+                deviceState: 'online',
+                deviceInfo: deviceInfo
+            };
+
+            if (isNewDevice) {
+                this.lastDiscoveredDeviceDate = new Date();
+                if (isAlive && this.showInfoMessages) {
+                    void vscode.window.showInformationMessage(`Device found: ${deviceInfo['default-device-name']}`);
+                }
+            }
+
+            this.upsertDevice(device);
+        } catch {
+            // Device unreachable, ignore
+        }
+    }
+
+    /**
      * Start a scan for devices. Emits scan-started, then scan-ended when complete.
      * Scan ends when both: minimum duration (3s) has passed AND 1.5s since last device response.
      */
@@ -439,16 +485,8 @@ export class DeviceManager {
      */
     private async startRokuFinder() {
         this.finder.removeAllListeners();
-        this.finder.on('found', (device: RokuDeviceDetails, options?: { isAlive: boolean }) => {
-            const isNewDevice = !this.devices.find(d => d.id === device.id);
-            if (isNewDevice) {
-                this.lastDiscoveredDeviceDate = new Date();
-                // Only show popup for ssdp:alive broadcasts, not scan responses
-                if (options?.isAlive && this.showInfoMessages) {
-                    void vscode.window.showInformationMessage(`Device found: ${device.deviceInfo['default-device-name']}`);
-                }
-            }
-            this.upsertDevice(device);
+        this.finder.on('found', (ip: string, options?: { isAlive: boolean }) => {
+            void this.processDiscoveredIp(ip, options?.isAlive ?? false);
         });
 
         this.finder.on('lost', (ip: string) => {
@@ -469,12 +507,10 @@ export class DeviceManager {
 
     private notifyFocusGained() {
         this.networkChangeMonitor.start();
-        this.finder.onFocusGain();
     }
 
     private notifyFocusLost() {
         this.networkChangeMonitor.stop();
-        this.finder.onFocusLost();
     }
 
     /**
