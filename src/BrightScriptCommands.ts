@@ -63,7 +63,7 @@ export class BrightScriptCommands {
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
             const device = this.deviceManager.getDeviceById(item.key);
             if (device) {
-                await this.deviceManager.checkDeviceHealth(device);
+                await this.deviceManager.checkDeviceHealth(device, true);
             }
         });
 

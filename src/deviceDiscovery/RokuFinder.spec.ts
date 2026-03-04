@@ -75,7 +75,7 @@ describe('RokuFinder', () => {
     });
 
     describe('SSDP response handling', () => {
-        it('emits "found" with IP string for Roku devices', async () => {
+        it('emits "found" with IP string for Roku devices', () => {
             finder = new RokuFinder();
 
             const foundSpy = sinon.spy();
@@ -94,7 +94,7 @@ describe('RokuFinder', () => {
             expect(options.isAlive).to.be.false;
         });
 
-        it('ignores non-Roku devices', async () => {
+        it('ignores non-Roku devices', () => {
             finder = new RokuFinder();
 
             const foundSpy = sinon.spy();
@@ -109,7 +109,7 @@ describe('RokuFinder', () => {
             expect(foundSpy.called).to.be.false;
         });
 
-        it('processes scan responses even when passive listener not started', async () => {
+        it('processes scan responses even when passive listener not started', () => {
             finder = new RokuFinder();
             // Don't call start() - passive listener is off, but scans should still work
 

@@ -204,7 +204,7 @@ export class DeviceManager {
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false): boolean {
-        this.healthCheckAllDevices().catch(() => { });
+        this.checkDevicesHealth(force).catch(() => { });
         return this.discoverAll(force);
     }
 
@@ -267,7 +267,17 @@ export class DeviceManager {
         }
     }
 
-    public async checkDeviceHealth(device: RokuDeviceDetails): Promise<boolean> {
+    public async checkDeviceHealth(device: RokuDeviceDetails, force = false): Promise<boolean> {
+        // If not forcing, respect the per-device cooldown
+        if (!force) {
+            const lastCheck = this.lastHealthCheckTime.get(device.id) ?? 0;
+            const now = Date.now();
+            if (now - lastCheck <= this.HEALTH_CHECK_COOLDOWN_MS) {
+                return true;
+            }
+            this.lastHealthCheckTime.set(device.id, now);
+        }
+
         const isHealthy = await this.resolveDevice(device);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
@@ -276,32 +286,29 @@ export class DeviceManager {
         return isHealthy;
     }
 
-    public async checkDeviceHealthIfStale(device: RokuDeviceDetails): Promise<boolean> {
-        const lastCheck = this.lastHealthCheckTime.get(device.id) ?? 0;
-        const now = Date.now();
-        if (now - lastCheck > this.HEALTH_CHECK_COOLDOWN_MS) {
-            this.lastHealthCheckTime.set(device.id, now);
-            return this.checkDeviceHealth(device);
-        }
-        return true;
-    }
-
-    private async healthCheckAllDevices(): Promise<void> {
+    private async checkDevicesHealth(force = false): Promise<void> {
         const devices = this.getActiveDevices();
-        let needsScan = false;
-        for (const device of devices) {
-            device.deviceState = 'pending';
-        }
-        this.emitDevicesChanged();
-        await Promise.all(devices.map(async (device) => {
-            const isHealthy = await this.resolveDevice(device);
-            if (!isHealthy) {
-                this.removeDevice(device.id);
-                needsScan = true;
+        if (force) {
+            let needsScan = false;
+            for (const device of devices) {
+                device.deviceState = 'pending';
             }
-        }));
-        if (needsScan) {
-            this.discoverAll(this.passiveScanPermitted);
+            this.emitDevicesChanged();
+            await Promise.all(devices.map(async (device) => {
+                const isHealthy = await this.resolveDevice(device);
+                if (!isHealthy) {
+                    this.removeDevice(device.id);
+                    needsScan = true;
+                }
+            }));
+            if (needsScan) {
+                this.discoverAll(this.passiveScanPermitted);
+            }
+        } else {
+            // Only check devices that are stale (respects per-device cooldown)
+            for (const device of devices) {
+                this.checkDeviceHealth(device).catch(() => { });
+            }
         }
     }
 
@@ -317,7 +324,7 @@ export class DeviceManager {
         const pendingDevices = this.devices.filter(d => d.deviceState === 'pending');
         for (const device of pendingDevices) {
             // Fire and forget - health check updates state and emits events when done
-            this.checkDeviceHealthIfStale(device).catch(() => { });
+            this.checkDeviceHealth(device).catch(() => { });
         }
     }
 

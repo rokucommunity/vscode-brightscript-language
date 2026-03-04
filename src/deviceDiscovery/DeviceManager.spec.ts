@@ -236,48 +236,121 @@ describe('DeviceManager', () => {
             // After refresh, timeSinceLastScan should be very small (just happened)
             expect(manager.timeSinceLastScan).to.be.lessThan(100);
         });
+
+        it('calls checkDevicesHealth with force flag', () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const checkDevicesHealthSpy = sinon.stub(manager as any, 'checkDevicesHealth').resolves();
+
+            manager.refresh(true);
+            expect(checkDevicesHealthSpy.calledWith(true)).to.be.true;
+
+            manager.refresh(false);
+            expect(checkDevicesHealthSpy.calledWith(false)).to.be.true;
+
+            manager.refresh(); // defaults to false
+            expect(checkDevicesHealthSpy.calledWith(false)).to.be.true;
+        });
     });
 
-    describe('checkDeviceHealthIfStale', () => {
+    describe('checkDevicesHealth', () => {
+        it('sets all devices to pending and checks all when force=true', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device1 = createMockDevice({ id: 'device-1', ip: '192.168.1.101' });
+            const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
+            (manager as any).devices = [device1, device2];
+
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+
+            await (manager as any).checkDevicesHealth(true);
+
+            expect(resolveDeviceSpy.calledTwice).to.be.true;
+        });
+
+        it('calls checkDeviceHealth for each device when force=false', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device1 = createMockDevice({ id: 'device-1', ip: '192.168.1.101' });
+            const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
+            (manager as any).devices = [device1, device2];
+
+            const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+
+            await (manager as any).checkDevicesHealth(false);
+
+            expect(checkHealthSpy.calledTwice).to.be.true;
+            expect(checkHealthSpy.calledWith(device1)).to.be.true;
+            expect(checkHealthSpy.calledWith(device2)).to.be.true;
+        });
+
+        it('defaults to force=false behavior', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device = createMockDevice();
+            (manager as any).devices = [device];
+
+            const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+
+            await (manager as any).checkDevicesHealth(); // No argument
+
+            expect(checkHealthSpy.calledOnce).to.be.true;
+        });
+    });
+
+    describe('checkDeviceHealth with force=false (cooldown)', () => {
         it('skips check if within cooldown period', async () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
-            const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
 
             // First call - should check
-            await manager.checkDeviceHealthIfStale(device);
-            expect(checkHealthSpy.calledOnce).to.be.true;
+            await manager.checkDeviceHealth(device);
+            expect(resolveDeviceSpy.calledOnce).to.be.true;
 
-            // Second call immediately - should skip
-            await manager.checkDeviceHealthIfStale(device);
-            expect(checkHealthSpy.calledOnce).to.be.true; // Still just one call
+            // Second call immediately - should skip due to cooldown
+            await manager.checkDeviceHealth(device);
+            expect(resolveDeviceSpy.calledOnce).to.be.true; // Still just one call
         });
 
         it('checks again after cooldown expires', async () => {
-            // Start at non-zero time so first check triggers (now - 0 > cooldown)
             const clock = sinon.useFakeTimers(Date.now());
             try {
                 manager = new DeviceManager(mockGlobalStateManager);
 
                 const device = createMockDevice();
-                const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
 
                 // First call
-                await manager.checkDeviceHealthIfStale(device);
-                expect(checkHealthSpy.calledOnce).to.be.true;
+                await manager.checkDeviceHealth(device);
+                expect(resolveDeviceSpy.calledOnce).to.be.true;
 
                 // Advance past cooldown (5 minutes)
                 clock.tick((5 * 60 * 1_000) + 1);
 
                 // Second call - should check again
-                await manager.checkDeviceHealthIfStale(device);
-                expect(checkHealthSpy.calledTwice).to.be.true;
+                await manager.checkDeviceHealth(device);
+                expect(resolveDeviceSpy.calledTwice).to.be.true;
             } finally {
                 clock.restore();
             }
         });
 
+        it('always checks when force=true regardless of cooldown', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device = createMockDevice();
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+
+            // First call with force
+            await manager.checkDeviceHealth(device, true);
+            expect(resolveDeviceSpy.calledOnce).to.be.true;
+
+            // Second call immediately with force - should still check
+            await manager.checkDeviceHealth(device, true);
+            expect(resolveDeviceSpy.calledTwice).to.be.true;
+        });
     });
 
     describe('scan events', () => {
@@ -487,7 +560,7 @@ describe('DeviceManager', () => {
             });
             sinon.stub(rokuDeploy, 'getDeviceInfo').returns(healthPromise);
 
-            const checkPromise = manager.checkDeviceHealth(device);
+            const checkPromise = manager.checkDeviceHealth(device, true);
 
             // Device should be pending during check
             expect(manager['devices'][0].deviceState).to.equal('pending');
@@ -508,7 +581,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
 
-            const result = await manager.checkDeviceHealth(device);
+            const result = await manager.checkDeviceHealth(device, true);
 
             expect(result).to.be.false;
             expect(manager['devices'].length).to.equal(0);
@@ -522,7 +595,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(device.deviceInfo);
 
-            const result = await manager.checkDeviceHealth(device);
+            const result = await manager.checkDeviceHealth(device, true);
 
             expect(result).to.be.true;
         });
@@ -552,10 +625,10 @@ describe('DeviceManager', () => {
             getDeviceInfoStub.onSecondCall().returns(fastCheckPromise);
 
             // Start first (slow) health check - will return unhealthy
-            const slowResult = manager.checkDeviceHealth(device);
+            const slowResult = manager.checkDeviceHealth(device, true);
 
             // Start second (fast) health check - will return healthy
-            const fastResult = manager.checkDeviceHealth(device);
+            const fastResult = manager.checkDeviceHealth(device, true);
 
             // Fast check completes first with healthy result
             resolveFastCheck(device.deviceInfo);
@@ -599,8 +672,8 @@ describe('DeviceManager', () => {
             getDeviceInfoStub.onSecondCall().returns(device2Promise);
 
             // Start health checks for both devices
-            const result1 = manager.checkDeviceHealth(device1);
-            const result2 = manager.checkDeviceHealth(device2);
+            const result1 = manager.checkDeviceHealth(device1, true);
+            const result2 = manager.checkDeviceHealth(device2, true);
 
             // Device 2 completes first (healthy)
             resolveDevice2(device2.deviceInfo);

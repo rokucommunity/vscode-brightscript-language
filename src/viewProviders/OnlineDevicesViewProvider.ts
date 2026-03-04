@@ -178,7 +178,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
 
             const device = this.findDeviceById(element.key);
             if (device) {
-                this.deviceManager.checkDeviceHealthIfStale(device).catch(() => { });
+                this.deviceManager.checkDeviceHealth(device).catch(() => { });
             }
 
             if (device.deviceInfo['is-tv'] === 'true') {
