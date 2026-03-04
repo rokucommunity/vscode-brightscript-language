@@ -39,6 +39,29 @@ export class UserInputManager {
         const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
+        //create the quickpick item
+        const quickPick = vscode.window.createQuickPick();
+        disposables.push(quickPick);
+        quickPick.placeholder = `Please Select a Roku or manually type an IP address`;
+        quickPick.keepScrollPosition = true;
+
+        // Track multiple busy sources (scan, health check) with a counter
+        let busyCount = 0;
+        const setBusy = (isBusy: boolean) => {
+            busyCount += isBusy ? 1 : -1;
+            busyCount = Math.max(0, busyCount); // Prevent negative
+            quickPick.busy = busyCount > 0;
+        };
+
+        // Subscribe to scan events before triggering refresh so we catch the scan-started event
+        this.deviceManager.on('scan-started', () => {
+            setBusy(true);
+        }, disposables);
+
+        this.deviceManager.on('scan-ended', () => {
+            setBusy(false);
+        }, disposables);
+
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
         let hasScanned = this.deviceManager.refresh();
@@ -56,20 +79,6 @@ export class UserInputManager {
             }
             this.deviceManager.refresh();
         }, scanTimeoutMs);
-
-        //create the quickpick item
-        const quickPick = vscode.window.createQuickPick();
-        disposables.push(quickPick);
-        quickPick.placeholder = `Please Select a Roku or manually type an IP address`;
-        quickPick.keepScrollPosition = true;
-
-        // Track multiple busy sources (scan, health check) with a counter
-        let busyCount = 0;
-        const setBusy = (isBusy: boolean) => {
-            busyCount += isBusy ? 1 : -1;
-            busyCount = Math.max(0, busyCount); // Prevent negative
-            quickPick.busy = busyCount > 0;
-        };
 
         function dispose() {
             for (const disposable of disposables) {
@@ -171,15 +180,6 @@ export class UserInputManager {
 
         //anytime the device list changes, update the list
         this.deviceManager.on('devices-changed', refreshList, disposables);
-
-        // Show busy indicator during scan
-        this.deviceManager.on('scan-started', () => {
-            setBusy(true);
-        }, disposables);
-
-        this.deviceManager.on('scan-ended', () => {
-            setBusy(false);
-        }, disposables);
 
         quickPick.onDidHide(() => {
             dispose();

@@ -261,7 +261,7 @@ describe('DeviceManager', () => {
             const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
             (manager as any).devices = [device1, device2];
 
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
             await (manager as any).checkDevicesHealth(true);
 
@@ -278,7 +278,7 @@ describe('DeviceManager', () => {
             // Mark device1 as recently checked (not stale)
             (manager as any).lastHealthCheckTime.set('device-1', Date.now());
 
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
             await (manager as any).checkDevicesHealth(false);
 
@@ -294,9 +294,9 @@ describe('DeviceManager', () => {
             (manager as any).devices = [device];
 
             let stateWhenResolveCalled: string;
-            sinon.stub(manager as any, 'resolveDevice').callsFake(async (d) => {
+            sinon.stub(manager as any, 'resolveDevice').callsFake((d: RokuDeviceDetails) => {
                 stateWhenResolveCalled = d.deviceState;
-                return true;
+                return Promise.resolve(true);
             });
 
             await (manager as any).checkDevicesHealth(false);
@@ -313,7 +313,7 @@ describe('DeviceManager', () => {
             // Mark device as recently checked
             (manager as any).lastHealthCheckTime.set(device.id, Date.now());
 
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
 
             await (manager as any).checkDevicesHealth(false);
 
@@ -326,7 +326,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
 
             // First call - should check
             await manager.checkDeviceHealth(device);
@@ -343,7 +343,7 @@ describe('DeviceManager', () => {
                 manager = new DeviceManager(mockGlobalStateManager);
 
                 const device = createMockDevice();
-                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
 
                 // First call
                 await manager.checkDeviceHealth(device);
@@ -364,7 +364,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
 
             // First call with force
             await manager.checkDeviceHealth(device, true);
