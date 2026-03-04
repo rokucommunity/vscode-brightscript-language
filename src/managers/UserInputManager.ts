@@ -90,9 +90,7 @@ export class UserInputManager {
         let selectedDevice: vscode.QuickPickItem | undefined;
         quickPick.onDidAccept(async () => {
             if (selectedDevice) {
-                if (selectedDevice.kind === vscode.QuickPickItemKind.Separator) {
-                    // Handle separator selection
-                } else {
+                if (selectedDevice.kind !== vscode.QuickPickItemKind.Separator) {
                     if (selectedDevice.label === manualLabel) {
                         deferred.resolve({ manual: true });
                     } else if (selectedDevice.label === scanForDevicesLabel) {

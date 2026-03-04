@@ -728,7 +728,7 @@ describe('DeviceManager', () => {
 
                 manager['removeDevice'](device.id);
 
-                expect(manager.lastUsedDevice).to.be.null;
+                expect(manager.lastUsedDevice).to.be.undefined;
             } finally {
                 clock.restore();
             }

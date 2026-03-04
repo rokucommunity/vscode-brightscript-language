@@ -29,7 +29,7 @@ export class DeviceManager {
     private devices: RokuDeviceDetails[] = [];
     private showInfoMessages: boolean;
     private lastScanDate: Date | null = null;
-    private lastDiscoveredDeviceDate: Date;
+    private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
     private finder: RokuFinder = new RokuFinder();
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
@@ -53,7 +53,7 @@ export class DeviceManager {
     private scanNeeded = false;
 
     public firstRequestForDevices: boolean;
-    public lastUsedDevice: RokuDeviceDetails;
+    public lastUsedDevice: RokuDeviceDetails | undefined = undefined;
     public passiveScanPermitted: boolean;
 
     /**
@@ -79,7 +79,7 @@ export class DeviceManager {
      */
     public get timeSinceLastDiscoveredDevice(): number {
         if (!this.lastDiscoveredDeviceDate) {
-            return 0;
+            return Infinity;
         }
         return Date.now() - this.lastDiscoveredDeviceDate.getTime();
     }
@@ -236,7 +236,7 @@ export class DeviceManager {
         try {
             const deviceInfo = await rokuDeploy.getDeviceInfo({
                 host: device.ip,
-                remotePort: parseInt(new URL(device.location).port ?? '8060'),
+                remotePort: parseInt(new URL(device.location).port || '8060'),
                 timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
             });
             freshDevice = {
@@ -309,7 +309,6 @@ export class DeviceManager {
         await Promise.all(devicesToCheck.map(async (device) => {
             const isHealthy = await this.resolveDevice(device);
             if (!isHealthy) {
-                this.removeDevice(device.id);
                 needsScan = true;
             }
         }));
@@ -560,7 +559,7 @@ export class DeviceManager {
 
             // Clear lastUsedDevice if the removed device was the last used
             if (this.lastUsedDevice?.id === deviceId) {
-                this.lastUsedDevice = null;
+                this.lastUsedDevice = undefined;
             }
 
             this.emitDevicesChanged();
