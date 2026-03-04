@@ -268,33 +268,56 @@ describe('DeviceManager', () => {
             expect(resolveDeviceSpy.calledTwice).to.be.true;
         });
 
-        it('calls checkDeviceHealth for each device when force=false', async () => {
+        it('only checks stale devices when force=false', async () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
             const device1 = createMockDevice({ id: 'device-1', ip: '192.168.1.101' });
             const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
             (manager as any).devices = [device1, device2];
 
-            const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+            // Mark device1 as recently checked (not stale)
+            (manager as any).lastHealthCheckTime.set('device-1', Date.now());
+
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
 
             await (manager as any).checkDevicesHealth(false);
 
-            expect(checkHealthSpy.calledTwice).to.be.true;
-            expect(checkHealthSpy.calledWith(device1)).to.be.true;
-            expect(checkHealthSpy.calledWith(device2)).to.be.true;
+            // Only device2 should be checked (device1 is not stale)
+            expect(resolveDeviceSpy.calledOnce).to.be.true;
+            expect(resolveDeviceSpy.firstCall.args[0].id).to.equal('device-2');
         });
 
-        it('defaults to force=false behavior', async () => {
+        it('sets devices to pending before checking when force=false', async () => {
             manager = new DeviceManager(mockGlobalStateManager);
 
             const device = createMockDevice();
             (manager as any).devices = [device];
 
-            const checkHealthSpy = sinon.stub(manager, 'checkDeviceHealth').resolves(true);
+            let stateWhenResolveCalled: string;
+            sinon.stub(manager as any, 'resolveDevice').callsFake(async (d) => {
+                stateWhenResolveCalled = d.deviceState;
+                return true;
+            });
 
-            await (manager as any).checkDevicesHealth(); // No argument
+            await (manager as any).checkDevicesHealth(false);
 
-            expect(checkHealthSpy.calledOnce).to.be.true;
+            expect(stateWhenResolveCalled).to.equal('pending');
+        });
+
+        it('skips check when no devices are stale', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const device = createMockDevice();
+            (manager as any).devices = [device];
+
+            // Mark device as recently checked
+            (manager as any).lastHealthCheckTime.set(device.id, Date.now());
+
+            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').resolves(true);
+
+            await (manager as any).checkDevicesHealth(false);
+
+            expect(resolveDeviceSpy.called).to.be.false;
         });
     });
 

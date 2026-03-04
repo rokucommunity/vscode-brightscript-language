@@ -170,11 +170,9 @@ export class DeviceManager {
 
     /**
      * Get a list of all devices discovered on the network.
-     * Triggers health checks for any pending devices (lazy loading).
      */
     public getActiveDevices(): RokuDeviceDetails[] {
         this.firstRequestForDevices = false;
-        this.healthCheckPendingDevices();
         return [...this.devices].sort(
             firstBy<RokuDeviceDetails>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
@@ -288,45 +286,42 @@ export class DeviceManager {
 
     private async checkDevicesHealth(force = false): Promise<void> {
         const devices = this.getActiveDevices();
-        if (force) {
-            let needsScan = false;
-            for (const device of devices) {
-                device.deviceState = 'pending';
+
+        // Filter to devices that need checking
+        const devicesToCheck = force ? devices : devices.filter(d => {
+            const lastCheck = this.lastHealthCheckTime.get(d.id) ?? 0;
+            return Date.now() - lastCheck > this.HEALTH_CHECK_COOLDOWN_MS;
+        });
+
+        if (devicesToCheck.length === 0) {
+            return;
+        }
+
+        // Set all to pending and emit before async work
+        for (const device of devicesToCheck) {
+            device.deviceState = 'pending';
+            this.lastHealthCheckTime.set(device.id, Date.now());
+        }
+        this.emitDevicesChanged();
+
+        // Check all devices
+        let needsScan = false;
+        await Promise.all(devicesToCheck.map(async (device) => {
+            const isHealthy = await this.resolveDevice(device);
+            if (!isHealthy) {
+                this.removeDevice(device.id);
+                needsScan = true;
             }
-            this.emitDevicesChanged();
-            await Promise.all(devices.map(async (device) => {
-                const isHealthy = await this.resolveDevice(device);
-                if (!isHealthy) {
-                    this.removeDevice(device.id);
-                    needsScan = true;
-                }
-            }));
-            if (needsScan) {
-                this.discoverAll(this.passiveScanPermitted);
-            }
-        } else {
-            // Only check devices that are stale (respects per-device cooldown)
-            for (const device of devices) {
-                this.checkDeviceHealth(device).catch(() => { });
-            }
+        }));
+
+        if (needsScan) {
+            this.discoverAll(this.passiveScanPermitted);
         }
     }
 
     private emitDevicesChanged = throttleBounce(() => {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
-
-    /**
-     * Trigger health checks for devices in 'pending' state.
-     * Runs asynchronously - doesn't block the caller.
-     */
-    private healthCheckPendingDevices(): void {
-        const pendingDevices = this.devices.filter(d => d.deviceState === 'pending');
-        for (const device of pendingDevices) {
-            // Fire and forget - health check updates state and emits events when done
-            this.checkDeviceHealth(device).catch(() => { });
-        }
-    }
 
     /**
      * Process a discovered IP address from SSDP.
