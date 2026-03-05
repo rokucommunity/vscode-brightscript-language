@@ -24,17 +24,17 @@ Module.prototype.require = function hijacked(file) {
  * They cover the key scenarios for the Perfetto tracing and heap snapshot functionality.
  *
  * Test scenarios covered:
- * - TC-01: Tracing disabled - buttons hidden
- * - TC-02: Tracing enabled - buttons visible (no auto-start)
- * - TC-03: connectOnStart = true - auto-start tracing
- * - TC-04: connectOnStart = false - manual start works
- * - TC-05: Heap snapshots during active tracing (no file open)
- * - TC-06: Heap snapshot without active tracing - auto start/stop
- * - TC-07: Stop debug session - finalizes tracing and opens file
- * - TC-08: Open perfetto-trace files from explorer
- * - TC-09: HeapSnapshot code works on enabled system
- * - TC-10: Concurrency - rapid button clicks
- * - TC-11: Repeated tests - multiple sessions
+ * - Tracing disabled - buttons hidden
+ * - Tracing enabled - buttons visible (no auto-start)
+ * - connectOnStart = true - auto-start tracing
+ * - connectOnStart = false - manual start works
+ * - Heap snapshots during active tracing (no file open)
+ * - Heap snapshot without active tracing - auto start/stop
+ * - Stop debug session - finalizes tracing and opens file
+ * - Open perfetto-trace files from explorer
+ * - HeapSnapshot code works on enabled system
+ * - Concurrency - rapid button clicks
+ * - Repeated tests - multiple sessions
  */
 describe('Profiling/Tracing Integration Tests', () => {
     let perfettoControlCommands: PerfettoControlCommands;
@@ -87,7 +87,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         sinon.restore();
     });
 
-    describe('TC-01: Tracing Disabled - Buttons Hidden', () => {
+    describe('Tracing Disabled - Buttons Hidden', () => {
         it('should NOT set tracingEnabled context when no profiling enable event is received', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -135,7 +135,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-02: Tracing Enabled - Buttons Visible (No Auto-Start)', () => {
+    describe('Tracing Enabled - Buttons Visible (No Auto-Start)', () => {
         it('should register all tracing control commands when tracing is enabled', () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -161,7 +161,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-03: connectOnStart = true - Auto-Start Tracing', () => {
+    describe('connectOnStart = true - Auto-Start Tracing', () => {
         it('should set tracingActive context to true when tracing start event is received', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -181,7 +181,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-04: connectOnStart = false - Manual Start Works', () => {
+    describe('connectOnStart = false - Manual Start Works', () => {
         it('should start tracing when startTracing command is executed manually', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -211,7 +211,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-05: Heap Snapshots During Active Tracing', () => {
+    describe('Heap Snapshots During Active Tracing', () => {
         it('should capture heap snapshot when command is executed during active tracing', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -265,7 +265,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-07: Stop Debug Session Finalizes Tracing', () => {
+    describe('Stop Debug Session Finalizes Tracing', () => {
         it('should reset context when debug session ends', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -297,7 +297,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-09: Profiling Error Handling', () => {
+    describe('Profiling Error Handling', () => {
         it('should show error message when profiling error event is received', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -319,7 +319,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-10: Concurrency - Rapid Commands', () => {
+    describe('Concurrency - Rapid Commands', () => {
         it('should handle rapid start/stop commands without throwing', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -370,7 +370,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-11: Repeated Tests - State Management', () => {
+    describe('Repeated Tests - State Management', () => {
         it('should properly track context state across multiple start/stop cycles', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -418,7 +418,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-Profiling Enable Event', () => {
+    describe('Profiling Enable Event', () => {
         it('should set tracingEnabled context when profiling enable event with trace type is received', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
@@ -466,7 +466,7 @@ describe('Profiling/Tracing Integration Tests', () => {
         });
     });
 
-    describe('TC-Stop Event Opens File', () => {
+    describe('Stop Event Opens File', () => {
         it('should open file when profiling stop event includes a result path', async () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
