@@ -88,7 +88,7 @@ describe('Profiling/Tracing Integration Tests', () => {
     });
 
     describe('Tracing Disabled - Buttons Hidden', () => {
-        it('should NOT set tracingEnabled context when no profiling enable event is received', async () => {
+        it('should NOT set tracingEnabled context when no profiling enable event is received', () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
             // Without any ProfilingEnabledEvent, the tracingEnabled context should not be set to true
@@ -145,7 +145,7 @@ describe('Profiling/Tracing Integration Tests', () => {
             expect(registeredCommands.has('extension.brightscript.captureHeapSnapshot')).to.be.true;
         });
 
-        it('should NOT automatically start tracing when debug session starts (connectOnStart false)', async () => {
+        it('should NOT automatically start tracing when debug session starts (connectOnStart false)', () => {
             perfettoControlCommands.registerPerfettoControlCommands(mockContext);
 
             // Simulate the session starting (no auto-start event should fire)
@@ -382,7 +382,7 @@ describe('Profiling/Tracing Integration Tests', () => {
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
             const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
-5
+
             // Cycle 1: Start
             await startTracingCommand();
             expect(contextManagerSetStub.calledWith('brightscript.tracingActive', true)).to.be.true;

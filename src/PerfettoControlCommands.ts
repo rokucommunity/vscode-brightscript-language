@@ -105,7 +105,7 @@ export class PerfettoControlCommands {
             } catch (e) {
                 console.error(`Failed to capture snapshot:`, e);
             }
-        };
+        }
 
         // Start capturing snapshot
         context.subscriptions.push(
