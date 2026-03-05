@@ -1031,5 +1031,59 @@ describe('DeviceManager', () => {
             // Still only two calls
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
+
+        it('clears cache after inactivity timeout', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'device-id': 'device-123',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // First call - populates cache
+                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                expect(getDeviceInfoStub.callCount).to.equal(1);
+
+                // Call again within TTL - should use cache
+                clock.tick(2_000);
+                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                expect(getDeviceInfoStub.callCount).to.equal(1);
+
+                // Advance past cleanup delay (10 seconds of inactivity)
+                clock.tick(11_000);
+
+                // Cache should be cleared, next call hits network
+                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                expect(getDeviceInfoStub.callCount).to.equal(2);
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('clears cache on network change', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Populate cache
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            expect(getDeviceInfoStub.callCount).to.equal(1);
+
+            // Verify cache is working
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            expect(getDeviceInfoStub.callCount).to.equal(1);
+
+            // Simulate network change by calling the networkChangeMonitor callback
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Cache should be cleared, next call hits network
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
     });
 });

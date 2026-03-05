@@ -37,7 +37,9 @@ export class DeviceManager {
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
     private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
+    private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
     private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
+    private cacheCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Scan state management
     private readonly SCAN_MIN_DURATION_MS = 3_000;
@@ -128,6 +130,7 @@ export class DeviceManager {
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
+            this.deviceInfoCache.clear();
             this.loadLastSeenDevices();
             this.setScanNeeded();
         });
@@ -222,10 +225,25 @@ export class DeviceManager {
     }
 
     /**
+     * Reset the cache cleanup timer. After inactivity, the cache will be cleared.
+     */
+    private resetCacheCleanupTimer(): void {
+        if (this.cacheCleanupTimer) {
+            clearTimeout(this.cacheCleanupTimer);
+        }
+        this.cacheCleanupTimer = setTimeout(() => {
+            this.deviceInfoCache.clear();
+            this.cacheCleanupTimer = null;
+        }, this.CACHE_CLEANUP_DELAY_MS);
+    }
+
+    /**
      * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
      * when health checks and SSDP responses race during refresh.
      */
     private async getDeviceInfoCached(ip: string, port: number): Promise<DeviceInfoRaw> {
+        this.resetCacheCleanupTimer();
+
         const cached = this.deviceInfoCache.get(ip);
         if (cached && Date.now() - cached.timestamp < this.DEVICE_INFO_CACHE_TTL_MS) {
             return cached.info;
