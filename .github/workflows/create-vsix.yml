@@ -29,7 +29,8 @@ jobs:
       - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vscode-brightscript-language.vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix
+          archive: false
