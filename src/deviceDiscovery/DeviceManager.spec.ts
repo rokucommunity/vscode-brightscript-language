@@ -966,4 +966,70 @@ describe('DeviceManager', () => {
             expect(showInfoStub.called).to.be.false;
         });
     });
+
+    describe('getDeviceInfoCached', () => {
+        it('only makes one network call for rapid successive requests', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Call twice in rapid succession
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+
+            // Should only have made one actual network call
+            expect(getDeviceInfoStub.callCount).to.equal(1);
+        });
+
+        it('makes a new network call after cache TTL expires', async () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(mockGlobalStateManager);
+
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'device-id': 'device-123',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // First call - should hit network
+                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                expect(getDeviceInfoStub.callCount).to.equal(1);
+
+                // Advance past TTL (5 seconds)
+                clock.tick(6_000);
+
+                // Second call - cache expired, should hit network again
+                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                expect(getDeviceInfoStub.callCount).to.equal(2);
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('caches different IPs separately', async () => {
+            manager = new DeviceManager(mockGlobalStateManager);
+
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Call for two different IPs
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+
+            // Should make two network calls (different IPs)
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+
+            // But calling same IPs again should use cache
+            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+
+            // Still only two calls
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
 });

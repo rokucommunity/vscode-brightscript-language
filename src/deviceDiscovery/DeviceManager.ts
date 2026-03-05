@@ -36,6 +36,8 @@ export class DeviceManager {
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
+    private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
+    private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
 
     // Scan state management
     private readonly SCAN_MIN_DURATION_MS = 3_000;
@@ -219,6 +221,26 @@ export class DeviceManager {
         return false;
     }
 
+    /**
+     * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
+     * when health checks and SSDP responses race during refresh.
+     */
+    private async getDeviceInfoCached(ip: string, port: number): Promise<DeviceInfoRaw> {
+        const cached = this.deviceInfoCache.get(ip);
+        if (cached && Date.now() - cached.timestamp < this.DEVICE_INFO_CACHE_TTL_MS) {
+            return cached.info;
+        }
+
+        const info = await rokuDeploy.getDeviceInfo({
+            host: ip,
+            remotePort: port,
+            timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
+        });
+
+        this.deviceInfoCache.set(ip, { info: info, timestamp: Date.now() });
+        return info;
+    }
+
     private async resolveDevice(device: RokuDeviceDetails): Promise<boolean> {
         // Increment and capture sequence number to handle concurrent refresh calls
         const currentSeq = (this.resolveDeviceSequence.get(device.id) ?? 0) + 1;
@@ -231,14 +253,13 @@ export class DeviceManager {
             this.emitDevicesChanged();
         }
 
-        // Fetch latest device info from the network
+        // Fetch latest device info from the network (with short-lived cache)
         let freshDevice: RokuDeviceDetails | undefined;
         try {
-            const deviceInfo = await rokuDeploy.getDeviceInfo({
-                host: device.ip,
-                remotePort: parseInt(new URL(device.location).port || '8060'),
-                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-            });
+            const deviceInfo = await this.getDeviceInfoCached(
+                device.ip,
+                parseInt(new URL(device.location).port || '8060')
+            );
             freshDevice = {
                 location: device.location,
                 ip: device.ip,
@@ -330,11 +351,7 @@ export class DeviceManager {
         const location = `http://${ip}:8060`;
 
         try {
-            const deviceInfo = await rokuDeploy.getDeviceInfo({
-                host: ip,
-                remotePort: 8060,
-                timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-            });
+            const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
 
             const config: any = vscode.workspace.getConfiguration('brightscript') || {};
             const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
