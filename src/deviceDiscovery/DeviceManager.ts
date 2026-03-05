@@ -34,7 +34,7 @@ export class DeviceManager {
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
-    public static readonly HEALTH_CHECK_TIMEOUT_MS = 5_000; // 5 seconds
+    public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
 
     // Scan state management
