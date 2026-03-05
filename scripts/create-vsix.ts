@@ -5,7 +5,16 @@ import * as chalk from 'chalk';
 
 const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
-const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+let githubToken: string | undefined;
+if (process.env.GH_TOKEN) {
+    githubToken = process.env.GH_TOKEN;
+    console.log('Using GH_TOKEN from environment variable: ' + githubToken.replace(/./g, '*'));
+} else if (process.env.GITHUB_TOKEN) {
+    githubToken = process.env.GITHUB_TOKEN;
+    console.log('Using GITHUB_TOKEN from environment variable: ' + githubToken.replace(/./g, '*'));
+} else {
+    console.log('No GitHub token found in environment variables');
+}
 const baseUrl = githubToken
     ? `https://${githubToken}@github.com/rokucommunity`
     : 'https://github.com/rokucommunity';
