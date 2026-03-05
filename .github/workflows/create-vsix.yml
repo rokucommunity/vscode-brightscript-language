@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@master
         with:
           node-version: "18.18.2"
@@ -20,6 +22,10 @@ jobs:
           key: ${{ env.NODE_VERSION }}
           strategy: move
       - run: npm ci --cache .npm
+      - name: Test token access
+        run: git ls-remote --heads https://$GH_TOKEN@github.com/rokucommunity/roku-debug-rsg
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
       - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
