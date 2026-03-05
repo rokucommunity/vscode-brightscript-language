@@ -20,7 +20,6 @@ describe('PerfettoControlCommands', () => {
     let perfettoControlCommands: PerfettoControlCommands;
     let mockContext: any;
     let onDidReceiveDebugSessionCustomEventCallback: (...args: any[]) => any;
-    let onDidStartDebugSessionCallback: (...args: any[]) => any;
     let onDidTerminateDebugSessionCallback: (...args: any[]) => any;
     let registeredCommands: Map<string, (...args: any[]) => any>;
 
@@ -38,8 +37,7 @@ describe('PerfettoControlCommands', () => {
             return { dispose: () => { } };
         });
 
-        (sinon.stub(vscode.debug, 'onDidStartDebugSession') as sinon.SinonStub).callsFake((callback: any) => {
-            onDidStartDebugSessionCallback = callback;
+        (sinon.stub(vscode.debug, 'onDidStartDebugSession') as sinon.SinonStub).callsFake(() => {
             return { dispose: () => { } };
         });
 

@@ -381,7 +381,6 @@ describe('Profiling/Tracing Integration Tests', () => {
             (vscode.debug as any).activeDebugSession = mockSession;
 
             const startTracingCommand = registeredCommands.get('extension.brightscript.startTracing');
-            const stopTracingCommand = registeredCommands.get('extension.brightscript.stopTracing');
 
             // Cycle 1: Start
             await startTracingCommand();
