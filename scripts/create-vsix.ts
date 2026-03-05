@@ -5,7 +5,7 @@ import * as chalk from 'chalk';
 
 const silent = process.argv.includes('--silent');
 const tempDir = s`${__dirname}/../.vsix-building`;
-const githubToken = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
 const baseUrl = githubToken
     ? `https://${githubToken}@github.com/rokucommunity`
     : 'https://github.com/rokucommunity';

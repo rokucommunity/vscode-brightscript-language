@@ -22,7 +22,7 @@ jobs:
       - run: npm ci --cache .npm
       - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: vscode-brightscript-language.vsix
