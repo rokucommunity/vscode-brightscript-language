@@ -64,7 +64,9 @@ export class NetworkChangeMonitor {
 
     private setTimer() {
         this.stop(); // Ensure no existing timer is running
-        this.timer = setTimeout(() => this.executeTask(), this.interval - (Date.now() - this.lastExecutionTime));
+        this.timer = setTimeout(() => {
+            this.executeTask();
+        }, this.interval - (Date.now() - this.lastExecutionTime));
     }
 
     private doWork() {
@@ -74,5 +76,10 @@ export class NetworkChangeMonitor {
         }
         this.onNetworkChanged();
         this.previousNetworkHash = currentNetworkHash;
+    }
+
+    public dispose(): void {
+        this.stop();
+        delete this.onNetworkChanged;
     }
 }

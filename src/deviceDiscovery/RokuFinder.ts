@@ -3,11 +3,6 @@ import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
 
 export class RokuFinder extends EventEmitter {
-
-    private readonly client: Client;
-    private readonly server: Server;
-    private running = false;
-
     constructor() {
         super();
 
@@ -30,15 +25,25 @@ export class RokuFinder extends EventEmitter {
         });
     }
 
-    public scan() {
-        const search = () => {
-            void this.client.search('roku:ecp');
-        };
+    private client: Client;
+    private server: Server;
+    private running = false;
 
-        // UDP is unreliable, so we search multiple times
-        search();
-        setTimeout(search, 100);
-        setTimeout(search, 200);
+    public scan() {
+        if (this.client) {
+            const search = () => {
+                Promise.resolve(
+                    this.client.search('roku:ecp')
+                ).catch((error) => {
+                    console.error(error);
+                });
+            };
+
+            // UDP is unreliable, so we search multiple times
+            search();
+            setTimeout(search, 100);
+            setTimeout(search, 200);
+        }
     }
 
     /**
@@ -116,6 +121,17 @@ export class RokuFinder extends EventEmitter {
         }
     }
 
+    public dispose() {
+        this.stop();
+
+        this.client.removeAllListeners();
+        this.client.stop();
+        delete this.client;
+
+        this.server.removeAllListeners();
+        this.server.stop();
+        delete this.server;
+    }
 }
 
 export interface FoundEventOptions {

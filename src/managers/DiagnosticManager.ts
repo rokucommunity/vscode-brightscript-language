@@ -9,6 +9,10 @@ export class DiagnosticManager {
         this.collection.clear();
     }
 
+    public dispose() {
+        this.collection.dispose();
+    }
+
     public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
         let documentUri: vscode.Uri;
         let uri = vscode.Uri.file(path);

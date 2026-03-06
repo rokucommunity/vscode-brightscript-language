@@ -10,8 +10,10 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 
 export class DeviceManager {
-    constructor(globalStateManager: GlobalStateManager) {
-        this.globalStateManager = globalStateManager;
+    constructor(
+        private context: vscode.ExtensionContext,
+        private globalStateManager: GlobalStateManager
+    ) {
         this.firstRequestForDevices = true;
         this.networkId = getNetworkHash();
 
@@ -19,10 +21,10 @@ export class DeviceManager {
         this.setupWindowFocusHandling();
         this.setupMonitors();
         this.initialize();
+        this.context.subscriptions.push(this);
     }
 
     private emitter = new EventEmitter();
-    private globalStateManager: GlobalStateManager;
     private networkId: string;
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
@@ -30,7 +32,7 @@ export class DeviceManager {
     private showInfoMessages: boolean;
     private lastScanDate: Date | null = null;
     private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
-    private finder: RokuFinder = new RokuFinder();
+    private finder = new RokuFinder();
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
@@ -110,18 +112,22 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
         };
-        vscode.workspace.onDidChangeConfiguration(applyConfig);
+        this.context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(applyConfig)
+        );
         applyConfig();
     }
 
     private setupWindowFocusHandling() {
-        vscode.window.onDidChangeWindowState((state) => {
-            if (state.focused) {
-                this.notifyFocusGained();
-            } else {
-                this.notifyFocusLost();
-            }
-        });
+        this.context.subscriptions.push(
+            vscode.window.onDidChangeWindowState((state) => {
+                if (state.focused) {
+                    this.notifyFocusGained();
+                } else {
+                    this.notifyFocusLost();
+                }
+            })
+        );
     }
 
     private setupMonitors() {
@@ -150,7 +156,9 @@ export class DeviceManager {
                 } else {
                     this.setScanNeeded();
                 }
-            }).catch(() => { });
+            }).catch((e) => {
+                console.error(e);
+            });
         }
     }
 
@@ -296,7 +304,7 @@ export class DeviceManager {
         }
 
         if (freshDevice) {
-            this.upsertDevice(freshDevice);
+            this.setDevice(freshDevice);
             return true;
         } else {
             this.removeDevice(device.id);
@@ -397,7 +405,7 @@ export class DeviceManager {
                 }
             }
 
-            this.upsertDevice(device);
+            this.setDevice(device);
         } catch {
             // Device unreachable, ignore
         }
@@ -552,7 +560,7 @@ export class DeviceManager {
     /**
      * Add or update a device in the devices array
      */
-    private upsertDevice(device: RokuDeviceDetails): void {
+    private setDevice(device: RokuDeviceDetails): void {
         const index = this.devices.findIndex(d => d.id === device.id);
         const isNewDevice = index < 0;
 
@@ -599,6 +607,20 @@ export class DeviceManager {
 
             this.emitDevicesChanged();
         }
+    }
+
+    public dispose() {
+        this.deactivateMonitoring();
+        this.systemSleepMonitor?.dispose?.();
+        this.networkChangeMonitor?.dispose?.();
+        this.finder?.dispose?.();
+        this.devices = [];
+        this.emitter.removeAllListeners();
+
+        //clear any timeouts
+        clearTimeout(this.cacheCleanupTimer);
+        clearTimeout(this.scanMinTimer);
+        clearTimeout(this.scanSettleTimer);
     }
 }
 

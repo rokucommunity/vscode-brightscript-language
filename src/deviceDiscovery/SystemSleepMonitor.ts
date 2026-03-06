@@ -32,4 +32,9 @@ export class SystemSleepMonitor {
             }
         }, this.interval);
     }
+
+    public dispose(): void {
+        this.stop();
+        delete this.onSleepDetected;
+    }
 }
