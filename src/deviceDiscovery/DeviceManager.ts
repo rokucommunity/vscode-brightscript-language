@@ -182,9 +182,9 @@ export class DeviceManager {
     }
 
     /**
-     * Get a list of all devices discovered on the network.
+     * Get a list of all roku devices known by this extension (by scanning, hardcoded lists, etc)
      */
-    public getActiveDevices(): RokuDeviceDetails[] {
+    public getAllDevices(): RokuDeviceDetails[] {
         this.firstRequestForDevices = false;
         return [...this.devices].sort(
             firstBy<RokuDeviceDetails>((a, b) => {
@@ -332,7 +332,7 @@ export class DeviceManager {
     }
 
     private async checkDevicesHealth(force = false): Promise<void> {
-        const devices = this.getActiveDevices();
+        const devices = this.getAllDevices();
 
         // Filter to devices that need checking
         const devicesToCheck = force ? devices : devices.filter(d => {

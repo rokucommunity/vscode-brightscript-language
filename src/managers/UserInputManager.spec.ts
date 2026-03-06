@@ -39,7 +39,7 @@ describe('UserInputManager', () => {
         sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
         let globalStateManager = new GlobalStateManager(vscode.context);
-        let deviceManager = new DeviceManager(globalStateManager);
+        let deviceManager = new DeviceManager(vscode.context, globalStateManager);
         userInputManager = new UserInputManager(deviceManager);
     });
 

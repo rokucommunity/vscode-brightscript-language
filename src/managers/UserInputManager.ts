@@ -152,7 +152,7 @@ export class UserInputManager {
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
-                this.deviceManager.getActiveDevices(),
+                this.deviceManager.getAllDevices(),
                 this.deviceManager.lastUsedDevice,
                 itemCache
             );

@@ -28,11 +28,11 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getActiveDevices();
+        this.devices = this.deviceManager.getAllDevices();
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.devices = this.deviceManager.getActiveDevices();
+            this.devices = this.deviceManager.getAllDevices();
             this.decorationProvider.updateDevices(this.devices);
             this._onDidChangeTreeData.fire(null);
         });
@@ -112,7 +112,7 @@ export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = this.deviceManager.getActiveDevices();
+                this.devices = this.deviceManager.getAllDevices();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {
