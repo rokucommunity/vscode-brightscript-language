@@ -82,6 +82,9 @@ export class ActiveDeviceManager {
             }
         }
         this.staticDevices = result;
+        for (const device of this.staticDevices) {
+            this.emit('device-found', device);
+        }
     }
 
     private emitter = new EventEmitter();
