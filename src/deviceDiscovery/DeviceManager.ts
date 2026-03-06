@@ -8,6 +8,7 @@ import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
+import { util } from '../util';
 
 export class DeviceManager {
     constructor(
@@ -37,7 +38,7 @@ export class DeviceManager {
     private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
-    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 400;
+    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
     private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
     private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
     private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
@@ -286,6 +287,8 @@ export class DeviceManager {
                 device.ip,
                 parseInt(new URL(device.location).port || '8060')
             );
+
+            await this.randomDelay(400, 1_000);
             freshDevice = {
                 location: device.location,
                 ip: device.ip,
@@ -369,6 +372,13 @@ export class DeviceManager {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
+    private saneDelaysIndex = 0;
+    private async randomDelay(min: number, max: number) {
+        const randomness = Math.random() * ((max - min) + min);
+        this.saneDelaysIndex++;
+        await util.sleep(randomness);
+    }
+
     /**
      * Process a discovered IP address from SSDP.
      * Fetches device info, applies filtering, and upserts if valid.
@@ -389,6 +399,8 @@ export class DeviceManager {
 
             const deviceId = deviceInfo['device-id']?.toString?.();
             const isNewDevice = !this.devices.find(d => d.id === deviceId);
+
+            await this.randomDelay(400, 1_000);
 
             const device: RokuDeviceDetails = {
                 location: location,

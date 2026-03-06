@@ -206,6 +206,13 @@ export class UserInputManager {
      * @param device the device containing all the info
      * @returns a properly formatted host string
      */
+    private getDeviceIcon(device: RokuDeviceDetails) {
+        if (device.deviceState === 'pending') {
+            return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
+        }
+        return icons.getDeviceType(device);
+    }
+
     private createHostLabel(device: RokuDeviceDetails) {
         return [
             device.deviceInfo['model-number'],
@@ -243,7 +250,7 @@ export class UserInputManager {
             items.push({
                 label: this.createHostLabel(lastUsedDevice),
                 device: lastUsedDevice,
-                iconPath: icons.getDeviceType(lastUsedDevice)
+                iconPath: this.getDeviceIcon(lastUsedDevice)
             } as any);
         }
 
@@ -260,7 +267,7 @@ export class UserInputManager {
                 items.push({
                     label: this.createHostLabel(device),
                     device: device,
-                    iconPath: icons.getDeviceType(device)
+                    iconPath: this.getDeviceIcon(device)
                 });
             }
         }
@@ -290,6 +297,7 @@ export class UserInputManager {
             if (cache.has(item.label)) {
                 items[i] = cache.get(item.label);
                 items[i].device = item.device;
+                items[i].iconPath = item.iconPath;
             } else {
                 cache.set(item.label, item);
             }
@@ -299,4 +307,4 @@ export class UserInputManager {
     }
 }
 
-type QuickPickHostItem = QuickPickItem & { device?: RokuDeviceDetails };
+type QuickPickHostItem = QuickPickItem & { device?: RokuDeviceDetails; iconPath?: vscode.ThemeIcon | { light: vscode.Uri; dark: vscode.Uri } };

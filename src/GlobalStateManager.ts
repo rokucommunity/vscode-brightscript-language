@@ -104,8 +104,6 @@ export class GlobalStateManager {
         }
     }
 
-    // #region Device Cache
-
     /**
      * Get cached device details by deviceId
      */
@@ -145,8 +143,6 @@ export class GlobalStateManager {
     public clearLastSeenDevices(): void {
         void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, undefined);
     }
-
-    // #endregion Device Cache
 
     private LAST_SEEN_NETWORK_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
 

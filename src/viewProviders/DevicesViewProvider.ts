@@ -133,6 +133,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('errorForeground'));
+                    } else if (device.deviceState === 'pending') {
+                        treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
                     } else {
                         treeItem.iconPath = icons.getDeviceType(device);
                     }
