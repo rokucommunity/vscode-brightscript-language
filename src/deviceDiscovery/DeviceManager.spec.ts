@@ -551,9 +551,9 @@ describe('DeviceManager', () => {
                 expect(devicesChangedSpy.calledOnce).to.be.true;
 
                 // Subsequent calls within throttle window are queued
-                clock.tick(100);
+                clock.tick(10);
                 manager['setDevice'](createMockDevice({ id: 'device-2' }));
-                clock.tick(100);
+                clock.tick(10);
                 manager['setDevice'](createMockDevice({ id: 'device-3' }));
 
                 // Still just one emit (subsequent calls queued)

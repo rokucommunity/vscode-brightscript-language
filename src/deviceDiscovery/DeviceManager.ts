@@ -372,10 +372,8 @@ export class DeviceManager {
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
-    private saneDelaysIndex = 0;
     private async randomDelay(min: number, max: number) {
         const randomness = Math.random() * ((max - min) + min);
-        this.saneDelaysIndex++;
         await util.sleep(randomness);
     }
 
