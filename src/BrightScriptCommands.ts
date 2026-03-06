@@ -405,15 +405,21 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('setActiveDevice', async (device: string) => {
-            if (!device) {
-                device = await this.userInputManager.promptForHost();
+        this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
+            let ip: string;
+            if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
+                ip = this.deviceManager.getDeviceById(deviceOrItem.key)?.ip;
+            } else if (typeof deviceOrItem === 'string') {
+                ip = deviceOrItem;
             }
-            if (!device) {
+            if (!ip) {
+                ip = await this.userInputManager.promptForHost();
+            }
+            if (!ip) {
                 throw new Error('Tried to set active device but failed.');
             } else {
-                await this.context.workspaceState.update('remoteHost', device);
-                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${device}`);
+                await this.context.workspaceState.update('remoteHost', ip);
+                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
             }
         });
 

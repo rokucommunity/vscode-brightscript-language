@@ -161,7 +161,7 @@
         "views": {
             "vscode-brightscript-language": [
                 {
-                    "id": "onlineDevicesView",
+                    "id": "devicesView",
                     "name": "Devices"
                 }
             ],
@@ -242,7 +242,7 @@
                 },
                 {
                     "command": "extension.brightscript.refreshDeviceList",
-                    "when": "view == onlineDevicesView",
+                    "when": "view == devicesView",
                     "group": "navigation"
                 },
                 {
@@ -378,9 +378,14 @@
             ],
             "view/item/context": [
                 {
+                    "command": "extension.brightscript.setActiveDevice",
+                    "when": "view == devicesView && viewItem == device",
+                    "group": "navigation@1"
+                },
+                {
                     "command": "extension.brightscript.refreshDevice",
-                    "when": "view == onlineDevicesView && viewItem == device",
-                    "group": "inline"
+                    "when": "view == devicesView && viewItem == device",
+                    "group": "navigation@2"
                 }
             ],
             "webview/context": [
@@ -3092,6 +3097,12 @@
                 "title": "Refresh",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.setActiveDevice",
+                "title": "Set as Active Device",
+                "category": "BrightScript",
+                "icon": "$(star)"
             },
             {
                 "command": "extension.brightscript.refreshDevice",
