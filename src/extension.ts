@@ -15,7 +15,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
-import { OnlineDevicesViewProvider } from './viewProviders/OnlineDevicesViewProvider';
+import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
@@ -119,12 +119,12 @@ export class Extension {
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
-        //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(this.deviceManager);
-        const onlineDevicesTreeView = vscode.window.createTreeView(ViewProviderId.onlineDevicesView, {
-            treeDataProvider: onlineDevicesViewProvider
+        //register a tree data provider for this extension's "Devices" view
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager);
+        const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
+            treeDataProvider: devicesViewProvider
         });
-        onlineDevicesViewProvider.setTreeView(onlineDevicesTreeView);
+        devicesViewProvider.setTreeView(devicesTreeView);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {

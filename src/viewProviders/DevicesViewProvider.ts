@@ -15,9 +15,9 @@ let treeItemKeySequence = 0;
  */
 const DEVICE_URI_SCHEME = 'roku-device';
 
-export class OnlineDevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
-    public readonly id = ViewProviderId.onlineDevicesView;
+    public readonly id = ViewProviderId.devicesView;
 
     private decorationProvider: DeviceDecorationProvider;
 
