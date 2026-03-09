@@ -182,7 +182,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     }
 
 
-    private async resolveCommandVariables(command: string): Promise<string> {
+    private async resolveCommandVariables(command: string): Promise<string | undefined> {
         // Currently only supports ${folderForFile: <glob>} but can be extended in the future
         let resolvedCommand = command;
 
@@ -194,7 +194,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
             resolvedCommand = await resolver(resolvedCommand);
             if (!resolvedCommand) {
                 // If any resolver returns undefined/null, it means the user cancelled a selection or an error occurred
-                throw new Error('Command variable resolution cancelled or failed');
+                return undefined;
             }
         }
 

@@ -269,10 +269,34 @@ export let vscode = {
         }
     },
     EventEmitter: class {
-        public fire() {
+        private handlers = new Map<string, Array<(data: any) => void>>();
 
+        public event = (handler: (data: any) => void) => {
+            const eventName = 'event';
+            if (!this.handlers.has(eventName)) {
+                this.handlers.set(eventName, []);
+            }
+            this.handlers.get(eventName).push(handler);
+            return {
+                dispose: () => {
+                    const handlers = this.handlers.get(eventName) || [];
+                    const index = handlers.indexOf(handler);
+                    if (index > -1) {
+                        handlers.splice(index, 1);
+                    }
+                }
+            };
+        };
+
+        public fire(data?: any) {
+            const handlers = this.handlers.get('event') || [];
+            for (const handler of handlers) {
+                handler(data);
+            }
         }
-        public event() {
+
+        public dispose() {
+            this.handlers.clear();
         }
     },
     DeclarationProvider: class {
@@ -443,12 +467,22 @@ export let vscode = {
         public source: string;
         public execution: any;
         public problemMatchers: any[];
+        public isBackground: boolean;
+        public presentationOptions: any;
+        public group: any;
+        public runOptions: any;
     },
     ShellExecution: class {
         constructor(commandLine: string) {
             this.commandLine = commandLine;
         }
         public commandLine: string;
+    },
+    CustomExecution: class {
+        constructor(callback: () => Promise<any>) {
+            this.callback = callback;
+        }
+        public callback: () => Promise<any>;
     },
     TaskScope: {
         Global: 1,
