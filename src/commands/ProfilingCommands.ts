@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { vscodeContextManager } from './managers/VscodeContextManager';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { isProfilingEnabledEvent, isProfilingStartEvent, isProfilingStopEvent, isProfilingErrorEvent } from 'roku-debug';
 
-export class PerfettoControlCommands {
+export class ProfilingCommands {
 
-    public registerPerfettoControlCommands(
+    public register(
         context: vscode.ExtensionContext
     ) {
         context.subscriptions.push(
@@ -119,4 +119,4 @@ export class PerfettoControlCommands {
     }
 }
 
-export const perfettoControlCommands = new PerfettoControlCommands();
+export const profilingCommands = new ProfilingCommands();

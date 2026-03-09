@@ -16,7 +16,7 @@ import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
-import { perfettoControlCommands } from './PerfettoControlCommands';
+import { profilingCommands } from './commands/ProfilingCommands';
 
 export class BrightScriptCommands {
 
@@ -44,7 +44,7 @@ export class BrightScriptCommands {
         captureScreenshotCommand.register(this.context, this);
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
         clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
-        perfettoControlCommands.registerPerfettoControlCommands(this.context);
+        profilingCommands.register(this.context);
 
         this.registerGeneralCommands();
 
