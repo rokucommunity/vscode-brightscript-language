@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.61.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.60.1...v2.61.0) - 2026-03-09
+### Added
+ - Add support for device-specific passwords and its variable substitution ([#688](https://github.com/rokucommunity/vscode-brightscript-language/pull/688))
+ - Support for Perfetto tracing on supported devices (Roku OS 15.2 and above) ([#680](https://github.com/rokucommunity/vscode-brightscript-language/pull/680))
+### Changed
+ - Totally overhauled DeviceDevice Discovery to minimize network noise ([#683](https://github.com/rokucommunity/vscode-brightscript-language/pull/683))
+ - upgrade to [brighterscript-formatter@1.7.21](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1721---2026-03-09). Notable changes since 1.7.19:
+     - Fix type statement with typed function indenting ([#116](https://github.com/rokucommunity/brighterscript-formatter/pull/116))
+ - upgrade to [roku-debug@0.22.6](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0226---2026-03-09). Notable changes since 0.22.5:
+     - Perfetto tracing ([#286](https://github.com/rokucommunity/roku-debug/pull/286))
+     - combined the ifDateTime dateLocalized and timeLocalized vurtual variable into one time variable ([#295](https://github.com/rokucommunity/roku-debug/pull/295))
+     - Better messages when 'limited' or 'disabled' are detected for ecp-setting-mode ([#283](https://github.com/rokucommunity/roku-debug/pull/283))
+ - upgrade to [roku-deploy@3.16.2](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3162---2026-03-09). Notable changes since 3.15.0:
+     - Add ecpSettingMode to device-info interface ([#225](https://github.com/rokucommunity/roku-deploy/pull/225))
+     - Add support for detecting ecpNetworkAccessMode ([#223](https://github.com/rokucommunity/roku-deploy/pull/223))
+
+
+
 ## [2.60.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.60.0...v2.60.1) - 2025-12-01
 ### Added
  - Add `packageTask`, `packagePath`, `packageUploadOverrides` complib launch schema info ([#675](https://github.com/rokucommunity/vscode-brightscript-language/pull/675))
