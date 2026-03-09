@@ -154,6 +154,20 @@
         "workspaceContains:**/bsconfig.json"
     ],
     "contributes": {
+        "taskDefinitions": [
+            {
+                "type": "brightscript",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command" : {
+                        "type": "string",
+                        "description": "The command to run for this task, you can use substitutions such as ${folderForFile: **/bsconfig.json}"
+                    }
+                }
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {

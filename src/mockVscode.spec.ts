@@ -155,8 +155,11 @@ export let vscode = {
         },
         onDidChangeConfiguration: () => { },
         onDidChangeWorkspaceFolders: () => { },
+        getWorkspaceFolder: (uri: Uri) => {
+            return undefined;
+        },
         findFiles: (include, exclude) => {
-            return [];
+            return [] as any;
         },
         fs: {
             writeFile: (uri, buffer) => { },
@@ -252,6 +255,9 @@ export let vscode = {
         },
         showOpenDialog: () => {
             return Promise.resolve([]);
+        },
+        showQuickPick: () => {
+            return Promise.resolve(undefined);
         }
     },
     CompletionItemKind: {
@@ -421,6 +427,32 @@ export let vscode = {
             this.value = value;
         }
         public value: string;
+    },
+    Task: class {
+        constructor(definition, scope, name, source, execution, problemMatchers = []) {
+            this.definition = definition;
+            this.scope = scope;
+            this.name = name;
+            this.source = source;
+            this.execution = execution;
+            this.problemMatchers = problemMatchers;
+        }
+        public definition: any;
+        public scope: any;
+        public name: string;
+        public source: string;
+        public execution: any;
+        public problemMatchers: any[];
+    },
+    ShellExecution: class {
+        constructor(commandLine: string) {
+            this.commandLine = commandLine;
+        }
+        public commandLine: string;
+    },
+    TaskScope: {
+        Global: 1,
+        Workspace: 2
     }
 };
 

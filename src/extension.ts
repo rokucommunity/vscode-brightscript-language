@@ -31,6 +31,7 @@ import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 
 export class Extension {
@@ -119,6 +120,10 @@ export class Extension {
         //register a tree data provider for this extension's "Online Devices" view
         let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
         vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
+
+        // Initialize tasks manager
+        const tasksManager = new BrightScriptTaskProvider();
+        context.subscriptions.push(tasksManager);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
