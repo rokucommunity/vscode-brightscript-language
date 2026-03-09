@@ -76,10 +76,11 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         const pty: vscode.Pseudoterminal = {
             onDidWrite: writeEmitter.event,
             onDidClose: closeEmitter.event,
-            open: () => {
-                // Resolve variables only when the task actually starts
-                // Handle the promise without making open() async
-                this.resolveFolderForFileVariable(command).then((resolvedCommand) => {
+            open: (async () => {
+                try {
+                    // Resolve variables only when the task actually starts
+                    const resolvedCommand = await this.resolveCommandVariables(command);
+
                     // If command is undefined/null after processing, the user cancelled a selection
                     if (!resolvedCommand) {
                         writeEmitter.fire('Task cancelled by user\r\n');
@@ -130,11 +131,11 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                         writeEmitter.fire(`Error executing command: ${error.message}\r\n`);
                         closeEmitter.fire(1);
                     });
-                }).catch((error) => {
+                } catch (error) {
                     writeEmitter.fire(`Error resolving command: ${error}\r\n`);
                     closeEmitter.fire(1);
-                });
-            },
+                }
+            }) as () => void,
             close: () => {
                 // Kill the process if it's still running
                 if (currentProcess && !currentProcess.killed) {
@@ -174,6 +175,26 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         }
 
         return { shell: shell, env: env };
+    }
+
+
+    private async resolveCommandVariables(command: string): Promise<string> {
+        // Currently only supports ${folderForFile: <glob>} but can be extended in the future
+        let resolvedCommand = command;
+
+        const variableResolvers = [
+            this.resolveFolderForFileVariable.bind(this)
+        ];
+
+        for (const resolver of variableResolvers) {
+            resolvedCommand = await resolver(resolvedCommand);
+            if (!resolvedCommand) {
+                // If any resolver returns undefined/null, it means the user cancelled a selection or an error occurred
+                throw new Error('Command variable resolution cancelled or failed');
+            }
+        }
+
+        return resolvedCommand;
     }
 
     /**
