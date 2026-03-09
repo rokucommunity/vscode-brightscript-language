@@ -146,6 +146,9 @@ export class DeviceManager {
     private initialize() {
         this.loadLastSeenDevices();
 
+        // Always set up finder event listeners so scan responses are processed
+        this.setupFinderEventListeners();
+
         if (this.passiveScanPermitted) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
@@ -216,6 +219,10 @@ export class DeviceManager {
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false): boolean {
+        // Block automatic scans when device discovery is disabled
+        if (!force && !this.passiveScanPermitted) {
+            return false;
+        }
         this.checkDevicesHealth(force).catch(() => { });
         return this.discoverAll(force);
     }
@@ -535,9 +542,11 @@ export class DeviceManager {
     }
 
     /**
-     * Start listening for passive SSDP announcements from Roku devices
+     * Set up event listeners for the RokuFinder.
+     * This must be called regardless of passiveScanPermitted so that
+     * active scan responses are processed.
      */
-    private async startRokuFinder() {
+    private setupFinderEventListeners() {
         this.finder.removeAllListeners();
         this.finder.on('found', (ip: string, options?: { isAlive: boolean }) => {
             void this.processDiscoveredIp(ip, options?.isAlive ?? false);
@@ -550,13 +559,17 @@ export class DeviceManager {
                 this.removeDevice(device.id);
             }
         });
+    }
 
+    /**
+     * Start listening for passive SSDP announcements from Roku devices
+     */
+    private async startRokuFinder() {
         await this.finder.start();
     }
 
     private stopRokuFinder() {
         this.finder.stop();
-        this.finder.removeAllListeners();
     }
 
     private notifyFocusGained() {
