@@ -6,6 +6,8 @@ If you have a build process that moves files from a source directory to an outpu
 
 **IF** your build process does not change line numbers between source files and built files, this extension will allow you to place breakpoints in your source files, and launch/run your built files. Pair this with vscode's task system, and you can build your code, then launch and debug your code with ease.
 
+> 💡 **Tip**: Learn how to create powerful build tasks with the [BrightScript tasks](../brightscript-tasks.html).
+
 **Example:**
 
 ```graphql

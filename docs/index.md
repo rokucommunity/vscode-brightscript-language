@@ -13,4 +13,5 @@ The extension is packed with features, but here are some highlights:
  - Full debugger support including breakpoints, variable inspection, and more
  - Integrated telnet logs and interactive console
  - client-side syntax checking powered by the [BrighterScript](https://github.com/rokucommunity/brighterscript) language server
+ - Powerful task system with interactive folder selection and advanced configuration
  - syntax highlighting, code formatting, symbol navigation, and [much more](features.html)
