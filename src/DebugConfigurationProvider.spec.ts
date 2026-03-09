@@ -9,7 +9,8 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { GlobalStateManager } from './GlobalStateManager';
 import { rokuDeploy } from 'roku-deploy';
 
 const sinon = createSandbox();
@@ -43,14 +44,18 @@ describe('BrightScriptConfigurationProvider', () => {
             index: 0
         };
 
-        //prevent the 'start' method from actually running
-        sinon.stub(ActiveDeviceManager.prototype as any, 'start').callsFake(() => { });
-        let activeDeviceManager = new ActiveDeviceManager();
-        userInputManager = new UserInputManager(activeDeviceManager);
+        //prevent the DeviceManager from actually running
+        sinon.stub(DeviceManager.prototype as any, 'initialize').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        let globalStateManager = new GlobalStateManager(vscode.context);
+        let deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        userInputManager = new UserInputManager(deviceManager);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
-            activeDeviceManager,
+            deviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
             userInputManager,

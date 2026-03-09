@@ -4,7 +4,7 @@ import { extensions } from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
@@ -15,7 +15,7 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
-import { OnlineDevicesViewProvider } from './viewProviders/OnlineDevicesViewProvider';
+import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
@@ -50,8 +50,11 @@ export class Extension {
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
     private diagnosticManager = new DiagnosticManager();
+    private deviceManager: DeviceManager;
 
     public async activate(context: vscode.ExtensionContext) {
+        //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
+        context.subscriptions.push(this);
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
         this.globalStateManager = new GlobalStateManager(context);
@@ -72,9 +75,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        let activeDeviceManager = new ActiveDeviceManager();
+        this.deviceManager = new DeviceManager(context, this.globalStateManager);
         let userInputManager = new UserInputManager(
-            activeDeviceManager
+            this.deviceManager
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
@@ -82,7 +85,7 @@ export class Extension {
             this.remoteControlManager,
             this.whatsNewManager,
             context,
-            activeDeviceManager,
+            this.deviceManager,
             userInputManager,
             localPackageManager
         );
@@ -119,9 +122,12 @@ export class Extension {
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
-        //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
-        vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
+        //register a tree data provider for this extension's "Devices" view
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager);
+        const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
+            treeDataProvider: devicesViewProvider
+        });
+        devicesViewProvider.setTreeView(devicesTreeView);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
@@ -149,7 +155,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.deviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
@@ -366,6 +372,15 @@ export class Extension {
             );
             fsExtra.appendFileSync(extensionLogfilePath, text);
         }
+    }
+
+    public dispose() {
+        this.outputChannel?.dispose?.();
+        this.sceneGraphDebugChannel?.dispose?.();
+        this.extensionOutputChannel?.dispose?.();
+        this.chanperfStatusBar?.dispose?.();
+        this.diagnosticManager?.dispose?.();
+        this.deviceManager?.dispose?.();
     }
 }
 export const extension = new Extension();

@@ -10,7 +10,7 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
@@ -24,7 +24,7 @@ export class BrightScriptCommands {
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
+        private deviceManager: DeviceManager,
         private userInputManager: UserInputManager,
         private localPackageManager: LocalPackageManager
     ) {
@@ -54,7 +54,19 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh(true);
+        });
+
+        this.registerCommand('rescanDevices', () => {
+            this.deviceManager.refresh(true);
+        });
+
+        // Refresh a single device (inline button on hover in devices panel)
+        this.registerCommand('refreshDevice', async (item: { key: string }) => {
+            const device = this.deviceManager.getDeviceById(item.key);
+            if (device) {
+                await this.deviceManager.checkDeviceHealth(device, true);
+            }
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -318,6 +330,17 @@ export class BrightScriptCommands {
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
         });
 
+        // Test commands for device discovery
+        this.registerCommand('clearDeviceCache', async () => {
+            new GlobalStateManager(this.context).clearDeviceCache();
+            await vscode.window.showInformationMessage('Device cache cleared');
+        });
+
+        this.registerCommand('clearLastSeenDevices', async () => {
+            new GlobalStateManager(this.context).clearLastSeenDevices();
+            await vscode.window.showInformationMessage('Last seen devices cleared');
+        });
+
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
                 if (util.isNullish(value)) {
@@ -384,15 +407,21 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('setActiveDevice', async (device: string) => {
-            if (!device) {
-                device = await this.userInputManager.promptForHost();
+        this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
+            let ip: string;
+            if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
+                ip = this.deviceManager.getDeviceById(deviceOrItem.key)?.ip;
+            } else if (typeof deviceOrItem === 'string') {
+                ip = deviceOrItem;
             }
-            if (!device) {
+            if (!ip) {
+                ip = await this.userInputManager.promptForHost();
+            }
+            if (!ip) {
                 throw new Error('Tried to set active device but failed.');
             } else {
-                await this.context.workspaceState.update('remoteHost', device);
-                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${device}`);
+                await this.context.workspaceState.update('remoteHost', ip);
+                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
             }
         });
 

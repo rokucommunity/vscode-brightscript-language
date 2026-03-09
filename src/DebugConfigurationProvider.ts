@@ -15,7 +15,7 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
@@ -28,14 +28,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     public constructor(
         private context: ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
+        private deviceManager: DeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands
     ) {
         this.context = context;
-        this.activeDeviceManager = activeDeviceManager;
+        this.deviceManager = deviceManager;
     }
 
     //make unit testing easier by adding these imports properties
@@ -433,7 +433,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.activeDeviceManager.enabled) {
+            if (this.deviceManager.passiveScanPermitted) {
                 config.host = await this.userInputManager.promptForHost();
             } else {
                 config.host = await this.userInputManager.promptForHostManual();
