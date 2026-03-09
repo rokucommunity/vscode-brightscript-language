@@ -107,6 +107,10 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                     // Determine working directory (task option > workspace folder)
                     const cwd = taskOptions.cwd || workspaceFolder?.uri.fsPath;
 
+                    // Display the command being executed (similar to built-in tasks)
+                    const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
+                    writeEmitter.fire(`> Executing task${cwdDisplay}: ${resolvedCommand}\r\n\r\n`);
+
                     currentProcess = childProcess.spawn(resolvedCommand, [], {
                         shell: shell,
                         env: mergedEnv,
