@@ -33,8 +33,6 @@ export class UserInputManager {
         const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
-        const discoveryTime = 5_000;
-
         //create the quickpick item
         const quickPick = vscode.window.createQuickPick();
         disposables.push(quickPick);
