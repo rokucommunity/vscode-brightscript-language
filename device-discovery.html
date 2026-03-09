@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        Device Discovery
+    </title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="navbar">
+        <div class="nav-left-area">
+            <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <a href="/index.html">BrightScript VSCode Extension</a>
+        </div>
+        <a href="https://github.com/rokucommunity/vscode-brightscript-language" target="_blank" title="View project on GitHub">
+            <svg xmlns="http://www.w3.org/2000/svg" style="fill: white" width="24" height="24" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            </svg>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+
+            
+            
+            <div class="folder">
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="index.html">Introduction</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="features.html">Features</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="device-discovery.html">Device Discovery</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="installation.html">How to Install</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="extension-settings.html">Extension Settings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="keyboard-shortcuts.html">Keyboard shortcuts</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Debugging">Debugging</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/bs-const.html">bs_const</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/component-libraries.html">Component Libraries</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/deep-linking.html">Deep Linking (ECP)</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/env-file.html">.env file</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/rale.html">RALE Support</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/remote-control-mode.html">Remote Control Mode</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/source-maps.html">SourceMaps</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Editing">Editing</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/code-formatting.html">Code formatting</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/error-handling.html">Ignoring Errors and Warnings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/snippets.html">Snippets</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/word-separators.html">Editor word separator</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="prerelease-versions.html">Pre-release Versions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="release-notes">Release Notes</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.31.0.html">v2.31.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.0.0.html">v2.0.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/index.html">Release Notes</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="telemetry.html">Telemetry</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="variable-substitutions.html">Variable Substitutions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="contributing.html">Contributing</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+
+            
+        </div>
+        <div id="content">
+            <a href="#device-discovery"><h1 id="device-discovery">Device Discovery</h1></a><p>The BrightScript Language extension includes an automatic Roku device discovery system that uses <a href="https://en.wikipedia.org/wiki/Simple_Service_Discovery_Protocol">SSDP (Simple Service Discovery Protocol)</a> to find Roku devices on your local network. This guide explains how the system works, what triggers network scans, how devices are cached between sessions, and how to configure or disable the feature.</p>
+<hr>
+<a href="#overview"><h2 id="overview">Overview</h2></a><p>When device discovery is enabled, the extension continuously monitors for Roku devices by:</p>
+<ol>
+<li><strong>Listening passively</strong> for SSDP <code>advertise-alive</code> and <code>advertise-bye</code> messages broadcast by Roku devices.</li>
+<li><strong>Actively scanning</strong> the network (SSDP M-SEARCH broadcasts targeting <code>roku:ecp</code>) when conditions warrant a refresh.</li>
+<li><strong>Caching</strong> discovered device details in VS Code&#39;s global state so previously seen devices are instantly available the next time you open VS Code.</li>
+</ol>
+<hr>
+<a href="#when-does-the-extension-scan-for-devices"><h2 id="when-does-the-extension-scan-for-devices">When Does the Extension Scan for Devices?</h2></a><p>Active SSDP scans (M-SEARCH broadcasts) are performed in the following situations:</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Extension startup (first launch on network)</strong></td>
+<td>If no devices have been seen on the current network before, a full scan is immediately triggered on startup.</td>
+</tr>
+<tr>
+<td><strong>Deferred scan execution</strong></td>
+<td>If a scan has been queued (see <a href="#queued-scans">Queued Scans</a> below) and the user opens the Device Picker or the Devices Panel becomes visible, the queued scan runs immediately.</td>
+</tr>
+<tr>
+<td><strong>Device Picker opened</strong></td>
+<td>Every time the Device Picker is shown, the extension calls <code>refresh()</code>. If a scan is needed or the last scan is older than 30 minutes (the <em>stale scan threshold</em>), a new scan starts.</td>
+</tr>
+<tr>
+<td><strong>Devices Panel becomes visible</strong></td>
+<td>When the Devices panel (side-bar tree view) becomes visible, a <code>refresh()</code> is triggered using the same staleness rules.</td>
+</tr>
+<tr>
+<td><strong>Network change detected</strong></td>
+<td>When the <a href="#network-change-monitor">Network Change Monitor</a> detects that the set of local network interfaces has changed, a scan is queued.</td>
+</tr>
+<tr>
+<td><strong>Wake from sleep</strong></td>
+<td>When the <a href="#sleep--wake-tracking">System Sleep Monitor</a> detects the computer has resumed from sleep, a scan is queued.</td>
+</tr>
+<tr>
+<td><strong>Manual refresh</strong></td>
+<td>Users can click the inline refresh button on any device in the Devices Panel, or trigger a scan via the <strong>Scan for Devices</strong> item in the Device Picker.</td>
+</tr>
+<tr>
+<td><strong>Unhealthy device found</strong></td>
+<td>When a health check reveals that a cached device is no longer reachable, the extension automatically triggers a new scan (if passive scanning is permitted).</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Stale scan threshold:</strong> The extension considers scan results stale after <strong>30 minutes</strong>. Any operation that needs device information and finds the last scan was more than 30 minutes ago will trigger a fresh scan.</p>
+</blockquote>
+<hr>
+<a href="#queued-scans"><h2 id="queued-scans">Queued Scans</h2></a><p>To avoid performing expensive SSDP broadcasts more than necessary, the extension uses a <em>scan needed</em> flag instead of scanning immediately in every situation.</p>
+<a href="#what-sets-the-flag"><h3 id="what-sets-the-flag">What Sets the Flag</h3></a><p>The following events set the <code>scanNeeded</code> flag without immediately scanning:</p>
+<ul>
+<li>A network change is detected.</li>
+<li>The computer wakes from sleep.</li>
+<li>Extension startup when previously seen devices exist on the current network (a health check is preferred over an immediate full scan in this case).</li>
+</ul>
+<a href="#when-the-flag-takes-effect"><h3 id="when-the-flag-takes-effect">When the Flag Takes Effect</h3></a><p>The queued scan is consumed when the user next interacts with a UI surface that requires an up-to-date device list:</p>
+<ul>
+<li><strong>Device Picker</strong> – Opening the picker calls <code>refresh()</code>, which checks the flag and runs the scan.</li>
+<li><strong>Devices Panel</strong> – When the panel becomes visible and the <code>scanNeeded-changed</code> event has fired, the panel immediately calls <code>refresh()</code>.</li>
+</ul>
+<p>This deferred approach means a network change at 3 AM will not wake the network or consume resources; the scan only runs when you actually open the picker or panel the next morning.</p>
+<hr>
+<a href="#device-cache-mechanism"><h2 id="device-cache-mechanism">Device Cache Mechanism</h2></a><a href="#in-memory-device-list"><h3 id="in-memory-device-list">In-memory Device List</h3></a><p>While the extension is running, discovered devices are stored in an in-memory array inside <code>DeviceManager</code>. Each device entry includes:</p>
+<ul>
+<li>IP address and port (<code>location</code>)</li>
+<li>Device ID (<code>device-id</code> from Roku&#39;s ECP API)</li>
+<li>Full device info returned by Roku&#39;s <code>/query/device-info</code> endpoint</li>
+<li>A <code>deviceState</code> field: <code>pending</code>, <code>online</code>, or <code>offline</code></li>
+</ul>
+<p>Devices transition through states as follows:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>pending</code></td>
+<td>Device was loaded from the persistent cache but has not yet been health-checked.</td>
+</tr>
+<tr>
+<td><code>online</code></td>
+<td>Device responded to a health check and is reachable.</td>
+</tr>
+<tr>
+<td><code>offline</code></td>
+<td>Device was removed from the list (failed health check or received an SSDP <code>byebye</code> message).</td>
+</tr>
+</tbody></table>
+<a href="#persistent-cache-cross-session"><h3 id="persistent-cache-cross-session">Persistent Cache (Cross-session)</h3></a><p>Device details are also saved to VS Code&#39;s global state (<code>globalState</code>) so they survive VS Code restarts. The persistent cache has two layers:</p>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Key</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>lastSeenDevicesByNetwork</code></td>
+<td>A hash of the current network interfaces</td>
+<td>A list of device IDs seen on that network, plus a <code>lastSeen</code> timestamp.</td>
+</tr>
+<tr>
+<td><code>deviceCache</code></td>
+<td>Device ID</td>
+<td>Full device info (<code>location</code>, <code>ip</code>, <code>id</code>, <code>deviceInfo</code>) for each device.</td>
+</tr>
+</tbody></table>
+<a href="#network-scoping"><h4 id="network-scoping">Network Scoping</h4></a><p>The cache is scoped to a <strong>network hash</strong> – an MD5 hash of the non-loopback IP addresses and subnet masks of all local network interfaces. This means:</p>
+<ul>
+<li>Devices from your home network will not show up when you connect to your office network.</li>
+<li>Switching between networks automatically loads the device list for that network.</li>
+<li>Old network entries are automatically expired after <strong>30 days</strong> of not being seen.</li>
+</ul>
+<a href="#on-startup"><h4 id="on-startup">On Startup</h4></a><p>When VS Code starts (or when a network change is detected), the extension:</p>
+<ol>
+<li>Computes the network hash for the current interfaces.</li>
+<li>Loads any device IDs associated with that hash from <code>lastSeenDevicesByNetwork</code>.</li>
+<li>For each device ID, fetches the cached device info from <code>deviceCache</code> and adds it to the in-memory list with <code>deviceState: &#39;pending&#39;</code>.</li>
+<li>Emits a <code>devices-changed</code> event so the UI immediately shows cached devices (greyed out as <em>pending</em>).</li>
+</ol>
+<p>Health checks happen lazily – a device only transitions from <code>pending</code> to <code>online</code> or <code>offline</code> when the UI requests an actual health check (e.g., when the user opens the Device Picker or the Devices Panel runs <code>refresh()</code>).</p>
+<a href="#short-lived-device-info-cache"><h3 id="short-lived-device-info-cache">Short-lived Device Info Cache</h3></a><p>During a scan, multiple SSDP responses and health checks may arrive for the same IP address within a very short window. To avoid hammering devices with redundant HTTP requests to <code>/query/device-info</code>, the extension keeps a <strong>short-lived in-memory cache</strong> with a 5-second TTL. After 10 seconds of inactivity, this cache is automatically cleared.</p>
+<hr>
+<a href="#network-change-monitor"><h2 id="network-change-monitor">Network Change Monitor</h2></a><p>The <code>NetworkChangeMonitor</code> polls the host machine&#39;s network interfaces every <strong>3 minutes</strong> to detect changes (e.g., connecting to a new Wi-Fi network or VPN).</p>
+<p>When a change is detected:</p>
+<ol>
+<li>The network hash is recomputed.</li>
+<li>The short-lived device info cache is cleared.</li>
+<li>The persistent device list for the new network is loaded.</li>
+<li><code>setScanNeeded()</code> is called to queue a scan for the next user interaction.</li>
+</ol>
+<p>The monitor is paused when the VS Code window loses focus (to avoid unnecessary polling) and resumes when focus is regained.</p>
+<hr>
+<a href="#sleep--wake-tracking"><h2 id="sleep--wake-tracking">Sleep / Wake Tracking</h2></a><p>The <code>SystemSleepMonitor</code> detects system sleep/wake transitions by scheduling a 1-minute recurring timer and checking whether the timer fires significantly later than expected. If the gap between scheduled and actual execution exceeds <strong>2 minutes</strong>, the system is presumed to have been asleep.</p>
+<p>On wake detection:</p>
+<ul>
+<li><code>setScanNeeded()</code> is called to queue a fresh network scan.</li>
+<li>The scan runs the next time the user opens the Device Picker or the Devices Panel becomes visible.</li>
+</ul>
+<p>The sleep monitor runs continuously whenever device discovery is enabled, independent of VS Code window focus.</p>
+<hr>
+<a href="#how-scan-progress-works"><h2 id="how-scan-progress-works">How Scan Progress Works</h2></a><p>A scan has two phases that must both complete before the scan is considered finished:</p>
+<ol>
+<li><strong>Minimum duration (3 seconds):</strong> The scan runs for at least 3 seconds to give slow devices time to respond.</li>
+<li><strong>Settle period (1.5 seconds):</strong> After the last device response is received, the extension waits 1.5 seconds for any stragglers. Each new device response resets this timer.</li>
+</ol>
+<p>The scan is considered done only when <strong>both</strong> timers have expired. While scanning:</p>
+<ul>
+<li>The Devices Panel shows a progress indicator.</li>
+<li>The Device Picker shows a spinner.</li>
+</ul>
+<hr>
+<a href="#passive-ssdp-listening"><h2 id="passive-ssdp-listening">Passive SSDP Listening</h2></a><p>In addition to active M-SEARCH scans, the extension listens for unsolicited SSDP announcements from Roku devices on the network:</p>
+<ul>
+<li><strong><code>ssdp:alive</code></strong> – A Roku device announced itself. The extension fetches its device info and adds it to the list.</li>
+<li><strong><code>ssdp:byebye</code></strong> – A Roku device is going offline. The extension removes it from the list immediately.</li>
+</ul>
+<p>This passive listening means devices that power on while VS Code is running will appear automatically, without waiting for the next active scan.</p>
+<hr>
+<a href="#disabling-device-discovery"><h2 id="disabling-device-discovery">Disabling Device Discovery</h2></a><a href="#via-settings"><h3 id="via-settings">Via Settings</h3></a><p>Set <code>brightscript.deviceDiscovery.enabled</code> to <code>false</code> in your VS Code settings:</p>
+<pre><code class="language-json">&quot;brightscript.deviceDiscovery.enabled&quot;: false
+</code></pre>
+<p>When disabled:</p>
+<ul>
+<li>No SSDP broadcasts are sent.</li>
+<li>The passive SSDP listener is stopped.</li>
+<li>The Network Change Monitor and System Sleep Monitor are stopped.</li>
+<li>The Devices Panel will show no devices.</li>
+<li>The Device Picker will not discover any new devices; you must enter IP addresses manually.</li>
+</ul>
+<p>You can re-enable discovery at any time by setting the option back to <code>true</code> – monitoring will resume immediately.</p>
+<hr>
+<a href="#configuration-reference"><h2 id="configuration-reference">Configuration Reference</h2></a><p>All settings are in the <code>brightscript.deviceDiscovery</code> namespace and can be set in VS Code&#39;s <strong>Settings</strong> UI or <code>settings.json</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>brightscript.deviceDiscovery.enabled</code></td>
+<td><code>true</code></td>
+<td>Enables automatic network scanning and passive SSDP listening for Roku devices. Disable this if you always use a fixed IP address or want no network activity from the extension.</td>
+</tr>
+<tr>
+<td><code>brightscript.deviceDiscovery.showInfoMessages</code></td>
+<td><code>true</code></td>
+<td>When <code>true</code>, a toast notification appears each time a new Roku device is discovered on the network.</td>
+</tr>
+<tr>
+<td><code>brightscript.deviceDiscovery.includeNonDeveloperDevices</code></td>
+<td><code>false</code></td>
+<td>When <code>true</code>, the extension includes Roku devices that do <strong>not</strong> have Developer Mode enabled. By default only developer-enabled devices are shown.</td>
+</tr>
+<tr>
+<td><code>brightscript.deviceDiscovery.concealDeviceInfo</code></td>
+<td><code>false</code></td>
+<td>When <code>true</code>, unique device identifiers (<code>udn</code>, <code>device-id</code>, <code>advertising-id</code>, <code>wifi-mac</code>, <code>ethernet-mac</code>, <code>serial-number</code>, <code>keyed-developer-id</code>) are randomised in the UI – useful for screenshots and demos.</td>
+</tr>
+</tbody></table>
+<hr>
+<a href="#common-scenarios"><h2 id="common-scenarios">Common Scenarios</h2></a><a href="#picking-a-device-after-launching-vs-code"><h3 id="picking-a-device-after-launching-vs-code">Picking a Device After Launching VS Code</h3></a><ol>
+<li>VS Code starts and loads any previously seen devices for the current network as <code>pending</code>.</li>
+<li>You open the <strong>Device Picker</strong> (e.g., via <code>${promptForHost}</code> in your <code>launch.json</code>, or the <strong>Select Device</strong> command).</li>
+<li><code>refresh()</code> is called. If a scan is needed or the last scan was more than 30 minutes ago, an active SSDP scan begins.</li>
+<li>While scanning, the picker shows existing (pending/online) devices immediately and a spinner indicates progress.</li>
+<li>As devices respond, they appear in the list with an <code>online</code> state.</li>
+<li>You select a device. The extension performs a quick health check. If the device is unreachable, an error is shown and the picker remains open.</li>
+</ol>
+<a href="#discovering-devices-after-a-network-change"><h3 id="discovering-devices-after-a-network-change">Discovering Devices After a Network Change</h3></a><ol>
+<li>You connect to a new Wi-Fi network.</li>
+<li>Within 3 minutes, the Network Change Monitor detects the change.</li>
+<li>The device list is cleared and replaced with any cached devices for the new network (shown as <code>pending</code>).</li>
+<li><code>setScanNeeded()</code> is called.</li>
+<li>The next time you open the Device Picker or the Devices Panel becomes visible, a fresh scan runs and populates the list.</li>
+</ol>
+<a href="#what-to-expect-when-discovery-is-disabled"><h3 id="what-to-expect-when-discovery-is-disabled">What to Expect When Discovery Is Disabled</h3></a><ul>
+<li>No automatic scanning occurs.</li>
+<li>The Devices Panel is empty (no previously seen devices are loaded).</li>
+<li>The Device Picker shows no discovered devices.</li>
+<li>You must enter device IP addresses manually (e.g., via the <strong>Enter IP address</strong> option in the picker, or by setting <code>host</code> directly in <code>launch.json</code>).</li>
+<li>No network traffic from the extension related to device discovery.</li>
+</ul>
+<a href="#resuming-after-sleep"><h3 id="resuming-after-sleep">Resuming After Sleep</h3></a><ol>
+<li>Your computer wakes from sleep.</li>
+<li>The System Sleep Monitor detects the gap in timer execution and calls <code>setScanNeeded()</code>.</li>
+<li>When you next open the Device Picker or the Devices Panel becomes visible, a fresh scan is triggered automatically.</li>
+<li>Devices that were online before sleep are shown as <code>pending</code> until the health check confirms they are still reachable.</li>
+</ol>
+<hr>
+<a href="#performance-considerations-and-known-limitations"><h2 id="performance-considerations-and-known-limitations">Performance Considerations and Known Limitations</h2></a><ul>
+<li><strong>Network traffic:</strong> Each active scan sends UDP M-SEARCH packets to the local network broadcast address. These are small packets, but they do generate a small amount of traffic roughly every 30 minutes (or on demand). Passive SSDP listening generates no outgoing traffic.</li>
+<li><strong>Device info fetches:</strong> For each discovered IP, the extension makes an HTTP GET request to <code>http://&lt;ip&gt;:8060/query/device-info</code>. The 5-second short-lived cache prevents duplicate requests when multiple SSDP responses arrive for the same device.</li>
+<li><strong>Health check cooldown:</strong> Individual device health checks have a per-device cooldown of <strong>5 minutes</strong> to prevent repeatedly polling the same device. Forced refreshes (e.g., clicking the refresh button in the Devices Panel) bypass this cooldown.</li>
+<li><strong>Random delay:</strong> A small random delay (400–1000 ms) is applied before updating device info after a scan response. This helps prevent thundering-herd problems when many devices respond simultaneously.</li>
+<li><strong>Multiple network interfaces:</strong> The SSDP client explicitly binds to each discovered network interface (<code>explicitSocketBind: true</code>), which helps with multi-NIC systems and VPN setups.</li>
+<li><strong>VPN / corporate networks:</strong> Roku devices discovered on one network will not appear when you are connected to a different network (e.g., VPN). Network-scoped caching ensures you only see devices relevant to your current network.</li>
+<li><strong>No IPv6 support:</strong> The current implementation uses IPv4 SSDP only.</li>
+</ul>
+            <div id="footer"></div>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>
