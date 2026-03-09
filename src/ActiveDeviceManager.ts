@@ -1,8 +1,10 @@
 import * as backoff from 'backoff';
 import { EventEmitter } from 'eventemitter3';
+import * as fs from 'fs';
 import * as NodeCache from 'node-cache';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client } from 'node-ssdp';
+import * as path from 'path';
 import { URL } from 'url';
 import { util } from './util';
 import * as vscode from 'vscode';
@@ -54,7 +56,17 @@ export class ActiveDeviceManager {
     private async processStaticDevices() {
         const result = [];
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        const devices = (config?.devices ?? []) as Array<{ host: string }>;
+        const settingsDevices = (config?.devices ?? []) as Array<{ host: string; password?: string }>;
+
+        // Also load devices from .roku/roku-dev-config.json in workspace folders
+        const rokuConfigDevices = this.loadRokuDevConfig();
+
+        // Merge devices: roku-dev-config.json devices first, then settings devices
+        // Settings devices use 'host', roku-dev-config uses 'ip'
+        const devices = [
+            ...rokuConfigDevices.map(d => ({ host: d.ip, password: d.password })),
+            ...settingsDevices
+        ];
 
         for (const staticDevice of devices) {
 
@@ -82,6 +94,33 @@ export class ActiveDeviceManager {
             }
         }
         this.staticDevices = result;
+        for (const device of this.staticDevices) {
+            this.emit('device-found', device);
+        }
+    }
+
+    /**
+     * Load devices from .roku/roku-dev-config.json in workspace folders
+     */
+    private loadRokuDevConfig(): Array<{ id?: string; name?: string; ip: string; active?: boolean; password?: string }> {
+        const devices: Array<{ id?: string; name?: string; ip: string; active?: boolean; password?: string }> = [];
+
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            const configPath = path.join(folder.uri.fsPath, '.roku', 'roku-dev-config.json');
+            try {
+                if (fs.existsSync(configPath)) {
+                    const content = fs.readFileSync(configPath, 'utf-8');
+                    const config = JSON.parse(content);
+                    if (Array.isArray(config?.devices)) {
+                        devices.push(...config.devices);
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to load roku-dev-config.json from ${configPath}:`, e);
+            }
+        }
+
+        return devices;
     }
 
     private emitter = new EventEmitter();

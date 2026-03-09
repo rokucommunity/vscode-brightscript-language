@@ -33,8 +33,6 @@ export class UserInputManager {
         const deferred = new Deferred<{ ip: string; manual?: boolean } | { ip?: string; manual: true }>();
         const disposables: Array<Disposable> = [];
 
-        const discoveryTime = 5_000;
-
         //create the quickpick item
         const quickPick = vscode.window.createQuickPick();
         disposables.push(quickPick);
@@ -84,10 +82,10 @@ export class UserInputManager {
             quickPick.items = items;
 
             // update the busy spinner based on how long it's been since the last discovered device
-            quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
-            setTimeout(() => {
-                quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
-            }, discoveryTime - this.activeDeviceManager.timeSinceLastDiscoveredDevice + 20);
+            // quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
+            // setTimeout(() => {
+            //     quickPick.busy = this.activeDeviceManager.timeSinceLastDiscoveredDevice < discoveryTime;
+            // }, discoveryTime - this.activeDeviceManager.timeSinceLastDiscoveredDevice + 20);
 
             // clear the activeItem if we can't find it in the list
             if (!quickPick.items.includes(activeItem)) {

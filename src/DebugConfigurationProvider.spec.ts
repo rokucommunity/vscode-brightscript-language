@@ -50,7 +50,6 @@ describe('BrightScriptConfigurationProvider', () => {
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
-            activeDeviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
             userInputManager,

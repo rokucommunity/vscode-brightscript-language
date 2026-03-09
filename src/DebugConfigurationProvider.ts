@@ -15,7 +15,6 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
@@ -28,14 +27,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     public constructor(
         private context: ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands
     ) {
         this.context = context;
-        this.activeDeviceManager = activeDeviceManager;
     }
 
     //make unit testing easier by adding these imports properties
@@ -426,11 +423,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.activeDeviceManager.enabled) {
-                config.host = await this.userInputManager.promptForHost();
-            } else {
-                config.host = await this.userInputManager.promptForHostManual();
-            }
+            config.host = await this.userInputManager.promptForHost();
         } else if (config.host.trim() === '${activeHost}') {
             // Get the current remote host from workspace state (it will prompt for host as a fallback)
             config.host = await this.brightScriptCommands.getRemoteHost();
@@ -447,10 +440,34 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     private getPasswordFromStaticDevice(host: string): string {
+        // Check settings devices first
         let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        const devices = (config?.devices ?? []) as Array<{ host: string; password?: string }>;
-        const device = devices.find(x => x?.host === host);
-        return device?.password;
+        const settingsDevices = (config?.devices ?? []) as Array<{ host: string; password?: string }>;
+        const settingsDevice = settingsDevices.find(x => x?.host === host);
+        if (settingsDevice?.password) {
+            return settingsDevice.password;
+        }
+
+        // Check .roku/roku-dev-config.json in workspace folders
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            const configPath = path.join(folder.uri.fsPath, '.roku', 'roku-dev-config.json');
+            try {
+                if (fsExtra.existsSync(configPath)) {
+                    const content = fsExtra.readFileSync(configPath, 'utf-8');
+                    const rokuConfig = JSON.parse(content);
+                    if (Array.isArray(rokuConfig?.devices)) {
+                        const rokuDevice = rokuConfig.devices.find((x: any) => x?.ip === host);
+                        if (rokuDevice?.password) {
+                            return rokuDevice.password;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to load roku-dev-config.json from ${configPath}:`, e);
+            }
+        }
+
+        return undefined;
     }
 
     /**
