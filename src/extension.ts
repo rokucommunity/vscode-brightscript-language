@@ -32,6 +32,7 @@ import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
 import { standardizePath as s } from 'brighterscript';
+import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -89,6 +90,8 @@ export class Extension {
         this.rtaManager = new RtaManager(context);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
+
+        PerfettoEditorProvider.register(context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;

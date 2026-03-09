@@ -169,6 +169,7 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        registerCustomEditorProvider: () => { },
         withProgress: (options, action) => {
             return action();
         },
