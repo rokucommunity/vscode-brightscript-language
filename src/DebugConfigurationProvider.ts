@@ -60,6 +60,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         showHiddenVariables: false,
         enableDebuggerAutoRecovery: false,
         stopDebuggerOnAppExit: false,
+        profiling: {
+            tracing: {
+                enable: true,
+                dir: '${workspaceFolder}/profiling',
+                filename: '${appTitle}_${timestamp}.perfetto-trace',
+                connectOnStart: false
+            }
+        },
         autoRunSgDebugCommands: [],
         files: [...DefaultFiles],
         enableSourceMaps: true,
@@ -113,7 +121,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
-
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
             return result;
@@ -488,6 +495,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error('Debug session terminated: password is required.');
             } else {
                 await this.context.workspaceState.update('remotePassword', config.password);
+            }
+        } else if (config.password.trim() === '${activeHostPassword}') {
+            // Get the password for the current active device
+            config.password = await this.brightScriptCommands.getActiveHostPassword();
+            if (!config.password) {
+                throw new Error('Debug session terminated: no password set for active device.');
             }
         }
 

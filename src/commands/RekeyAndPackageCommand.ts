@@ -326,7 +326,6 @@ export class RekeyAndPackageCommand {
         }
     }
 
-
     private async packageFromRokuDeploy(rokuDeployOptions) {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
@@ -362,9 +361,7 @@ export class RekeyAndPackageCommand {
         }
 
         if (selectedConfig.rootDir?.includes('${workspaceFolder}')) {
-            await this.brightScriptCommands.getWorkspacePath();
-            let workspacePath = this.brightScriptCommands.workspacePath;
-
+            let workspacePath = await this.brightScriptCommands.getWorkspacePath();
             selectedConfig.rootDir = path.normalize(selectedConfig.rootDir.replace('${workspaceFolder}', workspacePath));
         }
         rokuDeployOptions.packageConfig = 'launch.json: ' + selectedConfig.rootDir;

@@ -169,6 +169,7 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        registerCustomEditorProvider: () => { },
         withProgress: (options, action) => {
             return action();
         },
@@ -182,6 +183,10 @@ export let vscode = {
             };
         },
         onDidChangeWindowState: () => { },
+        registerFileDecorationProvider: () => ({ dispose: () => { } }),
+        createTreeView: () => ({
+            onDidChangeVisibility: () => { }
+        }),
         createQuickPick: () => {
             class QuickPick {
                 private emitter = new EventEmitter();
@@ -406,6 +411,9 @@ export let vscode = {
         public value: string;
     },
     ThemeColor: class { },
+    ThemeIcon: class {
+        constructor(public id: string, public color?: any) { }
+    },
     Uri: {
         file: (src: string) => {
             return {
