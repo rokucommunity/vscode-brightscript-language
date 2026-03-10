@@ -45,14 +45,12 @@ describe('BrightScriptTaskProvider', () => {
 
         // Setup task provider mock
         taskProviderDispose = sinon.stub();
-        (vscode as any).tasks = {
-            registerTaskProvider: sinon.stub().callsFake((type: string, provider: any) => {
-                taskProviderCallback = provider;
-                return {
-                    dispose: taskProviderDispose
-                } as Disposable;
-            })
-        };
+        sinon.stub(vscode.tasks, 'registerTaskProvider').callsFake((type: string, provider: any) => {
+            taskProviderCallback = provider;
+            return {
+                dispose: taskProviderDispose
+            } as Disposable;
+        });
 
         taskProvider = new BrightScriptTaskProvider();
     });
@@ -63,7 +61,6 @@ describe('BrightScriptTaskProvider', () => {
         }
         fsExtra.emptyDirSync(tempDir);
         sinon.restore();
-        delete (vscode as any).tasks;
     });
 
     describe('constructor', () => {

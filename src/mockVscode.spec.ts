@@ -305,7 +305,7 @@ export let vscode = {
         }
     },
     tasks: {
-        registerTaskProvider: () => {
+        registerTaskProvider: (type: string, provider: any) => {
             return {
                 dispose: () => { }
             };
