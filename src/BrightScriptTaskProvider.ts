@@ -6,7 +6,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     constructor() {
         this.taskProvider = vscode.tasks.registerTaskProvider('brightscript', {
             provideTasks: () => {
-                console.log('provideTasks called');
                 // Return empty array so all tasks go through resolveTask
                 return [];
             },
@@ -19,9 +18,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     private taskProvider: vscode.Disposable;
 
     private resolveTask(_task: vscode.Task): vscode.Task | undefined {
-        console.log('resolveTask called for task:', _task.definition);
-        console.log('Task problem matchers:', _task.problemMatchers);
-        console.log('Task isBackground:', _task.isBackground);
 
         const command: string = _task.definition.command;
 
