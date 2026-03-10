@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
-import type { WorkspaceFolder, Task, TaskDefinition, Disposable } from 'vscode';
+import type { WorkspaceFolder, Task, TaskDefinition, Disposable, TaskScope } from 'vscode';
 import Uri from 'vscode-uri';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { vscode } from './mockVscode.spec';
@@ -892,13 +892,283 @@ describe('BrightScriptTaskProvider', () => {
         });
     });
 
+    describe('getWorkspaceFolderFromScope', () => {
+        let childProcessStub: any;
+        let mockProcess: EventEmitter;
+        let mockStdout: EventEmitter;
+        let mockStderr: EventEmitter;
+
+        beforeEach(() => {
+            // Create mock process with stdout/stderr
+            mockStdout = new EventEmitter();
+            mockStderr = new EventEmitter();
+            mockProcess = new EventEmitter();
+            (mockProcess as any).stdout = mockStdout;
+            (mockProcess as any).stderr = mockStderr;
+            (mockProcess as any).kill = sinon.stub();
+            (mockProcess as any).killed = false;
+
+            // Mock child_process.spawn
+            const childProcessModule = require('child_process');
+            childProcessStub = sinon.stub(childProcessModule, 'spawn').returns(mockProcess);
+        });
+
+        afterEach(() => {
+            childProcessStub.restore();
+        });
+
+        it('returns the workspace folder when scope is already a WorkspaceFolder', async () => {
+            const customFolder: WorkspaceFolder = {
+                uri: Uri.file(path.join(rootDir, 'custom-folder')),
+                name: 'custom-folder',
+                index: 1
+            };
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            }, customFolder);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+
+            await pty.open();
+
+            // Should use the custom folder's path
+            expect(outputs.some(o => o.includes('custom-folder'))).to.be.true;
+
+            const spawnCall = childProcessStub.getCall(0);
+            expect(spawnCall.args[2].cwd).to.equal(customFolder.uri.fsPath);
+        });
+
+        it('returns undefined when there are no workspace folders', async () => {
+            vscode.workspace.workspaceFolders = [];
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should complete without error when no workspace folders exist
+            // The cwd would be undefined in this case
+            const spawnCall = childProcessStub.getCall(0);
+            expect(spawnCall.args[2].cwd).to.be.undefined;
+        });
+
+        it('returns the single workspace folder when there is only one', async () => {
+            // Already set to single folder in beforeEach
+            expect(vscode.workspace.workspaceFolders).to.have.lengthOf(1);
+
+            const quickPickSpy = sinon.spy(vscode.window, 'showQuickPick');
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            expect(spawnCall.args[2].cwd).to.equal(folder.uri.fsPath);
+
+            // showQuickPick should NOT have been called
+            expect(quickPickSpy.called).to.be.false;
+            quickPickSpy.restore();
+        });
+
+        it('shows a picker and returns selected folder when there are multiple workspace folders', async () => {
+            const folder2: WorkspaceFolder = {
+                uri: Uri.file(path.join(rootDir, 'folder2')),
+                name: 'folder2',
+                index: 1
+            };
+            vscode.workspace.workspaceFolders = [folder, folder2];
+
+            const quickPickStub = sinon.stub(vscode.window, 'showQuickPick').resolves({
+                label: folder2.name,
+                description: folder2.uri.fsPath,
+                folder: folder2
+            });
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            // Verify picker was shown with correct options
+            expect(quickPickStub.called).to.be.true;
+            const pickerOptions = (quickPickStub as any).firstCall.args[0];
+            expect(pickerOptions).to.have.lengthOf(2);
+            expect(pickerOptions[0].label).to.equal('test-folder');
+            expect(pickerOptions[1].label).to.equal('folder2');
+
+            // Verify the selected folder was used
+            const spawnCall = childProcessStub.getCall(0);
+            expect(spawnCall.args[2].cwd).to.equal(folder2.uri.fsPath);
+        });
+
+        it('handles user cancellation when picking from multiple folders', async () => {
+            const folder2: WorkspaceFolder = {
+                uri: Uri.file(path.join(rootDir, 'folder2')),
+                name: 'folder2',
+                index: 1
+            };
+            vscode.workspace.workspaceFolders = [folder, folder2];
+
+            sinon.stub(vscode.window, 'showQuickPick').resolves(undefined);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Verify cancellation message
+            expect(outputs.some(o => o.includes('Task cancelled: no workspace folder selected'))).to.be.true;
+            expect(exitCode).to.equal(1);
+
+            // spawn should not have been called since user cancelled
+            expect(childProcessStub.called).to.be.false;
+        });
+    });
+
+    describe('cwd precedence', () => {
+        let childProcessStub: any;
+        let mockProcess: EventEmitter;
+        let mockStdout: EventEmitter;
+        let mockStderr: EventEmitter;
+
+        beforeEach(() => {
+            // Create mock process with stdout/stderr
+            mockStdout = new EventEmitter();
+            mockStderr = new EventEmitter();
+            mockProcess = new EventEmitter();
+            (mockProcess as any).stdout = mockStdout;
+            (mockProcess as any).stderr = mockStderr;
+            (mockProcess as any).kill = sinon.stub();
+            (mockProcess as any).killed = false;
+
+            // Mock child_process.spawn
+            const childProcessModule = require('child_process');
+            childProcessStub = sinon.stub(childProcessModule, 'spawn').returns(mockProcess);
+        });
+
+        afterEach(() => {
+            childProcessStub.restore();
+        });
+
+        it('task options cwd takes precedence over task workspace folder', async () => {
+            const customFolder: WorkspaceFolder = {
+                uri: Uri.file(path.join(rootDir, 'workspace-folder')),
+                name: 'workspace-folder',
+                index: 1
+            };
+
+            const customCwd = path.join(rootDir, 'custom-cwd-dir');
+            fsExtra.ensureDirSync(customCwd);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"',
+                options: {
+                    cwd: customCwd
+                }
+            }, customFolder);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            // Task options cwd should win over workspace folder
+            expect(spawnCall.args[2].cwd).to.equal(customCwd);
+            expect(spawnCall.args[2].cwd).to.not.equal(customFolder.uri.fsPath);
+        });
+
+        it('uses task workspace folder when no cwd option specified', async () => {
+            const customFolder: WorkspaceFolder = {
+                uri: Uri.file(path.join(rootDir, 'workspace-folder')),
+                name: 'workspace-folder',
+                index: 1
+            };
+            fsExtra.ensureDirSync(customFolder.uri.fsPath);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+                // No cwd option
+            }, customFolder);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            // Should use workspace folder when no cwd specified
+            expect(spawnCall.args[2].cwd).to.equal(customFolder.uri.fsPath);
+        });
+    });
+
     /**
      * Helper function to create a mock task
      */
-    function createMockTask(definition: TaskDefinition): Task {
+    function createMockTask(definition: TaskDefinition, scope?: WorkspaceFolder | TaskScope): Task {
         return {
             definition: definition,
-            scope: folder,
+            scope: scope ?? folder,
             name: definition.task || 'test-task',
             source: 'brightscript',
             execution: undefined,

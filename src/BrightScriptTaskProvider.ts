@@ -32,7 +32,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         // Use CustomExecution to defer variable resolution until the task actually runs
         // This prevents showing pickers when VS Code is just validating tasks.json or displaying tasks in the UI
         const execution = new vscode.CustomExecution((): Promise<vscode.Pseudoterminal> => {
-            return this.createPseudoterminal(command, definition);
+            return this.createPseudoterminal(command, definition, _task.scope ?? vscode.TaskScope.Workspace);
         });
 
         const task = new vscode.Task(
@@ -60,7 +60,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
      * Create a pseudoterminal that resolves variables and executes the command
      * This is called only when the task actually runs, not during validation
      */
-    private createPseudoterminal(command: string, taskDefinition: BrightscriptTaskDefinition): Promise<vscode.Pseudoterminal> {
+    private createPseudoterminal(command: string, taskDefinition: BrightscriptTaskDefinition, taskScope: vscode.WorkspaceFolder | vscode.TaskScope): Promise<vscode.Pseudoterminal> {
         const writeEmitter = new vscode.EventEmitter<string>();
         const closeEmitter = new vscode.EventEmitter<number>();
         let currentProcess: childProcess.ChildProcess | undefined;
@@ -70,8 +70,18 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
             onDidClose: closeEmitter.event,
             open: (async () => {
                 try {
+                    // Determine the workspace folder from the task scope (may show picker once)
+                    const workspaceFolder = await this.getWorkspaceFolderFromScope(taskScope);
+
+                    // If workspace folder selection was cancelled, abort task
+                    if (!workspaceFolder && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                        writeEmitter.fire('Task cancelled: no workspace folder selected\r\n');
+                        closeEmitter.fire(1);
+                        return;
+                    }
+
                     // Resolve variables only when the task actually starts
-                    const resolvedCommand = await this.resolveCommandVariables(command);
+                    const resolvedCommand = await this.resolveCommandVariables(command, workspaceFolder);
 
                     // If command is undefined/null after processing, the user cancelled a selection
                     if (!resolvedCommand) {
@@ -83,7 +93,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                     // Execute the resolved command in a shell
                     // Merge user settings with task-specific options (task options take precedence)
                     const shellConfig = this.getShellConfiguration();
-                    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
                     const taskOptions = taskDefinition.options || {};
 
                     // Determine final shell (task option > user setting)
@@ -173,8 +182,43 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         return { shell: shell, env: env };
     }
 
+    /**
+     * Get the workspace folder from a task scope
+     * If the scope is not a specific WorkspaceFolder and there are multiple workspace folders,
+     * shows a picker for the user to select one.
+     */
+    private async getWorkspaceFolderFromScope(taskScope: vscode.WorkspaceFolder | vscode.TaskScope): Promise<vscode.WorkspaceFolder | undefined> {
+        // If the scope is already a WorkspaceFolder, return it
+        if (taskScope && typeof taskScope === 'object' && 'uri' in taskScope) {
+            return taskScope;
+        }
 
-    private async resolveCommandVariables(command: string): Promise<string | undefined> {
+        const folders = vscode.workspace.workspaceFolders;
+        if (!folders || folders.length === 0) {
+            return undefined;
+        }
+
+        // If there's only one workspace folder, use it
+        if (folders.length === 1) {
+            return folders[0];
+        }
+
+        // Multiple workspace folders - let the user pick
+        const selected = await vscode.window.showQuickPick(
+            folders.map(folder => ({
+                label: folder.name,
+                description: folder.uri.fsPath,
+                folder: folder
+            })),
+            {
+                placeHolder: 'Select workspace folder for this task'
+            }
+        );
+
+        return selected?.folder;
+    }
+
+    private async resolveCommandVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string | undefined> {
         // Currently only supports ${folderForFile: <glob>} but can be extended in the future
         let resolvedCommand = command;
 
@@ -183,7 +227,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         ];
 
         for (const resolver of variableResolvers) {
-            resolvedCommand = await resolver(resolvedCommand);
+            resolvedCommand = await resolver(resolvedCommand, workspaceFolder);
             if (!resolvedCommand) {
                 // If any resolver returns undefined/null, it means the user cancelled a selection or an error occurred
                 return undefined;
@@ -196,7 +240,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     /**
      * Resolve ${folderForFile: <glob>} variable in the command by finding files matching the glob pattern
      */
-    private async resolveFolderForFileVariable(command: string): Promise<string | undefined> {
+    private async resolveFolderForFileVariable(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string | undefined> {
         const folderForFileRegex = /\$\{folderForFile:\s*([^}]+)\}/g;
         const matches = [...command.matchAll(folderForFileRegex)];
 
@@ -241,7 +285,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
             if (folderPaths.length >= 1) {
                 // Multiple folders found, let user pick
-                const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
                 const relativeFolders = folderPaths.map(folderPath => {
                     if (workspaceFolder) {
                         const rel = path.relative(workspaceFolder.uri.fsPath, folderPath);
