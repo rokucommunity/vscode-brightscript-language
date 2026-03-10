@@ -32,7 +32,7 @@ export class DeviceManager {
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
     private devices: RokuDeviceDetails[] = [];
-    private showInfoMessages: boolean;
+
     private lastScanDate: Date | null = null;
     private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
     private finder = new RokuFinder();
@@ -63,7 +63,20 @@ export class DeviceManager {
 
     public firstRequestForDevices: boolean;
     public lastUsedDevice: RokuDeviceDetails | undefined = undefined;
-    public passiveScanPermitted: boolean;
+
+    /**
+     * Is device discovery enabled (i.e. passive scans are permitted)
+     */
+    public get deviceDiscoveryEnabled() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
+    }
+
+    /**
+     * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
+     */
+    private get showInfoMessages() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
 
     /**
      * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
@@ -96,14 +109,12 @@ export class DeviceManager {
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.passiveScanPermitted = config.deviceDiscovery?.enabled;
-            this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
 
-            void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery.enabled);
+            void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
-                if (this.passiveScanPermitted) {
+                if (this.deviceDiscoveryEnabled) {
                     //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
                     this.setScanNeeded(true);
                     this.systemSleepMonitor.start();
@@ -158,7 +169,7 @@ export class DeviceManager {
         // Always set up finder event listeners so scan responses are processed
         this.setupFinderEventListeners();
 
-        if (this.passiveScanPermitted) {
+        if (this.deviceDiscoveryEnabled) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
@@ -230,7 +241,7 @@ export class DeviceManager {
     public refresh(force = false): boolean {
         this.checkDevicesHealth(force).catch(() => { });
         // Block automatic scans when device discovery is disabled
-        if (!force && !this.passiveScanPermitted) {
+        if (!force && !this.deviceDiscoveryEnabled) {
             return false;
         }
         return this.discoverAll(force);
@@ -367,7 +378,7 @@ export class DeviceManager {
         const isHealthy = await this.resolveDevice(device);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
-            this.refresh(this.passiveScanPermitted);
+            this.refresh(this.deviceDiscoveryEnabled);
         }
         return isHealthy;
     }
@@ -402,7 +413,7 @@ export class DeviceManager {
         }));
 
         if (needsScan) {
-            this.discoverAll(this.passiveScanPermitted);
+            this.discoverAll(this.deviceDiscoveryEnabled);
         }
     }
 

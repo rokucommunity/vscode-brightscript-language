@@ -35,7 +35,8 @@ describe('DeviceManager', () => {
             removeLastSeenDevice: sinon.stub(),
             getCachedDevice: sinon.stub().returns(undefined),
             setCachedDevice: sinon.stub(),
-            removeCachedDevice: sinon.stub()
+            removeCachedDevice: sinon.stub(),
+            clearExpiredDevices: sinon.stub()
         };
 
         // Mock vscode configuration
@@ -753,7 +754,7 @@ describe('DeviceManager', () => {
             }
         });
 
-        it('removes device from cache and lastSeenDevices', () => {
+        it('removes device from lastSeenDevices', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -764,7 +765,6 @@ describe('DeviceManager', () => {
 
                 manager['removeDevice'](device.id);
 
-                expect(mockGlobalStateManager.removeCachedDevice.calledWith(device.id)).to.be.true;
                 expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.id)).to.be.true;
             } finally {
                 clock.restore();

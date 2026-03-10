@@ -61,7 +61,8 @@ describe('GlobalStateManager', () => {
             deviceInfo: {
                 'device-id': 'device-123',
                 'default-device-name': 'Roku Express'
-            }
+            },
+            createdAt: Date.now()
         };
 
         it('returns undefined when device not cached', () => {
