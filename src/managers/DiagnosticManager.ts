@@ -10,7 +10,7 @@ export class DiagnosticManager {
     }
 
     public dispose() {
-        this.collection.dispose();
+        this.collection?.dispose?.();
     }
 
     public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
