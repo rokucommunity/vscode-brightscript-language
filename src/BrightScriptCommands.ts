@@ -332,7 +332,7 @@ export class BrightScriptCommands {
 
         // Test commands for device discovery
         this.registerCommand('clearDeviceCache', async () => {
-            new GlobalStateManager(this.context).clearDeviceCache();
+            this.deviceManager.clear();
             await vscode.window.showInformationMessage('Device cache cleared');
         });
 

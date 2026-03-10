@@ -228,6 +228,17 @@ export class DeviceManager {
     }
 
     /**
+     * Clear the list of devices, the device cache, and the last seen devices for the current network.
+     */
+    public clear() {
+        this.devices = [];
+        this.deviceInfoCache.clear();
+        this.globalStateManager.clearDeviceCache();
+        this.globalStateManager.clearLastSeenDevices();
+        this.emitDevicesChanged();
+    }
+
+    /**
      * Discover all Roku devices on the network and watch for new ones that connect
      */
     private discoverAll(force: boolean): boolean {
