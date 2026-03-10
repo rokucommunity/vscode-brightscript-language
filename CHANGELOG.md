@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.61.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.61.0...v2.61.1) - 2026-03-10
+### Changed
+ - Task/support for brightscript tasks with custom command variable resolving ([#693](https://github.com/rokucommunity/vscode-brightscript-language/pull/693))
+ - Update how we handle the deviceDiscovery settings flag ([#695](https://github.com/rokucommunity/vscode-brightscript-language/pull/695))
+
+
+
 ## [2.61.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.60.1...v2.61.0) - 2026-03-09
 ### Added
  - Add support for device-specific passwords and its variable substitution ([#688](https://github.com/rokucommunity/vscode-brightscript-language/pull/688))
