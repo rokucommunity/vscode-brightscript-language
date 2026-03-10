@@ -15,7 +15,6 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
-import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
@@ -28,14 +27,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     public constructor(
         private context: ExtensionContext,
-        private deviceManager: DeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands
     ) {
         this.context = context;
-        this.deviceManager = deviceManager;
     }
 
     //make unit testing easier by adding these imports properties
