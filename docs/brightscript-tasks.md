@@ -5,7 +5,7 @@ The BrightScript language extension provides a task system that integrates with 
 ## Features
 
 - Custom shell commands with variable substitution
-- Interactive folder selection with glob patterns  
+- Interactive folder selection with glob patterns
 - Environment variables and custom working directories
 - Problem matcher integration for error detection
 - Background task support for watchers
@@ -36,37 +36,6 @@ Tasks are defined in `.vscode/tasks.json` in your workspace. Here's a simple exa
 ## Variable Substitution
 
 BrightScript tasks support variable substitution in the `command` field. Variables are resolved before the command is executed.
-
-### Supported Variables
-
-| Variable | Description | Example Value |
-|----------|-------------|---------------|
-| **Workspace Variables** | | |
-| `${workspaceFolder}` | Path of the workspace folder | `/Users/user/project` |
-| `${workspaceFolderBasename}` | Name of the workspace folder | `project` |
-| `${fileWorkspaceFolderBasename}` | Name of workspace folder containing active file | `my-app` |
-| **File Variables** (require an active file) | | |
-| `${file}` | Full path of the currently opened file | `/Users/user/project/src/main.brs` |
-| `${fileWorkspaceFolder}` | Workspace folder of the currently opened file | `/Users/user/project` |
-| `${relativeFile}` | Current file relative to workspace folder | `src/main.brs` |
-| `${relativeFileDirname}` | Current file's directory relative to workspace | `src` |
-| `${fileBasename}` | Current file's basename | `main.brs` |
-| `${fileBasenameNoExtension}` | Current file's basename without extension | `main` |
-| `${fileExtname}` | Current file's extension | `.brs` |
-| `${fileDirname}` | Current file's directory path | `/Users/user/project/src` |
-| `${fileDirnameBasename}` | Current file's directory name | `src` |
-| **Editor Variables** (require an active editor) | | |
-| `${lineNumber}` | Current line number in active file (1-based) | `42` |
-| `${columnNumber}` | Current column number in active file (1-based) | `15` |
-| `${selectedText}` | Currently selected text in active file | `function main()` |
-| **System Variables** | | |
-| `${userHome}` | User's home directory | `/Users/user` |
-| `${cwd}` | Current working directory of VS Code | `/Users/user/project` |
-| `${execPath}` | Path to VS Code executable | `/Applications/VSCode.app` |
-| `${pathSeparator}` | OS-specific path separator | `/` (macOS/Linux) or `\` (Windows) |
-| `${/}` | Shorthand for `${pathSeparator}` | `/` or `\` |
-| **Custom Variables** | | |
-| `${folderForFile: <glob>}` | Directory containing file(s) matching glob pattern | `/Users/user/project/apps/app1` |
 
 ### Using `${folderForFile: <glob>}`
 
@@ -180,38 +149,6 @@ Use tasks as pre-launch actions to build your project before debugging:
 }
 ```
 
-## Task Groups
-
-Mark tasks as default build or test tasks for quick keyboard shortcuts:
-
-**Build Task** (run with Ctrl+Shift+B / Cmd+Shift+B):
-
-```json
-{
-    "type": "brightscript",
-    "label": "Build",
-    "command": "npx bsc",
-    "group": {
-        "kind": "build",
-        "isDefault": true
-    }
-}
-```
-
-**Test Task**:
-
-```json
-{
-    "type": "brightscript",
-    "label": "Validate",
-    "command": "npx bsc --no-project-references",
-    "group": {
-        "kind": "test",
-        "isDefault": true
-    }
-}
-```
-
 ## Complete Example
 
 Here's a basic `tasks.json` for a monorepo workflow:
@@ -265,3 +202,34 @@ Here's a basic `tasks.json` for a monorepo workflow:
 
 - [VS Code Tasks Documentation](https://code.visualstudio.com/docs/editor/tasks)
 - [Variable Substitutions](./variable-substitutions.md)
+
+## Supported Variables
+
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| **Workspace Variables** | | |
+| `${workspaceFolder}` | Path of the workspace folder | `/Users/user/project` |
+| `${workspaceFolderBasename}` | Name of the workspace folder | `project` |
+| `${fileWorkspaceFolderBasename}` | Name of workspace folder containing active file | `my-app` |
+| **File Variables** (require an active file) | | |
+| `${file}` | Full path of the currently opened file | `/Users/user/project/src/main.brs` |
+| `${fileWorkspaceFolder}` | Workspace folder of the currently opened file | `/Users/user/project` |
+| `${relativeFile}` | Current file relative to workspace folder | `src/main.brs` |
+| `${relativeFileDirname}` | Current file's directory relative to workspace | `src` |
+| `${fileBasename}` | Current file's basename | `main.brs` |
+| `${fileBasenameNoExtension}` | Current file's basename without extension | `main` |
+| `${fileExtname}` | Current file's extension | `.brs` |
+| `${fileDirname}` | Current file's directory path | `/Users/user/project/src` |
+| `${fileDirnameBasename}` | Current file's directory name | `src` |
+| **Editor Variables** (require an active editor) | | |
+| `${lineNumber}` | Current line number in active file (1-based) | `42` |
+| `${columnNumber}` | Current column number in active file (1-based) | `15` |
+| `${selectedText}` | Currently selected text in active file | `function main()` |
+| **System Variables** | | |
+| `${userHome}` | User's home directory | `/Users/user` |
+| `${cwd}` | Current working directory of VS Code | `/Users/user/project` |
+| `${execPath}` | Path to VS Code executable | `/Applications/VSCode.app` |
+| `${pathSeparator}` | OS-specific path separator | `/` (macOS/Linux) or `\` (Windows) |
+| `${/}` | Shorthand for `${pathSeparator}` | `/` or `\` |
+| **Custom Variables** | | |
+| `${folderForFile: <glob>}` | Directory containing file(s) matching glob pattern | `/Users/user/project/apps/app1` |

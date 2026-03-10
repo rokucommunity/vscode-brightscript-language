@@ -18,44 +18,44 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
     private taskProvider: vscode.Disposable;
 
-    private resolveTask(_task: vscode.Task): vscode.Task | undefined {
-        const command: string = _task.definition.command;
+    private resolveTask(task: vscode.Task): vscode.Task | undefined {
+        const command: string = task.definition.command;
 
         // A BrightScript task consists of a task definition
         // Make sure that this looks like a BrightScript task by checking that there is a command.
         if (!command) {
-            void vscode.window.showErrorMessage(`BrightScript task "${_task.name}" is missing required "command" property in task definition`);
+            void vscode.window.showErrorMessage(`BrightScript task "${task.name}" is missing required "command" property in task definition`);
             return undefined;
         }
 
         // resolveTask requires that the same definition object be used.
-        const definition: BrightscriptTaskDefinition = <any>_task.definition;
+        const definition: BrightscriptTaskDefinition = <any>task.definition;
 
         // Use CustomExecution to defer variable resolution until the task actually runs
         // This prevents showing pickers when VS Code is just validating tasks.json or displaying tasks in the UI
         const execution = new vscode.CustomExecution((): Promise<vscode.Pseudoterminal> => {
-            return this.createPseudoterminal(command, definition, _task.scope ?? vscode.TaskScope.Workspace);
+            return this.createPseudoterminal(command, definition, task.scope ?? vscode.TaskScope.Workspace);
         });
 
-        const task = new vscode.Task(
+        const result = new vscode.Task(
             definition,
-            _task.scope ?? vscode.TaskScope.Workspace,
-            _task.name,
+            task.scope ?? vscode.TaskScope.Workspace,
+            task.name,
             'brightscript',
             execution
         );
 
         // Copy over other properties from the original task
         // For CustomExecution, problemMatchers must be set BEFORE isBackground for proper handling
-        if (_task.problemMatchers && _task.problemMatchers.length > 0) {
-            task.problemMatchers = _task.problemMatchers;
+        if (task.problemMatchers && task.problemMatchers.length > 0) {
+            result.problemMatchers = task.problemMatchers;
         }
-        task.isBackground = _task.isBackground;
-        task.presentationOptions = _task.presentationOptions;
-        task.group = _task.group;
-        task.runOptions = _task.runOptions;
+        result.isBackground = task.isBackground;
+        result.presentationOptions = task.presentationOptions;
+        result.group = task.group;
+        result.runOptions = task.runOptions;
 
-        return task;
+        return result;
     }
 
     /**
@@ -76,15 +76,8 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                     const workspaceFolder = await this.getWorkspaceFolderFromScope(taskScope);
 
                     // If workspace folder selection was cancelled, abort task
-                    if (!workspaceFolder && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+                    if (!workspaceFolder) {
                         writeEmitter.fire('Task cancelled: no workspace folder selected\r\n');
-                        closeEmitter.fire(1);
-                        return;
-                    }
-
-                    // If there are no workspace folders at all, abort task with error
-                    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                        writeEmitter.fire('Task failed: no workspace folders available\r\n');
                         closeEmitter.fire(1);
                         return;
                     }
@@ -214,18 +207,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         }
 
         // Multiple workspace folders - let the user pick
-        const selected = await vscode.window.showQuickPick(
-            folders.map(folder => ({
-                label: folder.name,
-                description: folder.uri.fsPath,
-                folder: folder
-            })),
-            {
-                placeHolder: 'Select workspace folder for this task'
-            }
-        );
-
-        return selected?.folder;
+        return vscode.window.showWorkspaceFolderPick();
     }
 
     private async resolveCommandVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string> {
