@@ -24,6 +24,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         // A BrightScript task consists of a task definition
         // Make sure that this looks like a BrightScript task by checking that there is a command.
         if (!command) {
+            void vscode.window.showErrorMessage(`BrightScript task "${_task.name}" is missing required "command" property in task definition`);
             return undefined;
         }
 
