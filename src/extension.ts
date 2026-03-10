@@ -31,6 +31,7 @@ import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 
@@ -128,6 +129,10 @@ export class Extension {
             treeDataProvider: devicesViewProvider
         });
         devicesViewProvider.setTreeView(devicesTreeView);
+
+        // Initialize tasks manager
+        const tasksManager = new BrightScriptTaskProvider();
+        context.subscriptions.push(tasksManager);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
