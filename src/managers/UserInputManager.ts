@@ -6,6 +6,7 @@ import type {
 import * as vscode from 'vscode';
 import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
+import { vscodeContextManager } from './VscodeContextManager';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -149,6 +150,8 @@ export class UserInputManager {
         quickPick.show();
 
         //set a timeout to automatically start scanning for devices after a short delay
+        const SCAN_FOR_DEVICES = 'Scan for Devices';
+        const CLEAR_DEVICE_LIST = 'Clear Device List';
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
@@ -157,12 +160,20 @@ export class UserInputManager {
                 itemCache
             );
             quickPick.items = items;
-            quickPick.buttons = [
+            const buttons = [
                 {
                     iconPath: new vscode.ThemeIcon('refresh'),
-                    tooltip: 'Scan for devices'
+                    tooltip: SCAN_FOR_DEVICES
                 }
             ];
+            //only show the "clear device list" button if device discovery is disabled
+            if (vscodeContextManager.get('brightscript.deviceDiscovery.enabled') !== true) {
+                buttons.unshift({
+                    iconPath: new vscode.ThemeIcon('clear-all'),
+                    tooltip: CLEAR_DEVICE_LIST
+                });
+            }
+            quickPick.buttons = buttons;
 
             // clear the activeItem if we can't find it in the list
             if (!quickPick.items.includes(activeItem)) {
@@ -185,8 +196,10 @@ export class UserInputManager {
         });
 
         quickPick.onDidTriggerButton(button => {
-            if (button.tooltip === 'Scan for devices') {
+            if (button.tooltip === SCAN_FOR_DEVICES) {
                 this.deviceManager.refresh(true);
+            } else if (button.tooltip === CLEAR_DEVICE_LIST) {
+                this.deviceManager.clear();
             }
         });
 

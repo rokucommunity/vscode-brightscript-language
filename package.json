@@ -265,6 +265,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "extension.brightscript.clearDeviceCache",
+                    "when": "view == devicesView && !brightscript.deviceDiscovery.enabled",
+                    "group": "navigation"
+                },
+                {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == devicesView",
                     "group": "navigation"
@@ -3241,6 +3246,12 @@
                     "light": "./images/icons/preview-right-light.svg",
                     "dark": "./images/icons/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.clearDeviceCache",
+                "title": "Clear Device List",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.refreshDeviceList",

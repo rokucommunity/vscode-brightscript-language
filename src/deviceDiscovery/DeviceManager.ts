@@ -9,6 +9,7 @@ import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 
 export class DeviceManager {
     constructor(
@@ -97,8 +98,11 @@ export class DeviceManager {
             this.passiveScanPermitted = config.deviceDiscovery?.enabled;
             this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
 
+            void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery.enabled);
+
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+
                 if (this.passiveScanPermitted) {
                     //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
                     this.emitter.emit('scanNeeded-changed');
