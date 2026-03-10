@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        BrightScript Tasks
+    </title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="navbar">
+        <div class="nav-left-area">
+            <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <a href="/index.html">BrightScript VSCode Extension</a>
+        </div>
+        <a href="https://github.com/rokucommunity/vscode-brightscript-language" target="_blank" title="View project on GitHub">
+            <svg xmlns="http://www.w3.org/2000/svg" style="fill: white" width="24" height="24" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            </svg>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+
+            
+            
+            <div class="folder">
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="index.html">Introduction</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="features.html">Features</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="device-discovery.html">Device Discovery</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="installation.html">How to Install</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="extension-settings.html">Extension Settings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="keyboard-shortcuts.html">Keyboard shortcuts</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="brightscript-tasks.html">BrightScript Tasks</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Debugging">Debugging</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/bs-const.html">bs_const</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/component-libraries.html">Component Libraries</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/deep-linking.html">Deep Linking (ECP)</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/env-file.html">.env file</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/rale.html">RALE Support</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/remote-control-mode.html">Remote Control Mode</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/source-maps.html">SourceMaps</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Editing">Editing</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/code-formatting.html">Code formatting</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/error-handling.html">Ignoring Errors and Warnings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/snippets.html">Snippets</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/word-separators.html">Editor word separator</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="prerelease-versions.html">Pre-release Versions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="release-notes">Release Notes</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.31.0.html">v2.31.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.0.0.html">v2.0.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/index.html">Release Notes</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="telemetry.html">Telemetry</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="variable-substitutions.html">Variable Substitutions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="contributing.html">Contributing</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+
+            
+        </div>
+        <div id="content">
+            <a href="#brightscript-tasks"><h1 id="brightscript-tasks">BrightScript Tasks</h1></a><p>The BrightScript language extension provides a task system that integrates with VS Code&#39;s task runner, allowing you to automate common development workflows like building, testing, and linting.</p>
+<a href="#features"><h2 id="features">Features</h2></a><ul>
+<li>Custom shell commands with variable substitution</li>
+<li>Interactive folder selection with glob patterns</li>
+<li>Environment variables and custom working directories</li>
+<li>Problem matcher integration for error detection</li>
+<li>Background task support for watchers</li>
+</ul>
+<a href="#basic-task-configuration"><h2 id="basic-task-configuration">Basic Task Configuration</h2></a><p>Tasks are defined in <code>.vscode/tasks.json</code> in your workspace. Here&#39;s a simple example:</p>
+<pre><code class="language-json">{
+    &quot;version&quot;: &quot;2.0.0&quot;,
+    &quot;tasks&quot;: [
+        {
+            &quot;type&quot;: &quot;brightscript&quot;,
+            &quot;label&quot;: &quot;Build Project&quot;,
+            &quot;command&quot;: &quot;npx bsc&quot;
+        }
+    ]
+}
+</code></pre>
+<a href="#required-properties"><h3 id="required-properties">Required Properties</h3></a><ul>
+<li><strong>type</strong>: Must be <code>&quot;brightscript&quot;</code> to use the BrightScript task provider</li>
+<li><strong>label</strong>: Display name shown in the task picker</li>
+<li><strong>command</strong>: The shell command to execute</li>
+</ul>
+<a href="#variable-substitution"><h2 id="variable-substitution">Variable Substitution</h2></a><p>BrightScript tasks support variable substitution in the <code>command</code> field. Variables are resolved before the command is executed.</p>
+<a href="#using-folderforfile-ltglobgt"><h3 id="using-folderforfile-ltglobgt">Using <code>${folderForFile: &lt;glob&gt;}</code></h3></a><p>The <code>${folderForFile: &lt;glob&gt;}</code> variable finds files matching a glob pattern and resolves to the directory containing those files. This is useful in monorepos or multi-project workspaces.</p>
+<p><strong>Example: Build a specific project</strong></p>
+<pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;label&quot;: &quot;Build Selected Project&quot;,
+    &quot;command&quot;: &quot;cd ${folderForFile: **/bsconfig.json} &amp;&amp; npx bsc&quot;
+}
+</code></pre>
+<p>When you run this task:</p>
+<ul>
+<li>If one <code>bsconfig.json</code> is found, it uses that directory automatically</li>
+<li>If multiple are found, you get a quick pick menu to select which project</li>
+</ul>
+<p><strong>Common glob patterns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>**/bsconfig.json</code></td>
+<td>Any <code>bsconfig.json</code> file at any depth</td>
+</tr>
+<tr>
+<td><code>apps/**/package.json</code></td>
+<td><code>package.json</code> files under the <code>apps</code> directory</td>
+</tr>
+<tr>
+<td><code>*.config.js</code></td>
+<td>Config files in the root directory only</td>
+</tr>
+</tbody></table>
+<p><strong>Note</strong>: Files in <code>node_modules</code> are automatically excluded.</p>
+<a href="#advanced-configuration"><h2 id="advanced-configuration">Advanced Configuration</h2></a><a href="#environment-variables"><h3 id="environment-variables">Environment Variables</h3></a><p>Add environment variables available to your command:</p>
+<pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;label&quot;: &quot;Build with Custom Env&quot;,
+    &quot;command&quot;: &quot;npx bsc&quot;,
+    &quot;options&quot;: {
+        &quot;env&quot;: {
+            &quot;NODE_ENV&quot;: &quot;production&quot;
+        }
+    }
+}
+</code></pre>
+<a href="#custom-working-directory"><h3 id="custom-working-directory">Custom Working Directory</h3></a><pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;label&quot;: &quot;Build from Subdirectory&quot;,
+    &quot;command&quot;: &quot;npx bsc&quot;,
+    &quot;options&quot;: {
+        &quot;cwd&quot;: &quot;${workspaceFolder}/apps/my-roku-app&quot;
+    }
+}
+</code></pre>
+<a href="#problem-matchers"><h2 id="problem-matchers">Problem Matchers</h2></a><p>Problem matchers parse command output to detect errors and warnings. Here&#39;s a basic example for BrighterScript compiler output:</p>
+<pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;label&quot;: &quot;Compile&quot;,
+    &quot;command&quot;: &quot;npx bsc&quot;,
+    &quot;problemMatcher&quot;: {
+        &quot;owner&quot;: &quot;brightscript&quot;,
+        &quot;fileLocation&quot;: &quot;relative&quot;,
+        &quot;pattern&quot;: {
+            &quot;regexp&quot;: &quot;^(.*)\\((\\d+),(\\d+)\\):\\s+(error|warning)\\s+(.*)$&quot;,
+            &quot;file&quot;: 1,
+            &quot;line&quot;: 2,
+            &quot;column&quot;: 3,
+            &quot;severity&quot;: 4,
+            &quot;message&quot;: 5
+        }
+    }
+}
+</code></pre>
+<a href="#background-tasks"><h2 id="background-tasks">Background Tasks</h2></a><p>Background tasks are useful for file watchers or development servers:</p>
+<pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;label&quot;: &quot;Watch&quot;,
+    &quot;command&quot;: &quot;npx bsc --watch&quot;,
+    &quot;isBackground&quot;: true
+}
+</code></pre>
+<a href="#pre-launch-tasks"><h2 id="pre-launch-tasks">Pre-Launch Tasks</h2></a><p>Use tasks as pre-launch actions to build your project before debugging:</p>
+<pre><code class="language-json">{
+    &quot;type&quot;: &quot;brightscript&quot;,
+    &quot;name&quot;: &quot;Launch on Roku&quot;,
+    &quot;request&quot;: &quot;launch&quot;,
+    &quot;host&quot;: &quot;${promptForHost}&quot;,
+    &quot;password&quot;: &quot;${promptForPassword}&quot;,
+    &quot;preLaunchTask&quot;: &quot;Build Project&quot;
+}
+</code></pre>
+<a href="#complete-example"><h2 id="complete-example">Complete Example</h2></a><p>Here&#39;s a basic <code>tasks.json</code> for a monorepo workflow:</p>
+<pre><code class="language-json">{
+    &quot;version&quot;: &quot;2.0.0&quot;,
+    &quot;tasks&quot;: [
+        {
+            &quot;type&quot;: &quot;brightscript&quot;,
+            &quot;label&quot;: &quot;Build Selected Project&quot;,
+            &quot;command&quot;: &quot;cd ${folderForFile: **/bsconfig.json} &amp;&amp; npx bsc&quot;,
+            &quot;group&quot;: {
+                &quot;kind&quot;: &quot;build&quot;,
+                &quot;isDefault&quot;: true
+            }
+        },
+        {
+            &quot;type&quot;: &quot;brightscript&quot;,
+            &quot;label&quot;: &quot;Watch Selected Project&quot;,
+            &quot;command&quot;: &quot;cd ${folderForFile: **/bsconfig.json} &amp;&amp; npx bsc --watch&quot;,
+            &quot;isBackground&quot;: true
+        }
+    ]
+}
+</code></pre>
+<a href="#troubleshooting"><h2 id="troubleshooting">Troubleshooting</h2></a><p><strong>Task not found:</strong></p>
+<ul>
+<li>Ensure <code>type</code> is set to <code>&quot;brightscript&quot;</code></li>
+<li>Verify <code>tasks.json</code> has valid JSON syntax</li>
+</ul>
+<p><strong>Variable not resolving:</strong></p>
+<ul>
+<li>Check that files matching the glob pattern exist</li>
+<li>Remember that <code>node_modules</code> is excluded</li>
+</ul>
+<p><strong>Command not executing:</strong></p>
+<ul>
+<li>Check the terminal output for errors</li>
+<li>Verify the command works in a regular terminal</li>
+<li>Ensure required programs are in your PATH</li>
+</ul>
+<a href="#best-practices"><h2 id="best-practices">Best Practices</h2></a><ul>
+<li>Use descriptive task labels</li>
+<li>Add problem matchers for instant error feedback</li>
+<li>Set default build and test tasks for keyboard shortcuts</li>
+<li>Use the <code>${folderForFile}</code> variable for monorepo flexibility</li>
+</ul>
+<a href="#see-also"><h2 id="see-also">See Also</h2></a><ul>
+<li><a href="https://code.visualstudio.com/docs/editor/tasks">VS Code Tasks Documentation</a></li>
+<li><a href="./variable-substitutions.md">Variable Substitutions</a></li>
+</ul>
+<a href="#supported-variables"><h2 id="supported-variables">Supported Variables</h2></a><table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Example Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Workspace Variables</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>${workspaceFolder}</code></td>
+<td>Path of the workspace folder</td>
+<td><code>/Users/user/project</code></td>
+</tr>
+<tr>
+<td><code>${workspaceFolderBasename}</code></td>
+<td>Name of the workspace folder</td>
+<td><code>project</code></td>
+</tr>
+<tr>
+<td><code>${fileWorkspaceFolderBasename}</code></td>
+<td>Name of workspace folder containing active file</td>
+<td><code>my-app</code></td>
+</tr>
+<tr>
+<td><strong>File Variables</strong> (require an active file)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>${file}</code></td>
+<td>Full path of the currently opened file</td>
+<td><code>/Users/user/project/src/main.brs</code></td>
+</tr>
+<tr>
+<td><code>${fileWorkspaceFolder}</code></td>
+<td>Workspace folder of the currently opened file</td>
+<td><code>/Users/user/project</code></td>
+</tr>
+<tr>
+<td><code>${relativeFile}</code></td>
+<td>Current file relative to workspace folder</td>
+<td><code>src/main.brs</code></td>
+</tr>
+<tr>
+<td><code>${relativeFileDirname}</code></td>
+<td>Current file&#39;s directory relative to workspace</td>
+<td><code>src</code></td>
+</tr>
+<tr>
+<td><code>${fileBasename}</code></td>
+<td>Current file&#39;s basename</td>
+<td><code>main.brs</code></td>
+</tr>
+<tr>
+<td><code>${fileBasenameNoExtension}</code></td>
+<td>Current file&#39;s basename without extension</td>
+<td><code>main</code></td>
+</tr>
+<tr>
+<td><code>${fileExtname}</code></td>
+<td>Current file&#39;s extension</td>
+<td><code>.brs</code></td>
+</tr>
+<tr>
+<td><code>${fileDirname}</code></td>
+<td>Current file&#39;s directory path</td>
+<td><code>/Users/user/project/src</code></td>
+</tr>
+<tr>
+<td><code>${fileDirnameBasename}</code></td>
+<td>Current file&#39;s directory name</td>
+<td><code>src</code></td>
+</tr>
+<tr>
+<td><strong>Editor Variables</strong> (require an active editor)</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>${lineNumber}</code></td>
+<td>Current line number in active file (1-based)</td>
+<td><code>42</code></td>
+</tr>
+<tr>
+<td><code>${columnNumber}</code></td>
+<td>Current column number in active file (1-based)</td>
+<td><code>15</code></td>
+</tr>
+<tr>
+<td><code>${selectedText}</code></td>
+<td>Currently selected text in active file</td>
+<td><code>function main()</code></td>
+</tr>
+<tr>
+<td><strong>System Variables</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>${userHome}</code></td>
+<td>User&#39;s home directory</td>
+<td><code>/Users/user</code></td>
+</tr>
+<tr>
+<td><code>${cwd}</code></td>
+<td>Current working directory of VS Code</td>
+<td><code>/Users/user/project</code></td>
+</tr>
+<tr>
+<td><code>${execPath}</code></td>
+<td>Path to VS Code executable</td>
+<td><code>/Applications/VSCode.app</code></td>
+</tr>
+<tr>
+<td><code>${pathSeparator}</code></td>
+<td>OS-specific path separator</td>
+<td><code>/</code> (macOS/Linux) or <code>\</code> (Windows)</td>
+</tr>
+<tr>
+<td><code>${/}</code></td>
+<td>Shorthand for <code>${pathSeparator}</code></td>
+<td><code>/</code> or <code>\</code></td>
+</tr>
+<tr>
+<td><strong>Custom Variables</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>${folderForFile: &lt;glob&gt;}</code></td>
+<td>Directory containing file(s) matching glob pattern</td>
+<td><code>/Users/user/project/apps/app1</code></td>
+</tr>
+</tbody></table>
+            <div id="footer"></div>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>
