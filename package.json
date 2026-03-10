@@ -160,8 +160,18 @@
                 ],
                 "properties": {
                     "command" : {
-                        "type": "string",
-                        "description": "The command to run for this task, you can use substitutions such as ${folderForFile: **/bsconfig.json}"
+                        "description": "The command to run for this task, you can use substitutions such as ${folderForFile: **/bsconfig.json}",
+                        "anyOf": [
+                            {
+                                "enum": [
+                                    "npx bsc --cwd src",
+                                    "npx bsc --cwd ${folderForFile: **/bsconfig.json}"
+                                ]
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     }
                 }
             }
