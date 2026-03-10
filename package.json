@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.61.0",
+    "version": "2.61.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -159,7 +159,7 @@
                     "command"
                 ],
                 "properties": {
-                    "command" : {
+                    "command": {
                         "description": "The command to run for this task, you can use substitutions such as ${folderForFile: **/bsconfig.json}",
                         "anyOf": [
                             {
