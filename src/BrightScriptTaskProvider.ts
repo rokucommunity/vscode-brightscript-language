@@ -18,7 +18,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     private taskProvider: vscode.Disposable;
 
     private resolveTask(_task: vscode.Task): vscode.Task | undefined {
-
         const command: string = _task.definition.command;
 
         // A BrightScript task consists of a task definition
@@ -53,9 +52,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         task.presentationOptions = _task.presentationOptions;
         task.group = _task.group;
         task.runOptions = _task.runOptions;
-
-        console.log('Resolved task problem matchers:', task.problemMatchers);
-        console.log('Resolved task isBackground:', task.isBackground);
 
         return task;
     }

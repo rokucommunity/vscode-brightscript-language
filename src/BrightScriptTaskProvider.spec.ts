@@ -804,8 +804,8 @@ describe('BrightScriptTaskProvider', () => {
             expect(env.TASK_VAR).to.equal('from-task');
             expect(env.SHARED_VAR).to.equal('from-task');
             expect(env.USER_SETTING).to.equal('from-settings');
-            // Process env should be included
-            expect(env.PATH).to.exist;
+            // Process env should be included (PATH on Unix, Path on Windows)
+            expect(env.PATH || env.Path).to.exist;
         });
 
         it('uses task shell option over user setting', async () => {
