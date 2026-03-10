@@ -1102,7 +1102,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             // Task should fail when no workspace folders exist
-            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(outputs.some(o => o.includes('Task cancelled: no workspace folder selected'))).to.be.true;
             expect(exitCode).to.equal(1);
             // spawn should not have been called since task failed early
             expect(childProcessStub.called).to.be.false;
@@ -1141,11 +1141,7 @@ describe('BrightScriptTaskProvider', () => {
             };
             vscode.workspace.workspaceFolders = [folder, folder2];
 
-            const quickPickStub = sinon.stub(vscode.window, 'showQuickPick').resolves({
-                label: folder2.name,
-                description: folder2.uri.fsPath,
-                folder: folder2
-            });
+            const workspaceFolderPickStub = sinon.stub(vscode.window, 'showWorkspaceFolderPick').resolves(folder2);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1158,12 +1154,8 @@ describe('BrightScriptTaskProvider', () => {
 
             await pty.open();
 
-            // Verify picker was shown with correct options
-            expect(quickPickStub.called).to.be.true;
-            const pickerOptions = (quickPickStub as any).firstCall.args[0];
-            expect(pickerOptions).to.have.lengthOf(2);
-            expect(pickerOptions[0].label).to.equal('test-folder');
-            expect(pickerOptions[1].label).to.equal('folder2');
+            // Verify picker was shown
+            expect(workspaceFolderPickStub.called).to.be.true;
 
             // Verify the selected folder was used
             const spawnCall = childProcessStub.getCall(0);
@@ -1178,7 +1170,7 @@ describe('BrightScriptTaskProvider', () => {
             };
             vscode.workspace.workspaceFolders = [folder, folder2];
 
-            sinon.stub(vscode.window, 'showQuickPick').resolves(undefined);
+            sinon.stub(vscode.window, 'showWorkspaceFolderPick').resolves(undefined);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1459,7 +1451,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             // Task should fail with error about no workspace folder
-            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(outputs.some(o => o.includes('Task cancelled: no workspace folder selected'))).to.be.true;
             expect(exitCode).to.equal(1);
             expect(childProcessStub.called).to.be.false;
         });
@@ -1494,7 +1486,7 @@ describe('BrightScriptTaskProvider', () => {
             vscode.workspace.workspaceFolders = originalFolders;
 
             // Task should fail with error about no workspace folder
-            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(outputs.some(o => o.includes('Task cancelled: no workspace folder selected'))).to.be.true;
             expect(exitCode).to.equal(1);
             expect(childProcessStub.called).to.be.false;
         });

@@ -264,6 +264,9 @@ export let vscode = {
         },
         showQuickPick: () => {
             return Promise.resolve(undefined);
+        },
+        showWorkspaceFolderPick: () => {
+            return Promise.resolve(undefined);
         }
     },
     CompletionItemKind: {

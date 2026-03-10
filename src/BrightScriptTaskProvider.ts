@@ -75,7 +75,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                     // Determine the workspace folder from the task scope (may show picker once)
                     const workspaceFolder = await this.getWorkspaceFolderFromScope(taskScope);
 
-                    // If workspace folder selection was cancelled, abort task
+                    // If workspace folder selection was cancelled or no folders available, abort task
                     if (!workspaceFolder) {
                         writeEmitter.fire('Task cancelled: no workspace folder selected\r\n');
                         closeEmitter.fire(1);
