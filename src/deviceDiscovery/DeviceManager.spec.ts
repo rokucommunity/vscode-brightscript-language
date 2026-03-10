@@ -56,6 +56,7 @@ describe('DeviceManager', () => {
     });
 
     afterEach(() => {
+        manager?.dispose();
         sinon.restore();
     });
 
