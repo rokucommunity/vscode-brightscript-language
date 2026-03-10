@@ -28,10 +28,14 @@ export class RokuFinder extends EventEmitter {
     private client: Client;
     private server: Server;
     private running = false;
+    private scanTimers: ReturnType<typeof setTimeout>[] = [];
 
     public scan() {
         if (this.client) {
             const search = () => {
+                if (!this.client) {
+                    return;
+                }
                 Promise.resolve(
                     this.client.search('roku:ecp')
                 ).catch((error) => {
@@ -41,8 +45,8 @@ export class RokuFinder extends EventEmitter {
 
             // UDP is unreliable, so we search multiple times
             search();
-            setTimeout(search, 100);
-            setTimeout(search, 200);
+            this.scanTimers.push(setTimeout(search, 100));
+            this.scanTimers.push(setTimeout(search, 200));
         }
     }
 
@@ -123,6 +127,11 @@ export class RokuFinder extends EventEmitter {
 
     public dispose() {
         this.stop();
+
+        for (const timer of this.scanTimers) {
+            clearTimeout(timer);
+        }
+        this.scanTimers = [];
 
         this.client.removeAllListeners();
         this.client.stop();

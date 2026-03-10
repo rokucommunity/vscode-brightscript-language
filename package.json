@@ -265,6 +265,11 @@
                     "group": "navigation"
                 },
                 {
+                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "when": "view == devicesView && !brightscript.deviceDiscovery.enabled",
+                    "group": "navigation"
+                },
+                {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == devicesView",
                     "group": "navigation"
@@ -2988,13 +2993,13 @@
             {
                 "command": "extension.brightscript.clearDeviceCache",
                 "title": "Clear Device Cache",
-                "description": "Clear cached device information used for device discovery.",
+                "description": "Clear all cached info related to devices (last seen devices per network, deviceInfo responses, etc)",
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.clearLastSeenDevices",
-                "title": "Clear Last Seen Devices",
-                "description": "Clear the list of last seen devices for all networks.",
+                "command": "extension.brightscript.clearCurrentDeviceList",
+                "title": "Clear Current Device List",
+                "description": "Clear the current list of devices",
                 "category": "Brightscript"
             },
             {
@@ -3241,6 +3246,12 @@
                     "light": "./images/icons/preview-right-light.svg",
                     "dark": "./images/icons/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.clearCurrentDeviceList",
+                "title": "Clear Device List",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.refreshDeviceList",
