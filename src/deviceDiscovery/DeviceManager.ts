@@ -100,6 +100,8 @@ export class DeviceManager {
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
                 if (this.passiveScanPermitted) {
+                    //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
+                    this.emitter.emit('scanNeeded-changed');
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
