@@ -10,6 +10,7 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
+import _ from 'lodash';
 
 export class DeviceManager {
     constructor(
@@ -68,8 +69,8 @@ export class DeviceManager {
      * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
      * when the flag flips from false to true.
      */
-    public setScanNeeded() {
-        if (!this.scanNeeded) {
+    public setScanNeeded(force = false): void {
+        if (!this.scanNeeded || force) {
             this.scanNeeded = true;
             this.emitter.emit('scanNeeded-changed');
         }
@@ -102,10 +103,9 @@ export class DeviceManager {
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
-
                 if (this.passiveScanPermitted) {
                     //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
-                    this.emitter.emit('scanNeeded-changed');
+                    this.setScanNeeded(true);
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -150,6 +150,9 @@ export class DeviceManager {
     }
 
     private initialize() {
+        //clear any deviceInfo entries older than our max age
+        this.globalStateManager.clearExpiredDevices();
+
         this.loadLastSeenDevices();
 
         // Always set up finder event listeners so scan responses are processed
@@ -234,14 +237,25 @@ export class DeviceManager {
     }
 
     /**
-     * Clear the list of devices, the device cache, and the last seen devices for the current network.
+     * Clear the current list of devices and the cached last-seen-devices list
      */
-    public clear() {
+    public clearCurrentDeviceList() {
         this.devices = [];
         this.deviceInfoCache.clear();
-        this.globalStateManager.clearDeviceCache();
-        this.globalStateManager.clearLastSeenDevices();
+        this.globalStateManager.setLastSeenDeviceIds(this.networkId, []);
+
+        // Clear lastUsedDevice since we don't have any device anymore
+        this.lastUsedDevice = undefined;
+
+        //TODO when we support hardcoded devices, we should keep those around (or reload them?) instead of clearing everything
+
         this.emitDevicesChanged();
+    }
+
+    public clearAllCache() {
+        this.clearCurrentDeviceList();
+        this.globalStateManager.clearLastSeenDevices();
+        this.globalStateManager.clearDeviceCache();
     }
 
     /**
@@ -543,7 +557,8 @@ export class DeviceManager {
         const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
         for (const deviceId of lastSeenDeviceIds) {
             const cached = this.globalStateManager.getCachedDevice(deviceId);
-            if (cached) {
+            //ensure our cached object is actually an object
+            if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
                 // Add cached device as pending (no network request)
                 const device: RokuDeviceDetails = {
                     ...cached,
@@ -616,7 +631,8 @@ export class DeviceManager {
             location: device.location,
             id: device.id,
             ip: device.ip,
-            deviceInfo: device.deviceInfo
+            deviceInfo: device.deviceInfo,
+            createdAt: Date.now()
         });
 
         // Reset scan settle timer when device response comes in
@@ -637,7 +653,6 @@ export class DeviceManager {
         const device = this.devices.find(d => d.id === deviceId);
         if (device) {
             this.devices = this.devices.filter(d => d.id !== deviceId);
-            this.globalStateManager.removeCachedDevice(deviceId);
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.id);
 
             // Clear lastUsedDevice if the removed device was the last used

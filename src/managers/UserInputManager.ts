@@ -199,7 +199,7 @@ export class UserInputManager {
             if (button.tooltip === SCAN_FOR_DEVICES) {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
-                this.deviceManager.clear();
+                this.deviceManager.clearCurrentDeviceList();
             }
         });
 
