@@ -299,6 +299,13 @@ export let vscode = {
             this.handlers.clear();
         }
     },
+    tasks: {
+        registerTaskProvider: () => {
+            return {
+                dispose: () => { }
+            };
+        }
+    },
     DeclarationProvider: class {
         public onDidChange = () => { };
         public onDidDelete = () => { };
