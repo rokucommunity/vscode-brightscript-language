@@ -10,7 +10,6 @@ export class SceneGraphDebugCommands {
     public registerCommands(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
         this.context = context;
         this.outputChannel = outputChannel;
-
         let subscriptions = context.subscriptions;
 
         subscriptions.push(vscode.commands.registerCommand('extension.brightscript.bsprofPause', async () => {
