@@ -35,7 +35,40 @@ Tasks are defined in `.vscode/tasks.json` in your workspace. Here's a simple exa
 
 ## Variable Substitution
 
-### `${folderForFile: <glob>}` - Interactive Folder Selection
+BrightScript tasks support variable substitution in the `command` field. Variables are resolved before the command is executed.
+
+### Supported Variables
+
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| **Workspace Variables** | | |
+| `${workspaceFolder}` | Path of the workspace folder | `/Users/user/project` |
+| `${workspaceFolderBasename}` | Name of the workspace folder | `project` |
+| `${fileWorkspaceFolderBasename}` | Name of workspace folder containing active file | `my-app` |
+| **File Variables** (require an active file) | | |
+| `${file}` | Full path of the currently opened file | `/Users/user/project/src/main.brs` |
+| `${fileWorkspaceFolder}` | Workspace folder of the currently opened file | `/Users/user/project` |
+| `${relativeFile}` | Current file relative to workspace folder | `src/main.brs` |
+| `${relativeFileDirname}` | Current file's directory relative to workspace | `src` |
+| `${fileBasename}` | Current file's basename | `main.brs` |
+| `${fileBasenameNoExtension}` | Current file's basename without extension | `main` |
+| `${fileExtname}` | Current file's extension | `.brs` |
+| `${fileDirname}` | Current file's directory path | `/Users/user/project/src` |
+| `${fileDirnameBasename}` | Current file's directory name | `src` |
+| **Editor Variables** (require an active editor) | | |
+| `${lineNumber}` | Current line number in active file (1-based) | `42` |
+| `${columnNumber}` | Current column number in active file (1-based) | `15` |
+| `${selectedText}` | Currently selected text in active file | `function main()` |
+| **System Variables** | | |
+| `${userHome}` | User's home directory | `/Users/user` |
+| `${cwd}` | Current working directory of VS Code | `/Users/user/project` |
+| `${execPath}` | Path to VS Code executable | `/Applications/VSCode.app` |
+| `${pathSeparator}` | OS-specific path separator | `/` (macOS/Linux) or `\` (Windows) |
+| `${/}` | Shorthand for `${pathSeparator}` | `/` or `\` |
+| **Custom Variables** | | |
+| `${folderForFile: <glob>}` | Directory containing file(s) matching glob pattern | `/Users/user/project/apps/app1` |
+
+### Using `${folderForFile: <glob>}`
 
 The `${folderForFile: <glob>}` variable finds files matching a glob pattern and resolves to the directory containing those files. This is useful in monorepos or multi-project workspaces.
 
