@@ -155,7 +155,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.deviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

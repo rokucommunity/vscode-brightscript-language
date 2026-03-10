@@ -219,11 +219,11 @@ export class DeviceManager {
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false): boolean {
+        this.checkDevicesHealth(force).catch(() => { });
         // Block automatic scans when device discovery is disabled
         if (!force && !this.passiveScanPermitted) {
             return false;
         }
-        this.checkDevicesHealth(force).catch(() => { });
         return this.discoverAll(force);
     }
 
