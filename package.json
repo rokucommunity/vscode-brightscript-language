@@ -148,7 +148,8 @@
         "onLanguage:xml",
         "workspaceContains:**/manifest",
         "workspaceContains:**/bsconfig.json",
-        "onDebug"
+        "onDebug",
+        "onTaskType:brightscript"
     ],
     "contributes": {
         "taskDefinitions": [
