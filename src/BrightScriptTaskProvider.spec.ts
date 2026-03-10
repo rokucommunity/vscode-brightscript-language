@@ -809,8 +809,9 @@ describe('BrightScriptTaskProvider', () => {
             expect(env[pathKey]).to.exist;
         });
 
-        it('uses task shell option over user setting', async () => {
-            configStub.get.withArgs('shell.darwin').returns('/bin/zsh');
+        it('uses task shell option over user setting on macOS', async () => {
+            Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+            configStub.get.withArgs('shell.osx').returns('/bin/zsh');
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -832,6 +833,58 @@ describe('BrightScriptTaskProvider', () => {
 
             // Task shell should override user setting
             expect(spawnCall.args[2].shell).to.equal('/bin/bash');
+        });
+
+        it('uses task shell option over user setting on Windows', async () => {
+            Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+            configStub.get.withArgs('shell.windows').returns('powershell.exe');
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"',
+                options: {
+                    shell: {
+                        executable: 'cmd.exe'
+                    }
+                }
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            // Task shell should override user setting
+            expect(spawnCall.args[2].shell).to.equal('cmd.exe');
+        });
+
+        it('uses task shell option over user setting on Linux', async () => {
+            Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+            configStub.get.withArgs('shell.linux').returns('/bin/bash');
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"',
+                options: {
+                    shell: {
+                        executable: '/bin/sh'
+                    }
+                }
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            // Task shell should override user setting
+            expect(spawnCall.args[2].shell).to.equal('/bin/sh');
         });
 
         it('uses task cwd option over workspace folder', async () => {
