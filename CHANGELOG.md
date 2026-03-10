@@ -7,9 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.61.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.61.0...v2.61.1) - 2026-03-10
-### Changed
+### Added
  - Task/support for brightscript tasks with custom command variable resolving ([#693](https://github.com/rokucommunity/vscode-brightscript-language/pull/693))
- - Update how we handle the deviceDiscovery settings flag ([#695](https://github.com/rokucommunity/vscode-brightscript-language/pull/695))
+### Fixed
+ - Update how we handle the `deviceDiscovery.enabled` setting ([#695](https://github.com/rokucommunity/vscode-brightscript-language/pull/695))
 
 
 
