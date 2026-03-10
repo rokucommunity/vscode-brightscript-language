@@ -740,8 +740,10 @@ describe('BrightScriptTaskProvider', () => {
         let mockProcess: EventEmitter;
         let mockStdout: EventEmitter;
         let mockStderr: EventEmitter;
+        let originalPlatform: string;
 
         beforeEach(() => {
+            originalPlatform = process.platform;
             // Create mock process with stdout/stderr
             mockStdout = new EventEmitter();
             mockStderr = new EventEmitter();
@@ -763,6 +765,7 @@ describe('BrightScriptTaskProvider', () => {
         });
 
         afterEach(() => {
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
             childProcessStub.restore();
             sinon.restore();
         });

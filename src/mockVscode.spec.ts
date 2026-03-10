@@ -16,6 +16,7 @@ enum QuickPickItemKind {
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
+    vscode.workspace.workspaceFolders = [] as any;
     vscode.context.globalState['_data'] = {};
 });
 
