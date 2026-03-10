@@ -227,10 +227,11 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     }
 
     private async resolveCommandVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string> {
-        // Currently only supports ${folderForFile: <glob>} but can be extended in the future
+        // Supports ${folderForFile: <glob>}, ${workspaceFolder}, ${workspaceFolderBasename}, ${fileWorkspaceFolderBasename}
         let resolvedCommand = command;
 
         const variableResolvers = [
+            this.resolveWorkspaceVariables.bind(this),
             this.resolveFolderForFileVariable.bind(this)
         ];
 
@@ -240,6 +241,48 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                 // Safety check - should not happen since resolvers now throw errors instead of returning undefined
                 throw new Error('Variable resolver returned undefined');
             }
+        }
+
+        return resolvedCommand;
+    }
+
+    /**
+     * Resolve standard workspace variables: ${workspaceFolder}, ${workspaceFolderBasename}, ${fileWorkspaceFolderBasename}
+     */
+    private resolveWorkspaceVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): string {
+        let resolvedCommand = command;
+
+        // ${workspaceFolder} - the path of the workspace folder
+        if (resolvedCommand.includes('${workspaceFolder}')) {
+            if (!workspaceFolder) {
+                throw new Error('Cannot resolve ${workspaceFolder}: no workspace folder available');
+            }
+            resolvedCommand = resolvedCommand.replace(/\$\{workspaceFolder\}/g, workspaceFolder.uri.fsPath);
+        }
+
+        // ${workspaceFolderBasename} - the basename of the workspace folder
+        if (resolvedCommand.includes('${workspaceFolderBasename}')) {
+            if (!workspaceFolder) {
+                throw new Error('Cannot resolve ${workspaceFolderBasename}: no workspace folder available');
+            }
+            const basename = path.basename(workspaceFolder.uri.fsPath);
+            resolvedCommand = resolvedCommand.replace(/\$\{workspaceFolderBasename\}/g, basename);
+        }
+
+        // ${fileWorkspaceFolderBasename} - the basename of the workspace folder containing the active file
+        if (resolvedCommand.includes('${fileWorkspaceFolderBasename}')) {
+            const activeEditor = vscode.window.activeTextEditor;
+            if (!activeEditor) {
+                throw new Error('Cannot resolve ${fileWorkspaceFolderBasename}: no active file');
+            }
+
+            const fileWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+            if (!fileWorkspaceFolder) {
+                throw new Error('Cannot resolve ${fileWorkspaceFolderBasename}: active file is not in a workspace folder');
+            }
+
+            const basename = path.basename(fileWorkspaceFolder.uri.fsPath);
+            resolvedCommand = resolvedCommand.replace(/\$\{fileWorkspaceFolderBasename\}/g, basename);
         }
 
         return resolvedCommand;

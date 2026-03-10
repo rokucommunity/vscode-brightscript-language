@@ -1293,6 +1293,335 @@ describe('BrightScriptTaskProvider', () => {
         });
     });
 
+    describe('workspace variable resolution', () => {
+        let childProcessStub: any;
+        let mockProcess: EventEmitter;
+        let mockStdout: EventEmitter;
+        let mockStderr: EventEmitter;
+
+        beforeEach(() => {
+            // Create mock process with stdout/stderr
+            mockStdout = new EventEmitter();
+            mockStderr = new EventEmitter();
+            mockProcess = new EventEmitter();
+            (mockProcess as any).stdout = mockStdout;
+            (mockProcess as any).stderr = mockStderr;
+            (mockProcess as any).kill = sinon.stub();
+            (mockProcess as any).killed = false;
+
+            // Mock child_process.spawn
+            const childProcessModule = require('child_process');
+            childProcessStub = sinon.stub(childProcessModule, 'spawn').returns(mockProcess);
+        });
+
+        afterEach(() => {
+            childProcessStub.restore();
+        });
+
+        it('resolves ${workspaceFolder} to workspace folder path', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolder}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // Command should have ${workspaceFolder} replaced with actual path
+            expect(command).to.equal(`echo ${folder.uri.fsPath}`);
+            expect(command).to.not.include('${workspaceFolder}');
+        });
+
+        it('resolves ${workspaceFolderBasename} to workspace folder basename', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // Command should have ${workspaceFolderBasename} replaced with basename
+            const expectedBasename = path.basename(folder.uri.fsPath);
+            expect(command).to.equal(`echo ${expectedBasename}`);
+            expect(command).to.not.include('${workspaceFolderBasename}');
+        });
+
+        it('resolves ${fileWorkspaceFolderBasename} to active file workspace folder basename', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileWorkspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // Command should have ${fileWorkspaceFolderBasename} replaced with basename
+            const expectedBasename = path.basename(folder.uri.fsPath);
+            expect(command).to.equal(`echo ${expectedBasename}`);
+            expect(command).to.not.include('${fileWorkspaceFolderBasename}');
+        });
+
+        it('resolves multiple workspace variables in same command', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'cd ${workspaceFolder} && echo ${workspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // Both variables should be replaced
+            const expectedBasename = path.basename(folder.uri.fsPath);
+            expect(command).to.equal(`cd ${folder.uri.fsPath} && echo ${expectedBasename}`);
+            expect(command).to.not.include('${workspaceFolder}');
+            expect(command).to.not.include('${workspaceFolderBasename}');
+        });
+
+        it('resolves multiple instances of the same workspace variable', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolder} && cd ${workspaceFolder}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // All instances should be replaced
+            expect(command).to.equal(`echo ${folder.uri.fsPath} && cd ${folder.uri.fsPath}`);
+            expect(command).to.not.include('${workspaceFolder}');
+        });
+
+        it('throws error for ${workspaceFolder} when no workspace folder is available', async () => {
+            vscode.workspace.workspaceFolders = [];
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolder}'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about no workspace folder
+            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('throws error for ${workspaceFolderBasename} when no workspace folder is available', async () => {
+            // Temporarily clear workspace folders
+            const originalFolders = vscode.workspace.workspaceFolders;
+            vscode.workspace.workspaceFolders = undefined as any;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolderBasename}'
+            }, vscode.TaskScope.Workspace);
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Restore workspace folders
+            vscode.workspace.workspaceFolders = originalFolders;
+
+            // Task should fail with error about no workspace folder
+            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('throws error for ${fileWorkspaceFolderBasename} when no active editor', async () => {
+            // Clear active editor
+            (vscode.window as any).activeTextEditor = undefined;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileWorkspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about no active file
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('Cannot resolve ${fileWorkspaceFolderBasename}: no active file'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('throws error for ${fileWorkspaceFolderBasename} when active file is not in workspace', async () => {
+            const fileOutsideWorkspace = '/tmp/external-file.brs';
+
+            // Mock active editor with file outside workspace
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(fileOutsideWorkspace)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileWorkspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about file not in workspace
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('Cannot resolve ${fileWorkspaceFolderBasename}: active file is not in a workspace folder'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('resolves workspace variables alongside ${folderForFile} variable', async () => {
+            // Create a bsconfig.json file
+            const projectDir = path.join(rootDir, 'my-project');
+            fsExtra.ensureDirSync(projectDir);
+            fsExtra.writeFileSync(path.join(projectDir, 'bsconfig.json'), '{}');
+
+            const findFilesStub = sinon.stub();
+            findFilesStub.resolves([
+                Uri.file(path.join(projectDir, 'bsconfig.json'))
+            ]);
+            (vscode.workspace as any).findFiles = findFilesStub;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+
+            // Mock showQuickPick to return the relative folder path
+            const relativePath = path.relative(folder.uri.fsPath, projectDir);
+            sinon.stub(vscode.window, 'showQuickPick').resolves(relativePath);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'cd ${workspaceFolder} && cd ${folderForFile: **/bsconfig.json} && echo ${workspaceFolderBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+
+            await pty.open();
+
+            // Verify spawn was called (command was resolved successfully)
+            expect(childProcessStub.called).to.be.true;
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            // Both workspace variable and folderForFile should be resolved
+            const expectedBasename = path.basename(folder.uri.fsPath);
+            expect(command).to.include(folder.uri.fsPath); // ${workspaceFolder}
+            expect(command).to.include(projectDir); // ${folderForFile: **/bsconfig.json}
+            expect(command).to.include(expectedBasename); // ${workspaceFolderBasename}
+            expect(command).to.not.include('${workspaceFolder}');
+            expect(command).to.not.include('${workspaceFolderBasename}');
+            expect(command).to.not.include('${folderForFile');
+        });
+    });
+
     /**
      * Helper function to create a mock task
      */
