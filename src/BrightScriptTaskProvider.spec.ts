@@ -1571,6 +1571,641 @@ describe('BrightScriptTaskProvider', () => {
             expect(childProcessStub.called).to.be.false;
         });
 
+        // File-related variables
+        it('resolves ${file} to active file path', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${file}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${activeFile}`);
+            expect(command).to.not.include('${file}');
+        });
+
+        it('resolves ${fileWorkspaceFolder} to active file workspace folder', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileWorkspaceFolder}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${folder.uri.fsPath}`);
+            expect(command).to.not.include('${fileWorkspaceFolder}');
+        });
+
+        it('resolves ${relativeFile} to active file relative to workspace', async () => {
+            const subDir = path.join(rootDir, 'src');
+            fsExtra.ensureDirSync(subDir);
+            const activeFile = path.join(subDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${relativeFile}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${path.join('src', 'test.brs')}`);
+            expect(command).to.not.include('${relativeFile}');
+        });
+
+        it('resolves ${relativeFileDirname} to active file dirname relative to workspace', async () => {
+            const subDir = path.join(rootDir, 'src', 'components');
+            fsExtra.ensureDirSync(subDir);
+            const activeFile = path.join(subDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${relativeFileDirname}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${path.join('src', 'components')}`);
+            expect(command).to.not.include('${relativeFileDirname}');
+        });
+
+        it('resolves ${fileBasename} to active file basename', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo test.brs');
+            expect(command).to.not.include('${fileBasename}');
+        });
+
+        it('resolves ${fileBasenameNoExtension} to active file basename without extension', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileBasenameNoExtension}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo test');
+            expect(command).to.not.include('${fileBasenameNoExtension}');
+        });
+
+        it('resolves ${fileExtname} to active file extension', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileExtname}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo .brs');
+            expect(command).to.not.include('${fileExtname}');
+        });
+
+        it('resolves ${fileDirname} to active file dirname', async () => {
+            const subDir = path.join(rootDir, 'src');
+            fsExtra.ensureDirSync(subDir);
+            const activeFile = path.join(subDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileDirname}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${subDir}`);
+            expect(command).to.not.include('${fileDirname}');
+        });
+
+        it('resolves ${fileDirnameBasename} to active file folder name', async () => {
+            const subDir = path.join(rootDir, 'src');
+            fsExtra.ensureDirSync(subDir);
+            const activeFile = path.join(subDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileDirnameBasename}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo src');
+            expect(command).to.not.include('${fileDirnameBasename}');
+        });
+
+        it('throws error for ${file} when no active editor', async () => {
+            // Clear active editor
+            (vscode.window as any).activeTextEditor = undefined;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${file}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about no active file
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('Cannot resolve file variables: no active file'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('throws error for ${fileWorkspaceFolder} when active file not in workspace', async () => {
+            const fileOutsideWorkspace = '/tmp/external-file.brs';
+
+            // Mock active editor with file outside workspace
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(fileOutsideWorkspace)
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${fileWorkspaceFolder}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about file not in workspace
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('Cannot resolve ${fileWorkspaceFolder}: active file is not in a workspace folder'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        // Editor/selection variables
+        it('resolves ${lineNumber} to current line number', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'line1\nline2\nline3');
+
+            // Mock active editor with selection
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                },
+                selection: {
+                    active: {
+                        line: 1, // 0-based, should become 2 (1-based)
+                        character: 5
+                    }
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${lineNumber}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo 2'); // 1-based
+            expect(command).to.not.include('${lineNumber}');
+        });
+
+        it('resolves ${columnNumber} to current column number', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'line1\nline2\nline3');
+
+            // Mock active editor with selection
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile)
+                },
+                selection: {
+                    active: {
+                        line: 1,
+                        character: 4 // 0-based, should become 5 (1-based)
+                    }
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${columnNumber}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo 5'); // 1-based
+            expect(command).to.not.include('${columnNumber}');
+        });
+
+        it('resolves ${selectedText} to current selected text', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'hello world');
+
+            // Mock active editor with selection
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile),
+                    getText: (range: any) => 'hello'
+                },
+                selection: {
+                    active: {
+                        line: 0,
+                        character: 0
+                    }
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${selectedText}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal('echo hello');
+            expect(command).to.not.include('${selectedText}');
+        });
+
+        it('throws error for ${lineNumber} when no active editor', async () => {
+            // Clear active editor
+            (vscode.window as any).activeTextEditor = undefined;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${lineNumber}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Task should fail with error about no active editor
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('Cannot resolve editor variables: no active editor'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        // System variables
+        it('resolves ${userHome} to user home directory', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${userHome}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            const os = require('os');
+            expect(command).to.equal(`echo ${os.homedir()}`);
+            expect(command).to.not.include('${userHome}');
+        });
+
+        it('resolves ${cwd} to current working directory', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${cwd}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${process.cwd()}`);
+            expect(command).to.not.include('${cwd}');
+        });
+
+        it('resolves ${execPath} to VS Code executable path', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${execPath}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${process.execPath}`);
+            expect(command).to.not.include('${execPath}');
+        });
+
+        it('resolves ${pathSeparator} to path separator', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${pathSeparator}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${path.sep}`);
+            expect(command).to.not.include('${pathSeparator}');
+        });
+
+        it('resolves ${/} to path separator', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${/}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            expect(command).to.equal(`echo ${path.sep}`);
+            expect(command).to.not.include('${/}');
+        });
+
+        it('resolves multiple variable types in same command', async () => {
+            const activeFile = path.join(rootDir, 'test.brs');
+            fsExtra.writeFileSync(activeFile, 'test content');
+
+            // Mock active editor
+            const mockEditor = {
+                document: {
+                    uri: Uri.file(activeFile),
+                    getText: (range: any) => 'selected'
+                },
+                selection: {
+                    active: {
+                        line: 0,
+                        character: 0
+                    }
+                }
+            };
+            (vscode.window as any).activeTextEditor = mockEditor;
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo ${workspaceFolder} ${file} ${fileBasename} ${userHome} ${pathSeparator}'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+            const command = spawnCall.args[0];
+
+            const os = require('os');
+            expect(command).to.equal(`echo ${folder.uri.fsPath} ${activeFile} test.brs ${os.homedir()} ${path.sep}`);
+            expect(command).to.not.include('${workspaceFolder}');
+            expect(command).to.not.include('${file}');
+            expect(command).to.not.include('${fileBasename}');
+            expect(command).to.not.include('${userHome}');
+            expect(command).to.not.include('${pathSeparator}');
+        });
+
         it('resolves workspace variables alongside ${folderForFile} variable', async () => {
             // Create a bsconfig.json file
             const projectDir = path.join(rootDir, 'my-project');

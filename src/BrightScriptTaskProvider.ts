@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as childProcess from 'child_process';
+import * as os from 'os';
 
 export class BrightScriptTaskProvider implements vscode.Disposable {
     constructor() {
@@ -232,6 +233,9 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
         const variableResolvers = [
             this.resolveWorkspaceVariables.bind(this),
+            this.resolveFileVariables.bind(this),
+            this.resolveEditorVariables.bind(this),
+            this.resolveSystemVariables.bind(this),
             this.resolveFolderForFileVariable.bind(this)
         ];
 
@@ -283,6 +287,173 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
             const basename = path.basename(fileWorkspaceFolder.uri.fsPath);
             resolvedCommand = resolvedCommand.replace(/\$\{fileWorkspaceFolderBasename\}/g, basename);
+        }
+
+        return resolvedCommand;
+    }
+
+    /**
+     * Resolve file-related variables: ${file}, ${fileWorkspaceFolder}, ${relativeFile}, ${relativeFileDirname},
+     * ${fileBasename}, ${fileBasenameNoExtension}, ${fileExtname}, ${fileDirname}, ${fileDirnameBasename}
+     */
+    private resolveFileVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): string {
+        let resolvedCommand = command;
+
+        // Get active file if any file variable is present
+        const needsActiveFile = /\$\{(file|fileWorkspaceFolder|relativeFile|relativeFileDirname|fileBasename|fileBasenameNoExtension|fileExtname|fileDirname|fileDirnameBasename)\}/.test(command);
+
+        if (!needsActiveFile) {
+            return resolvedCommand;
+        }
+
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            // Check if any file variable is actually used before throwing
+            if (needsActiveFile) {
+                throw new Error('Cannot resolve file variables: no active file');
+            }
+            return resolvedCommand;
+        }
+
+        const filePath = activeEditor.document.uri.fsPath;
+
+        // ${file} - the current opened file
+        if (resolvedCommand.includes('${file}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{file\}/g, filePath);
+        }
+
+        // ${fileWorkspaceFolder} - the workspace folder of the current opened file
+        if (resolvedCommand.includes('${fileWorkspaceFolder}')) {
+            const fileWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+            if (!fileWorkspaceFolder) {
+                throw new Error('Cannot resolve ${fileWorkspaceFolder}: active file is not in a workspace folder');
+            }
+            resolvedCommand = resolvedCommand.replace(/\$\{fileWorkspaceFolder\}/g, fileWorkspaceFolder.uri.fsPath);
+        }
+
+        // ${relativeFile} - the current opened file relative to workspaceFolder
+        if (resolvedCommand.includes('${relativeFile}')) {
+            const fileWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+            if (!fileWorkspaceFolder) {
+                throw new Error('Cannot resolve ${relativeFile}: active file is not in a workspace folder');
+            }
+            const relativePath = path.relative(fileWorkspaceFolder.uri.fsPath, filePath);
+            resolvedCommand = resolvedCommand.replace(/\$\{relativeFile\}/g, relativePath);
+        }
+
+        // ${relativeFileDirname} - the current opened file's dirname relative to workspaceFolder
+        if (resolvedCommand.includes('${relativeFileDirname}')) {
+            const fileWorkspaceFolder = vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
+            if (!fileWorkspaceFolder) {
+                throw new Error('Cannot resolve ${relativeFileDirname}: active file is not in a workspace folder');
+            }
+            const dirname = path.dirname(filePath);
+            const relativePath = path.relative(fileWorkspaceFolder.uri.fsPath, dirname);
+            resolvedCommand = resolvedCommand.replace(/\$\{relativeFileDirname\}/g, relativePath);
+        }
+
+        // ${fileBasename} - the current opened file's basename
+        if (resolvedCommand.includes('${fileBasename}')) {
+            const basename = path.basename(filePath);
+            resolvedCommand = resolvedCommand.replace(/\$\{fileBasename\}/g, basename);
+        }
+
+        // ${fileBasenameNoExtension} - the current opened file's basename with no file extension
+        if (resolvedCommand.includes('${fileBasenameNoExtension}')) {
+            const basename = path.basename(filePath, path.extname(filePath));
+            resolvedCommand = resolvedCommand.replace(/\$\{fileBasenameNoExtension\}/g, basename);
+        }
+
+        // ${fileExtname} - the current opened file's extension
+        if (resolvedCommand.includes('${fileExtname}')) {
+            const extname = path.extname(filePath);
+            resolvedCommand = resolvedCommand.replace(/\$\{fileExtname\}/g, extname);
+        }
+
+        // ${fileDirname} - the current opened file's dirname
+        if (resolvedCommand.includes('${fileDirname}')) {
+            const dirname = path.dirname(filePath);
+            resolvedCommand = resolvedCommand.replace(/\$\{fileDirname\}/g, dirname);
+        }
+
+        // ${fileDirnameBasename} - the current opened file's folder name
+        if (resolvedCommand.includes('${fileDirnameBasename}')) {
+            const dirname = path.dirname(filePath);
+            const basename = path.basename(dirname);
+            resolvedCommand = resolvedCommand.replace(/\$\{fileDirnameBasename\}/g, basename);
+        }
+
+        return resolvedCommand;
+    }
+
+    /**
+     * Resolve editor selection variables: ${lineNumber}, ${columnNumber}, ${selectedText}
+     */
+    private resolveEditorVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): string {
+        let resolvedCommand = command;
+
+        // Get active editor if any editor variable is present
+        const needsActiveEditor = /\$\{(lineNumber|columnNumber|selectedText)\}/.test(command);
+
+        if (!needsActiveEditor) {
+            return resolvedCommand;
+        }
+
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            throw new Error('Cannot resolve editor variables: no active editor');
+        }
+
+        // ${lineNumber} - the current selected line number in the active file (1-based)
+        if (resolvedCommand.includes('${lineNumber}')) {
+            const lineNumber = activeEditor.selection.active.line + 1;
+            resolvedCommand = resolvedCommand.replace(/\$\{lineNumber\}/g, lineNumber.toString());
+        }
+
+        // ${columnNumber} - the current selected column number in the active file (1-based)
+        if (resolvedCommand.includes('${columnNumber}')) {
+            const columnNumber = activeEditor.selection.active.character + 1;
+            resolvedCommand = resolvedCommand.replace(/\$\{columnNumber\}/g, columnNumber.toString());
+        }
+
+        // ${selectedText} - the current selected text in the active file
+        if (resolvedCommand.includes('${selectedText}')) {
+            const selectedText = activeEditor.document.getText(activeEditor.selection);
+            resolvedCommand = resolvedCommand.replace(/\$\{selectedText\}/g, selectedText);
+        }
+
+        return resolvedCommand;
+    }
+
+    /**
+     * Resolve system variables: ${userHome}, ${cwd}, ${execPath}, ${pathSeparator}, ${/}
+     */
+    private resolveSystemVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): string {
+        let resolvedCommand = command;
+
+        // ${userHome} - the path of the user's home folder
+        if (resolvedCommand.includes('${userHome}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{userHome\}/g, os.homedir());
+        }
+
+        // ${cwd} - the task runner's current working directory on startup of VS Code
+        if (resolvedCommand.includes('${cwd}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{cwd\}/g, process.cwd());
+        }
+
+        // ${execPath} - the path to the running VS Code executable
+        if (resolvedCommand.includes('${execPath}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{execPath\}/g, process.execPath);
+        }
+
+        // ${pathSeparator} - the character used by the operating system to separate components in file paths
+        if (resolvedCommand.includes('${pathSeparator}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{pathSeparator\}/g, path.sep);
+        }
+
+        // ${/} - shorthand for ${pathSeparator}
+        if (resolvedCommand.includes('${/}')) {
+            resolvedCommand = resolvedCommand.replace(/\$\{\/\}/g, path.sep);
         }
 
         return resolvedCommand;
