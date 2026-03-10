@@ -80,12 +80,20 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                         return;
                     }
 
-                    // Resolve variables only when the task actually starts
-                    const resolvedCommand = await this.resolveCommandVariables(command, workspaceFolder);
+                    // If there are no workspace folders at all, abort task with error
+                    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                        writeEmitter.fire('Task failed: no workspace folders available\r\n');
+                        closeEmitter.fire(1);
+                        return;
+                    }
 
-                    // If command is undefined/null after processing, the user cancelled a selection
-                    if (!resolvedCommand) {
-                        writeEmitter.fire('Task cancelled by user\r\n');
+                    // Resolve variables only when the task actually starts
+                    let resolvedCommand: string;
+                    try {
+                        resolvedCommand = await this.resolveCommandVariables(command, workspaceFolder);
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        writeEmitter.fire(`Task failed: error resolving command variables: ${errorMessage}\r\n`);
                         closeEmitter.fire(1);
                         return;
                     }
@@ -218,7 +226,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         return selected?.folder;
     }
 
-    private async resolveCommandVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string | undefined> {
+    private async resolveCommandVariables(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string> {
         // Currently only supports ${folderForFile: <glob>} but can be extended in the future
         let resolvedCommand = command;
 
@@ -229,8 +237,8 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         for (const resolver of variableResolvers) {
             resolvedCommand = await resolver(resolvedCommand, workspaceFolder);
             if (!resolvedCommand) {
-                // If any resolver returns undefined/null, it means the user cancelled a selection or an error occurred
-                return undefined;
+                // Safety check - should not happen since resolvers now throw errors instead of returning undefined
+                throw new Error('Variable resolver returned undefined');
             }
         }
 
@@ -239,8 +247,9 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
     /**
      * Resolve ${folderForFile: <glob>} variable in the command by finding files matching the glob pattern
+     * @throws {Error} When no files are found or user cancels selection
      */
-    private async resolveFolderForFileVariable(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string | undefined> {
+    private async resolveFolderForFileVariable(command: string, workspaceFolder?: vscode.WorkspaceFolder): Promise<string> {
         const folderForFileRegex = /\$\{folderForFile:\s*([^}]+)\}/g;
         const matches = [...command.matchAll(folderForFileRegex)];
 
@@ -270,7 +279,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
             if (files.length === 0) {
                 void vscode.window.showWarningMessage(`No files found matching pattern: ${globPattern}`);
-                return undefined;
+                throw new Error(`No files found matching pattern: ${globPattern}`);
             }
 
             // Get unique folder paths
@@ -299,7 +308,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
 
                 if (!selectedRelativePath) {
                     // User cancelled the selection
-                    return undefined;
+                    throw new Error('User cancelled folder selection');
                 }
 
                 const index = relativeFolders.indexOf(selectedRelativePath);

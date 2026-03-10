@@ -486,10 +486,87 @@ describe('BrightScriptTaskProvider', () => {
 
             await pty.open();
 
-            // Verify cancellation message and exit code
-            expect(outputs.some(o => o.includes('Task cancelled by user'))).to.be.true;
+            // Verify error message for user cancellation and exit code
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('User cancelled folder selection'))).to.be.true;
             expect(exitCode).to.equal(1);
             // spawn should not have been called since user cancelled
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('exits with code 1 when no files found for ${folderForFile} variable', async () => {
+            // Mock findFiles to return empty array (no files found)
+            (vscode.workspace as any).findFiles = sinon.stub().resolves([]);
+            sinon.stub(vscode.window, 'showWarningMessage');
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'cd ${folderForFile: **/bsconfig.json} && npm run build'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Verify warning was shown
+            expect((vscode.window.showWarningMessage as any).called).to.be.true;
+            expect((vscode.window.showWarningMessage as any).firstCall.args[0]).to.include('No files found matching pattern');
+
+            // Verify task failed with error message and exited with code 1
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('No files found matching pattern'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            // spawn should not have been called since no files were found
+            expect(childProcessStub.called).to.be.false;
+        });
+
+        it('exits with code 1 when resolveCommandVariables throws an error', async () => {
+            // Create a bsconfig.json file
+            const projectDir = path.join(rootDir, 'project1');
+            fsExtra.ensureDirSync(projectDir);
+            fsExtra.writeFileSync(path.join(projectDir, 'bsconfig.json'), '{}');
+
+            // Mock findFiles to throw an error during variable resolution
+            (vscode.workspace as any).findFiles = sinon.stub().rejects(new Error('File system error'));
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'cd ${folderForFile: **/bsconfig.json} && npm run build'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            const outputs: string[] = [];
+            let exitCode: number | undefined;
+
+            pty.onDidWrite((data: string) => {
+                outputs.push(data);
+            });
+            pty.onDidClose((code: number) => {
+                exitCode = code;
+            });
+
+            await pty.open();
+
+            // Verify error message contains the error details
+            expect(outputs.some(o => o.includes('Task failed: error resolving command variables'))).to.be.true;
+            expect(outputs.some(o => o.includes('File system error'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            // spawn should not have been called since resolution failed
             expect(childProcessStub.called).to.be.false;
         });
 
@@ -1000,7 +1077,7 @@ describe('BrightScriptTaskProvider', () => {
             expect(spawnCall.args[2].cwd).to.equal(customFolder.uri.fsPath);
         });
 
-        it('returns undefined when there are no workspace folders', async () => {
+        it('exits with code 1 when there are no workspace folders', async () => {
             vscode.workspace.workspaceFolders = [];
 
             const task = createMockTask({
@@ -1024,10 +1101,11 @@ describe('BrightScriptTaskProvider', () => {
 
             await pty.open();
 
-            // Task should complete without error when no workspace folders exist
-            // The cwd would be undefined in this case
-            const spawnCall = childProcessStub.getCall(0);
-            expect(spawnCall.args[2].cwd).to.be.undefined;
+            // Task should fail when no workspace folders exist
+            expect(outputs.some(o => o.includes('Task failed: no workspace folders available'))).to.be.true;
+            expect(exitCode).to.equal(1);
+            // spawn should not have been called since task failed early
+            expect(childProcessStub.called).to.be.false;
         });
 
         it('returns the single workspace folder when there is only one', async () => {
