@@ -764,7 +764,14 @@ export class DeviceManager {
         const isNewDevice = index < 0;
 
         if (isNewDevice) {
-            this.devices.push(device);
+            this.devices.push({
+                ...device,
+                deviceInfo: {
+                    ...device.deviceInfo,
+                    // If configured, use configured name over discovered name
+                    'user-device-name': device.configuredDevice?.name || device.deviceInfo?.['user-device-name']
+                }
+            });
         } else {
             // Merge: incoming wins for most fields, but configuredDevice from either side
             const existing = this.devices[index];
