@@ -17,6 +17,7 @@ import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
+import type { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 
 export class BrightScriptCommands {
 
@@ -36,6 +37,14 @@ export class BrightScriptCommands {
     public password: string;
     public workspacePath: string;
     private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
+    private webviewViewProviderManager: WebviewViewProviderManager;
+
+    /**
+     * Set the WebviewViewProviderManager reference (called after construction)
+     */
+    public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
+        this.webviewViewProviderManager = manager;
+    }
 
     public registerCommands() {
 
@@ -435,6 +444,7 @@ export class BrightScriptCommands {
                 throw new Error('Tried to set active device but failed.');
             } else {
                 await this.context.workspaceState.update('remoteHost', ip);
+                this.webviewViewProviderManager?.onRemoteHostChanged();
                 await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
             }
         });
@@ -462,6 +472,7 @@ export class BrightScriptCommands {
 
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('remoteHost', '');
+            this.webviewViewProviderManager?.onRemoteHostChanged();
             await vscode.window.showInformationMessage('BrightScript Language extension active device cleared');
         });
 
@@ -560,6 +571,7 @@ export class BrightScriptCommands {
             throw new Error('Can\'t send command: host is required.');
         } else {
             await this.context.workspaceState.update('remoteHost', this.host);
+            this.webviewViewProviderManager?.onRemoteHostChanged();
         }
         if (this.host) {
             //try resolving the hostname. (sometimes it fails for no reason, so just ignore the crash if it does)

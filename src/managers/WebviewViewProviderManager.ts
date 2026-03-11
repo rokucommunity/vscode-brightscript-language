@@ -11,6 +11,7 @@ import { RokuRegistryViewProvider } from '../viewProviders/RokuRegistryViewProvi
 import { SceneGraphInspectorViewProvider } from '../viewProviders/SceneGraphInspectorViewProvider';
 import { RokuAutomationViewViewProvider } from '../viewProviders/RokuAutomationViewViewProvider';
 import { RokuReplViewProvider } from '../viewProviders/RokuReplViewProvider';
+import { RemoteControlPanelProvider } from '../viewProviders/RemoteControlPanelProvider';
 
 export class WebviewViewProviderManager {
     constructor(
@@ -55,6 +56,9 @@ export class WebviewViewProviderManager {
     }, {
         constructor: RokuReplViewProvider,
         provider: undefined as RokuReplViewProvider
+    }, {
+        constructor: RemoteControlPanelProvider,
+        provider: undefined as RemoteControlPanelProvider
     }];
 
     public getWebviewViewProviders() {
@@ -98,6 +102,19 @@ export class WebviewViewProviderManager {
             if (viewIds.includes(webviewView.provider.id)) {
                 webviewView.provider.postOrQueueMessage(message);
             }
+        }
+    }
+
+    /**
+     * Notify the Remote Control Panel that the remoteHost has changed
+     */
+    public onRemoteHostChanged() {
+        const remoteControlPanel = this.webviewViews.find(
+            view => view.provider instanceof RemoteControlPanelProvider
+        )?.provider as RemoteControlPanelProvider;
+
+        if (remoteControlPanel) {
+            remoteControlPanel.updateRemoteHost();
         }
     }
 }
