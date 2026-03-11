@@ -439,6 +439,84 @@ export class BrightScriptCommands {
             }
         });
 
+        this.registerCommand('clearConfiguredDevices', async () => {
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; deviceId?: string }>>('deviceDiscovery.devices');
+            const userDevices = inspection?.globalValue || [];
+
+            if (userDevices.length === 0) {
+                void vscode.window.showInformationMessage('No configured devices to clear.');
+                return;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+                `Remove all ${userDevices.length} configured device(s) from your settings?`,
+                { modal: true },
+                'Remove All'
+            );
+
+            if (confirm === 'Remove All') {
+                await config.update('deviceDiscovery.devices', [], vscode.ConfigurationTarget.Global);
+                void vscode.window.showInformationMessage('All configured devices have been removed from your settings.');
+            }
+        });
+
+        this.registerCommand('removeDeviceFromConfig', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDeviceById(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to remove from settings.');
+                return;
+            }
+
+            // Get only the user settings (globalValue)
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; deviceId?: string }>>('deviceDiscovery.devices');
+            const userDevices = inspection?.globalValue || [];
+
+            // Find and remove the device
+            const index = userDevices.findIndex(d => d.host === device.ip || d.deviceId === device.id);
+            if (index === -1) {
+                void vscode.window.showInformationMessage('Device is not in your user settings.');
+                return;
+            }
+
+            const removedDevice = userDevices[index];
+            userDevices.splice(index, 1);
+
+            await config.update('deviceDiscovery.devices', userDevices, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from your device settings.`);
+        });
+
+        this.registerCommand('addDeviceToConfig', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDeviceById(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            // Get only the user settings (globalValue), not merged values from all scopes
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; deviceId?: string }>>('deviceDiscovery.devices');
+            const userDevices = inspection?.globalValue || [];
+
+            // Check if device already exists in user settings
+            if (userDevices.some(d => d.host === device.ip || d.deviceId === device.id)) {
+                void vscode.window.showInformationMessage('Device is already in your settings.');
+                return;
+            }
+
+            // Add the new device
+            const newDevice = {
+                host: device.ip,
+                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'],
+                deviceId: device.id
+            };
+            userDevices.push(newDevice);
+
+            await config.update('deviceDiscovery.devices', userDevices, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to your device settings.`);
+        });
+
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {
             if (!deviceIp) {
                 throw new Error('Device IP is required to set password.');

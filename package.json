@@ -433,13 +433,33 @@
             "view/item/context": [
                 {
                     "command": "extension.brightscript.setActiveDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.refreshDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToConfig",
+                    "when": "view == devicesView && viewItem == 'device-discovered'",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.removeDeviceFromConfig",
+                    "when": "view == devicesView && viewItem == 'device-configured'",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToConfig",
+                    "when": "view == devicesView && viewItem == 'device-discovered'",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "extension.brightscript.removeDeviceFromConfig",
+                    "when": "view == devicesView && viewItem == 'device-configured'",
+                    "group": "inline@3"
                 }
             ],
             "webview/context": [
@@ -3323,6 +3343,24 @@
                 "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.addDeviceToConfig",
+                "title": "Add Device to Settings",
+                "category": "BrightScript",
+                "icon": "$(pin)"
+            },
+            {
+                "command": "extension.brightscript.removeDeviceFromConfig",
+                "title": "Remove Device from Settings",
+                "category": "BrightScript",
+                "icon": "$(pinned)"
+            },
+            {
+                "command": "extension.brightscript.clearConfiguredDevices",
+                "title": "Clear All Configured Devices",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.refreshRegistry",
