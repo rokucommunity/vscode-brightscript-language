@@ -9,7 +9,6 @@ import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
-import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 
 export class DeviceManager {
@@ -76,7 +75,7 @@ export class DeviceManager {
         const settingsDevices = (config?.devices ?? []) as Array<{ host: string; password?: string }>;
 
         // Also load devices from .roku/roku-dev-config.json in workspace folders
-        const rokuConfigDevices = this.loadRokuDevConfig();
+        const rokuConfigDevices = this.loadRokuDevConfigs();
 
         // Merge devices: roku-dev-config.json devices first, then settings devices
         // Settings devices use 'host', roku-dev-config uses 'ip'
@@ -118,18 +117,16 @@ export class DeviceManager {
     /**
      * Load devices from .roku/roku-dev-config.json in workspace folders
      */
-    private loadRokuDevConfig(): Array<{ id?: string; name?: string; ip: string; active?: boolean; password?: string }> {
+    private loadRokuDevConfigs(): Array<{ id?: string; name?: string; ip: string; active?: boolean; password?: string }> {
         const devices: Array<{ id?: string; name?: string; ip: string; active?: boolean; password?: string }> = [];
-
-        for (const folder of vscode.workspace.workspaceFolders ?? []) {
-            const configPath = path.join(folder.uri.fsPath, '.roku', 'roku-dev-config.json');
+        for (const configPath of this.rokuDevConfigPaths) {
             try {
-                if (fsExtra.existsSync(configPath)) {
-                    const content = fsExtra.readFileSync(configPath, 'utf-8');
-                    const config = JSON.parse(content);
-                    if (Array.isArray(config?.devices)) {
-                        devices.push(...config.devices);
-                    }
+                if (!fsExtra.existsSync(configPath)) {
+                    continue;
+                }
+                const config = fsExtra.readJsonSync(configPath);
+                if (Array.isArray(config?.devices)) {
+                    devices.push(...config.devices);
                 }
             } catch (e) {
                 console.error(`Failed to load roku-dev-config.json from ${configPath}:`, e);
@@ -194,8 +191,27 @@ export class DeviceManager {
         this.context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(applyConfig)
         );
+        const configWatcher = vscode.workspace.createFileSystemWatcher('**/.roku/roku-dev-config.json');
+        const onConfigFound = (uri: vscode.Uri) => {
+            this.rokuDevConfigPaths.add(uri.fsPath);
+            applyConfig();
+        };
+        this.context.subscriptions.push(
+            configWatcher.onDidCreate(onConfigFound),
+            configWatcher.onDidChange(onConfigFound)
+        );
+
+        // Discover existing config files, then apply
+        void vscode.workspace.findFiles('**/.roku/roku-dev-config.json').then((uris) => {
+            for (const uri of uris) {
+                this.rokuDevConfigPaths.add(uri.fsPath);
+            }
+            applyConfig();
+        });
         applyConfig();
     }
+
+    private rokuDevConfigPaths = new Set<string>();
 
     private setupWindowFocusHandling() {
         this.context.subscriptions.push(
