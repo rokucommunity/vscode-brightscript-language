@@ -307,11 +307,13 @@
             
         </div>
         <div id="content">
-            <a href="#code-formatting"><h1 id="code-formatting">Code formatting</h1></a><p>The extension provides code formatting for BrightScript and BrighterScript files. If you don&#39;t like the default formatter settings, you can customize them in two ways: </p>
+            <a href="#code-formatting"><h1 id="code-formatting">Code formatting</h1></a><p>The extension provides code formatting for BrightScript and BrighterScript files. If you don&#39;t like the default formatter settings, you can customize them in several ways:</p>
 <ol>
 <li><p>Update your user or workspace settings with various <code>brightscript.format.*</code> options (see the <a href="../extension-settings.html">extension settings</a> page for more info).</p>
 </li>
-<li><p>Create a <code>bsfmt.json</code> file at the root of your project. See all of the available <code>bsfmt.json</code> options <a href="https://github.com/rokucommunity/brighterscript-formatter#bsfmtjson-options">here</a>. Please note, if a <code>bsfmt.json</code> file exists, all formatter-related user/workspace settings will be ignored.</p>
+<li><p>Create a <code>bsfmt.json</code> file at the root of your project. See all of the available <code>bsfmt.json</code> options <a href="https://github.com/rokucommunity/brighterscript-formatter#bsfmtjson-options">here</a>. </p>
+</li>
+<li><p>Use the <code>brightscript.format.bsfmtPath</code> setting to specify a custom path to your bsfmt.json file. This can be an absolute path, or a path relative to the workspace folder. This is useful when you want to share a common formatting config file across multiple projects or have it in a non-standard location.</p>
 </li>
 </ol>
             <div id="footer"></div>
