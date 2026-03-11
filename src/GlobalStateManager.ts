@@ -79,7 +79,7 @@ export class GlobalStateManager {
         return deviceIds;
     }
 
-    private setLastSeenDeviceIds(network: string, deviceIds: string[]) {
+    public setLastSeenDeviceIds(network: string, deviceIds: string[]) {
         const networks = this.context.globalState.get<Record<string, LastSeenNetworkEntry>>(this.keys.lastSeenDevicesByNetwork) || {};
         if (deviceIds.length === 0) {
             delete networks[network];
@@ -121,6 +121,22 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.deviceCache, cache);
     }
 
+    private LAST_SEEN_NETWORK_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
+
+    /**
+     * Delete any device infos from the cache that were created more than LAST_SEEN_NETWORK_EXPIRATION ago
+     */
+    public clearExpiredDevices() {
+        const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
+        const now = Date.now();
+        for (const deviceId in cache) {
+            if (now - cache[deviceId].createdAt > this.LAST_SEEN_NETWORK_EXPIRATION) {
+                delete cache[deviceId];
+            }
+        }
+        void this.context.globalState.update(this.keys.deviceCache, cache);
+    }
+
     /**
      * Remove a device from the cache
      */
@@ -144,7 +160,6 @@ export class GlobalStateManager {
         void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, undefined);
     }
 
-    private LAST_SEEN_NETWORK_EXPIRATION = 30 * 24 * 60 * 60 * 1_000; // 30 days
 
     private expireOldLastSeenNetworks(networks: Record<string, LastSeenNetworkEntry>): Record<string, LastSeenNetworkEntry> {
         const now = Date.now();
@@ -180,4 +195,5 @@ export interface CachedDevice {
     id: string;
     ip: string;
     deviceInfo: Record<string, any>;
+    createdAt: number;
 }

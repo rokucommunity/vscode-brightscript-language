@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.61.0",
+    "version": "2.61.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -148,9 +148,34 @@
         "onLanguage:xml",
         "workspaceContains:**/manifest",
         "workspaceContains:**/bsconfig.json",
-        "onDebug"
+        "onDebug",
+        "onTaskType:brightscript"
     ],
     "contributes": {
+        "taskDefinitions": [
+            {
+                "type": "brightscript",
+                "required": [
+                    "command"
+                ],
+                "properties": {
+                    "command": {
+                        "description": "The command to run for this task, you can use substitutions such as ${folderForFile: **/bsconfig.json}",
+                        "anyOf": [
+                            {
+                                "enum": [
+                                    "npx bsc --cwd src",
+                                    "npx bsc --cwd ${folderForFile: **/bsconfig.json}"
+                                ]
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    }
+                }
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -262,6 +287,11 @@
                 {
                     "command": "extension.brightscript.rendezvous.clearHistory",
                     "when": "debugType == 'brightscript' && view == rendezvousView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "when": "view == devicesView && !brightscript.deviceDiscovery.enabled",
                     "group": "navigation"
                 },
                 {
@@ -1928,6 +1958,11 @@
                         "default": false,
                         "description": "Sort import statements alphabetically",
                         "scope": "resource"
+                    },
+                    "brightscript.format.bsfmtPath": {
+                        "type": "string",
+                        "description": "Path to a custom `bsfmt.json` formatting config file. This can be an absolute path, or a path relative to the workspace folder. When specified, this file will be used instead of searching for a `bsfmt.json` file at the root of the workspace folder",
+                        "scope": "resource"
                     }
                 }
             },
@@ -3019,13 +3054,13 @@
             {
                 "command": "extension.brightscript.clearDeviceCache",
                 "title": "Clear Device Cache",
-                "description": "Clear cached device information used for device discovery.",
+                "description": "Clear all cached info related to devices (last seen devices per network, deviceInfo responses, etc)",
                 "category": "Brightscript"
             },
             {
-                "command": "extension.brightscript.clearLastSeenDevices",
-                "title": "Clear Last Seen Devices",
-                "description": "Clear the list of last seen devices for all networks.",
+                "command": "extension.brightscript.clearCurrentDeviceList",
+                "title": "Clear Current Device List",
+                "description": "Clear the current list of devices",
                 "category": "Brightscript"
             },
             {
@@ -3272,6 +3307,12 @@
                     "light": "./images/icons/preview-right-light.svg",
                     "dark": "./images/icons/preview-right-dark.svg"
                 }
+            },
+            {
+                "command": "extension.brightscript.clearCurrentDeviceList",
+                "title": "Clear Device List",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.refreshDeviceList",
