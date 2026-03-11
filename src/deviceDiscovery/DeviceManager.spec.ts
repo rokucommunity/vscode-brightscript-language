@@ -12,15 +12,16 @@ describe('DeviceManager', () => {
     let mockGlobalStateManager: any;
 
     function createMockDevice(overrides: Partial<RokuDeviceDetails> & { deviceInfo?: Partial<RokuDeviceDetails['deviceInfo']> } = {}): RokuDeviceDetails {
+        const serialNumber = overrides.serialNumber ?? 'device-123';
         return {
             location: 'http://192.168.1.100:8060',
             ip: '192.168.1.100',
-            serialNumber: 'device-123',
+            serialNumber: serialNumber,
             deviceState: 'online',
             deviceInfo: {
                 'default-device-name': 'Roku Express',
-                'device-id': 'device-123',
-                'serial-number': 'device-123',
+                'device-id': serialNumber,
+                'serial-number': serialNumber,
                 'is-stick': 'false',
                 'is-tv': 'false',
                 ...overrides.deviceInfo
@@ -35,10 +36,13 @@ describe('DeviceManager', () => {
             getLastSeenDevices: sinon.stub().returns([]),
             addLastSeenDevice: sinon.stub(),
             removeLastSeenDevice: sinon.stub(),
+            setLastSeenDeviceIds: sinon.stub(),
             getCachedDevice: sinon.stub().returns(undefined),
             setCachedDevice: sinon.stub(),
             removeCachedDevice: sinon.stub(),
-            clearExpiredDevices: sinon.stub()
+            clearExpiredDevices: sinon.stub(),
+            getDeviceIdForIp: sinon.stub().returns(undefined),
+            setDeviceIdForIp: sinon.stub()
         };
 
         // Mock vscode configuration
@@ -776,11 +780,12 @@ describe('DeviceManager', () => {
     });
 
     describe('loadLastSeenDevices', () => {
-        it('clears existing devices before loading', () => {
+        it('merges cached devices with existing devices', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            // Add a device manually
+            // Add a configured device (configured devices are preserved)
             const existingDevice = createMockDevice({ serialNumber: 'existing' });
+            existingDevice.configuredDevice = { host: '192.168.1.100' };
             manager['devices'].push(existingDevice);
 
             // Setup cache to return a different device
@@ -794,9 +799,10 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            // Should only have the cached device, not the existing one
-            expect(manager['devices'].length).to.equal(1);
-            expect(manager['devices'][0].serialNumber).to.equal('cached-device');
+            // Should have both devices (merges instead of clearing)
+            expect(manager['devices'].length).to.equal(2);
+            expect(manager['devices'].some(d => d.serialNumber === 'existing')).to.be.true;
+            expect(manager['devices'].some(d => d.serialNumber === 'cached-device')).to.be.true;
         });
 
         it('loads cached devices as pending state', () => {
