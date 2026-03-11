@@ -15,7 +15,8 @@ export class GlobalStateManager {
         debugProtocolPopupSnoozeUntilDate: 'debugProtocolPopupSnoozeUntilDate',
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
         lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
-        deviceCache: 'deviceCache'
+        deviceCache: 'deviceCache',
+        ipToDeviceId: 'ipToDeviceId'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -158,6 +159,31 @@ export class GlobalStateManager {
      */
     public clearLastSeenDevices(): void {
         void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, undefined);
+    }
+
+    /**
+     * Get deviceId for an IP address from the global IP→deviceId map.
+     * Used for host-only configured devices to look up cached device info.
+     */
+    public getDeviceIdForIp(ip: string): string | undefined {
+        const map = this.context.globalState.get<Record<string, string>>(this.keys.ipToDeviceId) || {};
+        return map[ip];
+    }
+
+    /**
+     * Save IP→deviceId mapping. Called when a device is successfully resolved.
+     */
+    public setDeviceIdForIp(ip: string, deviceId: string): void {
+        const map = this.context.globalState.get<Record<string, string>>(this.keys.ipToDeviceId) || {};
+        map[ip] = deviceId;
+        void this.context.globalState.update(this.keys.ipToDeviceId, map);
+    }
+
+    /**
+     * Clear the IP→deviceId map
+     */
+    public clearIpToDeviceIdMap(): void {
+        void this.context.globalState.update(this.keys.ipToDeviceId, undefined);
     }
 
 
