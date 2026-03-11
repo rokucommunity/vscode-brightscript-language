@@ -100,11 +100,16 @@ export class DeviceManager {
         ];
 
         for (const staticDevice of devices) {
-
-            const deviceInfo = await rokuDeploy.getDeviceInfo({
-                host: staticDevice.host,
-                remotePort: parseInt('8060')
-            });
+            let deviceInfo: DeviceInfoRaw;
+            try {
+                deviceInfo = await rokuDeploy.getDeviceInfo({
+                    host: staticDevice.host,
+                    remotePort: parseInt('8060')
+                });
+            } catch (e) {
+                console.error(`Failed to get device info for static device at ${staticDevice.host}:`, e);
+                continue; // Skip this device if we can't get info
+            }
 
             //sanitize the data
             for (const key in deviceInfo) {
@@ -119,7 +124,7 @@ export class DeviceManager {
                     location: url.origin,
                     ip: url.hostname,
                     id: deviceInfo['device-id']?.toString?.(),
-                    deviceState: 'pending',
+                    deviceState: 'online',
                     deviceInfo: deviceInfo as any
                 };
                 result.push(device);
@@ -354,6 +359,8 @@ export class DeviceManager {
         this.devices = [];
         this.deviceInfoCache.clear();
         this.globalStateManager.setLastSeenDeviceIds(this.networkId, []);
+
+        this.staticDevices = [];
 
         // Clear lastUsedDevice since we don't have any device anymore
         this.lastUsedDevice = undefined;
@@ -727,14 +734,19 @@ export class DeviceManager {
      * Add or update a device in the devices array
      */
     private setDevice(device: RokuDeviceDetails): void {
+        //update in static device list first if this is a static device
+        const staticDeviceIndex = this.staticDevices.findIndex(d => d.ip === device.ip);
         const index = this.devices.findIndex(d => d.id === device.id);
-        const isNewDevice = index < 0;
-
-        if (isNewDevice) {
-            this.devices.push(device);
-        } else {
+        if (staticDeviceIndex >= 0) {
+            // Update existing static device- merge new info while preserving existing state if not provided
+            this.staticDevices[staticDeviceIndex] = { ...this.staticDevices[staticDeviceIndex], ...device };
+        } else if (index >= 0) {
             // Update existing - merge new info while preserving existing state if not provided
             this.devices[index] = { ...this.devices[index], ...device };
+
+            //is a new device
+        } else {
+            this.devices.push(device);
         }
 
         // Cache device info for future sessions (exclude transient deviceState)
@@ -751,7 +763,7 @@ export class DeviceManager {
             this.resetSettleTimer();
         }
 
-        if (isNewDevice) {
+        if (index >= 0) {
             this.globalStateManager.addLastSeenDevice(this.networkId, device.id);
         }
         this.emitDevicesChanged();
