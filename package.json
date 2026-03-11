@@ -1958,6 +1958,11 @@
                         "default": false,
                         "description": "Sort import statements alphabetically",
                         "scope": "resource"
+                    },
+                    "brightscript.format.bsfmtPath": {
+                        "type": "string",
+                        "description": "Path to a custom bsfmt.json formatting config file. This can be an absolute path, or a path relative to the workspace folder. When specified, this file will be used instead of searching for a bsfmt.json file in the workspace.",
+                        "scope": "resource"
                     }
                 }
             },
