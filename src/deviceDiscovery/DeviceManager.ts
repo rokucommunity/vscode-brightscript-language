@@ -9,6 +9,8 @@ import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
+import _ from 'lodash';
 
 export class DeviceManager {
     constructor(
@@ -30,7 +32,7 @@ export class DeviceManager {
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
     private devices: RokuDeviceDetails[] = [];
-    private showInfoMessages: boolean;
+
     private lastScanDate: Date | null = null;
     private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
     private finder = new RokuFinder();
@@ -61,14 +63,27 @@ export class DeviceManager {
 
     public firstRequestForDevices: boolean;
     public lastUsedDevice: RokuDeviceDetails | undefined = undefined;
-    public passiveScanPermitted: boolean;
+
+    /**
+     * Is device discovery enabled (i.e. passive scans are permitted)
+     */
+    public get deviceDiscoveryEnabled() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
+    }
+
+    /**
+     * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
+     */
+    private get showInfoMessages() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
 
     /**
      * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
      * when the flag flips from false to true.
      */
-    public setScanNeeded() {
-        if (!this.scanNeeded) {
+    public setScanNeeded(force = false): void {
+        if (!this.scanNeeded || force) {
             this.scanNeeded = true;
             this.emitter.emit('scanNeeded-changed');
         }
@@ -94,12 +109,14 @@ export class DeviceManager {
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
             let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.passiveScanPermitted = config.deviceDiscovery?.enabled;
-            this.showInfoMessages = config.deviceDiscovery?.showInfoMessages;
+
+            void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
-                if (this.passiveScanPermitted) {
+                if (this.deviceDiscoveryEnabled) {
+                    //emit that we need a scan (will trigger UI to refresh and show devices as needed when enabled)
+                    this.setScanNeeded(true);
                     this.systemSleepMonitor.start();
                     void this.activateMonitoring();
                 } else {
@@ -144,9 +161,15 @@ export class DeviceManager {
     }
 
     private initialize() {
+        //clear any deviceInfo entries older than our max age
+        this.globalStateManager.clearExpiredDevices();
+
         this.loadLastSeenDevices();
 
-        if (this.passiveScanPermitted) {
+        // Always set up finder event listeners so scan responses are processed
+        this.setupFinderEventListeners();
+
+        if (this.deviceDiscoveryEnabled) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
             this.systemSleepMonitor.start();
 
@@ -217,7 +240,33 @@ export class DeviceManager {
      */
     public refresh(force = false): boolean {
         this.checkDevicesHealth(force).catch(() => { });
+        // Block automatic scans when device discovery is disabled
+        if (!force && !this.deviceDiscoveryEnabled) {
+            return false;
+        }
         return this.discoverAll(force);
+    }
+
+    /**
+     * Clear the current list of devices and the cached last-seen-devices list
+     */
+    public clearCurrentDeviceList() {
+        this.devices = [];
+        this.deviceInfoCache.clear();
+        this.globalStateManager.setLastSeenDeviceIds(this.networkId, []);
+
+        // Clear lastUsedDevice since we don't have any device anymore
+        this.lastUsedDevice = undefined;
+
+        //TODO when we support hardcoded devices, we should keep those around (or reload them?) instead of clearing everything
+
+        this.emitDevicesChanged();
+    }
+
+    public clearAllCache() {
+        this.clearCurrentDeviceList();
+        this.globalStateManager.clearLastSeenDevices();
+        this.globalStateManager.clearDeviceCache();
     }
 
     /**
@@ -329,7 +378,7 @@ export class DeviceManager {
         const isHealthy = await this.resolveDevice(device);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
-            this.refresh(this.passiveScanPermitted);
+            this.refresh(this.deviceDiscoveryEnabled);
         }
         return isHealthy;
     }
@@ -364,7 +413,7 @@ export class DeviceManager {
         }));
 
         if (needsScan) {
-            this.discoverAll(this.passiveScanPermitted);
+            this.discoverAll(this.deviceDiscoveryEnabled);
         }
     }
 
@@ -519,7 +568,8 @@ export class DeviceManager {
         const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
         for (const deviceId of lastSeenDeviceIds) {
             const cached = this.globalStateManager.getCachedDevice(deviceId);
-            if (cached) {
+            //ensure our cached object is actually an object
+            if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
                 // Add cached device as pending (no network request)
                 const device: RokuDeviceDetails = {
                     ...cached,
@@ -535,9 +585,11 @@ export class DeviceManager {
     }
 
     /**
-     * Start listening for passive SSDP announcements from Roku devices
+     * Set up event listeners for the RokuFinder.
+     * This must be called regardless of passiveScanPermitted so that
+     * active scan responses are processed.
      */
-    private async startRokuFinder() {
+    private setupFinderEventListeners() {
         this.finder.removeAllListeners();
         this.finder.on('found', (ip: string, options?: { isAlive: boolean }) => {
             void this.processDiscoveredIp(ip, options?.isAlive ?? false);
@@ -550,13 +602,17 @@ export class DeviceManager {
                 this.removeDevice(device.id);
             }
         });
+    }
 
+    /**
+     * Start listening for passive SSDP announcements from Roku devices
+     */
+    private async startRokuFinder() {
         await this.finder.start();
     }
 
     private stopRokuFinder() {
         this.finder.stop();
-        this.finder.removeAllListeners();
     }
 
     private notifyFocusGained() {
@@ -586,7 +642,8 @@ export class DeviceManager {
             location: device.location,
             id: device.id,
             ip: device.ip,
-            deviceInfo: device.deviceInfo
+            deviceInfo: device.deviceInfo,
+            createdAt: Date.now()
         });
 
         // Reset scan settle timer when device response comes in
@@ -607,7 +664,6 @@ export class DeviceManager {
         const device = this.devices.find(d => d.id === deviceId);
         if (device) {
             this.devices = this.devices.filter(d => d.id !== deviceId);
-            this.globalStateManager.removeCachedDevice(deviceId);
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.id);
 
             // Clear lastUsedDevice if the removed device was the last used

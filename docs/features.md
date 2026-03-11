@@ -16,6 +16,11 @@ priority: 2
 - Injection of the Roku Advanced Layout Editor(RALE) task from a single user managed version
   - This helps avoid committing the tracker to you repo and also lets you manage what version you want installed rather then other users on the project
   - See ([Extension Settings](./extension-settings.html) and [RALE Support](./Debugging/rale.html) for more information)
+- BrightScript tasks with advanced features ([learn more](./brightscript-tasks.html))
+  - Interactive folder selection with `${folderForFile: <glob>}` variable
+  - Support for custom shells, environment variables, and working directories
+  - Problem matcher integration for error detection
+  - Background task support for watchers and dev servers
 - Publish directly to a roku device from VSCode (provided by [roku-deploy](https://github.com/RokuCommunity/roku-deploy))
   - Also supports zipping and static file hosting for Component Libraries ([click here](./Debugging/component-libraries.html) for more information)
 - Basic symbol navigation for document and workspace ("APPLE/Ctrl + SHIFT + O" for document, "APPLE/Ctrl + T" for workspace)

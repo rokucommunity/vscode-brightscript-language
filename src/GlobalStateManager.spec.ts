@@ -61,7 +61,8 @@ describe('GlobalStateManager', () => {
             deviceInfo: {
                 'device-id': 'device-123',
                 'default-device-name': 'Roku Express'
-            }
+            },
+            createdAt: Date.now()
         };
 
         it('returns undefined when device not cached', () => {
@@ -86,6 +87,49 @@ describe('GlobalStateManager', () => {
             manager.setCachedDevice('device-456', device2);
             expect(manager.getCachedDevice('device-123')).to.deep.equal(device1);
             expect(manager.getCachedDevice('device-456')).to.deep.equal(device2);
+        });
+    });
+
+    describe('clearExpiredDevices', () => {
+        const testDevice = {
+            location: 'http://192.168.1.100:8060',
+            id: 'device-123',
+            ip: '192.168.1.100',
+            deviceInfo: {
+                'device-id': 'device-123',
+                'default-device-name': 'Roku Express'
+            },
+            createdAt: Date.now()
+        };
+
+        beforeEach(() => {
+            // Use a short expiration for testing (1 second)
+            (manager as any).LAST_SEEN_NETWORK_EXPIRATION = 1_000;
+        });
+
+        it('keeps devices that are not expired', () => {
+            manager.setCachedDevice('device-123', { ...testDevice, createdAt: Date.now() });
+            manager.clearExpiredDevices();
+            expect(manager.getCachedDevice('device-123')).to.not.be.undefined;
+        });
+
+        it('removes devices that are expired', () => {
+            manager.setCachedDevice('device-123', { ...testDevice, createdAt: Date.now() - 2_000 });
+            manager.clearExpiredDevices();
+            expect(manager.getCachedDevice('device-123')).to.be.undefined;
+        });
+
+        it('removes only expired devices and keeps fresh ones', () => {
+            manager.setCachedDevice('old-device', { ...testDevice, id: 'old-device', createdAt: Date.now() - 2_000 });
+            manager.setCachedDevice('new-device', { ...testDevice, id: 'new-device', createdAt: Date.now() });
+            manager.clearExpiredDevices();
+            expect(manager.getCachedDevice('old-device')).to.be.undefined;
+            expect(manager.getCachedDevice('new-device')).to.not.be.undefined;
+        });
+
+        it('handles empty cache', () => {
+            manager.clearExpiredDevices();
+            expect(manager.getCachedDevice('device-123')).to.be.undefined;
         });
     });
 });
