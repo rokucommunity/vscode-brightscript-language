@@ -220,8 +220,12 @@ export class UserInputManager {
      * @returns a properly formatted host string
      */
     private getDeviceIcon(device: RokuDeviceDetails) {
-        if (device.deviceState === 'pending') {
+        if (device.deviceState === 'offline') {
+            return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
+        } else if (device.deviceState === 'pending') {
             return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
+        } else if (device.deviceState === 'unresolved') {
+            return new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
         }
         return icons.getDeviceType(device);
     }

@@ -131,9 +131,10 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices
+            //if the `devices` setting was changed, re-apply configured devices and health check them
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.devices')) {
                 this.loadConfiguredDevices();
+                void this.checkDevicesHealth(true);
             }
         };
         this.context.subscriptions.push(
@@ -228,7 +229,7 @@ export class DeviceManager {
                     return aConfigured ? -1 : 1;
                 }
                 return 0;
-            // Then by form factor
+                // Then by form factor
             }).thenBy<RokuDeviceDetails>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
             }).thenBy<RokuDeviceDetails>((a, b) => {
