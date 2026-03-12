@@ -445,10 +445,10 @@ export class DeviceManager {
                 return;
             }
 
+            await this.randomDelay(400, 1_000);
+
             const deviceId = deviceInfo['device-id']?.toString?.();
             const isNewDevice = !this.devices.find(d => d.id === deviceId);
-
-            await this.randomDelay(400, 1_000);
 
             const device: RokuDeviceDetails = {
                 location: location,
