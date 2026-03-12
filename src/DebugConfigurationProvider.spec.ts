@@ -91,7 +91,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
             sinon.stub(configProvider, 'getBsConfig').returns({});
 
-            let config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
@@ -107,7 +107,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
             sinon.stub(configProvider, 'getBsConfig').returns({});
 
-            let config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: '${workspaceFolder}/.env',
@@ -122,7 +122,7 @@ describe('BrightScriptConfigurationProvider', () => {
             sinon.stub(configProvider, 'getBsConfig').returns({});
 
             try {
-                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+                await configProvider.resolveDebugConfiguration(folder, <any>{
                     host: '127.0.0.1',
                     type: 'brightscript',
                     envFile: '${workspaceFolder}/.env',
@@ -139,7 +139,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
             fsExtra.outputFileSync(`${rootDir}/some/project/.env`, 'ROKU_PASSWORD=pass1234');
 
-            const config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 type: 'brightscript',
                 envFile: `${rootDir}/some/project/.env`,
@@ -149,7 +149,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('uses the default values if not provided', async () => {
-            const config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{});
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{});
             const configDefaults = (configProvider as any).configDefaults;
             for (const key in configDefaults) {
                 if (key === 'outDir') {
@@ -165,7 +165,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('allows for overriding packagePort and remotePort', async () => {
-            let config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+            let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                 host: '127.0.0.1',
                 password: 'password',
                 packagePort: 1234,
@@ -177,7 +177,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('allows using a bool value for remoteConfigMode', async () => {
             async function doTest(remoteControlMode: boolean, expected: any) {
-                let config = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(folder, <any>{
+                let config = await configProvider.resolveDebugConfiguration(folder, <any>{
                     remoteControlMode: remoteControlMode
                 });
                 expect(config.remoteControlMode).to.deep.equal(expected);
