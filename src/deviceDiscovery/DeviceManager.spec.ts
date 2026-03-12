@@ -1127,13 +1127,13 @@ describe('DeviceManager', () => {
 
     describe('configured devices', () => {
         describe('setDevice', () => {
-            it('preserves configuredDevice when merging by ID', () => {
+            it('preserves configuredDevice when merging by serialNumber', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 // Add configured device
                 const configured = { host: '192.168.1.100', name: 'My Roku' };
                 const configuredDevice = createMockDevice({
-                    id: 'device-123',
+                    serialNumber: 'device-123',
                     ip: '192.168.1.100',
                     configuredDevice: configured
                 });
@@ -1141,7 +1141,7 @@ describe('DeviceManager', () => {
 
                 // Update same device without configuredDevice (simulating discovery)
                 manager['setDevice']({
-                    ...createMockDevice({ id: 'device-123', ip: '192.168.1.100' }),
+                    ...createMockDevice({ serialNumber: 'device-123', ip: '192.168.1.100' }),
                     configuredDevice: undefined
                 });
 
@@ -1152,23 +1152,23 @@ describe('DeviceManager', () => {
             it('preserves configuredDevice when merging by IP', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                // Add configured device with host as ID (before resolution)
+                // Add configured device with host as serialNumber (before resolution)
                 const configured = { host: '192.168.1.100', name: 'My Roku' };
                 const configuredDevice = createMockDevice({
-                    id: '192.168.1.100', // Using IP as ID before resolution
+                    serialNumber: '192.168.1.100', // Using IP as serialNumber before resolution
                     ip: '192.168.1.100',
                     configuredDevice: configured
                 });
                 manager['devices'].push(configuredDevice);
 
-                // Update with real device ID (simulating resolution)
+                // Update with real serialNumber (simulating resolution)
                 manager['setDevice']({
-                    ...createMockDevice({ id: 'real-device-id', ip: '192.168.1.100' }),
+                    ...createMockDevice({ serialNumber: 'real-serial-number', ip: '192.168.1.100' }),
                     configuredDevice: undefined
                 });
 
                 expect(manager['devices'].length).to.equal(1);
-                expect(manager['devices'][0].id).to.equal('real-device-id');
+                expect(manager['devices'][0].serialNumber).to.equal('real-serial-number');
                 expect(manager['devices'][0].configuredDevice).to.deep.equal(configured);
             });
 
@@ -1177,7 +1177,7 @@ describe('DeviceManager', () => {
 
                 const configured = { host: '192.168.1.100', name: 'My Custom Name' };
                 manager['setDevice'](createMockDevice({
-                    id: 'device-123',
+                    serialNumber: 'device-123',
                     configuredDevice: configured,
                     deviceInfo: { 'user-device-name': 'Discovered Name' }
                 }));
@@ -1192,12 +1192,12 @@ describe('DeviceManager', () => {
 
                 const configured = { host: '192.168.1.100' };
                 manager['devices'].push(createMockDevice({
-                    id: 'device-123',
+                    serialNumber: 'device-123',
                     configuredDevice: configured
                 }));
 
                 // Simulate cache exists
-                mockGlobalStateManager.getCachedDevice.returns({ id: 'device-123' });
+                mockGlobalStateManager.getCachedDevice.returns({ serialNumber: 'device-123' });
 
                 manager['markDeviceUnreachable']('device-123');
 
@@ -1205,29 +1205,32 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].deviceState).to.equal('offline');
             });
 
-            it('marks configured device as unresolved when no cache exists', () => {
+            it('marks configured device as offline when no cache exists (icon logic determines warning vs disconnect)', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 const configured = { host: '192.168.1.100' };
                 manager['devices'].push(createMockDevice({
-                    id: 'device-123',
+                    serialNumber: 'device-123',
                     configuredDevice: configured
                 }));
 
-                // Simulate no cache
+                // Simulate no cache - view layer uses hasDeviceCache() to show warning icon
                 mockGlobalStateManager.getCachedDevice.returns(undefined);
 
                 manager['markDeviceUnreachable']('device-123');
 
                 expect(manager['devices'].length).to.equal(1);
-                expect(manager['devices'][0].deviceState).to.equal('unresolved');
+                // State is always 'offline' - icon logic uses cache check to distinguish
+                expect(manager['devices'][0].deviceState).to.equal('offline');
+                // hasDeviceCache() would return false, triggering warning icon in view
+                expect(manager.hasDeviceCache('device-123')).to.equal(false);
             });
 
             it('removes discovered-only device when unreachable', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 // Add discovered device (no configuredDevice)
-                manager['devices'].push(createMockDevice({ id: 'device-123' }));
+                manager['devices'].push(createMockDevice({ serialNumber: 'device-123' }));
 
                 manager['markDeviceUnreachable']('device-123');
 
@@ -1241,13 +1244,13 @@ describe('DeviceManager', () => {
 
                 // Add discovered device first
                 manager['devices'].push(createMockDevice({
-                    id: 'discovered-1',
+                    serialNumber: 'discovered-1',
                     deviceInfo: { 'default-device-name': 'AAA Discovered' }
                 }));
 
                 // Add configured device second
                 manager['devices'].push(createMockDevice({
-                    id: 'configured-1',
+                    serialNumber: 'configured-1',
                     configuredDevice: { host: '192.168.1.200' },
                     deviceInfo: { 'default-device-name': 'ZZZ Configured' }
                 }));
@@ -1255,8 +1258,8 @@ describe('DeviceManager', () => {
                 const result = manager.getAllDevices();
 
                 // Configured should be first despite alphabetical ordering
-                expect(result[0].id).to.equal('configured-1');
-                expect(result[1].id).to.equal('discovered-1');
+                expect(result[0].serialNumber).to.equal('configured-1');
+                expect(result[1].serialNumber).to.equal('discovered-1');
             });
         });
 
@@ -1266,18 +1269,18 @@ describe('DeviceManager', () => {
 
                 // Add configured device
                 manager['devices'].push(createMockDevice({
-                    id: 'configured-1',
+                    serialNumber: 'configured-1',
                     configuredDevice: { host: '192.168.1.100' }
                 }));
 
                 // Add discovered device
-                manager['devices'].push(createMockDevice({ id: 'discovered-1' }));
+                manager['devices'].push(createMockDevice({ serialNumber: 'discovered-1' }));
 
                 manager['loadLastSeenDevices']();
 
                 // Only configured device should remain
                 expect(manager['devices'].length).to.equal(1);
-                expect(manager['devices'][0].id).to.equal('configured-1');
+                expect(manager['devices'][0].serialNumber).to.equal('configured-1');
                 expect(manager['devices'][0].deviceState).to.equal('pending');
             });
         });
@@ -1288,7 +1291,7 @@ describe('DeviceManager', () => {
 
                 const configured = { host: '192.168.1.100', name: 'My Roku' };
                 const device = createMockDevice({
-                    id: 'device-123',
+                    serialNumber: 'device-123',
                     ip: '192.168.1.100',
                     configuredDevice: configured,
                     deviceState: 'pending'
