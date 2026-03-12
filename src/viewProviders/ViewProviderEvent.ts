@@ -1,4 +1,5 @@
 export enum ViewProviderEvent {
+    onDeviceConnectionChanged = 'onDeviceConnectionChanged',
     onNodeFocused = 'onNodeFocused',
     onDeviceAvailabilityChange = 'onDeviceAvailabilityChange',
     onVscodeCommandReceived = 'onVscodeCommandReceived',
@@ -11,5 +12,6 @@ export enum ViewProviderEvent {
     onRokuAutomationKeyPressed = 'onRokuAutomationKeyPressed',
     onRokuAppOverlayAdded = 'onRokuAppOverlayAdded',
     onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded',
+    onRemoteControlModeChanged = 'onRemoteControlModeChanged',
     onVscodeContextSet = 'onVscodeContextSet'
 }

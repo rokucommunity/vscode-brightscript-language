@@ -114,7 +114,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         this.messageCommandCallbacks[command] = callback;
     }
 
-    private setupViewMessageObserver(webview: vscode.Webview) {
+    protected setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
                 const command = message.command;

@@ -95,6 +95,8 @@ export class RemoteControlManager {
         this.isEnabled = isEnabled;
         if (this.isEnabled) {
             this.enableFlasher();
+            // Open the Remote Control Panel in a new window to the side when mode is enabled
+            await vscode.commands.executeCommand(VscodeCommand.openRemoteControlPanelInPanel);
         } else {
             this.disableFlasher?.();
         }
