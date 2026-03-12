@@ -638,14 +638,16 @@ export class DeviceManager {
         const inspection = config.inspect<ConfiguredDevice[]>('deviceDiscovery.devices');
 
         // Scopes in priority order (last wins)
+        // User settings (globalValue) wins over workspace settings
         const scopes = [
             inspection?.defaultValue,
-            inspection?.globalValue,
-            inspection?.globalLanguageValue,
-            inspection?.workspaceValue,
-            inspection?.workspaceLanguageValue,
+            inspection?.defaultLanguageValue,
+            inspection?.workspaceFolderLanguageValue,
             inspection?.workspaceFolderValue,
-            inspection?.workspaceFolderLanguageValue
+            inspection?.workspaceLanguageValue,
+            inspection?.workspaceValue,
+            inspection?.globalLanguageValue,
+            inspection?.globalValue // User settings - highest priority
         ];
 
         // Merge devices from all scopes: key is deviceId or host
