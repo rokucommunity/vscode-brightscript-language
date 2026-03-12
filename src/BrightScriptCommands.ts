@@ -331,23 +331,13 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Clearing device list'
-            }, async () => {
-                this.deviceManager.clearCurrentDeviceList();
-                await util.sleep(2000);
-            });
+            this.deviceManager.clearCurrentDeviceList();
+            await util.showTimedNotification('Clearing device list');
         });
 
         this.registerCommand('clearDeviceCache', async () => {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Clearing device cache'
-            }, async () => {
-                this.deviceManager.clearAllCache();
-                await util.sleep(2000);
-            });
+            this.deviceManager.clearAllCache();
+            await util.showTimedNotification('Clearing device cache');
         });
 
         this.registerCommand('clearLastSeenDevices', async () => {

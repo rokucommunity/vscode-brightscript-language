@@ -10,7 +10,7 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
-import _ from 'lodash';
+import { debounce } from 'lodash';
 
 export class DeviceManager {
     constructor(
@@ -44,6 +44,7 @@ export class DeviceManager {
     private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
     private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
     private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
+    private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
     private cacheCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Scan state management
@@ -460,7 +461,13 @@ export class DeviceManager {
             if (isNewDevice) {
                 this.lastDiscoveredDeviceDate = new Date();
                 if (isAlive && this.showInfoMessages) {
-                    void vscode.window.showInformationMessage(`Device found: ${deviceInfo['default-device-name']}`);
+                    if (!this.deviceOnlineNotifiers.has(deviceId)) {
+                        this.deviceOnlineNotifiers.set(deviceId, debounce((name: string) => {
+                            this.deviceOnlineNotifiers.delete(deviceId);
+                            void util.showTimedNotification(`Device Online: ${name}`);
+                        }, 500));
+                    }
+                    this.deviceOnlineNotifiers.get(deviceId)(deviceInfo['default-device-name']);
                 }
             }
 
