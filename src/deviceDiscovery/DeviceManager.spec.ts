@@ -1174,7 +1174,7 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].deviceState).to.equal('offline');
             });
 
-            it('marks configured device as unresolved when no cache exists', () => {
+            it('marks configured device as offline when no cache exists (icon logic determines warning vs disconnect)', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 const configured = { host: '192.168.1.100' };
@@ -1183,13 +1183,16 @@ describe('DeviceManager', () => {
                     configuredDevice: configured
                 }));
 
-                // Simulate no cache
+                // Simulate no cache - view layer uses hasDeviceCache() to show warning icon
                 mockGlobalStateManager.getCachedDevice.returns(undefined);
 
                 manager['markDeviceUnreachable']('device-123');
 
                 expect(manager['devices'].length).to.equal(1);
-                expect(manager['devices'][0].deviceState).to.equal('unresolved');
+                // State is always 'offline' - icon logic uses cache check to distinguish
+                expect(manager['devices'][0].deviceState).to.equal('offline');
+                // hasDeviceCache() would return false, triggering warning icon in view
+                expect(manager.hasDeviceCache('device-123')).to.equal(false);
             });
 
             it('removes discovered-only device when unreachable', () => {

@@ -254,6 +254,14 @@ export class DeviceManager {
     }
 
     /**
+     * Check if a device has cached info (has been successfully resolved before).
+     * Used by view providers to determine icon: warning (no cache) vs disconnect (has cache).
+     */
+    public hasDeviceCache(deviceId: string): boolean {
+        return !!this.globalStateManager.getCachedDevice(deviceId);
+    }
+
+    /**
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false): boolean {
@@ -674,7 +682,8 @@ export class DeviceManager {
         for (const configured of configuredDevices) {
             let deviceId = configured.deviceId;
             if (!deviceId) {
-                deviceId = this.globalStateManager.getDeviceIdForIp(configured.host);
+                // First check current network, then fall back to most recent across all networks
+                deviceId = this.globalStateManager.getDeviceIdForIp(configured.host, this.networkId);
             }
             const id = deviceId || configured.host;
 
@@ -789,7 +798,7 @@ export class DeviceManager {
         }
 
         // Update IP→deviceId mapping when we successfully resolve a device
-        this.globalStateManager.setDeviceIdForIp(device.ip, device.id);
+        this.globalStateManager.setDeviceIdForIp(this.networkId, device.ip, device.id);
 
         // Only cache when device is online (confirmed via network)
         if (device.deviceState === 'online') {
@@ -815,7 +824,7 @@ export class DeviceManager {
 
     /**
      * Mark a device as unreachable after a failed health check.
-     * - Configured devices: marked 'offline' (if cached) or 'unresolved' (if never seen)
+     * - Configured devices: marked 'offline' (icon logic uses cache to distinguish "never seen" vs "was online")
      * - Discovered devices: removed from the list
      */
     private markDeviceUnreachable(deviceId: string): void {
@@ -825,10 +834,9 @@ export class DeviceManager {
         }
 
         if (device.configuredDevice) {
-            // Configured devices are never removed
-            // Check cache to determine if we've ever successfully resolved this device
-            const hasCachedInfo = !!this.globalStateManager.getCachedDevice(deviceId);
-            device.deviceState = hasCachedInfo ? 'offline' : 'unresolved';
+            // Configured devices are never removed, just marked offline
+            // Icon logic will check cache to show warning (no cache) or disconnect (has cache)
+            device.deviceState = 'offline';
             this.emitDevicesChanged();
             return;
         }
@@ -870,7 +878,7 @@ export class DeviceManager {
     }
 }
 
-export type DeviceState = 'offline' | 'pending' | 'online' | 'unresolved';
+export type DeviceState = 'offline' | 'pending' | 'online';
 
 /**
  * User-configured device from settings (brightscript.deviceDiscovery.devices)

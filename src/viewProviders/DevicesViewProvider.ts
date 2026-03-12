@@ -132,20 +132,24 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
-                        treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
+                        // For offline devices, check cache to distinguish:
+                        // - warning icon: never successfully contacted (no cache)
+                        // - disconnect icon: was online before (has cache)
+                        const hasCache = this.deviceManager.hasDeviceCache(device.id);
+                        if (hasCache) {
+                            treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
+                        } else {
+                            treeItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
+                        }
                     } else if (device.deviceState === 'pending') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
-                    } else if (device.deviceState === 'unresolved') {
-                        treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
                     } else {
                         treeItem.iconPath = icons.getDeviceType(device);
                     }
 
                     // Set contextValue for inline buttons
-                    // configured devices show filled star, discovered show outline star on hover
-                    const isConfigured = device.configuredDevice !== undefined;
-                    console.log(`Device ${device.ip}: configuredDevice =`, device.configuredDevice, 'isConfigured =', isConfigured);
-                    treeItem.contextValue = isConfigured ? 'device-configured' : 'device-discovered';
+                    // configured devices show filled pin, discovered show outline pin on hover
+                    treeItem.contextValue = device.configuredDevice ? 'device-configured' : 'device-discovered';
 
                     items.push(treeItem);
                 }
@@ -424,7 +428,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         const deviceId = uri.path.slice(1); // Remove leading slash
         const state = this.deviceStates.get(deviceId);
 
-        if (state === 'pending' || state === 'offline' || state === 'unresolved') {
+        if (state === 'pending' || state === 'offline') {
             return {
                 color: new vscode.ThemeColor('disabledForeground')
             };

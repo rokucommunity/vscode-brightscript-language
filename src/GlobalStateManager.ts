@@ -162,20 +162,43 @@ export class GlobalStateManager {
     }
 
     /**
-     * Get deviceId for an IP address from the global IP→deviceId map.
+     * Get deviceId for an IP address.
+     * First checks the current network, then falls back to searching all networks for the most recent entry.
      * Used for host-only configured devices to look up cached device info.
      */
-    public getDeviceIdForIp(ip: string): string | undefined {
-        const map = this.context.globalState.get<Record<string, string>>(this.keys.ipToDeviceId) || {};
-        return map[ip];
+    public getDeviceIdForIp(ip: string, currentNetworkId?: string): string | undefined {
+        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+
+        // First, check the current network
+        if (currentNetworkId) {
+            const currentNetworkEntry = map[currentNetworkId]?.[ip];
+            if (currentNetworkEntry) {
+                return currentNetworkEntry.deviceId;
+            }
+        }
+
+        // Fall back to searching all networks, return most recent by timestamp
+        let mostRecent: { deviceId: string; timestamp: number } | undefined;
+        for (const networkId in map) {
+            const networkMap = map[networkId];
+            const entry = networkMap?.[ip];
+            if (entry && (!mostRecent || entry.timestamp > mostRecent.timestamp)) {
+                mostRecent = entry;
+            }
+        }
+
+        return mostRecent?.deviceId;
     }
 
     /**
-     * Save IP→deviceId mapping. Called when a device is successfully resolved.
+     * Save IP→deviceId mapping for the specified network. Called when a device is successfully resolved.
      */
-    public setDeviceIdForIp(ip: string, deviceId: string): void {
-        const map = this.context.globalState.get<Record<string, string>>(this.keys.ipToDeviceId) || {};
-        map[ip] = deviceId;
+    public setDeviceIdForIp(networkId: string, ip: string, deviceId: string): void {
+        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+        if (!map[networkId]) {
+            map[networkId] = {};
+        }
+        map[networkId][ip] = { deviceId: deviceId, timestamp: Date.now() };
         void this.context.globalState.update(this.keys.ipToDeviceId, map);
     }
 
@@ -184,6 +207,34 @@ export class GlobalStateManager {
      */
     public clearIpToDeviceIdMap(): void {
         void this.context.globalState.update(this.keys.ipToDeviceId, undefined);
+    }
+
+    /**
+     * Clear expired entries from the IP→deviceId map (same expiration as other cached data)
+     */
+    public clearExpiredIpMappings(): void {
+        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+        const now = Date.now();
+        let changed = false;
+
+        for (const networkId in map) {
+            const networkMap = map[networkId];
+            for (const ip in networkMap) {
+                if (now - networkMap[ip].timestamp > this.LAST_SEEN_NETWORK_EXPIRATION) {
+                    delete networkMap[ip];
+                    changed = true;
+                }
+            }
+            // Remove empty network entries
+            if (Object.keys(networkMap).length === 0) {
+                delete map[networkId];
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            void this.context.globalState.update(this.keys.ipToDeviceId, map);
+        }
     }
 
 
@@ -223,3 +274,16 @@ export interface CachedDevice {
     deviceInfo: Record<string, any>;
     createdAt: number;
 }
+
+/**
+ * Entry in the IP→deviceId map
+ */
+interface IpToDeviceIdEntry {
+    deviceId: string;
+    timestamp: number;
+}
+
+/**
+ * Per-network IP→deviceId mapping with timestamps
+ */
+type IpToDeviceIdMap = Record<string, Record<string, IpToDeviceIdEntry>>;
