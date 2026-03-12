@@ -88,6 +88,8 @@
         padding: 12px;
         gap: 10px;
         user-select: none;
+        max-width: 300px;
+        margin: 0 auto;
     }
 
     .device-status {
@@ -107,9 +109,8 @@
 
     .remote-body {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         width: 100%;
-        max-width: 480px;
     }
 
     .main-controls {
@@ -124,6 +125,9 @@
         flex-direction: column;
         gap: 6px;
         padding-top: 0;
+        align-items: stretch;
+        flex-shrink: 0;
+        width: 58px;
     }
 
     .button-row {
@@ -132,25 +136,33 @@
         gap: 6px;
     }
 
+    .button-row .remote-button {
+        flex: 1;
+    }
+
     .remote-button {
-        background: rgb(104, 45, 145);
+        background: #6B3FA0;
         color: white;
-        border: 1px solid rgba(0, 0, 0, 0.2);
-        border-radius: 8px;
-        padding: 10px 16px;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 8px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 16px;
+        font-weight: 500;
         transition: all 0.1s;
-        min-width: 75px;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .remote-button:hover {
-        background: rgb(124, 65, 165);
+        background: #7E52B5;
     }
 
     .remote-button:active {
         transform: scale(0.95);
-        background: rgb(84, 25, 125);
+        background: #5A3287;
     }
 
     .dpad-container {
@@ -171,9 +183,9 @@
         left: 33.33%;
         right: 33.33%;
         bottom: 0;
-        background: rgb(104, 45, 145);
+        background: #6B3FA0;
         z-index: 0;
-        border-radius: 8px;
+        border-radius: 12px;
     }
 
     .dpad-container::after {
@@ -183,9 +195,9 @@
         right: 0;
         top: 33.33%;
         bottom: 33.33%;
-        background: rgb(104, 45, 145);
+        background: #6B3FA0;
         z-index: 0;
-        border-radius: 8px;
+        border-radius: 12px;
     }
 
     .dpad-corner {
@@ -194,13 +206,14 @@
     }
 
     .dpad-button {
-        background: rgb(104, 45, 145);
+        background: #6B3FA0;
         color: white;
         border: none;
         border-radius: 0;
         padding: 16px;
         cursor: pointer;
         font-size: 15px;
+        font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -209,7 +222,7 @@
     }
 
     .dpad-button:hover {
-        background: rgb(124, 65, 165);
+        background: #7E52B5;
     }
 
     .dpad-button:active {
@@ -219,31 +232,33 @@
     .dpad-up {
         grid-column: 2;
         grid-row: 1;
-        border-radius: 8px 8px 0 0;
+        border-radius: 12px 12px 0 0;
     }
     .dpad-left {
         grid-column: 1;
         grid-row: 2;
-        border-radius: 8px 0 0 8px;
+        border-radius: 12px 0 0 12px;
     }
     .dpad-ok {
         grid-column: 2;
         grid-row: 2;
-        background: rgb(134, 75, 175);
+        background: #7E52B5;
         font-weight: bold;
         border-radius: 50%;
-        border: 2px solid rgba(0, 0, 0, 0.3);
-        margin: 4px;
+        border: 3px solid #5A3287;
+        margin: 5px;
+        font-size: 13px;
+        letter-spacing: 0.5px;
     }
     .dpad-right {
         grid-column: 3;
         grid-row: 2;
-        border-radius: 0 8px 8px 0;
+        border-radius: 0 12px 12px 0;
     }
     .dpad-down {
         grid-column: 2;
         grid-row: 3;
-        border-radius: 0 0 8px 8px;
+        border-radius: 0 0 12px 12px;
     }
 
     .colored-buttons {
@@ -271,18 +286,18 @@
     .btn-yellow { background: #ccaa00; }
 
     .power-button {
-        background: rgb(104, 45, 145);
+        background: #6B3FA0;
         color: #ff5252;
         width: fit-content;
         min-width: 60px;
         align-self: center;
-        font-size: 24px;
+        font-size: 22px;
         padding: 10px 20px;
         border-radius: 50%;
     }
 
     .power-button:hover {
-        background: rgb(124, 65, 165);
+        background: #7E52B5;
         color: #ff8a80;
     }
 
@@ -305,9 +320,11 @@
     }
 
     .volume-button {
-        padding: 8px 12px;
-        min-width: 65px;
+        padding: 10px 4px;
         font-size: 12px;
+        border-radius: 20px;
+        text-align: center;
+        width: 100%;
     }
 </style>
 
@@ -333,11 +350,11 @@
 
             <!-- Top Buttons -->
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('Back')}>
-                    ← Back
+                <button class="remote-button" on:click={() => sendRemoteCommand('Back')} title="Back">
+                    ←
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Home')}>
-                    🏠 Home
+                <button class="remote-button" on:click={() => sendRemoteCommand('Home')} title="Home">
+                    ⌂
                 </button>
             </div>
 
@@ -346,49 +363,46 @@
             <div class="dpad-container">
                 <div class="dpad-corner"></div>
                 <button class="dpad-button dpad-up" on:click={() => sendRemoteCommand('Up')}>
-                    ▲
+                    ^
                 </button>
                 <div class="dpad-corner"></div>
                 <button class="dpad-button dpad-left" on:click={() => sendRemoteCommand('Left')}>
-                    ◀
+                    &lt;
                 </button>
                 <button class="dpad-button dpad-ok" on:click={() => sendRemoteCommand('Select')}>
                     OK
                 </button>
                 <button class="dpad-button dpad-right" on:click={() => sendRemoteCommand('Right')}>
-                    ▶
+                    &gt;
                 </button>
                 <div class="dpad-corner"></div>
                 <button class="dpad-button dpad-down" on:click={() => sendRemoteCommand('Down')}>
-                    ▼
+                    v
                 </button>
                 <div class="dpad-corner"></div>
             </div>
 
             <!-- Under D-Pad Buttons -->
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('InstantReplay')}>
-                    ↺ Replay
+                <button class="remote-button" on:click={() => sendRemoteCommand('InstantReplay')} title="Instant Replay">
+                    ↺
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Search')}>
-                    🔍 Search
-                </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Info')}>
-                    ℹ Info
+                <button class="remote-button" on:click={() => sendRemoteCommand('Info')} title="Options / Info">
+                    *
                 </button>
             </div>
 
             <!-- Playback Controls -->
             <div class="section-title">Playback</div>
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('Rev')}>
-                    ⏪ Rev
+                <button class="remote-button" on:click={() => sendRemoteCommand('Rev')} title="Rewind">
+                    «
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Play')}>
-                    ⏯ Play
+                <button class="remote-button" on:click={() => sendRemoteCommand('Play')} title="Play / Pause">
+                    ▶
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Fwd')}>
-                    ⏩ Fwd
+                <button class="remote-button" on:click={() => sendRemoteCommand('Fwd')} title="Fast Forward">
+                    »
                 </button>
             </div>
 
@@ -428,22 +442,22 @@
             </div>
 
             <!-- Text Input -->
-            <button class="remote-button" on:click={sendTextInput}>
-                ⌨ Send Text
+            <button class="remote-button" on:click={sendTextInput} title="Send Text">
+                ⌨ Text
             </button>
         </div>
 
         <!-- Side Volume Controls -->
         <div class="side-controls">
             <div class="section-title">Volume</div>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeUp')}>
-                🔊 +
+            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeUp')} title="Volume Up">
+                Vol +
             </button>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeDown')}>
-                🔉 -
+            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeDown')} title="Volume Down">
+                Vol −
             </button>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeMute')}>
-                🔇 Mute
+            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeMute')} title="Mute">
+                Mute
             </button>
         </div>
     </div>
