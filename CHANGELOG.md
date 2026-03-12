@@ -8,11 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.61.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.61.1...v2.61.2) - 2026-03-12
 ### Added
- - Add custom `bsfmt` file path setting ([#701](https://github.com/rokucommunity/vscode-brightscript-language/pull/701))
+ - Add custom `brightscript.format.bsfmtPath` file path setting ([#701](https://github.com/rokucommunity/vscode-brightscript-language/pull/701))
 ### Fixed
  - Fix bug showing too many "new device" notifications ([#703](https://github.com/rokucommunity/vscode-brightscript-language/pull/703))
  - Fixed an issues with newlines not rendering correct with brightscript tasks ([#702](https://github.com/rokucommunity/vscode-brightscript-language/pull/702))
- - Fixed bad mocking techniques in the BrightScriptTaskProvider tests ([#700](https://github.com/rokucommunity/vscode-brightscript-language/pull/700))
+ - (chore): Fixed bad mocking techniques in the BrightScriptTaskProvider tests ([#700](https://github.com/rokucommunity/vscode-brightscript-language/pull/700))
 
 
 
