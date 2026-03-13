@@ -929,7 +929,7 @@ describe('DeviceManager', () => {
             expect(manager['devices'].length).to.equal(0);
         });
 
-        it('shows toast for isAlive new devices when showInfoMessages enabled', async () => {
+        it('shows toast for isAlive devices when showInfoMessages enabled', async () => {
             const clock = sinon.useFakeTimers();
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
@@ -951,6 +951,37 @@ describe('DeviceManager', () => {
 
             expect(showTimedStub.calledOnce).to.be.true;
             expect(showTimedStub.firstCall.args[0]).to.include('Roku Express');
+        });
+
+        it('shows toast for already-known devices when they send ssdp:alive', async () => {
+            const clock = sinon.useFakeTimers();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            // First discovery - device becomes known
+            await manager['processDiscoveredIp']('192.168.1.100', true);
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledOnce).to.be.true;
+
+            // Second ssdp:alive from same device - should still show notification
+            await manager['processDiscoveredIp']('192.168.1.100', true);
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledTwice).to.be.true;
         });
 
         it('does not show toast for scan responses', async () => {
