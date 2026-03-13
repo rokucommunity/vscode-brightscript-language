@@ -433,13 +433,33 @@
             "view/item/context": [
                 {
                     "command": "extension.brightscript.setActiveDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.refreshDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToConfig",
+                    "when": "view == devicesView && viewItem == 'device-discovered'",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.removeDeviceFromConfig",
+                    "when": "view == devicesView && viewItem == 'device-configured'",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToConfig",
+                    "when": "view == devicesView && viewItem == 'device-discovered'",
+                    "group": "inline@3"
+                },
+                {
+                    "command": "extension.brightscript.removeDeviceFromConfig",
+                    "when": "view == devicesView && viewItem == 'device-configured'",
+                    "group": "inline@3"
                 }
             ],
             "webview/context": [
@@ -2144,6 +2164,34 @@
                         "default": false,
                         "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
                         "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.devices": {
+                        "type": "array",
+                        "default": [],
+                        "description": "Hand-curated list of Roku devices that always appear in the device list, regardless of network discovery.",
+                        "items": {
+                            "type": "object",
+                            "required": ["host"],
+                            "properties": {
+                                "host": {
+                                    "type": "string",
+                                    "description": "IP address or hostname of the device"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "Friendly name for the device (overrides discovered name)"
+                                },
+                                "deviceId": {
+                                    "type": "string",
+                                    "description": "Device ID (if known). Used for merging with discovered devices and cache lookup."
+                                },
+                                "password": {
+                                    "type": "string",
+                                    "description": "Developer password for this device"
+                                }
+                            }
+                        },
+                        "scope": "resource"
                     }
                 }
             },
@@ -3300,6 +3348,24 @@
                 "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.addDeviceToConfig",
+                "title": "Add Device to Settings",
+                "category": "BrightScript",
+                "icon": "$(pin)"
+            },
+            {
+                "command": "extension.brightscript.removeDeviceFromConfig",
+                "title": "Remove Device from Settings",
+                "category": "BrightScript",
+                "icon": "$(pinned)"
+            },
+            {
+                "command": "extension.brightscript.clearConfiguredDevices",
+                "title": "Clear All Configured Devices",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.refreshRegistry",

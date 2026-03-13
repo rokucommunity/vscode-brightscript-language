@@ -130,6 +130,12 @@ export class DeviceManager {
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
                 this.emitDevicesChanged();
             }
+
+            //if the `devices` setting was changed, re-apply configured devices and health check them
+            if (event?.affectsConfiguration('brightscript.deviceDiscovery.devices')) {
+                this.loadConfiguredDevices();
+                void this.checkDevicesHealth(true);
+            }
         };
         this.context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(applyConfig)
@@ -165,6 +171,8 @@ export class DeviceManager {
         //clear any deviceInfo entries older than our max age
         this.globalStateManager.clearExpiredDevices();
 
+        // Load configured devices and cached devices (order doesn't matter due to setDevice merge logic)
+        this.loadConfiguredDevices();
         this.loadLastSeenDevices();
 
         // Always set up finder event listeners so scan responses are processed
@@ -208,14 +216,24 @@ export class DeviceManager {
 
     /**
      * Get a list of all roku devices known by this extension (by scanning, hardcoded lists, etc)
+     * Configured devices are sorted first, then by form factor, name, and id.
      */
     public getAllDevices(): RokuDeviceDetails[] {
         this.firstRequestForDevices = false;
         return [...this.devices].sort(
+            // Configured devices first
             firstBy<RokuDeviceDetails>((a, b) => {
+                const aConfigured = a.configuredDevice !== undefined;
+                const bConfigured = b.configuredDevice !== undefined;
+                if (aConfigured !== bConfigured) {
+                    return aConfigured ? -1 : 1;
+                }
+                return 0;
+                // Then by form factor
+            }).thenBy<RokuDeviceDetails>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
             }).thenBy<RokuDeviceDetails>((a, b) => {
-                return a.deviceInfo['default-device-name'].localeCompare(b.deviceInfo['default-device-name']);
+                return (a.deviceInfo['default-device-name'] ?? '').localeCompare(b.deviceInfo['default-device-name'] ?? '');
             }).thenBy<RokuDeviceDetails>((a, b) => {
                 if (a.id < b.id) {
                     return -1;
@@ -234,6 +252,14 @@ export class DeviceManager {
      */
     public getDeviceById(deviceId: string): RokuDeviceDetails | undefined {
         return this.devices.find(d => d.id === deviceId);
+    }
+
+    /**
+     * Check if a device has cached info (has been successfully resolved before).
+     * Used by view providers to determine icon: warning (no cache) vs disconnect (has cache).
+     */
+    public hasDeviceCache(deviceId: string): boolean {
+        return !!this.globalStateManager.getCachedDevice(deviceId);
     }
 
     /**
@@ -342,9 +368,10 @@ export class DeviceManager {
             freshDevice = {
                 location: device.location,
                 ip: device.ip,
-                id: device.id,
+                id: deviceInfo['device-id']?.toString() || device.id,
                 deviceState: 'online',
-                deviceInfo: deviceInfo
+                deviceInfo: deviceInfo,
+                configuredDevice: device.configuredDevice
             };
         } catch {
             freshDevice = undefined;
@@ -360,7 +387,7 @@ export class DeviceManager {
             this.setDevice(freshDevice);
             return true;
         } else {
-            this.removeDevice(device.id);
+            this.markDeviceUnreachable(device.id);
             return false;
         }
     }
@@ -564,30 +591,140 @@ export class DeviceManager {
     }
 
     /**
-     * On startup, load last seen devices from cache.
-     * Devices are added as 'pending' - health checks happen lazily when UI requests devices.
+     * Load last seen devices from cache.
+     * Removes non-configured devices and resets configured devices to pending (no-op at startup).
+     * Then loads cached devices for the current network.
      */
-    private loadLastSeenDevices() {
-        // Clear existing devices before loading cached ones for the current network
-        this.devices = [];
+    private loadLastSeenDevices(): void {
+        // Remove non-configured devices, reset configured to pending (no-op at startup)
+        for (let i = this.devices.length - 1; i >= 0; i--) {
+            const device = this.devices[i];
+            if (device.configuredDevice) {
+                device.deviceState = 'pending';
+            } else {
+                this.devices.splice(i, 1);
+            }
+        }
 
+        // Load cached devices for current network
         const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
         for (const deviceId of lastSeenDeviceIds) {
             const cached = this.globalStateManager.getCachedDevice(deviceId);
-            //ensure our cached object is actually an object
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
-                // Add cached device as pending (no network request)
-                const device: RokuDeviceDetails = {
+                this.setDevice({
                     ...cached,
                     deviceState: 'pending'
-                };
-                this.devices.push(device);
+                });
             } else {
-                // No cached info - remove stale entry
                 this.globalStateManager.removeLastSeenDevice(this.networkId, deviceId);
             }
         }
-        this.emitDevicesChanged();
+    }
+
+    /**
+     * Load configured devices from VSCode settings.
+     * Handles removals (devices no longer in config) and adds/updates.
+     * Safe to call at startup (removal is no-op when devices array is empty).
+     */
+    private loadConfiguredDevices(): void {
+        // Read config from all VSCode scopes
+        const config = vscode.workspace.getConfiguration('brightscript');
+        // inspect may not be available in test mocks
+        if (typeof config.inspect !== 'function') {
+            return;
+        }
+        const inspection = config.inspect<ConfiguredDevice[]>('deviceDiscovery.devices');
+
+        // Scopes in priority order (last wins)
+        const scopes = [
+            inspection?.defaultValue,
+            inspection?.globalValue,
+            inspection?.globalLanguageValue,
+            inspection?.workspaceValue,
+            inspection?.workspaceLanguageValue,
+            inspection?.workspaceFolderValue,
+            inspection?.workspaceFolderLanguageValue
+        ];
+
+        // Merge devices from all scopes: key is deviceId or host
+        const deviceMap = new Map<string, ConfiguredDevice>();
+        for (const scopeDevices of scopes) {
+            if (!Array.isArray(scopeDevices)) {
+                continue;
+            }
+            for (const device of scopeDevices) {
+                if (!device?.host) {
+                    continue;
+                }
+                const key = device.deviceId || device.host;
+                const existing = deviceMap.get(key) || {};
+                deviceMap.set(key, { ...existing, ...device });
+            }
+        }
+        const configuredDevices = Array.from(deviceMap.values());
+        const configuredKeys = new Set(configuredDevices.map(c => c.deviceId || c.host));
+
+        // Handle removed configured devices (no-op at startup when devices is empty)
+        for (let i = this.devices.length - 1; i >= 0; i--) {
+            const device = this.devices[i];
+            if (device.configuredDevice) {
+                const key = device.configuredDevice.deviceId || device.configuredDevice.host;
+                if (!configuredKeys.has(key)) {
+                    // Device was removed from config
+                    const hasRealDeviceInfo = device.deviceInfo['device-id'] &&
+                        device.deviceInfo['device-id'] !== device.configuredDevice.host;
+                    if (hasRealDeviceInfo) {
+                        // Keep as discovered-only device
+                        device.configuredDevice = undefined;
+                    } else {
+                        // Config-only device, remove
+                        this.devices.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // Apply configured devices
+        for (const configured of configuredDevices) {
+            let deviceId = configured.deviceId;
+            if (!deviceId) {
+                // First check current network, then fall back to most recent across all networks
+                deviceId = this.globalStateManager.getDeviceIdForIp(configured.host, this.networkId);
+            }
+            const id = deviceId || configured.host;
+
+            let cachedInfo: DeviceInfoRaw | undefined;
+            if (deviceId) {
+                const cached = this.globalStateManager.getCachedDevice(deviceId);
+                cachedInfo = cached?.deviceInfo;
+            }
+
+            this.setDevice({
+                location: `http://${configured.host}:8060`,
+                id: id,
+                ip: configured.host,
+                deviceState: 'pending',
+                deviceInfo: cachedInfo || this.createPlaceholderDeviceInfo(configured),
+                configuredDevice: configured
+            });
+        }
+    }
+
+    /**
+     * Create placeholder device info for configured devices that haven't been resolved yet.
+     */
+    private createPlaceholderDeviceInfo(configured: ConfiguredDevice): DeviceInfoRaw {
+        return {
+            'user-device-name': configured.name || configured.host,
+            'default-device-name': configured.name || 'Configured Device',
+            'device-id': configured.deviceId || configured.host,
+            'model-number': '',
+            'model-name': '',
+            'software-version': '',
+            'is-tv': 'false',
+            'is-stick': 'false',
+            'developer-enabled': 'true'
+        } as DeviceInfoRaw;
     }
 
     /**
@@ -633,24 +770,52 @@ export class DeviceManager {
      * Add or update a device in the devices array
      */
     private setDevice(device: RokuDeviceDetails): void {
-        const index = this.devices.findIndex(d => d.id === device.id);
+        // First try to match by ID (most reliable), then fall back to IP for configured devices
+        let index = this.devices.findIndex(d => d.id === device.id);
+        if (index < 0) {
+            // If no ID match, try IP match (for configured devices that may not have resolved yet)
+            index = this.devices.findIndex(d => d.ip === device.ip);
+        }
         const isNewDevice = index < 0;
 
         if (isNewDevice) {
-            this.devices.push(device);
+            this.devices.push({
+                ...device,
+                deviceInfo: {
+                    ...device.deviceInfo,
+                    // If configured, use configured name over discovered name
+                    'user-device-name': device.configuredDevice?.name || device.deviceInfo?.['user-device-name']
+                }
+            });
         } else {
-            // Update existing - merge new info while preserving existing state if not provided
-            this.devices[index] = { ...this.devices[index], ...device };
+            // Merge: incoming wins for most fields, but configuredDevice from either side
+            const existing = this.devices[index];
+            const configuredDevice = device.configuredDevice ?? existing.configuredDevice;
+            this.devices[index] = {
+                ...existing,
+                ...device,
+                configuredDevice: configuredDevice,
+                // If configured, use configured name over discovered name
+                deviceInfo: {
+                    ...device.deviceInfo,
+                    'user-device-name': configuredDevice?.name || device.deviceInfo?.['user-device-name'] || existing.deviceInfo?.['user-device-name']
+                }
+            };
         }
 
-        // Cache device info for future sessions (exclude transient deviceState)
-        this.globalStateManager.setCachedDevice(device.id, {
-            location: device.location,
-            id: device.id,
-            ip: device.ip,
-            deviceInfo: device.deviceInfo,
-            createdAt: Date.now()
-        });
+        // Update IP→deviceId mapping when we successfully resolve a device
+        this.globalStateManager.setDeviceIdForIp(this.networkId, device.ip, device.id);
+
+        // Only cache when device is online (confirmed via network)
+        if (device.deviceState === 'online') {
+            this.globalStateManager.setCachedDevice(device.id, {
+                location: device.location,
+                id: device.id,
+                ip: device.ip,
+                deviceInfo: device.deviceInfo,
+                createdAt: Date.now()
+            });
+        }
 
         // Reset scan settle timer when device response comes in
         if (this.isScanning) {
@@ -664,7 +829,30 @@ export class DeviceManager {
     }
 
     /**
-     * Remove a device from the devices array
+     * Mark a device as unreachable after a failed health check.
+     * - Configured devices: marked 'offline' (icon logic uses cache to distinguish "never seen" vs "was online")
+     * - Discovered devices: removed from the list
+     */
+    private markDeviceUnreachable(deviceId: string): void {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) {
+            return;
+        }
+
+        if (device.configuredDevice) {
+            // Configured devices are never removed, just marked offline
+            // Icon logic will check cache to show warning (no cache) or disconnect (has cache)
+            device.deviceState = 'offline';
+            this.emitDevicesChanged();
+            return;
+        }
+
+        // Discovered-only device: remove it
+        this.removeDevice(deviceId);
+    }
+
+    /**
+     * Remove a device from the devices array.
      */
     private removeDevice(deviceId: string): void {
         const device = this.devices.find(d => d.id === deviceId);
@@ -698,12 +886,27 @@ export class DeviceManager {
 
 export type DeviceState = 'offline' | 'pending' | 'online';
 
+/**
+ * User-configured device from settings (brightscript.deviceDiscovery.devices)
+ */
+export interface ConfiguredDevice {
+    host: string;
+    name?: string;
+    deviceId?: string;
+    password?: string;
+}
+
 export interface RokuDeviceDetails {
     location: string;
     id: string;
     ip: string;
     deviceState: DeviceState;
     deviceInfo: DeviceInfoRaw;
+    /**
+     * If present, this device was configured by the user.
+     * Configured devices are never auto-removed.
+     */
+    configuredDevice?: ConfiguredDevice;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

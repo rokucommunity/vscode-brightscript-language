@@ -12,14 +12,15 @@ describe('DeviceManager', () => {
     let mockGlobalStateManager: any;
 
     function createMockDevice(overrides: Partial<RokuDeviceDetails> & { deviceInfo?: Partial<RokuDeviceDetails['deviceInfo']> } = {}): RokuDeviceDetails {
+        const id = overrides.id ?? 'device-123';
         return {
             location: 'http://192.168.1.100:8060',
             ip: '192.168.1.100',
-            id: 'device-123',
+            id: id,
             deviceState: 'online',
             deviceInfo: {
                 'default-device-name': 'Roku Express',
-                'device-id': 'device-123',
+                'device-id': id,
                 'is-stick': 'false',
                 'is-tv': 'false',
                 ...overrides.deviceInfo
@@ -34,10 +35,13 @@ describe('DeviceManager', () => {
             getLastSeenDeviceIds: sinon.stub().returns([]),
             addLastSeenDevice: sinon.stub(),
             removeLastSeenDevice: sinon.stub(),
+            setLastSeenDeviceIds: sinon.stub(),
             getCachedDevice: sinon.stub().returns(undefined),
             setCachedDevice: sinon.stub(),
             removeCachedDevice: sinon.stub(),
-            clearExpiredDevices: sinon.stub()
+            clearExpiredDevices: sinon.stub(),
+            getDeviceIdForIp: sinon.stub().returns(undefined),
+            setDeviceIdForIp: sinon.stub()
         };
 
         // Mock vscode configuration
@@ -775,11 +779,12 @@ describe('DeviceManager', () => {
     });
 
     describe('loadLastSeenDevices', () => {
-        it('clears existing devices before loading', () => {
+        it('merges cached devices with existing devices', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            // Add a device manually
+            // Add a configured device (configured devices are preserved)
             const existingDevice = createMockDevice({ id: 'existing' });
+            existingDevice.configuredDevice = { host: '192.168.1.100' };
             manager['devices'].push(existingDevice);
 
             // Setup cache to return a different device
@@ -793,9 +798,10 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            // Should only have the cached device, not the existing one
-            expect(manager['devices'].length).to.equal(1);
-            expect(manager['devices'][0].id).to.equal('cached-device');
+            // Should have both devices (merges instead of clearing)
+            expect(manager['devices'].length).to.equal(2);
+            expect(manager['devices'].some(d => d.id === 'existing')).to.be.true;
+            expect(manager['devices'].some(d => d.id === 'cached-device')).to.be.true;
         });
 
         it('loads cached devices as pending state', () => {
@@ -1090,6 +1096,192 @@ describe('DeviceManager', () => {
             // Cache should be cleared, next call hits network
             await manager['getDeviceInfoCached']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('configured devices', () => {
+        describe('setDevice', () => {
+            it('preserves configuredDevice when merging by ID', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add configured device
+                const configured = { host: '192.168.1.100', name: 'My Roku' };
+                const configuredDevice = createMockDevice({
+                    id: 'device-123',
+                    ip: '192.168.1.100',
+                    configuredDevice: configured
+                });
+                manager['devices'].push(configuredDevice);
+
+                // Update same device without configuredDevice (simulating discovery)
+                manager['setDevice']({
+                    ...createMockDevice({ id: 'device-123', ip: '192.168.1.100' }),
+                    configuredDevice: undefined
+                });
+
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].configuredDevice).to.deep.equal(configured);
+            });
+
+            it('preserves configuredDevice when merging by IP', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add configured device with host as ID (before resolution)
+                const configured = { host: '192.168.1.100', name: 'My Roku' };
+                const configuredDevice = createMockDevice({
+                    id: '192.168.1.100', // Using IP as ID before resolution
+                    ip: '192.168.1.100',
+                    configuredDevice: configured
+                });
+                manager['devices'].push(configuredDevice);
+
+                // Update with real device ID (simulating resolution)
+                manager['setDevice']({
+                    ...createMockDevice({ id: 'real-device-id', ip: '192.168.1.100' }),
+                    configuredDevice: undefined
+                });
+
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].id).to.equal('real-device-id');
+                expect(manager['devices'][0].configuredDevice).to.deep.equal(configured);
+            });
+
+            it('uses configured name over discovered name', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const configured = { host: '192.168.1.100', name: 'My Custom Name' };
+                manager['setDevice'](createMockDevice({
+                    id: 'device-123',
+                    configuredDevice: configured,
+                    deviceInfo: { 'user-device-name': 'Discovered Name' }
+                }));
+
+                expect(manager['devices'][0].deviceInfo['user-device-name']).to.equal('My Custom Name');
+            });
+        });
+
+        describe('markDeviceUnreachable', () => {
+            it('marks configured device as offline when cache exists', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const configured = { host: '192.168.1.100' };
+                manager['devices'].push(createMockDevice({
+                    id: 'device-123',
+                    configuredDevice: configured
+                }));
+
+                // Simulate cache exists
+                mockGlobalStateManager.getCachedDevice.returns({ id: 'device-123' });
+
+                manager['markDeviceUnreachable']('device-123');
+
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].deviceState).to.equal('offline');
+            });
+
+            it('marks configured device as offline when no cache exists (icon logic determines warning vs disconnect)', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const configured = { host: '192.168.1.100' };
+                manager['devices'].push(createMockDevice({
+                    id: 'device-123',
+                    configuredDevice: configured
+                }));
+
+                // Simulate no cache - view layer uses hasDeviceCache() to show warning icon
+                mockGlobalStateManager.getCachedDevice.returns(undefined);
+
+                manager['markDeviceUnreachable']('device-123');
+
+                expect(manager['devices'].length).to.equal(1);
+                // State is always 'offline' - icon logic uses cache check to distinguish
+                expect(manager['devices'][0].deviceState).to.equal('offline');
+                // hasDeviceCache() would return false, triggering warning icon in view
+                expect(manager.hasDeviceCache('device-123')).to.equal(false);
+            });
+
+            it('removes discovered-only device when unreachable', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add discovered device (no configuredDevice)
+                manager['devices'].push(createMockDevice({ id: 'device-123' }));
+
+                manager['markDeviceUnreachable']('device-123');
+
+                expect(manager['devices'].length).to.equal(0);
+            });
+        });
+
+        describe('getAllDevices sorting', () => {
+            it('sorts configured devices before discovered devices', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add discovered device first
+                manager['devices'].push(createMockDevice({
+                    id: 'discovered-1',
+                    deviceInfo: { 'default-device-name': 'AAA Discovered' }
+                }));
+
+                // Add configured device second
+                manager['devices'].push(createMockDevice({
+                    id: 'configured-1',
+                    configuredDevice: { host: '192.168.1.200' },
+                    deviceInfo: { 'default-device-name': 'ZZZ Configured' }
+                }));
+
+                const result = manager.getAllDevices();
+
+                // Configured should be first despite alphabetical ordering
+                expect(result[0].id).to.equal('configured-1');
+                expect(result[1].id).to.equal('discovered-1');
+            });
+        });
+
+        describe('loadLastSeenDevices', () => {
+            it('preserves configured devices and removes discovered-only', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add configured device
+                manager['devices'].push(createMockDevice({
+                    id: 'configured-1',
+                    configuredDevice: { host: '192.168.1.100' }
+                }));
+
+                // Add discovered device
+                manager['devices'].push(createMockDevice({ id: 'discovered-1' }));
+
+                manager['loadLastSeenDevices']();
+
+                // Only configured device should remain
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].id).to.equal('configured-1');
+                expect(manager['devices'][0].deviceState).to.equal('pending');
+            });
+        });
+
+        describe('resolveDevice', () => {
+            it('preserves configuredDevice after successful resolution', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const configured = { host: '192.168.1.100', name: 'My Roku' };
+                const device = createMockDevice({
+                    id: 'device-123',
+                    ip: '192.168.1.100',
+                    configuredDevice: configured,
+                    deviceState: 'pending'
+                });
+                manager['devices'].push(device);
+
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'device-id': 'device-123',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                await manager['resolveDevice'](device);
+
+                expect(manager['devices'][0].deviceState).to.equal('online');
+                expect(manager['devices'][0].configuredDevice).to.deep.equal(configured);
+            });
         });
     });
 });
