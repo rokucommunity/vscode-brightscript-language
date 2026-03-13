@@ -34,7 +34,6 @@ export class DeviceManager {
     private devices: RokuDeviceDetails[] = [];
 
     private lastScanDate: Date | null = null;
-    private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
     private finder = new RokuFinder();
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
@@ -95,16 +94,6 @@ export class DeviceManager {
             return Infinity; // Never scanned, so always stale
         }
         return Date.now() - this.lastScanDate.getTime();
-    }
-
-    /**
-     * The number of milliseconds since a new device was discovered
-     */
-    public get timeSinceLastDiscoveredDevice(): number {
-        if (!this.lastDiscoveredDeviceDate) {
-            return Infinity;
-        }
-        return Date.now() - this.lastDiscoveredDeviceDate.getTime();
     }
 
     private setupConfiguration() {
@@ -445,10 +434,7 @@ export class DeviceManager {
                 return;
             }
 
-
             const deviceId = deviceInfo['device-id']?.toString?.();
-            const isNewDevice = !this.devices.find(d => d.id === deviceId);
-
             const device: RokuDeviceDetails = {
                 location: location,
                 ip: ip,
@@ -457,17 +443,14 @@ export class DeviceManager {
                 deviceInfo: deviceInfo
             };
 
-            if (isNewDevice) {
-                this.lastDiscoveredDeviceDate = new Date();
-                if (isAlive && this.showInfoMessages) {
-                    if (!this.deviceOnlineNotifiers.has(deviceId)) {
-                        this.deviceOnlineNotifiers.set(deviceId, debounce((name: string) => {
-                            this.deviceOnlineNotifiers.delete(deviceId);
-                            void util.showTimedNotification(`Device Online: ${name}`);
-                        }, 500));
-                    }
-                    this.deviceOnlineNotifiers.get(deviceId)(deviceInfo['default-device-name']);
+            if (isAlive && this.showInfoMessages) {
+                if (!this.deviceOnlineNotifiers.has(deviceId)) {
+                    this.deviceOnlineNotifiers.set(deviceId, debounce((name: string) => {
+                        this.deviceOnlineNotifiers.delete(deviceId);
+                        void util.showTimedNotification(`Device Online: ${name}`);
+                    }, 500));
                 }
+                this.deviceOnlineNotifiers.get(deviceId)(deviceInfo['default-device-name']);
             }
 
             this.setDevice(device);
