@@ -29,6 +29,10 @@ export class RokuFinder extends EventEmitter {
     private server: Server;
     private running = false;
     private scanTimers: ReturnType<typeof setTimeout>[] = [];
+    private aliveDebounceMap = new Map<string, number>();
+    private readonly ALIVE_DEBOUNCE_MS = 500;
+    private lastCleanupTime = 0;
+    private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
     public scan() {
         if (this.client) {
@@ -118,7 +122,24 @@ export class RokuFinder extends EventEmitter {
         if (nts === 'ssdp:alive' && location) {
             try {
                 const url = new URL(location);
-                this.emit('found', url.hostname, { isAlive: true });
+                const ip = url.hostname;
+                const now = Date.now();
+
+                // Periodic cleanup of stale entries
+                if (now - this.lastCleanupTime > this.CLEANUP_INTERVAL_MS) {
+                    this.lastCleanupTime = now;
+                    for (const [cachedIp, timestamp] of this.aliveDebounceMap) {
+                        if (now - timestamp > this.CLEANUP_INTERVAL_MS) {
+                            this.aliveDebounceMap.delete(cachedIp);
+                        }
+                    }
+                }
+
+                const lastEmit = this.aliveDebounceMap.get(ip);
+                if (lastEmit === undefined || now - lastEmit >= this.ALIVE_DEBOUNCE_MS) {
+                    this.aliveDebounceMap.set(ip, now);
+                    this.emit('found', ip, { isAlive: true });
+                }
             } catch {
                 // Invalid URL, ignore
             }
@@ -132,6 +153,7 @@ export class RokuFinder extends EventEmitter {
             clearTimeout(timer);
         }
         this.scanTimers = [];
+        this.aliveDebounceMap.clear();
 
         this.client.removeAllListeners();
         this.client.stop();
