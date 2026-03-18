@@ -166,6 +166,50 @@ export class Extension {
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
 
+        // When attaching to Hermes (which always pauses on debugger connect), automatically
+        // continue execution on the first stopped event so the user doesn't have to manually resume.
+        // The pwa-node debugger spawns a child session for the actual Hermes connection — we target
+        // that child session (identified by its parent having _isBrightscriptJsSession: true).
+        context.subscriptions.push(
+            vscode.debug.registerDebugAdapterTrackerFactory('pwa-node', {
+                createDebugAdapterTracker: function createDebugAdapterTracker(session) {
+                    if (!(session.parentSession as DebugSessionWithLinks)?.configuration?._isBrightscriptJsSession && session.parentSession?.configuration?.continueOnAttach !== true) {
+                        return undefined;
+                    }
+                    let hasContinued = false;
+                    let threadId: number;
+                    let sawStoppedEvent = false;
+                    let sawThreadsResponse = false;
+                    let timeStart: number;
+                    return {
+                        onDidSendMessage: function onDidSendMessage(message) {
+
+                            console.log(message.type, message.event, message);
+                            if (message.type === 'response' && message.command === 'attach') {
+                                // track how long we have been waiting to receive the stopped event after attaching, so we can log that when we do receive it
+                                timeStart = Date.now();
+                            }
+
+                            if (message.type === 'event' && message.event === 'stopped') {
+                                threadId = message.body.threadId;
+                                sawStoppedEvent = true;
+                            }
+
+                            if (message.type === 'response' && message.command === 'threads') {
+                                sawThreadsResponse = true;
+                            }
+
+                            if (sawStoppedEvent && sawThreadsResponse && threadId !== undefined && !hasContinued && message.type === 'response' && message.command === 'stackTrace') {
+                                console.log('Automatically continuing after attach to Hermes session after ', timeStart ? Date.now() - timeStart : 0, 'ms');
+                                hasContinued = true;
+                                void session.customRequest('continue', { threadId: threadId });
+                            }
+                        }
+                    };
+                }
+            })
+        );
+
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
             vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
@@ -244,6 +288,28 @@ export class Extension {
             }
             this.diagnosticManager.clear();
         }
+
+        // When our JS session starts, find the BRS session by ID and link them bidirectionally
+        // so either terminating causes the other to also terminate.
+        if (debugSession.configuration._isBrightscriptJsSession) {
+            const brsSession = [...this.debugSessions].find(s => s.id === debugSession.configuration._brightscriptParentSessionId);
+            if (brsSession) {
+                brsSession.configuration.linkedSessions ??= [];
+                brsSession.configuration.linkedSessions.push(debugSession);
+                debugSession.configuration.linkedSessions ??= [];
+                debugSession.configuration.linkedSessions.push(brsSession);
+            }
+        }
+
+        // When the pwa-node child session starts (child of our JS session), link it into the
+        // cleanup chain so terminating any session tears down the others.
+        if ((debugSession.parentSession as DebugSessionWithLinks)?.configuration?._isBrightscriptJsSession) {
+            const jsSession = debugSession.parentSession as DebugSessionWithLinks;
+            jsSession.configuration.linkedSessions ??= [];
+            jsSession.configuration.linkedSessions.push(debugSession);
+            debugSession.configuration.linkedSessions ??= [];
+            debugSession.configuration.linkedSessions.push(jsSession);
+        }
     }
 
     private async onDidTerminateDebugSession(debugSession: DebugSessionWithLinks) {
@@ -308,8 +374,15 @@ export class Extension {
                     // where the currently-running javascript (bundled) files live on this system
                     localRoot: localRoot,
 
-                    //link sessions for coordinated cleanup. (this is a custom prop we are adding)
-                    linkedSessions: [parentSession]
+                    // don't pause on the first line when attaching
+                    stopOnEntry: false,
+
+                    // don't pause on the first line when attaching (e.g. when process launched with --inspect-brk)
+                    continueOnAttach: true,
+
+                    // markers so we can identify this session and link it back to the BRS session
+                    _isBrightscriptJsSession: true,
+                    _brightscriptParentSessionId: parentSession.id
                 };
 
                 const success = await vscode.debug.startDebugging(workspaceFolders[0], debugConfig);
@@ -488,6 +561,7 @@ export async function activate(context: vscode.ExtensionContext) {
  */
 interface DebugSessionWithLinks extends vscode.DebugSession {
     configuration: vscode.DebugConfiguration & {
-        linkedSessions?: Set<DebugSessionWithLinks>;
+        linkedSessions?: DebugSessionWithLinks[];
+        _isBrightscriptJsSession?: boolean;
     };
 }
