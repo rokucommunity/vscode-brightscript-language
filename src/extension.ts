@@ -173,7 +173,7 @@ export class Extension {
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterTrackerFactory('pwa-node', {
                 createDebugAdapterTracker: function createDebugAdapterTracker(session) {
-                    if (!(session.parentSession as DebugSessionWithLinks)?.configuration?._isBrightscriptJsSession && session.parentSession?.configuration?.continueOnAttach !== true) {
+                    if (!session.parentSession.configuration?._isBrightscriptJsSession || session.parentSession?.configuration?.continueOnAttach !== true) {
                         return undefined;
                     }
                     let hasContinued = false;
