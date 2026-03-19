@@ -335,8 +335,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(deviceId: string): RokuDeviceDetails {
-        return this.devices.find(device => device.id === deviceId);
+    private findDeviceById(id: string): RokuDeviceDetails {
+        return this.devices.find(device => device.id === id);
     }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
@@ -416,8 +416,8 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
             return undefined;
         }
 
-        const deviceId = uri.path.slice(1); // Remove leading slash
-        const state = this.deviceStates.get(deviceId);
+        const id = uri.path.slice(1); // Remove leading slash
+        const state = this.deviceStates.get(id);
 
         if (state === 'pending') {
             return {

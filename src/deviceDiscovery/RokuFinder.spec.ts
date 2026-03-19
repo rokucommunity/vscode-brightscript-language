@@ -84,7 +84,8 @@ describe('RokuFinder', () => {
             // Simulate SSDP response
             (finder['client'] as any).emit('response', {
                 ST: 'roku:ecp',
-                LOCATION: 'http://192.168.1.100:8060'
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:ABC123'
             });
 
             expect(foundSpy.calledOnce).to.be.true;
@@ -92,6 +93,38 @@ describe('RokuFinder', () => {
             const options = foundSpy.firstCall.args[1];
             expect(ip).to.equal('192.168.1.100');
             expect(options.isAlive).to.be.false;
+            expect(options.serialNumber).to.equal('ABC123');
+        });
+
+        it('extracts serial number from USN header', () => {
+            finder = new RokuFinder();
+
+            const foundSpy = sinon.spy();
+            finder.on('found', foundSpy);
+
+            (finder['client'] as any).emit('response', {
+                ST: 'roku:ecp',
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:YN00AB123456'
+            });
+
+            expect(foundSpy.firstCall.args[1].serialNumber).to.equal('YN00AB123456');
+        });
+
+        it('handles missing USN gracefully', () => {
+            finder = new RokuFinder();
+
+            const foundSpy = sinon.spy();
+            finder.on('found', foundSpy);
+
+            (finder['client'] as any).emit('response', {
+                ST: 'roku:ecp',
+                LOCATION: 'http://192.168.1.100:8060'
+                // No USN header
+            });
+
+            expect(foundSpy.calledOnce).to.be.true;
+            expect(foundSpy.firstCall.args[1].serialNumber).to.be.undefined;
         });
 
         it('ignores non-Roku devices', () => {
@@ -128,7 +161,7 @@ describe('RokuFinder', () => {
     });
 
     describe('SSDP notify handling', () => {
-        it('emits "found" with IP string and isAlive true on ssdp:alive', async () => {
+        it('emits "found" with IP string, isAlive true, and serial number on ssdp:alive', async () => {
             finder = new RokuFinder();
             await finder.start();
 
@@ -147,6 +180,7 @@ describe('RokuFinder', () => {
             const options = foundSpy.firstCall.args[1];
             expect(ip).to.equal('192.168.1.100');
             expect(options.isAlive).to.be.true;
+            expect(options.serialNumber).to.equal('ABC123');
         });
 
         it('emits "lost" on ssdp:byebye', async () => {

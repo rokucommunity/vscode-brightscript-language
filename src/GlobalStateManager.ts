@@ -69,55 +69,58 @@ export class GlobalStateManager {
         }
     }
 
-    public getLastSeenDeviceIds(network: string): string[] {
+    public getLastSeenIds(network: string): string[] {
         const networks = this.context.globalState.get<Record<string, LastSeenNetworkEntry>>(this.keys.lastSeenDevicesByNetwork) || {};
-        const deviceIds = networks[network]?.deviceIds || [];
-        if (deviceIds.length !== 0) {
-            networks[network] = { deviceIds: deviceIds, lastSeen: Date.now() };
+        const entry = networks[network];
+        // TODO: Remove deviceIds fallback after a few releases
+        // Support both old format (deviceIds) and new format (ids)
+        const ids = entry?.ids ?? (entry as any)?.deviceIds ?? [];
+        if (ids.length !== 0) {
+            networks[network] = { ids: ids, lastSeen: Date.now() };
             void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, this.expireOldLastSeenNetworks(networks));
         }
-        return deviceIds;
+        return ids;
     }
 
-    public setLastSeenDeviceIds(network: string, deviceIds: string[]) {
+    public setLastSeenIds(network: string, ids: string[]) {
         const networks = this.context.globalState.get<Record<string, LastSeenNetworkEntry>>(this.keys.lastSeenDevicesByNetwork) || {};
-        if (deviceIds.length === 0) {
+        if (ids.length === 0) {
             delete networks[network];
         } else {
-            networks[network] = { deviceIds: deviceIds, lastSeen: Date.now() };
+            networks[network] = { ids: ids, lastSeen: Date.now() };
         }
         void this.context.globalState.update(this.keys.lastSeenDevicesByNetwork, networks);
     }
 
-    public addLastSeenDevice(network: string, deviceId: string) {
-        const deviceIds = this.getLastSeenDeviceIds(network);
-        if (!deviceIds.includes(deviceId)) {
-            deviceIds.push(deviceId);
-            this.setLastSeenDeviceIds(network, deviceIds);
+    public addLastSeenDevice(network: string, id: string) {
+        const ids = this.getLastSeenIds(network);
+        if (!ids.includes(id)) {
+            ids.push(id);
+            this.setLastSeenIds(network, ids);
         }
     }
 
-    public removeLastSeenDevice(network: string, deviceId: string) {
-        const deviceIds = this.getLastSeenDeviceIds(network);
-        if (deviceIds.includes(deviceId)) {
-            this.setLastSeenDeviceIds(network, deviceIds.filter((id) => id !== deviceId));
+    public removeLastSeenDevice(network: string, id: string) {
+        const ids = this.getLastSeenIds(network);
+        if (ids.includes(id)) {
+            this.setLastSeenIds(network, ids.filter((existingId) => existingId !== id));
         }
     }
 
     /**
-     * Get cached device details by deviceId
+     * Get cached device details by ID (serial number)
      */
-    public getCachedDevice(deviceId: string): CachedDevice | undefined {
+    public getCachedDevice(id: string): CachedDevice | undefined {
         const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
-        return cache[deviceId];
+        return cache[id];
     }
 
     /**
      * Cache device details for future sessions
      */
-    public setCachedDevice(deviceId: string, device: CachedDevice): void {
+    public setCachedDevice(id: string, device: CachedDevice): void {
         const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
-        cache[deviceId] = device;
+        cache[id] = device;
         void this.context.globalState.update(this.keys.deviceCache, cache);
     }
 
@@ -129,9 +132,9 @@ export class GlobalStateManager {
     public clearExpiredDevices() {
         const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
         const now = Date.now();
-        for (const deviceId in cache) {
-            if (now - cache[deviceId].createdAt > this.LAST_SEEN_NETWORK_EXPIRATION) {
-                delete cache[deviceId];
+        for (const id in cache) {
+            if (now - cache[id].createdAt > this.LAST_SEEN_NETWORK_EXPIRATION) {
+                delete cache[id];
             }
         }
         void this.context.globalState.update(this.keys.deviceCache, cache);
@@ -140,9 +143,9 @@ export class GlobalStateManager {
     /**
      * Remove a device from the cache
      */
-    public removeCachedDevice(deviceId: string): void {
+    public removeCachedDevice(id: string): void {
         const cache = this.context.globalState.get<Record<string, CachedDevice>>(this.keys.deviceCache) || {};
-        delete cache[deviceId];
+        delete cache[id];
         void this.context.globalState.update(this.keys.deviceCache, cache);
     }
 
@@ -183,7 +186,7 @@ export class GlobalStateManager {
 }
 
 interface LastSeenNetworkEntry {
-    deviceIds: string[];
+    ids: string[];
     lastSeen: number;
 }
 

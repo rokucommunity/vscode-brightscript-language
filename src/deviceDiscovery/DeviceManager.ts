@@ -175,7 +175,7 @@ export class DeviceManager {
             this.systemSleepMonitor.start();
 
             this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
+                const lastSeenDeviceIds = this.globalStateManager.getLastSeenIds(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
                     this.refresh();
                 } else {
@@ -230,10 +230,10 @@ export class DeviceManager {
     }
 
     /**
-     * Get a device by its ID
+     * Get a device by its ID (serial number)
      */
-    public getDeviceById(deviceId: string): RokuDeviceDetails | undefined {
-        return this.devices.find(d => d.id === deviceId);
+    public getDeviceById(id: string): RokuDeviceDetails | undefined {
+        return this.devices.find(d => d.id === id);
     }
 
     /**
@@ -254,7 +254,7 @@ export class DeviceManager {
     public clearCurrentDeviceList() {
         this.devices = [];
         this.deviceInfoCache.clear();
-        this.globalStateManager.setLastSeenDeviceIds(this.networkId, []);
+        this.globalStateManager.setLastSeenIds(this.networkId, []);
 
         // Clear lastUsedDevice since we don't have any device anymore
         this.lastUsedDevice = undefined;
@@ -430,8 +430,9 @@ export class DeviceManager {
     /**
      * Process a discovered IP address from SSDP.
      * Fetches device info, applies filtering, and upserts if valid.
+     * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, isAlive: boolean): Promise<void> {
+    private async processDiscoveredIp(ip: string, isAlive: boolean, serialNumber?: string): Promise<void> {
         const location = `http://${ip}:8060`;
 
         try {
@@ -445,14 +446,14 @@ export class DeviceManager {
                 return;
             }
 
-
-            const deviceId = deviceInfo['device-id']?.toString?.();
-            const isNewDevice = !this.devices.find(d => d.id === deviceId);
+            // Use serial from SSDP if available, otherwise fall back to deviceInfo
+            const id = serialNumber ?? deviceInfo['serial-number']?.toString?.();
+            const isNewDevice = !this.devices.find(d => d.id === id);
 
             const device: RokuDeviceDetails = {
                 location: location,
                 ip: ip,
-                id: deviceId,
+                id: id,
                 deviceState: 'online',
                 deviceInfo: deviceInfo
             };
@@ -460,13 +461,13 @@ export class DeviceManager {
             if (isNewDevice) {
                 this.lastDiscoveredDeviceDate = new Date();
                 if (isAlive && this.showInfoMessages) {
-                    if (!this.deviceOnlineNotifiers.has(deviceId)) {
-                        this.deviceOnlineNotifiers.set(deviceId, debounce((name: string) => {
-                            this.deviceOnlineNotifiers.delete(deviceId);
+                    if (!this.deviceOnlineNotifiers.has(id)) {
+                        this.deviceOnlineNotifiers.set(id, debounce((name: string) => {
+                            this.deviceOnlineNotifiers.delete(id);
                             void util.showTimedNotification(`Device Online: ${name}`);
                         }, 500));
                     }
-                    this.deviceOnlineNotifiers.get(deviceId)(deviceInfo['default-device-name']);
+                    this.deviceOnlineNotifiers.get(id)(deviceInfo['default-device-name']);
                 }
             }
 
@@ -571,20 +572,36 @@ export class DeviceManager {
         // Clear existing devices before loading cached ones for the current network
         this.devices = [];
 
-        const lastSeenDeviceIds = this.globalStateManager.getLastSeenDeviceIds(this.networkId);
-        for (const deviceId of lastSeenDeviceIds) {
-            const cached = this.globalStateManager.getCachedDevice(deviceId);
+        const lastSeenIds = this.globalStateManager.getLastSeenIds(this.networkId);
+        for (const id of lastSeenIds) {
+            const cached = this.globalStateManager.getCachedDevice(id);
             //ensure our cached object is actually an object
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
+                // TODO: Remove this migration logic after a few releases
+                // Migrate old device-id based entries to serial-number
+                const serialNumber = cached.deviceInfo?.['serial-number']?.toString?.();
+                if (serialNumber && cached.id !== serialNumber) {
+                    // Old format: id was device-id, migrate to serial-number
+                    this.globalStateManager.removeLastSeenDevice(this.networkId, id);
+                    this.globalStateManager.removeCachedDevice(id);
+
+                    cached.id = serialNumber;
+                    this.globalStateManager.addLastSeenDevice(this.networkId, serialNumber);
+                    this.globalStateManager.setCachedDevice(serialNumber, cached);
+                }
+
                 // Add cached device as pending (no network request)
                 const device: RokuDeviceDetails = {
                     ...cached,
                     deviceState: 'pending'
                 };
-                this.devices.push(device);
+                // Avoid duplicates if migrated serial-number already exists in list
+                if (!this.devices.find(d => d.id === device.id)) {
+                    this.devices.push(device);
+                }
             } else {
                 // No cached info - remove stale entry
-                this.globalStateManager.removeLastSeenDevice(this.networkId, deviceId);
+                this.globalStateManager.removeLastSeenDevice(this.networkId, id);
             }
         }
         this.emitDevicesChanged();
@@ -597,8 +614,8 @@ export class DeviceManager {
      */
     private setupFinderEventListeners() {
         this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { isAlive: boolean }) => {
-            void this.processDiscoveredIp(ip, options?.isAlive ?? false);
+        this.finder.on('found', (ip: string, options?: { isAlive: boolean; serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.isAlive ?? false, options?.serialNumber);
         });
 
         this.finder.on('lost', (ip: string) => {
@@ -666,14 +683,14 @@ export class DeviceManager {
     /**
      * Remove a device from the devices array
      */
-    private removeDevice(deviceId: string): void {
-        const device = this.devices.find(d => d.id === deviceId);
+    private removeDevice(id: string): void {
+        const device = this.devices.find(d => d.id === id);
         if (device) {
-            this.devices = this.devices.filter(d => d.id !== deviceId);
+            this.devices = this.devices.filter(d => d.id !== id);
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.id);
 
             // Clear lastUsedDevice if the removed device was the last used
-            if (this.lastUsedDevice?.id === deviceId) {
+            if (this.lastUsedDevice?.id === id) {
                 this.lastUsedDevice = undefined;
             }
 

@@ -22,25 +22,25 @@ describe('GlobalStateManager', () => {
 
     describe('lastSeenDevices', () => {
         it('returns empty array when no devices stored', () => {
-            expect(manager.getLastSeenDeviceIds(testNetwork)).to.deep.equal([]);
+            expect(manager.getLastSeenIds(testNetwork)).to.deep.equal([]);
         });
 
         it('adds a new device', () => {
             manager.addLastSeenDevice(testNetwork, 'device-123');
-            expect(manager.getLastSeenDeviceIds(testNetwork)).to.deep.equal(['device-123']);
+            expect(manager.getLastSeenIds(testNetwork)).to.deep.equal(['device-123']);
         });
 
         it('does not add duplicate devices', () => {
             manager.addLastSeenDevice(testNetwork, 'device-123');
             manager.addLastSeenDevice(testNetwork, 'device-123');
-            expect(manager.getLastSeenDeviceIds(testNetwork)).to.deep.equal(['device-123']);
+            expect(manager.getLastSeenIds(testNetwork)).to.deep.equal(['device-123']);
         });
 
         it('removes a device', () => {
             manager.addLastSeenDevice(testNetwork, 'device-123');
             manager.addLastSeenDevice(testNetwork, 'device-456');
             manager.removeLastSeenDevice(testNetwork, 'device-123');
-            expect(manager.getLastSeenDeviceIds(testNetwork)).to.deep.equal(['device-456']);
+            expect(manager.getLastSeenIds(testNetwork)).to.deep.equal(['device-456']);
         });
 
         it('keeps devices separate by network', () => {
@@ -48,8 +48,8 @@ describe('GlobalStateManager', () => {
             const network2 = 'network-2';
             manager.addLastSeenDevice(network1, 'device-123');
             manager.addLastSeenDevice(network2, 'device-456');
-            expect(manager.getLastSeenDeviceIds(network1)).to.deep.equal(['device-123']);
-            expect(manager.getLastSeenDeviceIds(network2)).to.deep.equal(['device-456']);
+            expect(manager.getLastSeenIds(network1)).to.deep.equal(['device-123']);
+            expect(manager.getLastSeenIds(network2)).to.deep.equal(['device-456']);
         });
     });
 
@@ -80,7 +80,7 @@ describe('GlobalStateManager', () => {
             expect(manager.getCachedDevice('device-123')).to.be.undefined;
         });
 
-        it('keeps devices separate by deviceId', () => {
+        it('keeps devices separate by id', () => {
             const device1 = { ...testDevice, id: 'device-123' };
             const device2 = { ...testDevice, id: 'device-456', ip: '192.168.1.101' };
             manager.setCachedDevice('device-123', device1);
