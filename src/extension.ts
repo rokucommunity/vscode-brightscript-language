@@ -363,10 +363,10 @@ export class Extension {
                     localRoot: localRoot,
 
                     // don't pause on the first line when attaching
-                    stopOnEntry: false,
+                    stopOnEntry: parentSession.configuration?.stopOnEntry ?? false,
 
                     // don't pause on the first line when attaching (e.g. when process launched with --inspect-brk)
-                    continueOnAttach: true,
+                    continueOnAttach: !(parentSession.configuration?.stopOnEntry ?? false),
 
                     // markers so we can identify this session and link it back to the BRS session
                     _isBrightscriptJsSession: true,
