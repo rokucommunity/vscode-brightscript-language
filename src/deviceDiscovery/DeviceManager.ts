@@ -421,7 +421,7 @@ export class DeviceManager {
      * Fetches device info, applies filtering, and upserts if valid.
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, isAlive: boolean, serialNumber?: string): Promise<void> {
+    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         const location = `http://${ip}:8060`;
 
         try {
@@ -446,20 +446,36 @@ export class DeviceManager {
                 deviceInfo: deviceInfo
             };
 
-            if (isAlive && this.showInfoMessages) {
-                if (!this.deviceOnlineNotifiers.has(deviceSerialNumber)) {
-                    this.deviceOnlineNotifiers.set(deviceSerialNumber, debounce((name: string) => {
-                        this.deviceOnlineNotifiers.delete(deviceSerialNumber);
-                        void util.showTimedNotification(`Device Online: ${name}`);
-                    }, 500));
-                }
-                this.deviceOnlineNotifiers.get(deviceSerialNumber)(deviceInfo['default-device-name']);
-            }
-
             this.setDevice(device);
         } catch {
             // Device unreachable, ignore
         }
+    }
+
+    /**
+     * Handle device-online event from RokuFinder.
+     * Shows a notification if showInfoMessages is enabled.
+     */
+    private handleDeviceOnline(ip: string, serialNumber?: string): void {
+        if (!this.showInfoMessages) {
+            return;
+        }
+
+        // Look up cached device by serial number or IP
+        const cachedDevice = serialNumber
+            ? this.devices.find(d => d.serialNumber === serialNumber)
+            : this.devices.find(d => d.ip === ip);
+
+        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? `${ip} (${serialNumber ?? 'unknown'})`;
+        const notifierId = serialNumber ?? ip;
+
+        if (!this.deviceOnlineNotifiers.has(notifierId)) {
+            this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
+                this.deviceOnlineNotifiers.delete(notifierId);
+                void util.showTimedNotification(`Device Online: ${name}`);
+            }, 500));
+        }
+        this.deviceOnlineNotifiers.get(notifierId)(displayName);
     }
 
     /**
@@ -583,8 +599,12 @@ export class DeviceManager {
      */
     private setupFinderEventListeners() {
         this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { isAlive: boolean; serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.isAlive ?? false, options?.serialNumber);
+        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.serialNumber);
+        });
+
+        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
+            this.handleDeviceOnline(ip, serialNumber);
         });
 
         this.finder.on('lost', (ip: string) => {

@@ -80,7 +80,7 @@ export class RokuFinder extends EventEmitter {
             try {
                 const url = new URL(LOCATION);
                 const serialNumber = this.extractSerialFromUsn(USN);
-                this.emit('found', url.hostname, { isAlive: false, serialNumber: serialNumber });
+                this.emit('found', url.hostname, { serialNumber: serialNumber });
             } catch {
                 // Invalid URL, ignore
             }
@@ -140,7 +140,8 @@ export class RokuFinder extends EventEmitter {
                 if (lastEmit === undefined || now - lastEmit >= this.ALIVE_DEBOUNCE_MS) {
                     this.aliveDebounceMap.set(ip, now);
                     const serialNumber = this.extractSerialFromUsn(usn);
-                    this.emit('found', ip, { isAlive: true, serialNumber: serialNumber });
+                    this.emit('found', ip, { serialNumber: serialNumber });
+                    this.emit('device-online', ip, serialNumber);
                 }
             } catch {
                 // Invalid URL, ignore
@@ -187,6 +188,5 @@ export class RokuFinder extends EventEmitter {
 }
 
 export interface FoundEventOptions {
-    isAlive: boolean;
     serialNumber?: string;
 }

@@ -864,7 +864,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
             expect(manager['devices'][0].ip).to.equal('192.168.1.100');
@@ -877,7 +877,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false, 'SSDP-SERIAL-123');
+            await manager['processDiscoveredIp']('192.168.1.100', 'SSDP-SERIAL-123');
 
             expect(manager['devices'].length).to.equal(1);
             expect(manager['devices'][0].serialNumber).to.equal('SSDP-SERIAL-123');
@@ -888,7 +888,7 @@ describe('DeviceManager', () => {
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
         });
@@ -901,7 +901,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'false'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(0);
         });
@@ -923,7 +923,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'false'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
         });
@@ -936,7 +936,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'true'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
         });
@@ -947,12 +947,42 @@ describe('DeviceManager', () => {
             sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Network error'));
 
             // Should not throw
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(0);
         });
 
-        it('shows toast for isAlive devices when showInfoMessages enabled', async () => {
+        it('processDiscoveredIp does not show notifications', async () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            await manager['processDiscoveredIp']('192.168.1.100');
+
+            expect(showTimedStub.called).to.be.false;
+        });
+    });
+
+    describe('handleDeviceOnline', () => {
+        const mockDeviceInfo = {
+            'device-id': 'test-device-123',
+            'serial-number': 'YN00AB123456',
+            'default-device-name': 'Roku Express',
+            'developer-enabled': 'true',
+            'is-stick': 'false',
+            'is-tv': 'false'
+        };
+
+        it('shows toast when showInfoMessages enabled and device is cached', async () => {
             const clock = sinon.useFakeTimers();
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
@@ -968,7 +998,11 @@ describe('DeviceManager', () => {
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
-            await manager['processDiscoveredIp']('192.168.1.100', true);
+            // First, add device to cache
+            await manager['processDiscoveredIp']('192.168.1.100', 'ABC123');
+
+            // Now trigger device-online
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
             clock.tick(1_000);
             await Promise.resolve();
 
@@ -976,7 +1010,46 @@ describe('DeviceManager', () => {
             expect(showTimedStub.firstCall.args[0]).to.include('Roku Express');
         });
 
-        it('shows toast for already-known devices when they send ssdp:alive', async () => {
+        it('shows toast with IP fallback when device not cached', async () => {
+            const clock = sinon.useFakeTimers();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            // Trigger device-online without cached device
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledOnce).to.be.true;
+            expect(showTimedStub.firstCall.args[0]).to.include('192.168.1.100');
+        });
+
+        it('does not show toast when showInfoMessages disabled', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+
+            expect(showTimedStub.called).to.be.false;
+        });
+
+        it('shows toast for repeated device-online events', async () => {
             const clock = sinon.useFakeTimers();
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
@@ -992,38 +1065,22 @@ describe('DeviceManager', () => {
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
             const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
-            // First discovery - device becomes known
-            await manager['processDiscoveredIp']('192.168.1.100', true);
+            // Add device to cache
+            await manager['processDiscoveredIp']('192.168.1.100', 'ABC123');
+
+            // First device-online
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
             clock.tick(1_000);
             await Promise.resolve();
 
             expect(showTimedStub.calledOnce).to.be.true;
 
-            // Second ssdp:alive from same device - should still show notification
-            await manager['processDiscoveredIp']('192.168.1.100', true);
+            // Second device-online from same device - should still show notification
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
             clock.tick(1_000);
             await Promise.resolve();
 
             expect(showTimedStub.calledTwice).to.be.true;
-        });
-
-        it('does not show toast for scan responses', async () => {
-            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
-                get: () => undefined,
-                deviceDiscovery: {
-                    enabled: false,
-                    showInfoMessages: true
-                }
-            } as any);
-
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
-            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
-
-            await manager['processDiscoveredIp']('192.168.1.100', false);
-
-            expect(showInfoStub.called).to.be.false;
         });
     });
 
