@@ -176,7 +176,7 @@ export class Extension {
                     if (!session.parentSession.configuration?._isBrightscriptJsSession || session.parentSession?.configuration?.continueOnAttach !== true) {
                         return undefined;
                     }
-                    let hasContinued = false;
+
                     let threadId: number;
                     return {
                         onDidSendMessage: function onDidSendMessage(message) {
@@ -187,9 +187,9 @@ export class Extension {
                                 threadId = message.body.threadId;
                             }
 
-                            if (threadId !== undefined && !hasContinued && message.type === 'response' && message.command === 'stackTrace' && message.body.stackFrames.length === 0) {
+                            // Automatically continue after attach if Hermes session is paused with no stack frames. These seem to be auto pauses that happen on attach
+                            if (threadId !== undefined && message.type === 'response' && message.command === 'stackTrace' && message.body.stackFrames.length === 0) {
                                 console.log('Automatically continuing pause after attach with Hermes session...');
-                                hasContinued = true;
                                 void session.customRequest('continue', { threadId: threadId });
                             }
                         }
