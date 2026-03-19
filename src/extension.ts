@@ -178,29 +178,17 @@ export class Extension {
                     }
                     let hasContinued = false;
                     let threadId: number;
-                    let sawStoppedEvent = false;
-                    let sawThreadsResponse = false;
-                    let timeStart: number;
                     return {
                         onDidSendMessage: function onDidSendMessage(message) {
 
-                            console.log(message.type, message.event, message);
-                            if (message.type === 'response' && message.command === 'attach') {
-                                // track how long we have been waiting to receive the stopped event after attaching, so we can log that when we do receive it
-                                timeStart = Date.now();
-                            }
-
+                            // console.log(message.type, message.event, message);
                             if (message.type === 'event' && message.event === 'stopped') {
+                                // Save the last threadId so we can continue it after attach. Hermes doesn't include the threadId in the stackTrace response.
                                 threadId = message.body.threadId;
-                                sawStoppedEvent = true;
                             }
 
-                            if (message.type === 'response' && message.command === 'threads') {
-                                sawThreadsResponse = true;
-                            }
-
-                            if (sawStoppedEvent && sawThreadsResponse && threadId !== undefined && !hasContinued && message.type === 'response' && message.command === 'stackTrace') {
-                                console.log('Automatically continuing after attach to Hermes session after ', timeStart ? Date.now() - timeStart : 0, 'ms');
+                            if (threadId !== undefined && !hasContinued && message.type === 'response' && message.command === 'stackTrace' && message.body.stackFrames.length === 0) {
+                                console.log('Automatically continuing pause after attach with Hermes session...');
                                 hasContinued = true;
                                 void session.customRequest('continue', { threadId: threadId });
                             }
