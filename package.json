@@ -103,6 +103,7 @@
         "@types/node": "^20.14.10",
         "@types/node-ssdp": "^3.3.0",
         "@types/prompt": "^1.1.2",
+        "@types/request": "^2.48.13",
         "@types/resolve": "^1.20.6",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
