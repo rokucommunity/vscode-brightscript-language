@@ -60,6 +60,7 @@ export let vscode = {
     },
     debug: {
         registerDebugConfigurationProvider: () => { },
+        registerDebugAdapterTrackerFactory: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
         onDidReceiveDebugSessionCustomEvent: () => { }
