@@ -175,7 +175,7 @@ export class DeviceManager {
             this.systemSleepMonitor.start();
 
             this.activateMonitoring().then(() => {
-                const lastSeenDeviceIds = this.globalStateManager.getLastSeenIds(this.networkId);
+                const lastSeenDeviceIds = this.globalStateManager.getLastSeenDevices(this.networkId);
                 if (lastSeenDeviceIds.length === 0) {
                     this.refresh();
                 } else {
@@ -230,10 +230,10 @@ export class DeviceManager {
     }
 
     /**
-     * Get a device by its ID (serial number)
+     * Get a device by its serial number
      */
-    public getDeviceById(id: string): RokuDeviceDetails | undefined {
-        return this.devices.find(d => d.id === id);
+    public getDevice(serialNumber: string): RokuDeviceDetails | undefined {
+        return this.devices.find(d => d.id === serialNumber);
     }
 
     /**
@@ -254,7 +254,7 @@ export class DeviceManager {
     public clearCurrentDeviceList() {
         this.devices = [];
         this.deviceInfoCache.clear();
-        this.globalStateManager.setLastSeenIds(this.networkId, []);
+        this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
         // Clear lastUsedDevice since we don't have any device anymore
         this.lastUsedDevice = undefined;
@@ -572,36 +572,20 @@ export class DeviceManager {
         // Clear existing devices before loading cached ones for the current network
         this.devices = [];
 
-        const lastSeenIds = this.globalStateManager.getLastSeenIds(this.networkId);
-        for (const id of lastSeenIds) {
-            const cached = this.globalStateManager.getCachedDevice(id);
+        const lastSeenDevices = this.globalStateManager.getLastSeenDevices(this.networkId);
+        for (const serialNumber of lastSeenDevices) {
+            const cached = this.globalStateManager.getCachedDevice(serialNumber);
             //ensure our cached object is actually an object
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
-                // TODO: Remove this migration logic after a few releases
-                // Migrate old device-id based entries to serial-number
-                const serialNumber = cached.deviceInfo?.['serial-number']?.toString?.();
-                if (serialNumber && cached.id !== serialNumber) {
-                    // Old format: id was device-id, migrate to serial-number
-                    this.globalStateManager.removeLastSeenDevice(this.networkId, id);
-                    this.globalStateManager.removeCachedDevice(id);
-
-                    cached.id = serialNumber;
-                    this.globalStateManager.addLastSeenDevice(this.networkId, serialNumber);
-                    this.globalStateManager.setCachedDevice(serialNumber, cached);
-                }
-
                 // Add cached device as pending (no network request)
                 const device: RokuDeviceDetails = {
                     ...cached,
                     deviceState: 'pending'
                 };
-                // Avoid duplicates if migrated serial-number already exists in list
-                if (!this.devices.find(d => d.id === device.id)) {
-                    this.devices.push(device);
-                }
+                this.devices.push(device);
             } else {
                 // No cached info - remove stale entry
-                this.globalStateManager.removeLastSeenDevice(this.networkId, id);
+                this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
             }
         }
         this.emitDevicesChanged();
@@ -683,14 +667,14 @@ export class DeviceManager {
     /**
      * Remove a device from the devices array
      */
-    private removeDevice(id: string): void {
-        const device = this.devices.find(d => d.id === id);
+    private removeDevice(serialNumber: string): void {
+        const device = this.devices.find(d => d.id === serialNumber);
         if (device) {
-            this.devices = this.devices.filter(d => d.id !== id);
+            this.devices = this.devices.filter(d => d.id !== serialNumber);
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.id);
 
             // Clear lastUsedDevice if the removed device was the last used
-            if (this.lastUsedDevice?.id === id) {
+            if (this.lastUsedDevice?.id === serialNumber) {
                 this.lastUsedDevice = undefined;
             }
 

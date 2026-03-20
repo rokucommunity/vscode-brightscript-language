@@ -32,7 +32,7 @@ describe('DeviceManager', () => {
     beforeEach(() => {
         // Mock GlobalStateManager
         mockGlobalStateManager = {
-            getLastSeenIds: sinon.stub().returns([]),
+            getLastSeenDevices: sinon.stub().returns([]),
             addLastSeenDevice: sinon.stub(),
             removeLastSeenDevice: sinon.stub(),
             getCachedDevice: sinon.stub().returns(undefined),
@@ -784,7 +784,7 @@ describe('DeviceManager', () => {
             manager['devices'].push(existingDevice);
 
             // Setup cache to return a different device
-            mockGlobalStateManager.getLastSeenIds.returns(['cached-device']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['cached-device']);
             mockGlobalStateManager.getCachedDevice.returns({
                 id: 'cached-device',
                 ip: '192.168.1.200',
@@ -802,7 +802,7 @@ describe('DeviceManager', () => {
         it('loads cached devices as pending state', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            mockGlobalStateManager.getLastSeenIds.returns(['device-1']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
             mockGlobalStateManager.getCachedDevice.returns({
                 id: 'device-1',
                 ip: '192.168.1.100',
@@ -818,7 +818,7 @@ describe('DeviceManager', () => {
         it('removes stale entries when cache returns undefined', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            mockGlobalStateManager.getLastSeenIds.returns(['stale-device']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['stale-device']);
             mockGlobalStateManager.getCachedDevice.returns(undefined);
 
             manager['loadLastSeenDevices']();
@@ -828,14 +828,14 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('getDeviceById', () => {
+    describe('getDevice', () => {
         it('returns device when found', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice({ id: 'target-device' });
             manager['devices'].push(device);
 
-            const result = manager.getDeviceById('target-device');
+            const result = manager.getDevice('target-device');
 
             expect(result).to.equal(device);
         });
@@ -843,7 +843,7 @@ describe('DeviceManager', () => {
         it('returns undefined when not found', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const result = manager.getDeviceById('nonexistent');
+            const result = manager.getDevice('nonexistent');
 
             expect(result).to.be.undefined;
         });
