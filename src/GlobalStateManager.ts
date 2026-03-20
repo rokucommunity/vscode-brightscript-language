@@ -193,7 +193,7 @@ interface LastSeenNetworkEntry {
  */
 export interface CachedDevice {
     location: string;
-    id: string;
+    serialNumber: string;
     ip: string;
     deviceInfo: Record<string, any>;
     createdAt: number;

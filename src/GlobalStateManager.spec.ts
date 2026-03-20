@@ -56,7 +56,7 @@ describe('GlobalStateManager', () => {
     describe('deviceCache', () => {
         const testDevice = {
             location: 'http://192.168.1.100:8060',
-            id: 'device-123',
+            serialNumber: 'device-123',
             ip: '192.168.1.100',
             deviceInfo: {
                 'device-id': 'device-123',
@@ -80,9 +80,9 @@ describe('GlobalStateManager', () => {
             expect(manager.getCachedDevice('device-123')).to.be.undefined;
         });
 
-        it('keeps devices separate by id', () => {
-            const device1 = { ...testDevice, id: 'device-123' };
-            const device2 = { ...testDevice, id: 'device-456', ip: '192.168.1.101' };
+        it('keeps devices separate by serial number', () => {
+            const device1 = { ...testDevice, serialNumber: 'device-123' };
+            const device2 = { ...testDevice, serialNumber: 'device-456', ip: '192.168.1.101' };
             manager.setCachedDevice('device-123', device1);
             manager.setCachedDevice('device-456', device2);
             expect(manager.getCachedDevice('device-123')).to.deep.equal(device1);
@@ -93,7 +93,7 @@ describe('GlobalStateManager', () => {
     describe('clearExpiredDevices', () => {
         const testDevice = {
             location: 'http://192.168.1.100:8060',
-            id: 'device-123',
+            serialNumber: 'device-123',
             ip: '192.168.1.100',
             deviceInfo: {
                 'device-id': 'device-123',
@@ -120,8 +120,8 @@ describe('GlobalStateManager', () => {
         });
 
         it('removes only expired devices and keeps fresh ones', () => {
-            manager.setCachedDevice('old-device', { ...testDevice, id: 'old-device', createdAt: Date.now() - 2_000 });
-            manager.setCachedDevice('new-device', { ...testDevice, id: 'new-device', createdAt: Date.now() });
+            manager.setCachedDevice('old-device', { ...testDevice, serialNumber: 'old-device', createdAt: Date.now() - 2_000 });
+            manager.setCachedDevice('new-device', { ...testDevice, serialNumber: 'new-device', createdAt: Date.now() });
             manager.clearExpiredDevices();
             expect(manager.getCachedDevice('old-device')).to.be.undefined;
             expect(manager.getCachedDevice('new-device')).to.not.be.undefined;
