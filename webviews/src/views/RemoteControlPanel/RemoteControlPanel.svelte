@@ -8,6 +8,7 @@
 
     let deviceInfo: string = 'No device connected';
     let lastCommand: string = '';
+    let advanced: boolean = false;
 
     // Observe device connection status
     intermediary.observeEvent(ViewProviderEvent.onDeviceConnectionChanged, (message) => {
@@ -326,6 +327,21 @@
         text-align: center;
         width: 100%;
     }
+
+    .advanced-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        cursor: pointer;
+        user-select: none;
+        align-self: flex-end;
+    }
+
+    .advanced-toggle input {
+        cursor: pointer;
+    }
 </style>
 
 <div class="remote-container">
@@ -339,6 +355,11 @@
     <div class="help-text">
         Click buttons or use your keyboard (↑↓←→ Enter Esc)
     </div>
+
+    <label class="advanced-toggle">
+        <input type="checkbox" bind:checked={advanced} />
+        Advanced
+    </label>
 
     <div class="remote-body">
         <!-- Main Remote Controls -->
@@ -406,6 +427,7 @@
                 </button>
             </div>
 
+            {#if advanced}
             <!-- Colored Buttons -->
             <div class="section-title">Shortcuts</div>
             <div class="colored-buttons">
@@ -440,6 +462,7 @@
                     Guide
                 </button>
             </div>
+            {/if}
 
             <!-- Text Input -->
             <button class="remote-button" on:click={sendTextInput} title="Send Text">
@@ -447,6 +470,7 @@
             </button>
         </div>
 
+        {#if advanced}
         <!-- Side Volume Controls -->
         <div class="side-controls">
             <div class="section-title">Volume</div>
@@ -460,5 +484,6 @@
                 Mute
             </button>
         </div>
+        {/if}
     </div>
 </div>
