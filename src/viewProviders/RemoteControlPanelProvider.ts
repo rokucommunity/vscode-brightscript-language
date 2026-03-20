@@ -4,6 +4,7 @@ import { ViewProviderId } from './ViewProviderId';
 import { ViewProviderCommand } from './ViewProviderCommand';
 import { ViewProviderEvent } from './ViewProviderEvent';
 import { VscodeCommand } from '../commands/VscodeCommand';
+import { vscodeContextManager } from '../managers/VscodeContextManager';
 
 /**
  * Provides a webview panel for virtual remote control with visual feedback
@@ -83,6 +84,19 @@ export class RemoteControlPanelProvider extends BaseWebviewViewProvider {
         // Send initial device connection status when view is ready
         console.log('RemoteControlPanelProvider.onViewReady()');
         this.updateDeviceStatus();
+        this.notifyRemoteControlModeChanged(vscodeContextManager.get<boolean>('brightscript.isRemoteControlMode', false));
+    }
+
+    public notifyRemoteControlModeChanged(isEnabled: boolean) {
+        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRemoteControlModeChanged, { isEnabled: isEnabled }));
+    }
+
+    public notifyRemoteCommandSent(key: string, literalCharacter: boolean) {
+        this.postOrQueueMessage(this.createEventMessage(ViewProviderEvent.onRemoteCommandSent, { key: key, literalCharacter: literalCharacter }));
+    }
+
+    public closePanel() {
+        this.panel?.dispose();
     }
 
     private updateDeviceStatus() {
@@ -128,10 +142,7 @@ export class RemoteControlPanelProvider extends BaseWebviewViewProvider {
             createPanel = true;
         } else {
             try {
-                if (!this.panel.active) {
-                    // If we still exist and aren't active then reveal the panel
-                    this.panel.reveal();
-                }
+                this.panel.reveal();
             } catch (e) {
                 createPanel = true;
             }
@@ -145,11 +156,18 @@ export class RemoteControlPanelProvider extends BaseWebviewViewProvider {
                 {
                     // Enable javascript in the webview
                     enableScripts: true,
+                    // Keep the webview alive when hidden so postMessage still delivers
+                    // (e.g. keyboard shortcut feedback when the panel isn't the active tab)
+                    retainContextWhenHidden: true,
                     localResourceRoots: [
                         vscode.Uri.file(this.webviewBasePath)
                     ]
                 }
             );
+
+            this.panel.onDidDispose(() => {
+                this.panel = undefined;
+            });
 
             this.setupViewMessageObserver(this.panel.webview);
 

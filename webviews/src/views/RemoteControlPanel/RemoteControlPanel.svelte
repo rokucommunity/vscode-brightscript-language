@@ -9,6 +9,10 @@
     let deviceInfo: string = 'No device connected';
     let lastCommand: string = '';
     let advanced: boolean = false;
+    let isFocused: boolean = false;
+    let isRemoteControlMode: boolean = false;
+    let activeButton: string = '';
+    let activeButtonTimeout: ReturnType<typeof setTimeout>;
 
     // Observe device connection status
     intermediary.observeEvent(ViewProviderEvent.onDeviceConnectionChanged, (message) => {
@@ -22,42 +26,35 @@
 
     // Observe remote control mode status
     intermediary.observeEvent(ViewProviderEvent.onRemoteControlModeChanged, (message) => {
-        console.log('RemoteControlPanel received onRemoteControlModeChanged:', message);
-        // Can update UI based on mode changes
+        isRemoteControlMode = message.context.isEnabled;
+    });
+
+    // Observe remote commands sent from the extension (keyboard, command palette, etc.)
+    intermediary.observeEvent(ViewProviderEvent.onRemoteCommandSent, (message) => {
+        const key = message.context.key as string;
+        lastCommand = key;
+        activeButton = key;
+        clearTimeout(activeButtonTimeout);
+        activeButtonTimeout = setTimeout(() => {
+            activeButton = '';
+        }, 200);
     });
 
     onMount(() => {
         console.log('RemoteControlPanel mounted, sending viewReady');
         intermediary.sendViewReady();
 
-        // Set up keyboard event listener for the webview
-        window.addEventListener('keydown', handleKeyPress);
+        const onFocus = () => { isFocused = true; };
+        const onBlur = () => { isFocused = false; };
+        window.addEventListener('focus', onFocus);
+        window.addEventListener('blur', onBlur);
+        isFocused = document.hasFocus();
 
         return () => {
-            window.removeEventListener('keydown', handleKeyPress);
+            window.removeEventListener('focus', onFocus);
+            window.removeEventListener('blur', onBlur);
         };
     });
-
-    function handleKeyPress(event: KeyboardEvent) {
-        // Map keyboard keys to remote buttons
-        const keyMap = {
-            'ArrowUp': 'Up',
-            'ArrowDown': 'Down',
-            'ArrowLeft': 'Left',
-            'ArrowRight': 'Right',
-            'Enter': 'Select',
-            'Escape': 'Back',
-            'Backspace': 'InstantReplay',
-            'Home': 'Home',
-            ' ': 'Play'
-        };
-
-        const command = keyMap[event.key];
-        if (command) {
-            event.preventDefault();
-            sendRemoteCommand(command);
-        }
-    }
 
     async function sendRemoteCommand(command: string) {
         lastCommand = command;
@@ -91,6 +88,36 @@
         user-select: none;
         max-width: 300px;
         margin: 0 auto;
+        border: 2px solid transparent;
+        border-radius: 12px;
+        transition: border-color 0.2s;
+    }
+
+    .remote-container.focused {
+        border-color: var(--vscode-focusBorder, #007fd4);
+    }
+
+    .focus-indicator {
+        width: 100%;
+        text-align: center;
+        padding: 5px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .focus-indicator.active {
+        background: var(--vscode-testing-iconPassed, #388a34);
+        color: white;
+    }
+
+    .focus-indicator.inactive {
+        background: var(--vscode-editor-background);
+        color: var(--vscode-descriptionForeground);
+        border: 1px dashed var(--vscode-panel-border);
+        cursor: pointer;
     }
 
     .device-status {
@@ -164,6 +191,11 @@
     .remote-button:active {
         transform: scale(0.95);
         background: #5A3287;
+    }
+
+    .pressed {
+        transform: scale(0.95);
+        filter: brightness(0.8);
     }
 
     .dpad-container {
@@ -311,15 +343,6 @@
         letter-spacing: 1px;
     }
 
-    .help-text {
-        text-align: center;
-        font-size: 11px;
-        color: var(--vscode-descriptionForeground);
-        padding: 6px;
-        background: var(--vscode-editor-background);
-        border-radius: 8px;
-    }
-
     .volume-button {
         padding: 10px 4px;
         font-size: 12px;
@@ -329,7 +352,6 @@
     }
 
     .advanced-toggle {
-        display: flex;
         align-items: center;
         gap: 6px;
         font-size: 11px;
@@ -344,7 +366,7 @@
     }
 </style>
 
-<div class="remote-container">
+<div class="remote-container" class:focused={isFocused}>
     <div class="device-status">
         <div>{deviceInfo}</div>
         {#if lastCommand}
@@ -352,9 +374,15 @@
         {/if}
     </div>
 
-    <div class="help-text">
-        Click buttons or use your keyboard (↑↓←→ Enter Esc)
-    </div>
+    {#if !isRemoteControlMode}
+        <div class="focus-indicator inactive">Remote control mode is off</div>
+    {:else if isFocused}
+        <div class="focus-indicator active">Keyboard active — keys sent to Roku</div>
+    {:else}
+        <div class="focus-indicator inactive" on:click={() => window.focus()} on:keydown={() => window.focus()} role="button" tabindex="0">
+            Click to enable keyboard control
+        </div>
+    {/if}
 
     <label class="advanced-toggle">
         <input type="checkbox" bind:checked={advanced} />
@@ -365,16 +393,16 @@
         <!-- Main Remote Controls -->
         <div class="main-controls">
             <!-- Power Button -->
-            <button class="remote-button power-button" on:click={() => sendRemoteCommand('Power')} title="Power">
+            <button class="remote-button power-button" class:pressed={activeButton === 'Power'} on:click={() => sendRemoteCommand('Power')} title="Power">
                 ⏻
             </button>
 
             <!-- Top Buttons -->
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('Back')} title="Back">
+                <button class="remote-button" class:pressed={activeButton === 'Back'} on:click={() => sendRemoteCommand('Back')} title="Back">
                     ←
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Home')} title="Home">
+                <button class="remote-button" class:pressed={activeButton === 'Home'} on:click={() => sendRemoteCommand('Home')} title="Home">
                     ⌂
                 </button>
             </div>
@@ -383,21 +411,21 @@
             <div class="section-title">Navigation</div>
             <div class="dpad-container">
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-up" on:click={() => sendRemoteCommand('Up')}>
+                <button class="dpad-button dpad-up" class:pressed={activeButton === 'Up'} on:click={() => sendRemoteCommand('Up')}>
                     ^
                 </button>
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-left" on:click={() => sendRemoteCommand('Left')}>
+                <button class="dpad-button dpad-left" class:pressed={activeButton === 'Left'} on:click={() => sendRemoteCommand('Left')}>
                     &lt;
                 </button>
-                <button class="dpad-button dpad-ok" on:click={() => sendRemoteCommand('Select')}>
+                <button class="dpad-button dpad-ok" class:pressed={activeButton === 'Select'} on:click={() => sendRemoteCommand('Select')}>
                     OK
                 </button>
-                <button class="dpad-button dpad-right" on:click={() => sendRemoteCommand('Right')}>
+                <button class="dpad-button dpad-right" class:pressed={activeButton === 'Right'} on:click={() => sendRemoteCommand('Right')}>
                     &gt;
                 </button>
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-down" on:click={() => sendRemoteCommand('Down')}>
+                <button class="dpad-button dpad-down" class:pressed={activeButton === 'Down'} on:click={() => sendRemoteCommand('Down')}>
                     v
                 </button>
                 <div class="dpad-corner"></div>
@@ -405,10 +433,10 @@
 
             <!-- Under D-Pad Buttons -->
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('InstantReplay')} title="Instant Replay">
+                <button class="remote-button" class:pressed={activeButton === 'InstantReplay'} on:click={() => sendRemoteCommand('InstantReplay')} title="Instant Replay">
                     ↺
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Info')} title="Options / Info">
+                <button class="remote-button" class:pressed={activeButton === 'Info'} on:click={() => sendRemoteCommand('Info')} title="Options / Info">
                     *
                 </button>
             </div>
@@ -416,13 +444,13 @@
             <!-- Playback Controls -->
             <div class="section-title">Playback</div>
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('Rev')} title="Rewind">
+                <button class="remote-button" class:pressed={activeButton === 'Rev'} on:click={() => sendRemoteCommand('Rev')} title="Rewind">
                     «
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Play')} title="Play / Pause">
+                <button class="remote-button" class:pressed={activeButton === 'Play'} on:click={() => sendRemoteCommand('Play')} title="Play / Pause">
                     ▶
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Fwd')} title="Fast Forward">
+                <button class="remote-button" class:pressed={activeButton === 'Fwd'} on:click={() => sendRemoteCommand('Fwd')} title="Fast Forward">
                     »
                 </button>
             </div>
@@ -433,21 +461,25 @@
             <div class="colored-buttons">
                 <button
                     class="colored-button btn-blue"
+                    class:pressed={activeButton === 'Blue'}
                     on:click={() => sendRemoteCommand('Blue')}
                     title="Blue"
                 ></button>
                 <button
                     class="colored-button btn-green"
+                    class:pressed={activeButton === 'Green'}
                     on:click={() => sendRemoteCommand('Green')}
                     title="Green"
                 ></button>
                 <button
                     class="colored-button btn-red"
+                    class:pressed={activeButton === 'Red'}
                     on:click={() => sendRemoteCommand('Red')}
                     title="Red"
                 ></button>
                 <button
                     class="colored-button btn-yellow"
+                    class:pressed={activeButton === 'Yellow'}
                     on:click={() => sendRemoteCommand('Yellow')}
                     title="Yellow"
                 ></button>
@@ -455,10 +487,10 @@
 
             <!-- Bottom Buttons -->
             <div class="button-row">
-                <button class="remote-button" on:click={() => sendRemoteCommand('Exit')}>
+                <button class="remote-button" class:pressed={activeButton === 'Exit'} on:click={() => sendRemoteCommand('Exit')}>
                     Exit
                 </button>
-                <button class="remote-button" on:click={() => sendRemoteCommand('Guide')}>
+                <button class="remote-button" class:pressed={activeButton === 'Guide'} on:click={() => sendRemoteCommand('Guide')}>
                     Guide
                 </button>
             </div>
@@ -474,13 +506,13 @@
         <!-- Side Volume Controls -->
         <div class="side-controls">
             <div class="section-title">Volume</div>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeUp')} title="Volume Up">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeUp'} on:click={() => sendRemoteCommand('VolumeUp')} title="Volume Up">
                 Vol +
             </button>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeDown')} title="Volume Down">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeDown'} on:click={() => sendRemoteCommand('VolumeDown')} title="Volume Down">
                 Vol −
             </button>
-            <button class="remote-button volume-button" on:click={() => sendRemoteCommand('VolumeMute')} title="Mute">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeMute'} on:click={() => sendRemoteCommand('VolumeMute')} title="Mute">
                 Mute
             </button>
         </div>

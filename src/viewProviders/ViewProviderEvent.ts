@@ -13,5 +13,6 @@ export enum ViewProviderEvent {
     onRokuAppOverlayAdded = 'onRokuAppOverlayAdded',
     onRokuAppOverlayThumbnailsLoaded = 'onRokuAppOverlayThumbnailsLoaded',
     onRemoteControlModeChanged = 'onRemoteControlModeChanged',
-    onVscodeContextSet = 'onVscodeContextSet'
+    onVscodeContextSet = 'onVscodeContextSet',
+    onRemoteCommandSent = 'onRemoteCommandSent'
 }

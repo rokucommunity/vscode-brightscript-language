@@ -44,6 +44,12 @@ export class BrightScriptCommands {
      */
     public setWebviewViewProviderManager(manager: WebviewViewProviderManager) {
         this.webviewViewProviderManager = manager;
+        this.remoteControlManager.setModeChangedCallback((isEnabled) => {
+            manager.onRemoteControlModeChanged(isEnabled);
+        });
+        this.registerKeypressNotifier((key, literalCharacter) => {
+            manager.onRemoteCommandSent(key, literalCharacter);
+        });
     }
 
     public registerCommands() {

@@ -117,4 +117,25 @@ export class WebviewViewProviderManager {
             remoteControlPanel.updateRemoteHost();
         }
     }
+
+    public onRemoteCommandSent(key: string, literalCharacter: boolean) {
+        const remoteControlPanel = this.webviewViews.find(
+            view => view.provider instanceof RemoteControlPanelProvider
+        )?.provider as RemoteControlPanelProvider;
+
+        remoteControlPanel?.notifyRemoteCommandSent(key, literalCharacter);
+    }
+
+    public onRemoteControlModeChanged(isEnabled: boolean) {
+        const remoteControlPanel = this.webviewViews.find(
+            view => view.provider instanceof RemoteControlPanelProvider
+        )?.provider as RemoteControlPanelProvider;
+
+        if (remoteControlPanel) {
+            remoteControlPanel.notifyRemoteControlModeChanged(isEnabled);
+            if (!isEnabled) {
+                remoteControlPanel.closePanel();
+            }
+        }
+    }
 }
