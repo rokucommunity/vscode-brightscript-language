@@ -5,6 +5,7 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDeviceDetails } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
+import { util } from '../util';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
@@ -929,6 +930,7 @@ describe('DeviceManager', () => {
         });
 
         it('shows toast for isAlive new devices when showInfoMessages enabled', async () => {
+            const clock = sinon.useFakeTimers();
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
                 deviceDiscovery: {
@@ -938,14 +940,17 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'randomDelay').resolves();
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
-            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
             await manager['processDiscoveredIp']('192.168.1.100', true);
+            clock.tick(1_000);
+            await Promise.resolve();
 
-            expect(showInfoStub.calledOnce).to.be.true;
-            expect(showInfoStub.firstCall.args[0]).to.include('Roku Express');
+            expect(showTimedStub.calledOnce).to.be.true;
+            expect(showTimedStub.firstCall.args[0]).to.include('Roku Express');
         });
 
         it('does not show toast for scan responses', async () => {

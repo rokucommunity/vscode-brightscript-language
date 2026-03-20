@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder, Task, TaskDefinition, Disposable, TaskScope } from 'vscode';
 import Uri from 'vscode-uri';
-import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
+import { BrightScriptTaskProvider, BrightScriptPseudoterminal } from './BrightScriptTaskProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
@@ -107,7 +107,7 @@ describe('BrightScriptTaskProvider', () => {
             (vscode.workspace as any).findFiles = sinon.stub().resolves([
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -134,7 +134,7 @@ describe('BrightScriptTaskProvider', () => {
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
             sinon.stub(vscode.window, 'showQuickPick').resolves('project1');
 
             const task = createMockTask({
@@ -162,7 +162,7 @@ describe('BrightScriptTaskProvider', () => {
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
             sinon.stub(vscode.window, 'showQuickPick').resolves(undefined);
 
             const task = createMockTask({
@@ -200,7 +200,7 @@ describe('BrightScriptTaskProvider', () => {
             (vscode.workspace as any).findFiles = sinon.stub().resolves([
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -227,7 +227,7 @@ describe('BrightScriptTaskProvider', () => {
             findFilesStub.onFirstCall().resolves([Uri.file(path.join(bsconfigDir, 'bsconfig.json'))]);
             findFilesStub.onSecondCall().resolves([Uri.file(path.join(packageDir, 'package.json'))]);
             (vscode.workspace as any).findFiles = findFilesStub;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -248,7 +248,7 @@ describe('BrightScriptTaskProvider', () => {
             (vscode.workspace as any).findFiles = sinon.stub().resolves([
                 Uri.file(path.join(rootDir, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -462,7 +462,7 @@ describe('BrightScriptTaskProvider', () => {
                 Uri.file(path.join(projectDir1, 'bsconfig.json')),
                 Uri.file(path.join(projectDir2, 'bsconfig.json'))
             ]);
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
             sinon.stub(vscode.window, 'showQuickPick').resolves(undefined);
 
             const task = createMockTask({
@@ -1362,7 +1362,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1533,7 +1533,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(undefined);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1605,7 +1605,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1638,7 +1638,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1671,7 +1671,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -1887,7 +1887,7 @@ describe('BrightScriptTaskProvider', () => {
                 }
             };
             (vscode.window as any).activeTextEditor = mockEditor;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(undefined);
 
             const task = createMockTask({
                 type: 'brightscript',
@@ -2209,7 +2209,7 @@ describe('BrightScriptTaskProvider', () => {
                 Uri.file(path.join(projectDir, 'bsconfig.json'))
             ]);
             (vscode.workspace as any).findFiles = findFilesStub;
-            (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(folder);
+            sinon.stub(vscode.workspace, 'getWorkspaceFolder').returns(folder);
 
             // Mock showQuickPick to return the relative folder path
             const relativePath = path.relative(folder.uri.fsPath, projectDir);
@@ -2246,6 +2246,59 @@ describe('BrightScriptTaskProvider', () => {
             expect(command).to.not.include('${workspaceFolder}');
             expect(command).to.not.include('${workspaceFolderBasename}');
             expect(command).to.not.include('${folderForFile');
+        });
+    });
+
+    describe('normalizeLineEndings', () => {
+        let pty: BrightScriptPseudoterminal;
+        let writeEmitterSpy: sinon.SinonSpy;
+
+        beforeEach(() => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo test'
+            });
+            pty = new BrightScriptPseudoterminal('echo test', task.definition as any, folder);
+            writeEmitterSpy = sinon.spy((pty as any).writeEmitter, 'fire');
+        });
+
+        afterEach(() => {
+            writeEmitterSpy.restore();
+        });
+
+        function doTest(input: string, expected: string) {
+            (pty as any).write(input);
+            expect(writeEmitterSpy.calledOnce).to.be.true;
+            expect(writeEmitterSpy.firstCall.args[0]).to.equal(expected);
+        }
+
+        it('converts LF to CRLF', () => {
+            doTest('Line 1\nLine 2\nLine 3', 'Line 1\r\nLine 2\r\nLine 3');
+        });
+
+        it('preserves existing CRLF', () => {
+            doTest('Line 1\r\nLine 2\r\nLine 3', 'Line 1\r\nLine 2\r\nLine 3');
+        });
+
+        it('handles mixed line endings', () => {
+            doTest('Line 1\nLine 2\r\nLine 3\nLine 4\r\n', 'Line 1\r\nLine 2\r\nLine 3\r\nLine 4\r\n');
+        });
+
+        it('handles empty string', () => {
+            doTest('', '');
+        });
+
+        it('handles string without line endings', () => {
+            doTest('Single line without newline', 'Single line without newline');
+        });
+
+        it('handles multiple consecutive line endings', () => {
+            doTest('Line 1\n\n\nLine 2', 'Line 1\r\n\r\n\r\nLine 2');
+        });
+
+        it('handles mixed consecutive line endings', () => {
+            doTest('Line 1\n\r\n\nLine 2', 'Line 1\r\n\r\n\r\nLine 2');
         });
     });
 

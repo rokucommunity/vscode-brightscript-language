@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.61.1",
+    "version": "2.61.2",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -103,6 +103,7 @@
         "@types/node": "^20.14.10",
         "@types/node-ssdp": "^3.3.0",
         "@types/prompt": "^1.1.2",
+        "@types/request": "^2.48.13",
         "@types/resolve": "^1.20.6",
         "@types/semver": "^7.1.0",
         "@types/sinon": "7.0.6",
@@ -1969,6 +1970,11 @@
                         "type": "boolean",
                         "default": false,
                         "description": "Sort import statements alphabetically",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.bsfmtPath": {
+                        "type": "string",
+                        "description": "Path to a custom `bsfmt.json` formatting config file. This can be an absolute path, or a path relative to the workspace folder. When specified, this file will be used instead of searching for a `bsfmt.json` file at the root of the workspace folder",
                         "scope": "resource"
                     }
                 }

@@ -34,7 +34,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         // Use CustomExecution to defer variable resolution until the task actually runs
         // This prevents showing pickers when VS Code is just validating tasks.json or displaying tasks in the UI
         const execution = new vscode.CustomExecution((): Promise<vscode.Pseudoterminal> => {
-            return this.createPseudoterminal(command, definition, task.scope ?? vscode.TaskScope.Workspace);
+            return Promise.resolve(new BrightScriptPseudoterminal(command, definition, task.scope ?? vscode.TaskScope.Workspace));
         });
 
         const result = new vscode.Task(
@@ -58,104 +58,121 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         return result;
     }
 
-    /**
-     * Create a pseudoterminal that resolves variables and executes the command
-     * This is called only when the task actually runs, not during validation
-     */
-    private createPseudoterminal(command: string, taskDefinition: BrightscriptTaskDefinition, taskScope: vscode.WorkspaceFolder | vscode.TaskScope): Promise<vscode.Pseudoterminal> {
-        const writeEmitter = new vscode.EventEmitter<string>();
-        const closeEmitter = new vscode.EventEmitter<number>();
-        let currentProcess: childProcess.ChildProcess | undefined;
-
-        const pty: vscode.Pseudoterminal = {
-            onDidWrite: writeEmitter.event,
-            onDidClose: closeEmitter.event,
-            open: (async () => {
-                try {
-                    // Determine the workspace folder from the task scope (may show picker once)
-                    const workspaceFolder = await this.getWorkspaceFolderFromScope(taskScope);
-
-                    // If workspace folder selection was cancelled or no folders available, abort task
-                    if (!workspaceFolder) {
-                        writeEmitter.fire('Task cancelled: no workspace folder selected\r\n');
-                        closeEmitter.fire(1);
-                        return;
-                    }
-
-                    // Resolve variables only when the task actually starts
-                    let resolvedCommand: string;
-                    try {
-                        resolvedCommand = await this.resolveCommandVariables(command, workspaceFolder);
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error);
-                        writeEmitter.fire(`Task failed: error resolving command variables: ${errorMessage}\r\n`);
-                        closeEmitter.fire(1);
-                        return;
-                    }
-
-                    // Execute the resolved command in a shell
-                    // Merge user settings with task-specific options (task options take precedence)
-                    const shellConfig = this.getShellConfiguration();
-                    const taskOptions = taskDefinition.options || {};
-
-                    // Determine final shell (task option > user setting)
-                    const shell = taskOptions.shell?.executable || shellConfig.shell;
-
-                    // Merge environment variables (process.env < user settings < task options)
-                    const mergedEnv = {
-                        ...process.env,
-                        ...shellConfig.env,
-                        ...taskOptions.env
-                    };
-
-                    // Determine working directory (task option > workspace folder)
-                    const cwd = taskOptions.cwd || workspaceFolder?.uri.fsPath;
-
-                    // Display the command being executed (similar to built-in tasks)
-                    const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
-                    writeEmitter.fire(`> Executing task${cwdDisplay}: ${resolvedCommand}\r\n\r\n`);
-
-                    currentProcess = childProcess.spawn(resolvedCommand, [], {
-                        shell: shell,
-                        env: mergedEnv,
-                        cwd: cwd
-                    });
-
-                    currentProcess.stdout?.on('data', (data: Buffer) => {
-                        // Pass through output as-is for problem matchers to parse correctly
-                        writeEmitter.fire(data.toString());
-                    });
-
-                    currentProcess.stderr?.on('data', (data: Buffer) => {
-                        // Pass through output as-is for problem matchers to parse correctly
-                        writeEmitter.fire(data.toString());
-                    });
-
-                    currentProcess.on('exit', (code) => {
-                        closeEmitter.fire(code ?? 0);
-                    });
-
-                    currentProcess.on('error', (error) => {
-                        writeEmitter.fire(`Error executing command: ${error.message}\r\n`);
-                        closeEmitter.fire(1);
-                    });
-                } catch (error) {
-                    writeEmitter.fire(`Error resolving command: ${error}\r\n`);
-                    closeEmitter.fire(1);
-                }
-            }) as () => void,
-            close: () => {
-                // Kill the process if it's still running
-                if (currentProcess && !currentProcess.killed) {
-                    currentProcess.kill();
-                }
-                writeEmitter.dispose();
-                closeEmitter.dispose();
-            }
-        };
-
-        return Promise.resolve(pty);
+    public dispose() {
+        this.taskProvider.dispose();
     }
+}
+
+export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
+    private writeEmitter = new vscode.EventEmitter<string>();
+    private closeEmitter = new vscode.EventEmitter<number>();
+    private currentProcess: childProcess.ChildProcess | undefined;
+
+    public onDidWrite = this.writeEmitter.event;
+    public onDidClose = this.closeEmitter.event;
+
+    constructor(
+        private command: string,
+        private taskDefinition: BrightscriptTaskDefinition,
+        private taskScope: vscode.WorkspaceFolder | vscode.TaskScope
+    ) { }
+
+    public async open() {
+        try {
+            // Determine the workspace folder from the task scope (may show picker once)
+            const workspaceFolder = await this.getWorkspaceFolderFromScope(this.taskScope);
+
+            // If workspace folder selection was cancelled or no folders available, abort task
+            if (!workspaceFolder) {
+                this.write('Task cancelled: no workspace folder selected\n');
+                this.exit(1);
+                return;
+            }
+
+            // Resolve variables only when the task actually starts
+            let resolvedCommand: string;
+            try {
+                resolvedCommand = await this.resolveCommandVariables(this.command, workspaceFolder);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                this.write(`Task failed: error resolving command variables: ${errorMessage}\n`);
+                this.exit(1);
+                return;
+            }
+
+            // Execute the resolved command in a shell
+            // Merge user settings with task-specific options (task options take precedence)
+            const shellConfig = this.getShellConfiguration();
+            const taskOptions = this.taskDefinition.options || {};
+
+            // Determine final shell (task option > user setting)
+            const shell = taskOptions.shell?.executable || shellConfig.shell;
+
+            // Merge environment variables (process.env < user settings < task options)
+            const mergedEnv = {
+                ...process.env,
+                ...shellConfig.env,
+                ...taskOptions.env
+            };
+
+            // Determine working directory (task option > workspace folder)
+            const cwd = taskOptions.cwd || workspaceFolder?.uri.fsPath;
+
+            // Display the command being executed (similar to built-in tasks)
+            const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
+            this.write(`> Executing task${cwdDisplay}: ${resolvedCommand}\n\n`);
+
+            this.currentProcess = childProcess.spawn(resolvedCommand, [], {
+                shell: shell,
+                env: mergedEnv,
+                cwd: cwd
+            });
+
+            this.currentProcess.stdout?.on('data', (data: Buffer) => {
+                // Pass through output with normalized line endings for VS Code
+                this.write(data.toString());
+            });
+
+            this.currentProcess.stderr?.on('data', (data: Buffer) => {
+                // Pass through output with normalized line endings for VS Code
+                this.write(data.toString());
+            });
+
+            this.currentProcess.on('exit', (code) => {
+                this.exit(code ?? 0);
+            });
+
+            this.currentProcess.on('error', (error) => {
+                this.write(`Error executing command: ${error.message}\n`);
+                this.exit(1);
+            });
+        } catch (error) {
+            this.write(`Error resolving command: ${error}\n`);
+            this.exit(1);
+        }
+    }
+
+    public close() {
+        // Kill the process if it's still running
+        if (this.currentProcess && !this.currentProcess.killed) {
+            this.currentProcess.kill();
+        }
+        this.writeEmitter.dispose();
+        this.closeEmitter.dispose();
+    }
+
+    /**
+     * Normalize line endings to \r\n for VS Code pseudoterminal output
+     * and write to the terminal.
+     */
+    private write(data: string) {
+        this.writeEmitter.fire(data.replace(/\r?\n/g, '\r\n'));
+    }
+
+    private exit(code: number) {
+        this.closeEmitter.fire(code);
+    }
+
 
     /**
      * Get the shell configuration from user settings
@@ -519,10 +536,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         }
 
         return resolvedCommand;
-    }
-
-    public dispose() {
-        this.taskProvider.dispose();
     }
 }
 

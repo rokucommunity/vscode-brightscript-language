@@ -455,13 +455,32 @@ export let vscode = {
     ThemeIcon: class {
         constructor(public id: string, public color?: any) { }
     },
+    TextEdit: class {
+        constructor(public range: any, public newText: string) { }
+        static replace(range: any, newText: string) {
+            return new vscode.TextEdit(range, newText);
+        }
+    },
     Uri: {
         file: (src: string) => {
             return {
+                fsPath: src,
+                path: src,
+                scheme: 'file',
+                authority: '',
+                query: '',
+                fragment: '',
                 with: () => {
                     return {};
+                },
+                toJSON: () => {
+                    return {
+                        fsPath: src,
+                        path: src,
+                        scheme: 'file'
+                    };
                 }
-            };
+            } as any;
         },
         parse: () => { }
     },
