@@ -13,6 +13,7 @@
     let isRemoteControlMode: boolean = false;
     let activeButton: string = '';
     let activeButtonTimeout: ReturnType<typeof setTimeout>;
+    let keybindings: Record<string, string[]> = {};
 
     // Observe device connection status
     intermediary.observeEvent(ViewProviderEvent.onDeviceConnectionChanged, (message) => {
@@ -27,6 +28,11 @@
     // Observe remote control mode status
     intermediary.observeEvent(ViewProviderEvent.onRemoteControlModeChanged, (message) => {
         isRemoteControlMode = message.context.isEnabled;
+    });
+
+    // Observe keybinding updates from the extension
+    intermediary.observeEvent(ViewProviderEvent.onKeybindingsUpdated, (message) => {
+        keybindings = message.context.keybindings;
     });
 
     // Observe remote commands sent from the extension (keyboard, command palette, etc.)
@@ -67,6 +73,11 @@
             console.error('Failed to send remote command:', error);
         }
     }
+
+    $: buttonTitle = (label: string, button: string): string => {
+        const keys = keybindings[button];
+        return keys?.length ? `${label} (${keys.join(', ')})` : label;
+    };
 
     async function sendTextInput() {
         const text = prompt('Enter text to send to device:');
@@ -393,16 +404,16 @@
         <!-- Main Remote Controls -->
         <div class="main-controls">
             <!-- Power Button -->
-            <button class="remote-button power-button" class:pressed={activeButton === 'Power'} on:click={() => sendRemoteCommand('Power')} title="Power">
+            <button class="remote-button power-button" class:pressed={activeButton === 'Power'} on:click={() => sendRemoteCommand('Power')} title={buttonTitle('Power', 'Power')}>
                 ⏻
             </button>
 
             <!-- Top Buttons -->
             <div class="button-row">
-                <button class="remote-button" class:pressed={activeButton === 'Back'} on:click={() => sendRemoteCommand('Back')} title="Back">
+                <button class="remote-button" class:pressed={activeButton === 'Back'} on:click={() => sendRemoteCommand('Back')} title={buttonTitle('Back', 'Back')}>
                     ←
                 </button>
-                <button class="remote-button" class:pressed={activeButton === 'Home'} on:click={() => sendRemoteCommand('Home')} title="Home">
+                <button class="remote-button" class:pressed={activeButton === 'Home'} on:click={() => sendRemoteCommand('Home')} title={buttonTitle('Home', 'Home')}>
                     ⌂
                 </button>
             </div>
@@ -411,21 +422,21 @@
             <div class="section-title">Navigation</div>
             <div class="dpad-container">
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-up" class:pressed={activeButton === 'Up'} on:click={() => sendRemoteCommand('Up')}>
+                <button class="dpad-button dpad-up" class:pressed={activeButton === 'Up'} on:click={() => sendRemoteCommand('Up')} title={buttonTitle('Up', 'Up')}>
                     ^
                 </button>
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-left" class:pressed={activeButton === 'Left'} on:click={() => sendRemoteCommand('Left')}>
+                <button class="dpad-button dpad-left" class:pressed={activeButton === 'Left'} on:click={() => sendRemoteCommand('Left')} title={buttonTitle('Left', 'Left')}>
                     &lt;
                 </button>
-                <button class="dpad-button dpad-ok" class:pressed={activeButton === 'Select'} on:click={() => sendRemoteCommand('Select')}>
+                <button class="dpad-button dpad-ok" class:pressed={activeButton === 'Select'} on:click={() => sendRemoteCommand('Select')} title={buttonTitle('Select', 'Select')}>
                     OK
                 </button>
-                <button class="dpad-button dpad-right" class:pressed={activeButton === 'Right'} on:click={() => sendRemoteCommand('Right')}>
+                <button class="dpad-button dpad-right" class:pressed={activeButton === 'Right'} on:click={() => sendRemoteCommand('Right')} title={buttonTitle('Right', 'Right')}>
                     &gt;
                 </button>
                 <div class="dpad-corner"></div>
-                <button class="dpad-button dpad-down" class:pressed={activeButton === 'Down'} on:click={() => sendRemoteCommand('Down')}>
+                <button class="dpad-button dpad-down" class:pressed={activeButton === 'Down'} on:click={() => sendRemoteCommand('Down')} title={buttonTitle('Down', 'Down')}>
                     v
                 </button>
                 <div class="dpad-corner"></div>
@@ -433,10 +444,10 @@
 
             <!-- Under D-Pad Buttons -->
             <div class="button-row">
-                <button class="remote-button" class:pressed={activeButton === 'InstantReplay'} on:click={() => sendRemoteCommand('InstantReplay')} title="Instant Replay">
+                <button class="remote-button" class:pressed={activeButton === 'InstantReplay'} on:click={() => sendRemoteCommand('InstantReplay')} title={buttonTitle('Instant Replay', 'InstantReplay')}>
                     ↺
                 </button>
-                <button class="remote-button" class:pressed={activeButton === 'Info'} on:click={() => sendRemoteCommand('Info')} title="Options / Info">
+                <button class="remote-button" class:pressed={activeButton === 'Info'} on:click={() => sendRemoteCommand('Info')} title={buttonTitle('Options / Info', 'Info')}>
                     *
                 </button>
             </div>
@@ -444,13 +455,13 @@
             <!-- Playback Controls -->
             <div class="section-title">Playback</div>
             <div class="button-row">
-                <button class="remote-button" class:pressed={activeButton === 'Rev'} on:click={() => sendRemoteCommand('Rev')} title="Rewind">
+                <button class="remote-button" class:pressed={activeButton === 'Rev'} on:click={() => sendRemoteCommand('Rev')} title={buttonTitle('Rewind', 'Rev')}>
                     «
                 </button>
-                <button class="remote-button" class:pressed={activeButton === 'Play'} on:click={() => sendRemoteCommand('Play')} title="Play / Pause">
+                <button class="remote-button" class:pressed={activeButton === 'Play'} on:click={() => sendRemoteCommand('Play')} title={buttonTitle('Play / Pause', 'Play')}>
                     ▶
                 </button>
-                <button class="remote-button" class:pressed={activeButton === 'Fwd'} on:click={() => sendRemoteCommand('Fwd')} title="Fast Forward">
+                <button class="remote-button" class:pressed={activeButton === 'Fwd'} on:click={() => sendRemoteCommand('Fwd')} title={buttonTitle('Fast Forward', 'Fwd')}>
                     »
                 </button>
             </div>
@@ -463,25 +474,25 @@
                     class="colored-button btn-blue"
                     class:pressed={activeButton === 'Blue'}
                     on:click={() => sendRemoteCommand('Blue')}
-                    title="Blue"
+                    title={buttonTitle('Blue', 'Blue')}
                 ></button>
                 <button
                     class="colored-button btn-green"
                     class:pressed={activeButton === 'Green'}
                     on:click={() => sendRemoteCommand('Green')}
-                    title="Green"
+                    title={buttonTitle('Green', 'Green')}
                 ></button>
                 <button
                     class="colored-button btn-red"
                     class:pressed={activeButton === 'Red'}
                     on:click={() => sendRemoteCommand('Red')}
-                    title="Red"
+                    title={buttonTitle('Red', 'Red')}
                 ></button>
                 <button
                     class="colored-button btn-yellow"
                     class:pressed={activeButton === 'Yellow'}
                     on:click={() => sendRemoteCommand('Yellow')}
-                    title="Yellow"
+                    title={buttonTitle('Yellow', 'Yellow')}
                 ></button>
             </div>
 
@@ -506,13 +517,13 @@
         <!-- Side Volume Controls -->
         <div class="side-controls">
             <div class="section-title">Volume</div>
-            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeUp'} on:click={() => sendRemoteCommand('VolumeUp')} title="Volume Up">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeUp'} on:click={() => sendRemoteCommand('VolumeUp')} title={buttonTitle('Volume Up', 'VolumeUp')}>
                 Vol +
             </button>
-            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeDown'} on:click={() => sendRemoteCommand('VolumeDown')} title="Volume Down">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeDown'} on:click={() => sendRemoteCommand('VolumeDown')} title={buttonTitle('Volume Down', 'VolumeDown')}>
                 Vol −
             </button>
-            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeMute'} on:click={() => sendRemoteCommand('VolumeMute')} title="Mute">
+            <button class="remote-button volume-button" class:pressed={activeButton === 'VolumeMute'} on:click={() => sendRemoteCommand('VolumeMute')} title={buttonTitle('Mute', 'VolumeMute')}>
                 Mute
             </button>
         </div>
