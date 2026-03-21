@@ -15,6 +15,20 @@
     let activeButtonTimeout: ReturnType<typeof setTimeout>;
     let keybindings: Record<string, string[]> = {};
 
+    interface HistoryItem {
+        id: number;
+        type: 'button' | 'text';
+        value: string;
+    }
+
+    let historyItems: HistoryItem[] = [];
+    let historyCounter = 0;
+    let textBuffer = '';
+    let currentTextItemId: number | null = null;
+    let isNarrow = false;
+    let historyOpen = false;
+    let containerEl: HTMLElement;
+
     // Observe device connection status
     intermediary.observeEvent(ViewProviderEvent.onDeviceConnectionChanged, (message) => {
         console.log('RemoteControlPanel received onDeviceConnectionChanged:', message);
@@ -38,12 +52,18 @@
     // Observe remote commands sent from the extension (keyboard, command palette, etc.)
     intermediary.observeEvent(ViewProviderEvent.onRemoteCommandSent, (message) => {
         const key = message.context.key as string;
+        const literalCharacter = message.context.literalCharacter as boolean;
         lastCommand = key;
         activeButton = key;
         clearTimeout(activeButtonTimeout);
         activeButtonTimeout = setTimeout(() => {
             activeButton = '';
         }, 200);
+        if (literalCharacter) {
+            addCharToHistory(key);
+        } else {
+            addButtonHistory(key);
+        }
     });
 
     onMount(() => {
@@ -56,13 +76,45 @@
         window.addEventListener('blur', onBlur);
         isFocused = document.hasFocus();
 
+        const ro = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                isNarrow = entry.contentRect.width < 440;
+            }
+        });
+        ro.observe(containerEl);
+
         return () => {
             window.removeEventListener('focus', onFocus);
             window.removeEventListener('blur', onBlur);
+            ro.disconnect();
         };
     });
 
+    function addCharToHistory(char: string) {
+        textBuffer += char;
+        if (currentTextItemId !== null) {
+            historyItems = historyItems.map(item =>
+                item.id === currentTextItemId ? { ...item, value: textBuffer } : item
+            );
+        } else {
+            const id = historyCounter++;
+            currentTextItemId = id;
+            historyItems = [{ id, type: 'text' as const, value: textBuffer }, ...historyItems].slice(0, 100);
+        }
+    }
+
+    function flushTextBuffer() {
+        textBuffer = '';
+        currentTextItemId = null;
+    }
+
+    function addButtonHistory(button: string) {
+        flushTextBuffer();
+        historyItems = [{ id: historyCounter++, type: 'button' as const, value: button }, ...historyItems].slice(0, 100);
+    }
+
     async function sendRemoteCommand(command: string) {
+        addButtonHistory(command);
         lastCommand = command;
         console.log('Sending remote command:', command);
         try {
@@ -82,6 +134,8 @@
     async function sendTextInput() {
         const text = prompt('Enter text to send to device:');
         if (text) {
+            flushTextBuffer();
+            historyItems = [{ id: historyCounter++, type: 'text' as const, value: text }, ...historyItems].slice(0, 100);
             await intermediary.sendCommand(ViewProviderCommand.sendRemoteText, {
                 text: text
             });
@@ -97,8 +151,8 @@
         padding: 12px;
         gap: 10px;
         user-select: none;
-        max-width: 300px;
-        margin: 0 auto;
+        width: 300px;
+        flex-shrink: 0;
         border: 2px solid transparent;
         border-radius: 12px;
         transition: border-color 0.2s;
@@ -133,7 +187,9 @@
 
     .device-status {
         width: 100%;
-        text-align: center;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         padding: 8px;
         background: var(--vscode-editor-background);
         border: 1px solid var(--vscode-panel-border);
@@ -375,13 +431,194 @@
     .advanced-toggle input {
         cursor: pointer;
     }
+
+    /* ── Layout wrapper ── */
+    .page-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px;
+        box-sizing: border-box;
+        width: 100%;
+        position: relative;
+    }
+
+    /* ── History toggle button (narrow mode only) ── */
+    .history-toggle-btn {
+        flex-shrink: 0;
+        background: var(--vscode-button-secondaryBackground, #3a3d41);
+        color: var(--vscode-button-secondaryForeground, #cccccc);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 4px;
+        padding: 3px 7px;
+        font-size: 10px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .history-toggle-btn:hover {
+        background: var(--vscode-button-secondaryHoverBackground, #45494e);
+    }
+
+    .history-toggle-active {
+        background: var(--vscode-button-background, #0e639c);
+        color: var(--vscode-button-foreground, #ffffff);
+        border-color: var(--vscode-button-background, #0e639c);
+    }
+
+    /* ── History panel ── */
+    .history-panel {
+        flex-shrink: 0;
+        width: 150px;
+        display: flex;
+        flex-direction: column;
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        overflow: hidden;
+        max-height: 600px;
+        align-self: stretch;
+    }
+
+    .history-overlay {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 85%;
+        z-index: 10;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .history-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+        flex-shrink: 0;
+    }
+
+    .history-title {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--vscode-descriptionForeground);
+    }
+
+    .history-clear-btn {
+        background: none;
+        border: none;
+        color: var(--vscode-descriptionForeground);
+        font-size: 10px;
+        cursor: pointer;
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+
+    .history-clear-btn:hover {
+        background: var(--vscode-toolbar-hoverBackground);
+        color: var(--vscode-foreground);
+    }
+
+    .history-close-btn {
+        margin-left: auto;
+        background: none;
+        border: none;
+        color: var(--vscode-descriptionForeground);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 1px 5px;
+        border-radius: 3px;
+        line-height: 1;
+    }
+
+    .history-close-btn:hover {
+        background: var(--vscode-toolbar-hoverBackground);
+        color: var(--vscode-foreground);
+    }
+
+    .history-list {
+        overflow-y: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 4px;
+        gap: 2px;
+    }
+
+    .history-empty {
+        padding: 12px 8px;
+        text-align: center;
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        opacity: 0.6;
+    }
+
+    .history-item {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        padding: 3px 5px;
+        border-radius: 4px;
+        font-size: 11px;
+        background: var(--vscode-list-inactiveSelectionBackground, rgba(255,255,255,0.04));
+    }
+
+    .history-item-type {
+        flex-shrink: 0;
+        font-size: 9px;
+        font-weight: 700;
+        width: 12px;
+        text-align: center;
+        opacity: 0.5;
+    }
+
+    .history-item-text .history-item-type {
+        color: var(--vscode-charts-green, #4ec9b0);
+    }
+
+    .history-item-button .history-item-type {
+        color: var(--vscode-charts-blue, #569cd6);
+    }
+
+    .history-item-value {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--vscode-foreground);
+    }
+
+    .history-item-text .history-item-value {
+        font-style: italic;
+    }
+
+    .device-status-info {
+        flex: 1;
+        text-align: center;
+    }
 </style>
 
+<div class="page-wrapper" bind:this={containerEl}>
 <div class="remote-container" class:focused={isFocused}>
     <div class="device-status">
-        <div>{deviceInfo}</div>
-        {#if lastCommand}
-            <div class="last-command">Last: {lastCommand}</div>
+        <div class="device-status-info">
+            <div>{deviceInfo}</div>
+            {#if lastCommand}
+                <div class="last-command">Last: {lastCommand}</div>
+            {/if}
+        </div>
+        {#if isNarrow}
+            <button
+                class="history-toggle-btn"
+                class:history-toggle-active={historyOpen}
+                on:click={() => historyOpen = !historyOpen}
+                title="Toggle command history"
+            >{historyOpen ? 'Close' : 'History'}{!historyOpen && historyItems.length > 0 ? ` (${historyItems.length})` : ''}</button>
         {/if}
     </div>
 
@@ -529,4 +766,31 @@
         </div>
         {/if}
     </div>
+</div>
+
+{#if !isNarrow || historyOpen}
+    <div class="history-panel" class:history-overlay={isNarrow && historyOpen}>
+        <div class="history-header">
+            <span class="history-title">History</span>
+            {#if historyItems.length > 0}
+                <button class="history-clear-btn" on:click={() => historyItems = []}>Clear</button>
+            {/if}
+            {#if isNarrow}
+                <button class="history-close-btn" on:click={() => historyOpen = false} title="Close history">✕</button>
+            {/if}
+        </div>
+        <div class="history-list">
+            {#if historyItems.length === 0}
+                <div class="history-empty">No commands yet</div>
+            {:else}
+                {#each historyItems as item (item.id)}
+                    <div class="history-item history-item-{item.type}">
+                        <span class="history-item-type">{item.type === 'text' ? 'T' : '>'}</span>
+                        <span class="history-item-value">{item.value}</span>
+                    </div>
+                {/each}
+            {/if}
+        </div>
+    </div>
+{/if}
 </div>
