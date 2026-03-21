@@ -49,6 +49,20 @@ export class RemoteControlPanelProvider extends BaseWebviewViewProvider {
             await this.createOrRevealWebviewPanel();
         });
 
+        // Restore the panel when VS Code reopens a window that had it open
+        context.subscriptions.push(
+            vscode.window.registerWebviewPanelSerializer(this.id, {
+                deserializeWebviewPanel: async (webviewPanel: vscode.WebviewPanel) => {
+                    this.panel = webviewPanel;
+                    webviewPanel.onDidDispose(() => {
+                        this.panel = undefined;
+                    });
+                    this.setupViewMessageObserver(webviewPanel.webview);
+                    webviewPanel.webview.html = await this.getHtmlForWebview();
+                }
+            })
+        );
+
         // Handle remote command requests from the webview
         this.addMessageCommandCallback(ViewProviderCommand.sendRemoteCommand, async (message) => {
             const button = message.context.button;
