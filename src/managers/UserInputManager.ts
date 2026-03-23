@@ -247,9 +247,9 @@ export class UserInputManager {
         let items: QuickPickHostItem[] = [];
 
         //find the lastUsedDevice from the devices list if possible, or use the data from the lastUsedDevice if not
-        lastUsedDevice = devices.find(x => x.id === lastUsedDevice?.id) ?? lastUsedDevice;
+        lastUsedDevice = devices.find(x => x.serialNumber === lastUsedDevice?.serialNumber) ?? lastUsedDevice;
         //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
-        devices = devices.filter(x => x.id !== lastUsedDevice?.id);
+        devices = devices.filter(x => x.serialNumber !== lastUsedDevice?.serialNumber);
 
         // Ensure the most recently used device is at the top of the list
         if (lastUsedDevice) {

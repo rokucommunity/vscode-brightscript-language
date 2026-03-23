@@ -63,7 +63,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            const device = this.deviceManager.getDeviceById(item.key);
+            const device = this.deviceManager.getDevice(item.key);
             if (device) {
                 await this.deviceManager.checkDeviceHealth(device, true);
             }
@@ -414,7 +414,8 @@ export class BrightScriptCommands {
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                ip = this.deviceManager.getDeviceById(deviceOrItem.key)?.ip;
+                const serialNumber = deviceOrItem.key;
+                ip = this.deviceManager.getDevice(serialNumber)?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;
             }
