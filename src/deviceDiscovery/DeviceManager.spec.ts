@@ -41,8 +41,8 @@ describe('DeviceManager', () => {
             setCachedDevice: sinon.stub(),
             removeCachedDevice: sinon.stub(),
             clearExpiredDevices: sinon.stub(),
-            getDeviceIdForIp: sinon.stub().returns(undefined),
-            setDeviceIdForIp: sinon.stub()
+            getSerialNumberForIp: sinon.stub().returns(undefined),
+            setSerialNumberForIp: sinon.stub()
         };
 
         // Mock vscode configuration

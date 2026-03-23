@@ -16,7 +16,7 @@ export class GlobalStateManager {
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
         lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
         deviceCache: 'deviceCache',
-        ipToDeviceId: 'ipToDeviceId'
+        ipToSerialNumber: 'ipToSerialNumber'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -163,23 +163,23 @@ export class GlobalStateManager {
     }
 
     /**
-     * Get deviceId for an IP address.
+     * Get serial number for an IP address.
      * First checks the current network, then falls back to searching all networks for the most recent entry.
      * Used for host-only configured devices to look up cached device info.
      */
-    public getDeviceIdForIp(ip: string, currentNetworkId?: string): string | undefined {
-        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+    public getSerialNumberForIp(ip: string, currentNetworkId?: string): string | undefined {
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
 
         // First, check the current network
         if (currentNetworkId) {
             const currentNetworkEntry = map[currentNetworkId]?.[ip];
             if (currentNetworkEntry) {
-                return currentNetworkEntry.deviceId;
+                return currentNetworkEntry.serialNumber;
             }
         }
 
         // Fall back to searching all networks, return most recent by timestamp
-        let mostRecent: { deviceId: string; timestamp: number } | undefined;
+        let mostRecent: { serialNumber: string; timestamp: number } | undefined;
         for (const networkId in map) {
             const networkMap = map[networkId];
             const entry = networkMap?.[ip];
@@ -188,33 +188,33 @@ export class GlobalStateManager {
             }
         }
 
-        return mostRecent?.deviceId;
+        return mostRecent?.serialNumber;
     }
 
     /**
-     * Save IP→deviceId mapping for the specified network. Called when a device is successfully resolved.
+     * Save IP→serialNumber mapping for the specified network. Called when a device is successfully resolved.
      */
-    public setDeviceIdForIp(networkId: string, ip: string, deviceId: string): void {
-        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+    public setSerialNumberForIp(networkId: string, ip: string, serialNumber: string): void {
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
         if (!map[networkId]) {
             map[networkId] = {};
         }
-        map[networkId][ip] = { deviceId: deviceId, timestamp: Date.now() };
-        void this.context.globalState.update(this.keys.ipToDeviceId, map);
+        map[networkId][ip] = { serialNumber: serialNumber, timestamp: Date.now() };
+        void this.context.globalState.update(this.keys.ipToSerialNumber, map);
     }
 
     /**
-     * Clear the IP→deviceId map
+     * Clear the IP→serialNumber map
      */
-    public clearIpToDeviceIdMap(): void {
-        void this.context.globalState.update(this.keys.ipToDeviceId, undefined);
+    public clearIpToSerialNumberMap(): void {
+        void this.context.globalState.update(this.keys.ipToSerialNumber, undefined);
     }
 
     /**
-     * Clear expired entries from the IP→deviceId map (same expiration as other cached data)
+     * Clear expired entries from the IP→serialNumber map (same expiration as other cached data)
      */
     public clearExpiredIpMappings(): void {
-        const map = this.context.globalState.get<IpToDeviceIdMap>(this.keys.ipToDeviceId) || {};
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
         const now = Date.now();
         let changed = false;
 
@@ -234,7 +234,7 @@ export class GlobalStateManager {
         }
 
         if (changed) {
-            void this.context.globalState.update(this.keys.ipToDeviceId, map);
+            void this.context.globalState.update(this.keys.ipToSerialNumber, map);
         }
     }
 
@@ -277,14 +277,14 @@ export interface CachedDevice {
 }
 
 /**
- * Entry in the IP→deviceId map
+ * Entry in the IP→serialNumber map
  */
-interface IpToDeviceIdEntry {
-    deviceId: string;
+interface IpToSerialNumberEntry {
+    serialNumber: string;
     timestamp: number;
 }
 
 /**
- * Per-network IP→deviceId mapping with timestamps
+ * Per-network IP→serialNumber mapping with timestamps
  */
-type IpToDeviceIdMap = Record<string, Record<string, IpToDeviceIdEntry>>;
+type IpToSerialNumberMap = Record<string, Record<string, IpToSerialNumberEntry>>;

@@ -650,7 +650,7 @@ export class DeviceManager {
             inspection?.globalValue // User settings - highest priority
         ];
 
-        // Merge devices from all scopes: key is deviceId or host
+        // Merge devices from all scopes: key is serialNumber or host
         const deviceMap = new Map<string, ConfiguredDevice>();
         for (const scopeDevices of scopes) {
             if (!Array.isArray(scopeDevices)) {
@@ -660,19 +660,19 @@ export class DeviceManager {
                 if (!device?.host) {
                     continue;
                 }
-                const key = device.deviceId || device.host;
+                const key = device.serialNumber || device.host;
                 const existing = deviceMap.get(key) || {};
                 deviceMap.set(key, { ...existing, ...device });
             }
         }
         const configuredDevices = Array.from(deviceMap.values());
-        const configuredKeys = new Set(configuredDevices.map(c => c.deviceId || c.host));
+        const configuredKeys = new Set(configuredDevices.map(c => c.serialNumber || c.host));
 
         // Handle removed configured devices (no-op at startup when devices is empty)
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
             if (device.configuredDevice) {
-                const key = device.configuredDevice.deviceId || device.configuredDevice.host;
+                const key = device.configuredDevice.serialNumber || device.configuredDevice.host;
                 if (!configuredKeys.has(key)) {
                     // Device was removed from config
                     const hasRealDeviceInfo = device.deviceInfo['device-id'] &&
@@ -690,22 +690,22 @@ export class DeviceManager {
 
         // Apply configured devices
         for (const configured of configuredDevices) {
-            let deviceId = configured.deviceId;
-            if (!deviceId) {
+            let serialNumber = configured.serialNumber;
+            if (!serialNumber) {
                 // First check current network, then fall back to most recent across all networks
-                deviceId = this.globalStateManager.getDeviceIdForIp(configured.host, this.networkId);
+                serialNumber = this.globalStateManager.getSerialNumberForIp(configured.host, this.networkId);
             }
-            const serialNumber = deviceId || configured.host;
+            const deviceSerialNumber = serialNumber || configured.host;
 
             let cachedInfo: DeviceInfoRaw | undefined;
-            if (deviceId) {
-                const cached = this.globalStateManager.getCachedDevice(deviceId);
+            if (serialNumber) {
+                const cached = this.globalStateManager.getCachedDevice(serialNumber);
                 cachedInfo = cached?.deviceInfo;
             }
 
             this.setDevice({
                 location: `http://${configured.host}:8060`,
-                serialNumber: serialNumber,
+                serialNumber: deviceSerialNumber,
                 ip: configured.host,
                 deviceState: 'pending',
                 deviceInfo: cachedInfo || this.createPlaceholderDeviceInfo(configured),
@@ -721,7 +721,7 @@ export class DeviceManager {
         return {
             'user-device-name': configured.name || configured.host,
             'default-device-name': configured.name || 'Configured Device',
-            'device-id': configured.deviceId || configured.host,
+            'device-id': configured.serialNumber || configured.host,
             'model-number': '',
             'model-name': '',
             'software-version': '',
@@ -808,7 +808,7 @@ export class DeviceManager {
         }
 
         // Update IP→serialNumber mapping when we successfully resolve a device
-        this.globalStateManager.setDeviceIdForIp(this.networkId, device.ip, device.serialNumber);
+        this.globalStateManager.setSerialNumberForIp(this.networkId, device.ip, device.serialNumber);
 
         // Only cache when device is online (confirmed via network)
         if (device.deviceState === 'online') {
@@ -896,7 +896,7 @@ export type DeviceState = 'offline' | 'pending' | 'online';
 export interface ConfiguredDevice {
     host: string;
     name?: string;
-    deviceId?: string;
+    serialNumber?: string;
     password?: string;
 }
 
