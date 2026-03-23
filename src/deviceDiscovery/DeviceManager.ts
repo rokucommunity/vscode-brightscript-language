@@ -464,7 +464,7 @@ export class DeviceManager {
         // Look up cached device by serial number or IP
         const cachedDevice = this.getDevice(serialNumber) ?? this.devices.find(d => d.ip === ip);
 
-        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? `${ip} (${serialNumber ?? 'unknown'})`;
+        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? (serialNumber ? `${ip} (${serialNumber})` : ip);
         const notifierId = serialNumber ?? ip;
 
         if (!this.deviceOnlineNotifiers.has(notifierId)) {
