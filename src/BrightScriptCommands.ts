@@ -414,7 +414,7 @@ export class BrightScriptCommands {
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                const serialNumber = deviceOrItem.key
+                const serialNumber = deviceOrItem.key;
                 ip = this.deviceManager.getDevice(serialNumber)?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;

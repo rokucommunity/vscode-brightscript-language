@@ -417,7 +417,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         }
 
         const serialNumber = uri.path.slice(1); // Remove leading slash
-        const state = this.deviceStates.get(serialNumber );
+        const state = this.deviceStates.get(serialNumber);
 
         if (state === 'pending') {
             return {
