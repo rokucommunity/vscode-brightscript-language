@@ -451,16 +451,6 @@
                     "command": "extension.brightscript.removeDeviceFromConfig",
                     "when": "view == devicesView && viewItem == 'device-configured'",
                     "group": "navigation@3"
-                },
-                {
-                    "command": "extension.brightscript.addDeviceToConfig",
-                    "when": "view == devicesView && viewItem == 'device-discovered'",
-                    "group": "inline@3"
-                },
-                {
-                    "command": "extension.brightscript.removeDeviceFromConfig",
-                    "when": "view == devicesView && viewItem == 'device-configured'",
-                    "group": "inline@3"
                 }
             ],
             "webview/context": [
@@ -2182,9 +2172,9 @@
                                     "type": "string",
                                     "description": "Friendly name for the device (overrides discovered name)"
                                 },
-                                "deviceId": {
+                                "serialNumber": {
                                     "type": "string",
-                                    "description": "Device ID (if known). Used for merging with discovered devices and cache lookup."
+                                    "description": "Serial number (if known). Used for merging with discovered devices and cache lookup."
                                 },
                                 "password": {
                                     "type": "string",
@@ -3352,15 +3342,13 @@
             },
             {
                 "command": "extension.brightscript.addDeviceToConfig",
-                "title": "Add Device to Settings",
-                "category": "BrightScript",
-                "icon": "$(pin)"
+                "title": "Save to Settings",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.removeDeviceFromConfig",
-                "title": "Remove Device from Settings",
-                "category": "BrightScript",
-                "icon": "$(pinned)"
+                "title": "Remove from Settings",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.clearConfiguredDevices",

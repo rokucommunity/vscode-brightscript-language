@@ -131,10 +131,10 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices and health check them
+            //if the `devices` setting was changed, re-apply configured devices
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.devices')) {
                 this.loadConfiguredDevices();
-                void this.checkDevicesHealth(true);
+                this.emitDevicesChanged();
             }
         };
         this.context.subscriptions.push(
@@ -223,10 +223,8 @@ export class DeviceManager {
         return [...this.devices].sort(
             // Configured devices first
             firstBy<RokuDeviceDetails>((a, b) => {
-                const aConfigured = a.configuredDevice !== undefined;
-                const bConfigured = b.configuredDevice !== undefined;
-                if (aConfigured !== bConfigured) {
-                    return aConfigured ? -1 : 1;
+                if (a.isConfigured !== b.isConfigured) {
+                    return a.isConfigured ? -1 : 1;
                 }
                 return 0;
                 // Then by form factor
@@ -371,7 +369,9 @@ export class DeviceManager {
                 serialNumber: device.serialNumber,
                 deviceState: 'online',
                 deviceInfo: deviceInfo,
-                configuredDevice: device.configuredDevice
+                isConfigured: device.isConfigured,
+                configuredName: device.configuredName,
+                configuredPassword: device.configuredPassword
             };
         } catch {
             freshDevice = undefined;
@@ -600,7 +600,7 @@ export class DeviceManager {
         // Remove non-configured devices, reset configured to pending (no-op at startup)
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
-            if (device.configuredDevice) {
+            if (device.isConfigured) {
                 device.deviceState = 'pending';
             } else {
                 this.devices.splice(i, 1);
@@ -671,15 +671,17 @@ export class DeviceManager {
         // Handle removed configured devices (no-op at startup when devices is empty)
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
-            if (device.configuredDevice) {
-                const key = device.configuredDevice.serialNumber || device.configuredDevice.host;
-                if (!configuredKeys.has(key)) {
+            if (device.isConfigured) {
+                // serialNumber is either real serial or configured host (fallback)
+                if (!configuredKeys.has(device.serialNumber)) {
                     // Device was removed from config
                     const hasRealDeviceInfo = device.deviceInfo['device-id'] &&
-                        device.deviceInfo['device-id'] !== device.configuredDevice.host;
+                        device.deviceInfo['device-id'] !== device.ip;
                     if (hasRealDeviceInfo) {
                         // Keep as discovered-only device
-                        device.configuredDevice = undefined;
+                        device.isConfigured = false;
+                        device.configuredName = undefined;
+                        device.configuredPassword = undefined;
                     } else {
                         // Config-only device, remove
                         this.devices.splice(i, 1);
@@ -697,6 +699,10 @@ export class DeviceManager {
             }
             const deviceSerialNumber = serialNumber || configured.host;
 
+            // Check if device already exists (preserve its state if online)
+            const existingDevice = this.devices.find(d => d.serialNumber === deviceSerialNumber || d.ip === configured.host);
+            const deviceState = existingDevice?.deviceState ?? 'pending';
+
             let cachedInfo: DeviceInfoRaw | undefined;
             if (serialNumber) {
                 const cached = this.globalStateManager.getCachedDevice(serialNumber);
@@ -707,27 +713,22 @@ export class DeviceManager {
                 location: `http://${configured.host}:8060`,
                 serialNumber: deviceSerialNumber,
                 ip: configured.host,
-                deviceState: 'pending',
-                deviceInfo: cachedInfo || this.createPlaceholderDeviceInfo(configured),
-                configuredDevice: configured
+                deviceState: deviceState,
+                deviceInfo: existingDevice?.deviceInfo || cachedInfo || this.createPlaceholderDeviceInfo(configured),
+                isConfigured: true,
+                configuredName: configured.name,
+                configuredPassword: configured.password
             });
         }
     }
 
     /**
      * Create placeholder device info for configured devices that haven't been resolved yet.
+     * Only includes data we actually know - everything else will be populated when resolved.
      */
     private createPlaceholderDeviceInfo(configured: ConfiguredDevice): DeviceInfoRaw {
         return {
-            'user-device-name': configured.name || configured.host,
-            'default-device-name': configured.name || 'Configured Device',
-            'device-id': configured.serialNumber || configured.host,
-            'model-number': '',
-            'model-name': '',
-            'software-version': '',
-            'is-tv': 'false',
-            'is-stick': 'false',
-            'developer-enabled': 'true'
+            'serial-number': configured.serialNumber
         } as DeviceInfoRaw;
     }
 
@@ -783,27 +784,17 @@ export class DeviceManager {
         const isNewDevice = index < 0;
 
         if (isNewDevice) {
-            this.devices.push({
-                ...device,
-                deviceInfo: {
-                    ...device.deviceInfo,
-                    // If configured, use configured name over discovered name
-                    'user-device-name': device.configuredDevice?.name || device.deviceInfo?.['user-device-name']
-                }
-            });
+            this.devices.push(device);
         } else {
-            // Merge: incoming wins for most fields, but configuredDevice from either side
+            // Merge: incoming wins for most fields, but preserve configured properties from either side
             const existing = this.devices[index];
-            const configuredDevice = device.configuredDevice ?? existing.configuredDevice;
             this.devices[index] = {
                 ...existing,
                 ...device,
-                configuredDevice: configuredDevice,
-                // If configured, use configured name over discovered name
-                deviceInfo: {
-                    ...device.deviceInfo,
-                    'user-device-name': configuredDevice?.name || device.deviceInfo?.['user-device-name'] || existing.deviceInfo?.['user-device-name']
-                }
+                // Preserve configured status from either side
+                isConfigured: device.isConfigured ?? existing.isConfigured,
+                configuredName: device.configuredName ?? existing.configuredName,
+                configuredPassword: device.configuredPassword ?? existing.configuredPassword
             };
         }
 
@@ -843,7 +834,7 @@ export class DeviceManager {
             return;
         }
 
-        if (device.configuredDevice) {
+        if (device.isConfigured) {
             // Configured devices are never removed, just marked offline
             // Icon logic will check cache to show warning (no cache) or disconnect (has cache)
             device.deviceState = 'offline';
@@ -907,10 +898,19 @@ export interface RokuDeviceDetails {
     deviceState: DeviceState;
     deviceInfo: DeviceInfoRaw;
     /**
-     * If present, this device was configured by the user.
+     * If true, this device was configured by the user.
      * Configured devices are never auto-removed.
      */
-    configuredDevice?: ConfiguredDevice;
+    isConfigured?: boolean;
+    /**
+     * User-provided name from config (brightscript.deviceDiscovery.devices).
+     * UI should display this over deviceInfo['user-device-name'] when present.
+     */
+    configuredName?: string;
+    /**
+     * User-provided password from config.
+     */
+    configuredPassword?: string;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

@@ -101,11 +101,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private devices: Array<RokuDeviceDetails>;
 
     private makeName(device: RokuDeviceDetails) {
-        return [
+        // Use configuredName if available, otherwise fall back to user-device-name
+        const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
+        const parts = [
             device.deviceInfo['model-number'],
-            device.deviceInfo['user-device-name'],
-            `OS ${device.deviceInfo['software-version']}`
-        ].join(' – ');
+            displayName,
+            device.deviceInfo['software-version'] ? `OS ${device.deviceInfo['software-version']}` : undefined
+        ].filter(Boolean);
+        return parts.join(' – ') || device.ip;
     }
 
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
@@ -135,7 +138,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         // For offline devices, check cache to distinguish:
                         // - warning icon: never successfully contacted (no cache)
                         // - disconnect icon: was online before (has cache)
-                        const hasCache = this.deviceManager.hasDeviceCache(device.id);
+                        const hasCache = this.deviceManager.hasDeviceCache(device.serialNumber);
                         if (hasCache) {
                             treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
                         } else {
@@ -147,9 +150,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         treeItem.iconPath = icons.getDeviceType(device);
                     }
 
-                    // Set contextValue for inline buttons
-                    // configured devices show filled pin, discovered show outline pin on hover
-                    treeItem.contextValue = device.configuredDevice ? 'device-configured' : 'device-discovered';
+                    // Set contextValue for context menu actions
+                    // configured devices can be removed, discovered devices can be saved
+                    treeItem.contextValue = device.isConfigured ? 'device-configured' : 'device-discovered';
 
                     items.push(treeItem);
                 }
