@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as rokuDeploy from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
+import { util } from '../util';
 
 export const FILE_SCHEME = 'bs-captureScreenshot';
 
@@ -41,41 +42,61 @@ export class CaptureScreenshotCommand {
         return { host: host, password: password };
     }
 
+    private async getScreenshotDir() {
+        let screenshotDir = vscode.workspace.getConfiguration('brightscript').get<string>('screenshotDir');
+        if (screenshotDir) {
+            let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (vscode.workspace.workspaceFolders?.length > 1) {
+                const workspaceFolder = await vscode.window.showWorkspaceFolderPick();
+                if (workspaceFolder) {
+                    workspacePath = workspaceFolder.uri.fsPath;
+                }
+            }
+
+            screenshotDir = screenshotDir.replace('${workspaceFolder}', workspacePath);
+            screenshotDir = path.resolve(workspacePath ?? process.cwd(), screenshotDir);
+        }
+        return screenshotDir;
+    }
+
     private async captureScreenshot(hostParam?: string) {
         const { host, password } = await this.getHostAndPassword(hostParam);
 
-        await vscode.window.withProgress({
-            title: `Capturing screenshot from '${host}'`,
-            location: vscode.ProgressLocation.Notification
-        }, async () => {
-            try {
-                let screenshotDir = vscode.workspace.getConfiguration('brightscript').get<string>('screenshotDir');
-                if (screenshotDir) {
-                    let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-                    if (vscode.workspace.workspaceFolders?.length > 1) {
-                        const workspaceFolder = await vscode.window.showWorkspaceFolderPick();
-                        if (workspaceFolder) {
-                            workspacePath = workspaceFolder.uri.fsPath;
-                        }
-                    }
-
-                    screenshotDir = screenshotDir.replace('${workspaceFolder}', workspacePath);
-                    screenshotDir = path.resolve(workspacePath ?? process.cwd(), screenshotDir);
-                }
+        let start = Date.now();
+        const MIN_PROGRESS_TIME = 850; // Minimum time (in ms) that vscode will ensure the withProgress notification is shown.
+        let ensureSleepMin = async () => {
+            let elapsed = Date.now() - start;
+            if (elapsed < MIN_PROGRESS_TIME) {
+                await util.sleep(MIN_PROGRESS_TIME - elapsed);
+            }
+        };
+        try {
+            const screenshotPath = await vscode.window.withProgress({
+                title: `Capturing screenshot from '${host}'`,
+                location: vscode.ProgressLocation.Notification
+            }, async (options) => {
+                const screenshotDir = await this.getScreenshotDir();
 
                 let screenshotPath = await rokuDeploy.takeScreenshot({
                     host: host,
                     password: password,
                     ...(screenshotDir && { outDir: screenshotDir })
                 });
-                if (screenshotPath) {
-                    void vscode.window.showInformationMessage(`Screenshot saved at: ` + screenshotPath);
-                    void vscode.commands.executeCommand('vscode.open', vscode.Uri.file(screenshotPath));
-                }
-            } catch (e) {
-                void vscode.window.showErrorMessage('Could not capture screenshot');
+
+                return screenshotPath;
+            });
+
+            if (screenshotPath) {
+                await ensureSleepMin();
+                await Promise.all([
+                    vscode.commands.executeCommand('vscode.open', vscode.Uri.file(screenshotPath)),
+                    vscode.window.showInformationMessage(`Screenshot saved at: ` + screenshotPath)
+                ]);
             }
-        });
+        } catch (e) {
+            await ensureSleepMin();
+            void vscode.window.showErrorMessage('Could not capture screenshot');
+        }
     }
 }
 
