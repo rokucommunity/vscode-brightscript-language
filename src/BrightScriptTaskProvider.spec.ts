@@ -678,6 +678,7 @@ describe('BrightScriptTaskProvider', () => {
             Object.defineProperty(process, 'platform', { value: 'win32' });
 
             configStub.get.withArgs('shell.windows').returns('powershell.exe');
+            configStub.get.withArgs('shellArgs.windows').returns(['/d', '/s', '/c']);
             configStub.get.withArgs('env.windows').returns({ CUSTOM_VAR: 'value' });
 
             const task = createMockTask({
@@ -693,7 +694,7 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            expect(spawnCall.args[2].shell).to.equal('powershell.exe');
+            expect(spawnCall.args[0]).to.equal('powershell.exe');
             expect(spawnCall.args[2].env).to.include({ CUSTOM_VAR: 'value' });
         });
 
@@ -701,6 +702,7 @@ describe('BrightScriptTaskProvider', () => {
             Object.defineProperty(process, 'platform', { value: 'win32' });
 
             configStub.get.withArgs('shell.windows').returns(undefined);
+            configStub.get.withArgs('shellArgs.windows').returns(undefined);
             configStub.get.withArgs('env.windows').returns({});
 
             const task = createMockTask({
@@ -716,14 +718,15 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            // Should use true to let Node.js choose
-            expect(spawnCall.args[2].shell).to.equal(true);
+            expect(spawnCall.args[0]).to.equal('cmd.exe');
+            expect(spawnCall.args[1]).to.deep.equal(['/d', '/s', '/c', 'echo "test"']);
         });
 
         it('returns macOS shell configuration on darwin', async () => {
             Object.defineProperty(process, 'platform', { value: 'darwin' });
 
             configStub.get.withArgs('shell.osx').returns('/bin/zsh');
+            configStub.get.withArgs('shellArgs.osx').returns(['-l', '-c']);
             configStub.get.withArgs('env.osx').returns({ PATH: '/custom/path' });
 
             const task = createMockTask({
@@ -739,14 +742,16 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            expect(spawnCall.args[2].shell).to.equal('/bin/zsh');
+            expect(spawnCall.args[0]).to.equal('/bin/zsh');
+            expect(spawnCall.args[1]).to.deep.equal(['-l', '-c', 'echo "test"']);
             expect(spawnCall.args[2].env).to.include({ PATH: '/custom/path' });
         });
 
-        it('uses default zsh on macOS when not configured', async () => {
+        it('uses default zsh with login shell args on macOS when not configured', async () => {
             Object.defineProperty(process, 'platform', { value: 'darwin' });
 
             configStub.get.withArgs('shell.osx').returns(undefined);
+            configStub.get.withArgs('shellArgs.osx').returns(undefined);
             configStub.get.withArgs('env.osx').returns({});
 
             const task = createMockTask({
@@ -762,13 +767,15 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            expect(spawnCall.args[2].shell).to.equal('/bin/zsh');
+            expect(spawnCall.args[0]).to.equal('/bin/zsh');
+            expect(spawnCall.args[1]).to.deep.equal(['-l', '-c', 'echo "test"']);
         });
 
         it('returns Linux shell configuration', async () => {
             Object.defineProperty(process, 'platform', { value: 'linux' });
 
             configStub.get.withArgs('shell.linux').returns('/bin/bash');
+            configStub.get.withArgs('shellArgs.linux').returns(['-l', '-c']);
             configStub.get.withArgs('env.linux').returns({ LANG: 'en_US.UTF-8' });
 
             const task = createMockTask({
@@ -784,14 +791,15 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            expect(spawnCall.args[2].shell).to.equal('/bin/bash');
+            expect(spawnCall.args[0]).to.equal('/bin/bash');
             expect(spawnCall.args[2].env).to.include({ LANG: 'en_US.UTF-8' });
         });
 
-        it('uses default bash on Linux when not configured', async () => {
+        it('uses default bash with login shell args on Linux when not configured', async () => {
             Object.defineProperty(process, 'platform', { value: 'linux' });
 
             configStub.get.withArgs('shell.linux').returns(undefined);
+            configStub.get.withArgs('shellArgs.linux').returns(undefined);
             configStub.get.withArgs('env.linux').returns({});
 
             const task = createMockTask({
@@ -807,7 +815,31 @@ describe('BrightScriptTaskProvider', () => {
 
             const spawnCall = childProcessStub.getCall(0);
 
-            expect(spawnCall.args[2].shell).to.equal('/bin/bash');
+            expect(spawnCall.args[0]).to.equal('/bin/bash');
+            expect(spawnCall.args[1]).to.deep.equal(['-l', '-c', 'echo "test"']);
+        });
+
+        it('respects terminal.integrated.shellArgs.osx user setting', async () => {
+            Object.defineProperty(process, 'platform', { value: 'darwin' });
+
+            configStub.get.withArgs('shell.osx').returns('/bin/zsh');
+            configStub.get.withArgs('shellArgs.osx').returns(['-i', '-c']);
+            configStub.get.withArgs('env.osx').returns({});
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            expect(spawnCall.args[1]).to.deep.equal(['-i', '-c', 'echo "test"']);
         });
     });
 
@@ -909,7 +941,7 @@ describe('BrightScriptTaskProvider', () => {
             const spawnCall = childProcessStub.getCall(0);
 
             // Task shell should override user setting
-            expect(spawnCall.args[2].shell).to.equal('/bin/bash');
+            expect(spawnCall.args[0]).to.equal('/bin/bash');
         });
 
         it('uses task shell option over user setting on Windows', async () => {
@@ -935,7 +967,7 @@ describe('BrightScriptTaskProvider', () => {
             const spawnCall = childProcessStub.getCall(0);
 
             // Task shell should override user setting
-            expect(spawnCall.args[2].shell).to.equal('cmd.exe');
+            expect(spawnCall.args[0]).to.equal('cmd.exe');
         });
 
         it('uses task shell option over user setting on Linux', async () => {
@@ -961,7 +993,35 @@ describe('BrightScriptTaskProvider', () => {
             const spawnCall = childProcessStub.getCall(0);
 
             // Task shell should override user setting
-            expect(spawnCall.args[2].shell).to.equal('/bin/sh');
+            expect(spawnCall.args[0]).to.equal('/bin/sh');
+        });
+
+        it('uses task shell args option over user setting', async () => {
+            Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+            configStub.get.withArgs('shell.osx').returns('/bin/zsh');
+            configStub.get.withArgs('shellArgs.osx').returns(['-l', '-c']);
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"',
+                options: {
+                    shell: {
+                        executable: '/bin/zsh',
+                        args: ['-c']
+                    }
+                }
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const spawnCall = childProcessStub.getCall(0);
+
+            // Task shell args should override user setting (no -l flag)
+            expect(spawnCall.args[1]).to.deep.equal(['-c', 'echo "test"']);
         });
 
         it('uses task cwd option over workspace folder', async () => {
@@ -1323,7 +1383,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // Command should have ${workspaceFolder} replaced with actual path
             expect(command).to.equal(`echo ${folder.uri.fsPath}`);
@@ -1343,7 +1403,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // Command should have ${workspaceFolderBasename} replaced with basename
             const expectedBasename = path.basename(folder.uri.fsPath);
@@ -1376,7 +1436,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // Command should have ${fileWorkspaceFolderBasename} replaced with basename
             const expectedBasename = path.basename(folder.uri.fsPath);
@@ -1397,7 +1457,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // Both variables should be replaced
             const expectedBasename = path.basename(folder.uri.fsPath);
@@ -1419,7 +1479,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // All instances should be replaced
             expect(command).to.equal(`echo ${folder.uri.fsPath} && cd ${folder.uri.fsPath}`);
@@ -1588,7 +1648,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${activeFile}`);
             expect(command).to.not.include('${file}');
@@ -1619,7 +1679,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${folder.uri.fsPath}`);
             expect(command).to.not.include('${fileWorkspaceFolder}');
@@ -1652,7 +1712,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${path.join('src', 'test.brs')}`);
             expect(command).to.not.include('${relativeFile}');
@@ -1685,7 +1745,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${path.join('src', 'components')}`);
             expect(command).to.not.include('${relativeFileDirname}');
@@ -1715,7 +1775,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo test.brs');
             expect(command).to.not.include('${fileBasename}');
@@ -1745,7 +1805,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo test');
             expect(command).to.not.include('${fileBasenameNoExtension}');
@@ -1775,7 +1835,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo .brs');
             expect(command).to.not.include('${fileExtname}');
@@ -1807,7 +1867,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${subDir}`);
             expect(command).to.not.include('${fileDirname}');
@@ -1839,7 +1899,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo src');
             expect(command).to.not.include('${fileDirnameBasename}');
@@ -1948,7 +2008,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo 2'); // 1-based
             expect(command).to.not.include('${lineNumber}');
@@ -1984,7 +2044,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo 5'); // 1-based
             expect(command).to.not.include('${columnNumber}');
@@ -2021,7 +2081,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal('echo hello');
             expect(command).to.not.include('${selectedText}');
@@ -2073,7 +2133,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             const os = require('os');
             expect(command).to.equal(`echo ${os.homedir()}`);
@@ -2093,7 +2153,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${process.cwd()}`);
             expect(command).to.not.include('${cwd}');
@@ -2112,7 +2172,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${process.execPath}`);
             expect(command).to.not.include('${execPath}');
@@ -2131,7 +2191,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${path.sep}`);
             expect(command).to.not.include('${pathSeparator}');
@@ -2150,7 +2210,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             expect(command).to.equal(`echo ${path.sep}`);
             expect(command).to.not.include('${/}');
@@ -2187,7 +2247,7 @@ describe('BrightScriptTaskProvider', () => {
             await pty.open();
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             const os = require('os');
             expect(command).to.equal(`echo ${folder.uri.fsPath} ${activeFile} test.brs ${os.homedir()} ${path.sep}`);
@@ -2236,7 +2296,7 @@ describe('BrightScriptTaskProvider', () => {
             expect(childProcessStub.called).to.be.true;
 
             const spawnCall = childProcessStub.getCall(0);
-            const command = spawnCall.args[0];
+            const command = spawnCall.args[1].at(-1);
 
             // Both workspace variable and folderForFile should be resolved
             const expectedBasename = path.basename(folder.uri.fsPath);
