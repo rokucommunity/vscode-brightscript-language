@@ -191,7 +191,7 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
      *      — Linux: no login flag added (matches VS Code's behavior)
      *
      * Profile args (e.g. ["--login"]) are the shell startup flags. We always append
-     * the "execute command" flag (-c on Unix, /d /s /c on Windows) so the task
+     * the "execute command" flag (-c on Unix, /d /c on Windows cmd) so the task
      * command is passed through to the shell.
      *
      * terminal.integrated.env.<OS> is also respected to match VS Code terminal env injection.
