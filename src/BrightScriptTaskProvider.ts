@@ -178,35 +178,93 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
 
 
     /**
-     * Get the shell configuration from user settings
+     * Get the shell configuration, mirroring VS Code's terminal profile resolver:
+     * https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/terminal/browser/terminalProfileResolverService.ts
+     *
+     * Priority (highest to lowest):
+     *   1. terminal.integrated.automationProfile.<OS>
+     *      — specifically designed for task runners and automation shells
+     *   2. terminal.integrated.defaultProfile.<OS> + terminal.integrated.profiles.<OS>
+     *      — the user's default terminal profile
+     *   3. $SHELL (Unix) / cmd.exe (Windows) system fallback
+     *      — macOS only: --login added for zsh/bash to source .zprofile etc.
+     *      — Linux: no login flag added (matches VS Code's behavior)
+     *
+     * Profile args (e.g. ["--login"]) are the shell startup flags. We always append
+     * the "execute command" flag (-c on Unix, /d /s /c on Windows) so the task
+     * command is passed through to the shell.
+     *
+     * terminal.integrated.env.<OS> is also respected to match VS Code terminal env injection.
      */
     private getShellConfiguration(): { shell: string; env: NodeJS.ProcessEnv; shellArgs: string[] } {
         const config = vscode.workspace.getConfiguration('terminal.integrated');
-        const platform = process.platform;
-
-        let shell: string;
-        let shellArgs: string[];
-        let env: NodeJS.ProcessEnv = {};
-
-        // Get shell configuration for the current platform
-        if (platform === 'win32') {
-            shell = config.get<string>('shell.windows') || 'cmd.exe';
-            shellArgs = config.get<string[]>('shellArgs.windows') || ['/d', '/s', '/c'];
-            env = config.get<NodeJS.ProcessEnv>('env.windows') || {};
-        } else if (platform === 'darwin') {
-            // On macOS, default to zsh with -l (login shell) — same as VS Code's integrated terminal default.
-            // The login flag ensures .zprofile is sourced, giving the user's full PATH.
-            shell = config.get<string>('shell.osx') || '/bin/zsh';
-            shellArgs = config.get<string[]>('shellArgs.osx') || ['-l', '-c'];
-            env = config.get<NodeJS.ProcessEnv>('env.osx') || {};
+        let platformKey: string;
+        if (process.platform === 'win32') {
+            platformKey = 'windows';
+        } else if (process.platform === 'darwin') {
+            platformKey = 'osx';
         } else {
-            // On Linux, default to bash with -l (login shell)
-            shell = config.get<string>('shell.linux') || '/bin/bash';
-            shellArgs = config.get<string[]>('shellArgs.linux') || ['-l', '-c'];
-            env = config.get<NodeJS.ProcessEnv>('env.linux') || {};
+            platformKey = 'linux';
         }
 
-        return { shell: shell, shellArgs: shellArgs, env: env };
+        const env = config.get<NodeJS.ProcessEnv>(`env.${platformKey}`) || {};
+
+        // 1. Automation profile — VS Code checks this first for tasks/automation
+        const automationProfile = config.get<{ path?: string; args?: string[] }>(`automationProfile.${platformKey}`);
+        if (automationProfile?.path) {
+            return {
+                shell: automationProfile.path,
+                shellArgs: this.buildShellArgs(automationProfile.path, automationProfile.args),
+                env: env
+            };
+        }
+
+        // 2. User-configured default terminal profile
+        const defaultProfileName = config.get<string>(`defaultProfile.${platformKey}`);
+        const profiles = config.get<Record<string, { path?: string | string[]; args?: string[] }>>(`profiles.${platformKey}`) || {};
+        const defaultProfile = defaultProfileName ? profiles[defaultProfileName] : undefined;
+        if (defaultProfile?.path) {
+            const profilePath = Array.isArray(defaultProfile.path) ? defaultProfile.path[0] : defaultProfile.path;
+            return {
+                shell: profilePath,
+                shellArgs: this.buildShellArgs(profilePath, defaultProfile.args),
+                env: env
+            };
+        }
+
+        // 3. System fallback — mirrors VS Code's _getUnresolvedFallbackDefaultProfile
+        if (process.platform === 'win32') {
+            return { shell: 'cmd.exe', shellArgs: this.buildShellArgs('cmd.exe'), env: env };
+        }
+        const shell = process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash');
+        // VS Code adds --login only on macOS for zsh/bash; Linux gets no login flag
+        const shellBasename = path.basename(shell);
+        const initArgs = (process.platform === 'darwin' && /^(zsh|bash)$/.test(shellBasename)) ? ['--login'] : [];
+        return { shell: shell, shellArgs: [...initArgs, '-c'], env: env };
+    }
+
+    /**
+     * Combine profile startup args with the "execute command" flag.
+     * Mirrors VS Code's terminalTaskSystem.ts logic for choosing the right execute flag
+     * based on shell type (cmd, PowerShell, bash, wsl, etc.).
+     * Profile args are shell init flags (e.g. ["--login"]) — not the execute flag.
+     */
+    private buildShellArgs(shellPath: string, profileArgs?: string[]): string[] {
+        if (process.platform !== 'win32') {
+            return [...(profileArgs || []), '-c'];
+        }
+        // Windows: choose execute flag based on shell basename (matches VS Code terminalTaskSystem).
+        // Split on both / and \ so Windows paths resolve correctly regardless of host OS.
+        const basename = (shellPath.split(/[/\\]/).pop() ?? '').toLowerCase();
+        if (basename === 'powershell.exe' || basename === 'pwsh.exe') {
+            return [...(profileArgs || []), '-Command'];
+        } else if (basename === 'bash.exe' || basename === 'zsh.exe') {
+            return [...(profileArgs || []), '-c'];
+        } else if (basename === 'wsl.exe') {
+            return [...(profileArgs || []), '-e'];
+        }
+        // cmd.exe and other unknown Windows shells
+        return [...(profileArgs || []), '/d', '/c'];
     }
 
     /**
