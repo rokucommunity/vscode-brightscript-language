@@ -416,6 +416,28 @@ class Util {
     }
 
     /**
+     * Show a notification with a progress bar that auto-dismisses after the specified duration.
+     * @param message the message to display in the notification
+     * @param durationMs how long (in milliseconds) to show the notification before it dismisses
+     */
+    public async showTimedNotification(message: string, durationMs = 2000) {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: message
+        }, async (progress) => {
+            const intervalMs = 100;
+            const steps = durationMs / intervalMs;
+            const increment = 100 / steps;
+            for (let i = 0; i < steps; i++) {
+                await new Promise<void>(resolve => {
+                    setTimeout(resolve, intervalMs);
+                });
+                progress.report({ increment: increment });
+            }
+        });
+    }
+
+    /**
      * Show a statusbar spinner that is hidden once the callback resolves
      * @param message the message that should be shown in the statusbar spinner
      * @param callback the function to run, that when completed will hide the spinner

@@ -122,13 +122,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     let treeItem = new DeviceTreeItem(
                         this.makeName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        device.id,
+                        device.serialNumber,
                         device.deviceInfo
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.id}`);
+                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`);
 
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
@@ -335,8 +335,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(deviceId: string): RokuDeviceDetails {
-        return this.devices.find(device => device.id === deviceId);
+    private findDeviceById(serialNumber: string): RokuDeviceDetails {
+        return this.devices.find(device => device.serialNumber === serialNumber);
     }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
@@ -400,10 +400,10 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
     updateDevices(devices: RokuDeviceDetails[]): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
-            const oldState = this.deviceStates.get(device.id);
+            const oldState = this.deviceStates.get(device.serialNumber);
             if (oldState !== device.deviceState) {
-                this.deviceStates.set(device.id, device.deviceState);
-                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.id}`));
+                this.deviceStates.set(device.serialNumber, device.deviceState);
+                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`));
             }
         }
         if (changedUris.length > 0) {
@@ -416,8 +416,8 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
             return undefined;
         }
 
-        const deviceId = uri.path.slice(1); // Remove leading slash
-        const state = this.deviceStates.get(deviceId);
+        const serialNumber = uri.path.slice(1); // Remove leading slash
+        const state = this.deviceStates.get(serialNumber);
 
         if (state === 'pending') {
             return {

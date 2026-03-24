@@ -5,6 +5,7 @@ import { vscode } from '../mockVscode.spec';
 import type { RokuDeviceDetails } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
+import { util } from '../util';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
@@ -14,11 +15,12 @@ describe('DeviceManager', () => {
         return {
             location: 'http://192.168.1.100:8060',
             ip: '192.168.1.100',
-            id: 'device-123',
+            serialNumber: 'device-123',
             deviceState: 'online',
             deviceInfo: {
                 'default-device-name': 'Roku Express',
                 'device-id': 'device-123',
+                'serial-number': 'device-123',
                 'is-stick': 'false',
                 'is-tv': 'false',
                 ...overrides.deviceInfo
@@ -30,12 +32,13 @@ describe('DeviceManager', () => {
     beforeEach(() => {
         // Mock GlobalStateManager
         mockGlobalStateManager = {
-            getLastSeenDeviceIds: sinon.stub().returns([]),
+            getLastSeenDevices: sinon.stub().returns([]),
             addLastSeenDevice: sinon.stub(),
             removeLastSeenDevice: sinon.stub(),
             getCachedDevice: sinon.stub().returns(undefined),
             setCachedDevice: sinon.stub(),
-            removeCachedDevice: sinon.stub()
+            removeCachedDevice: sinon.stub(),
+            clearExpiredDevices: sinon.stub()
         };
 
         // Mock vscode configuration
@@ -55,6 +58,7 @@ describe('DeviceManager', () => {
     });
 
     afterEach(() => {
+        manager?.dispose();
         sinon.restore();
     });
 
@@ -154,15 +158,15 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const tv = createMockDevice({
-                id: 'tv-1',
+                serialNumber: 'tv-1',
                 deviceInfo: { 'default-device-name': 'Roku TV', 'is-tv': 'true', 'is-stick': 'false' }
             });
             const stick = createMockDevice({
-                id: 'stick-1',
+                serialNumber: 'stick-1',
                 deviceInfo: { 'default-device-name': 'Roku Stick', 'is-tv': 'false', 'is-stick': 'true' }
             });
             const box = createMockDevice({
-                id: 'box-1',
+                serialNumber: 'box-1',
                 deviceInfo: { 'default-device-name': 'Roku Express', 'is-tv': 'false', 'is-stick': 'false' }
             });
 
@@ -173,24 +177,24 @@ describe('DeviceManager', () => {
 
             const devices = manager.getAllDevices();
 
-            expect(devices[0].id).to.equal('stick-1');
-            expect(devices[1].id).to.equal('box-1');
-            expect(devices[2].id).to.equal('tv-1');
+            expect(devices[0].serialNumber).to.equal('stick-1');
+            expect(devices[1].serialNumber).to.equal('box-1');
+            expect(devices[2].serialNumber).to.equal('tv-1');
         });
 
         it('sorts by name within same form factor', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const boxB = createMockDevice({
-                id: 'box-b',
+                serialNumber: 'box-b',
                 deviceInfo: { 'default-device-name': 'Roku B', 'is-tv': 'false', 'is-stick': 'false' }
             });
             const boxA = createMockDevice({
-                id: 'box-a',
+                serialNumber: 'box-a',
                 deviceInfo: { 'default-device-name': 'Roku A', 'is-tv': 'false', 'is-stick': 'false' }
             });
             const boxC = createMockDevice({
-                id: 'box-c',
+                serialNumber: 'box-c',
                 deviceInfo: { 'default-device-name': 'Roku C', 'is-tv': 'false', 'is-stick': 'false' }
             });
 
@@ -257,8 +261,8 @@ describe('DeviceManager', () => {
         it('sets all devices to pending and checks all when force=true', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const device1 = createMockDevice({ id: 'device-1', ip: '192.168.1.101' });
-            const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
+            const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
+            const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
             (manager as any).devices = [device1, device2];
 
             const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
@@ -271,8 +275,8 @@ describe('DeviceManager', () => {
         it('only checks stale devices when force=false', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const device1 = createMockDevice({ id: 'device-1', ip: '192.168.1.101' });
-            const device2 = createMockDevice({ id: 'device-2', ip: '192.168.1.102' });
+            const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
+            const device2 = createMockDevice({ serialNumber: 'device-2', ip: '192.168.1.102' });
             (manager as any).devices = [device1, device2];
 
             // Mark device1 as recently checked (not stale)
@@ -284,7 +288,7 @@ describe('DeviceManager', () => {
 
             // Only device2 should be checked (device1 is not stale)
             expect(resolveDeviceSpy.calledOnce).to.be.true;
-            expect(resolveDeviceSpy.firstCall.args[0].id).to.equal('device-2');
+            expect(resolveDeviceSpy.firstCall.args[0].serialNumber).to.equal('device-2');
         });
 
         it('sets devices to pending before checking when force=false', async () => {
@@ -311,7 +315,7 @@ describe('DeviceManager', () => {
             (manager as any).devices = [device];
 
             // Mark device as recently checked
-            (manager as any).lastHealthCheckTime.set(device.id, Date.now());
+            (manager as any).lastHealthCheckTime.set(device.serialNumber, Date.now());
 
             const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
 
@@ -431,7 +435,7 @@ describe('DeviceManager', () => {
 
                 // Add device at 2.9s to reset settle timer (before min time fires at 3s)
                 clock.tick(2_900);
-                manager['setDevice'](createMockDevice({ id: 'new-device' }));
+                manager['setDevice'](createMockDevice({ serialNumber: 'new-device' }));
 
                 // Min timer fires at 3s, but settle timer was reset to 2.9s + 1.5s = 4.4s
                 clock.tick(100); // Now at 3s
@@ -526,7 +530,7 @@ describe('DeviceManager', () => {
                 const devicesChangedSpy = sinon.spy();
                 manager.on('devices-changed', devicesChangedSpy);
 
-                manager['removeDevice'](device.id);
+                manager['removeDevice'](device.serialNumber);
 
                 // First call after throttle window emits immediately
                 expect(devicesChangedSpy.calledOnce).to.be.true;
@@ -547,14 +551,14 @@ describe('DeviceManager', () => {
                 manager.on('devices-changed', devicesChangedSpy);
 
                 // First call emits immediately
-                manager['setDevice'](createMockDevice({ id: 'device-1' }));
+                manager['setDevice'](createMockDevice({ serialNumber: 'device-1' }));
                 expect(devicesChangedSpy.calledOnce).to.be.true;
 
                 // Subsequent calls within throttle window are queued
                 clock.tick(10);
-                manager['setDevice'](createMockDevice({ id: 'device-2' }));
+                manager['setDevice'](createMockDevice({ serialNumber: 'device-2' }));
                 clock.tick(10);
-                manager['setDevice'](createMockDevice({ id: 'device-3' }));
+                manager['setDevice'](createMockDevice({ serialNumber: 'device-3' }));
 
                 // Still just one emit (subsequent calls queued)
                 expect(devicesChangedSpy.calledOnce).to.be.true;
@@ -674,8 +678,8 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
-            const device1 = createMockDevice({ id: 'device-1' });
-            const device2 = createMockDevice({ id: 'device-2' });
+            const device1 = createMockDevice({ serialNumber: 'device-1' });
+            const device2 = createMockDevice({ serialNumber: 'device-2' });
             manager['devices'].push(device1, device2);
 
             // Stub refresh to prevent cascade of health checks
@@ -708,8 +712,8 @@ describe('DeviceManager', () => {
 
             // Both devices should be online - sequence numbers are independent
             expect(manager['devices'].length).to.equal(2);
-            expect(manager['devices'].find(d => d.id === 'device-1').deviceState).to.equal('online');
-            expect(manager['devices'].find(d => d.id === 'device-2').deviceState).to.equal('online');
+            expect(manager['devices'].find(d => d.serialNumber === 'device-1').deviceState).to.equal('online');
+            expect(manager['devices'].find(d => d.serialNumber === 'device-2').deviceState).to.equal('online');
         });
     });
 
@@ -726,7 +730,7 @@ describe('DeviceManager', () => {
 
                 expect(manager.lastUsedDevice).to.equal(device);
 
-                manager['removeDevice'](device.id);
+                manager['removeDevice'](device.serialNumber);
 
                 expect(manager.lastUsedDevice).to.be.undefined;
             } finally {
@@ -740,12 +744,12 @@ describe('DeviceManager', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 (vscode.window as any).state = { focused: true };
 
-                const device1 = createMockDevice({ id: 'device-1' });
-                const device2 = createMockDevice({ id: 'device-2' });
+                const device1 = createMockDevice({ serialNumber: 'device-1' });
+                const device2 = createMockDevice({ serialNumber: 'device-2' });
                 manager['devices'].push(device1, device2);
                 manager.lastUsedDevice = device1;
 
-                manager['removeDevice'](device2.id);
+                manager['removeDevice'](device2.serialNumber);
 
                 expect(manager.lastUsedDevice).to.equal(device1);
             } finally {
@@ -753,7 +757,7 @@ describe('DeviceManager', () => {
             }
         });
 
-        it('removes device from cache and lastSeenDevices', () => {
+        it('removes device from lastSeenDevices', () => {
             const clock = sinon.useFakeTimers();
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -762,10 +766,9 @@ describe('DeviceManager', () => {
                 const device = createMockDevice();
                 manager['devices'].push(device);
 
-                manager['removeDevice'](device.id);
+                manager['removeDevice'](device.serialNumber);
 
-                expect(mockGlobalStateManager.removeCachedDevice.calledWith(device.id)).to.be.true;
-                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.id)).to.be.true;
+                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.serialNumber)).to.be.true;
             } finally {
                 clock.restore();
             }
@@ -777,13 +780,13 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Add a device manually
-            const existingDevice = createMockDevice({ id: 'existing' });
+            const existingDevice = createMockDevice({ serialNumber: 'existing' });
             manager['devices'].push(existingDevice);
 
             // Setup cache to return a different device
-            mockGlobalStateManager.getLastSeenDeviceIds.returns(['cached-device']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['cached-device']);
             mockGlobalStateManager.getCachedDevice.returns({
-                id: 'cached-device',
+                serialNumber: 'cached-device',
                 ip: '192.168.1.200',
                 location: 'http://192.168.1.200:8060',
                 deviceInfo: { 'default-device-name': 'Cached Roku' }
@@ -793,15 +796,15 @@ describe('DeviceManager', () => {
 
             // Should only have the cached device, not the existing one
             expect(manager['devices'].length).to.equal(1);
-            expect(manager['devices'][0].id).to.equal('cached-device');
+            expect(manager['devices'][0].serialNumber).to.equal('cached-device');
         });
 
         it('loads cached devices as pending state', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            mockGlobalStateManager.getLastSeenDeviceIds.returns(['device-1']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
             mockGlobalStateManager.getCachedDevice.returns({
-                id: 'device-1',
+                serialNumber: 'device-1',
                 ip: '192.168.1.100',
                 location: 'http://192.168.1.100:8060',
                 deviceInfo: { 'default-device-name': 'Test Roku' }
@@ -815,7 +818,7 @@ describe('DeviceManager', () => {
         it('removes stale entries when cache returns undefined', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            mockGlobalStateManager.getLastSeenDeviceIds.returns(['stale-device']);
+            mockGlobalStateManager.getLastSeenDevices.returns(['stale-device']);
             mockGlobalStateManager.getCachedDevice.returns(undefined);
 
             manager['loadLastSeenDevices']();
@@ -825,14 +828,14 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('getDeviceById', () => {
+    describe('getDevice', () => {
         it('returns device when found', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const device = createMockDevice({ id: 'target-device' });
+            const device = createMockDevice({ serialNumber: 'target-device' });
             manager['devices'].push(device);
 
-            const result = manager.getDeviceById('target-device');
+            const result = manager.getDevice('target-device');
 
             expect(result).to.equal(device);
         });
@@ -840,7 +843,7 @@ describe('DeviceManager', () => {
         it('returns undefined when not found', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            const result = manager.getDeviceById('nonexistent');
+            const result = manager.getDevice('nonexistent');
 
             expect(result).to.be.undefined;
         });
@@ -849,23 +852,45 @@ describe('DeviceManager', () => {
     describe('processDiscoveredIp', () => {
         const mockDeviceInfo = {
             'device-id': 'test-device-123',
+            'serial-number': 'YN00AB123456',
             'default-device-name': 'Roku Express',
             'developer-enabled': 'true',
             'is-stick': 'false',
             'is-tv': 'false'
         };
 
-        it('fetches device info and upserts device', async () => {
+        it('fetches device info and upserts device using serial number', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
             expect(manager['devices'][0].ip).to.equal('192.168.1.100');
-            expect(manager['devices'][0].id).to.equal('test-device-123');
+            expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
             expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('uses serial from SSDP when provided', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100', 'SSDP-SERIAL-123');
+
+            expect(manager['devices'].length).to.equal(1);
+            expect(manager['devices'][0].serialNumber).to.equal('SSDP-SERIAL-123');
+        });
+
+        it('falls back to deviceInfo serial when SSDP serial not provided', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+
+            await manager['processDiscoveredIp']('192.168.1.100');
+
+            expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
         });
 
         it('filters non-developer devices by default', async () => {
@@ -876,7 +901,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'false'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(0);
         });
@@ -898,7 +923,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'false'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
         });
@@ -911,7 +936,7 @@ describe('DeviceManager', () => {
                 'developer-enabled': 'true'
             } as any);
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(1);
         });
@@ -922,12 +947,12 @@ describe('DeviceManager', () => {
             sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Network error'));
 
             // Should not throw
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
             expect(manager['devices'].length).to.equal(0);
         });
 
-        it('shows toast for isAlive new devices when showInfoMessages enabled', async () => {
+        it('processDiscoveredIp does not show notifications', async () => {
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
                 deviceDiscovery: {
@@ -939,15 +964,54 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
-            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
-            await manager['processDiscoveredIp']('192.168.1.100', true);
+            await manager['processDiscoveredIp']('192.168.1.100');
 
-            expect(showInfoStub.calledOnce).to.be.true;
-            expect(showInfoStub.firstCall.args[0]).to.include('Roku Express');
+            expect(showTimedStub.called).to.be.false;
+        });
+    });
+
+    describe('handleDeviceOnline', () => {
+        const mockDeviceInfo = {
+            'device-id': 'test-device-123',
+            'serial-number': 'YN00AB123456',
+            'default-device-name': 'Roku Express',
+            'developer-enabled': 'true',
+            'is-stick': 'false',
+            'is-tv': 'false'
+        };
+
+        it('shows toast when showInfoMessages enabled and device is cached', async () => {
+            const clock = sinon.useFakeTimers();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            // First, add device to cache
+            await manager['processDiscoveredIp']('192.168.1.100', 'ABC123');
+
+            // Now trigger device-online
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledOnce).to.be.true;
+            expect(showTimedStub.firstCall.args[0]).to.include('Roku Express');
         });
 
-        it('does not show toast for scan responses', async () => {
+        it('shows toast with IP fallback when device not cached', async () => {
+            const clock = sinon.useFakeTimers();
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                 get: () => undefined,
                 deviceDiscovery: {
@@ -957,13 +1021,66 @@ describe('DeviceManager', () => {
             } as any);
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            // Trigger device-online without cached device
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledOnce).to.be.true;
+            expect(showTimedStub.firstCall.args[0]).to.include('192.168.1.100');
+        });
+
+        it('does not show toast when showInfoMessages disabled', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
+
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+
+            expect(showTimedStub.called).to.be.false;
+        });
+
+        it('shows toast for repeated device-online events', async () => {
+            const clock = sinon.useFakeTimers();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'randomDelay').resolves();
 
             sinon.stub(rokuDeploy, 'getDeviceInfo').resolves(mockDeviceInfo as any);
-            const showInfoStub = sinon.stub(vscode.window, 'showInformationMessage').resolves();
+            const showTimedStub = sinon.stub(util, 'showTimedNotification').resolves();
 
-            await manager['processDiscoveredIp']('192.168.1.100', false);
+            // Add device to cache
+            await manager['processDiscoveredIp']('192.168.1.100', 'ABC123');
 
-            expect(showInfoStub.called).to.be.false;
+            // First device-online
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledOnce).to.be.true;
+
+            // Second device-online from same device - should still show notification
+            manager['handleDeviceOnline']('192.168.1.100', 'ABC123');
+            clock.tick(1_000);
+            await Promise.resolve();
+
+            expect(showTimedStub.calledTwice).to.be.true;
         });
     });
 
@@ -973,6 +1090,7 @@ describe('DeviceManager', () => {
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
+                'serial-number': 'device-123',
                 'default-device-name': 'Roku Express'
             } as any);
 
@@ -1014,6 +1132,7 @@ describe('DeviceManager', () => {
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
+                'serial-number': 'device-123',
                 'default-device-name': 'Roku Express'
             } as any);
 
@@ -1067,6 +1186,7 @@ describe('DeviceManager', () => {
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
+                'serial-number': 'device-123',
                 'default-device-name': 'Roku Express'
             } as any);
 

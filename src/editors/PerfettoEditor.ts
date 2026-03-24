@@ -62,8 +62,7 @@ export class PerfettoEditorProvider implements vscode.CustomReadonlyEditorProvid
                             margin: 0;
                             padding: 0;
                             overflow: hidden;
-                            background-color: #ffffff;
-                            color: #000000;
+                            background-color: var(--vscode-editor-background);
                         }
                         iframe {
                             border: none;
@@ -72,11 +71,50 @@ export class PerfettoEditorProvider implements vscode.CustomReadonlyEditorProvid
                             position: absolute;
                             top: 0;
                         }
+                        #loading-overlay {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100vw;
+                            height: 100vh;
+                            background: var(--vscode-editor-background);
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 9999;
+                            transition: opacity 0.4s ease-out;
+                        }
+                        #loading-overlay.hidden {
+                            opacity: 0;
+                            pointer-events: none;
+                        }
+                        .spinner {
+                            width: 48px;
+                            height: 48px;
+                            border: 3px solid transparent;
+                            border-radius: 50%;
+                            border-top-color: var(--vscode-focusBorder);
+                            animation: spin 1s ease-in-out infinite;
+                        }
+                        @keyframes spin {
+                            to { transform: rotate(360deg); }
+                        }
+                        .loading-text {
+                            margin-top: 16px;
+                            color: var(--vscode-foreground);
+                            font-family: var(--vscode-font-family);
+                            font-size: 13px;
+                            font-weight: 600;
+                        }
                     </style>
                     <title>Performance Trace Viewer</title>
                 </head>
                 <body>
-                    <div id="app">Loading...</div>
+                    <div id="loading-overlay">
+                        <div class="spinner"></div>
+                        <div class="loading-text" id="loading-status">Loading Perfetto UI...</div>
+                    </div>
                    <script>
                         window.onload = function () {
                             const iframe = document.createElement('iframe');
@@ -94,19 +132,17 @@ export class PerfettoEditorProvider implements vscode.CustomReadonlyEditorProvid
                             let traceLoaded = false;
                             let pingInterval = null;
 
-                            // Handle messages from the extension
                             const sendPing = () => {
                                 perfettoFrame.contentWindow.postMessage("PING", "https://ui.perfetto.dev");
                             };
 
                             window.addEventListener('message', (event) => {
-
-
                                 if (event.data === "PONG" && event.origin === "https://ui.perfetto.dev") {
                                     if (!uiReady) {
                                         uiReady = true;
                                         vscode.postMessage({ type: "PERFETTO_READY" });
                                         console.log("PONG: ui became ready");
+                                        document.getElementById('loading-status').textContent = 'Loading trace data...';
 
                                         clearInterval(pingInterval);
                                         pingInterval = null;
@@ -115,16 +151,22 @@ export class PerfettoEditorProvider implements vscode.CustomReadonlyEditorProvid
                                         console.log("PONG: trace is loaded");
                                         clearInterval(pingInterval);
                                         pingInterval = null;
+                                        const overlay = document.getElementById('loading-overlay');
+                                        overlay.classList.add('hidden');
+                                        setTimeout(() => overlay.remove(), 400);
                                     }
                                     return;
                                 }
-                                const message = event.data; // The JSON data sent by the extension
+                                const message = event.data;
 
                                 switch (message.type) {
                                     case 'update':
+                                        document.getElementById('loading-status').textContent = 'Processing trace...';
+                                        traceLoaded = true;
                                         window.perfettoFrame.contentWindow.postMessage({
                                             perfetto: message.perfetto,
                                         }, "https://ui.perfetto.dev");
+                                        pingInterval = setInterval(() => sendPing(), 500);
                                         break;
                                 }
                             });

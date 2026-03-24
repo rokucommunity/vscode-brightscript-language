@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 let Module = require('module');
-import * as extension from './extension';
+import { Extension } from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
@@ -21,19 +21,15 @@ Module.prototype.require = function hijacked(file) {
 };
 
 describe('extension', () => {
-    let originalWebviews;
-    const extensionInstance = extension.extension;
-
+    let extension: Extension;
     beforeEach(() => {
         sinon.stub(languageServerManager, 'init').returns(Promise.resolve());
-
-        originalWebviews = extensionInstance['webviews'];
-        extensionInstance['webviews'] = [];
+        extension = new Extension();
     });
 
     afterEach(() => {
-        extensionInstance['webviews'] = originalWebviews;
         sinon.restore();
+        extension.dispose();
     });
 
     it('registers configuration provider', async () => {
@@ -107,7 +103,7 @@ describe('extension', () => {
 
         const vscodeinfostub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => { });
 
-        await extensionInstance['processCustomRequestEvent'](event, session as any);
+        await extension['processCustomRequestEvent'](event, session as any);
         const args = vscodeinfostub.getCall(0).args;
         expect(args.at(0)).to.be.equal('Test message');
         expect(args.at(1)).to.be.deep.equal({ modal: false });
@@ -142,7 +138,7 @@ describe('extension', () => {
             return actions[0];
         });
 
-        await extensionInstance['processCustomRequestEvent'](event, session as any);
+        await extension['processCustomRequestEvent'](event, session as any);
         const args = vscodeinfostub.getCall(0).args;
         expect(args.at(0)).to.be.equal('Test message');
         expect(args.at(1)).to.be.deep.equal({ modal: false });

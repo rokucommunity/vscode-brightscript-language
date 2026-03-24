@@ -56,7 +56,7 @@ describe('UserInputManager', () => {
                 'model-number': 'model1',
                 'software-version': '11.5.0'
             },
-            id: '1',
+            serialNumber: '1',
             ip: '1.1.1.1',
             location: '???',
             deviceState: 'online'
@@ -67,7 +67,7 @@ describe('UserInputManager', () => {
                 'model-number': 'model2',
                 'software-version': '11.5.0'
             },
-            id: '2',
+            serialNumber: '2',
             ip: '1.1.1.2',
             location: '???',
             deviceState: 'online'
@@ -78,7 +78,7 @@ describe('UserInputManager', () => {
                 'model-number': 'model3',
                 'software-version': '11.5.0'
             },
-            id: '3',
+            serialNumber: '3',
             ip: '1.1.1.3',
             location: '???',
             deviceState: 'online'
