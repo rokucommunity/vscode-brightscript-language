@@ -34,7 +34,6 @@ export class DeviceManager {
     private devices: RokuDeviceDetails[] = [];
 
     private lastScanDate: Date | null = null;
-    private lastDiscoveredDeviceDate: Date = new Date(0); // Epoch as default
     private finder = new RokuFinder();
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
@@ -95,16 +94,6 @@ export class DeviceManager {
             return Infinity; // Never scanned, so always stale
         }
         return Date.now() - this.lastScanDate.getTime();
-    }
-
-    /**
-     * The number of milliseconds since a new device was discovered
-     */
-    public get timeSinceLastDiscoveredDevice(): number {
-        if (!this.lastDiscoveredDeviceDate) {
-            return Infinity;
-        }
-        return Date.now() - this.lastDiscoveredDeviceDate.getTime();
     }
 
     private setupConfiguration() {
@@ -432,7 +421,7 @@ export class DeviceManager {
      * Fetches device info, applies filtering, and upserts if valid.
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, isAlive: boolean, serialNumber?: string): Promise<void> {
+    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         const location = `http://${ip}:8060`;
 
         try {
@@ -448,7 +437,6 @@ export class DeviceManager {
 
             // Use serial from SSDP if available, otherwise fall back to deviceInfo
             const deviceSerialNumber = serialNumber ?? deviceInfo['serial-number']?.toString?.();
-            const isNewDevice = !this.devices.find(d => d.serialNumber === deviceSerialNumber);
 
             const device: RokuDeviceDetails = {
                 location: location,
@@ -458,23 +446,34 @@ export class DeviceManager {
                 deviceInfo: deviceInfo
             };
 
-            if (isNewDevice) {
-                this.lastDiscoveredDeviceDate = new Date();
-                if (isAlive && this.showInfoMessages) {
-                    if (!this.deviceOnlineNotifiers.has(deviceSerialNumber)) {
-                        this.deviceOnlineNotifiers.set(deviceSerialNumber, debounce((name: string) => {
-                            this.deviceOnlineNotifiers.delete(deviceSerialNumber);
-                            void util.showTimedNotification(`Device Online: ${name}`);
-                        }, 500));
-                    }
-                    this.deviceOnlineNotifiers.get(deviceSerialNumber)(deviceInfo['default-device-name']);
-                }
-            }
-
             this.setDevice(device);
         } catch {
             // Device unreachable, ignore
         }
+    }
+
+    /**
+     * Handle device-online event from RokuFinder.
+     * Shows a notification if showInfoMessages is enabled.
+     */
+    private handleDeviceOnline(ip: string, serialNumber?: string): void {
+        if (!this.showInfoMessages) {
+            return;
+        }
+
+        // Look up cached device by serial number or IP
+        const cachedDevice = this.getDevice(serialNumber) ?? this.devices.find(d => d.ip === ip);
+
+        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? (serialNumber ? `${ip} (${serialNumber})` : ip);
+        const notifierId = serialNumber ?? ip;
+
+        if (!this.deviceOnlineNotifiers.has(notifierId)) {
+            this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
+                this.deviceOnlineNotifiers.delete(notifierId);
+                void util.showTimedNotification(`Device Online: ${name}`);
+            }, 500));
+        }
+        this.deviceOnlineNotifiers.get(notifierId)(displayName);
     }
 
     /**
@@ -598,8 +597,12 @@ export class DeviceManager {
      */
     private setupFinderEventListeners() {
         this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { isAlive: boolean; serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.isAlive ?? false, options?.serialNumber);
+        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.serialNumber);
+        });
+
+        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
+            this.handleDeviceOnline(ip, serialNumber);
         });
 
         this.finder.on('lost', (ip: string) => {
