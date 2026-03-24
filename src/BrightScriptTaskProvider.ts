@@ -34,7 +34,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         // Use CustomExecution to defer variable resolution until the task actually runs
         // This prevents showing pickers when VS Code is just validating tasks.json or displaying tasks in the UI
         const execution = new vscode.CustomExecution((): Promise<vscode.Pseudoterminal> => {
-            return this.createPseudoterminal(command, definition, task.scope ?? vscode.TaskScope.Workspace);
+            return Promise.resolve(new BrightScriptPseudoterminal(command, definition, task.scope ?? vscode.TaskScope.Workspace));
         });
 
         const result = new vscode.Task(
@@ -58,131 +58,218 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         return result;
     }
 
-    /**
-     * Create a pseudoterminal that resolves variables and executes the command
-     * This is called only when the task actually runs, not during validation
-     */
-    private createPseudoterminal(command: string, taskDefinition: BrightscriptTaskDefinition, taskScope: vscode.WorkspaceFolder | vscode.TaskScope): Promise<vscode.Pseudoterminal> {
-        const writeEmitter = new vscode.EventEmitter<string>();
-        const closeEmitter = new vscode.EventEmitter<number>();
-        let currentProcess: childProcess.ChildProcess | undefined;
+    public dispose() {
+        this.taskProvider.dispose();
+    }
+}
 
-        const pty: vscode.Pseudoterminal = {
-            onDidWrite: writeEmitter.event,
-            onDidClose: closeEmitter.event,
-            open: (async () => {
-                try {
-                    // Determine the workspace folder from the task scope (may show picker once)
-                    const workspaceFolder = await this.getWorkspaceFolderFromScope(taskScope);
+export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
+    private writeEmitter = new vscode.EventEmitter<string>();
+    private closeEmitter = new vscode.EventEmitter<number>();
+    private currentProcess: childProcess.ChildProcess | undefined;
 
-                    // If workspace folder selection was cancelled or no folders available, abort task
-                    if (!workspaceFolder) {
-                        writeEmitter.fire('Task cancelled: no workspace folder selected\r\n');
-                        closeEmitter.fire(1);
-                        return;
-                    }
+    public onDidWrite = this.writeEmitter.event;
+    public onDidClose = this.closeEmitter.event;
 
-                    // Resolve variables only when the task actually starts
-                    let resolvedCommand: string;
-                    try {
-                        resolvedCommand = await this.resolveCommandVariables(command, workspaceFolder);
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error);
-                        writeEmitter.fire(`Task failed: error resolving command variables: ${errorMessage}\r\n`);
-                        closeEmitter.fire(1);
-                        return;
-                    }
+    constructor(
+        private command: string,
+        private taskDefinition: BrightscriptTaskDefinition,
+        private taskScope: vscode.WorkspaceFolder | vscode.TaskScope
+    ) { }
 
-                    // Execute the resolved command in a shell
-                    // Merge user settings with task-specific options (task options take precedence)
-                    const shellConfig = this.getShellConfiguration();
-                    const taskOptions = taskDefinition.options || {};
+    public async open() {
+        try {
+            // Determine the workspace folder from the task scope (may show picker once)
+            const workspaceFolder = await this.getWorkspaceFolderFromScope(this.taskScope);
 
-                    // Determine final shell (task option > user setting)
-                    const shell = taskOptions.shell?.executable || shellConfig.shell;
-
-                    // Merge environment variables (process.env < user settings < task options)
-                    const mergedEnv = {
-                        ...process.env,
-                        ...shellConfig.env,
-                        ...taskOptions.env
-                    };
-
-                    // Determine working directory (task option > workspace folder)
-                    const cwd = taskOptions.cwd || workspaceFolder?.uri.fsPath;
-
-                    // Display the command being executed (similar to built-in tasks)
-                    const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
-                    writeEmitter.fire(`> Executing task${cwdDisplay}: ${resolvedCommand}\r\n\r\n`);
-
-                    currentProcess = childProcess.spawn(resolvedCommand, [], {
-                        shell: shell,
-                        env: mergedEnv,
-                        cwd: cwd
-                    });
-
-                    currentProcess.stdout?.on('data', (data: Buffer) => {
-                        // Pass through output as-is for problem matchers to parse correctly
-                        writeEmitter.fire(data.toString());
-                    });
-
-                    currentProcess.stderr?.on('data', (data: Buffer) => {
-                        // Pass through output as-is for problem matchers to parse correctly
-                        writeEmitter.fire(data.toString());
-                    });
-
-                    currentProcess.on('exit', (code) => {
-                        closeEmitter.fire(code ?? 0);
-                    });
-
-                    currentProcess.on('error', (error) => {
-                        writeEmitter.fire(`Error executing command: ${error.message}\r\n`);
-                        closeEmitter.fire(1);
-                    });
-                } catch (error) {
-                    writeEmitter.fire(`Error resolving command: ${error}\r\n`);
-                    closeEmitter.fire(1);
-                }
-            }) as () => void,
-            close: () => {
-                // Kill the process if it's still running
-                if (currentProcess && !currentProcess.killed) {
-                    currentProcess.kill();
-                }
-                writeEmitter.dispose();
-                closeEmitter.dispose();
+            // If workspace folder selection was cancelled or no folders available, abort task
+            if (!workspaceFolder) {
+                this.write('Task cancelled: no workspace folder selected\n');
+                this.exit(1);
+                return;
             }
-        };
 
-        return Promise.resolve(pty);
+            // Resolve variables only when the task actually starts
+            let resolvedCommand: string;
+            try {
+                resolvedCommand = await this.resolveCommandVariables(this.command, workspaceFolder);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                this.write(`Task failed: error resolving command variables: ${errorMessage}\n`);
+                this.exit(1);
+                return;
+            }
+
+            // Execute the resolved command in a shell
+            // Merge user settings with task-specific options (task options take precedence)
+            const shellConfig = this.getShellConfiguration();
+            const taskOptions = this.taskDefinition.options || {};
+
+            // Determine final shell and args (task option > user setting)
+            const shell = taskOptions.shell?.executable || shellConfig.shell;
+            const shellArgs = taskOptions.shell?.args || shellConfig.shellArgs;
+
+            // Merge environment variables (process.env < color defaults < user settings < task options)
+            // FORCE_COLOR/TERM/COLORTERM tell CLI tools to emit ANSI color codes even though
+            // we're spawning without a PTY (piped stdout is not a TTY).
+            const mergedEnv = {
+                ...process.env,
+                TERM: 'xterm-256color',
+                COLORTERM: 'truecolor',
+                FORCE_COLOR: '1',
+                ...shellConfig.env,
+                ...taskOptions.env
+            };
+
+            // Determine working directory (task option > workspace folder)
+            const cwd = taskOptions.cwd || workspaceFolder?.uri.fsPath;
+
+            // Display the command being executed (similar to built-in tasks)
+            const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
+            this.write(`> Executing task${cwdDisplay}: ${resolvedCommand}\n\n`);
+
+            // Spawn the shell explicitly with args (e.g. ['-l', '-c']) so that login shells
+            // source the user's profile files (.zprofile, .bash_profile, etc.), giving the
+            // same PATH and environment that VS Code's built-in shell tasks provide.
+            this.currentProcess = childProcess.spawn(shell as string, [...shellArgs, resolvedCommand], {
+                env: mergedEnv,
+                cwd: cwd
+            });
+
+            this.currentProcess.stdout?.on('data', (data: Buffer) => {
+                // Pass through output with normalized line endings for VS Code
+                this.write(data.toString());
+            });
+
+            this.currentProcess.stderr?.on('data', (data: Buffer) => {
+                // Pass through output with normalized line endings for VS Code
+                this.write(data.toString());
+            });
+
+            this.currentProcess.on('exit', (code) => {
+                this.exit(code ?? 0);
+            });
+
+            this.currentProcess.on('error', (error) => {
+                this.write(`Error executing command: ${error.message}\n`);
+                this.exit(1);
+            });
+        } catch (error) {
+            this.write(`Error resolving command: ${error}\n`);
+            this.exit(1);
+        }
+    }
+
+    public close() {
+        // Kill the process if it's still running
+        if (this.currentProcess && !this.currentProcess.killed) {
+            this.currentProcess.kill();
+        }
+        this.writeEmitter.dispose();
+        this.closeEmitter.dispose();
     }
 
     /**
-     * Get the shell configuration from user settings
+     * Normalize line endings to \r\n for VS Code pseudoterminal output
+     * and write to the terminal.
      */
-    private getShellConfiguration(): { shell: string | boolean; env: NodeJS.ProcessEnv } {
+    private write(data: string) {
+        this.writeEmitter.fire(data.replace(/\r?\n/g, '\r\n'));
+    }
+
+    private exit(code: number) {
+        this.closeEmitter.fire(code);
+    }
+
+
+    /**
+     * Get the shell configuration, mirroring VS Code's terminal profile resolver:
+     * https://github.com/microsoft/vscode/blob/main/src/vs/workbench/contrib/terminal/browser/terminalProfileResolverService.ts
+     *
+     * Priority (highest to lowest):
+     *   1. terminal.integrated.automationProfile.<OS>
+     *      — specifically designed for task runners and automation shells
+     *   2. terminal.integrated.defaultProfile.<OS> + terminal.integrated.profiles.<OS>
+     *      — the user's default terminal profile
+     *   3. $SHELL (Unix) / cmd.exe (Windows) system fallback
+     *      — macOS only: --login added for zsh/bash to source .zprofile etc.
+     *      — Linux: no login flag added (matches VS Code's behavior)
+     *
+     * Profile args (e.g. ["--login"]) are the shell startup flags. We always append
+     * the "execute command" flag (-c on Unix, /d /c on Windows cmd) so the task
+     * command is passed through to the shell.
+     *
+     * terminal.integrated.env.<OS> is also respected to match VS Code terminal env injection.
+     */
+    private getShellConfiguration(): { shell: string; env: NodeJS.ProcessEnv; shellArgs: string[] } {
         const config = vscode.workspace.getConfiguration('terminal.integrated');
-        const platform = process.platform;
-
-        let shell: string | boolean;
-        let env: NodeJS.ProcessEnv = {};
-
-        // Get shell configuration for the current platform
-        if (platform === 'win32') {
-            // On Windows, use true to let Node.js choose the shell (cmd.exe or PowerShell)
-            shell = config.get<string>('shell.windows') || true;
-            env = config.get<NodeJS.ProcessEnv>('env.windows') || {};
-        } else if (platform === 'darwin') {
-            // On macOS, default to zsh (macOS default since Catalina)
-            shell = config.get<string>('shell.osx') || '/bin/zsh';
-            env = config.get<NodeJS.ProcessEnv>('env.osx') || {};
+        let platformKey: string;
+        if (process.platform === 'win32') {
+            platformKey = 'windows';
+        } else if (process.platform === 'darwin') {
+            platformKey = 'osx';
         } else {
-            // On Linux, default to bash
-            shell = config.get<string>('shell.linux') || '/bin/bash';
-            env = config.get<NodeJS.ProcessEnv>('env.linux') || {};
+            platformKey = 'linux';
         }
 
-        return { shell: shell, env: env };
+        const env = config.get<NodeJS.ProcessEnv>(`env.${platformKey}`) || {};
+
+        // 1. Automation profile — VS Code checks this first for tasks/automation
+        const automationProfile = config.get<{ path?: string; args?: string[] }>(`automationProfile.${platformKey}`);
+        if (automationProfile?.path) {
+            return {
+                shell: automationProfile.path,
+                shellArgs: this.buildShellArgs(automationProfile.path, automationProfile.args),
+                env: env
+            };
+        }
+
+        // 2. User-configured default terminal profile
+        const defaultProfileName = config.get<string>(`defaultProfile.${platformKey}`);
+        const profiles = config.get<Record<string, { path?: string | string[]; args?: string[] }>>(`profiles.${platformKey}`) || {};
+        const defaultProfile = defaultProfileName ? profiles[defaultProfileName] : undefined;
+        if (defaultProfile?.path) {
+            const profilePath = Array.isArray(defaultProfile.path) ? defaultProfile.path[0] : defaultProfile.path;
+            return {
+                shell: profilePath,
+                shellArgs: this.buildShellArgs(profilePath, defaultProfile.args),
+                env: env
+            };
+        }
+
+        // 3. System fallback — mirrors VS Code's _getUnresolvedFallbackDefaultProfile
+        if (process.platform === 'win32') {
+            return { shell: 'cmd.exe', shellArgs: this.buildShellArgs('cmd.exe'), env: env };
+        }
+        const shell = process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash');
+        // VS Code adds --login only on macOS for zsh/bash; Linux gets no login flag
+        const shellBasename = path.basename(shell);
+        const initArgs = (process.platform === 'darwin' && /^(zsh|bash)$/.test(shellBasename)) ? ['--login'] : [];
+        return { shell: shell, shellArgs: [...initArgs, '-c'], env: env };
+    }
+
+    /**
+     * Combine profile startup args with the "execute command" flag.
+     * Mirrors VS Code's terminalTaskSystem.ts logic for choosing the right execute flag
+     * based on shell type (cmd, PowerShell, bash, wsl, etc.).
+     * Profile args are shell init flags (e.g. ["--login"]) — not the execute flag.
+     */
+    private buildShellArgs(shellPath: string, profileArgs?: string[]): string[] {
+        if (process.platform !== 'win32') {
+            return [...(profileArgs || []), '-c'];
+        }
+        // Windows: choose execute flag based on shell basename (matches VS Code terminalTaskSystem).
+        // Split on both / and \ so Windows paths resolve correctly regardless of host OS.
+        const basename = (shellPath.split(/[/\\]/).pop() ?? '').toLowerCase();
+        if (basename === 'powershell.exe' || basename === 'pwsh.exe') {
+            return [...(profileArgs || []), '-Command'];
+        } else if (basename === 'bash.exe' || basename === 'zsh.exe') {
+            return [...(profileArgs || []), '-c'];
+        } else if (basename === 'wsl.exe') {
+            return [...(profileArgs || []), '-e'];
+        }
+        // cmd.exe and other unknown Windows shells
+        return [...(profileArgs || []), '/d', '/c'];
     }
 
     /**
@@ -497,7 +584,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
                         return rel || '.';
                     }
                     return folderPath;
-                });
+                }).sort();
 
                 const selectedRelativePath = await vscode.window.showQuickPick(relativeFolders, {
                     placeHolder: `Choose folder for ${globPattern}`
@@ -519,10 +606,6 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
         }
 
         return resolvedCommand;
-    }
-
-    public dispose() {
-        this.taskProvider.dispose();
     }
 }
 

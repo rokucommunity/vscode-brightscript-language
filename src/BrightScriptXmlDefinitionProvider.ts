@@ -40,9 +40,12 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
             case XmlWordType.Tag:
                 definitions = await this.getXmlFileMatchingWord(word);
                 break;
-            case XmlWordType.AttributeValue:
-                //TODO - ascertain if this value is from an import tag!
-                if (word.endsWith('.brs')) {
+            case XmlWordType.AttributeValue: {
+                const attrName = this.xmlUtils.getAttributeNameAtPosition(document, position);
+                if (attrName?.toLowerCase() === 'extends') {
+                    //jump to the parent component's XML file
+                    definitions = await this.getXmlFileMatchingWord(word);
+                } else if (word.endsWith('.brs')) {
                     //assume it's a document
                     definitions = await this.getSymbolForBrsFile(word);
                 } else {
@@ -50,6 +53,7 @@ export default class BrightScriptXmlDefinitionProvider implements DefinitionProv
                     definitions = await this.getBrsSymbolsMatchingWord(document, position, word);
                 }
                 break;
+            }
             default:
                 break;
         }

@@ -63,7 +63,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            const device = this.deviceManager.getDeviceById(item.key);
+            const device = this.deviceManager.getDevice(item.key);
             if (device) {
                 await this.deviceManager.checkDeviceHealth(device, true);
             }
@@ -325,29 +325,23 @@ export class BrightScriptCommands {
             await this.onToggleXml();
         });
 
+        this.registerCommand('goToParentComponent', async () => {
+            await this.onGoToParentComponent();
+        });
+
         this.registerCommand('clearGlobalState', async () => {
             new GlobalStateManager(this.context).clear();
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Clearing device list'
-            }, async () => {
-                this.deviceManager.clearCurrentDeviceList();
-                await util.sleep(2000);
-            });
+            this.deviceManager.clearCurrentDeviceList();
+            await util.showTimedNotification('Clearing device list');
         });
 
         this.registerCommand('clearDeviceCache', async () => {
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Clearing device cache'
-            }, async () => {
-                this.deviceManager.clearAllCache();
-                await util.sleep(2000);
-            });
+            this.deviceManager.clearAllCache();
+            await util.showTimedNotification('Clearing device cache');
         });
 
         this.registerCommand('clearLastSeenDevices', async () => {
@@ -424,7 +418,8 @@ export class BrightScriptCommands {
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                ip = this.deviceManager.getDeviceById(deviceOrItem.key)?.ip;
+                const serialNumber = deviceOrItem.key;
+                ip = this.deviceManager.getDevice(serialNumber)?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;
             }
@@ -511,6 +506,84 @@ export class BrightScriptCommands {
                 }
             }
         }
+    }
+
+    public async onGoToParentComponent() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+        const currentDocument = editor.document;
+        const fileName = currentDocument.fileName;
+        const lowerFileName = fileName.toLowerCase();
+        const isXml = lowerFileName.endsWith('.xml');
+        const isBrs = lowerFileName.endsWith('.brs') || lowerFileName.endsWith('.bs');
+
+        if (!isXml && !isBrs) {
+            return;
+        }
+
+        // Get or open the XML document
+        let xmlDoc: vscode.TextDocument;
+        if (isXml) {
+            xmlDoc = currentDocument;
+        } else {
+            const xmlFileName = this.fileUtils.getAlternateFileName(fileName);
+            if (!xmlFileName) {
+                return;
+            }
+            try {
+                xmlDoc = await vscode.workspace.openTextDocument(vscode.Uri.file(xmlFileName));
+            } catch (e) {
+                return;
+            }
+        }
+
+        const xmlContent = xmlDoc.getText();
+        const parentName = this.fileUtils.getParentComponentName(xmlContent);
+        if (!parentName) {
+            await vscode.window.showInformationMessage('No parent component found');
+            return;
+        }
+
+        const extendsPosition = this.getExtendsValuePosition(xmlContent, xmlDoc);
+        if (!extendsPosition) {
+            return;
+        }
+
+        // Delegate to the definition provider via the LSP
+        const locations = await vscode.commands.executeCommand<vscode.Location[]>(
+            'vscode.executeDefinitionProvider',
+            xmlDoc.uri,
+            extendsPosition
+        );
+
+        if (!locations || locations.length === 0) {
+            await vscode.window.showInformationMessage(`Could not find parent component: ${parentName}`);
+            return;
+        }
+
+        const parentXmlPath = locations[0].uri.fsPath;
+
+        if (isBrs) {
+            const parentBrsPath = this.fileUtils.getAlternateFileName(parentXmlPath);
+            if (parentBrsPath && !await this.openFile(parentBrsPath)) {
+                await this.openFile(this.fileUtils.getBsFileName(parentBrsPath));
+            }
+        } else {
+            await this.openFile(parentXmlPath);
+        }
+    }
+
+    private getExtendsValuePosition(xmlContent: string, xmlDoc: vscode.TextDocument): vscode.Position | undefined {
+        // Match extends="VALUE" capturing the VALUE portion; [^>]+ spans across lines since [^>] matches \n
+        const match = /<component[^>]+extends\s*=\s*["']([^"']+)/i.exec(xmlContent);
+        if (!match) {
+            return undefined;
+        }
+        // Offset to first character of the value (after the opening quote)
+        const valueOffset = match.index + match[0].length - match[1].length;
+        return xmlDoc.positionAt(valueOffset);
     }
 
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {

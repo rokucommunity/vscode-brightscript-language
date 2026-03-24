@@ -90,6 +90,43 @@ describe('BrightScriptXmlDefinitionProvider', () => {
         providerMock.restore();
     });
 
+    describe('getAttributeNameAtPosition', () => {
+        it('returns the attribute name when cursor is on an attribute value', () => {
+            // Simulate: <component name="HomeView" extends="BaseScreen">
+            //                                               ^cursor here
+            const xml = '<component name="HomeView" extends="BaseScreen">';
+            // "BaseScreen" starts at offset 36
+            const valueOffset = xml.indexOf('BaseScreen');
+            const mockDocument: any = {
+                getText: () => xml,
+                getWordRangeAtPosition: (pos) => ({
+                    start: { line: 0, character: valueOffset },
+                    end: { line: 0, character: valueOffset + 'BaseScreen'.length }
+                }),
+                offsetAt: (pos) => pos.character
+            };
+            const xmlUtils = (provider as any).xmlUtils;
+            const result = xmlUtils.getAttributeNameAtPosition(mockDocument, { line: 0, character: valueOffset });
+            assert.equal(result, 'extends');
+        });
+
+        it('returns the correct attribute name for multi-line component tag', () => {
+            const xml = '<component name="HomeView"\n  extends="BaseScreen">';
+            const valueOffset = xml.indexOf('BaseScreen');
+            const mockDocument: any = {
+                getText: () => xml,
+                getWordRangeAtPosition: (pos) => ({
+                    start: { line: 1, character: xml.indexOf('"BaseScreen"') + 1 - xml.indexOf('\n') - 1 },
+                    end: { line: 1, character: xml.indexOf('"BaseScreen"') + 1 + 'BaseScreen'.length - xml.indexOf('\n') - 1 }
+                }),
+                offsetAt: (pos) => valueOffset
+            };
+            const xmlUtils = (provider as any).xmlUtils;
+            const result = xmlUtils.getAttributeNameAtPosition(mockDocument, { line: 1, character: 11 });
+            assert.equal(result, 'extends');
+        });
+    });
+
     describe('provideDefinition ', () => {
         it('does nothing when no wrong doc type', async () => {
             let position: any = new vscode.Position(1, 1);
