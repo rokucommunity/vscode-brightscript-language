@@ -16,6 +16,7 @@ enum QuickPickItemKind {
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
+    vscode.workspace.workspaceFolders = [] as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
 });
@@ -156,8 +157,11 @@ export let vscode = {
         },
         onDidChangeConfiguration: () => { },
         onDidChangeWorkspaceFolders: () => { },
+        getWorkspaceFolder: (uri: Uri) => {
+            return undefined;
+        },
         findFiles: (include, exclude) => {
-            return [];
+            return [] as any;
         },
         fs: {
             writeFile: (uri, buffer) => { },
@@ -170,6 +174,7 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        registerCustomEditorProvider: () => { },
         withProgress: (options, action) => {
             return action();
         },
@@ -185,6 +190,10 @@ export let vscode = {
             };
         },
         onDidChangeWindowState: () => { },
+        registerFileDecorationProvider: () => ({ dispose: () => { } }),
+        createTreeView: () => ({
+            onDidChangeVisibility: () => { }
+        }),
         createQuickPick: () => {
             class QuickPick {
                 private emitter = new EventEmitter();
@@ -256,6 +265,9 @@ export let vscode = {
         showOpenDialog: () => {
             return Promise.resolve([]);
         },
+        showQuickPick: () => {
+            return Promise.resolve(undefined);
+        },
         showWorkspaceFolderPick: () => {
             return Promise.resolve(undefined);
         }
@@ -269,10 +281,41 @@ export let vscode = {
         }
     },
     EventEmitter: class {
-        public fire() {
+        private handlers = new Map<string, Array<(data: any) => void>>();
 
+        public event = (handler: (data: any) => void) => {
+            const eventName = 'event';
+            if (!this.handlers.has(eventName)) {
+                this.handlers.set(eventName, []);
+            }
+            this.handlers.get(eventName).push(handler);
+            return {
+                dispose: () => {
+                    const handlers = this.handlers.get(eventName) || [];
+                    const index = handlers.indexOf(handler);
+                    if (index > -1) {
+                        handlers.splice(index, 1);
+                    }
+                }
+            };
+        };
+
+        public fire(data?: any) {
+            const handlers = this.handlers.get('event') || [];
+            for (const handler of handlers) {
+                handler(data);
+            }
         }
-        public event() {
+
+        public dispose() {
+            this.handlers.clear();
+        }
+    },
+    tasks: {
+        registerTaskProvider: (type: string, provider: any) => {
+            return {
+                dispose: () => { }
+            };
         }
     },
     DeclarationProvider: class {
@@ -412,13 +455,35 @@ export let vscode = {
         public value: string;
     },
     ThemeColor: class { },
+    ThemeIcon: class {
+        constructor(public id: string, public color?: any) { }
+    },
+    TextEdit: class {
+        constructor(public range: any, public newText: string) { }
+        static replace(range: any, newText: string) {
+            return new vscode.TextEdit(range, newText);
+        }
+    },
     Uri: {
         file: (src: string) => {
             return {
+                fsPath: src,
+                path: src,
+                scheme: 'file',
+                authority: '',
+                query: '',
+                fragment: '',
                 with: () => {
                     return {};
+                },
+                toJSON: () => {
+                    return {
+                        fsPath: src,
+                        path: src,
+                        scheme: 'file'
+                    };
                 }
-            };
+            } as any;
         },
         parse: () => { }
     },
@@ -427,6 +492,42 @@ export let vscode = {
             this.value = value;
         }
         public value: string;
+    },
+    Task: class {
+        constructor(definition, scope, name, source, execution, problemMatchers = []) {
+            this.definition = definition;
+            this.scope = scope;
+            this.name = name;
+            this.source = source;
+            this.execution = execution;
+            this.problemMatchers = problemMatchers;
+        }
+        public definition: any;
+        public scope: any;
+        public name: string;
+        public source: string;
+        public execution: any;
+        public problemMatchers: any[];
+        public isBackground: boolean;
+        public presentationOptions: any;
+        public group: any;
+        public runOptions: any;
+    },
+    ShellExecution: class {
+        constructor(commandLine: string) {
+            this.commandLine = commandLine;
+        }
+        public commandLine: string;
+    },
+    CustomExecution: class {
+        constructor(callback: () => Promise<any>) {
+            this.callback = callback;
+        }
+        public callback: () => Promise<any>;
+    },
+    TaskScope: {
+        Global: 1,
+        Workspace: 2
     }
 };
 

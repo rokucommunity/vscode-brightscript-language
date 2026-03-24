@@ -10,12 +10,13 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
+import { profilingCommands } from './commands/ProfilingCommands';
 
 export class BrightScriptCommands {
 
@@ -23,7 +24,7 @@ export class BrightScriptCommands {
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
+        private deviceManager: DeviceManager,
         private userInputManager: UserInputManager,
         private localPackageManager: LocalPackageManager
     ) {
@@ -43,6 +44,7 @@ export class BrightScriptCommands {
         captureScreenshotCommand.register(this.context, this);
         rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
         clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
+        profilingCommands.register(this.context);
 
         this.registerGeneralCommands();
 
@@ -52,7 +54,19 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh(true);
+        });
+
+        this.registerCommand('rescanDevices', () => {
+            this.deviceManager.refresh(true);
+        });
+
+        // Refresh a single device (inline button on hover in devices panel)
+        this.registerCommand('refreshDevice', async (item: { key: string }) => {
+            const device = this.deviceManager.getDevice(item.key);
+            if (device) {
+                await this.deviceManager.checkDeviceHealth(device, true);
+            }
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -316,6 +330,21 @@ export class BrightScriptCommands {
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
         });
 
+        this.registerCommand('clearCurrentDeviceList', async () => {
+            this.deviceManager.clearCurrentDeviceList();
+            await util.showTimedNotification('Clearing device list');
+        });
+
+        this.registerCommand('clearDeviceCache', async () => {
+            this.deviceManager.clearAllCache();
+            await util.showTimedNotification('Clearing device cache');
+        });
+
+        this.registerCommand('clearLastSeenDevices', async () => {
+            new GlobalStateManager(this.context).clearLastSeenDevices();
+            await vscode.window.showInformationMessage('Last seen devices cleared');
+        });
+
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
                 if (util.isNullish(value)) {
@@ -382,15 +411,43 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('setActiveDevice', async (device: string) => {
-            if (!device) {
-                device = await this.userInputManager.promptForHost();
+        this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
+            let ip: string;
+            if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
+                const serialNumber = deviceOrItem.key;
+                ip = this.deviceManager.getDevice(serialNumber)?.ip;
+            } else if (typeof deviceOrItem === 'string') {
+                ip = deviceOrItem;
             }
-            if (!device) {
+            if (!ip) {
+                ip = await this.userInputManager.promptForHost();
+            }
+            if (!ip) {
                 throw new Error('Tried to set active device but failed.');
             } else {
-                await this.context.workspaceState.update('remoteHost', device);
-                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${device}`);
+                await this.context.workspaceState.update('remoteHost', ip);
+                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
+            }
+        });
+
+        this.registerCommand('setDevicePassword', async (deviceIp: string) => {
+            if (!deviceIp) {
+                throw new Error('Device IP is required to set password.');
+            }
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the developer account password for this device',
+                password: true,
+                prompt: `Set password for device: ${deviceIp}`
+            });
+
+            if (password !== undefined) {
+                await this.setDevicePassword(deviceIp, password);
+                if (password) {
+                    await vscode.window.showInformationMessage(`Password set for device: ${deviceIp}`);
+                } else {
+                    await vscode.window.showInformationMessage(`Password cleared for device: ${deviceIp}`);
+                }
             }
         });
 
@@ -542,6 +599,51 @@ export class BrightScriptCommands {
             }
         }
         return this.workspacePath;
+    }
+
+    /**
+     * Store a password for a specific device
+     * @param deviceIp The IP address of the device
+     * @param password The password to store for this device
+     */
+    public async setDevicePassword(deviceIp: string, password: string) {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        devicePasswords[deviceIp] = password;
+        await this.context.workspaceState.update('devicePasswords', devicePasswords);
+    }
+
+    /**
+     * Get the password for a specific device
+     * @param deviceIp The IP address of the device
+     * @returns The password for the device, or undefined if not set
+     */
+    public async getDevicePassword(deviceIp: string): Promise<string | undefined> {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        return devicePasswords[deviceIp];
+    }
+
+    /**
+     * Get the password for the currently active device
+     * @returns The password for the active device, or falls back to global password
+     */
+    public async getActiveHostPassword(): Promise<string | undefined> {
+        const activeHost = this.context.workspaceState.get<string>('remoteHost');
+        if (activeHost && typeof activeHost === 'string') {
+            const devicePassword = await this.getDevicePassword(activeHost);
+            if (devicePassword) {
+                return devicePassword;
+            }
+        }
+        // Fallback to global password
+        return this.getRemotePassword(false);
+    }
+
+    /**
+     * Get all device passwords from storage
+     * @returns Object mapping device IPs to passwords
+     */
+    private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
+        return await this.context.workspaceState.get('devicePasswords') || {};
     }
 
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {

@@ -1,0 +1,13 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="#C5C5C5"
+>
+  <!-- Camera body -->
+  <path d="M3 7a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+
+  <!-- Lens cutout -->
+  <circle cx="12" cy="14" r="4" fill="#1e1e1e" />
+</svg>

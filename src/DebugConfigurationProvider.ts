@@ -15,7 +15,6 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import cloneDeep = require('clone-deep');
 import { rokuDeploy } from 'roku-deploy';
@@ -28,14 +27,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     public constructor(
         private context: ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager,
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands
     ) {
         this.context = context;
-        this.activeDeviceManager = activeDeviceManager;
     }
 
     //make unit testing easier by adding these imports properties
@@ -116,7 +113,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (deviceInfo && !deviceInfo.developerEnabled) {
                 throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
             }
-
             await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
             return result;
@@ -426,11 +422,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.activeDeviceManager.enabled) {
-                config.host = await this.userInputManager.promptForHost();
-            } else {
-                config.host = await this.userInputManager.promptForHostManual();
-            }
+            config.host = await this.userInputManager.promptForHost();
         } else if (config.host.trim() === '${activeHost}') {
             // Get the current remote host from workspace state (it will prompt for host as a fallback)
             config.host = await this.brightScriptCommands.getRemoteHost();
@@ -458,6 +450,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error('Debug session terminated: password is required.');
             } else {
                 await this.context.workspaceState.update('remotePassword', config.password);
+            }
+        } else if (config.password.trim() === '${activeHostPassword}') {
+            // Get the password for the current active device
+            config.password = await this.brightScriptCommands.getActiveHostPassword();
+            if (!config.password) {
+                throw new Error('Debug session terminated: no password set for active device.');
             }
         }
 

@@ -295,7 +295,6 @@ export class LanguageServerManager {
 
         const logger = new Logger();
         this.client.onNotification(NotificationName.busyStatus, (event: any) => {
-            console.log(event);
             this.updateStatusbar(event.status === BusyStatus.busy, event.activeRuns);
 
             //clear any existing timeout

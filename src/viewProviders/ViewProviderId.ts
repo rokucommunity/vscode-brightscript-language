@@ -1,5 +1,5 @@
 export enum ViewProviderId {
-    onlineDevicesView = 'onlineDevicesView',
+    devicesView = 'devicesView',
     rendezvousView = 'rendezvousView',
     sceneGraphInspectorView = 'sceneGraphInspectorView',
     rokuDeviceView = 'rokuDeviceView',
