@@ -9,6 +9,28 @@ describe('BrightScriptFileUtils ', () => {
         fileUtils = new BrightScriptFileUtils();
     });
 
+    describe('getParentComponentName ', () => {
+        it('returns the extends value from a single-line component tag', () => {
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<component name="HomeView" extends="BaseScreen">`;
+            assert.equal(fileUtils.getParentComponentName(xml), 'BaseScreen');
+        });
+
+        it('returns the extends value from a multi-line component tag', () => {
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<component name="HomeView"\n  extends="BaseScreen"\n  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">`;
+            assert.equal(fileUtils.getParentComponentName(xml), 'BaseScreen');
+        });
+
+        it('returns undefined when no extends attribute', () => {
+            const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<component name="HomeView">`;
+            assert.isUndefined(fileUtils.getParentComponentName(xml));
+        });
+
+        it('handles single-quoted extends value', () => {
+            const xml = `<component name="HomeView" extends='BaseScreen'>`;
+            assert.equal(fileUtils.getParentComponentName(xml), 'BaseScreen');
+        });
+    });
+
     describe('getAlternateFileName ', () => {
         it('ascertains brs file from xml', () => {
             let fileName = '/test/myFile.xml';
