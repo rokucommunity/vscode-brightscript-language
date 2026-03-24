@@ -13,43 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
  - Customize screenshot directory path ([#677](https://github.com/rokucommunity/vscode-brightscript-language/pull/677))
  - Always show alive broadcasts ([#710](https://github.com/rokucommunity/vscode-brightscript-language/pull/710))
- - Migrate to serial-number instead of deviceId ([#714](https://github.com/rokucommunity/vscode-brightscript-language/pull/714))
+ - chore: migrate to serial-number instead of deviceId ([#714](https://github.com/rokucommunity/vscode-brightscript-language/pull/714))
  - Show loader when launching a perfetto trace file ([#716](https://github.com/rokucommunity/vscode-brightscript-language/pull/716))
  - Debounce multiple alive broadcasts ([#711](https://github.com/rokucommunity/vscode-brightscript-language/pull/711))
  - upgrade to [brighterscript@0.70.4](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0704---2026-03-24). Notable changes since 0.70.3:
-     - Add AI agent instructions ([#1654](https://github.com/rokucommunity/brighterscript/pull/1654))
-     - Bump flatted from 3.2.2 to 3.4.2 ([#1653](https://github.com/rokucommunity/brighterscript/pull/1653))
-     - Set up comprehensive Copilot coding agent instructions ([#1650](https://github.com/rokucommunity/brighterscript/pull/1650))
      - perf(ProjectManager): cache PathCollection per project in flushDocumentChanges ([#1628](https://github.com/rokucommunity/brighterscript/pull/1628))
-     - Fixes issue with running tests on newer node versions ([#1644](https://github.com/rokucommunity/brighterscript/pull/1644))
      - feat(LanguageServer): debounce onDidChangeWatchedFiles events ([#1626](https://github.com/rokucommunity/brighterscript/pull/1626))
-     - Bump minimatch in /benchmarks ([#1640](https://github.com/rokucommunity/brighterscript/pull/1640))
-     - Ensure we have consistent line endings ([#1642](https://github.com/rokucommunity/brighterscript/pull/1642))
      - Typedef namespace param fix ([#1641](https://github.com/rokucommunity/brighterscript/pull/1641))
-     - Bump minimatch from 3.1.2 to 3.1.5 ([#1639](https://github.com/rokucommunity/brighterscript/pull/1639))
      - Backport V1 Typed function type syntax to v0 ([#1623](https://github.com/rokucommunity/brighterscript/pull/1623))
-     - spelling fix ([#1621](https://github.com/rokucommunity/brighterscript/pull/1621))
      - Backport `for each` type syntax from V1 -> V0 ([#1617](https://github.com/rokucommunity/brighterscript/pull/1617))
      - Back ports intersection type and grouped type expressions ([#1608](https://github.com/rokucommunity/brighterscript/pull/1608))
-     - Bump lodash from 4.17.21 to 4.17.23 ([#1611](https://github.com/rokucommunity/brighterscript/pull/1611))
-     - Bump lodash from 4.17.21 to 4.17.23 in /benchmarks ([#1612](https://github.com/rokucommunity/brighterscript/pull/1612))
-     - Add TKSS Software Inc logo to README ([#1604](https://github.com/rokucommunity/brighterscript/pull/1604))
      - Backports TypeStatement syntax from v1 to v0 ([#1600](https://github.com/rokucommunity/brighterscript/pull/1600))
      - Backported v1 inline interface syntax ([#1592](https://github.com/rokucommunity/brighterscript/pull/1592))
      - Add definition provider for import statement ([#1595](https://github.com/rokucommunity/brighterscript/pull/1595))
      - Fix confusing diagnostic when dottedGet follows function call in ExpressionStatement ([#1598](https://github.com/rokucommunity/brighterscript/pull/1598))
-     - Bump glob from 10.2.1 to 10.5.0 in /benchmarks ([#1593](https://github.com/rokucommunity/brighterscript/pull/1593))
  - upgrade to [brighterscript-formatter@1.7.22](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1722---2026-03-24). Notable changes since 1.7.21:
-     - Bump flatted from 3.2.2 to 3.4.2 ([#121](https://github.com/rokucommunity/brighterscript-formatter/pull/121))
  - upgrade to [roku-debug@0.22.7](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0227---2026-03-24). Notable changes since 0.22.6:
      - Fix default profiling enablement flow ([#302](https://github.com/rokucommunity/roku-debug/pull/302))
      - Support for ProgressStart ProgressUpdate and ProgressEnd DAP events ([#300](https://github.com/rokucommunity/roku-debug/pull/300))
      - Support `bs_libs_provided` when computing complib out file name ([#298](https://github.com/rokucommunity/roku-debug/pull/298))
  - upgrade to [roku-deploy@3.16.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3163---2026-03-24). Notable changes since 3.16.2:
-     - Bump flatted from 3.2.2 to 3.4.2 ([#236](https://github.com/rokucommunity/roku-deploy/pull/236))
 ### Fixed
- - fix: spawn brightscript tasks as a login shell to match VS Code's PATH behavior ([#717](https://github.com/rokucommunity/vscode-brightscript-language/pull/717))
-### Removed
+ - spawn brightscript tasks as a login shell to match VS Code's PATH behavior ([#717](https://github.com/rokucommunity/vscode-brightscript-language/pull/717))
  - Remove the profiling default values so the debugger knows how to handle when missing ([#715](https://github.com/rokucommunity/vscode-brightscript-language/pull/715))
 
 
