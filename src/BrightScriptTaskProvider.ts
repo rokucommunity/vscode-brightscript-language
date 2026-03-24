@@ -584,7 +584,7 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
                         return rel || '.';
                     }
                     return folderPath;
-                });
+                }).sort();
 
                 const selectedRelativePath = await vscode.window.showQuickPick(relativeFolders, {
                     placeHolder: `Choose folder for ${globPattern}`
