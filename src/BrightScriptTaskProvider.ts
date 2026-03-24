@@ -109,9 +109,14 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
             const shell = taskOptions.shell?.executable || shellConfig.shell;
             const shellArgs = taskOptions.shell?.args || shellConfig.shellArgs;
 
-            // Merge environment variables (process.env < user settings < task options)
+            // Merge environment variables (process.env < color defaults < user settings < task options)
+            // FORCE_COLOR/TERM/COLORTERM tell CLI tools to emit ANSI color codes even though
+            // we're spawning without a PTY (piped stdout is not a TTY).
             const mergedEnv = {
                 ...process.env,
+                TERM: 'xterm-256color',
+                COLORTERM: 'truecolor',
+                FORCE_COLOR: '1',
                 ...shellConfig.env,
                 ...taskOptions.env
             };
