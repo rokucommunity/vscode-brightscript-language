@@ -1249,6 +1249,69 @@ describe('BrightScriptTaskProvider', () => {
             // Should not throw and should use defaults
             expect(childProcessStub.called).to.be.true;
         });
+
+        it('injects FORCE_COLOR, TERM, and COLORTERM into the spawned environment', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const env = childProcessStub.getCall(0).args[2].env;
+            expect(env.FORCE_COLOR).to.equal('1');
+            expect(env.TERM).to.equal('xterm-256color');
+            expect(env.COLORTERM).to.equal('truecolor');
+        });
+
+        it('allows task env to override color defaults', async () => {
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"',
+                options: {
+                    env: {
+                        FORCE_COLOR: '0',
+                        TERM: 'dumb'
+                    }
+                }
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const env = childProcessStub.getCall(0).args[2].env;
+            expect(env.FORCE_COLOR).to.equal('0');
+            expect(env.TERM).to.equal('dumb');
+            // COLORTERM not overridden — still has the default
+            expect(env.COLORTERM).to.equal('truecolor');
+        });
+
+        it('allows user settings env to override color defaults', async () => {
+            Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+
+            configStub.get.withArgs('env.osx').returns({ FORCE_COLOR: '3' });
+
+            const task = createMockTask({
+                type: 'brightscript',
+                task: 'test-task',
+                command: 'echo "test"'
+            });
+
+            const resolvedTask = await taskProviderCallback.resolveTask(task);
+            const pty = await (resolvedTask.execution).callback();
+
+            await pty.open();
+
+            const env = childProcessStub.getCall(0).args[2].env;
+            expect(env.FORCE_COLOR).to.equal('3');
+        });
     });
 
     describe('getWorkspaceFolderFromScope', () => {
