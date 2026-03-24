@@ -105,8 +105,9 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
             const shellConfig = this.getShellConfiguration();
             const taskOptions = this.taskDefinition.options || {};
 
-            // Determine final shell (task option > user setting)
+            // Determine final shell and args (task option > user setting)
             const shell = taskOptions.shell?.executable || shellConfig.shell;
+            const shellArgs = taskOptions.shell?.args || shellConfig.shellArgs;
 
             // Merge environment variables (process.env < user settings < task options)
             const mergedEnv = {
@@ -122,8 +123,10 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
             const cwdDisplay = cwd ? ` in folder ${path.basename(cwd)}` : '';
             this.write(`> Executing task${cwdDisplay}: ${resolvedCommand}\n\n`);
 
-            this.currentProcess = childProcess.spawn(resolvedCommand, [], {
-                shell: shell,
+            // Spawn the shell explicitly with args (e.g. ['-l', '-c']) so that login shells
+            // source the user's profile files (.zprofile, .bash_profile, etc.), giving the
+            // same PATH and environment that VS Code's built-in shell tasks provide.
+            this.currentProcess = childProcess.spawn(shell as string, [...shellArgs, resolvedCommand], {
                 env: mergedEnv,
                 cwd: cwd
             });
@@ -177,29 +180,33 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
     /**
      * Get the shell configuration from user settings
      */
-    private getShellConfiguration(): { shell: string | boolean; env: NodeJS.ProcessEnv } {
+    private getShellConfiguration(): { shell: string; env: NodeJS.ProcessEnv; shellArgs: string[] } {
         const config = vscode.workspace.getConfiguration('terminal.integrated');
         const platform = process.platform;
 
-        let shell: string | boolean;
+        let shell: string;
+        let shellArgs: string[];
         let env: NodeJS.ProcessEnv = {};
 
         // Get shell configuration for the current platform
         if (platform === 'win32') {
-            // On Windows, use true to let Node.js choose the shell (cmd.exe or PowerShell)
-            shell = config.get<string>('shell.windows') || true;
+            shell = config.get<string>('shell.windows') || 'cmd.exe';
+            shellArgs = config.get<string[]>('shellArgs.windows') || ['/d', '/s', '/c'];
             env = config.get<NodeJS.ProcessEnv>('env.windows') || {};
         } else if (platform === 'darwin') {
-            // On macOS, default to zsh (macOS default since Catalina)
+            // On macOS, default to zsh with -l (login shell) — same as VS Code's integrated terminal default.
+            // The login flag ensures .zprofile is sourced, giving the user's full PATH.
             shell = config.get<string>('shell.osx') || '/bin/zsh';
+            shellArgs = config.get<string[]>('shellArgs.osx') || ['-l', '-c'];
             env = config.get<NodeJS.ProcessEnv>('env.osx') || {};
         } else {
-            // On Linux, default to bash
+            // On Linux, default to bash with -l (login shell)
             shell = config.get<string>('shell.linux') || '/bin/bash';
+            shellArgs = config.get<string[]>('shellArgs.linux') || ['-l', '-c'];
             env = config.get<NodeJS.ProcessEnv>('env.linux') || {};
         }
 
-        return { shell: shell, env: env };
+        return { shell: shell, shellArgs: shellArgs, env: env };
     }
 
     /**
