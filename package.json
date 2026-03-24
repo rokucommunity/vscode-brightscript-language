@@ -3050,6 +3050,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.goToParentComponent",
+                "title": "Go To Parent Component",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.sendRemoteCommand",
                 "title": "Send 'arg' button key press to Roku as a remote control",
                 "category": "Brightscript"
