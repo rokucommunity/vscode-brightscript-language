@@ -224,7 +224,7 @@ export class UserInputManager {
             // For offline devices, check cache to distinguish:
             // - warning icon: never successfully contacted (no cache)
             // - disconnect icon: was online before (has cache)
-            const hasCache = this.deviceManager.hasDeviceCache(device.id);
+            const hasCache = this.deviceManager.hasDeviceCache(device.serialNumber);
             if (hasCache) {
                 return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
             } else {
