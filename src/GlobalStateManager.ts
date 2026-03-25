@@ -204,6 +204,37 @@ export class GlobalStateManager {
     }
 
     /**
+     * Get the most recent IP address for a given serial number.
+     * Checks current network first, then falls back to any network.
+     */
+    public getIpForSerial(serialNumber: string, currentNetworkId?: string): string | undefined {
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
+
+        // First try: Current network mapping
+        if (currentNetworkId && map[currentNetworkId]) {
+            for (const [ip, entry] of Object.entries(map[currentNetworkId])) {
+                if (entry.serialNumber === serialNumber) {
+                    return ip;
+                }
+            }
+        }
+
+        // Fallback: Any network
+        for (const networkId in map) {
+            const networkMap = map[networkId];
+            for (const [ip, entry] of Object.entries(networkMap)) {
+                if (entry.serialNumber === serialNumber) {
+                    return ip;
+                }
+            }
+        }
+
+        // Final fallback: Check cache
+        const cached = this.getCachedDevice(serialNumber);
+        return cached?.ip;
+    }
+
+    /**
      * Clear the IP→serialNumber map
      */
     public clearIpToSerialNumberMap(): void {
@@ -275,6 +306,7 @@ export interface CachedDevice {
     deviceInfo: Record<string, any>;
     createdAt: number;
 }
+
 
 /**
  * Entry in the IP→serialNumber map

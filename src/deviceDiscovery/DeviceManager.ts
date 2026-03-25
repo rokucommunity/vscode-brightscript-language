@@ -13,11 +13,11 @@ import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
 
 export class DeviceManager {
+    // #region constructor
     constructor(
         private context: vscode.ExtensionContext,
         private globalStateManager: GlobalStateManager
     ) {
-        this.firstRequestForDevices = true;
         this.networkId = getNetworkHash();
 
         this.setupConfiguration();
@@ -25,75 +25,6 @@ export class DeviceManager {
         this.setupMonitors();
         this.initialize();
         this.context.subscriptions.push(this);
-    }
-
-    private emitter = new EventEmitter();
-    private networkId: string;
-    private systemSleepMonitor: SystemSleepMonitor;
-    private networkChangeMonitor: NetworkChangeMonitor;
-    private devices: RokuDeviceDetails[] = [];
-
-    private lastScanDate: Date | null = null;
-    private finder = new RokuFinder();
-    private lastHealthCheckTime = new Map<string, number>();
-    private resolveDeviceSequence = new Map<string, number>();
-    private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
-    public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
-    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
-    private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
-    private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
-    private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
-    private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
-    private cacheCleanupTimer: ReturnType<typeof setTimeout> | null = null;
-
-    // Scan state management
-    private readonly SCAN_MIN_DURATION_MS = 3_000;
-    private readonly SCAN_SETTLE_MS = 1_500;
-    private scanMinTimer: ReturnType<typeof setTimeout> | null = null;
-    private scanSettleTimer: ReturnType<typeof setTimeout> | null = null;
-    private isScanning = false;
-    private scanMinTimeElapsed = false;
-
-    /**
-     * If timeSinceLastScan exceeds this threshold, a new scan should be triggered
-     */
-    public static readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
-
-    private scanNeeded = false;
-
-    public firstRequestForDevices: boolean;
-    public lastUsedDevice: RokuDeviceDetails | undefined = undefined;
-
-    /**
-     * Is device discovery enabled (i.e. passive scans are permitted)
-     */
-    public get deviceDiscoveryEnabled() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
-    }
-
-    /**
-     * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
-     */
-    private get showInfoMessages() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
-    }
-
-    /**
-     * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
-     * when the flag flips from false to true.
-     */
-    public setScanNeeded(force = false): void {
-        if (!this.scanNeeded || force) {
-            this.scanNeeded = true;
-            this.emitter.emit('scanNeeded-changed');
-        }
-    }
-
-    public get timeSinceLastScan(): number {
-        if (!this.lastScanDate) {
-            return Infinity; // Never scanned, so always stale
-        }
-        return Date.now() - this.lastScanDate.getTime();
     }
 
     private setupConfiguration() {
@@ -164,8 +95,36 @@ export class DeviceManager {
         this.loadConfiguredDevices();
         this.loadLastSeenDevices();
 
-        // Always set up finder event listeners so scan responses are processed
-        this.setupFinderEventListeners();
+        /**
+         * Set up event listeners for the RokuFinder.
+         * This must be called regardless of passiveScanPermitted so that
+         * active scan responses are processed.
+         */
+        this.finder.removeAllListeners();
+        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.serialNumber);
+        });
+
+        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
+            this.handleDeviceOnline(ip, serialNumber);
+        });
+
+        this.finder.on('lost', (ip: string) => {
+            // Find and remove device by IP
+            const device = this.getDeviceReference({ ip: ip });
+            if (device) {
+                this.removeDevice(device.ip);
+            }
+        });
+
+        // Forward scan events from RokuFinder
+        this.finder.on('scan-started', () => {
+            this.emitter.emit('scan-started');
+        });
+
+        this.finder.on('scan-ended', () => {
+            this.emitter.emit('scan-ended');
+        });
 
         if (this.deviceDiscoveryEnabled) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
@@ -183,6 +142,38 @@ export class DeviceManager {
             });
         }
     }
+    // #endregion
+
+    // Core state and dependencies
+    private devices: DeviceReference[] = [];
+    private scanNeeded = false;
+    private lastUsedDeviceIp: string | undefined = undefined;
+    private networkId: string;
+
+    private emitter = new EventEmitter();
+    private systemSleepMonitor: SystemSleepMonitor;
+    private networkChangeMonitor: NetworkChangeMonitor;
+    private finder = new RokuFinder();
+
+    // Health check tracking and cooldowns
+    private lastHealthCheckTime = new Map<string, number>();
+    private resolveDeviceSequence = new Map<string, number>();
+    private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
+    public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
+
+    // Device info caching (reduces redundant network calls)
+    private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
+    private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
+    private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
+    private cacheCleanupTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Notifications and event debouncing
+    private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
+    private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
+
+    // Scan state management
+    private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
+    private lastScanDate: Date | null = null;
 
     public on(eventName: 'devices-changed', handler: () => void, disposables?: Disposable[]): () => void;
     public on(eventName: 'scan-started', handler: () => void, disposables?: Disposable[]): () => void;
@@ -204,12 +195,64 @@ export class DeviceManager {
     }
 
     /**
+     * Get device by IP or serial number.
+     * Returns device with deviceInfo hydrated from cache.
+     *
+     * @param lookup - Object with optional ip and/or serialNumber
+     * @returns Device with deviceInfo or undefined if not found
+     */
+    public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDeviceDetails | undefined {
+        const device = this.getDeviceReference(lookup);
+        if (!device) {
+            return undefined;
+        }
+
+        // Hydrate from cache - use provided serial if available to avoid extra lookup
+        const serial = lookup.serialNumber ?? this.getSerial(device);
+        const cached = serial ? this.globalStateManager.getCachedDevice(serial) : undefined;
+
+        if (cached) {
+            // Merge cached device (with deviceInfo) and runtime state
+            return {
+                ...cached,
+                deviceState: device.deviceState,
+                isDiscovered: device.isDiscovered,
+                isConfigured: device.isConfigured,
+                configuredName: device.configuredName,
+                configuredPassword: device.configuredPassword
+            };
+        } else {
+            // Device not in cache yet - create minimal entry with empty deviceInfo
+            return {
+                location: device.location,
+                serialNumber: serial,
+                ip: device.ip,
+                deviceInfo: {},
+                deviceState: device.deviceState,
+                isDiscovered: device.isDiscovered,
+                isConfigured: device.isConfigured,
+                configuredName: device.configuredName,
+                configuredPassword: device.configuredPassword
+            };
+        }
+    }
+
+    /**
      * Get a list of all roku devices known by this extension (by scanning, hardcoded lists, etc)
+     * Returns full devices with deviceInfo hydrated from cache.
      * Configured devices are sorted first, then by form factor, name, and id.
      */
     public getAllDevices(): RokuDeviceDetails[] {
-        this.firstRequestForDevices = false;
-        return [...this.devices].sort(
+        // Hydrate each device using getDevice()
+        const devices: RokuDeviceDetails[] = [];
+        for (const device of this.devices) {
+            const deviceDetail = this.getDevice({ ip: device.ip });
+            if (deviceDetail) {
+                devices.push(deviceDetail);
+            }
+        }
+
+        return devices.sort(
             // Configured devices first
             firstBy<RokuDeviceDetails>((a, b) => {
                 if (a.isConfigured !== b.isConfigured) {
@@ -218,27 +261,24 @@ export class DeviceManager {
                 return 0;
                 // Then by form factor
             }).thenBy<RokuDeviceDetails>((a, b) => {
-                return this.getPriorityForDeviceFormFactor(a) - this.getPriorityForDeviceFormFactor(b);
+                return this.getPriorityForDeviceFormFactor(a.deviceInfo) - this.getPriorityForDeviceFormFactor(b.deviceInfo);
             }).thenBy<RokuDeviceDetails>((a, b) => {
-                return (a.deviceInfo['default-device-name'] ?? '').localeCompare(b.deviceInfo['default-device-name'] ?? '');
+                const nameA = a.deviceInfo['default-device-name'] || '';
+                const nameB = b.deviceInfo['default-device-name'] || '';
+                return nameA.localeCompare(nameB);
             }).thenBy<RokuDeviceDetails>((a, b) => {
-                if (a.serialNumber < b.serialNumber) {
+                const serialA = a.serialNumber || '';
+                const serialB = b.serialNumber || '';
+                if (serialA < serialB) {
                     return -1;
                 }
-                if (a.serialNumber > b.serialNumber) {
+                if (serialA > serialB) {
                     return 1;
                 }
                 // serial numbers must be equal
                 return 0;
             })
         );
-    }
-
-    /**
-     * Get a device by its serial number
-     */
-    public getDevice(serialNumber: string): RokuDeviceDetails | undefined {
-        return this.devices.find(d => d.serialNumber === serialNumber);
     }
 
     /**
@@ -262,17 +302,20 @@ export class DeviceManager {
     }
 
     /**
-     * Clear the current list of devices and the cached last-seen-devices list
+     * Clear discovered devices from the device list, keeping configured devices.
+     * Useful for refreshing the network scan without losing user-configured devices.
      */
     public clearCurrentDeviceList() {
-        this.devices = [];
+        // Keep configured devices, remove discovered-only devices
+        this.devices = this.devices.filter(d => d.isConfigured);
+
+        // Clear short-lived device info cache
         this.deviceInfoCache.clear();
-        this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
-        // Clear lastUsedDevice since we don't have any device anymore
-        this.lastUsedDevice = undefined;
-
-        //TODO when we support hardcoded devices, we should keep those around (or reload them?) instead of clearing everything
+        // Only clear lastUsedDeviceIp if it belonged to a discovered device that was removed
+        if (this.lastUsedDeviceIp && !this.devices.some(d => d.ip === this.lastUsedDeviceIp)) {
+            this.lastUsedDeviceIp = undefined;
+        }
 
         this.emitDevicesChanged();
     }
@@ -283,113 +326,24 @@ export class DeviceManager {
         this.globalStateManager.clearDeviceCache();
     }
 
-    /**
-     * Discover all Roku devices on the network and watch for new ones that connect
-     */
-    private discoverAll(force: boolean): boolean {
-        if (force || this.scanNeeded || this.timeSinceLastScan > DeviceManager.STALE_SCAN_THRESHOLD_MS) {
-            this.scanNeeded = false;
-            this.lastScanDate = new Date();
-            this.startScan();
-            return true;
-        }
-        return false;
-    }
+    public async checkDeviceHealth(deviceOrLookup: RokuDeviceDetails | { ip?: string; serialNumber?: string }, force = false): Promise<boolean> {
+        // If already a device object with deviceState, use it directly; otherwise look it up
+        const device = 'deviceState' in deviceOrLookup
+            ? deviceOrLookup
+            : this.getDevice(deviceOrLookup);
 
-    /**
-     * Reset the cache cleanup timer. After inactivity, the cache will be cleared.
-     */
-    private resetCacheCleanupTimer(): void {
-        if (this.cacheCleanupTimer) {
-            clearTimeout(this.cacheCleanupTimer);
-        }
-        this.cacheCleanupTimer = setTimeout(() => {
-            this.deviceInfoCache.clear();
-            this.cacheCleanupTimer = null;
-        }, this.CACHE_CLEANUP_DELAY_MS);
-    }
-
-    /**
-     * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
-     * when health checks and SSDP responses race during refresh.
-     */
-    private async getDeviceInfoCached(ip: string, port: number): Promise<DeviceInfoRaw> {
-        this.resetCacheCleanupTimer();
-
-        const cached = this.deviceInfoCache.get(ip);
-        if (cached && Date.now() - cached.timestamp < this.DEVICE_INFO_CACHE_TTL_MS) {
-            return cached.info;
-        }
-
-        const info = await rokuDeploy.getDeviceInfo({
-            host: ip,
-            remotePort: port,
-            timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
-        });
-
-        this.deviceInfoCache.set(ip, { info: info, timestamp: Date.now() });
-        return info;
-    }
-
-    private async resolveDevice(device: RokuDeviceDetails): Promise<boolean> {
-        // Increment and capture sequence number to handle concurrent refresh calls
-        const currentSeq = (this.resolveDeviceSequence.get(device.serialNumber) ?? 0) + 1;
-        this.resolveDeviceSequence.set(device.serialNumber, currentSeq);
-
-        // Set to pending during health check with immediate UI feedback
-        const existingDevice = this.devices.find(d => d.serialNumber === device.serialNumber);
-        if (existingDevice && existingDevice.deviceState !== 'pending') {
-            existingDevice.deviceState = 'pending';
-            this.emitDevicesChanged();
-        }
-
-        // Fetch latest device info from the network (with short-lived cache)
-        let freshDevice: RokuDeviceDetails | undefined;
-        try {
-            const deviceInfo = await this.getDeviceInfoCached(
-                device.ip,
-                parseInt(new URL(device.location).port || '8060')
-            );
-
-            await this.randomDelay(400, 1_000);
-            freshDevice = {
-                location: device.location,
-                ip: device.ip,
-                serialNumber: device.serialNumber,
-                deviceState: 'online',
-                deviceInfo: deviceInfo,
-                isConfigured: device.isConfigured,
-                configuredName: device.configuredName,
-                configuredPassword: device.configuredPassword
-            };
-        } catch {
-            freshDevice = undefined;
-        }
-
-        // Only apply result if this is still the latest request for this device
-        if (this.resolveDeviceSequence.get(device.serialNumber) !== currentSeq) {
-            // Stale response - a newer check was started, ignore this result
-            return !!freshDevice;
-        }
-
-        if (freshDevice) {
-            this.setDevice(freshDevice);
-            return true;
-        } else {
-            this.markDeviceUnreachable(device.serialNumber);
+        if (!device) {
             return false;
         }
-    }
 
-    public async checkDeviceHealth(device: RokuDeviceDetails, force = false): Promise<boolean> {
         // If not forcing, respect the per-device cooldown
         if (!force) {
-            const lastCheck = this.lastHealthCheckTime.get(device.serialNumber) ?? 0;
+            const lastCheck = this.lastHealthCheckTime.get(device.ip) ?? 0;
             const now = Date.now();
             if (now - lastCheck <= this.HEALTH_CHECK_COOLDOWN_MS) {
                 return true;
             }
-            this.lastHealthCheckTime.set(device.serialNumber, now);
+            this.lastHealthCheckTime.set(device.ip, now);
         }
 
         const isHealthy = await this.resolveDevice(device);
@@ -400,194 +354,161 @@ export class DeviceManager {
         return isHealthy;
     }
 
-    private async checkDevicesHealth(force = false): Promise<void> {
-        const devices = this.getAllDevices();
-
-        // Filter to devices that need checking
-        const devicesToCheck = force ? devices : devices.filter(d => {
-            const lastCheck = this.lastHealthCheckTime.get(d.serialNumber) ?? 0;
-            return Date.now() - lastCheck > this.HEALTH_CHECK_COOLDOWN_MS;
-        });
-
-        if (devicesToCheck.length === 0) {
-            return;
-        }
-
-        // Set all to pending and emit before async work
-        for (const device of devicesToCheck) {
-            device.deviceState = 'pending';
-            this.lastHealthCheckTime.set(device.serialNumber, Date.now());
-        }
-        this.emitDevicesChanged();
-
-        // Check all devices
-        let needsScan = false;
-        await Promise.all(devicesToCheck.map(async (device) => {
-            const isHealthy = await this.resolveDevice(device);
-            if (!isHealthy) {
-                needsScan = true;
-            }
-        }));
-
-        if (needsScan) {
-            this.discoverAll(this.deviceDiscoveryEnabled);
-        }
+    public getLastUsedDeviceIp(): string | undefined {
+        return this.lastUsedDeviceIp;
     }
 
-    private emitDevicesChanged = throttleBounce(() => {
-        this.emitter.emit('devices-changed');
-    }, this.DEVICES_CHANGED_DEBOUNCE_MS);
+    public setLastUsedDeviceIp(value: string | undefined) {
+        this.lastUsedDeviceIp = value;
+    }
 
-    private async randomDelay(min: number, max: number) {
-        const randomness = Math.random() * ((max - min) + min);
-        await util.sleep(randomness);
+    public dispose() {
+        this.deactivateMonitoring();
+        this.systemSleepMonitor?.dispose?.();
+        this.networkChangeMonitor?.dispose?.();
+        this.finder?.dispose?.();
+        this.devices = [];
+        this.emitter.removeAllListeners();
+
+        //clear any timeouts
+        clearTimeout(this.cacheCleanupTimer);
     }
 
     /**
-     * Process a discovered IP address from SSDP.
-     * Fetches device info, applies filtering, and upserts if valid.
-     * @param serialNumber - Serial number from SSDP USN header, if available
+     * Is device discovery enabled (i.e. passive scans are permitted)
      */
-    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
-        const location = `http://${ip}:8060`;
-
-        try {
-            const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
-
-            const config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-            const developerEnabled = deviceInfo['developer-enabled'] === 'true';
-
-            if (!includeNonDeveloperDevices && !developerEnabled) {
-                return;
-            }
-
-            // Use serial from SSDP if available, otherwise fall back to deviceInfo
-            const deviceSerialNumber = serialNumber ?? deviceInfo['serial-number']?.toString?.();
-
-            const device: RokuDeviceDetails = {
-                location: location,
-                ip: ip,
-                serialNumber: deviceSerialNumber,
-                deviceState: 'online',
-                deviceInfo: deviceInfo
-            };
-
-            this.setDevice(device);
-        } catch {
-            // Device unreachable, ignore
-        }
+    private get deviceDiscoveryEnabled() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
     }
 
     /**
-     * Handle device-online event from RokuFinder.
-     * Shows a notification if showInfoMessages is enabled.
+     * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
      */
-    private handleDeviceOnline(ip: string, serialNumber?: string): void {
-        if (!this.showInfoMessages) {
-            return;
-        }
-
-        // Look up cached device by serial number or IP
-        const cachedDevice = this.getDevice(serialNumber) ?? this.devices.find(d => d.ip === ip);
-
-        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? (serialNumber ? `${ip} (${serialNumber})` : ip);
-        const notifierId = serialNumber ?? ip;
-
-        if (!this.deviceOnlineNotifiers.has(notifierId)) {
-            this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
-                this.deviceOnlineNotifiers.delete(notifierId);
-                void util.showTimedNotification(`Device Online: ${name}`);
-            }, 500));
-        }
-        this.deviceOnlineNotifiers.get(notifierId)(displayName);
+    private get showInfoMessages() {
+        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
     }
 
     /**
-     * Start a scan for devices. Emits scan-started, then scan-ended when complete.
-     * Scan ends when both: minimum duration (3s) has passed AND 1.5s since last device response.
+     * Get device reference from array (lightweight, no cache lookup).
+     * For internal use only - doesn't hydrate from cache.
+     *
+     * @param lookup - Object with optional ip and/or serialNumber
+     * @returns Device reference from array or undefined
      */
-    private startScan(): void {
-        if (this.isScanning) {
-            return; // Already scanning
+    private getDeviceReference(lookup: { ip?: string; serialNumber?: string }): DeviceReference | undefined {
+        if (!lookup.ip && !lookup.serialNumber) {
+            return undefined;
         }
 
-        this.isScanning = true;
-        this.scanMinTimeElapsed = false;
-        this.emitter.emit('scan-started');
-
-        // Start minimum duration timer
-        this.scanMinTimer = setTimeout(() => {
-            this.scanMinTimeElapsed = true;
-            this.checkScanComplete();
-        }, this.SCAN_MIN_DURATION_MS);
-
-        // Start initial settle timer
-        this.resetSettleTimer();
-
-        // Trigger the actual SSDP scan
-        this.finder.scan();
-    }
-
-    private resetSettleTimer(): void {
-        if (this.scanSettleTimer) {
-            clearTimeout(this.scanSettleTimer);
-        }
-        this.scanSettleTimer = setTimeout(() => {
-            this.scanSettleTimer = null;
-            this.checkScanComplete();
-        }, this.SCAN_SETTLE_MS);
-    }
-
-    private checkScanComplete(): void {
-        if (!this.isScanning) {
-            return;
-        }
-        // Only complete if both conditions met: min time elapsed AND settle timer fired
-        if (this.scanMinTimeElapsed && this.scanSettleTimer === null) {
-            this.endScan();
-        }
-    }
-
-    private endScan(): void {
-        if (!this.isScanning) {
-            return;
+        if (lookup.ip && lookup.serialNumber) {
+            // Both provided: Must match both
+            return this.devices.find(d => d.ip === lookup.ip && this.getSerial(d) === lookup.serialNumber
+            );
+        } else if (lookup.ip) {
+            // IP only: Match by IP (primary key)
+            return this.devices.find(d => d.ip === lookup.ip);
+        } else if (lookup.serialNumber) {
+            // Serial only: Match by serial in deviceInfo
+            return this.devices.find(d => this.getSerial(d) === lookup.serialNumber);
         }
 
-        this.isScanning = false;
-        this.clearScanTimers();
-        this.emitter.emit('scan-ended');
+        return undefined;
     }
 
-    private clearScanTimers(): void {
-        if (this.scanMinTimer) {
-            clearTimeout(this.scanMinTimer);
-            this.scanMinTimer = null;
+    /**
+     * Get serial number for a device using IP→serial mapping.
+     */
+    private getSerial(device: DeviceReference): string | undefined {
+        return this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
+    }
+
+    private get timeSinceLastScan(): number {
+        if (!this.lastScanDate) {
+            return Infinity; // Never scanned, so always stale
         }
-        if (this.scanSettleTimer) {
-            clearTimeout(this.scanSettleTimer);
-            this.scanSettleTimer = null;
-        }
+        return Date.now() - this.lastScanDate.getTime();
     }
 
-    private async activateMonitoring() {
-        this.networkChangeMonitor.start();
-        await this.startRokuFinder();
-    }
-
-    private deactivateMonitoring() {
-        this.networkChangeMonitor.stop();
-        this.stopRokuFinder();
-    }
-
-    private getPriorityForDeviceFormFactor(device: RokuDeviceDetails): number {
-        if (device.deviceInfo['is-stick'] === 'true') {
+    private getPriorityForDeviceFormFactor(deviceInfo: Record<string, any>): number {
+        if (deviceInfo?.['is-stick'] === 'true') {
             return 0;
         }
-        if (device.deviceInfo['is-tv'] === 'true') {
+        if (deviceInfo?.['is-tv'] === 'true') {
             return 2;
         }
         return 1;
+    }
+
+    /**
+     * Add or update a device in the devices array.
+     * Device should already be minimal (no deviceInfo) - caching happens before calling this.
+     */
+    private setDevice(device: DeviceReference): void {
+        const index = this.devices.findIndex(d => d.ip === device.ip);
+        const isNewDevice = index < 0;
+
+        if (isNewDevice) {
+            this.devices.push(device);
+        } else {
+            // Merge: incoming wins for most fields, but preserve configured properties
+            const existing = this.devices[index];
+            this.devices[index] = {
+                ...existing,
+                ...device,
+                // Preserve configured status from either side
+                isDiscovered: device.isDiscovered ?? existing.isDiscovered,
+                isConfigured: device.isConfigured ?? existing.isConfigured,
+                configuredName: device.configuredName ?? existing.configuredName,
+                configuredPassword: device.configuredPassword ?? existing.configuredPassword
+            };
+        }
+
+        this.emitDevicesChanged();
+    }
+
+    /**
+     * Mark a device as unreachable after a failed health check.
+     * - Configured devices: marked 'offline', isDiscovered = false
+     * - Discovered-only devices: removed from the list
+     */
+    private markDeviceUnreachable(deviceIp: string): void {
+        const device = this.getDeviceReference({ ip: deviceIp });
+        if (!device) {
+            return;
+        }
+
+        if (device.isConfigured) {
+            // Configured devices stay but marked offline and not discovered
+            device.deviceState = 'offline';
+            device.isDiscovered = false;
+            this.emitDevicesChanged();
+        } else {
+            // Discovered-only device: remove it
+            this.removeDevice(deviceIp);
+        }
+    }
+
+    /**
+     * Remove a device from the devices array.
+     */
+    private removeDevice(deviceIp: string): void {
+        const device = this.getDeviceReference({ ip: deviceIp });
+        if (device) {
+            this.devices = this.devices.filter(d => d.ip !== deviceIp);
+
+            // Remove from last seen devices (if has serial)
+            const serial = this.getSerial(device);
+            if (serial) {
+                this.globalStateManager.removeLastSeenDevice(this.networkId, serial);
+            }
+
+            // Clear lastUsedDeviceIp if the removed device was the last used
+            if (this.lastUsedDeviceIp === deviceIp) {
+                this.lastUsedDeviceIp = undefined;
+            }
+
+            this.emitDevicesChanged();
+        }
     }
 
     /**
@@ -611,10 +532,15 @@ export class DeviceManager {
         for (const serialNumber of lastSeenDevices) {
             const cached = this.globalStateManager.getCachedDevice(serialNumber);
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
+                // Create minimal device - deviceInfo already in cache, accessed on-demand
                 this.setDevice({
-                    ...cached,
-                    deviceState: 'pending'
+                    location: cached.location,
+                    ip: cached.ip,
+                    deviceState: 'pending',
+                    isDiscovered: false
                 });
+                // Ensure IP→serial mapping is set up
+                this.globalStateManager.setSerialNumberForIp(this.networkId, cached.ip, serialNumber);
             } else {
                 // No cached info - remove stale entry
                 this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
@@ -665,98 +591,315 @@ export class DeviceManager {
             }
         }
         const configuredDevices = Array.from(deviceMap.values());
-        const configuredKeys = new Set(configuredDevices.map(c => c.serialNumber || c.host));
 
-        // Remove (or mark unconfigured) any devices from the devices list that are no longer configured
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
 
-            //skip non-configured devices for this loop
+            // Skip non-configured devices
             if (!device.isConfigured) {
                 continue;
             }
 
-            //this device is still configured, so keep it in the list
-            if (configuredKeys.has(device.serialNumber)) {
-                continue;
+            // Check if still in config (by IP or serial)
+            const serial = this.getSerial(device);
+            const stillConfigured = configuredDevices.some(c => c.host === device.ip ||
+                (serial && c.serialNumber === serial)
+            );
+
+            if (stillConfigured) {
+                continue; // Still configured, keep it
             }
 
-            const hasRealDeviceInfo = device.deviceInfo['serial-number'] && device.deviceInfo['serial-number'] !== device.ip;
-            if (hasRealDeviceInfo) {
+            // Device removed from config
+            if (device.isDiscovered) {
                 // Keep as discovered-only device
                 device.isConfigured = false;
                 device.configuredName = undefined;
                 device.configuredPassword = undefined;
             } else {
-                // Config-only device, remove
+                // Not discovered either, remove completely
                 this.devices.splice(i, 1);
             }
         }
 
-        // Apply configured devices
         for (const configured of configuredDevices) {
+            // Determine serial number
             let serialNumber = configured.serialNumber;
             if (!serialNumber) {
-                // First check current network, then fall back to most recent across all networks
                 serialNumber = this.globalStateManager.getSerialNumberForIp(configured.host, this.networkId);
             }
-            const deviceSerialNumber = serialNumber || configured.host;
 
-            // Check if device already exists (preserve its state if online)
-            const existingDevice = this.devices.find(d => d.serialNumber === deviceSerialNumber || d.ip === configured.host);
+            // IP is REQUIRED for configured devices
+            const ip = configured.host;
+
+            // Check if device already exists by IP (primary key)
+            const existingDevice = this.getDeviceReference({ ip: ip });
+
+            // Preserve state if device exists
             const deviceState = existingDevice?.deviceState ?? 'pending';
+            const isDiscovered = existingDevice?.isDiscovered ?? false;
 
-            let cachedInfo: DeviceInfoRaw | undefined;
+            // Set up IP→serial mapping if we have serial (deviceInfo already cached if it exists)
             if (serialNumber) {
-                const cached = this.globalStateManager.getCachedDevice(serialNumber);
-                cachedInfo = cached?.deviceInfo;
+                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
             }
 
+            // Create minimal device (deviceInfo accessed from cache on-demand)
             this.setDevice({
-                location: `http://${configured.host}:8060`,
-                serialNumber: deviceSerialNumber,
-                ip: configured.host,
+                location: `http://${ip}:8060`,
+                ip: ip,
                 deviceState: deviceState,
-                deviceInfo: existingDevice?.deviceInfo || cachedInfo || this.createPlaceholderDeviceInfo(configured),
                 isConfigured: true,
+                isDiscovered: isDiscovered,
                 configuredName: configured.name,
                 configuredPassword: configured.password
             });
         }
     }
 
-    /**
-     * Create placeholder device info for configured devices that haven't been resolved yet.
-     * Only includes data we actually know - everything else will be populated when resolved.
-     */
-    private createPlaceholderDeviceInfo(configured: ConfiguredDevice): DeviceInfoRaw {
-        return {
-            'serial-number': configured.serialNumber
-        } as DeviceInfoRaw;
+    private async resolveDevice(device: DeviceReference): Promise<boolean> {
+        // Increment and capture sequence number to handle concurrent refresh calls
+        // Use IP for sequence tracking (primary key)
+        const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
+        this.resolveDeviceSequence.set(device.ip, currentSeq);
+
+        // Set to pending during health check with immediate UI feedback
+        const existingDevice = this.getDeviceReference({ ip: device.ip });
+        if (existingDevice && existingDevice.deviceState !== 'pending') {
+            existingDevice.deviceState = 'pending';
+            this.emitDevicesChanged();
+        }
+
+        // Fetch latest device info from the network (with short-lived cache)
+        let deviceInfo: DeviceInfoRaw | undefined;
+        try {
+            deviceInfo = await this.getDeviceInfoCached(
+                device.ip,
+                parseInt(new URL(device.location).port || '8060')
+            );
+
+            await this.randomDelay(400, 1_000);
+        } catch {
+            deviceInfo = undefined;
+        }
+
+        // Only apply result if this is still the latest request for this device
+        if (this.resolveDeviceSequence.get(device.ip) !== currentSeq) {
+            // Stale response - a newer check was started, ignore this result
+            return !!deviceInfo;
+        }
+
+        if (deviceInfo) {
+            // Extract serial and cache the deviceInfo
+            const serial = deviceInfo['serial-number']?.toString?.();
+            if (serial) {
+                this.globalStateManager.setCachedDevice(serial, {
+                    location: device.location,
+                    serialNumber: serial,
+                    ip: device.ip,
+                    deviceInfo: deviceInfo,
+                    createdAt: Date.now()
+                });
+                this.globalStateManager.setSerialNumberForIp(this.networkId, device.ip, serial);
+
+                // Add to last seen devices (successfully resolved with serial)
+                this.globalStateManager.addLastSeenDevice(this.networkId, serial);
+            }
+
+            // Create minimal device (no deviceInfo)
+            const freshDevice: DeviceReference = {
+                location: device.location,
+                ip: device.ip,
+                deviceState: 'online',
+                isConfigured: device.isConfigured,
+                isDiscovered: true,
+                configuredName: device.configuredName,
+                configuredPassword: device.configuredPassword
+            };
+
+            this.setDevice(freshDevice);
+
+            return true;
+        } else {
+            this.markDeviceUnreachable(device.ip);
+            return false;
+        }
+    }
+
+    private async checkDevicesHealth(force = false): Promise<void> {
+        // Use internal devices array directly - no need to hydrate from cache
+        const devices = this.devices;
+
+        // Filter to devices that need checking
+        const devicesToCheck = force ? devices : devices.filter(d => {
+            const lastCheck = this.lastHealthCheckTime.get(d.ip) ?? 0;
+            return Date.now() - lastCheck > this.HEALTH_CHECK_COOLDOWN_MS;
+        });
+
+        if (devicesToCheck.length === 0) {
+            return;
+        }
+
+        // Set all to pending and emit before async work
+        for (const device of devicesToCheck) {
+            device.deviceState = 'pending';
+            this.lastHealthCheckTime.set(device.ip, Date.now());
+        }
+        this.emitDevicesChanged();
+
+        // Check all devices
+        let needsScan = false;
+        await Promise.all(devicesToCheck.map(async (device) => {
+            const isHealthy = await this.resolveDevice(device);
+            if (!isHealthy) {
+                needsScan = true;
+            }
+        }));
+
+        if (needsScan) {
+            this.discoverAll(this.deviceDiscoveryEnabled);
+        }
     }
 
     /**
-     * Set up event listeners for the RokuFinder.
-     * This must be called regardless of passiveScanPermitted so that
-     * active scan responses are processed.
+     * Reset the cache cleanup timer. After inactivity, the cache will be cleared.
      */
-    private setupFinderEventListeners() {
-        this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.serialNumber);
+    private resetCacheCleanupTimer(): void {
+        if (this.cacheCleanupTimer) {
+            clearTimeout(this.cacheCleanupTimer);
+        }
+        this.cacheCleanupTimer = setTimeout(() => {
+            this.deviceInfoCache.clear();
+            this.cacheCleanupTimer = null;
+        }, this.CACHE_CLEANUP_DELAY_MS);
+    }
+
+    /**
+     * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
+     * when health checks and SSDP responses race during refresh.
+     */
+    private async getDeviceInfoCached(ip: string, port: number): Promise<DeviceInfoRaw> {
+        this.resetCacheCleanupTimer();
+
+        const cached = this.deviceInfoCache.get(ip);
+        if (cached && Date.now() - cached.timestamp < this.DEVICE_INFO_CACHE_TTL_MS) {
+            return cached.info;
+        }
+
+        const info = await rokuDeploy.getDeviceInfo({
+            host: ip,
+            remotePort: port,
+            timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
         });
 
-        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
-            this.handleDeviceOnline(ip, serialNumber);
-        });
+        this.deviceInfoCache.set(ip, { info: info, timestamp: Date.now() });
+        return info;
+    }
 
-        this.finder.on('lost', (ip: string) => {
-            // Find and remove device by IP
-            const device = this.devices.find(d => d.ip === ip);
-            if (device) {
-                this.removeDevice(device.serialNumber);
+    /**
+     * Discover all Roku devices on the network and watch for new ones that connect
+     */
+    private discoverAll(force: boolean): boolean {
+        if (force || this.scanNeeded || this.timeSinceLastScan > this.STALE_SCAN_THRESHOLD_MS) {
+            this.scanNeeded = false;
+            this.lastScanDate = new Date();
+            this.finder.scan();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Process a discovered IP address from SSDP.
+     * Fetches device info, applies filtering, and sets if valid.
+     * @param serialNumber - Serial number from SSDP USN header, if available
+     */
+    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
+        const location = `http://${ip}:8060`;
+
+        try {
+            const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
+
+            const config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
+            const developerEnabled = deviceInfo['developer-enabled'] === 'true';
+
+            if (!includeNonDeveloperDevices && !developerEnabled) {
+                return;
             }
-        });
+
+            // Check if device already exists (by IP)
+            const existingDevice = this.getDeviceReference({ ip: ip });
+
+            // Extract serial and cache the deviceInfo
+            const serial = deviceInfo['serial-number']?.toString?.();
+            if (serial) {
+                this.globalStateManager.setCachedDevice(serial, {
+                    location: location,
+                    serialNumber: serial,
+                    ip: ip,
+                    deviceInfo: deviceInfo,
+                    createdAt: Date.now()
+                });
+                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
+            }
+
+            // Create minimal device (no deviceInfo)
+            const device: DeviceReference = {
+                location: location,
+                ip: ip,
+                deviceState: 'online',
+                isConfigured: existingDevice?.isConfigured ?? false,
+                isDiscovered: true,
+                configuredName: existingDevice?.configuredName,
+                configuredPassword: existingDevice?.configuredPassword
+            };
+
+            this.setDevice(device);
+        } catch {
+            // Device unreachable, ignore
+        }
+    }
+
+    /**
+     * Handle device-online event from RokuFinder.
+     * Shows a notification if showInfoMessages is enabled.
+     */
+    private handleDeviceOnline(ip: string, serialNumber?: string): void {
+        if (!this.showInfoMessages) {
+            return;
+        }
+
+        // Get actual serial number from IP→serial mapping (more reliable than SSDP hint)
+        const actualSerial = this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ?? serialNumber;
+
+        // Get cached device directly from globalStateManager
+        const cachedDevice = actualSerial
+            ? this.globalStateManager.getCachedDevice(actualSerial)
+            : undefined;
+
+        // Get display name from cache
+        const fallbackName = actualSerial ? `${ip} (${actualSerial})` : ip;
+        const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? fallbackName;
+        const notifierId = actualSerial ?? ip;
+
+        if (!this.deviceOnlineNotifiers.has(notifierId)) {
+            this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
+                this.deviceOnlineNotifiers.delete(notifierId);
+                void util.showTimedNotification(`Device Online: ${name}`);
+            }, 500));
+        }
+        this.deviceOnlineNotifiers.get(notifierId)(displayName);
+    }
+
+    private async activateMonitoring() {
+        this.networkChangeMonitor.start();
+        await this.startRokuFinder();
+    }
+
+    private deactivateMonitoring() {
+        this.networkChangeMonitor.stop();
+        this.stopRokuFinder();
     }
 
     /**
@@ -779,110 +922,23 @@ export class DeviceManager {
     }
 
     /**
-     * Add or update a device in the devices array
+     * Set the flag indicating a scan is needed. Emits 'scanNeeded-changed' event
+     * when the flag flips from false to true.
      */
-    private setDevice(device: RokuDeviceDetails): void {
-        // First try to match by serialNumber (most reliable), then fall back to IP for configured devices
-        let index = this.devices.findIndex(d => d.serialNumber === device.serialNumber);
-        if (index < 0) {
-            // If no serialNumber match, try IP match (for configured devices that may not have resolved yet)
-            index = this.devices.findIndex(d => d.ip === device.ip);
-        }
-        const isNewDevice = index < 0;
-
-        if (isNewDevice) {
-            this.devices.push(device);
-        } else {
-            // Merge: incoming wins for most fields, but preserve configured properties from either side
-            const existing = this.devices[index];
-            this.devices[index] = {
-                ...existing,
-                ...device,
-                // Preserve configured status from either side
-                isConfigured: device.isConfigured ?? existing.isConfigured,
-                configuredName: device.configuredName ?? existing.configuredName,
-                configuredPassword: device.configuredPassword ?? existing.configuredPassword
-            };
-        }
-
-        // Update IP→serialNumber mapping when we successfully resolve a device
-        this.globalStateManager.setSerialNumberForIp(this.networkId, device.ip, device.serialNumber);
-
-        // Only cache when device is online (confirmed via network)
-        if (device.deviceState === 'online') {
-            this.globalStateManager.setCachedDevice(device.serialNumber, {
-                location: device.location,
-                serialNumber: device.serialNumber,
-                ip: device.ip,
-                deviceInfo: device.deviceInfo,
-                createdAt: Date.now()
-            });
-        }
-
-        // Reset scan settle timer when device response comes in
-        if (this.isScanning) {
-            this.resetSettleTimer();
-        }
-
-        if (isNewDevice) {
-            this.globalStateManager.addLastSeenDevice(this.networkId, device.serialNumber);
-        }
-        this.emitDevicesChanged();
-    }
-
-    /**
-     * Mark a device as unreachable after a failed health check.
-     * - Configured devices: marked 'offline' (icon logic uses cache to distinguish "never seen" vs "was online")
-     * - Discovered devices: removed from the list
-     */
-    private markDeviceUnreachable(serialNumber: string): void {
-        const device = this.devices.find(d => d.serialNumber === serialNumber);
-        if (!device) {
-            return;
-        }
-
-        if (device.isConfigured) {
-            // Configured devices are never removed, just marked offline
-            // Icon logic will check cache to show warning (no cache) or disconnect (has cache)
-            device.deviceState = 'offline';
-            this.emitDevicesChanged();
-            return;
-        }
-
-        // Discovered-only device: remove it
-        this.removeDevice(serialNumber);
-    }
-
-    /**
-     * Remove a device from the devices array.
-     */
-    private removeDevice(serialNumber: string): void {
-        const device = this.devices.find(d => d.serialNumber === serialNumber);
-        if (device) {
-            this.devices = this.devices.filter(d => d.serialNumber !== serialNumber);
-            this.globalStateManager.removeLastSeenDevice(this.networkId, device.serialNumber);
-
-            // Clear lastUsedDevice if the removed device was the last used
-            if (this.lastUsedDevice?.serialNumber === serialNumber) {
-                this.lastUsedDevice = undefined;
-            }
-
-            this.emitDevicesChanged();
+    private setScanNeeded(force = false): void {
+        if (!this.scanNeeded || force) {
+            this.scanNeeded = true;
+            this.emitter.emit('scanNeeded-changed');
         }
     }
 
-    public dispose() {
-        this.deactivateMonitoring();
-        this.systemSleepMonitor?.dispose?.();
-        this.networkChangeMonitor?.dispose?.();
-        this.finder?.dispose?.();
-        this.devices = [];
-        this.emitter.removeAllListeners();
+    private emitDevicesChanged = throttleBounce(() => {
+        this.emitter.emit('devices-changed');
+    }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
-        //clear any timeouts
-        clearTimeout(this.cacheCleanupTimer);
-        clearTimeout(this.scanMinTimer);
-        clearTimeout(this.scanSettleTimer);
+    private async randomDelay(min: number, max: number) {
+        const randomness = Math.random() * ((max - min) + min);
+        await util.sleep(randomness);
     }
 }
 
@@ -898,12 +954,20 @@ export interface ConfiguredDevice {
     password?: string;
 }
 
-export interface RokuDeviceDetails {
+/**
+ * Internal device reference with runtime state (minimal)
+ * Used internally by DeviceManager for tracking devices
+ */
+interface DeviceReference {
     location: string;
-    serialNumber: string;
-    ip: string;
+    ip: string; // unique identifier for device in memory
     deviceState: DeviceState;
-    deviceInfo: DeviceInfoRaw;
+    // deviceInfo removed - access via GlobalStateManager.getCachedDevice()
+    /**
+     * Current discovery state. True when device is actively discovered on network.
+     * Toggles false when device becomes unreachable.
+     */
+    isDiscovered?: boolean;
     /**
      * If true, this device was configured by the user.
      * Configured devices are never auto-removed.
@@ -918,6 +982,15 @@ export interface RokuDeviceDetails {
      * User-provided password from config.
      */
     configuredPassword?: string;
+}
+
+/**
+ * Full device details returned by public API (extends DeviceReference with cached data)
+ * Includes both runtime state and cached deviceInfo from GlobalStateManager
+ */
+export interface RokuDeviceDetails extends DeviceReference {
+    serialNumber?: string;
+    deviceInfo: Record<string, any>;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(

@@ -29,6 +29,8 @@ Module.prototype.require = function hijacked(file) {
 describe('UserInputManager', () => {
 
     let userInputManager: UserInputManager;
+    let deviceManager: DeviceManager;
+    let globalStateManager: GlobalStateManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
@@ -38,8 +40,8 @@ describe('UserInputManager', () => {
         sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
         sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
-        let globalStateManager = new GlobalStateManager(vscode.context);
-        let deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        globalStateManager = new GlobalStateManager(vscode.context);
+        deviceManager = new DeviceManager(vscode.context, globalStateManager);
         userInputManager = new UserInputManager(deviceManager);
     });
 
@@ -50,39 +52,40 @@ describe('UserInputManager', () => {
 
     describe('createHostQuickPickList', () => {
         const devices: Array<RokuDeviceDetails> = [{
+            ip: '1.1.1.1',
+            location: 'http://1.1.1.1:8060',
+            serialNumber: 'alpha',
+            deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku1',
                 'serial-number': 'alpha',
                 'model-number': 'model1',
                 'software-version': '11.5.0'
-            },
-            serialNumber: '1',
-            ip: '1.1.1.1',
-            location: '???',
-            deviceState: 'online'
+            }
         }, {
+            ip: '1.1.1.2',
+            location: 'http://1.1.1.2:8060',
+            serialNumber: 'beta',
+            deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku2',
                 'serial-number': 'beta',
                 'model-number': 'model2',
                 'software-version': '11.5.0'
-            },
-            serialNumber: '2',
-            ip: '1.1.1.2',
-            location: '???',
-            deviceState: 'online'
+            }
         }, {
+            ip: '1.1.1.3',
+            location: 'http://1.1.1.3:8060',
+            serialNumber: 'charlie',
+            deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku3',
                 'serial-number': 'charlie',
                 'model-number': 'model3',
                 'software-version': '11.5.0'
-            },
-            serialNumber: '3',
-            ip: '1.1.1.3',
-            location: '???',
-            deviceState: 'online'
+            }
         }];
+
         function label(device: RokuDeviceDetails) {
             return `${device.deviceInfo['model-number']} – ${device.deviceInfo['user-device-name']} – OS ${device.deviceInfo['software-version']} – ${device.ip}`;
         }
@@ -139,7 +142,7 @@ describe('UserInputManager', () => {
 
         it('moves active device to the top', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1]).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0], devices[1], devices[2]], devices[1].ip).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -154,7 +157,7 @@ describe('UserInputManager', () => {
 
         it('includes action items when "last used" and "other devices" separators are both present', () => {
             expect(
-                userInputManager['createHostQuickPickList'](devices, devices[1]).map(x => x.label)
+                userInputManager['createHostQuickPickList'](devices, devices[1].ip).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[1]),
@@ -183,7 +186,7 @@ describe('UserInputManager', () => {
 
         it('includes action items when only "last used" separator is present', () => {
             expect(
-                userInputManager['createHostQuickPickList']([devices[0]], devices[0]).map(x => x.label)
+                userInputManager['createHostQuickPickList']([devices[0]], devices[0].ip).map(x => x.label)
             ).to.eql([
                 'last used',
                 label(devices[0]),

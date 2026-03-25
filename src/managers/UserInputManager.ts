@@ -107,7 +107,7 @@ export class UserInputManager {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
                             return;
                         }
-                        this.deviceManager.lastUsedDevice = device;
+                        this.deviceManager.setLastUsedDeviceIp(device.ip);
                         deferred.resolve(device);
                     }
                     quickPick.dispose();
@@ -156,7 +156,7 @@ export class UserInputManager {
         const refreshList = () => {
             const items = this.createHostQuickPickList(
                 this.deviceManager.getAllDevices(),
-                this.deviceManager.lastUsedDevice,
+                this.deviceManager.getLastUsedDeviceIp(),
                 itemCache
             );
             quickPick.items = items;
@@ -224,7 +224,7 @@ export class UserInputManager {
             // For offline devices, check cache to distinguish:
             // - warning icon: never successfully contacted (no cache)
             // - disconnect icon: was online before (has cache)
-            const hasCache = this.deviceManager.hasDeviceCache(device.serialNumber);
+            const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
             if (hasCache) {
                 return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
             } else {
@@ -233,14 +233,14 @@ export class UserInputManager {
         } else if (device.deviceState === 'pending') {
             return new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
         }
-        return icons.getDeviceType(device);
+        return icons.getDeviceType(device.deviceInfo);
     }
 
     private createHostLabel(device: RokuDeviceDetails) {
         return [
-            device.deviceInfo['model-number'],
-            device.deviceInfo['user-device-name'],
-            `OS ${device.deviceInfo['software-version']}`,
+            device.deviceInfo['model-number'] || '',
+            device.deviceInfo['user-device-name'] || '',
+            `OS ${device.deviceInfo['software-version'] || ''}`,
             device.ip
         ].join(' – ');
     }
@@ -250,16 +250,16 @@ export class UserInputManager {
      */
     private createHostQuickPickList(
         devices: RokuDeviceDetails[],
-        lastUsedDevice: RokuDeviceDetails,
+        lastUsedDeviceIp: string | undefined,
         cache = new Map<string, QuickPickHostItem>()
     ) {
         //the collection of items we will eventually return
         let items: QuickPickHostItem[] = [];
 
-        //find the lastUsedDevice from the devices list if possible, or use the data from the lastUsedDevice if not
-        lastUsedDevice = devices.find(x => x.serialNumber === lastUsedDevice?.serialNumber) ?? lastUsedDevice;
+        //find the lastUsedDevice from the devices list
+        const lastUsedDevice = lastUsedDeviceIp ? devices.find(x => x.ip === lastUsedDeviceIp) : undefined;
         //remove the lastUsedDevice from the devices list so we can more easily reason with the rest of the list
-        devices = devices.filter(x => x.serialNumber !== lastUsedDevice?.serialNumber);
+        devices = devices.filter(x => x.ip !== lastUsedDeviceIp);
 
         // Ensure the most recently used device is at the top of the list
         if (lastUsedDevice) {

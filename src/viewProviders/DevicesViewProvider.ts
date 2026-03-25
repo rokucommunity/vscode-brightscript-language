@@ -24,7 +24,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     constructor(
         private deviceManager: DeviceManager
     ) {
-        this.decorationProvider = new DeviceDecorationProvider();
+        this.decorationProvider = new DeviceDecorationProvider(this.deviceManager);
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
@@ -103,10 +103,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private makeName(device: RokuDeviceDetails) {
         // Use configuredName if available, otherwise fall back to user-device-name
         const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
+        const softwareVersion = device.deviceInfo['software-version'];
         const parts = [
             device.deviceInfo['model-number'],
             displayName,
-            device.deviceInfo['software-version'] ? `OS ${device.deviceInfo['software-version']}` : undefined
+            softwareVersion ? `OS ${softwareVersion}` : undefined
         ].filter(Boolean);
         return parts.join(' – ') || device.ip;
     }
@@ -125,20 +126,20 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     let treeItem = new DeviceTreeItem(
                         this.makeName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        device.serialNumber,
+                        device.ip,
                         device.deviceInfo
                     );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
+                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`);
+                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber || device.ip}`);
 
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
                         // For offline devices, check cache to distinguish:
                         // - warning icon: never successfully contacted (no cache)
                         // - disconnect icon: was online before (has cache)
-                        const hasCache = this.deviceManager.hasDeviceCache(device.serialNumber);
+                        const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
                         if (hasCache) {
                             treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
                         } else {
@@ -147,7 +148,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     } else if (device.deviceState === 'pending') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
                     } else {
-                        treeItem.iconPath = icons.getDeviceType(device);
+                        treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
                     }
 
                     // Set contextValue for context menu actions
@@ -196,7 +197,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             }
             this.deviceManager.checkDeviceHealth(device).catch(() => { });
 
-            if (device.deviceInfo['is-tv'] === 'true') {
+            if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(
                     this.createDeviceInfoTreeItem({
                         label: '📺 Switch TV Input',
@@ -347,8 +348,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(serialNumber: string): RokuDeviceDetails {
-        return this.devices.find(device => device.serialNumber === serialNumber);
+    private findDeviceById(key: string): RokuDeviceDetails | undefined {
+        // Key could be serial or IP
+        return this.devices.find(device => device.serialNumber === key || device.ip === key);
     }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
@@ -409,13 +411,18 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
 
     private deviceStates = new Map<string, string>();
 
+    constructor(_deviceManager: DeviceManager) {
+        // deviceManager parameter kept for future use but not currently needed
+    }
+
     updateDevices(devices: RokuDeviceDetails[]): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
-            const oldState = this.deviceStates.get(device.serialNumber);
+            const deviceKey = device.serialNumber || device.ip; // Fallback to IP when no serial
+            const oldState = this.deviceStates.get(deviceKey);
             if (oldState !== device.deviceState) {
-                this.deviceStates.set(device.serialNumber, device.deviceState);
-                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`));
+                this.deviceStates.set(deviceKey, device.deviceState);
+                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${deviceKey}`));
             }
         }
         if (changedUris.length > 0) {

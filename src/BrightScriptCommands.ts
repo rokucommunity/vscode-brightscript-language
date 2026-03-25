@@ -63,10 +63,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            const device = this.deviceManager.getDevice(item.key);
-            if (device) {
-                await this.deviceManager.checkDeviceHealth(device, true);
-            }
+            await this.deviceManager.checkDeviceHealth({ serialNumber: item.key }, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -418,8 +415,7 @@ export class BrightScriptCommands {
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                const serialNumber = deviceOrItem.key;
-                ip = this.deviceManager.getDevice(serialNumber)?.ip;
+                ip = this.deviceManager.getDevice({ ip: deviceOrItem.key })?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;
             }
@@ -457,11 +453,15 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('removeDeviceFromConfig', async (deviceOrItem: { key: string }) => {
-            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            const device = this.deviceManager.getDevice({ ip: deviceOrItem?.key });
             if (!device) {
                 void vscode.window.showErrorMessage('Could not find device to remove from settings.');
                 return;
             }
+
+            // Get full device info
+            const fullDevice = this.deviceManager.getDevice({ ip: device.ip });
+            const serial = fullDevice?.serialNumber;
 
             // Get only the user settings (globalValue)
             const config = vscode.workspace.getConfiguration('brightscript');
@@ -469,7 +469,7 @@ export class BrightScriptCommands {
             const userDevices = inspection?.globalValue || [];
 
             // Find and remove the device
-            const index = userDevices.findIndex(d => d.host === device.ip || d.serialNumber === device.serialNumber);
+            const index = userDevices.findIndex(d => d.host === device.ip || (serial && d.serialNumber === serial));
             if (index === -1) {
                 void vscode.window.showInformationMessage('Device is not in your user settings.');
                 return;
@@ -483,11 +483,15 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('addDeviceToConfig', async (deviceOrItem: { key: string }) => {
-            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            const device = this.deviceManager.getDevice({ ip: deviceOrItem?.key });
             if (!device) {
                 void vscode.window.showErrorMessage('Could not find device to add to settings.');
                 return;
             }
+
+            // Get full device info
+            const fullDevice = this.deviceManager.getDevice({ ip: device.ip });
+            const serial = fullDevice?.serialNumber;
 
             // Get only the user settings (globalValue), not merged values from all scopes
             const config = vscode.workspace.getConfiguration('brightscript');
@@ -495,7 +499,7 @@ export class BrightScriptCommands {
             const userDevices = inspection?.globalValue || [];
 
             // Check if device already exists in user settings
-            if (userDevices.some(d => d.host === device.ip || d.serialNumber === device.serialNumber)) {
+            if (userDevices.some(d => d.host === device.ip || (serial && d.serialNumber === serial))) {
                 void vscode.window.showInformationMessage('Device is already in your settings.');
                 return;
             }
@@ -503,8 +507,8 @@ export class BrightScriptCommands {
             // Add the new device
             const newDevice = {
                 host: device.ip,
-                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'],
-                serialNumber: device.serialNumber
+                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip,
+                ...(serial && { serialNumber: serial })
             };
             userDevices.push(newDevice);
 
