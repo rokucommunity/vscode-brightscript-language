@@ -596,7 +596,7 @@ export class DeviceManager {
      * Then loads cached devices for the current network.
      */
     private loadLastSeenDevices(): void {
-        // Remove non-configured devices, reset configured to pending (no-op at startup)
+        // flip configured devices to pending and remove all the rest
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
             if (device.isConfigured) {
@@ -667,25 +667,29 @@ export class DeviceManager {
         const configuredDevices = Array.from(deviceMap.values());
         const configuredKeys = new Set(configuredDevices.map(c => c.serialNumber || c.host));
 
-        // Handle removed configured devices (no-op at startup when devices is empty)
+        // Remove (or mark unconfigured) any devices from the devices list that are no longer configured
         for (let i = this.devices.length - 1; i >= 0; i--) {
             const device = this.devices[i];
-            if (device.isConfigured) {
-                // serialNumber is either real serial or configured host (fallback)
-                if (!configuredKeys.has(device.serialNumber)) {
-                    // Device was removed from config
-                    const hasRealDeviceInfo = device.deviceInfo['device-id'] &&
-                        device.deviceInfo['device-id'] !== device.ip;
-                    if (hasRealDeviceInfo) {
-                        // Keep as discovered-only device
-                        device.isConfigured = false;
-                        device.configuredName = undefined;
-                        device.configuredPassword = undefined;
-                    } else {
-                        // Config-only device, remove
-                        this.devices.splice(i, 1);
-                    }
-                }
+
+            //skip non-configured devices for this loop
+            if (!device.isConfigured) {
+                continue;
+            }
+
+            //this device is still configured, so keep it in the list
+            if (configuredKeys.has(device.serialNumber)) {
+                continue;
+            }
+
+            const hasRealDeviceInfo = device.deviceInfo['serial-number'] && device.deviceInfo['serial-number'] !== device.ip;
+            if (hasRealDeviceInfo) {
+                // Keep as discovered-only device
+                device.isConfigured = false;
+                device.configuredName = undefined;
+                device.configuredPassword = undefined;
+            } else {
+                // Config-only device, remove
+                this.devices.splice(i, 1);
             }
         }
 
