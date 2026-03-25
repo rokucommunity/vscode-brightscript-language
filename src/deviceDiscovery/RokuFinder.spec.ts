@@ -92,7 +92,6 @@ describe('RokuFinder', () => {
             const ip = foundSpy.firstCall.args[0];
             const options = foundSpy.firstCall.args[1];
             expect(ip).to.equal('192.168.1.100');
-            expect(options.isAlive).to.be.false;
             expect(options.serialNumber).to.equal('ABC123');
         });
 
@@ -161,7 +160,7 @@ describe('RokuFinder', () => {
     });
 
     describe('SSDP notify handling', () => {
-        it('emits "found" with IP string, isAlive true, and serial number on ssdp:alive', async () => {
+        it('emits "found" with IP string and serial number on ssdp:alive', async () => {
             finder = new RokuFinder();
             await finder.start();
 
@@ -179,8 +178,26 @@ describe('RokuFinder', () => {
             const ip = foundSpy.firstCall.args[0];
             const options = foundSpy.firstCall.args[1];
             expect(ip).to.equal('192.168.1.100');
-            expect(options.isAlive).to.be.true;
             expect(options.serialNumber).to.equal('ABC123');
+        });
+
+        it('emits "device-online" with IP and serial number on ssdp:alive', async () => {
+            finder = new RokuFinder();
+            await finder.start();
+
+            const deviceOnlineSpy = sinon.spy();
+            finder.on('device-online', deviceOnlineSpy);
+
+            (finder['server'] as any).emit('advertise-alive', {
+                NT: 'roku:ecp',
+                NTS: 'ssdp:alive',
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:ABC123'
+            });
+
+            expect(deviceOnlineSpy.calledOnce).to.be.true;
+            expect(deviceOnlineSpy.firstCall.args[0]).to.equal('192.168.1.100');
+            expect(deviceOnlineSpy.firstCall.args[1]).to.equal('ABC123');
         });
 
         it('emits "lost" on ssdp:byebye', async () => {
