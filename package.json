@@ -291,14 +291,24 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "command": "extension.brightscript.enableDeviceDiscovery",
                     "when": "view == devicesView && !brightscript.deviceDiscovery.enabled",
-                    "group": "navigation"
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.disableDeviceDiscovery",
+                    "when": "view == devicesView && brightscript.deviceDiscovery.enabled",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "when": "view == devicesView",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == devicesView",
-                    "group": "navigation"
+                    "group": "navigation@3"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
@@ -3299,6 +3309,24 @@
                 "title": "Refresh",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.enableDeviceDiscovery",
+                "title": "Enable Device Discovery",
+                "category": "BrightScript",
+                "icon": {
+                    "light": "./images/icons/radio-tower-off-light.svg",
+                    "dark": "./images/icons/radio-tower-off-dark.svg"
+                }
+            },
+            {
+                "command": "extension.brightscript.disableDeviceDiscovery",
+                "title": "Disable Device Discovery",
+                "category": "BrightScript",
+                "icon": {
+                    "light": "./images/icons/radio-tower-light.svg",
+                    "dark": "./images/icons/radio-tower-dark.svg"
+                }
             },
             {
                 "command": "extension.brightscript.setActiveDevice",
