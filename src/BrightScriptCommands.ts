@@ -340,11 +340,11 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {
-            await vscode.workspace.getConfiguration('brightscript').update('deviceDiscovery.enabled', true, vscode.ConfigurationTarget.Global);
+            await util.setConfigurationValue('brightscript.deviceDiscovery.enabled', true);
         });
 
         this.registerCommand('disableDeviceDiscovery', async () => {
-            await vscode.workspace.getConfiguration('brightscript').update('deviceDiscovery.enabled', false, vscode.ConfigurationTarget.Global);
+            await util.setConfigurationValue('brightscript.deviceDiscovery.enabled', false);
         });
 
         this.registerCommand('clearDeviceCache', async () => {

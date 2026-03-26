@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
+import { util } from '../util';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -214,9 +215,9 @@ export class UserInputManager {
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
-                void vscode.workspace.getConfiguration('brightscript').update('deviceDiscovery.enabled', true, vscode.ConfigurationTarget.Global);
+                void util.setConfigurationValue('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
-                void vscode.workspace.getConfiguration('brightscript').update('deviceDiscovery.enabled', false, vscode.ConfigurationTarget.Global);
+                void util.setConfigurationValue('brightscript.deviceDiscovery.enabled', false);
             }
         });
 

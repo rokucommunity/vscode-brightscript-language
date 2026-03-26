@@ -555,6 +555,33 @@ class Util {
         }
         return defaultValue;
     }
+
+    /**
+     * Update a configuration setting at the most-specific level where it is currently defined.
+     * If the setting exists at workspace folder level, update it there.
+     * If it exists at workspace level, update it there.
+     * Otherwise, write to the global (user) settings.
+     * @param key - The full configuration key in the format `namespace.settingName` (e.g. `brightscript.deviceDiscovery.enabled`)
+     * @param value - The value to set
+     */
+    public async setConfigurationValue(key: string, value: any) {
+        const match = /(.+?)\.([^.]+)$/.exec(key);
+        if (!match) {
+            throw new Error(`Invalid configuration key format: '${key}'. Expected 'namespace.settingName'.`);
+        }
+        const [, configurationKey, settingKey] = match;
+        const settings = vscode.workspace.getConfiguration(configurationKey);
+        const inspection = settings.inspect(settingKey);
+        let target: vscode.ConfigurationTarget;
+        if (inspection?.workspaceFolderValue !== undefined) {
+            target = vscode.ConfigurationTarget.WorkspaceFolder;
+        } else if (inspection?.workspaceValue !== undefined) {
+            target = vscode.ConfigurationTarget.Workspace;
+        } else {
+            target = vscode.ConfigurationTarget.Global;
+        }
+        await settings.update(settingKey, value, target);
+    }
 }
 
 const util = new Util();
