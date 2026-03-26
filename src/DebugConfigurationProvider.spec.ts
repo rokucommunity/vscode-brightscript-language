@@ -254,6 +254,67 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
+    describe('processDapLogFilePath', () => {
+        const tmpPath = s`${rootDir}/.tmp`;
+        const workspaceFolder = <any>{ uri: { fsPath: tmpPath } };
+
+        beforeEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+        afterEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+
+        it('does nothing when debugAdapterProtocolLogging is falsey', () => {
+            expect(configProvider.processDapLogFilePath(undefined, <any>{}).debugAdapterProtocolLogFilePath).not.to.be.ok;
+            expect(configProvider.processDapLogFilePath(undefined, <any>{ debugAdapterProtocolLogging: false }).debugAdapterProtocolLogFilePath).not.to.be.ok;
+            expect(configProvider.processDapLogFilePath(undefined, <any>{ debugAdapterProtocolLogging: { enabled: false } }).debugAdapterProtocolLogFilePath).not.to.be.ok;
+        });
+
+        it('sets debugAdapterProtocolLogFilePath when enabled via boolean true', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+            expect(result.debugAdapterProtocolLogFilePath).to.include(tmpPath);
+        });
+
+        it('sets debugAdapterProtocolLogFilePath when enabled via object', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: { enabled: true } });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+        });
+
+        it('uses custom dir and filename', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{
+                debugAdapterProtocolLogging: { dir: './custom-logs', filename: 'custom.log' }
+            });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('custom.log');
+            expect(result.debugAdapterProtocolLogFilePath).to.include('custom-logs');
+        });
+
+        it('prepends a timestamp in session mode', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{
+                debugAdapterProtocolLogging: { mode: 'session' }
+            });
+            // ISO timestamp format: 2026-03-26T00-00-00
+            expect(result.debugAdapterProtocolLogFilePath).to.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
+        });
+
+        it('does not prepend a timestamp in append mode', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{
+                debugAdapterProtocolLogging: { mode: 'append' }
+            });
+            expect(result.debugAdapterProtocolLogFilePath).not.to.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+        });
+
+        it('creates the log directory', () => {
+            const logDir = s`${tmpPath}/dap-logs`;
+            configProvider.processDapLogFilePath(workspaceFolder, <any>{
+                debugAdapterProtocolLogging: { dir: logDir }
+            });
+            expect(fsExtra.pathExistsSync(logDir)).to.be.true;
+        });
+    });
+
     describe('processEnvFile', () => {
         function processEnvFile(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
             return configProvider['processEnvFile'](folder, config as any);
