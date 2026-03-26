@@ -254,9 +254,36 @@ export class DeviceManager {
     }
 
     public clearAllCache() {
+        // Handle in-progress scan state
+        const wasScanning = this.isScanning;
+        if (wasScanning) {
+            this.isScanning = false;
+            this.scanMinTimeElapsed = false;
+            this.clearScanTimers(); // Uses existing helper method (lines 535-544)
+        }
+
+        // Clear current device list (existing method)
         this.clearCurrentDeviceList();
+
+        // Clear global state (existing)
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
+
+        // Clear all timestamps and per-device state
+        this.lastScanDate = null;
+        this.lastHealthCheckTime.clear();
+        this.resolveDeviceSequence.clear();
+
+        // Clear cache cleanup timer
+        if (this.cacheCleanupTimer) {
+            clearTimeout(this.cacheCleanupTimer);
+            this.cacheCleanupTimer = null;
+        }
+
+        // Emit scan-ended if scan was in progress
+        if (wasScanning) {
+            this.emitter.emit('scan-ended');
+        }
     }
 
     /**
