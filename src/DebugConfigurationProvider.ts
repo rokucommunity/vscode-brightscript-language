@@ -98,6 +98,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processPasswordParameter(result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
+            result = this.processDapLogFilePath(folder, result);
 
             const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
             statusbarItem.text = '$(sync~spin) Fetching device info';
@@ -358,6 +359,25 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
+    public processDapLogFilePath(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration) {
+        const dapConfig = config.debugAdapterProtocolLogging;
+        const isEnabled = dapConfig === true || (dapConfig && typeof dapConfig === 'object' && dapConfig.enabled !== false);
+        if (!isEnabled) {
+            return config;
+        }
+        const folderPath = folder?.uri.fsPath ?? process.cwd();
+        const dapObj = typeof dapConfig === 'object' ? dapConfig : {};
+        const dir = path.resolve(folderPath, dapObj.dir ?? './logs');
+        const filename = dapObj.filename ?? 'debugAdapterProtocol.log';
+        const mode = dapObj.mode ?? 'session';
+        const logFile = mode === 'session'
+            ? path.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${filename}`)
+            : path.join(dir, filename);
+        fsExtra.ensureDirSync(dir);
+        config.debugAdapterProtocolLogFilePath = logFile;
+        return config;
+    }
+
     /**
      * Reads the manifest file and updates any config values that are mapped to it
      * @param folder current workspace folder
@@ -540,6 +560,19 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * A path to a file where all brightscript console output will be written. If falsey, file logging will be disabled.
      */
     logfilePath?: string;
+
+    /**
+     * Configuration for DAP protocol logging. Set via the `brightscript.debug.debugAdapterProtocolLogging` workspace setting.
+     * The resolved absolute log file path is written to `debugAdapterProtocolLogFilePath` by `processDapLogFilePath`
+     * and passed to the debug adapter process as the `ROKU_DAP_LOG_FILE` env var by the descriptor factory.
+     */
+    debugAdapterProtocolLogging?: boolean | { enabled?: boolean; dir?: string; filename?: string; mode?: 'session' | 'append' };
+
+    /**
+     * Resolved absolute path for the DAP protocol log file, populated by `processDapLogFilePath`.
+     * Consumed by the DebugAdapterDescriptorFactory to inject `ROKU_DAP_LOG_FILE` into the adapter process.
+     */
+    debugAdapterProtocolLogFilePath?: string;
     /**
      *  If true, then the zip archive is NOT deleted after a debug session has been closed.
      * @default true

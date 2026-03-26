@@ -165,6 +165,20 @@ export class Extension {
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
 
+        //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.
+        //this is required for features like DAP protocol logging, which must be configured before the first DAP message arrives.
+        context.subscriptions.push(
+            vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
+                createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
+                    const logFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
+                    if (logFilePath && executable) {
+                        return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: { ROKU_DAP_LOG_FILE: logFilePath } });
+                    }
+                    return executable;
+                }
+            })
+        );
+
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
             vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
