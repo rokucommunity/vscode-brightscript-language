@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - upgrade to [roku-debug@0.23.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0230---2026-03-27). Notable changes since 0.22.7:
      - DAP level communication logging and process crash event handling ([#310](https://github.com/rokucommunity/roku-debug/pull/310))
 ### Fixed
- - Fixed sort order bug in Brightscript tasks causing incorrect folder selection ([#722](https://github.com/rokucommunity/vscode-brightscript-language/pull/722))
+ - Sort order bug in Brightscript tasks causing incorrect folder selection ([#722](https://github.com/rokucommunity/vscode-brightscript-language/pull/722))
  - When clearing device cache, ensure a scan next time requested ([#721](https://github.com/rokucommunity/vscode-brightscript-language/pull/721))
 
 
