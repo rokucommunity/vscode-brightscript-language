@@ -293,10 +293,21 @@ export class Extension {
 
         } else if (isProcessCrashEvent(e)) {
             const label = e.body.type === 'uncaughtException' ? 'Uncaught exception' : 'Unhandled rejection';
-            void vscode.window.showErrorMessage(
+            const selected = await vscode.window.showErrorMessage(
                 `BrightScript debug adapter crashed (${label}): ${e.body.message}`,
-                { modal: true }
-            ).then(() => vscode.debug.stopDebugging(e.session));
+                { modal: true },
+                'Report Issue'
+            );
+            void vscode.debug.stopDebugging(e.session);
+            if (selected === 'Report Issue') {
+                await vscode.commands.executeCommand('workbench.action.openIssueReporter', {
+                    extensionId: 'RokuCommunity.brightscript',
+                    issueType: 1,
+                    issueTitle: `Debug adapter crash: ${e.body.type}`,
+                    issueBody: `## Debug Adapter Crash\n\n**Type:** ${e.body.type}\n**Message:** ${e.body.message}\n\n**Stack:**\n\`\`\`\n${e.body.stack ?? 'N/A'}\n\`\`\`\n\n**Steps to reproduce:**\n<!-- Please describe what you were doing when this crash occurred -->`
+                });
+            }
+
 
         } else if (isDiagnosticsEvent(e)) {
             const diagnostics = e.body?.diagnostics ?? [];
