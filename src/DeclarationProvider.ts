@@ -196,7 +196,7 @@ export class DeclarationProvider implements Disposable {
 
         // Prevents results in the out directory from being returned
         if (uriPath.startsWith(outDir)) {
-            return;
+            return [];
         }
 
         const container = BrightScriptDeclaration.fromUri(uri);
