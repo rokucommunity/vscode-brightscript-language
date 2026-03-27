@@ -23,7 +23,7 @@ import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import type { CustomRequestEvent } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -170,11 +170,18 @@ export class Extension {
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
                 createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
-                    const logFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
-                    if (logFilePath && executable) {
-                        return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: { ROKU_DAP_LOG_FILE: logFilePath } });
+                    if (!executable) {
+                        return executable;
                     }
-                    return executable;
+                    const env: Record<string, string> = {};
+
+                    // Only inject the DAP protocol log path if the user explicitly configured it.
+                    const dapLogFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
+                    if (dapLogFilePath) {
+                        env.ROKU_DAP_LOG_FILE = dapLogFilePath;
+                    }
+
+                    return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: env });
                 }
             })
         );
@@ -283,6 +290,13 @@ export class Extension {
             }
 
             this.chanperfStatusBar.show();
+
+        } else if (isProcessCrashEvent(e)) {
+            const label = e.body.type === 'uncaughtException' ? 'Uncaught exception' : 'Unhandled rejection';
+            void vscode.window.showErrorMessage(
+                `BrightScript debug adapter crashed (${label}): ${e.body.message}`,
+                { modal: true }
+            ).then(() => vscode.debug.stopDebugging(e.session));
 
         } else if (isDiagnosticsEvent(e)) {
             const diagnostics = e.body?.diagnostics ?? [];
