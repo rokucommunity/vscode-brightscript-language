@@ -3,19 +3,22 @@ name: Sync from public
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Get bot token
+        uses: tibdex/github-app-token@v1.5.1
+        id: generate-token
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - name: Checkout private repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Fetch latest public master
         run: |
@@ -24,12 +27,12 @@ jobs:
 
       - name: Create branch and open PR
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           PUBLIC_SHA=$(git rev-parse --short public/master)
           BRANCH_NAME="sync-public-${PUBLIC_SHA}"
 
-          # Check if a branch or open PR already exists for this commit
+          # Check if a branch already exists for this commit
           if git ls-remote --exit-code origin "refs/heads/${BRANCH_NAME}" >/dev/null 2>&1; then
             echo "Branch ${BRANCH_NAME} already exists. Skipping."
             exit 0
