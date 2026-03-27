@@ -55,7 +55,7 @@ export class WorkspaceEncoding {
     }
 
     private getConfiguration(uri: Uri): string {
-        const encoding: string = vscode.workspace.getConfiguration('files', uri).get('encoding', 'utf8');
+        const encoding: string = util.getConfiguration('files', uri).get('encoding', 'utf8');
         if (encoding === 'utf8bom') {
             return 'utf8'; // iconv-lite removes bom by default when decoding, so this is fine
         }
@@ -456,8 +456,8 @@ export class DeclarationProvider implements Disposable {
 
 export function getExcludeGlob(): string {
     const exclude = [
-        ...Object.keys(vscode.workspace.getConfiguration('search', null).get('exclude') || {}),
-        ...Object.keys(vscode.workspace.getConfiguration('files', null).get('exclude') || {})
+        ...Object.keys(util.getConfiguration('search').get('exclude') || {}),
+        ...Object.keys(util.getConfiguration('files').get('exclude') || {})
     ].join(',');
     return `{${exclude}}`;
 }

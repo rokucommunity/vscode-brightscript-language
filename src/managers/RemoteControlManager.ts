@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { TelemetryManager } from './TelemetryManager';
 import { VscodeCommand } from '../commands/VscodeCommand';
+import { util } from '../util';
 
 export class RemoteControlManager {
     constructor(
@@ -18,7 +19,7 @@ export class RemoteControlManager {
     }
 
     private loadIsFlasherAllowedByUser() {
-        this.isFlasherAllowedByUser = vscode.workspace.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
+        this.isFlasherAllowedByUser = util.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
     }
 
     private isEnabled = false;

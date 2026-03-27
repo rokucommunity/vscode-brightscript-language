@@ -68,14 +68,14 @@ export class DeviceManager {
      * Is device discovery enabled (i.e. passive scans are permitted)
      */
     public get deviceDiscoveryEnabled() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
     }
 
     /**
      * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
      */
     private get showInfoMessages() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
     }
 
     /**
@@ -98,7 +98,7 @@ export class DeviceManager {
 
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
 
@@ -454,7 +454,7 @@ export class DeviceManager {
         try {
             const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
 
-            const config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            const config: any = util.getConfiguration('brightscript') || {};
             const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
             const developerEnabled = deviceInfo['developer-enabled'] === 'true';
 

@@ -135,7 +135,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * There are several debug-level config values that can be stored in user settings, so get those
      */
     private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
-        const workspaceConfig = vscode.workspace.getConfiguration('brightscript.debug');
+        const workspaceConfig = util.getConfiguration('brightscript.debug');
 
         let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
 
@@ -169,7 +169,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
-        let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let userWorkspaceSettings: any = util.getConfiguration('brightscript') || {};
 
         //make sure we have an object
         config = {
@@ -511,7 +511,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public getBsConfig(workspaceFolder: vscode.Uri) {
         //try to load bsconfig settings
-        let settings = vscode.workspace.getConfiguration('brightscript', workspaceFolder);
+        let settings = util.getConfiguration('brightscript', workspaceFolder);
         let configFilePath = settings.get<string>('configFile');
         let isDefaultPath = false;
         if (!configFilePath) {
