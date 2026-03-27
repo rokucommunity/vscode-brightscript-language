@@ -170,6 +170,12 @@ export class Extension {
         // continue execution on the first stopped event so the user doesn't have to manually resume.
         // The pwa-node debugger spawns a child session for the actual Hermes connection — we target
         // that child session (identified by its parent having _isBrightscriptJsSession: true).
+        const debugTsEvents = false;
+        const logTsEvents = (cb: () => any[]) => {
+            if (debugTsEvents) {
+                console.log(...cb());
+            }
+        }; // set to true to enable debug logging for this feature
         context.subscriptions.push(
             vscode.debug.registerDebugAdapterTrackerFactory('pwa-node', {
                 createDebugAdapterTracker: function createDebugAdapterTracker(session) {
@@ -177,20 +183,40 @@ export class Extension {
                         return undefined;
                     }
 
-                    let threadId: number;
+                    let threadId: number | undefined;
+                    let hasValidStackForCurrentStop = false;
                     return {
                         onDidSendMessage: function onDidSendMessage(message) {
+                            logTsEvents(() => [message.type, message.type === 'response' ? message.command : message.event, JSON.stringify(message)]);
 
-                            // console.log(message.type, message.event, message);
                             if (message.type === 'event' && message.event === 'stopped') {
                                 // Save the last threadId so we can continue it after attach. Hermes doesn't include the threadId in the stackTrace response.
-                                threadId = message.body.threadId;
+                                // Only update if the event body actually has a threadId — some Hermes attach pauses omit it.
+                                if (message.body.threadId !== undefined) {
+                                    threadId = message.body.threadId;
+                                }
+                                hasValidStackForCurrentStop = false;
+                                logTsEvents(() => [`stopped event: threadId=${threadId} (from event body: ${message.body.threadId})`]);
                             }
 
-                            // Automatically continue after attach if Hermes session is paused with no stack frames. These seem to be auto pauses that happen on attach
-                            if (threadId !== undefined && message.type === 'response' && message.command === 'stackTrace' && message.body.stackFrames.length === 0) {
-                                console.log('Automatically continuing pause after attach with Hermes session...');
-                                void session.customRequest('continue', { threadId: threadId });
+                            // Fallback: if the stopped event had no threadId, grab it from the threads response (which always precedes the stackTrace request)
+                            if (threadId === undefined && message.type === 'response' && message.command === 'threads' && message.body.threads?.length > 0) {
+                                threadId = message.body.threads[0].id;
+                                logTsEvents(() => [`set threadId from threads response fallback: ${threadId}`]);
+                            }
+
+                            // Automatically continue after attach if Hermes session is paused with no stack frames. These seem to be auto pauses that happen on attach.
+                            // VS Code may make multiple stackTrace requests per stop; once a valid (non-empty) stack is seen, don't auto-continue on a subsequent empty one.
+                            if (threadId !== undefined && message.type === 'response' && message.command === 'stackTrace') {
+                                const frames = message.body.stackFrames;
+                                logTsEvents(() => [`stackTrace: ${frames.length} frames`, ...frames.map((f: any) => `${f.source?.path ?? f.source?.name ?? '(no source)'}:${f.line}`)]);
+                                if (frames.some((f: any) => f.source?.path)) {
+                                    // At least one frame has a real source file — this is a valid user-code stop
+                                    hasValidStackForCurrentStop = true;
+                                } else if (!hasValidStackForCurrentStop) {
+                                    logTsEvents(() => ['Automatically continuing pause after attach with Hermes session...']);
+                                    void session.customRequest('continue', { threadId: threadId });
+                                }
                             }
                         }
                     };
