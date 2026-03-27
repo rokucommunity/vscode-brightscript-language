@@ -1058,6 +1058,12 @@
                                 "deprecationMessage": "Use `fileLogging` option instead",
                                 "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
                             },
+                            "debugAdapterProtocolLogging": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Each session writes a new timestamped file to the workspace's `logs/` folder. Useful for crash diagnostics. Can also be set as a VS Code workspace/user setting.",
+                                "deprecationMessage": "Experimental and subject to change"
+                            },
                             "packageTask": {
                                 "type": "string",
                                 "description": "Task to run instead of roku-deploy to produce the .zip file that will be uploaded to the Roku."
@@ -2732,41 +2738,10 @@
                         "scope": "resource"
                     },
                     "brightscript.debug.debugAdapterProtocolLogging": {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Useful for crash diagnostics. Must be a VS Code workspace/user setting (not launch.json) — it is read before the debug session starts so the very first DAP message is captured.",
-                                "properties": {
-                                    "enabled": {
                                         "type": "boolean",
-                                        "description": "Should DAP protocol logging be enabled"
-                                    },
-                                    "dir": {
-                                        "type": "string",
-                                        "description": "Directory where log files should be stored",
-                                        "default": "./logs"
-                                    },
-                                    "filename": {
-                                        "type": "string",
-                                        "description": "Base filename for the log. In `session` mode a timestamp is prepended automatically.",
-                                        "default": "debugAdapterProtocol.log"
-                                    },
-                                    "mode": {
-                                        "type": "string",
-                                        "description": "`'session'` creates a unique timestamped file per debug session. `'append'` appends all sessions to a single file.",
-                                        "default": "session",
-                                        "enum": [
-                                            "session",
-                                            "append"
-                                        ]
-                                    }
-                                }
-                            },
-                            {
-                                "type": "boolean",
-                                "description": "Enable DAP protocol logging. Logs all communication between VS Code and the debug adapter."
-                            }
-                        ],
+                        "default": false,
+                        "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Each session writes a new timestamped file to the workspace's `logs/` folder. Useful for crash diagnostics. Can also be set per-launch in launch.json.",
+                        "deprecationMessage": "Experimental and subject to change",
                         "scope": "resource"
                     },
                     "brightscript.debug.showHiddenVariables": {

@@ -360,21 +360,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     public processDapLogFilePath(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration) {
-        const dapConfig = config.debugAdapterProtocolLogging;
-        const isEnabled = dapConfig === true || (dapConfig && typeof dapConfig === 'object' && dapConfig.enabled !== false);
-        if (!isEnabled) {
+        if (!config.debugAdapterProtocolLogging) {
             return config;
         }
         const folderPath = folder?.uri.fsPath ?? process.cwd();
-        const dapObj = typeof dapConfig === 'object' ? dapConfig : {};
-        const dir = path.resolve(folderPath, dapObj.dir ?? './logs');
-        const filename = dapObj.filename ?? 'debugAdapterProtocol.log';
-        const mode = dapObj.mode ?? 'session';
-        const logFile = mode === 'session'
-            ? path.join(dir, `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${filename}`)
-            : path.join(dir, filename);
+        const dir = path.resolve(folderPath, './logs');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         fsExtra.ensureDirSync(dir);
-        config.debugAdapterProtocolLogFilePath = logFile;
+        config.debugAdapterProtocolLogFilePath = path.join(dir, `${timestamp}-debugAdapterProtocol.log`);
         return config;
     }
 
@@ -562,11 +555,11 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     logfilePath?: string;
 
     /**
-     * Configuration for DAP protocol logging. Set via the `brightscript.debug.debugAdapterProtocolLogging` workspace setting.
+     * Enable DAP protocol logging. Can be set via the `brightscript.debug.debugAdapterProtocolLogging` workspace setting or in launch.json.
      * The resolved absolute log file path is written to `debugAdapterProtocolLogFilePath` by `processDapLogFilePath`
      * and passed to the debug adapter process as the `ROKU_DAP_LOG_FILE` env var by the descriptor factory.
      */
-    debugAdapterProtocolLogging?: boolean | { enabled?: boolean; dir?: string; filename?: string; mode?: 'session' | 'append' };
+    debugAdapterProtocolLogging?: boolean;
 
     /**
      * Resolved absolute path for the DAP protocol log file, populated by `processDapLogFilePath`.
