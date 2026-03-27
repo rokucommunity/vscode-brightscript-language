@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.0...v2.63.1) - 2026-03-27
+### Changed
+ - Missing brightscript.format.insertSpaceAfterConditionalCompileSymbol setting ([#720](https://github.com/rokucommunity/vscode-brightscript-language/pull/720))
+ - upgrade to [brighterscript@0.71.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0710---2026-03-27). Notable changes since 0.70.4:
+     - Feature/more quick fixes ([#1662](https://github.com/rokucommunity/brighterscript/pull/1662))
+     - bugfix/small perf improvements ([#1663](https://github.com/rokucommunity/brighterscript/pull/1663))
+     - Bump picomatch from 2.3.1 to 2.3.2 ([#1661](https://github.com/rokucommunity/brighterscript/pull/1661))
+     - Bump picomatch from 2.3.1 to 2.3.2 in /benchmarks ([#1660](https://github.com/rokucommunity/brighterscript/pull/1660))
+     - Add computed property names (compile-time support only) ([#1658](https://github.com/rokucommunity/brighterscript/pull/1658))
+ - upgrade to [roku-debug@0.23.1](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0231---2026-03-27). Notable changes since 0.23.0:
+     - Fix crash when breakpoint deletion fails while device is running ([#313](https://github.com/rokucommunity/roku-debug/pull/313))
+     - Bump brace-expansion from 1.1.12 to 1.1.13 ([#312](https://github.com/rokucommunity/roku-debug/pull/312))
+
+
+
 ## [2.63.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.62.0...v2.63.0) - 2026-03-27
 ### Added
  - Debugger crash event handle and suggest filing a bug report ([#725](https://github.com/rokucommunity/vscode-brightscript-language/pull/725))
