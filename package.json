@@ -1950,6 +1950,12 @@
                         "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
                         "scope": "resource"
                     },
+                    "brightscript.format.insertSpaceAfterConditionalCompileSymbol": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, a space is inserted after the `#` in conditional compile directives (i.e. `# if true`). If false, no space is inserted (i.e. `#if true`)",
+                        "scope": "resource"
+                    },
                     "brightscript.format.formatSingleLineCommentType": {
                         "type": "string",
                         "description": "Forces all single-line comments to use the same style",
