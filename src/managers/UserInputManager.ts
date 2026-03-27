@@ -318,7 +318,7 @@ export class UserInputManager {
             {
                 label: scanForDevicesLabel,
                 device: { id: scanForDevicesItemId },
-                iconPath: new vscode.ThemeIcon('refresh')
+                iconPath: new vscode.ThemeIcon('radio-tower')
             } as any
         );
 
