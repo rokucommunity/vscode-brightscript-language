@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.62.0",
+    "version": "2.63.0",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -2738,7 +2738,7 @@
                         "scope": "resource"
                     },
                     "brightscript.debug.debugAdapterProtocolLogging": {
-                                        "type": "boolean",
+                        "type": "boolean",
                         "default": false,
                         "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Each session writes a new timestamped file to the workspace's `logs/` folder. Useful for crash diagnostics. Can also be set per-launch in launch.json.",
                         "deprecationMessage": "Experimental and subject to change",
