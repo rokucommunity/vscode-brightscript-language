@@ -64,7 +64,8 @@ export let vscode = {
         registerDebugAdapterDescriptorFactory: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
-        onDidReceiveDebugSessionCustomEvent: () => { }
+        onDidReceiveDebugSessionCustomEvent: () => { },
+        stopDebugging: () => { }
     },
     languages: {
         registerDefinitionProvider: () => { },
@@ -247,7 +248,7 @@ export let vscode = {
         showWarningMessage: function(message: string) {
 
         },
-        showErrorMessage: function(message: string) {
+        showErrorMessage: function(message: string, ..._rest: any[]): any {
 
         },
         activeTextEditor: {
