@@ -254,6 +254,45 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
+    describe('processDapLogFilePath', () => {
+        const tmpPath = s`${rootDir}/.tmp`;
+        const workspaceFolder = <any>{ uri: { fsPath: tmpPath } };
+
+        beforeEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+        afterEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+
+        it('does nothing when debugAdapterProtocolLogging is falsey', () => {
+            expect(configProvider.processDapLogFilePath(undefined, <any>{}).debugAdapterProtocolLogFilePath).not.to.be.ok;
+            expect(configProvider.processDapLogFilePath(undefined, <any>{ debugAdapterProtocolLogging: false }).debugAdapterProtocolLogFilePath).not.to.be.ok;
+        });
+
+        it('sets debugAdapterProtocolLogFilePath when enabled', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+            expect(result.debugAdapterProtocolLogFilePath).to.include(tmpPath);
+        });
+
+        it('prepends a timestamp', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            // ISO timestamp format: 2026-03-26T00-00-00
+            expect(result.debugAdapterProtocolLogFilePath).to.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
+        });
+
+        it('writes to workspace logs/ folder', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include(path.join(tmpPath, 'logs'));
+        });
+
+        it('creates the log directory', () => {
+            configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(fsExtra.pathExistsSync(path.join(tmpPath, 'logs'))).to.be.true;
+        });
+    });
+
     describe('processEnvFile', () => {
         function processEnvFile(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
             return configProvider['processEnvFile'](folder, config as any);
