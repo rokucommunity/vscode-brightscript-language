@@ -1,0 +1,46 @@
+name: Sync from public
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch latest public master
+        run: |
+          git remote add public https://github.com/rokucommunity/vscode-brightscript-language.git
+          git fetch public master
+
+      - name: Create branch and open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PUBLIC_SHA=$(git rev-parse --short public/master)
+          BRANCH_NAME="sync-public-${PUBLIC_SHA}"
+
+          # Check if a branch or open PR already exists for this commit
+          if git ls-remote --exit-code origin "refs/heads/${BRANCH_NAME}" >/dev/null 2>&1; then
+            echo "Branch ${BRANCH_NAME} already exists. Skipping."
+            exit 0
+          fi
+
+          # Create branch from public/master and push to private
+          git checkout -b "${BRANCH_NAME}" public/master
+          git push origin "${BRANCH_NAME}"
+
+          # Open PR
+          gh pr create \
+            --base master \
+            --head "${BRANCH_NAME}" \
+            --title "Sync from public master (${PUBLIC_SHA})" \
+            --body "Automated sync of public master at commit \`$(git rev-parse public/master)\`."
