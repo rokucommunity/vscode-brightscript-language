@@ -215,9 +215,9 @@ export class UserInputManager {
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
-                void util.setConfigurationValue('brightscript.deviceDiscovery.enabled', true);
+                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
-                void util.setConfigurationValue('brightscript.deviceDiscovery.enabled', false);
+                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
             }
         });
 

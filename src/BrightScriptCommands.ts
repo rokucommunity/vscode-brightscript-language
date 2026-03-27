@@ -340,11 +340,11 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {
-            await util.setConfigurationValue('brightscript.deviceDiscovery.enabled', true);
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
         });
 
         this.registerCommand('disableDeviceDiscovery', async () => {
-            await util.setConfigurationValue('brightscript.deviceDiscovery.enabled', false);
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
         });
 
         this.registerCommand('clearDeviceCache', async () => {
