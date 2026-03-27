@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.62.0...v2.63.0) - 2026-03-27
+### Added
+ - Debugger crash event handle and suggest filing a bug report ([#725](https://github.com/rokucommunity/vscode-brightscript-language/pull/725))
+
+### Changed
+ - upgrade to [roku-debug@0.23.0](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0230---2026-03-27). Notable changes since 0.22.7:
+     - DAP level communication logging and process crash event handling ([#310](https://github.com/rokucommunity/roku-debug/pull/310))
+### Fixed
+ - Sort order bug in Brightscript tasks causing incorrect folder selection ([#722](https://github.com/rokucommunity/vscode-brightscript-language/pull/722))
+ - When clearing device cache, ensure a scan next time requested ([#721](https://github.com/rokucommunity/vscode-brightscript-language/pull/721))
+
+
+
 ## [2.62.0](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.61.2...v2.62.0) - 2026-03-24
 ### Added
  - added go to parent component command ([#718](https://github.com/rokucommunity/vscode-brightscript-language/pull/718))
