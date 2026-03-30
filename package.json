@@ -1262,6 +1262,14 @@
                 "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.brs.embedded.xml",
+                "path": "./syntaxes/brightscript-cdata.tmLanguage.json",
+                "injectTo": ["text.xml"],
+                "embeddedLanguages": {
+                    "meta.embedded.block.brs": "brightscript"
+                }
             }
         ],
         "snippets": [
