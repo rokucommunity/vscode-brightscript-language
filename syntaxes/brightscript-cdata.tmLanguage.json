@@ -1,0 +1,25 @@
+{
+    "name": "BrightScript in XML CDATA (Roku SceneGraph)",
+    "scopeName": "source.brs.embedded.xml",
+    "injectionSelector": "L:text.xml",
+    "patterns": [
+        { "include": "#cdata-brs" }
+    ],
+    "repository": {
+        "cdata-brs": {
+            "name": "string.unquoted.cdata.xml",
+            "begin": "<!\\[CDATA\\[",
+            "end": "\\]\\]>",
+            "beginCaptures": {
+                "0": { "name": "punctuation.definition.string.begin.xml" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.definition.string.end.xml" }
+            },
+            "contentName": "meta.embedded.block.brs",
+            "patterns": [
+                { "include": "source.brs" }
+            ]
+        }
+    }
+}

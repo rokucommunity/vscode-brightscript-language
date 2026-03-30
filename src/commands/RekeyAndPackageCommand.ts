@@ -3,6 +3,7 @@ import * as rokuDeploy from 'roku-deploy';
 import type { BrightScriptCommands } from '../BrightScriptCommands';
 import * as path from 'path';
 import { readFileSync } from 'fs-extra';
+import { util } from '../util';
 import type { UserInputManager } from '../managers/UserInputManager';
 import { standardizePath } from 'brighterscript';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -345,7 +346,7 @@ export class RekeyAndPackageCommand {
     }
 
     private async packageFromLaunchConfig(rokuDeployOptions) {
-        let config = vscode.workspace.getConfiguration('launch', null);
+        let config = util.getConfiguration('launch');
         const configurations = config.get<any[]>('configurations');
         let configNames = [];
         for (let config of configurations) {

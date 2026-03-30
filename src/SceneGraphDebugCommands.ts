@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { SceneGraphCommandResponse } from 'roku-debug';
 import { SceneGraphDebugCommandController } from 'roku-debug';
+import { util } from './util';
 
 export class SceneGraphDebugCommands {
     private outputChannel: vscode.OutputChannel;
@@ -182,7 +183,7 @@ export class SceneGraphDebugCommands {
     public async getRemoteHost() {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            let config = util.getConfiguration('brightscript.remoteControl');
             this.host = config.get('host');
             if (this.host === '${promptForHost}') {
                 this.host = await vscode.window.showInputBox({
