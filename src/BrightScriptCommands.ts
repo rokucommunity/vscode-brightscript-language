@@ -339,6 +339,14 @@ export class BrightScriptCommands {
             await util.showTimedNotification('Clearing device list');
         });
 
+        this.registerCommand('enableDeviceDiscovery', async () => {
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
+        });
+
+        this.registerCommand('disableDeviceDiscovery', async () => {
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+        });
+
         this.registerCommand('clearDeviceCache', async () => {
             this.deviceManager.clearAllCache();
             await util.showTimedNotification('Clearing device cache');
