@@ -537,9 +537,17 @@ class Util {
         return typeof value === 'string' && value.trim() !== '';
     }
 
+    /**
+     * Wrapper around `vscode.workspace.getConfiguration` that defaults the resource to `null`.
+     * This avoids VS Code warnings when accessing resource-scoped settings without a URI.
+     */
+    public getConfiguration(section?: string, resource?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration(section, resource ?? null);
+    }
+
     public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {
         const [, configurationKey, settingKey] = /(.+?)\.([^\.]+)$/.exec(key) ?? [];
-        let settings = vscode.workspace.getConfiguration(configurationKey);
+        let settings = this.getConfiguration(configurationKey);
         const inspection = settings.inspect(settingKey);
 
         if (

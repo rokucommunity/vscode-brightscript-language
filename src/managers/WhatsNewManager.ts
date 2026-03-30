@@ -2,6 +2,7 @@ import { env, window } from 'vscode';
 import { gte as semverGte } from 'semver';
 import * as vscode from 'vscode';
 import type { GlobalStateManager } from '../GlobalStateManager';
+import { util } from '../util';
 
 const FILE_SCHEME = 'bs-whatsNew';
 
@@ -39,7 +40,7 @@ export class WhatsNewManager {
     ];
 
     public async showWelcomeOrWhatsNewIfRequired() {
-        let config = vscode.workspace.getConfiguration('brightscript');
+        let config = util.getConfiguration('brightscript');
         let isReleaseNotificationsEnabled = config.get('enableReleaseNotifications') === false ? false : true;
         //this is the first launch of the extension
         if (this.previousExtensionVersion === undefined) {

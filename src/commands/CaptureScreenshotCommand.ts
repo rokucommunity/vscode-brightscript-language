@@ -43,7 +43,7 @@ export class CaptureScreenshotCommand {
     }
 
     private async getScreenshotDir() {
-        let screenshotDir = vscode.workspace.getConfiguration('brightscript').get<string>('screenshotDir');
+        let screenshotDir = util.getConfiguration('brightscript').get<string>('screenshotDir');
         if (screenshotDir) {
             let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (vscode.workspace.workspaceFolders?.length > 1) {
