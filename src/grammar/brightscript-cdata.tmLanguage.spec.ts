@@ -57,107 +57,105 @@ function createRegistryWithInjections(): tm.Registry {
 }
 
 describe('brightscript-cdata.tmLanguage.json', () => {
-    const registries = new Cache<string, tm.Registry>();
-
-    // Uses `'` as the comment token (single char) so `^` assertions align with source columns.
-    // The test grammar scope is text.xml but assertions are written as BrightScript line comments.
-    async function testGrammar(testCaseText: string) {
-        testCaseText = `' SYNTAX TEST "text.xml" +AllowMiddleLineAssertions` + testCaseText;
-        const registry = registries.getOrAdd('cdata', createRegistryWithInjections);
-        const testCase = parseGrammarTestCase(testCaseText);
-        const result = await runGrammarTestCase(registry, testCase);
-        if (result.length > 0) {
-            const text = getErrorResultText('test.xml', testCase, result);
-            throw new Error(`\nFound ${result.length} issues with grammar:\n${text}`);
-        }
-    }
-
     it('marks CDATA begin delimiter with punctuation scope', async () => {
-        // <![CDATA[ starts at col 0; `'` at col -1 is impossible, so assert on inner chars (col 1+)
         await testGrammar(`
- <![CDATA[
- '^^^^^^^^^ punctuation.definition.string.begin.xml
- sub init()
- end sub
- ]]>
-        `);
+            <![CDATA[
+           '^^^^^^^^^ punctuation.definition.string.begin.xml
+            sub init()
+            end sub
+            ]]>
+       `);
     });
 
     it('marks CDATA end delimiter with punctuation scope', async () => {
         await testGrammar(`
- <![CDATA[
- sub init()
- end sub
- ]]>
- '^^^ punctuation.definition.string.end.xml
-        `);
+            <![CDATA[
+            sub init()
+            end sub
+            ]]>
+           '^^^ punctuation.definition.string.end.xml
+       `);
     });
 
     it('applies meta.embedded.block.brs scope to CDATA content', async () => {
         await testGrammar(`
- <![CDATA[
- sub init()
- '^^^^^^^^^ meta.embedded.block.brs
- end sub
- '^^^^^^^ meta.embedded.block.brs
- ]]>
-        `);
+            <![CDATA[
+            sub init()
+           '^^^^^^^^^ meta.embedded.block.brs
+            end sub
+           '^^^^^^^ meta.embedded.block.brs
+            ]]>
+       `);
     });
 
     it('colors sub/end sub keywords inside CDATA', async () => {
         await testGrammar(`
- <![CDATA[
- sub doSomething()
-'^^^ keyword.declaration.function.brs
- end sub
-'^^^^^^^ keyword.declaration.function.brs
- ]]>
-        `);
+            <![CDATA[
+            sub doSomething()
+           '^^^ keyword.declaration.function.brs
+            end sub
+           '^^^^^^^ keyword.declaration.function.brs
+            ]]>
+       `);
     });
 
     it('colors function/end function keywords inside CDATA', async () => {
         await testGrammar(`
- <![CDATA[
- function getValue() as string
- '^^^^^^^ keyword.declaration.function.brs
- end function
- '^^^^^^^^^^^ keyword.declaration.function.brs
- ]]>
-        `);
+            <![CDATA[
+            function getValue() as string
+           '^^^^^^^^ keyword.declaration.function.brs
+            end function
+           '^^^^^^^^^^^^ keyword.declaration.function.brs
+            ]]>
+       `);
     });
 
     it('colors string literals inside CDATA', async () => {
         await testGrammar(`
- <![CDATA[
- x = "hello"
- '    ^^^^^^^ string.quoted.double.brs
- ]]>
-        `);
+            <![CDATA[
+            x = "hello"
+           '     ^^^^^^^ string.quoted.double.brs
+            ]]>
+       `);
     });
 
     it('colors numeric literals inside CDATA', async () => {
         await testGrammar(`
- <![CDATA[
- x = 42
- '    ^^ constant.numeric.brs
- ]]>
-        `);
+            <![CDATA[
+            x = 42
+           '     ^^ constant.numeric.brs
+            ]]>
+       `);
     });
 
     it('colors line comments inside CDATA', async () => {
         await testGrammar(`
- <![CDATA[
- x = 1 ' this is a comment
- '     '^^^^^^^^^^^^^^^^^^^^ comment.line.apostrophe.brs
- ]]>
-        `);
+            <![CDATA[
+            x = 1 ' this is a comment
+           '      '^^^^^^^^^^^^^^^^^^^^ comment.line.apostrophe.brs
+            ]]>
+       `);
     });
 
     it('does not apply BrightScript scopes outside CDATA', async () => {
         await testGrammar(`
- <component name="MyScene" extends="Scene">
- '</component>
- '  ^^^^^^^^^ - keyword.declaration.function.brs
-        `);
+            <component name="MyScene" extends="Scene">
+            '</component>
+           '   ^^^^^^^^^ - keyword.declaration.function.brs
+       `);
     });
 });
+
+const registries = new Cache();
+// Uses `'` as the comment token (single char) so `^` assertions align with source columns.
+// The test grammar scope is text.xml but assertions are written as BrightScript line comments.
+async function testGrammar(testCaseText: string) {
+    testCaseText = `' SYNTAX TEST "text.xml" +AllowMiddleLineAssertions` + testCaseText;
+    const registry = registries.getOrAdd('cdata', createRegistryWithInjections);
+    const testCase = parseGrammarTestCase(testCaseText);
+    const result = await runGrammarTestCase(registry, testCase);
+    if (result.length > 0) {
+        const text = getErrorResultText('test.xml', testCase, result);
+        throw new Error(`\nFound ${result.length} issues with grammar:\n${text}`);
+    }
+}
