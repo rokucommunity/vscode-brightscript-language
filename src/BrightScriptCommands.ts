@@ -619,7 +619,7 @@ export class BrightScriptCommands {
     public async getRemoteHost(showPrompt = true) {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            let config = util.getConfiguration('brightscript.remoteControl');
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
@@ -648,7 +648,7 @@ export class BrightScriptCommands {
     public async getRemotePassword(showPrompt = true) {
         this.password = await this.context.workspaceState.get('remotePassword');
         if (!this.password) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            let config = util.getConfiguration('brightscript.remoteControl');
             this.password = config.get('password');
             // eslint-disable-next-line no-template-curly-in-string
             if ((!this.password || this.password === '${promptForPassword}') && showPrompt) {

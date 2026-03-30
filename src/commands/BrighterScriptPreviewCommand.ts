@@ -248,7 +248,7 @@ export class BrighterScriptPreviewCommand {
             let parts = querystring.parse(uri.query);
             return parts.fsPath as string;
         } else {
-            throw new Error('Cannot determine fsPath for uri: ' + uri.toString());
+            // throw new Error('Cannot determine fsPath for uri: ' + uri.toString());
         }
     }
 
