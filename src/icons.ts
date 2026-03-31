@@ -13,6 +13,14 @@ export const icons = {
         light: vscode.Uri.file(`${__dirname}/../images/icons/set-top-box-light.svg`),
         dark: vscode.Uri.file(`${__dirname}/../images/icons/set-top-box-dark.svg`)
     },
+    radioTower: {
+        light: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-light.svg`),
+        dark: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-dark.svg`)
+    },
+    radioTowerOff: {
+        light: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-off-light.svg`),
+        dark: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-off-dark.svg`)
+    },
     /**
      * Get the correct icon for the device type
      */

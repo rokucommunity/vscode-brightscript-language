@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.62.0",
+    "version": "2.63.1",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -56,7 +56,7 @@
         "@rokucommunity/logger": "^0.3.11",
         "@vscode/extension-telemetry": "^0.4.7",
         "array-sort": "^1.0.0",
-        "brighterscript": "^0.70.4",
+        "brighterscript": "^0.71.0",
         "brighterscript-formatter": "^1.7.22",
         "clone-deep": "^4.0.1",
         "debounce": "^1.2.0",
@@ -76,7 +76,7 @@
         "postman-request": "^2.88.1-postman.32",
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
-        "roku-debug": "^0.22.7",
+        "roku-debug": "^0.23.1",
         "roku-deploy": "^3.16.3",
         "roku-test-automation": "^2.2.1",
         "semver": "^7.1.3",
@@ -291,14 +291,24 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "command": "extension.brightscript.enableDeviceDiscovery",
                     "when": "view == devicesView && !brightscript.deviceDiscovery.enabled",
-                    "group": "navigation"
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.disableDeviceDiscovery",
+                    "when": "view == devicesView && brightscript.deviceDiscovery.enabled",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "extension.brightscript.clearCurrentDeviceList",
+                    "when": "view == devicesView",
+                    "group": "navigation@2"
                 },
                 {
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == devicesView",
-                    "group": "navigation"
+                    "group": "navigation@3"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
@@ -1068,6 +1078,12 @@
                                 "deprecationMessage": "Use `fileLogging` option instead",
                                 "description": "A path to a file where all brightscript console output will be written. If null or empty, file logging will be disabled."
                             },
+                            "debugAdapterProtocolLogging": {
+                                "type": "boolean",
+                                "default": false,
+                                "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Each session writes a new timestamped file to the workspace's `logs/` folder. Useful for crash diagnostics. Can also be set as a VS Code workspace/user setting.",
+                                "deprecationMessage": "Experimental and subject to change"
+                            },
                             "packageTask": {
                                 "type": "string",
                                 "description": "Task to run instead of roku-deploy to produce the .zip file that will be uploaded to the Roku."
@@ -1266,6 +1282,14 @@
                 "language": "brighterscript",
                 "scopeName": "source.brs",
                 "path": "./syntaxes/brightscript.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.brs.embedded.xml",
+                "path": "./syntaxes/brightscript-cdata.tmLanguage.json",
+                "injectTo": ["text.xml"],
+                "embeddedLanguages": {
+                    "meta.embedded.block.brs": "brightscript"
+                }
             }
         ],
         "snippets": [
@@ -1952,6 +1976,12 @@
                         "type": "boolean",
                         "default": false,
                         "description": "If true, ensure exactly 1 space between an associative array literal key and its colon. If false, all space between the key and its colon will be removed",
+                        "scope": "resource"
+                    },
+                    "brightscript.format.insertSpaceAfterConditionalCompileSymbol": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, a space is inserted after the `#` in conditional compile directives (i.e. `# if true`). If false, no space is inserted (i.e. `#if true`)",
                         "scope": "resource"
                     },
                     "brightscript.format.formatSingleLineCommentType": {
@@ -2769,6 +2799,13 @@
                         ],
                         "scope": "resource"
                     },
+                    "brightscript.debug.debugAdapterProtocolLogging": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Log all Debug Adapter Protocol (DAP) communication between VS Code and the debug adapter. Each session writes a new timestamped file to the workspace's `logs/` folder. Useful for crash diagnostics. Can also be set per-launch in launch.json.",
+                        "deprecationMessage": "Experimental and subject to change",
+                        "scope": "resource"
+                    },
                     "brightscript.debug.showHiddenVariables": {
                         "type": "boolean",
                         "description": "Show variables that are prefixed with a special prefix designated to be hidden",
@@ -3337,6 +3374,24 @@
                 "title": "Refresh",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.enableDeviceDiscovery",
+                "title": "Enable Device Discovery",
+                "category": "BrightScript",
+                "icon": {
+                    "light": "./images/icons/radio-tower-off-light.svg",
+                    "dark": "./images/icons/radio-tower-off-dark.svg"
+                }
+            },
+            {
+                "command": "extension.brightscript.disableDeviceDiscovery",
+                "title": "Disable Device Discovery",
+                "category": "BrightScript",
+                "icon": {
+                    "light": "./images/icons/radio-tower-light.svg",
+                    "dark": "./images/icons/radio-tower-dark.svg"
+                }
             },
             {
                 "command": "extension.brightscript.setActiveDevice",

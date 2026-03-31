@@ -98,6 +98,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             result = await this.processPasswordParameter(result);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
+            result = this.processDapLogFilePath(folder, result);
 
             const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
             statusbarItem.text = '$(sync~spin) Fetching device info';
@@ -134,7 +135,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * There are several debug-level config values that can be stored in user settings, so get those
      */
     private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
-        const workspaceConfig = vscode.workspace.getConfiguration('brightscript.debug');
+        const workspaceConfig = util.getConfiguration('brightscript.debug');
 
         let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
 
@@ -168,7 +169,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
-        let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let userWorkspaceSettings: any = util.getConfiguration('brightscript') || {};
 
         //make sure we have an object
         config = {
@@ -358,6 +359,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         return config;
     }
 
+    public processDapLogFilePath(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration) {
+        if (!config.debugAdapterProtocolLogging) {
+            return config;
+        }
+        const folderPath = folder?.uri.fsPath ?? process.cwd();
+        const dir = path.resolve(folderPath, './logs');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        fsExtra.ensureDirSync(dir);
+        config.debugAdapterProtocolLogFilePath = path.join(dir, `${timestamp}-debugAdapterProtocol.log`);
+        return config;
+    }
+
     /**
      * Reads the manifest file and updates any config values that are mapped to it
      * @param folder current workspace folder
@@ -498,7 +511,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public getBsConfig(workspaceFolder: vscode.Uri) {
         //try to load bsconfig settings
-        let settings = vscode.workspace.getConfiguration('brightscript', workspaceFolder);
+        let settings = util.getConfiguration('brightscript', workspaceFolder);
         let configFilePath = settings.get<string>('configFile');
         let isDefaultPath = false;
         if (!configFilePath) {
@@ -540,6 +553,19 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * A path to a file where all brightscript console output will be written. If falsey, file logging will be disabled.
      */
     logfilePath?: string;
+
+    /**
+     * Enable DAP protocol logging. Can be set via the `brightscript.debug.debugAdapterProtocolLogging` workspace setting or in launch.json.
+     * The resolved absolute log file path is written to `debugAdapterProtocolLogFilePath` by `processDapLogFilePath`
+     * and passed to the debug adapter process as the `ROKU_DAP_LOG_FILE` env var by the descriptor factory.
+     */
+    debugAdapterProtocolLogging?: boolean;
+
+    /**
+     * Resolved absolute path for the DAP protocol log file, populated by `processDapLogFilePath`.
+     * Consumed by the DebugAdapterDescriptorFactory to inject `ROKU_DAP_LOG_FILE` into the adapter process.
+     */
+    debugAdapterProtocolLogFilePath?: string;
     /**
      *  If true, then the zip archive is NOT deleted after a debug session has been closed.
      * @default true

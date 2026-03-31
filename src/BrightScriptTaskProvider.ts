@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as childProcess from 'child_process';
 import * as os from 'os';
+import { util } from './util';
 
 export class BrightScriptTaskProvider implements vscode.Disposable {
     constructor() {
@@ -202,7 +203,7 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
      * terminal.integrated.env.<OS> is also respected to match VS Code terminal env injection.
      */
     private getShellConfiguration(): { shell: string; env: NodeJS.ProcessEnv; shellArgs: string[] } {
-        const config = vscode.workspace.getConfiguration('terminal.integrated');
+        const config = util.getConfiguration('terminal.integrated');
         let platformKey: string;
         if (process.platform === 'win32') {
             platformKey = 'windows';
@@ -573,7 +574,7 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
                 folders.set(folderPath, file);
             }
 
-            const folderPaths = Array.from(folders.keys());
+            const folderPaths = Array.from(folders.keys()).sort();
             let selectedFolderPath: string;
 
             if (folderPaths.length >= 1) {
@@ -584,7 +585,7 @@ export class BrightScriptPseudoterminal implements vscode.Pseudoterminal {
                         return rel || '.';
                     }
                     return folderPath;
-                }).sort();
+                });
 
                 const selectedRelativePath = await vscode.window.showQuickPick(relativeFolders, {
                     placeHolder: `Choose folder for ${globPattern}`

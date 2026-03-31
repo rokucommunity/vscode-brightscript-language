@@ -537,9 +537,17 @@ class Util {
         return typeof value === 'string' && value.trim() !== '';
     }
 
+    /**
+     * Wrapper around `vscode.workspace.getConfiguration` that defaults the resource to `null`.
+     * This avoids VS Code warnings when accessing resource-scoped settings without a URI.
+     */
+    public getConfiguration(section?: string, resource?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration(section, resource ?? null);
+    }
+
     public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {
         const [, configurationKey, settingKey] = /(.+?)\.([^\.]+)$/.exec(key) ?? [];
-        let settings = vscode.workspace.getConfiguration(configurationKey);
+        let settings = this.getConfiguration(configurationKey);
         const inspection = settings.inspect(settingKey);
 
         if (
@@ -554,6 +562,38 @@ class Util {
             return settings.get(settingKey, defaultValue);
         }
         return defaultValue;
+    }
+
+    /**
+     * Writes a configuration value to the closest scope where it is already defined, falling back to global (user) settings.
+     * In a single-folder workspace, "closest" means `.vscode/settings.json`.
+     * In a `.code-workspace`, "closest" means the top-level `settings` block — per-folder `.vscode/settings.json`
+     * files are ignored because VS Code gives the workspace block higher priority than them.
+     */
+    public async setConfigurationValueAtUserOrClosestScope(key: string, value: any) {
+        const match = /(.+?)\.([^.]+)$/.exec(key);
+        if (!match) {
+            throw new Error(`Invalid configuration key format: '${key}'. Expected 'namespace.settingName'.`);
+        }
+        const [, configurationKey, settingKey] = match;
+        const scope = vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.workspace.workspaceFile;
+        const inspection = vscode.workspace.getConfiguration(configurationKey, scope).inspect(settingKey);
+
+        let target: vscode.ConfigurationTarget;
+        let resource: vscode.Uri | undefined;
+        if (!vscode.workspace.workspaceFile && inspection?.workspaceFolderValue !== undefined) {
+            // Single-folder: write to .vscode/settings.json
+            target = vscode.ConfigurationTarget.WorkspaceFolder;
+            resource = vscode.workspace.workspaceFolders?.[0]?.uri;
+        } else if (inspection?.workspaceValue !== undefined) {
+            // .code-workspace: write to the top-level settings block
+            target = vscode.ConfigurationTarget.Workspace;
+        } else {
+            // Not defined anywhere closer — fall back to user (global) settings
+            target = vscode.ConfigurationTarget.Global;
+        }
+
+        await vscode.workspace.getConfiguration(configurationKey, resource).update(settingKey, value, target);
     }
 }
 

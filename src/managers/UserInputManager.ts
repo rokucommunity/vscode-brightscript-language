@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
+import { util } from '../util';
 
 /**
  * An id to represent the "Enter manually" option in the host picker
@@ -152,6 +153,8 @@ export class UserInputManager {
         //set a timeout to automatically start scanning for devices after a short delay
         const SCAN_FOR_DEVICES = 'Scan for Devices';
         const CLEAR_DEVICE_LIST = 'Clear Device List';
+        const ENABLE_DEVICE_DISCOVERY = 'Enable Device Discovery';
+        const DISABLE_DEVICE_DISCOVERY = 'Disable Device Discovery';
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
@@ -160,20 +163,22 @@ export class UserInputManager {
                 itemCache
             );
             quickPick.items = items;
-            const buttons = [
+            const discoveryEnabled = vscodeContextManager.get('brightscript.deviceDiscovery.enabled') === true;
+            // Buttons render left-to-right; order is [toggleScanning, clearList, refresh] so right-to-left reads: refresh, clear list, toggle scanning
+            quickPick.buttons = [
+                {
+                    iconPath: discoveryEnabled ? icons.radioTower : icons.radioTowerOff,
+                    tooltip: discoveryEnabled ? DISABLE_DEVICE_DISCOVERY : ENABLE_DEVICE_DISCOVERY
+                },
+                {
+                    iconPath: new vscode.ThemeIcon('clear-all'),
+                    tooltip: CLEAR_DEVICE_LIST
+                },
                 {
                     iconPath: new vscode.ThemeIcon('refresh'),
                     tooltip: SCAN_FOR_DEVICES
                 }
             ];
-            //only show the "clear device list" button if device discovery is disabled
-            if (vscodeContextManager.get('brightscript.deviceDiscovery.enabled') !== true) {
-                buttons.unshift({
-                    iconPath: new vscode.ThemeIcon('clear-all'),
-                    tooltip: CLEAR_DEVICE_LIST
-                });
-            }
-            quickPick.buttons = buttons;
 
             // clear the activeItem if we can't find it in the list
             if (!quickPick.items.includes(activeItem)) {
@@ -190,6 +195,15 @@ export class UserInputManager {
         //anytime the device list changes, update the list
         this.deviceManager.on('devices-changed', refreshList, disposables);
 
+        //anytime the deviceDiscovery.enabled setting changes, refresh the buttons so the toggle icon updates
+        disposables.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
+                    refreshList();
+                }
+            })
+        );
+
         quickPick.onDidHide(() => {
             dispose();
             deferred.reject(new Error('No host was selected'));
@@ -200,6 +214,10 @@ export class UserInputManager {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
+            } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
+                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
+            } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {
+                void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
             }
         });
 

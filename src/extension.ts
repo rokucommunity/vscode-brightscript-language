@@ -22,8 +22,8 @@ import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
-import type { CustomRequestEvent } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest } from 'roku-debug';
+import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -165,9 +165,30 @@ export class Extension {
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
 
+        //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.
+        //this is required for features like DAP protocol logging, which must be configured before the first DAP message arrives.
+        context.subscriptions.push(
+            vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
+                createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
+                    if (!executable) {
+                        return executable;
+                    }
+                    const env: Record<string, string> = {};
+
+                    // Only inject the DAP protocol log path if the user explicitly configured it.
+                    const dapLogFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
+                    if (dapLogFilePath) {
+                        env.ROKU_DAP_LOG_FILE = dapLogFilePath;
+                    }
+
+                    return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: env });
+                }
+            })
+        );
+
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
-            vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
+            vscode.languages.registerDocumentLinkProvider({ language: 'Log', scheme: 'output' }, docLinkProvider)
         );
 
         vscode.window.registerUriHandler({
@@ -218,7 +239,7 @@ export class Extension {
             this.diagnosticManager.clear();
         });
 
-        let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
+        let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
                 //show the output panel on extension startup without taking focus (only if configured to do so...defaults to 'nothing')
@@ -269,6 +290,25 @@ export class Extension {
             }
 
             this.chanperfStatusBar.show();
+
+        } else if (isProcessCrashEvent(e)) {
+            const data: ProcessCrashEventData = e.body;
+            const label = data.type === 'uncaughtException' ? 'Uncaught exception' : 'Unhandled rejection';
+            const selected = await vscode.window.showErrorMessage(
+                `BrightScript debug adapter crashed (${label}): ${data.message}`,
+                { modal: true },
+                'Report Issue'
+            );
+            void vscode.debug.stopDebugging(e.session);
+            if (selected === 'Report Issue') {
+                await vscode.commands.executeCommand('workbench.action.openIssueReporter', {
+                    extensionId: 'RokuCommunity.brightscript',
+                    issueType: 0,
+                    issueTitle: `DAP crash: ${data.type} - ${data.message}`,
+                    issueBody: `## Debug Adapter Crash\n\n**Type:** ${data.type}\n**Message:** ${data.message}\n\n**Stack:**\n\`\`\`\n${data.stack ?? 'N/A'}\n\`\`\`\n\n**Steps to reproduce:**\n<!-- Please describe what you were doing when this crash occurred -->`
+                });
+            }
+
 
         } else if (isDiagnosticsEvent(e)) {
             const diagnostics = e.body?.diagnostics ?? [];
@@ -368,7 +408,7 @@ export class Extension {
      * Writes text to a logfile if enabled
      */
     private writeExtensionLog(text: string) {
-        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        let extensionLogfilePath = util.getConfiguration('brightscript').get<string>('extensionLogfilePath');
         if (extensionLogfilePath) {
             //replace the ${workspaceFolder} variable with the path to the first workspace
             extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);

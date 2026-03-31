@@ -29,7 +29,7 @@ export class DeviceManager {
 
     private setupConfiguration() {
         const applyConfig = (event?: vscode.ConfigurationChangeEvent) => {
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
 
@@ -321,9 +321,36 @@ export class DeviceManager {
     }
 
     public clearAllCache() {
+        // Handle in-progress scan state
+        const wasScanning = this.isScanning;
+        if (wasScanning) {
+            this.isScanning = false;
+            this.scanMinTimeElapsed = false;
+            this.clearScanTimers(); // Uses existing helper method (lines 535-544)
+        }
+
+        // Clear current device list (existing method)
         this.clearCurrentDeviceList();
+
+        // Clear global state (existing)
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
+
+        // Clear all timestamps and per-device state
+        this.lastScanDate = null;
+        this.lastHealthCheckTime.clear();
+        this.resolveDeviceSequence.clear();
+
+        // Clear cache cleanup timer
+        if (this.cacheCleanupTimer) {
+            clearTimeout(this.cacheCleanupTimer);
+            this.cacheCleanupTimer = null;
+        }
+
+        // Emit scan-ended if scan was in progress
+        if (wasScanning) {
+            this.emitter.emit('scan-ended');
+        }
     }
 
     public async checkDeviceHealth(deviceOrLookup: RokuDeviceDetails | { ip?: string; serialNumber?: string }, force = false): Promise<boolean> {
@@ -820,7 +847,7 @@ export class DeviceManager {
         try {
             const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
 
-            const config: any = vscode.workspace.getConfiguration('brightscript') || {};
+            const config: any = util.getConfiguration('brightscript') || {};
             const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
             const developerEnabled = deviceInfo['developer-enabled'] === 'true';
 
