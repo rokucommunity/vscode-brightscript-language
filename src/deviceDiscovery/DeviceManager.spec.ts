@@ -1629,275 +1629,217 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].configuredName).to.equal('My Roku');
             });
         });
-    describe('clearAllCache', () => {
-        describe('timestamp clearing', () => {
-            it('resets lastScanDate to null', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                // Simulate a scan having occurred
-                manager['lastScanDate'] = new Date();
-                expect(manager['lastScanDate']).to.not.be.null;
-
-                manager.clearAllCache();
-
-                expect(manager['lastScanDate']).to.be.null;
-            });
-
-            it('makes timeSinceLastScan return Infinity after clear', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                // Simulate a scan having occurred
-                manager['lastScanDate'] = new Date();
-                expect(manager.timeSinceLastScan).to.be.lessThan(1000);
-
-                manager.clearAllCache();
-
-                expect(manager.timeSinceLastScan).to.equal(Infinity);
-            });
-
-            it('clears lastHealthCheckTime map', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const device = createMockDevice();
-                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
-
-                // Perform health check to populate cooldown
-                await manager.checkDeviceHealth(device);
-                expect(resolveDeviceSpy.calledOnce).to.be.true;
-
-                // Second call should be skipped due to cooldown
-                await manager.checkDeviceHealth(device);
-                expect(resolveDeviceSpy.calledOnce).to.be.true; // Still just one call
-
-                // Clear cache
-                manager.clearAllCache();
-
-                // Now health check should work immediately
-                await manager.checkDeviceHealth(device);
-                expect(resolveDeviceSpy.calledTwice).to.be.true; // Cooldown was cleared
-            });
-
-            it('clears resolveDeviceSequence map', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const device = createMockDevice();
-
-                // Populate sequence map
-                manager['resolveDeviceSequence'].set(device.location, 5);
-                expect(manager['resolveDeviceSequence'].get(device.location)).to.equal(5);
-
-                manager.clearAllCache();
-
-                expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
-            });
-        });
-
-        describe('timer clearing', () => {
-            it('clears cacheCleanupTimer', () => {
-                const clock = sinon.useFakeTimers();
-                try {
+        describe('clearAllCache', () => {
+            describe('timestamp clearing', () => {
+                it('resets lastScanDate to null', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                    // Trigger cache cleanup timer by resetting it
-                    manager['resetCacheCleanupTimer']();
-                    expect(manager['cacheCleanupTimer']).to.not.be.null;
-
-                    manager.clearAllCache();
-
-                    expect(manager['cacheCleanupTimer']).to.be.null;
-                } finally {
-                    clock.restore();
-                }
-            });
-
-            it('clears scan timers if scan in progress', () => {
-                const clock = sinon.useFakeTimers();
-                try {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                    // Start a scan to create timers
-                    manager['isScanning'] = true;
-                    manager['scanMinTimer'] = setTimeout(() => {}, 3000) as any;
-                    manager['scanSettleTimer'] = setTimeout(() => {}, 1500) as any;
-
-                    expect(manager['scanMinTimer']).to.not.be.null;
-                    expect(manager['scanSettleTimer']).to.not.be.null;
-
-                    manager.clearAllCache();
-
-                    expect(manager['scanMinTimer']).to.be.null;
-                    expect(manager['scanSettleTimer']).to.be.null;
-                } finally {
-                    clock.restore();
-                }
-            });
-
-            it('does not throw if timers are already null', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                manager['cacheCleanupTimer'] = null;
-                manager['scanMinTimer'] = null;
-                manager['scanSettleTimer'] = null;
-
-                expect(() => manager.clearAllCache()).to.not.throw();
-            });
-        });
-
-        describe('scan state handling', () => {
-            it('stops in-progress scan and emits scan-ended', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const scanEndedSpy = sinon.spy();
-                manager.on('scan-ended', scanEndedSpy);
-
-                // Simulate scan in progress
-                manager['isScanning'] = true;
-                manager['scanMinTimeElapsed'] = false;
-
-                manager.clearAllCache();
-
-                expect(manager['isScanning']).to.be.false;
-                expect(manager['scanMinTimeElapsed']).to.be.false;
-                expect(scanEndedSpy.calledOnce).to.be.true;
-            });
-
-            it('does NOT emit scan-ended if no scan in progress', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const scanEndedSpy = sinon.spy();
-                manager.on('scan-ended', scanEndedSpy);
-
-                // No scan in progress
-                manager['isScanning'] = false;
-
-                manager.clearAllCache();
-
-                expect(scanEndedSpy.called).to.be.false;
-            });
-
-            it('resets isScanning and scanMinTimeElapsed flags', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                manager['isScanning'] = true;
-                manager['scanMinTimeElapsed'] = true;
-
-                manager.clearAllCache();
-
-                expect(manager['isScanning']).to.be.false;
-                expect(manager['scanMinTimeElapsed']).to.be.false;
-            });
-        });
-
-        describe('functionality verification', () => {
-            it('allows immediate rescan after clear', () => {
-                const clock = sinon.useFakeTimers();
-                try {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                    // Simulate recent scan
+                    // Simulate a scan having occurred
                     manager['lastScanDate'] = new Date();
-                    sinon.stub(manager as any, 'startScan');
+                    expect(manager['lastScanDate']).to.not.be.null;
 
-                    // discoverAll should return false (scan not needed)
-                    let scanStarted = manager['discoverAll'](false);
-                    expect(scanStarted).to.be.false;
+                    manager.clearAllCache();
+
+                    expect(manager['lastScanDate']).to.be.null;
+                });
+
+                it('makes timeSinceLastScan return Infinity after clear', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    // Simulate a scan having occurred
+                    manager['lastScanDate'] = new Date();
+                    expect(manager['timeSinceLastScan']).to.be.lessThan(1000);
+
+                    manager.clearAllCache();
+
+                    expect(manager['timeSinceLastScan']).to.equal(Infinity);
+                });
+
+                it('clears lastHealthCheckTime map', async () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    const device = createMockDevice();
+                    const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+
+                    // Perform health check to populate cooldown
+                    await manager.checkDeviceHealth(device);
+                    expect(resolveDeviceSpy.calledOnce).to.be.true;
+
+                    // Second call should be skipped due to cooldown
+                    await manager.checkDeviceHealth(device);
+                    expect(resolveDeviceSpy.calledOnce).to.be.true; // Still just one call
 
                     // Clear cache
                     manager.clearAllCache();
 
-                    // Now scan should be allowed (lastScanDate is null, timeSinceLastScan is Infinity)
-                    scanStarted = manager['discoverAll'](false);
-                    expect(scanStarted).to.be.true;
-                } finally {
-                    clock.restore();
-                }
-            });
-
-            it('health check runs immediately after clear', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const device = createMockDevice();
-                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
-
-                // First health check
-                await manager.checkDeviceHealth(device);
-                expect(resolveDeviceSpy.calledOnce).to.be.true;
-
-                // Clear cache (should clear cooldown)
-                manager.clearAllCache();
-
-                // Health check should run immediately (no cooldown)
-                await manager.checkDeviceHealth(device);
-                expect(resolveDeviceSpy.calledTwice).to.be.true;
-            });
-
-            it('ignores concurrent health check results after clear', async () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const device = createMockDevice();
-
-                // Start a health check but don't let it complete
-                let resolvePromise: ((value: boolean) => void) | undefined;
-                const healthCheckPromise = new Promise<boolean>((resolve) => {
-                    resolvePromise = resolve;
+                    // Now health check should work immediately
+                    await manager.checkDeviceHealth(device);
+                    expect(resolveDeviceSpy.calledTwice).to.be.true; // Cooldown was cleared
                 });
-                sinon.stub(manager as any, 'resolveDevice').returns(healthCheckPromise);
 
-                const healthCheckCall = manager.checkDeviceHealth(device);
+                it('clears resolveDeviceSequence map', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                // Clear cache while health check is in flight
-                manager.clearAllCache();
+                    const device = createMockDevice();
 
-                // Sequence should be cleared
-                expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
+                    // Populate sequence map
+                    manager['resolveDeviceSequence'].set(device.location, 5);
+                    expect(manager['resolveDeviceSequence'].get(device.location)).to.equal(5);
 
-                // Complete the health check
-                if (resolvePromise) {
-                    resolvePromise(true);
-                }
-                await healthCheckCall;
+                    manager.clearAllCache();
 
-                // Result should be ignored (sequence mismatch)
-                // The device state should not be updated by the stale health check
+                    expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
+                });
             });
 
-            it('handles multiple rapid clears safely', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            describe('timer clearing', () => {
+                it('clears cacheCleanupTimer', () => {
+                    const clock = sinon.useFakeTimers();
+                    try {
+                        manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                manager['lastScanDate'] = new Date();
-                manager['isScanning'] = true;
+                        // Trigger cache cleanup timer by resetting it
+                        manager['resetCacheCleanupTimer']();
+                        expect(manager['cacheCleanupTimer']).to.not.be.null;
 
-                // Multiple rapid clears
-                expect(() => {
-                    manager.clearAllCache();
-                    manager.clearAllCache();
-                    manager.clearAllCache();
-                }).to.not.throw();
+                        manager.clearAllCache();
 
-                expect(manager['lastScanDate']).to.be.null;
-                expect(manager['isScanning']).to.be.false;
-            });
-        });
+                        expect(manager['cacheCleanupTimer']).to.be.null;
+                    } finally {
+                        clock.restore();
+                    }
+                });
 
-        describe('integration with globalStateManager', () => {
-            it('calls globalStateManager.clearLastSeenDevices', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                it('does not throw if cacheCleanupTimer is already null', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                mockGlobalStateManager.clearLastSeenDevices = sinon.stub();
+                    manager['cacheCleanupTimer'] = null;
 
-                manager.clearAllCache();
-
-                expect(mockGlobalStateManager.clearLastSeenDevices.calledOnce).to.be.true;
+                    expect(() => manager.clearAllCache()).to.not.throw();
+                });
             });
 
-            it('calls globalStateManager.clearDeviceCache', () => {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            describe('scan state handling', () => {
+                it('calls finder.stop() to handle any in-progress scan', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                mockGlobalStateManager.clearDeviceCache = sinon.stub();
+                    const finderStopSpy = sinon.spy(manager['finder'], 'stop');
 
-                manager.clearAllCache();
+                    manager.clearAllCache();
 
-                expect(mockGlobalStateManager.clearDeviceCache.calledOnce).to.be.true;
+                    expect(finderStopSpy.calledOnce).to.be.true;
+                });
+            });
+
+            describe('functionality verification', () => {
+                it('allows immediate rescan after clear', () => {
+                    const clock = sinon.useFakeTimers();
+                    try {
+                        manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                        // Simulate recent scan
+                        manager['lastScanDate'] = new Date();
+                        sinon.stub(manager['finder'], 'scan');
+
+                        // discoverAll should return false (scan not needed)
+                        let scanStarted = manager['discoverAll'](false);
+                        expect(scanStarted).to.be.false;
+
+                        // Clear cache
+                        manager.clearAllCache();
+
+                        // Now scan should be allowed (lastScanDate is null, timeSinceLastScan is Infinity)
+                        scanStarted = manager['discoverAll'](false);
+                        expect(scanStarted).to.be.true;
+                    } finally {
+                        clock.restore();
+                    }
+                });
+
+                it('health check runs immediately after clear', async () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    const device = createMockDevice();
+                    const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+
+                    // First health check
+                    await manager.checkDeviceHealth(device);
+                    expect(resolveDeviceSpy.calledOnce).to.be.true;
+
+                    // Clear cache (should clear cooldown)
+                    manager.clearAllCache();
+
+                    // Health check should run immediately (no cooldown)
+                    await manager.checkDeviceHealth(device);
+                    expect(resolveDeviceSpy.calledTwice).to.be.true;
+                });
+
+                it('ignores concurrent health check results after clear', async () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    const device = createMockDevice();
+
+                    // Start a health check but don't let it complete
+                    let resolvePromise: ((value: boolean) => void) | undefined;
+                    const healthCheckPromise = new Promise<boolean>((resolve) => {
+                        resolvePromise = resolve;
+                    });
+                    sinon.stub(manager as any, 'resolveDevice').returns(healthCheckPromise);
+
+                    const healthCheckCall = manager.checkDeviceHealth(device);
+
+                    // Clear cache while health check is in flight
+                    manager.clearAllCache();
+
+                    // Sequence should be cleared
+                    expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
+
+                    // Complete the health check
+                    if (resolvePromise) {
+                        resolvePromise(true);
+                    }
+                    await healthCheckCall;
+
+                    // Result should be ignored (sequence mismatch)
+                    // The device state should not be updated by the stale health check
+                });
+
+                it('handles multiple rapid clears safely', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    manager['lastScanDate'] = new Date();
+
+                    // Multiple rapid clears
+                    expect(() => {
+                        manager.clearAllCache();
+                        manager.clearAllCache();
+                        manager.clearAllCache();
+                    }).to.not.throw();
+
+                    expect(manager['lastScanDate']).to.be.null;
+                });
+            });
+
+            describe('integration with globalStateManager', () => {
+                it('calls globalStateManager.clearLastSeenDevices', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    mockGlobalStateManager.clearLastSeenDevices = sinon.stub();
+
+                    manager.clearAllCache();
+
+                    expect(mockGlobalStateManager.clearLastSeenDevices.calledOnce).to.be.true;
+                });
+
+                it('calls globalStateManager.clearDeviceCache', () => {
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    mockGlobalStateManager.clearDeviceCache = sinon.stub();
+
+                    manager.clearAllCache();
+
+                    expect(mockGlobalStateManager.clearDeviceCache.calledOnce).to.be.true;
+                });
             });
         });
     });

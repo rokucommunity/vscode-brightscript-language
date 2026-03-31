@@ -135,9 +135,14 @@ export class RokuFinder extends EventEmitter {
     }
 
     /**
-     * Stop listening for SSDP advertisements
+     * Stop listening for SSDP advertisements.
+     * Also ends any in-progress scan (emitting scan-ended).
      */
     public stop() {
+        // End any in-progress scan first (emits scan-ended)
+        if (this.isScanning) {
+            this.endScan();
+        }
         if (this.running) {
             this.running = false;
             this.server.stop();

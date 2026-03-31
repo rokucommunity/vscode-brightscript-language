@@ -438,28 +438,6 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('clearConfiguredDevices', async () => {
-            const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('deviceDiscovery.devices');
-            const userDevices = inspection?.globalValue || [];
-
-            if (userDevices.length === 0) {
-                void vscode.window.showInformationMessage('No configured devices to clear.');
-                return;
-            }
-
-            const confirm = await vscode.window.showWarningMessage(
-                `Remove all ${userDevices.length} configured device(s) from your settings?`,
-                { modal: true },
-                'Remove All'
-            );
-
-            if (confirm === 'Remove All') {
-                await config.update('deviceDiscovery.devices', [], vscode.ConfigurationTarget.Global);
-                void vscode.window.showInformationMessage('All configured devices have been removed from your settings.');
-            }
-        });
-
         this.registerCommand('removeDeviceFromConfig', async (deviceOrItem: { key: string }) => {
             const device = this.deviceManager.getDevice({ ip: deviceOrItem?.key });
             if (!device) {

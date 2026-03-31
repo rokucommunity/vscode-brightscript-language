@@ -253,15 +253,10 @@ export class DeviceManager {
         }
 
         return devices.sort(
-            // Configured devices first
+            // Sort by form factor
             firstBy<RokuDeviceDetails>((a, b) => {
-                if (a.isConfigured !== b.isConfigured) {
-                    return a.isConfigured ? -1 : 1;
-                }
-                return 0;
-                // Then by form factor
-            }).thenBy<RokuDeviceDetails>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a.deviceInfo) - this.getPriorityForDeviceFormFactor(b.deviceInfo);
+                // Then by name
             }).thenBy<RokuDeviceDetails>((a, b) => {
                 const nameA = a.deviceInfo['default-device-name'] || '';
                 const nameB = b.deviceInfo['default-device-name'] || '';
@@ -321,18 +316,13 @@ export class DeviceManager {
     }
 
     public clearAllCache() {
-        // Handle in-progress scan state
-        const wasScanning = this.isScanning;
-        if (wasScanning) {
-            this.isScanning = false;
-            this.scanMinTimeElapsed = false;
-            this.clearScanTimers(); // Uses existing helper method (lines 535-544)
-        }
+        // Stop any in-progress scan (finder.stop() emits scan-ended if scanning)
+        this.finder.stop();
 
-        // Clear current device list (existing method)
+        // Clear current device list
         this.clearCurrentDeviceList();
 
-        // Clear global state (existing)
+        // Clear global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
 
@@ -345,11 +335,6 @@ export class DeviceManager {
         if (this.cacheCleanupTimer) {
             clearTimeout(this.cacheCleanupTimer);
             this.cacheCleanupTimer = null;
-        }
-
-        // Emit scan-ended if scan was in progress
-        if (wasScanning) {
-            this.emitter.emit('scan-ended');
         }
     }
 
