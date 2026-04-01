@@ -351,7 +351,7 @@ export class DeviceManager {
         }
     }
 
-    public async checkDeviceHealth(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false): Promise<boolean> {
+    public async checkDeviceHealth(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
         // If already a device object with deviceState, use it directly; otherwise look it up
         const device = 'deviceState' in deviceOrLookup
             ? deviceOrLookup
@@ -371,7 +371,7 @@ export class DeviceManager {
             this.lastHealthCheckTime.set(device.ip, now);
         }
 
-        const isHealthy = await this.resolveDevice(device);
+        const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
             this.refresh(this.deviceDiscoveryEnabled);
@@ -763,25 +763,6 @@ export class DeviceManager {
             this.markDeviceUnreachable(device.ip);
             return false;
         }
-    }
-
-    public async checkDeviceHealth(device: RokuDeviceDetails, force = false, doSyntheticDelay = true): Promise<boolean> {
-        // If not forcing, respect the per-device cooldown
-        if (!force) {
-            const lastCheck = this.lastHealthCheckTime.get(device.serialNumber) ?? 0;
-            const now = Date.now();
-            if (now - lastCheck <= this.HEALTH_CHECK_COOLDOWN_MS) {
-                return true;
-            }
-            this.lastHealthCheckTime.set(device.serialNumber, now);
-        }
-
-        const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
-        if (!isHealthy) {
-            // force a scan if passive scan is permitted
-            this.refresh(this.deviceDiscoveryEnabled);
-        }
-        return isHealthy;
     }
 
     private async checkDevicesHealth(force = false): Promise<void> {
