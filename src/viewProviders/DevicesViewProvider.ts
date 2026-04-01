@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -98,9 +98,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         return util.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
-    private devices: Array<RokuDeviceDetails>;
+    private devices: Array<RokuDevice>;
 
-    private makeName(device: RokuDeviceDetails) {
+    private makeName(device: RokuDevice) {
         // Use configuredName if available, otherwise fall back to user-device-name
         const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
         const softwareVersion = device.deviceInfo['software-version'];
@@ -348,7 +348,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(key: string): RokuDeviceDetails | undefined {
+    private findDeviceById(key: string): RokuDevice | undefined {
         // Key could be serial or IP
         return this.devices.find(device => device.serialNumber === key || device.ip === key);
     }
@@ -415,7 +415,7 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
         // deviceManager parameter kept for future use but not currently needed
     }
 
-    updateDevices(devices: RokuDeviceDetails[]): void {
+    updateDevices(devices: RokuDevice[]): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
             const deviceKey = device.serialNumber || device.ip; // Fallback to IP when no serial

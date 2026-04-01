@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { rokuDeploy } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
-import type { RokuDeviceDetails } from './DeviceManager';
+import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 import { util } from '../util';
@@ -11,7 +11,7 @@ describe('DeviceManager', () => {
     let manager: DeviceManager;
     let mockGlobalStateManager: any;
 
-    function createMockDevice(overrides: Partial<RokuDeviceDetails> & { deviceInfo?: any; serialNumber?: string | null } = {}): RokuDeviceDetails {
+    function createMockDevice(overrides: Partial<RokuDevice> & { deviceInfo?: any; serialNumber?: string | null } = {}): RokuDevice {
         const serialNumber = overrides.serialNumber ?? 'device-123';
         const ip = overrides.ip ?? '192.168.1.100';
 
@@ -31,8 +31,6 @@ describe('DeviceManager', () => {
             // Directly store in cache (setCachedDevice uses callsFake to store in map)
             mockGlobalStateManager.setCachedDevice(serialNumber, {
                 serialNumber: serialNumber,
-                ip: ip,
-                location: `http://${ip}:8060`,
                 deviceInfo: deviceInfo,
                 createdAt: Date.now()
             });
@@ -44,13 +42,12 @@ describe('DeviceManager', () => {
         }
 
         return {
-            location: `http://${ip}:8060`,
             ip: ip,
             deviceState: 'online',
             isConfigured: false, // Default to discovered-only
-            isDiscovered: true, // NEW: Default to discovered
+            isDiscovered: true, // Default to discovered
             ...deviceOverrides
-        } as RokuDeviceDetails;
+        } as RokuDevice;
     }
 
     beforeEach(() => {
@@ -79,6 +76,15 @@ describe('DeviceManager', () => {
             }),
             setSerialNumberForIp: sinon.stub().callsFake((networkId, ip, serial) => {
                 ipToSerialMap.set(`${networkId}:${ip}`, serial);
+            }),
+            getIpForSerial: sinon.stub().callsFake((serial, networkId) => {
+                // Reverse lookup in ipToSerialMap
+                for (const [key, value] of ipToSerialMap.entries()) {
+                    if (value === serial && key.startsWith(networkId + ':')) {
+                        return key.split(':')[1];
+                    }
+                }
+                return undefined;
             }),
             clearLastSeenDevices: sinon.stub(),
             clearDeviceCache: sinon.stub()
@@ -214,9 +220,9 @@ describe('DeviceManager', () => {
 
             const devices = manager.getAllDevices();
 
-            expect(manager['getSerial'](devices[0])).to.equal('stick-1');
-            expect(manager['getSerial'](devices[1])).to.equal('box-1');
-            expect(manager['getSerial'](devices[2])).to.equal('tv-1');
+            expect(devices[0].serialNumber).to.equal('stick-1');
+            expect(devices[1].serialNumber).to.equal('box-1');
+            expect(devices[2].serialNumber).to.equal('tv-1');
         });
 
         it('sorts by name within same form factor', () => {
@@ -338,7 +344,7 @@ describe('DeviceManager', () => {
             (manager as any).devices = [device];
 
             let stateWhenResolveCalled: string;
-            sinon.stub(manager as any, 'resolveDevice').callsFake((d: RokuDeviceDetails) => {
+            sinon.stub(manager as any, 'resolveDevice').callsFake((d: RokuDevice) => {
                 stateWhenResolveCalled = d.deviceState;
                 return Promise.resolve(true);
             });
@@ -821,15 +827,21 @@ describe('DeviceManager', () => {
             mockGlobalStateManager.getLastSeenDevices.returns(['cached-device']);
             mockGlobalStateManager.setCachedDevice('cached-device', {
                 serialNumber: 'cached-device',
-                ip: '192.168.1.200',
-                location: 'http://192.168.1.200:8060',
                 deviceInfo: {
                     'default-device-name': 'Cached Roku',
                     'serial-number': 'cached-device'
-                }
+                },
+                createdAt: Date.now()
             });
-            // Set IP→serial mapping for cached device
+            // Set IP→serial mapping for cached device (required for loadLastSeenDevices to work)
             mockGlobalStateManager.setSerialNumberForIp('test-network-hash', '192.168.1.200', 'cached-device');
+            // Mock getIpForSerial to return the IP
+            mockGlobalStateManager.getIpForSerial = sinon.stub().callsFake((serial) => {
+                if (serial === 'cached-device') {
+                    return '192.168.1.200';
+                }
+                return undefined;
+            });
 
             manager['loadLastSeenDevices']();
 
@@ -845,13 +857,14 @@ describe('DeviceManager', () => {
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
             mockGlobalStateManager.getCachedDevice.returns({
                 serialNumber: 'device-1',
-                ip: '192.168.1.100',
-                location: 'http://192.168.1.100:8060',
                 deviceInfo: {
                     'default-device-name': 'Test Roku',
                     'serial-number': 'device-1'
-                }
+                },
+                createdAt: Date.now()
             });
+            // Mock getIpForSerial to return the IP
+            mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
 
             manager['loadLastSeenDevices']();
 
@@ -881,8 +894,6 @@ describe('DeviceManager', () => {
             // Mock the cache to return deviceInfo
             mockGlobalStateManager.getCachedDevice.withArgs('target-device').returns({
                 serialNumber: 'target-device',
-                ip: device.ip,
-                location: device.location,
                 deviceInfo: {
                     'serial-number': 'target-device',
                     'default-device-name': 'Test Device'
@@ -1350,8 +1361,6 @@ describe('DeviceManager', () => {
                 // Simulate cache exists
                 mockGlobalStateManager.getCachedDevice.returns({
                     serialNumber: 'device-123',
-                    ip: device.ip,
-                    location: device.location,
                     deviceInfo: { 'serial-number': 'device-123' },
                     createdAt: Date.now()
                 });
@@ -1504,8 +1513,8 @@ describe('DeviceManager', () => {
                 const result = manager.getAllDevices();
 
                 // Stick first (lower form factor priority), then TV
-                expect(manager['getSerial'](result[0])).to.equal('stick-1');
-                expect(manager['getSerial'](result[1])).to.equal('tv-1');
+                expect(result[0].serialNumber).to.equal('stick-1');
+                expect(result[1].serialNumber).to.equal('tv-1');
             });
         });
 

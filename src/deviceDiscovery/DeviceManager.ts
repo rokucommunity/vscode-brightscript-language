@@ -1,9 +1,9 @@
 import { EventEmitter } from 'eventemitter3';
-import { URL } from 'url';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
 import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
+import { util as rokuDebugUtil } from 'roku-debug';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
@@ -53,8 +53,9 @@ export class DeviceManager {
 
             //if the `devices` setting was changed, re-apply configured devices
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.devices')) {
-                this.loadConfiguredDevices();
-                this.emitDevicesChanged();
+                this.loadConfiguredDevices().then(() => {
+                    this.emitDevicesChanged();
+                }).catch(() => { });
             }
         };
         this.context.subscriptions.push(
@@ -92,7 +93,7 @@ export class DeviceManager {
         this.globalStateManager.clearExpiredDevices();
 
         // Load configured devices and cached devices (order doesn't matter due to setDevice merge logic)
-        this.loadConfiguredDevices();
+        this.loadConfiguredDevices().catch(() => { });
         this.loadLastSeenDevices();
 
         /**
@@ -111,7 +112,7 @@ export class DeviceManager {
 
         this.finder.on('lost', (ip: string) => {
             // Find and remove device by IP
-            const device = this.getDeviceReference({ ip: ip });
+            const device = this.getDeviceEntry({ ip: ip });
             if (device) {
                 this.removeDevice(device.ip);
             }
@@ -145,7 +146,7 @@ export class DeviceManager {
     // #endregion
 
     // Core state and dependencies
-    private devices: DeviceReference[] = [];
+    private devices: DeviceEntry[] = [];
     private scanNeeded = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
@@ -201,8 +202,8 @@ export class DeviceManager {
      * @param lookup - Object with optional ip and/or serialNumber
      * @returns Device with deviceInfo or undefined if not found
      */
-    public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDeviceDetails | undefined {
-        const device = this.getDeviceReference(lookup);
+    public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+        const device = this.getDeviceEntry(lookup);
         if (!device) {
             return undefined;
         }
@@ -215,6 +216,7 @@ export class DeviceManager {
             // Merge cached device (with deviceInfo) and runtime state
             return {
                 ...cached,
+                ip: device.ip,
                 deviceState: device.deviceState,
                 isDiscovered: device.isDiscovered,
                 isConfigured: device.isConfigured,
@@ -224,7 +226,6 @@ export class DeviceManager {
         } else {
             // Device not in cache yet - create minimal entry with empty deviceInfo
             return {
-                location: device.location,
                 serialNumber: serial,
                 ip: device.ip,
                 deviceInfo: {},
@@ -242,9 +243,9 @@ export class DeviceManager {
      * Returns full devices with deviceInfo hydrated from cache.
      * Configured devices are sorted first, then by form factor, name, and id.
      */
-    public getAllDevices(): RokuDeviceDetails[] {
+    public getAllDevices(): RokuDevice[] {
         // Hydrate each device using getDevice()
-        const devices: RokuDeviceDetails[] = [];
+        const devices: RokuDevice[] = [];
         for (const device of this.devices) {
             const deviceDetail = this.getDevice({ ip: device.ip });
             if (deviceDetail) {
@@ -254,14 +255,14 @@ export class DeviceManager {
 
         return devices.sort(
             // Sort by form factor
-            firstBy<RokuDeviceDetails>((a, b) => {
+            firstBy<RokuDevice>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a.deviceInfo) - this.getPriorityForDeviceFormFactor(b.deviceInfo);
                 // Then by name
-            }).thenBy<RokuDeviceDetails>((a, b) => {
+            }).thenBy<RokuDevice>((a, b) => {
                 const nameA = a.deviceInfo['default-device-name'] || '';
                 const nameB = b.deviceInfo['default-device-name'] || '';
                 return nameA.localeCompare(nameB);
-            }).thenBy<RokuDeviceDetails>((a, b) => {
+            }).thenBy<RokuDevice>((a, b) => {
                 const serialA = a.serialNumber || '';
                 const serialB = b.serialNumber || '';
                 if (serialA < serialB) {
@@ -338,7 +339,7 @@ export class DeviceManager {
         }
     }
 
-    public async checkDeviceHealth(deviceOrLookup: RokuDeviceDetails | { ip?: string; serialNumber?: string }, force = false): Promise<boolean> {
+    public async checkDeviceHealth(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false): Promise<boolean> {
         // If already a device object with deviceState, use it directly; otherwise look it up
         const device = 'deviceState' in deviceOrLookup
             ? deviceOrLookup
@@ -407,7 +408,7 @@ export class DeviceManager {
      * @param lookup - Object with optional ip and/or serialNumber
      * @returns Device reference from array or undefined
      */
-    private getDeviceReference(lookup: { ip?: string; serialNumber?: string }): DeviceReference | undefined {
+    private getDeviceEntry(lookup: { ip?: string; serialNumber?: string }): DeviceEntry | undefined {
         if (!lookup.ip && !lookup.serialNumber) {
             return undefined;
         }
@@ -430,7 +431,7 @@ export class DeviceManager {
     /**
      * Get serial number for a device using IP→serial mapping.
      */
-    private getSerial(device: DeviceReference): string | undefined {
+    private getSerial(device: DeviceEntry): string | undefined {
         return this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
     }
 
@@ -455,7 +456,7 @@ export class DeviceManager {
      * Add or update a device in the devices array.
      * Device should already be minimal (no deviceInfo) - caching happens before calling this.
      */
-    private setDevice(device: DeviceReference): void {
+    private setDevice(device: DeviceEntry): void {
         const index = this.devices.findIndex(d => d.ip === device.ip);
         const isNewDevice = index < 0;
 
@@ -484,7 +485,7 @@ export class DeviceManager {
      * - Discovered-only devices: removed from the list
      */
     private markDeviceUnreachable(deviceIp: string): void {
-        const device = this.getDeviceReference({ ip: deviceIp });
+        const device = this.getDeviceEntry({ ip: deviceIp });
         if (!device) {
             return;
         }
@@ -504,7 +505,7 @@ export class DeviceManager {
      * Remove a device from the devices array.
      */
     private removeDevice(deviceIp: string): void {
-        const device = this.getDeviceReference({ ip: deviceIp });
+        const device = this.getDeviceEntry({ ip: deviceIp });
         if (device) {
             this.devices = this.devices.filter(d => d.ip !== deviceIp);
 
@@ -544,15 +545,21 @@ export class DeviceManager {
         for (const serialNumber of lastSeenDevices) {
             const cached = this.globalStateManager.getCachedDevice(serialNumber);
             if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
+                // Get IP from ip-to-serial mapping
+                const ip = this.globalStateManager.getIpForSerial(serialNumber, this.networkId);
+                if (!ip) {
+                    // No IP mapping found - remove stale entry
+                    this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
+                    continue;
+                }
                 // Create minimal device - deviceInfo already in cache, accessed on-demand
                 this.setDevice({
-                    location: cached.location,
-                    ip: cached.ip,
+                    ip: ip,
                     deviceState: 'pending',
                     isDiscovered: false
                 });
                 // Ensure IP→serial mapping is set up
-                this.globalStateManager.setSerialNumberForIp(this.networkId, cached.ip, serialNumber);
+                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
             } else {
                 // No cached info - remove stale entry
                 this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
@@ -564,8 +571,9 @@ export class DeviceManager {
      * Load configured devices from VSCode settings.
      * Handles removals (devices no longer in config) and adds/updates.
      * Safe to call at startup (removal is no-op when devices array is empty).
+     * Resolves hostnames to IP addresses using DNS lookup.
      */
-    private loadConfiguredDevices(): void {
+    private async loadConfiguredDevices(): Promise<void> {
         // Read config from all VSCode scopes
         const config = vscode.workspace.getConfiguration('brightscript');
         // inspect may not be available in test mocks
@@ -641,11 +649,17 @@ export class DeviceManager {
                 serialNumber = this.globalStateManager.getSerialNumberForIp(configured.host, this.networkId);
             }
 
-            // IP is REQUIRED for configured devices
-            const ip = configured.host;
+            // Resolve hostname to IP address (handles both hostnames and IPs)
+            let ip = configured.host;
+            try {
+                ip = await rokuDebugUtil.dnsLookup(configured.host);
+            } catch {
+                // DNS lookup failed - keep original host value as fallback
+                // This allows IP addresses to work even if DNS resolution fails
+            }
 
             // Check if device already exists by IP (primary key)
-            const existingDevice = this.getDeviceReference({ ip: ip });
+            const existingDevice = this.getDeviceEntry({ ip: ip });
 
             // Preserve state if device exists
             const deviceState = existingDevice?.deviceState ?? 'pending';
@@ -658,7 +672,6 @@ export class DeviceManager {
 
             // Create minimal device (deviceInfo accessed from cache on-demand)
             this.setDevice({
-                location: `http://${ip}:8060`,
                 ip: ip,
                 deviceState: deviceState,
                 isConfigured: true,
@@ -669,14 +682,14 @@ export class DeviceManager {
         }
     }
 
-    private async resolveDevice(device: DeviceReference): Promise<boolean> {
+    private async resolveDevice(device: DeviceEntry): Promise<boolean> {
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
         const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
         this.resolveDeviceSequence.set(device.ip, currentSeq);
 
         // Set to pending during health check with immediate UI feedback
-        const existingDevice = this.getDeviceReference({ ip: device.ip });
+        const existingDevice = this.getDeviceEntry({ ip: device.ip });
         if (existingDevice && existingDevice.deviceState !== 'pending') {
             existingDevice.deviceState = 'pending';
             this.emitDevicesChanged();
@@ -685,10 +698,7 @@ export class DeviceManager {
         // Fetch latest device info from the network (with short-lived cache)
         let deviceInfo: DeviceInfoRaw | undefined;
         try {
-            deviceInfo = await this.getDeviceInfoCached(
-                device.ip,
-                parseInt(new URL(device.location).port || '8060')
-            );
+            deviceInfo = await this.getDeviceInfoCached(device.ip, 8060);
 
             await this.randomDelay(400, 1_000);
         } catch {
@@ -706,9 +716,7 @@ export class DeviceManager {
             const serial = deviceInfo['serial-number']?.toString?.();
             if (serial) {
                 this.globalStateManager.setCachedDevice(serial, {
-                    location: device.location,
                     serialNumber: serial,
-                    ip: device.ip,
                     deviceInfo: deviceInfo,
                     createdAt: Date.now()
                 });
@@ -719,8 +727,7 @@ export class DeviceManager {
             }
 
             // Create minimal device (no deviceInfo)
-            const freshDevice: DeviceReference = {
-                location: device.location,
+            const freshDevice: DeviceEntry = {
                 ip: device.ip,
                 deviceState: 'online',
                 isConfigured: device.isConfigured,
@@ -827,8 +834,6 @@ export class DeviceManager {
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
     private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
-        const location = `http://${ip}:8060`;
-
         try {
             const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
 
@@ -841,15 +846,13 @@ export class DeviceManager {
             }
 
             // Check if device already exists (by IP)
-            const existingDevice = this.getDeviceReference({ ip: ip });
+            const existingDevice = this.getDeviceEntry({ ip: ip });
 
             // Extract serial and cache the deviceInfo
             const serial = deviceInfo['serial-number']?.toString?.();
             if (serial) {
                 this.globalStateManager.setCachedDevice(serial, {
-                    location: location,
                     serialNumber: serial,
-                    ip: ip,
                     deviceInfo: deviceInfo,
                     createdAt: Date.now()
                 });
@@ -857,8 +860,7 @@ export class DeviceManager {
             }
 
             // Create minimal device (no deviceInfo)
-            const device: DeviceReference = {
-                location: location,
+            const device: DeviceEntry = {
                 ip: ip,
                 deviceState: 'online',
                 isConfigured: existingDevice?.isConfigured ?? false,
@@ -967,11 +969,10 @@ export interface ConfiguredDevice {
 }
 
 /**
- * Internal device reference with runtime state (minimal)
+ * Internal device entry with runtime state (minimal)
  * Used internally by DeviceManager for tracking devices
  */
-interface DeviceReference {
-    location: string;
+interface DeviceEntry {
     ip: string; // unique identifier for device in memory
     deviceState: DeviceState;
     // deviceInfo removed - access via GlobalStateManager.getCachedDevice()
@@ -997,10 +998,10 @@ interface DeviceReference {
 }
 
 /**
- * Full device details returned by public API (extends DeviceReference with cached data)
+ * Full device details returned by public API (extends DeviceEntry with cached data)
  * Includes both runtime state and cached deviceInfo from GlobalStateManager
  */
-export interface RokuDeviceDetails extends DeviceReference {
+export interface RokuDevice extends DeviceEntry {
     serialNumber?: string;
     deviceInfo: Record<string, any>;
 }

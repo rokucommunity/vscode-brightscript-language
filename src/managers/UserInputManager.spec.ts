@@ -6,7 +6,7 @@ import { UserInputManager, manualHostItemId, scanForDevicesItemId } from './User
 import { vscode } from '../mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import type { RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
+import type { RokuDevice } from '../deviceDiscovery/DeviceManager';
 import { DeviceManager } from '../deviceDiscovery/DeviceManager';
 import { GlobalStateManager } from '../GlobalStateManager';
 import { icons } from '../icons';
@@ -51,9 +51,8 @@ describe('UserInputManager', () => {
     });
 
     describe('createHostQuickPickList', () => {
-        const devices: Array<RokuDeviceDetails> = [{
+        const devices: Array<RokuDevice> = [{
             ip: '1.1.1.1',
-            location: 'http://1.1.1.1:8060',
             serialNumber: 'alpha',
             deviceState: 'online',
             deviceInfo: {
@@ -64,7 +63,6 @@ describe('UserInputManager', () => {
             }
         }, {
             ip: '1.1.1.2',
-            location: 'http://1.1.1.2:8060',
             serialNumber: 'beta',
             deviceState: 'online',
             deviceInfo: {
@@ -75,7 +73,6 @@ describe('UserInputManager', () => {
             }
         }, {
             ip: '1.1.1.3',
-            location: 'http://1.1.1.3:8060',
             serialNumber: 'charlie',
             deviceState: 'online',
             deviceInfo: {
@@ -86,7 +83,7 @@ describe('UserInputManager', () => {
             }
         }];
 
-        function label(device: RokuDeviceDetails) {
+        function label(device: RokuDevice) {
             return `${device.deviceInfo['model-number']} – ${device.deviceInfo['user-device-name']} – OS ${device.deviceInfo['software-version']} – ${device.ip}`;
         }
 

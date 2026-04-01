@@ -4,7 +4,7 @@ import type {
     QuickPickItem
 } from 'vscode';
 import * as vscode from 'vscode';
-import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { vscodeContextManager } from './VscodeContextManager';
 import { util } from '../util';
@@ -99,7 +99,7 @@ export class UserInputManager {
                         this.deviceManager.refresh(true);
                         return;
                     } else {
-                        const device = (selectedDevice as any).device as RokuDeviceDetails;
+                        const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
                         const isHealthy = await this.deviceManager.checkDeviceHealth(device, true);
@@ -237,7 +237,7 @@ export class UserInputManager {
      * @param device the device containing all the info
      * @returns a properly formatted host string
      */
-    private getDeviceIcon(device: RokuDeviceDetails) {
+    private getDeviceIcon(device: RokuDevice) {
         if (device.deviceState === 'offline') {
             // For offline devices, check cache to distinguish:
             // - warning icon: never successfully contacted (no cache)
@@ -254,7 +254,7 @@ export class UserInputManager {
         return icons.getDeviceType(device.deviceInfo);
     }
 
-    private createHostLabel(device: RokuDeviceDetails) {
+    private createHostLabel(device: RokuDevice) {
         return [
             device.deviceInfo['model-number'] || '',
             device.deviceInfo['user-device-name'] || '',
@@ -267,7 +267,7 @@ export class UserInputManager {
      * Generate the item list for the `this.promptForHost()` call
      */
     private createHostQuickPickList(
-        devices: RokuDeviceDetails[],
+        devices: RokuDevice[],
         lastUsedDeviceIp: string | undefined,
         cache = new Map<string, QuickPickHostItem>()
     ) {
@@ -348,4 +348,4 @@ export class UserInputManager {
     }
 }
 
-type QuickPickHostItem = QuickPickItem & { device?: RokuDeviceDetails; iconPath?: vscode.ThemeIcon | { light: vscode.Uri; dark: vscode.Uri } };
+type QuickPickHostItem = QuickPickItem & { device?: RokuDevice; iconPath?: vscode.ThemeIcon | { light: vscode.Uri; dark: vscode.Uri } };

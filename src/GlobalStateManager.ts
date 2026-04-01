@@ -230,9 +230,7 @@ export class GlobalStateManager {
             }
         }
 
-        // Final fallback: Check cache
-        const cached = this.getCachedDevice(serialNumber);
-        return cached?.ip;
+        return undefined;
     }
 
     /**
@@ -298,12 +296,10 @@ interface LastSeenNetworkEntry {
 }
 
 /**
- * Cached device details (RokuDeviceDetails without transient deviceState)
+ * Cached device details (RokuDevice without transient deviceState)
  */
 export interface CachedDevice {
-    location: string;
     serialNumber: string;
-    ip: string;
     deviceInfo: Record<string, any>;
     createdAt: number;
 }
