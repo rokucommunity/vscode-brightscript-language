@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.63.1",
+    "version": "2.63.2",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -1276,7 +1276,9 @@
             {
                 "scopeName": "source.brs.embedded.xml",
                 "path": "./syntaxes/brightscript-cdata.tmLanguage.json",
-                "injectTo": ["text.xml"],
+                "injectTo": [
+                    "text.xml"
+                ],
                 "embeddedLanguages": {
                     "meta.embedded.block.brs": "brightscript"
                 }

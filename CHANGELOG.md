@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.1...v2.63.2) - 2026-04-01
+### Added
+ - Add button to toggle device discovery ([#723](https://github.com/rokucommunity/vscode-brightscript-language/pull/723))
+ - Add BrightScript syntax highlighting for CDATA blocks in Roku XML files ([#729](https://github.com/rokucommunity/vscode-brightscript-language/pull/729))
+### Changed
+ - Show additionalInfo fields in DAP crash issue reporter ([#735](https://github.com/rokucommunity/vscode-brightscript-language/pull/735))
+ - Make the host picker less squishy ([#731](https://github.com/rokucommunity/vscode-brightscript-language/pull/731))
+ - Bugfix/errors in extension host output ([#727](https://github.com/rokucommunity/vscode-brightscript-language/pull/727))
+ - upgrade to [roku-debug@0.23.2](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0232---2026-04-01). Notable changes since 0.23.1:
+     - Added additionalInfo to ProcessCrashEvent ([#319](https://github.com/rokucommunity/roku-debug/pull/319))
+     - added thread detached visulization ([#306](https://github.com/rokucommunity/roku-debug/pull/306))
+     - prevent crash in _syncBreakpoints when client is undefined ([#316](https://github.com/rokucommunity/roku-debug/pull/316))
+
+
+
 ## [2.63.1](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.0...v2.63.1) - 2026-03-27
 ### Changed
  - Upgrade to [brighterscript@0.71.0](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0710---2026-03-27). Notable changes since 0.70.4:
