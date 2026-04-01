@@ -403,14 +403,14 @@ export class DeviceManager {
      * Is device discovery enabled (i.e. passive scans are permitted)
      */
     private get deviceDiscoveryEnabled() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.enabled ?? true;
     }
 
     /**
      * Should info messages be shown when new devices are discovered (e.g. "Device found: Roku TV")?
      */
     private get showInfoMessages() {
-        return vscode.workspace.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
     }
 
     /**
