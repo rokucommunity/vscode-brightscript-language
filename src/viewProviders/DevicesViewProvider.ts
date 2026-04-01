@@ -95,7 +95,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
      * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
     private get isConcealDeviceInfoEnabled() {
-        return vscode.workspace.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
+        return util.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
     private devices: Array<RokuDeviceDetails>;

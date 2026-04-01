@@ -3,6 +3,7 @@ import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isRendezvousEven
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
+import { util } from './util';
 import * as fsExtra from 'fs-extra';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import stripAnsi from 'strip-ansi';
@@ -113,7 +114,7 @@ export class LogOutputManager {
     }
 
     private loadConfigSettings() {
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let config: any = util.getConfiguration('brightscript') || {};
         this.includeStackTraces = config.output?.includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;

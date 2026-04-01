@@ -187,7 +187,7 @@ export class LanguageServerInfoCommand {
         selection = await selection?.command?.() ?? selection;
 
         if (selection) {
-            const config = vscode.workspace.getConfiguration('brightscript');
+            const config = util.getConfiguration('brightscript');
             const currentValue = config.get<string>('bsdk') ?? 'embedded';
 
             //if the user chose the same value that's already there, just restart the language server

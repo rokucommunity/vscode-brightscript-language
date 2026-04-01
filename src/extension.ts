@@ -188,7 +188,7 @@ export class Extension {
 
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
-            vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
+            vscode.languages.registerDocumentLinkProvider({ language: 'Log', scheme: 'output' }, docLinkProvider)
         );
 
         vscode.window.registerUriHandler({
@@ -239,7 +239,7 @@ export class Extension {
             this.diagnosticManager.clear();
         });
 
-        let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
+        let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
                 //show the output panel on extension startup without taking focus (only if configured to do so...defaults to 'nothing')
@@ -408,7 +408,7 @@ export class Extension {
      * Writes text to a logfile if enabled
      */
     private writeExtensionLog(text: string) {
-        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        let extensionLogfilePath = util.getConfiguration('brightscript').get<string>('extensionLogfilePath');
         if (extensionLogfilePath) {
             //replace the ${workspaceFolder} variable with the path to the first workspace
             extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);

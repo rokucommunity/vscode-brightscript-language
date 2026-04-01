@@ -501,7 +501,7 @@ export class LanguageServerManager {
         //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
-                vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
+                util.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
                 path.dirname(vscode.workspace.workspaceFile.fsPath)
             );
             if (result) {
@@ -511,7 +511,7 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = vscode.workspace.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const versionInfo = util.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -600,7 +600,7 @@ export class LanguageServerManager {
      * Delete any brighterscript versions that haven't been used in a while
      */
     private async deleteOutdatedBscVersions() {
-        const npmCacheRetentionDays = vscode.workspace.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
+        const npmCacheRetentionDays = util.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
 
         //build the cutoff date (i.e. 45 days ago)
         const cutoffDate = dayjs().subtract(npmCacheRetentionDays, 'days');
