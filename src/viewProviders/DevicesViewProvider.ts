@@ -24,7 +24,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     constructor(
         private deviceManager: DeviceManager
     ) {
-        this.decorationProvider = new DeviceDecorationProvider(this.deviceManager);
+        this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
@@ -192,7 +192,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 );
             }
 
-            const device = this.findDeviceByKey(element.key);
+            const device = this.deviceManager.getDevice(element.key);
             if (!device) {
                 return;
             }
@@ -349,11 +349,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceByKey(key: string): RokuDevice | undefined {
-        // Use DeviceManager's getDevice which handles encoded keys ("s:..." or "i:...")
-        return this.deviceManager.getDevice(key);
-    }
-
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
         return util.concealObject(
             object,
@@ -411,10 +406,6 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
     readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
     private deviceStates = new Map<string, string>();
-
-    constructor(_deviceManager: DeviceManager) {
-        // deviceManager parameter kept for future use but not currently needed
-    }
 
     updateDevices(devices: RokuDevice[]): void {
         const changedUris: vscode.Uri[] = [];
