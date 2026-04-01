@@ -149,4 +149,100 @@ describe('extension', () => {
         expect(vscodeinfostub.calledOnce).to.be.true;
     });
 
+    describe('process crash events', () => {
+        function makeCrashEvent(type: 'uncaughtException' | 'unhandledRejection', message: string, stack?: string, additionalInfo?: Record<string, unknown>) {
+            return {
+                event: 'ProcessCrashEvent',
+                session: { id: 'test-session' } as any,
+                body: { type: type, message: message, stack: stack, additionalInfo: additionalInfo }
+            };
+        }
+
+        beforeEach(async () => {
+            await extension.activate(vscode.context);
+        });
+
+        it('shows error message with uncaughtException label', async () => {
+            const stub = sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'something went wrong') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(stub.calledOnce).to.be.true;
+            const callArgs0 = stub.getCall(0).args as any[];
+            expect(callArgs0[0]).to.include('Uncaught exception');
+            expect(callArgs0[0]).to.include('something went wrong');
+        });
+
+        it('shows error message with unhandledRejection label', async () => {
+            const stub = sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('unhandledRejection', 'promise rejected') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(stub.calledOnce).to.be.true;
+            const callArgs1 = stub.getCall(0).args as any[];
+            expect(callArgs1[0]).to.include('Unhandled rejection');
+            expect(callArgs1[0]).to.include('promise rejected');
+        });
+
+        it('opens issue reporter as bug report when user clicks Report Issue', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves('Report Issue' as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom', 'Error: boom\n  at foo.ts:1') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(executeStub.calledOnce).to.be.true;
+            const callArgs = executeStub.getCall(0).args as any[];
+            expect(callArgs[0]).to.equal('workbench.action.openIssueReporter');
+            expect(callArgs[1].issueType).to.equal(0);
+            expect(callArgs[1].issueTitle).to.include('uncaughtException');
+            expect(callArgs[1].issueTitle).to.include('boom');
+            expect(callArgs[1].issueBody).to.include('Error: boom');
+        });
+
+        it('includes additionalInfo fields as a table in the issue body', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves('Report Issue' as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom', undefined, {
+                    clientName: 'VS Code',
+                    rokuDebugVersion: '1.2.3',
+                    developerMode: true
+                }) as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            const issueBody: string = (executeStub.getCall(0).args as any[])[1].issueBody;
+            expect(issueBody).to.include('|Client Name|VS Code|');
+            expect(issueBody).to.include('|Roku Debug Version|1.2.3|');
+            expect(issueBody).to.include('|Developer Mode|true|');
+        });
+
+        it('does not open issue reporter when user dismisses the dialog', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(executeStub.called).to.be.false;
+        });
+    });
+
 });

@@ -75,11 +75,12 @@ export class RokuFinder extends EventEmitter {
     }
 
     private processSsdpResponse(headers: SsdpHeaders) {
-        const { ST, LOCATION } = headers;
+        const { ST, LOCATION, USN } = headers;
         if (LOCATION && ST?.includes('roku')) {
             try {
                 const url = new URL(LOCATION);
-                this.emit('found', url.hostname, { isAlive: false });
+                const serialNumber = this.extractSerialFromUsn(USN);
+                this.emit('found', url.hostname, { serialNumber: serialNumber });
             } catch {
                 // Invalid URL, ignore
             }
@@ -138,12 +139,33 @@ export class RokuFinder extends EventEmitter {
                 const lastEmit = this.aliveDebounceMap.get(ip);
                 if (lastEmit === undefined || now - lastEmit >= this.ALIVE_DEBOUNCE_MS) {
                     this.aliveDebounceMap.set(ip, now);
-                    this.emit('found', ip, { isAlive: true });
+                    const serialNumber = this.extractSerialFromUsn(usn);
+                    this.emit('found', ip, { serialNumber: serialNumber });
+                    this.emit('device-online', ip, serialNumber);
                 }
             } catch {
                 // Invalid URL, ignore
             }
         }
+    }
+
+    /**
+     * Extract serial number from USN header.
+     * USN format: "uuid:roku:ecp:SERIALNUMBER"
+     */
+    private extractSerialFromUsn(usn: string | undefined): string | undefined {
+        if (!usn) {
+            return undefined;
+        }
+        // USN format is typically "uuid:roku:ecp:SERIALNUMBER"
+        // Extract the last segment after the final colon
+        const parts = usn.split(':');
+        const serial = parts.pop();
+        // Validate it looks like a serial (not empty, not another uuid segment)
+        if (serial && serial.length > 0 && !serial.includes('-')) {
+            return serial;
+        }
+        return undefined;
     }
 
     public dispose() {
@@ -166,5 +188,5 @@ export class RokuFinder extends EventEmitter {
 }
 
 export interface FoundEventOptions {
-    isAlive: boolean;
+    serialNumber?: string;
 }

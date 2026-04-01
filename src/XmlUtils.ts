@@ -88,6 +88,17 @@ export class XmlUtils {
         return charBeforeWord === textToMatch;
     }
 
+    public getAttributeNameAtPosition(document: TextDocument, position: Position): string | undefined {
+        const wordRange = document.getWordRangeAtPosition(position, /[^\s\"\']+/);
+        if (!wordRange) {
+            return undefined;
+        }
+        const offset = document.offsetAt(wordRange.start);
+        const textBefore = document.getText().substring(0, offset);
+        const match = /([\w.-]+)\s*=\s*["']$/.exec(textBefore);
+        return match?.[1];
+    }
+
     private getTextWithOffsets(document: TextDocument, position: Position, wordRegex?) {
         let wordRange = document.getWordRangeAtPosition(position, wordRegex);
         let wordStart = wordRange ? wordRange.start : position;
