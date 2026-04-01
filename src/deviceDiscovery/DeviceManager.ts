@@ -700,7 +700,8 @@ export class DeviceManager {
         }
     }
 
-    private async resolveDevice(device: DeviceEntry): Promise<boolean> {
+    private async resolveDevice(device: DeviceEntry, doSyntheticDelay = true): Promise<boolean> {
+
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
         const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
@@ -718,7 +719,9 @@ export class DeviceManager {
         try {
             deviceInfo = await this.getDeviceInfoCached(device.ip, 8060);
 
-            await this.randomDelay(400, 1_000);
+            if (doSyntheticDelay) {
+                await this.randomDelay(400, 1_000);
+            }
         } catch {
             deviceInfo = undefined;
         }
@@ -760,6 +763,25 @@ export class DeviceManager {
             this.markDeviceUnreachable(device.ip);
             return false;
         }
+    }
+
+    public async checkDeviceHealth(device: RokuDeviceDetails, force = false, doSyntheticDelay = true): Promise<boolean> {
+        // If not forcing, respect the per-device cooldown
+        if (!force) {
+            const lastCheck = this.lastHealthCheckTime.get(device.serialNumber) ?? 0;
+            const now = Date.now();
+            if (now - lastCheck <= this.HEALTH_CHECK_COOLDOWN_MS) {
+                return true;
+            }
+            this.lastHealthCheckTime.set(device.serialNumber, now);
+        }
+
+        const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
+        if (!isHealthy) {
+            // force a scan if passive scan is permitted
+            this.refresh(this.deviceDiscoveryEnabled);
+        }
+        return isHealthy;
     }
 
     private async checkDevicesHealth(force = false): Promise<void> {

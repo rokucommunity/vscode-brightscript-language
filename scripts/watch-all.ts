@@ -6,6 +6,17 @@ import * as chalk from 'chalk';
 import * as dayjs from 'dayjs';
 import * as deferred from 'deferred';
 
+const vscodePackageJson = fsExtra.readJsonSync(path.resolve(__dirname, '..', 'package.json'));
+const allDeps = {
+    ...vscodePackageJson.dependencies,
+    ...vscodePackageJson.devDependencies
+};
+const localFileDeps = new Set(
+    Object.entries(allDeps)
+        .filter(([, version]) => /^(file|link):/.test(version as string))
+        .map(([name]) => name)
+);
+
 class Logger {
     private canReplaceLine = false;
     public writeLine(message = '', isReplaceable = false) {
@@ -61,7 +72,8 @@ const projects = [{
         firstCompletion: deferred() as { resolve: () => void; reject: () => void; resolved: boolean; promise: Promise<any> }
     };
 }).filter(x => {
-    return fsExtra.pathExistsSync(x.path);
+    const isVscodeProject = x.name === path.basename(path.resolve(__dirname, '..'));
+    return fsExtra.pathExistsSync(x.path) && (isVscodeProject || localFileDeps.has(x.name));
 });
 type Project = typeof projects[0];
 
