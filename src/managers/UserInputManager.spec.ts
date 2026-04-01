@@ -54,6 +54,7 @@ describe('UserInputManager', () => {
         const devices: Array<RokuDevice> = [{
             ip: '1.1.1.1',
             serialNumber: 'alpha',
+            key: 's:alpha',
             deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku1',
@@ -64,6 +65,7 @@ describe('UserInputManager', () => {
         }, {
             ip: '1.1.1.2',
             serialNumber: 'beta',
+            key: 's:beta',
             deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku2',
@@ -74,6 +76,7 @@ describe('UserInputManager', () => {
         }, {
             ip: '1.1.1.3',
             serialNumber: 'charlie',
+            key: 's:charlie',
             deviceState: 'online',
             deviceInfo: {
                 'user-device-name': 'roku3',

@@ -41,8 +41,13 @@ describe('DeviceManager', () => {
             mockGlobalStateManager.setSerialNumberForIp('test-network-hash', ip, serialNumber);
         }
 
+        // Compute key same as setDevice
+        const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
+
         return {
             ip: ip,
+            serialNumber: serialNumber ?? undefined,
+            key: key,
             deviceState: 'online',
             isConfigured: false, // Default to discovered-only
             isDiscovered: true, // Default to discovered
@@ -334,7 +339,7 @@ describe('DeviceManager', () => {
 
             // Only device2 should be checked (device1 is not stale)
             expect(resolveDeviceSpy.calledOnce).to.be.true;
-            expect(manager['getSerial'](resolveDeviceSpy.firstCall.args[0])).to.equal('device-2');
+            expect(resolveDeviceSpy.firstCall.args[0].serialNumber).to.equal('device-2');
         });
 
         it('sets devices to pending before checking when force=false', async () => {
@@ -808,7 +813,7 @@ describe('DeviceManager', () => {
 
                 manager['removeDevice'](device.ip);
 
-                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', manager['getSerial'](device))).to.be.true;
+                expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.serialNumber)).to.be.true;
             } finally {
                 clock.restore();
             }
@@ -847,8 +852,8 @@ describe('DeviceManager', () => {
 
             // Should have both devices (merges instead of clearing)
             expect(manager['devices'].length).to.equal(2);
-            expect(manager['devices'].some(d => manager['getSerial'](d) === 'existing')).to.be.true;
-            expect(manager['devices'].some(d => manager['getSerial'](d) === 'cached-device')).to.be.true;
+            expect(manager['devices'].some(d => d.serialNumber === 'existing')).to.be.true;
+            expect(manager['devices'].some(d => d.serialNumber === 'cached-device')).to.be.true;
         });
 
         it('loads cached devices as pending state', () => {
@@ -938,7 +943,7 @@ describe('DeviceManager', () => {
 
             expect(manager['devices'].length).to.equal(1);
             expect(manager['devices'][0].ip).to.equal('192.168.1.100');
-            expect(manager['getSerial'](manager['devices'][0])).to.equal('YN00AB123456');
+            expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
             expect(manager['devices'][0].deviceState).to.equal('online');
         });
 
@@ -952,7 +957,7 @@ describe('DeviceManager', () => {
 
             expect(manager['devices'].length).to.equal(1);
             // Should use deviceInfo's serial, not SSDP hint
-            expect(manager['getSerial'](manager['devices'][0])).to.equal('YN00AB123456');
+            expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
         });
 
         it('falls back to deviceInfo serial when SSDP serial not provided', async () => {
@@ -962,7 +967,7 @@ describe('DeviceManager', () => {
 
             await manager['processDiscoveredIp']('192.168.1.100');
 
-            expect(manager['getSerial'](manager['devices'][0])).to.equal('YN00AB123456');
+            expect(manager['devices'][0].serialNumber).to.equal('YN00AB123456');
         });
 
         it('filters non-developer devices by default', async () => {
@@ -1323,7 +1328,7 @@ describe('DeviceManager', () => {
                 });
 
                 expect(manager['devices'].length).to.equal(1);
-                expect(manager['getSerial'](manager['devices'][0])).to.equal('real-serial-number');
+                expect(manager['devices'][0].serialNumber).to.equal('real-serial-number');
                 expect(manager['devices'][0].isConfigured).to.equal(true);
                 expect(manager['devices'][0].configuredName).to.equal('My Roku');
             });
@@ -1339,7 +1344,7 @@ describe('DeviceManager', () => {
                 }));
 
                 // deviceInfo should be cached - UI layer handles the fallback to configuredName
-                const serial = manager['getSerial'](manager['devices'][0]);
+                const serial = manager['devices'][0].serialNumber;
                 const cachedDevice = mockGlobalStateManager.getCachedDevice(serial);
                 expect(cachedDevice.deviceInfo['user-device-name']).to.equal('Discovered Name');
                 expect(manager['devices'][0].configuredName).to.equal('My Custom Name');
@@ -1519,7 +1524,7 @@ describe('DeviceManager', () => {
         });
 
         describe('loadConfiguredDevices', () => {
-            it('converts removed configured device to discovered-only when it was resolved', () => {
+            it('converts removed configured device to discovered-only when it was resolved', async () => {
                 // Configure the existing stub to return empty config
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                     inspect: () => ({
@@ -1544,11 +1549,11 @@ describe('DeviceManager', () => {
                     }
                 }));
 
-                manager['loadConfiguredDevices']();
+                await manager['loadConfiguredDevices']();
 
                 // Device should be kept as discovered-only
                 expect(manager['devices'].length).to.equal(1);
-                const serial = manager['getSerial'](manager['devices'][0]);
+                const serial = manager['devices'][0].serialNumber;
                 expect(serial).to.equal('real-serial-123');
                 expect(manager['devices'][0].isConfigured).to.be.false;
                 expect(manager['devices'][0].isDiscovered).to.be.true; // NEW
@@ -1556,7 +1561,7 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].configuredPassword).to.be.undefined;
             });
 
-            it('removes unresolved configured device when removed from config', () => {
+            it('removes unresolved configured device when removed from config', async () => {
                 // Configure the existing stub to return empty config
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                     inspect: () => ({
@@ -1579,7 +1584,7 @@ describe('DeviceManager', () => {
                     }
                 }));
 
-                manager['loadConfiguredDevices']();
+                await manager['loadConfiguredDevices']();
 
                 // Device should be completely removed
                 expect(manager['devices'].length).to.equal(0);
@@ -1607,7 +1612,7 @@ describe('DeviceManager', () => {
 
                 // Only configured device should remain
                 expect(manager['devices'].length).to.equal(1);
-                const serial = manager['getSerial'](manager['devices'][0]);
+                const serial = manager['devices'][0].serialNumber;
                 expect(serial).to.equal('configured-1');
                 expect(manager['devices'][0].deviceState).to.equal('pending');
             });
@@ -1692,12 +1697,12 @@ describe('DeviceManager', () => {
                     const device = createMockDevice();
 
                     // Populate sequence map
-                    manager['resolveDeviceSequence'].set(device.location, 5);
-                    expect(manager['resolveDeviceSequence'].get(device.location)).to.equal(5);
+                    manager['resolveDeviceSequence'].set(device.ip, 5);
+                    expect(manager['resolveDeviceSequence'].get(device.ip)).to.equal(5);
 
                     manager.clearAllCache();
 
-                    expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
+                    expect(manager['resolveDeviceSequence'].has(device.ip)).to.be.false;
                 });
             });
 
@@ -1801,7 +1806,7 @@ describe('DeviceManager', () => {
                     manager.clearAllCache();
 
                     // Sequence should be cleared
-                    expect(manager['resolveDeviceSequence'].has(device.location)).to.be.false;
+                    expect(manager['resolveDeviceSequence'].has(device.ip)).to.be.false;
 
                     // Complete the health check
                     if (resolvePromise) {
@@ -1849,6 +1854,213 @@ describe('DeviceManager', () => {
 
                     expect(mockGlobalStateManager.clearDeviceCache.calledOnce).to.be.true;
                 });
+            });
+        });
+    });
+
+    describe('device key encoding/decoding', () => {
+        describe('key encoding', () => {
+            it('uses serial-based key (s:...) when serial exists', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceInfo: { 'serial-number': 'ABC123' }
+                });
+                manager['devices'].push(device);
+
+                const result = manager.getDevice({ ip: '192.168.1.100' });
+
+                expect(result?.key).to.equal('s:ABC123');
+            });
+
+            it('uses IP-based key (i:...) when no serial exists', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Create device without serial - manually add with IP-based key
+                manager['devices'].push({
+                    ip: '192.168.1.100',
+                    key: 'i:192.168.1.100',
+                    deviceState: 'online',
+                    isConfigured: false,
+                    isDiscovered: true
+                });
+
+                const result = manager.getDevice({ ip: '192.168.1.100' });
+
+                expect(result?.key).to.equal('i:192.168.1.100');
+            });
+
+            it('includes key in getAllDevices() results', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'DEF456',
+                    ip: '192.168.1.101',
+                    deviceInfo: { 'serial-number': 'DEF456' }
+                });
+                manager['devices'].push(device);
+
+                const devices = manager.getAllDevices();
+
+                expect(devices[0].key).to.equal('s:DEF456');
+            });
+        });
+
+        describe('key decoding/lookup', () => {
+            it('getDevice("s:ABC123") finds device by serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceInfo: { 'serial-number': 'ABC123' }
+                });
+                manager['devices'].push(device);
+
+                const result = manager.getDevice('s:ABC123');
+
+                expect(result).to.exist;
+                expect(result?.ip).to.equal('192.168.1.100');
+                expect(result?.serialNumber).to.equal('ABC123');
+            });
+
+            it('getDevice("i:192.168.1.100") finds device by IP', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'XYZ789',
+                    ip: '192.168.1.100',
+                    deviceInfo: { 'serial-number': 'XYZ789' }
+                });
+                manager['devices'].push(device);
+
+                const result = manager.getDevice('i:192.168.1.100');
+
+                expect(result).to.exist;
+                expect(result?.ip).to.equal('192.168.1.100');
+                expect(result?.serialNumber).to.equal('XYZ789');
+            });
+
+            it('IP-based lookup still works after device gains serial (stale key)', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device initially added by IP, then gains serial
+                const device = createMockDevice({
+                    serialNumber: 'NEWSERIAL',
+                    ip: '192.168.1.100',
+                    deviceInfo: { 'serial-number': 'NEWSERIAL' }
+                });
+                manager['devices'].push(device);
+
+                // Old UI component might still have "i:192.168.1.100" key
+                const result = manager.getDevice('i:192.168.1.100');
+
+                expect(result).to.exist;
+                expect(result?.ip).to.equal('192.168.1.100');
+                // Device now has serial, so key should be serial-based
+                expect(result?.key).to.equal('s:NEWSERIAL');
+            });
+        });
+
+        describe('edge cases', () => {
+            it('returns undefined for unprefixed string (rejects invalid format)', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100'
+                });
+                manager['devices'].push(device);
+
+                // Unprefixed strings should be rejected
+                const result = manager.getDevice('192.168.1.100');
+
+                expect(result).to.be.undefined;
+            });
+
+            it('returns undefined for empty key after prefix', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100'
+                });
+                manager['devices'].push(device);
+
+                expect(manager.getDevice('s:')).to.be.undefined;
+                expect(manager.getDevice('i:')).to.be.undefined;
+            });
+
+            it('returns undefined for empty string', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const result = manager.getDevice('');
+
+                expect(result).to.be.undefined;
+            });
+
+            it('returns undefined for unknown serial key', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100'
+                });
+                manager['devices'].push(device);
+
+                const result = manager.getDevice('s:UNKNOWN');
+
+                expect(result).to.be.undefined;
+            });
+
+            it('returns undefined for unknown IP key', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100'
+                });
+                manager['devices'].push(device);
+
+                const result = manager.getDevice('i:192.168.1.999');
+
+                expect(result).to.be.undefined;
+            });
+        });
+
+        describe('key transition', () => {
+            it('device key changes from IP-based to serial-based when re-set with serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Start with device that has no serial
+                manager['devices'].push({
+                    ip: '192.168.1.100',
+                    key: 'i:192.168.1.100',
+                    deviceState: 'online',
+                    isConfigured: false,
+                    isDiscovered: true
+                });
+
+                // Initially should have IP-based key
+                let result = manager.getDevice('i:192.168.1.100');
+                expect(result?.key).to.equal('i:192.168.1.100');
+
+                // Simulate device resolution - setDevice is called with serial
+                // (this is what resolveDevice does when it successfully fetches deviceInfo)
+                manager['setDevice']({
+                    ip: '192.168.1.100',
+                    serialNumber: 'NEWSERIAL',
+                    deviceState: 'online',
+                    isConfigured: false,
+                    isDiscovered: true
+                });
+
+                // Device now has serial-based key
+                result = manager.getDevice('i:192.168.1.100');
+                expect(result?.key).to.equal('s:NEWSERIAL');
+                expect(result?.serialNumber).to.equal('NEWSERIAL');
             });
         });
     });

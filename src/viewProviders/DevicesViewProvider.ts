@@ -126,13 +126,14 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     let treeItem = new DeviceTreeItem(
                         this.makeName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        device.ip,
+                        device.key,
                         device.deviceInfo
                     );
                     treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber || device.ip}`);
+                    // Use the device key which is serial-based when available, IP-based as fallback
+                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
 
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
@@ -191,7 +192,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 );
             }
 
-            const device = this.findDeviceById(element.key);
+            const device = this.findDeviceByKey(element.key);
             if (!device) {
                 return;
             }
@@ -348,9 +349,9 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(key: string): RokuDevice | undefined {
-        // Key could be serial or IP
-        return this.devices.find(device => device.serialNumber === key || device.ip === key);
+    private findDeviceByKey(key: string): RokuDevice | undefined {
+        // Use DeviceManager's getDevice which handles encoded keys ("s:..." or "i:...")
+        return this.deviceManager.getDevice(key);
     }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
@@ -418,11 +419,10 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
     updateDevices(devices: RokuDevice[]): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
-            const deviceKey = device.serialNumber || device.ip; // Fallback to IP when no serial
-            const oldState = this.deviceStates.get(deviceKey);
+            const oldState = this.deviceStates.get(device.key);
             if (oldState !== device.deviceState) {
-                this.deviceStates.set(deviceKey, device.deviceState);
-                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${deviceKey}`));
+                this.deviceStates.set(device.key, device.deviceState);
+                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`));
             }
         }
         if (changedUris.length > 0) {
@@ -435,8 +435,8 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
             return undefined;
         }
 
-        const serialNumber = uri.path.slice(1); // Remove leading slash
-        const state = this.deviceStates.get(serialNumber);
+        const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
+        const state = this.deviceStates.get(deviceKey);
 
         if (state === 'pending' || state === 'offline') {
             return {

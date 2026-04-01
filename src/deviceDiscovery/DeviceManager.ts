@@ -196,46 +196,58 @@ export class DeviceManager {
     }
 
     /**
+     * Get device by encoded key string.
+     * Key format: "s:{serialNumber}" or "i:{ip}"
+     *
+     * @param key - Encoded device key
+     * @returns Device with deviceInfo or undefined if not found
+     */
+    public getDevice(key: string): RokuDevice | undefined;
+    /**
      * Get device by IP or serial number.
      * Returns device with deviceInfo hydrated from cache.
      *
      * @param lookup - Object with optional ip and/or serialNumber
      * @returns Device with deviceInfo or undefined if not found
      */
-    public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+    public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
+    public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+        // Normalize input to lookup object
+        let lookup: { ip?: string; serialNumber?: string };
+        if (typeof keyOrLookup === 'string') {
+            // Decode string key - require explicit "s:" or "i:" prefix
+            if (keyOrLookup.startsWith('s:')) {
+                const serial = keyOrLookup.slice(2);
+                if (!serial) {
+                    return undefined;
+                }
+                lookup = { serialNumber: serial };
+            } else if (keyOrLookup.startsWith('i:')) {
+                const ip = keyOrLookup.slice(2);
+                if (!ip) {
+                    return undefined;
+                }
+                lookup = { ip: ip };
+            } else {
+                return undefined;
+            }
+        } else {
+            lookup = keyOrLookup;
+        }
+
         const device = this.getDeviceEntry(lookup);
         if (!device) {
             return undefined;
         }
 
-        // Hydrate from cache - use provided serial if available to avoid extra lookup
-        const serial = lookup.serialNumber ?? this.getSerial(device);
+        // Hydrate deviceInfo from cache (use getSerial for fallback to IP→serial mapping)
+        const serial = this.getSerial(device);
         const cached = serial ? this.globalStateManager.getCachedDevice(serial) : undefined;
 
-        if (cached) {
-            // Merge cached device (with deviceInfo) and runtime state
-            return {
-                ...cached,
-                ip: device.ip,
-                deviceState: device.deviceState,
-                isDiscovered: device.isDiscovered,
-                isConfigured: device.isConfigured,
-                configuredName: device.configuredName,
-                configuredPassword: device.configuredPassword
-            };
-        } else {
-            // Device not in cache yet - create minimal entry with empty deviceInfo
-            return {
-                serialNumber: serial,
-                ip: device.ip,
-                deviceInfo: {},
-                deviceState: device.deviceState,
-                isDiscovered: device.isDiscovered,
-                isConfigured: device.isConfigured,
-                configuredName: device.configuredName,
-                configuredPassword: device.configuredPassword
-            };
-        }
+        return {
+            ...device,
+            deviceInfo: cached?.deviceInfo ?? {}
+        };
     }
 
     /**
@@ -415,8 +427,7 @@ export class DeviceManager {
 
         if (lookup.ip && lookup.serialNumber) {
             // Both provided: Must match both
-            return this.devices.find(d => d.ip === lookup.ip && this.getSerial(d) === lookup.serialNumber
-            );
+            return this.devices.find(d => d.ip === lookup.ip && this.getSerial(d) === lookup.serialNumber);
         } else if (lookup.ip) {
             // IP only: Match by IP (primary key)
             return this.devices.find(d => d.ip === lookup.ip);
@@ -429,10 +440,11 @@ export class DeviceManager {
     }
 
     /**
-     * Get serial number for a device using IP→serial mapping.
+     * Get serial number for a device.
+     * Checks device.serialNumber first, falls back to IP→serial mapping.
      */
     private getSerial(device: DeviceEntry): string | undefined {
-        return this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
+        return device.serialNumber ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
     }
 
     private get timeSinceLastScan(): number {
@@ -454,11 +466,15 @@ export class DeviceManager {
 
     /**
      * Add or update a device in the devices array.
-     * Device should already be minimal (no deviceInfo) - caching happens before calling this.
+     * Computes the device key from serialNumber (or falls back to IP).
      */
-    private setDevice(device: DeviceEntry): void {
-        const index = this.devices.findIndex(d => d.ip === device.ip);
+    private setDevice(input: Omit<DeviceEntry, 'key'>): void {
+        const index = this.devices.findIndex(d => d.ip === input.ip);
         const isNewDevice = index < 0;
+
+        // Compute key: serial-based when available, IP-based as fallback
+        const key = input.serialNumber ? `s:${input.serialNumber}` : `i:${input.ip}`;
+        const device: DeviceEntry = { ...input, key: key };
 
         if (isNewDevice) {
             this.devices.push(device);
@@ -552,9 +568,10 @@ export class DeviceManager {
                     this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
                     continue;
                 }
-                // Create minimal device - deviceInfo already in cache, accessed on-demand
+                // Create device with serial (key computed by setDevice)
                 this.setDevice({
                     ip: ip,
+                    serialNumber: serialNumber,
                     deviceState: 'pending',
                     isDiscovered: false
                 });
@@ -670,9 +687,10 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
             }
 
-            // Create minimal device (deviceInfo accessed from cache on-demand)
+            // Create device with serial if known (key computed by setDevice)
             this.setDevice({
                 ip: ip,
+                serialNumber: serialNumber,
                 deviceState: deviceState,
                 isConfigured: true,
                 isDiscovered: isDiscovered,
@@ -726,17 +744,16 @@ export class DeviceManager {
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
 
-            // Create minimal device (no deviceInfo)
-            const freshDevice: DeviceEntry = {
+            // Create device with serial (key computed by setDevice)
+            this.setDevice({
                 ip: device.ip,
+                serialNumber: serial,
                 deviceState: 'online',
                 isConfigured: device.isConfigured,
                 isDiscovered: true,
                 configuredName: device.configuredName,
                 configuredPassword: device.configuredPassword
-            };
-
-            this.setDevice(freshDevice);
+            });
 
             return true;
         } else {
@@ -859,17 +876,16 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
             }
 
-            // Create minimal device (no deviceInfo)
-            const device: DeviceEntry = {
+            // Create device with serial (key computed by setDevice)
+            this.setDevice({
                 ip: ip,
+                serialNumber: serial,
                 deviceState: 'online',
                 isConfigured: existingDevice?.isConfigured ?? false,
                 isDiscovered: true,
                 configuredName: existingDevice?.configuredName,
                 configuredPassword: existingDevice?.configuredPassword
-            };
-
-            this.setDevice(device);
+            });
         } catch {
             // Device unreachable, ignore
         }
@@ -969,13 +985,22 @@ export interface ConfiguredDevice {
 }
 
 /**
- * Internal device entry with runtime state (minimal)
+ * Internal device entry with runtime state
  * Used internally by DeviceManager for tracking devices
  */
 interface DeviceEntry {
-    ip: string; // unique identifier for device in memory
+    ip: string;
+    /**
+     * Device serial number, when known. Set when device is resolved.
+     */
+    serialNumber?: string;
+    /**
+     * Encoded device key for identification.
+     * Format: "s:{serialNumber}" when serial is available, "i:{ip}" as fallback.
+     * Computed in setDevice() whenever device state changes.
+     */
+    key: string;
     deviceState: DeviceState;
-    // deviceInfo removed - access via GlobalStateManager.getCachedDevice()
     /**
      * Current discovery state. True when device is actively discovered on network.
      * Toggles false when device becomes unreachable.
@@ -999,10 +1024,9 @@ interface DeviceEntry {
 
 /**
  * Full device details returned by public API (extends DeviceEntry with cached data)
- * Includes both runtime state and cached deviceInfo from GlobalStateManager
+ * Includes runtime state plus cached deviceInfo from GlobalStateManager
  */
 export interface RokuDevice extends DeviceEntry {
-    serialNumber?: string;
     deviceInfo: Record<string, any>;
 }
 
