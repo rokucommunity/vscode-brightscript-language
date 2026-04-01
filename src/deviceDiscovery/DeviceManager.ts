@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
 import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
-import { util as rokuDebugUtil } from 'roku-debug';
+import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
