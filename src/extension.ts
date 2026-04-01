@@ -34,7 +34,6 @@ import { LocalPackageManager } from './managers/LocalPackageManager';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
-import undent from 'undent';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -308,7 +307,7 @@ export class Extension {
                         // Insert a space before all uppercase letters preceded by a lowercase letter, then uppercase the first char
                         const spacedString = key.replace(/([a-z])([A-Z])/g, '$1 $2');
                         const formattedKey = spacedString.charAt(0).toUpperCase() + spacedString.slice(1);
-                        return `**${formattedKey}:** ${JSON.stringify(value)}`;
+                        return `|${formattedKey}|${typeof value === 'string' ? value : JSON.stringify(value)}|`;
                     });
                     additionalInfoSection = lines.join('\n');
                 }
@@ -316,22 +315,28 @@ export class Extension {
                     extensionId: 'RokuCommunity.brightscript',
                     issueType: 0,
                     issueTitle: `DAP crash: ${data.type} - ${data.message}`,
-                    issueBody: undent`
-                        ## Debug Adapter Crash
-                        **Type:** ${data.type}
-                        **Message:** ${data.message}
-
-                        **Steps to reproduce:**
-                        <!-- Please describe what you were doing when this crash occurred -->
-
-                        **Stack:**
-                        \`\`\`
-                        ${data.stack ?? 'N/A'}
-                        \`\`\`
-
-                        **Additional Info:**
-                        ${additionalInfoSection || 'N/A'}
-                    `
+                    issueBody: [
+                        '## Debug Adapter Crash',
+                        `**Type:** ${data.type}`,
+                        `**Message:** ${data.message}`,
+                        '',
+                        '**Steps to reproduce:**',
+                        '<!-- Please describe what you were doing when this crash occurred -->',
+                        '',
+                        '**Stack:**',
+                        '```',
+                        `${data.stack ?? 'N/A'}`,
+                        '```',
+                        '',
+                        `<details>`,
+                        `<summary>Additional Info</summary>`,
+                        '',
+                        `|Item|Value|`,
+                        `|---|---|`,
+                        `${additionalInfoSection || ''}`,
+                        '',
+                        `</details>`
+                    ].join('\n')
                 });
             }
 
