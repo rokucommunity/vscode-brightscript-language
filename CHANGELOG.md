@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.63.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.2...v2.63.3) - 2026-04-01
-### Changed
+### Fixed
  - upgrade to [roku-debug@0.23.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0233---2026-04-01). Notable changes since 0.23.2:
      - Respect client line and col numbers for stack frames and compile errors ([#309](https://github.com/rokucommunity/roku-debug/pull/309))
-     - Fix crash when socket errors after a successful connection is established ([#321](https://github.com/rokucommunity/roku-debug/pull/321))
+     - Crash when socket errors after a successful connection is established ([#321](https://github.com/rokucommunity/roku-debug/pull/321))
 
 
 
