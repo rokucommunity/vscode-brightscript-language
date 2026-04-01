@@ -334,7 +334,7 @@ export class DeviceManager {
         return info;
     }
 
-    private async resolveDevice(device: RokuDeviceDetails): Promise<boolean> {
+    private async resolveDevice(device: RokuDeviceDetails, doSyntheticDelay = true): Promise<boolean> {
         // Increment and capture sequence number to handle concurrent refresh calls
         const currentSeq = (this.resolveDeviceSequence.get(device.serialNumber) ?? 0) + 1;
         this.resolveDeviceSequence.set(device.serialNumber, currentSeq);
@@ -354,7 +354,9 @@ export class DeviceManager {
                 parseInt(new URL(device.location).port || '8060')
             );
 
-            await this.randomDelay(400, 1_000);
+            if (doSyntheticDelay) {
+                await this.randomDelay(400, 1_000);
+            }
             freshDevice = {
                 location: device.location,
                 ip: device.ip,
@@ -381,7 +383,7 @@ export class DeviceManager {
         }
     }
 
-    public async checkDeviceHealth(device: RokuDeviceDetails, force = false): Promise<boolean> {
+    public async checkDeviceHealth(device: RokuDeviceDetails, force = false, doSyntheticDelay = true): Promise<boolean> {
         // If not forcing, respect the per-device cooldown
         if (!force) {
             const lastCheck = this.lastHealthCheckTime.get(device.serialNumber) ?? 0;
@@ -392,7 +394,7 @@ export class DeviceManager {
             this.lastHealthCheckTime.set(device.serialNumber, now);
         }
 
-        const isHealthy = await this.resolveDevice(device);
+        const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
         if (!isHealthy) {
             // force a scan if passive scan is permitted
             this.refresh(this.deviceDiscoveryEnabled);
