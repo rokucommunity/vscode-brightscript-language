@@ -52,7 +52,7 @@ export class DeviceManager {
             }
 
             //if the `devices` setting was changed, re-apply configured devices
-            if (event?.affectsConfiguration('brightscript.deviceDiscovery.devices')) {
+            if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
                     this.emitDevicesChanged();
                 }).catch(() => { });
@@ -338,7 +338,7 @@ export class DeviceManager {
         // Clear global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
-        this.globalStateManager.clearExpiredEntriesSerialNumberByIpForNetwork();
+        this.globalStateManager.clearSerialNumberByIpForNetwork();
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
@@ -598,7 +598,7 @@ export class DeviceManager {
         if (typeof config.inspect !== 'function') {
             return;
         }
-        const inspection = config.inspect<ConfiguredDevice[]>('deviceDiscovery.devices');
+        const inspection = config.inspect<ConfiguredDevice[]>('devices');
 
         // Scopes in priority order (last wins)
         // User settings (globalValue) wins over workspace settings
@@ -979,7 +979,7 @@ export class DeviceManager {
 export type DeviceState = 'offline' | 'pending' | 'online';
 
 /**
- * User-configured device from settings (brightscript.deviceDiscovery.devices)
+ * User-configured device from settings (brightscript.devices)
  */
 export interface ConfiguredDevice {
     host: string;
@@ -1016,7 +1016,7 @@ interface DeviceEntry {
      */
     isConfigured?: boolean;
     /**
-     * User-provided name from config (brightscript.deviceDiscovery.devices).
+     * User-provided name from config (brightscript.devices).
      * UI should display this over deviceInfo['user-device-name'] when present.
      */
     configuredName?: string;

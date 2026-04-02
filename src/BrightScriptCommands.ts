@@ -438,19 +438,17 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('removeDeviceFromConfig', async (deviceOrItem: { key: string }) => {
+        this.registerCommand('removeDeviceFromUserSettings', async (deviceOrItem: { key: string }) => {
             const device = this.deviceManager.getDevice(deviceOrItem?.key);
             if (!device) {
                 void vscode.window.showErrorMessage('Could not find device to remove from settings.');
                 return;
             }
 
-            // Get only the user settings (globalValue)
             const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('deviceDiscovery.devices');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
             const userDevices = inspection?.globalValue || [];
 
-            // Find and remove the device
             const index = userDevices.findIndex(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber));
             if (index === -1) {
                 void vscode.window.showInformationMessage('Device is not in your user settings.');
@@ -460,29 +458,50 @@ export class BrightScriptCommands {
             const removedDevice = userDevices[index];
             userDevices.splice(index, 1);
 
-            await config.update('deviceDiscovery.devices', userDevices, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from your device settings.`);
+            await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from user settings.`);
         });
 
-        this.registerCommand('addDeviceToConfig', async (deviceOrItem: { key: string }) => {
+        this.registerCommand('removeDeviceFromWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to remove from settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const workspaceDevices = inspection?.workspaceValue || [];
+
+            const index = workspaceDevices.findIndex(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber));
+            if (index === -1) {
+                void vscode.window.showInformationMessage('Device is not in your workspace settings.');
+                return;
+            }
+
+            const removedDevice = workspaceDevices[index];
+            workspaceDevices.splice(index, 1);
+
+            await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
+            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from workspace settings.`);
+        });
+
+        this.registerCommand('addDeviceToUserSettings', async (deviceOrItem: { key: string }) => {
             const device = this.deviceManager.getDevice(deviceOrItem?.key);
             if (!device) {
                 void vscode.window.showErrorMessage('Could not find device to add to settings.');
                 return;
             }
 
-            // Get only the user settings (globalValue), not merged values from all scopes
             const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('deviceDiscovery.devices');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
             const userDevices = inspection?.globalValue || [];
 
-            // Check if device already exists in user settings
             if (userDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
-                void vscode.window.showInformationMessage('Device is already in your settings.');
+                void vscode.window.showInformationMessage('Device is already in your user settings.');
                 return;
             }
 
-            // Add the new device
             const newDevice = {
                 host: device.ip,
                 name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip,
@@ -490,8 +509,35 @@ export class BrightScriptCommands {
             };
             userDevices.push(newDevice);
 
-            await config.update('deviceDiscovery.devices', userDevices, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to your device settings.`);
+            await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to user settings.`);
+        });
+
+        this.registerCommand('addDeviceToWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const workspaceDevices = inspection?.workspaceValue || [];
+
+            if (workspaceDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+                void vscode.window.showInformationMessage('Device is already in your workspace settings.');
+                return;
+            }
+
+            const newDevice = {
+                host: device.ip,
+                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip,
+                ...(device.serialNumber && { serialNumber: device.serialNumber })
+            };
+            workspaceDevices.push(newDevice);
+
+            await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
+            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to workspace settings.`);
         });
 
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {

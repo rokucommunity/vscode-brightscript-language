@@ -92,7 +92,9 @@ describe('DeviceManager', () => {
                 return undefined;
             }),
             clearLastSeenDevices: sinon.stub(),
-            clearDeviceCache: sinon.stub()
+            clearDeviceCache: sinon.stub(),
+            clearSerialNumberByIpForNetwork: sinon.stub(),
+            clearExpiredEntriesSerialNumberByIpForNetwork: sinon.stub()
         };
 
         // Mock vscode configuration
