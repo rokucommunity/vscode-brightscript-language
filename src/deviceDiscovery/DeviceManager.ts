@@ -688,44 +688,11 @@ export class DeviceManager {
 
         const configuredDevices = Array.from(deviceMap.values());
 
-        for (let i = this.devices.length - 1; i >= 0; i--) {
-            const device = this.devices[i];
+        // Track resolved IPs so removal loop can compare against them (not hostnames)
+        const configuredIps = new Set<string>();
 
-            // Skip non-configured devices
-            if (!device.isConfigured) {
-                continue;
-            }
-
-            // Check if still in config (by IP or serial)
-            const serial = this.getSerial(device);
-            const stillConfigured = configuredDevices.some(c => c.host === device.ip ||
-                (serial && c.serialNumber === serial)
-            );
-
-            if (stillConfigured) {
-                continue; // Still configured, keep it
-            }
-
-            // Device removed from config
-            if (device.isDiscovered) {
-                // Keep as discovered-only device
-                device.isConfigured = false;
-                device.configuredIn = [];
-                device.configuredName = undefined;
-                device.configuredPassword = undefined;
-            } else {
-                // Not discovered either, remove completely
-                this.devices.splice(i, 1);
-            }
-        }
-
+        // First: add/update configured devices (with DNS resolution)
         for (const configured of configuredDevices) {
-            // Determine serial number
-            let serialNumber = configured.serialNumber;
-            if (!serialNumber) {
-                serialNumber = this.globalStateManager.getSerialNumberForIp(configured.host, this.networkId);
-            }
-
             // Resolve hostname to IP address (handles both hostnames and IPs)
             let ip = configured.host;
             try {
@@ -733,6 +700,15 @@ export class DeviceManager {
             } catch {
                 // DNS lookup failed - keep original host value as fallback
                 // This allows IP addresses to work even if DNS resolution fails
+            }
+
+            // Track resolved IP for removal loop
+            configuredIps.add(ip);
+
+            // Determine serial number (must be after DNS resolution so IP lookup works)
+            let serialNumber = configured.serialNumber;
+            if (!serialNumber) {
+                serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
             }
 
             // Check if device already exists by IP (primary key)
@@ -766,6 +742,37 @@ export class DeviceManager {
                 configuredName: configured.name,
                 configuredPassword: configured.password
             });
+        }
+
+        // Then: remove devices no longer in config (using resolved IPs, not hostnames)
+        for (let i = this.devices.length - 1; i >= 0; i--) {
+            const device = this.devices[i];
+
+            // Skip non-configured devices
+            if (!device.isConfigured) {
+                continue;
+            }
+
+            // Check if still in config (by resolved IP or serial)
+            const serial = this.getSerial(device);
+            const stillConfigured = configuredIps.has(device.ip) ||
+                configuredDevices.some(c => serial && c.serialNumber === serial);
+
+            if (stillConfigured) {
+                continue;
+            }
+
+            // Device removed from config
+            if (device.isDiscovered) {
+                // Keep as discovered-only device
+                device.isConfigured = false;
+                device.configuredIn = [];
+                device.configuredName = undefined;
+                device.configuredPassword = undefined;
+            } else {
+                // Not discovered either, remove completely
+                this.devices.splice(i, 1);
+            }
         }
     }
 
