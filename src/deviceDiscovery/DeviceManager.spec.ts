@@ -1591,6 +1591,30 @@ describe('DeviceManager', () => {
                 // Device should be completely removed
                 expect(manager['devices'].length).to.equal(0);
             });
+
+            it('merges config entries with same IP but different serials (last wins)', async () => {
+                // Two config entries pointing to same IP with different serials
+                // This is a misconfiguration, but we should handle it gracefully
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [
+                            { host: '192.168.1.100', serialNumber: 'ABC', name: 'First Entry' },
+                            { host: '192.168.1.100', serialNumber: 'XYZ', name: 'Second Entry' }
+                        ]
+                    })
+                });
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                await manager['loadConfiguredDevices']();
+
+                // Should have exactly one device (merged by IP, second entry wins)
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.100');
+                expect(manager['devices'][0].configuredName).to.equal('Second Entry');
+                expect(manager['devices'][0].isConfigured).to.equal(true);
+            });
         });
 
         describe('loadLastSeenDevices', () => {
@@ -2063,6 +2087,278 @@ describe('DeviceManager', () => {
                 result = manager.getDevice('i:192.168.1.100');
                 expect(result?.key).to.equal('s:NEWSERIAL');
                 expect(result?.serialNumber).to.equal('NEWSERIAL');
+            });
+        });
+    });
+
+    describe('serial-based deduplication (DHCP IP change)', () => {
+        describe('processDiscoveredIp', () => {
+            it('removes old entry when same serial discovered at new IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device exists at old IP
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isDiscovered: true
+                });
+                manager['devices'].push(oldDevice);
+
+                // SSDP discovers same serial at new IP
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.200', 'ABC123');
+
+                // Should have exactly one device at new IP
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].serialNumber).to.equal('ABC123');
+            });
+
+            it('preserves configured properties when device changes IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Configured device exists at old IP
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isConfigured: true,
+                    isDiscovered: true,
+                    configuredName: 'Living Room Roku',
+                    configuredPassword: 'secret123'
+                });
+                manager['devices'].push(oldDevice);
+
+                // SSDP discovers same serial at new IP
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.200', 'ABC123');
+
+                // Should preserve configured properties on new entry
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].isConfigured).to.equal(true);
+                expect(manager['devices'][0].configuredName).to.equal('Living Room Roku');
+                expect(manager['devices'][0].configuredPassword).to.equal('secret123');
+            });
+
+            it('transfers lastUsedDeviceIp when device changes IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device exists at old IP and is the last used device
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isDiscovered: true
+                });
+                manager['devices'].push(oldDevice);
+                manager.setLastUsedDeviceIp('192.168.1.100');
+
+                // SSDP discovers same serial at new IP
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.200', 'ABC123');
+
+                // lastUsedDeviceIp should transfer to new IP
+                expect(manager.getLastUsedDeviceIp()).to.equal('192.168.1.200');
+            });
+        });
+
+        describe('resolveDevice', () => {
+            it('removes old entry when same serial resolved at new IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // Device exists at old IP
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isDiscovered: true
+                });
+                manager['devices'].push(oldDevice);
+
+                // New device at different IP (e.g., from config or cache)
+                const newDevice = createMockDevice({
+                    serialNumber: null, // Not yet resolved
+                    ip: '192.168.1.200',
+                    deviceState: 'pending',
+                    isDiscovered: false
+                });
+                manager['devices'].push(newDevice);
+
+                // Resolve returns same serial as old device
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['resolveDevice'](newDevice);
+
+                // Should have exactly one device at new IP
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].serialNumber).to.equal('ABC123');
+            });
+
+            it('preserves configured properties when resolving at new IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // Configured device exists at old IP
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'offline',
+                    isConfigured: true,
+                    isDiscovered: false,
+                    configuredName: 'My Roku',
+                    configuredPassword: 'pass123'
+                });
+                manager['devices'].push(oldDevice);
+
+                // New device at different IP being resolved
+                const newDevice = createMockDevice({
+                    serialNumber: null,
+                    ip: '192.168.1.200',
+                    deviceState: 'pending',
+                    isDiscovered: false
+                });
+                manager['devices'].push(newDevice);
+
+                // Resolve returns same serial as configured device
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['resolveDevice'](newDevice);
+
+                // Should preserve configured properties
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].isConfigured).to.equal(true);
+                expect(manager['devices'][0].configuredName).to.equal('My Roku');
+                expect(manager['devices'][0].configuredPassword).to.equal('pass123');
+            });
+        });
+
+        describe('same serial configured at multiple IPs', () => {
+            it('collapses to single entry when resolved', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // Two configured entries for same serial at different IPs
+                // (user misconfiguration or device moved)
+                const device1 = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'offline',
+                    isConfigured: true,
+                    configuredName: 'Old Location'
+                });
+                const device2 = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.200',
+                    deviceState: 'pending',
+                    isConfigured: true,
+                    configuredName: 'New Location'
+                });
+                manager['devices'].push(device1);
+                manager['devices'].push(device2);
+
+                // Resolve the second device (at new IP)
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['resolveDevice'](device2);
+
+                // Should have exactly one device - the one that was just resolved
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].serialNumber).to.equal('ABC123');
+            });
+        });
+
+        describe('edge cases', () => {
+            it('does not dedupe when serial is undefined', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device without serial at old IP
+                const oldDevice = createMockDevice({
+                    serialNumber: null,
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isDiscovered: true
+                });
+                manager['devices'].push(oldDevice);
+
+                // Discover device at new IP, also without serial in response
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'device-id': 'some-id',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                    // No serial-number field
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.200');
+
+                // Should have two devices (no deduplication without serial)
+                expect(manager['devices'].length).to.equal(2);
+            });
+
+            it('does not remove device at same IP (not a duplicate)', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device exists
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'pending',
+                    isDiscovered: false
+                });
+                manager['devices'].push(device);
+
+                // Re-discover at same IP (normal refresh scenario)
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.100', 'ABC123');
+
+                // Should still have exactly one device (merged, not duplicated)
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.100');
+                expect(manager['devices'][0].deviceState).to.equal('online');
             });
         });
     });

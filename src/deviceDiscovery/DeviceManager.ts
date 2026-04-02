@@ -498,6 +498,44 @@ export class DeviceManager {
     }
 
     /**
+     * Deduplicate devices by serial number when a device changes IP (e.g., DHCP reassignment).
+     * If an existing device with the same serial exists at a DIFFERENT IP, removes it and
+     * returns its configured properties to be preserved on the new entry.
+     *
+     * @param newIp - The IP address where the device was just discovered/resolved
+     * @param serial - The serial number from the device
+     * @returns Configured properties to preserve, or undefined if no deduplication needed
+     */
+    private dedupeBySerial(newIp: string, serial: string): Pick<DeviceEntry, 'isConfigured' | 'configuredIn' | 'configuredName' | 'configuredPassword'> | undefined {
+        // Find existing device with same serial at a DIFFERENT IP
+        const existingDevice = this.devices.find(d => d.ip !== newIp && this.getSerial(d) === serial);
+
+        if (!existingDevice) {
+            return undefined;
+        }
+
+        // Capture configured properties to preserve
+        const preserved = {
+            isConfigured: existingDevice.isConfigured,
+            configuredIn: existingDevice.configuredIn,
+            configuredName: existingDevice.configuredName,
+            configuredPassword: existingDevice.configuredPassword
+        };
+
+        // Transfer lastUsedDeviceIp to new IP if it was pointing to old device
+        // (User's "active device" should follow the physical device, not the stale IP)
+        if (this.lastUsedDeviceIp === existingDevice.ip) {
+            this.lastUsedDeviceIp = newIp;
+        }
+
+        // Remove old entry directly from array (don't use removeDevice to avoid
+        // side effects like removing from lastSeenDevices - device still exists)
+        this.devices = this.devices.filter(d => d.ip !== existingDevice.ip);
+
+        return preserved;
+    }
+
+    /**
      * Mark a device as unreachable after a failed health check.
      * - Configured devices: marked 'offline', isDiscovered = false
      * - Discovered-only devices: removed from the list
@@ -770,15 +808,19 @@ export class DeviceManager {
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
 
+            // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
+            const preserved = serial ? this.dedupeBySerial(device.ip, serial) : undefined;
+
             // Create device with serial (key computed by setDevice)
             this.setDevice({
                 ip: device.ip,
                 serialNumber: serial,
                 deviceState: 'online',
-                isConfigured: device.isConfigured,
+                isConfigured: preserved?.isConfigured ?? device.isConfigured,
+                configuredIn: preserved?.configuredIn ?? device.configuredIn,
                 isDiscovered: true,
-                configuredName: device.configuredName,
-                configuredPassword: device.configuredPassword
+                configuredName: preserved?.configuredName ?? device.configuredName,
+                configuredPassword: preserved?.configuredPassword ?? device.configuredPassword
             });
 
             return true;
@@ -902,15 +944,19 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
             }
 
+            // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
+            const preserved = serial ? this.dedupeBySerial(ip, serial) : undefined;
+
             // Create device with serial (key computed by setDevice)
             this.setDevice({
                 ip: ip,
                 serialNumber: serial,
                 deviceState: 'online',
-                isConfigured: existingDevice?.isConfigured ?? false,
+                isConfigured: preserved?.isConfigured ?? existingDevice?.isConfigured ?? false,
+                configuredIn: preserved?.configuredIn ?? existingDevice?.configuredIn,
                 isDiscovered: true,
-                configuredName: existingDevice?.configuredName,
-                configuredPassword: existingDevice?.configuredPassword
+                configuredName: preserved?.configuredName ?? existingDevice?.configuredName,
+                configuredPassword: preserved?.configuredPassword ?? existingDevice?.configuredPassword
             });
         } catch {
             // Device unreachable, ignore
