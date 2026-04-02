@@ -466,13 +466,13 @@ export class BrightScriptCommands {
 
             const newDevice = {
                 host: device.ip,
-                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip,
                 ...(device.serialNumber && { serialNumber: device.serialNumber })
             };
             userDevices.push(newDevice);
 
             await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to user settings.`);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to user settings.`);
         });
 
         this.registerCommand('addDeviceToWorkspaceSettings', async (deviceOrItem: { key: string }) => {
@@ -493,13 +493,13 @@ export class BrightScriptCommands {
 
             const newDevice = {
                 host: device.ip,
-                name: device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip,
                 ...(device.serialNumber && { serialNumber: device.serialNumber })
             };
             workspaceDevices.push(newDevice);
 
             await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
-            void vscode.window.showInformationMessage(`Added "${newDevice.name}" to workspace settings.`);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {
