@@ -17,7 +17,7 @@ export class GlobalStateManager {
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
         lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
         deviceCache: 'deviceCache',
-        ipToSerialNumber: 'ipToSerialNumber'
+        serialNumberByIpForNetwork: 'serialNumberByIpForNetwork'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -169,8 +169,8 @@ export class GlobalStateManager {
      * Used for host-only configured devices to look up cached device info.
      */
     public getSerialNumberForIp(ip: string, currentNetworkId?: string): string | undefined {
-        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
-
+        this.clearExpiredEntriesSerialNumberByIpForNetwork();
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.serialNumberByIpForNetwork) || {};
         // First, check the current network
         if (currentNetworkId) {
             const currentNetworkEntry = map[currentNetworkId]?.[ip];
@@ -196,12 +196,12 @@ export class GlobalStateManager {
      * Save IP→serialNumber mapping for the specified network. Called when a device is successfully resolved.
      */
     public setSerialNumberForIp(networkId: string, ip: string, serialNumber: string): void {
-        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.serialNumberByIpForNetwork) || {};
         if (!map[networkId]) {
             map[networkId] = {};
         }
         map[networkId][ip] = { serialNumber: serialNumber, timestamp: Date.now() };
-        void this.context.globalState.update(this.keys.ipToSerialNumber, map);
+        void this.context.globalState.update(this.keys.serialNumberByIpForNetwork, map);
     }
 
     /**
@@ -209,7 +209,8 @@ export class GlobalStateManager {
      * Checks current network first, then falls back to any network.
      */
     public getIpForSerial(serialNumber: string, currentNetworkId?: string): string | undefined {
-        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
+        this.clearExpiredEntriesSerialNumberByIpForNetwork();
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.serialNumberByIpForNetwork) || {};
 
         // First try: Current network mapping
         if (currentNetworkId && map[currentNetworkId]) {
@@ -236,16 +237,22 @@ export class GlobalStateManager {
     /**
      * Clear the IP→serialNumber map
      */
-    public clearIpToSerialNumberMap(): void {
-        void this.context.globalState.update(this.keys.ipToSerialNumber, undefined);
+    public clearSerialNumberByIpForNetwork(): void {
+        void this.context.globalState.update(this.keys.serialNumberByIpForNetwork, undefined);
     }
 
+    private LAST_AUDIT_TIME_SERIALNUMBER_BY_IP_FOR_NETWORK = 0;
     /**
      * Clear expired entries from the IP→serialNumber map (same expiration as other cached data)
      */
-    public clearExpiredIpMappings(): void {
-        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.ipToSerialNumber) || {};
+    public clearExpiredEntriesSerialNumberByIpForNetwork(): void {
         const now = Date.now();
+        if (now - this.LAST_AUDIT_TIME_SERIALNUMBER_BY_IP_FOR_NETWORK < 24 * 60 * 60 * 1_000) {
+            return;
+        }
+        this.LAST_AUDIT_TIME_SERIALNUMBER_BY_IP_FOR_NETWORK = now;
+
+        const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.serialNumberByIpForNetwork) || {};
         let changed = false;
 
         for (const networkId in map) {
@@ -264,7 +271,7 @@ export class GlobalStateManager {
         }
 
         if (changed) {
-            void this.context.globalState.update(this.keys.ipToSerialNumber, map);
+            void this.context.globalState.update(this.keys.serialNumberByIpForNetwork, map);
         }
     }
 

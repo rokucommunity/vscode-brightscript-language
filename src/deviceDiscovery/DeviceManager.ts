@@ -338,6 +338,7 @@ export class DeviceManager {
         // Clear global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
+        this.globalStateManager.clearExpiredEntriesSerialNumberByIpForNetwork();
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
