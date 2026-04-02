@@ -1300,11 +1300,9 @@ describe('DeviceManager', () => {
                 });
                 manager['devices'].push(configuredDevice);
 
-                // Update same device without isConfigured (simulating discovery)
-                manager['setDevice']({
-                    ...createMockDevice({ serialNumber: 'device-123', ip: '192.168.1.100' }),
-                    isConfigured: undefined
-                });
+                // Update same device without isConfigured (simulating discovery - property omitted, not undefined)
+                const { isConfigured, configuredName, configuredPassword, configuredIn, ...discoveryUpdate } = createMockDevice({ serialNumber: 'device-123', ip: '192.168.1.100' });
+                manager['setDevice'](discoveryUpdate);
 
                 expect(manager['devices'].length).to.equal(1);
                 expect(manager['devices'][0].isConfigured).to.equal(true);
@@ -1323,11 +1321,9 @@ describe('DeviceManager', () => {
                 });
                 manager['devices'].push(configuredDevice);
 
-                // Update with real serialNumber (simulating resolution)
-                manager['setDevice']({
-                    ...createMockDevice({ serialNumber: 'real-serial-number', ip: '192.168.1.100' }),
-                    isConfigured: undefined
-                });
+                // Update with real serialNumber (simulating resolution - property omitted, not undefined)
+                const { isConfigured, configuredName, configuredPassword, configuredIn, ...resolutionUpdate } = createMockDevice({ serialNumber: 'real-serial-number', ip: '192.168.1.100' });
+                manager['setDevice'](resolutionUpdate);
 
                 expect(manager['devices'].length).to.equal(1);
                 expect(manager['devices'][0].serialNumber).to.equal('real-serial-number');
@@ -1614,6 +1610,41 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].ip).to.equal('192.168.1.100');
                 expect(manager['devices'][0].configuredName).to.equal('Second Entry');
                 expect(manager['devices'][0].isConfigured).to.equal(true);
+            });
+
+            it('clears configuredName when name is removed from config', async () => {
+                // Initial config with a name
+                const configStub = vscode.workspace.getConfiguration as sinon.SinonStub;
+                configStub.returns({
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [
+                            { host: '192.168.1.100', name: 'My Roku' }
+                        ]
+                    })
+                });
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                await manager['loadConfiguredDevices']();
+
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].configuredName).to.equal('My Roku');
+
+                // Simulate config change: name is removed
+                configStub.returns({
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [
+                            { host: '192.168.1.100' } // no name
+                        ]
+                    })
+                });
+
+                await manager['loadConfiguredDevices']();
+
+                // Name should be cleared
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].configuredName).to.equal(undefined);
             });
         });
 

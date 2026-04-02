@@ -480,17 +480,19 @@ export class DeviceManager {
         if (isNewDevice) {
             this.devices.push(device);
         } else {
-            // Merge: incoming wins for most fields, but preserve configured properties
+            // Merge: incoming wins for fields that are present, preserve existing for omitted fields.
+            // This lets config loading pass explicit undefined to clear, while discovery
+            // (which omits these fields) preserves existing config.
             const existing = this.devices[index];
             this.devices[index] = {
                 ...existing,
                 ...device,
-                // Preserve configured status from either side
-                isDiscovered: device.isDiscovered ?? existing.isDiscovered,
-                isConfigured: device.isConfigured ?? existing.isConfigured,
-                configuredIn: device.configuredIn ?? existing.configuredIn,
-                configuredName: device.configuredName ?? existing.configuredName,
-                configuredPassword: device.configuredPassword ?? existing.configuredPassword
+                // Preserve if not explicitly provided (property absent vs undefined)
+                isDiscovered: 'isDiscovered' in input ? input.isDiscovered : existing.isDiscovered,
+                isConfigured: 'isConfigured' in input ? input.isConfigured : existing.isConfigured,
+                configuredIn: 'configuredIn' in input ? input.configuredIn : existing.configuredIn,
+                configuredName: 'configuredName' in input ? input.configuredName : existing.configuredName,
+                configuredPassword: 'configuredPassword' in input ? input.configuredPassword : existing.configuredPassword
             };
         }
 
@@ -713,14 +715,6 @@ export class DeviceManager {
 
             // Check if device already exists by IP (primary key)
             const existingDevice = this.getDeviceEntry({ ip: ip });
-
-            // Clear config-specific fields before update so setDevice's ?? merge
-            // doesn't preserve stale values. Config is authoritative for these fields.
-            if (existingDevice) {
-                existingDevice.configuredIn = [];
-                existingDevice.configuredName = undefined;
-                existingDevice.configuredPassword = undefined;
-            }
 
             // Preserve state if device exists
             const deviceState = existingDevice?.deviceState ?? 'pending';
