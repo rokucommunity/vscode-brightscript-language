@@ -1,7 +1,7 @@
 {
     "name": "brightscript",
     "displayName": "BrightScript Language",
-    "version": "2.63.3",
+    "version": "2.63.4",
     "publisher": "RokuCommunity",
     "description": "Language support for Roku's BrightScript language.",
     "author": {
@@ -2204,7 +2204,9 @@
                         "description": "Hand-curated list of Roku devices that always appear in the device list, regardless of network discovery.",
                         "items": {
                             "type": "object",
-                            "required": ["host"],
+                            "required": [
+                                "host"
+                            ],
                             "properties": {
                                 "host": {
                                     "type": "string",
