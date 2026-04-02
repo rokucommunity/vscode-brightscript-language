@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.3...v2.63.4) - 2026-04-02
+### Changed
+ - Support hand curated device lists ([#709](https://github.com/rokucommunity/vscode-brightscript-language/pull/709))
+
+
+
 ## [2.63.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.2...v2.63.3) - 2026-04-01
 ### Fixed
  - upgrade to [roku-debug@0.23.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0233---2026-04-01). Notable changes since 0.23.2:
