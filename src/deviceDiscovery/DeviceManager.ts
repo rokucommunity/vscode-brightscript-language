@@ -738,6 +738,14 @@ export class DeviceManager {
             // Check if device already exists by IP (primary key)
             const existingDevice = this.getDeviceEntry({ ip: ip });
 
+            // Clear config-specific fields before update so setDevice's ?? merge
+            // doesn't preserve stale values. Config is authoritative for these fields.
+            if (existingDevice) {
+                existingDevice.configuredIn = [];
+                existingDevice.configuredName = undefined;
+                existingDevice.configuredPassword = undefined;
+            }
+
             // Preserve state if device exists
             const deviceState = existingDevice?.deviceState ?? 'pending';
             const isDiscovered = existingDevice?.isDiscovered ?? false;
