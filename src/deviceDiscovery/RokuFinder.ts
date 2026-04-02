@@ -34,7 +34,36 @@ export class RokuFinder extends EventEmitter {
     private lastCleanupTime = 0;
     private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
+    private readonly SCAN_MIN_DURATION_MS = 3_000;
+    private readonly SCAN_SETTLE_MS = 1_500;
+    private scanMinTimer: ReturnType<typeof setTimeout> | null = null;
+    private scanSettleTimer: ReturnType<typeof setTimeout> | null = null;
+    private isScanning = false;
+    private scanMinTimeElapsed = false;
+
+    /**
+     * Start a scan for devices. Emits scan-started, then scan-ended when complete.
+     * Scan ends when both: minimum duration (3s) has passed AND 1.5s since last device response.
+     */
     public scan() {
+        if (this.isScanning) {
+            return; // Already scanning
+        }
+
+        this.isScanning = true;
+        this.scanMinTimeElapsed = false;
+        this.emit('scan-started');
+
+        // Start minimum duration timer
+        this.scanMinTimer = setTimeout(() => {
+            this.scanMinTimeElapsed = true;
+            this.checkScanComplete();
+        }, this.SCAN_MIN_DURATION_MS);
+
+        // Start initial settle timer
+        this.resetSettleTimer();
+
+        // Trigger the actual SSDP searches
         if (this.client) {
             const search = () => {
                 if (!this.client) {
@@ -54,6 +83,47 @@ export class RokuFinder extends EventEmitter {
         }
     }
 
+    private resetSettleTimer(): void {
+        if (this.scanSettleTimer) {
+            clearTimeout(this.scanSettleTimer);
+        }
+        this.scanSettleTimer = setTimeout(() => {
+            this.scanSettleTimer = null;
+            this.checkScanComplete();
+        }, this.SCAN_SETTLE_MS);
+    }
+
+    private checkScanComplete(): void {
+        if (!this.isScanning) {
+            return;
+        }
+        // Only complete if both conditions met: min time elapsed AND settle timer fired
+        if (this.scanMinTimeElapsed && this.scanSettleTimer === null) {
+            this.endScan();
+        }
+    }
+
+    private endScan(): void {
+        if (!this.isScanning) {
+            return;
+        }
+
+        this.isScanning = false;
+        this.clearScanTimers();
+        this.emit('scan-ended');
+    }
+
+    private clearScanTimers(): void {
+        if (this.scanMinTimer) {
+            clearTimeout(this.scanMinTimer);
+            this.scanMinTimer = null;
+        }
+        if (this.scanSettleTimer) {
+            clearTimeout(this.scanSettleTimer);
+            this.scanSettleTimer = null;
+        }
+    }
+
     /**
      * Start listening for SSDP advertisements
      */
@@ -65,9 +135,14 @@ export class RokuFinder extends EventEmitter {
     }
 
     /**
-     * Stop listening for SSDP advertisements
+     * Stop listening for SSDP advertisements.
+     * Also ends any in-progress scan (emitting scan-ended).
      */
     public stop() {
+        // End any in-progress scan first (emits scan-ended)
+        if (this.isScanning) {
+            this.endScan();
+        }
         if (this.running) {
             this.running = false;
             this.server.stop();
@@ -81,6 +156,11 @@ export class RokuFinder extends EventEmitter {
                 const url = new URL(LOCATION);
                 const serialNumber = this.extractSerialFromUsn(USN);
                 this.emit('found', url.hostname, { serialNumber: serialNumber });
+
+                // Reset settle timer when device found during active scan
+                if (this.isScanning) {
+                    this.resetSettleTimer();
+                }
             } catch {
                 // Invalid URL, ignore
             }
@@ -142,6 +222,11 @@ export class RokuFinder extends EventEmitter {
                     const serialNumber = this.extractSerialFromUsn(usn);
                     this.emit('found', ip, { serialNumber: serialNumber });
                     this.emit('device-online', ip, serialNumber);
+
+                    // Reset settle timer when device found during active scan
+                    if (this.isScanning) {
+                        this.resetSettleTimer();
+                    }
                 }
             } catch {
                 // Invalid URL, ignore
@@ -171,10 +256,12 @@ export class RokuFinder extends EventEmitter {
     public dispose() {
         this.stop();
 
+        // Clear all timers
         for (const timer of this.scanTimers) {
             clearTimeout(timer);
         }
         this.scanTimers = [];
+        this.clearScanTimers();
         this.aliveDebounceMap.clear();
 
         this.client.removeAllListeners();

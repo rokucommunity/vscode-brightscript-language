@@ -358,4 +358,127 @@ describe('RokuFinder', () => {
         });
     });
 
+    describe('scan orchestration', () => {
+        it('emits scan-started when scan begins', () => {
+            finder = new RokuFinder();
+
+            const scanStartedSpy = sinon.spy();
+            finder.on('scan-started', scanStartedSpy);
+
+            finder.scan();
+
+            expect(scanStartedSpy.calledOnce).to.be.true;
+        });
+
+        it('emits scan-ended after min duration and settle time', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+
+                const scanEndedSpy = sinon.spy();
+                finder.on('scan-ended', scanEndedSpy);
+
+                finder.scan();
+
+                // Before min duration (3s)
+                clock.tick(2_000);
+                expect(scanEndedSpy.called).to.be.false;
+
+                // After min duration and settle time (3s + 1.5s = 4.5s)
+                clock.tick(2_500);
+                expect(scanEndedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('waits for settle timer even after min duration', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+
+                const scanEndedSpy = sinon.spy();
+                finder.on('scan-ended', scanEndedSpy);
+
+                finder.scan();
+
+                // Trigger device found at 2.9s to reset settle timer (before min time fires at 3s)
+                clock.tick(2_900);
+                (finder['client'] as any).emit('response', {
+                    ST: 'roku:ecp',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                });
+
+                // Min timer fires at 3s, but settle timer was reset to 2.9s + 1.5s = 4.4s
+                clock.tick(100); // Now at 3s
+                expect(scanEndedSpy.called).to.be.false; // Still waiting for settle
+
+                // Advance to just before new settle timer fires
+                clock.tick(1_400); // Now at 4.4s
+                expect(scanEndedSpy.calledOnce).to.be.true; // Settle fired, scan ends
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('does not start new scan if already scanning', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+
+                const scanStartedSpy = sinon.spy();
+                finder.on('scan-started', scanStartedSpy);
+
+                finder.scan();
+                expect(scanStartedSpy.calledOnce).to.be.true;
+
+                // Try to scan again while already scanning
+                finder.scan();
+                expect(scanStartedSpy.calledOnce).to.be.true; // Still just one
+
+                // Complete the scan
+                clock.tick(5_000);
+
+                // Now we can scan again
+                finder.scan();
+                expect(scanStartedSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('resets settle timer when device found via ssdp:alive', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true; // Simulate started
+
+                const scanEndedSpy = sinon.spy();
+                finder.on('scan-ended', scanEndedSpy);
+
+                finder.scan();
+
+                // Device found via SSDP alive at 2.9s
+                clock.tick(2_900);
+                (finder['server'] as any).emit('advertise-alive', {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                });
+
+                // Min timer fires at 3s, but settle was reset to 4.4s
+                clock.tick(100); // Now at 3s
+                expect(scanEndedSpy.called).to.be.false;
+
+                // Settle timer fires at 4.4s
+                clock.tick(1_400); // Now at 4.4s
+                expect(scanEndedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
 });

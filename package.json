@@ -444,13 +444,33 @@
             "view/item/context": [
                 {
                     "command": "extension.brightscript.setActiveDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@1"
                 },
                 {
                     "command": "extension.brightscript.refreshDevice",
-                    "when": "view == devicesView && viewItem == device",
+                    "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToUserSettings",
+                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-workspace')",
+                    "group": "settings@1"
+                },
+                {
+                    "command": "extension.brightscript.editDeviceInUserSettings",
+                    "when": "view == devicesView && (viewItem == 'device-user' || viewItem == 'device-user-workspace')",
+                    "group": "settings@1"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToWorkspaceSettings",
+                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-user')",
+                    "group": "settings@2"
+                },
+                {
+                    "command": "extension.brightscript.editDeviceInWorkspaceSettings",
+                    "when": "view == devicesView && (viewItem == 'device-workspace' || viewItem == 'device-user-workspace')",
+                    "group": "settings@2"
                 }
             ],
             "webview/context": [
@@ -2177,6 +2197,34 @@
                         "default": false,
                         "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
                         "scope": "resource"
+                    },
+                    "brightscript.devices": {
+                        "type": "array",
+                        "default": [],
+                        "description": "Hand-curated list of Roku devices that always appear in the device list, regardless of network discovery.",
+                        "items": {
+                            "type": "object",
+                            "required": ["host"],
+                            "properties": {
+                                "host": {
+                                    "type": "string",
+                                    "description": "IP address or hostname of the device"
+                                },
+                                "name": {
+                                    "type": "string",
+                                    "description": "Friendly name for the device (overrides discovered name)"
+                                },
+                                "serialNumber": {
+                                    "type": "string",
+                                    "description": "Serial number (if known). Used for merging with discovered devices and cache lookup."
+                                },
+                                "password": {
+                                    "type": "string",
+                                    "description": "Developer password for this device"
+                                }
+                            }
+                        },
+                        "scope": "resource"
                     }
                 }
             },
@@ -3368,6 +3416,32 @@
                 "title": "Refresh Device",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.addDeviceToUserSettings",
+                "title": "Add to User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.addDeviceToWorkspaceSettings",
+                "title": "Add to Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.editDeviceInUserSettings",
+                "title": "Edit in User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.editDeviceInWorkspaceSettings",
+                "title": "Edit in Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.clearConfiguredDevices",
+                "title": "Clear All Configured Devices",
+                "category": "BrightScript",
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.refreshRegistry",
