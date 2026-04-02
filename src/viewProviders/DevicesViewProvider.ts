@@ -153,8 +153,18 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     }
 
                     // Set contextValue for context menu actions
-                    // configured devices can be removed, discovered devices can be saved
-                    treeItem.contextValue = device.isConfigured ? 'device-configured' : 'device-discovered';
+                    // Values: device, device-user, device-workspace, device-user-workspace
+                    const inUser = device.configuredIn?.includes('user');
+                    const inWorkspace = device.configuredIn?.includes('workspace');
+                    let contextValue = 'device';
+                    if (inUser && inWorkspace) {
+                        contextValue = 'device-user-workspace';
+                    } else if (inUser) {
+                        contextValue = 'device-user';
+                    } else if (inWorkspace) {
+                        contextValue = 'device-workspace';
+                    }
+                    treeItem.contextValue = contextValue;
 
                     items.push(treeItem);
                 }

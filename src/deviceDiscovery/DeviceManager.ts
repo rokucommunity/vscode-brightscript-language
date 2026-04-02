@@ -488,6 +488,7 @@ export class DeviceManager {
                 // Preserve configured status from either side
                 isDiscovered: device.isDiscovered ?? existing.isDiscovered,
                 isConfigured: device.isConfigured ?? existing.isConfigured,
+                configuredIn: device.configuredIn ?? existing.configuredIn,
                 configuredName: device.configuredName ?? existing.configuredName,
                 configuredPassword: device.configuredPassword ?? existing.configuredPassword
             };
@@ -600,34 +601,53 @@ export class DeviceManager {
         }
         const inspection = config.inspect<ConfiguredDevice[]>('devices');
 
-        // Scopes in priority order (last wins)
-        // User settings (globalValue) wins over workspace settings
-        const scopes = [
-            inspection?.defaultValue,
-            inspection?.defaultLanguageValue,
-            inspection?.workspaceFolderLanguageValue,
-            inspection?.workspaceFolderValue,
-            inspection?.workspaceLanguageValue,
-            inspection?.workspaceValue,
-            inspection?.globalLanguageValue,
-            inspection?.globalValue // User settings - highest priority
-        ];
+        // Get devices from specific scopes we care about
+        const userDevices = inspection?.globalValue ?? [];
+        const workspaceDevices = inspection?.workspaceValue ?? [];
 
-        // Merge devices from all scopes: key is serialNumber or host
-        const deviceMap = new Map<string, ConfiguredDevice>();
-        for (const scopeDevices of scopes) {
-            if (!Array.isArray(scopeDevices)) {
+        // Build a map tracking which scopes each device is in
+        // Key is serialNumber or host, value includes scope info
+        interface ConfiguredDeviceWithScope extends ConfiguredDevice {
+            configuredIn: ConfigurationScope[];
+        }
+        const deviceMap = new Map<string, ConfiguredDeviceWithScope>();
+
+        // Process user settings
+        for (const device of userDevices) {
+            if (!device?.host) {
                 continue;
             }
-            for (const device of scopeDevices) {
-                if (!device?.host) {
-                    continue;
-                }
-                const key = device.serialNumber || device.host;
-                const existing = deviceMap.get(key) || {};
-                deviceMap.set(key, { ...existing, ...device });
+            const key = device.serialNumber || device.host;
+            const existing = deviceMap.get(key);
+            const scopes = existing?.configuredIn ?? [];
+            if (!scopes.includes('user')) {
+                scopes.push('user');
             }
+            deviceMap.set(key, {
+                ...existing,
+                ...device,
+                configuredIn: scopes
+            });
         }
+
+        // Process workspace settings
+        for (const device of workspaceDevices) {
+            if (!device?.host) {
+                continue;
+            }
+            const key = device.serialNumber || device.host;
+            const existing = deviceMap.get(key);
+            const scopes = existing?.configuredIn ?? [];
+            if (!scopes.includes('workspace')) {
+                scopes.push('workspace');
+            }
+            deviceMap.set(key, {
+                ...existing,
+                ...device,
+                configuredIn: scopes
+            });
+        }
+
         const configuredDevices = Array.from(deviceMap.values());
 
         for (let i = this.devices.length - 1; i >= 0; i--) {
@@ -652,6 +672,7 @@ export class DeviceManager {
             if (device.isDiscovered) {
                 // Keep as discovered-only device
                 device.isConfigured = false;
+                device.configuredIn = [];
                 device.configuredName = undefined;
                 device.configuredPassword = undefined;
             } else {
@@ -694,6 +715,7 @@ export class DeviceManager {
                 serialNumber: serialNumber,
                 deviceState: deviceState,
                 isConfigured: true,
+                configuredIn: configured.configuredIn,
                 isDiscovered: isDiscovered,
                 configuredName: configured.name,
                 configuredPassword: configured.password
@@ -978,6 +1000,8 @@ export class DeviceManager {
 
 export type DeviceState = 'offline' | 'pending' | 'online';
 
+export type ConfigurationScope = 'user' | 'workspace';
+
 /**
  * User-configured device from settings (brightscript.devices)
  */
@@ -1011,10 +1035,14 @@ interface DeviceEntry {
      */
     isDiscovered?: boolean;
     /**
-     * If true, this device was configured by the user.
+     * If true, this device was configured by the user (in any scope).
      * Configured devices are never auto-removed.
      */
     isConfigured?: boolean;
+    /**
+     * Which settings scopes this device is configured in.
+     */
+    configuredIn?: ConfigurationScope[];
     /**
      * User-provided name from config (brightscript.devices).
      * UI should display this over deviceInfo['user-device-name'] when present.

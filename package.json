@@ -453,14 +453,24 @@
                     "group": "navigation@2"
                 },
                 {
-                    "command": "extension.brightscript.addDeviceToConfig",
-                    "when": "view == devicesView && viewItem == 'device-discovered'",
-                    "group": "navigation@3"
+                    "command": "extension.brightscript.addDeviceToUserSettings",
+                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-workspace')",
+                    "group": "settings@1"
                 },
                 {
-                    "command": "extension.brightscript.removeDeviceFromConfig",
-                    "when": "view == devicesView && viewItem == 'device-configured'",
-                    "group": "navigation@3"
+                    "command": "extension.brightscript.editDeviceInUserSettings",
+                    "when": "view == devicesView && (viewItem == 'device-user' || viewItem == 'device-user-workspace')",
+                    "group": "settings@1"
+                },
+                {
+                    "command": "extension.brightscript.addDeviceToWorkspaceSettings",
+                    "when": "view == devicesView && (viewItem == 'device' || viewItem == 'device-user')",
+                    "group": "settings@2"
+                },
+                {
+                    "command": "extension.brightscript.editDeviceInWorkspaceSettings",
+                    "when": "view == devicesView && (viewItem == 'device-workspace' || viewItem == 'device-user-workspace')",
+                    "group": "settings@2"
                 }
             ],
             "webview/context": [
@@ -2188,7 +2198,7 @@
                         "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
                         "scope": "resource"
                     },
-                    "brightscript.deviceDiscovery.devices": {
+                    "brightscript.devices": {
                         "type": "array",
                         "default": [],
                         "description": "Hand-curated list of Roku devices that always appear in the device list, regardless of network discovery.",
@@ -3408,13 +3418,23 @@
                 "icon": "$(refresh)"
             },
             {
-                "command": "extension.brightscript.addDeviceToConfig",
-                "title": "Save to Settings",
+                "command": "extension.brightscript.addDeviceToUserSettings",
+                "title": "Add to User Settings",
                 "category": "BrightScript"
             },
             {
-                "command": "extension.brightscript.removeDeviceFromConfig",
-                "title": "Remove from Settings",
+                "command": "extension.brightscript.addDeviceToWorkspaceSettings",
+                "title": "Add to Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.editDeviceInUserSettings",
+                "title": "Edit in User Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.editDeviceInWorkspaceSettings",
+                "title": "Edit in Workspace Settings",
                 "category": "BrightScript"
             },
             {

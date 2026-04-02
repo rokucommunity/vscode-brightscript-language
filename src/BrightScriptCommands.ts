@@ -10,7 +10,7 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { DeviceManager } from './deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
@@ -438,52 +438,14 @@ export class BrightScriptCommands {
             }
         });
 
-        this.registerCommand('removeDeviceFromUserSettings', async (deviceOrItem: { key: string }) => {
+        this.registerCommand('editDeviceInUserSettings', async (deviceOrItem: { key: string }) => {
             const device = this.deviceManager.getDevice(deviceOrItem?.key);
-            if (!device) {
-                void vscode.window.showErrorMessage('Could not find device to remove from settings.');
-                return;
-            }
-
-            const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
-            const userDevices = inspection?.globalValue || [];
-
-            const index = userDevices.findIndex(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber));
-            if (index === -1) {
-                void vscode.window.showInformationMessage('Device is not in your user settings.');
-                return;
-            }
-
-            const removedDevice = userDevices[index];
-            userDevices.splice(index, 1);
-
-            await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from user settings.`);
+            await this.openSettingsJsonAtDevice(device, 'user');
         });
 
-        this.registerCommand('removeDeviceFromWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+        this.registerCommand('editDeviceInWorkspaceSettings', async (deviceOrItem: { key: string }) => {
             const device = this.deviceManager.getDevice(deviceOrItem?.key);
-            if (!device) {
-                void vscode.window.showErrorMessage('Could not find device to remove from settings.');
-                return;
-            }
-
-            const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
-            const workspaceDevices = inspection?.workspaceValue || [];
-
-            const index = workspaceDevices.findIndex(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber));
-            if (index === -1) {
-                void vscode.window.showInformationMessage('Device is not in your workspace settings.');
-                return;
-            }
-
-            const removedDevice = workspaceDevices[index];
-            workspaceDevices.splice(index, 1);
-
-            await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
-            void vscode.window.showInformationMessage(`Removed "${removedDevice.name || removedDevice.host}" from workspace settings.`);
+            await this.openSettingsJsonAtDevice(device, 'workspace');
         });
 
         this.registerCommand('addDeviceToUserSettings', async (deviceOrItem: { key: string }) => {
@@ -832,6 +794,47 @@ export class BrightScriptCommands {
      */
     private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
         return await this.context.workspaceState.get('devicePasswords') || {};
+    }
+
+    /**
+     * Open the settings JSON file and position cursor at the specified device entry
+     */
+    private async openSettingsJsonAtDevice(device: RokuDevice | undefined, scope: 'user' | 'workspace'): Promise<void> {
+        // Open the appropriate settings JSON file
+        const command = scope === 'user'
+            ? 'workbench.action.openSettingsJson'
+            : 'workbench.action.openWorkspaceSettingsFile';
+        await vscode.commands.executeCommand(command);
+
+        // Get the active editor (should be the settings file we just opened)
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !device) {
+            return;
+        }
+
+        const text = editor.document.getText();
+
+        // Search for the device by IP or serial number
+        const searchTerms = [device.ip];
+        if (device.serialNumber) {
+            searchTerms.push(device.serialNumber);
+        }
+
+        let matchIndex = -1;
+        for (const term of searchTerms) {
+            const index = text.indexOf(`"${term}"`);
+            if (index !== -1) {
+                matchIndex = index;
+                break;
+            }
+        }
+
+        if (matchIndex !== -1) {
+            const position = editor.document.positionAt(matchIndex + 1); // +1 to skip opening quote
+            const selection = new vscode.Selection(position, position);
+            editor.selection = selection;
+            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+        }
     }
 
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {
