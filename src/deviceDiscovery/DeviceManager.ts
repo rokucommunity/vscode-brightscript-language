@@ -468,73 +468,67 @@ export class DeviceManager {
     /**
      * Add or update a device in the devices array.
      * Computes the device key from serialNumber (or falls back to IP).
+     * Handles deduplication when a device changes IP (same serial, different IP).
      */
     private setDevice(input: Omit<DeviceEntry, 'key'>): void {
-        const index = this.devices.findIndex(d => d.ip === input.ip);
-        const isNewDevice = index < 0;
+        /**
+         * Apply merge rules: preserve state from existing entry based on discovered/configured status.
+         * - Keep highest device state: online > offline > pending
+         * - If existing is discovered and input is configuring: keep discovered state, apply config
+         * - If existing is configured and input is discovering: keep config props, apply discovered
+         */
+        const applyMergeRules = (existing: DeviceEntry) => {
+            // Keep highest device state: online > offline > pending
+            const stateRank: Record<DeviceState, number> = { online: 2, offline: 1, pending: 0 };
+            if (stateRank[existing.deviceState] > stateRank[input.deviceState]) {
+                input.deviceState = existing.deviceState;
+            }
+
+            if (existing.isDiscovered && 'isConfigured' in input && input.isConfigured) {
+                input.isDiscovered = existing.isDiscovered;
+            } else if (existing.isConfigured && 'isDiscovered' in input && input.isDiscovered) {
+                input.isConfigured = existing.isConfigured;
+                input.configuredName = existing.configuredName;
+                input.configuredPassword = existing.configuredPassword;
+                input.configuredIn = existing.configuredIn;
+            }
+        };
+
+        // Serial dedupe: check for existing device with same serial at DIFFERENT IP
+        if (input.serialNumber) {
+            const oldEntry = this.devices.find(d => d.ip !== input.ip && this.getSerial(d) === input.serialNumber);
+            if (oldEntry) {
+                // If old is discovered and new is config, keep the discovered IP
+                if (oldEntry.isDiscovered && 'isConfigured' in input && input.isConfigured) {
+                    input.ip = oldEntry.ip;
+                }
+
+                applyMergeRules(oldEntry);
+
+                // Transfer lastUsedDeviceIp to new IP if it was pointing to old device
+                if (this.lastUsedDeviceIp === oldEntry.ip) {
+                    this.lastUsedDeviceIp = input.ip;
+                }
+
+                // Remove old entry directly from array
+                this.devices = this.devices.filter(d => d.ip !== oldEntry.ip);
+            }
+        }
+
+        // IP dedupe: check for existing device at same IP
+        const existingIndex = this.devices.findIndex(d => d.ip === input.ip);
+        if (existingIndex >= 0) {
+            applyMergeRules(this.devices[existingIndex]);
+            this.devices = this.devices.filter((_, i) => i !== existingIndex);
+        }
 
         // Compute key: serial-based when available, IP-based as fallback
         const key = input.serialNumber ? `s:${input.serialNumber}` : `i:${input.ip}`;
         const device: DeviceEntry = { ...input, key: key };
 
-        if (isNewDevice) {
-            this.devices.push(device);
-        } else {
-            // Merge: incoming wins for fields that are present, preserve existing for omitted fields.
-            // This lets config loading pass explicit undefined to clear, while discovery
-            // (which omits these fields) preserves existing config.
-            const existing = this.devices[index];
-            this.devices[index] = {
-                ...existing,
-                ...device,
-                // Preserve if not explicitly provided (property absent vs undefined)
-                isDiscovered: 'isDiscovered' in input ? input.isDiscovered : existing.isDiscovered,
-                isConfigured: 'isConfigured' in input ? input.isConfigured : existing.isConfigured,
-                configuredIn: 'configuredIn' in input ? input.configuredIn : existing.configuredIn,
-                configuredName: 'configuredName' in input ? input.configuredName : existing.configuredName,
-                configuredPassword: 'configuredPassword' in input ? input.configuredPassword : existing.configuredPassword
-            };
-        }
+        this.devices.push(device);
 
         this.emitDevicesChanged();
-    }
-
-    /**
-     * Deduplicate devices by serial number when a device changes IP (e.g., DHCP reassignment).
-     * If an existing device with the same serial exists at a DIFFERENT IP, removes it and
-     * returns its configured properties to be preserved on the new entry.
-     *
-     * @param newIp - The IP address where the device was just discovered/resolved
-     * @param serial - The serial number from the device
-     * @returns Configured properties to preserve, or undefined if no deduplication needed
-     */
-    private dedupeBySerial(newIp: string, serial: string): Pick<DeviceEntry, 'isConfigured' | 'configuredIn' | 'configuredName' | 'configuredPassword'> | undefined {
-        // Find existing device with same serial at a DIFFERENT IP
-        const existingDevice = this.devices.find(d => d.ip !== newIp && this.getSerial(d) === serial);
-
-        if (!existingDevice) {
-            return undefined;
-        }
-
-        // Capture configured properties to preserve
-        const preserved = {
-            isConfigured: existingDevice.isConfigured,
-            configuredIn: existingDevice.configuredIn,
-            configuredName: existingDevice.configuredName,
-            configuredPassword: existingDevice.configuredPassword
-        };
-
-        // Transfer lastUsedDeviceIp to new IP if it was pointing to old device
-        // (User's "active device" should follow the physical device, not the stale IP)
-        if (this.lastUsedDeviceIp === existingDevice.ip) {
-            this.lastUsedDeviceIp = newIp;
-        }
-
-        // Remove old entry directly from array (don't use removeDevice to avoid
-        // side effects like removing from lastSeenDevices - device still exists)
-        this.devices = this.devices.filter(d => d.ip !== existingDevice.ip);
-
-        return preserved;
     }
 
     /**
@@ -817,19 +811,12 @@ export class DeviceManager {
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
 
-            // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
-            const preserved = serial ? this.dedupeBySerial(device.ip, serial) : undefined;
-
-            // Create device with serial (key computed by setDevice)
+            // Create device with serial (key computed by setDevice, dedupe handled internally)
             this.setDevice({
                 ip: device.ip,
                 serialNumber: serial,
                 deviceState: 'online',
-                isConfigured: preserved?.isConfigured ?? device.isConfigured,
-                configuredIn: preserved?.configuredIn ?? device.configuredIn,
-                isDiscovered: true,
-                configuredName: preserved?.configuredName ?? device.configuredName,
-                configuredPassword: preserved?.configuredPassword ?? device.configuredPassword
+                isDiscovered: true
             });
 
             return true;
@@ -939,9 +926,6 @@ export class DeviceManager {
                 return;
             }
 
-            // Check if device already exists (by IP)
-            const existingDevice = this.getDeviceEntry({ ip: ip });
-
             // Extract serial and cache the deviceInfo
             const serial = deviceInfo['serial-number']?.toString?.();
             if (serial) {
@@ -953,19 +937,12 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
             }
 
-            // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
-            const preserved = serial ? this.dedupeBySerial(ip, serial) : undefined;
-
-            // Create device with serial (key computed by setDevice)
+            // Create device with serial (key computed by setDevice, dedupe handled internally)
             this.setDevice({
                 ip: ip,
                 serialNumber: serial,
                 deviceState: 'online',
-                isConfigured: preserved?.isConfigured ?? existingDevice?.isConfigured ?? false,
-                configuredIn: preserved?.configuredIn ?? existingDevice?.configuredIn,
-                isDiscovered: true,
-                configuredName: preserved?.configuredName ?? existingDevice?.configuredName,
-                configuredPassword: preserved?.configuredPassword ?? existingDevice?.configuredPassword
+                isDiscovered: true
             });
         } catch {
             // Device unreachable, ignore

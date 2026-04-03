@@ -2337,6 +2337,76 @@ describe('DeviceManager', () => {
             });
         });
 
+        describe('cross-state preservation', () => {
+            it('keeps discovered IP when config has stale IP for same serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Device discovered at IP1 (real network location)
+                const discoveredDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'online',
+                    isDiscovered: true,
+                    isConfigured: false
+                });
+                manager['devices'].push(discoveredDevice);
+
+                // Config loads with same serial at different IP (stale config)
+                // This simulates loadConfiguredDevices calling setDevice
+                manager['setDevice']({
+                    ip: '192.168.1.200', // stale IP from config
+                    serialNumber: 'ABC123',
+                    deviceState: 'pending',
+                    isConfigured: true,
+                    isDiscovered: false, // config op, not discovery
+                    configuredName: 'My Configured Roku',
+                    configuredPassword: 'secret'
+                });
+
+                // Should have ONE device at the DISCOVERED IP (not the configured IP)
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.100'); // discovered IP preserved
+                expect(manager['devices'][0].isDiscovered).to.equal(true);
+                expect(manager['devices'][0].isConfigured).to.equal(true);
+                expect(manager['devices'][0].configuredName).to.equal('My Configured Roku');
+                expect(manager['devices'][0].configuredPassword).to.equal('secret');
+            });
+
+            it('preserves isConfigured when configured device gets discovered at new IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Configured-only device at old IP (not yet discovered on network)
+                const oldDevice = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceState: 'offline',
+                    isDiscovered: false,
+                    isConfigured: true,
+                    configuredName: 'Living Room Roku',
+                    configuredPassword: 'secret'
+                });
+                manager['devices'].push(oldDevice);
+
+                // SSDP discovers same serial at new IP
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC123',
+                    'device-id': 'ABC123',
+                    'default-device-name': 'Roku Express',
+                    'developer-enabled': 'true'
+                } as any);
+
+                await manager['processDiscoveredIp']('192.168.1.200', 'ABC123');
+
+                // Should have one device with BOTH isDiscovered and isConfigured
+                expect(manager['devices'].length).to.equal(1);
+                expect(manager['devices'][0].ip).to.equal('192.168.1.200');
+                expect(manager['devices'][0].isDiscovered).to.equal(true);
+                expect(manager['devices'][0].isConfigured).to.equal(true);
+                expect(manager['devices'][0].configuredName).to.equal('Living Room Roku');
+                expect(manager['devices'][0].configuredPassword).to.equal('secret');
+            });
+        });
+
         describe('edge cases', () => {
             it('does not dedupe when serial is undefined', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
