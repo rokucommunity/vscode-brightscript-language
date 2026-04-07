@@ -75,11 +75,12 @@ export class Extension {
             context
         );
 
-        this.telemetryManager.sendStartupEvent();
         this.deviceManager = new DeviceManager(context, this.globalStateManager);
         let userInputManager = new UserInputManager(
             this.deviceManager
         );
+
+        this.telemetryManager.sendStartupEvent(this.deviceManager.hasConfiguredDevices);
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
@@ -160,7 +161,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

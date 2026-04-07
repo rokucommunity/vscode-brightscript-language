@@ -25,14 +25,16 @@ export class TelemetryManager implements Disposable {
     /**
      * The extension has first started up
      */
-    public sendStartupEvent() {
-        this.reporter.sendTelemetryEvent('startup');
+    public sendStartupEvent(hasConfiguredDevices: boolean) {
+        this.reporter.sendTelemetryEvent('startup', {
+            hasConfiguredDevices: boolToString(hasConfiguredDevices)
+        });
     }
 
     /**
      * Track when a debug session has been started
      */
-    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo) {
+    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo, hasConfiguredDevices?: boolean) {
         let debugConnectionType: 'debugProtocol' | 'telnet';
         let enableDebugProtocol = finalConfig?.enableDebugProtocol ?? initialConfig?.enableDebugProtocol;
         if (enableDebugProtocol === true) {
@@ -65,6 +67,7 @@ export class TelemetryManager implements Disposable {
             isExtensionLogfilePathDefined: isDefined(
                 util.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),
+            hasConfiguredDevices: boolToString(hasConfiguredDevices),
             // include some deviceInfo data
             deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,
             deviceInfoSoftwareBuild: deviceInfo?.softwareBuild?.toString(),

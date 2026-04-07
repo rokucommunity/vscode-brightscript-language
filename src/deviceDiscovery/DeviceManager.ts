@@ -298,6 +298,18 @@ export class DeviceManager {
     }
 
     /**
+     * Returns true if the user has at least one manually configured device.
+     */
+    public get hasConfiguredDevices(): boolean {
+        const config = vscode.workspace.getConfiguration('brightscript');
+        const inspection = typeof config.inspect === 'function'
+            ? config.inspect<ConfiguredDevice[]>('devices')
+            : undefined;
+        return (inspection?.globalValue?.length ?? 0) > 0 ||
+            (inspection?.workspaceValue?.length ?? 0) > 0;
+    }
+
+    /**
      * Re-scan the network for devices and health-check existing ones
      */
     public refresh(force = false): boolean {

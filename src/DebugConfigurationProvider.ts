@@ -21,6 +21,7 @@ import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -30,7 +31,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
-        private brightScriptCommands: BrightScriptCommands
+        private brightScriptCommands: BrightScriptCommands,
+        private deviceManager?: DeviceManager
     ) {
         this.context = context;
     }
@@ -126,7 +128,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             this.telemetryManager?.sendStartDebugSessionEvent(
                 this.processUserWorkspaceSettings(config) as any,
                 result,
-                deviceInfo
+                deviceInfo,
+                this.deviceManager?.hasConfiguredDevices
             );
         }
     }
