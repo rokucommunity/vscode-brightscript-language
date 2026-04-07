@@ -62,12 +62,9 @@ export class Extension {
         this.whatsNewManager = new WhatsNewManager(this.globalStateManager, currentExtensionVersion);
         this.chanperfStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
 
-        //initialize the analytics manager
-        context.subscriptions.push(
-            this.telemetryManager = new TelemetryManager({
-                extensionId: EXTENSION_ID,
-                extensionVersion: currentExtensionVersion
-            })
+        this.deviceManager = new DeviceManager(context, this.globalStateManager);
+        let userInputManager = new UserInputManager(
+            this.deviceManager
         );
 
         let localPackageManager = new LocalPackageManager(
@@ -75,12 +72,15 @@ export class Extension {
             context
         );
 
-        this.deviceManager = new DeviceManager(context, this.globalStateManager);
-        let userInputManager = new UserInputManager(
-            this.deviceManager
+        //initialize the analytics manager
+        context.subscriptions.push(
+            this.telemetryManager = new TelemetryManager({
+                extensionId: EXTENSION_ID,
+                extensionVersion: currentExtensionVersion
+            }, this.deviceManager)
         );
 
-        this.telemetryManager.sendStartupEvent(this.deviceManager.hasConfiguredDevices);
+        this.telemetryManager.sendStartupEvent();
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
         this.brightScriptCommands = new BrightScriptCommands(
@@ -161,7 +161,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );

@@ -4,6 +4,7 @@ import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvi
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
 import { util } from '../util';
 import type { DeviceInfo } from 'roku-deploy';
+import type { DeviceManager } from '../deviceDiscovery/DeviceManager';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
 
@@ -13,7 +14,8 @@ export class TelemetryManager implements Disposable {
             extensionId: string;
             extensionVersion: string;
             applicationInsightsKey?: string;
-        }
+        },
+        private deviceManager?: DeviceManager
     ) {
         this.reporter = new TelemetryReporter(this.options.extensionId, this.options.extensionVersion, this.options.applicationInsightsKey ?? APP_INSIGHTS_KEY);
     }
@@ -25,16 +27,16 @@ export class TelemetryManager implements Disposable {
     /**
      * The extension has first started up
      */
-    public sendStartupEvent(hasConfiguredDevices: boolean) {
+    public sendStartupEvent() {
         this.reporter.sendTelemetryEvent('startup', {
-            hasConfiguredDevices: boolToString(hasConfiguredDevices)
+            hasConfiguredDevices: boolToString(this.deviceManager?.hasConfiguredDevices)
         });
     }
 
     /**
      * Track when a debug session has been started
      */
-    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo, hasConfiguredDevices?: boolean) {
+    public sendStartDebugSessionEvent(initialConfig: BrightScriptLaunchConfiguration & { preLaunchTask: string }, finalConfig: BrightScriptLaunchConfiguration, deviceInfo?: DeviceInfo) {
         let debugConnectionType: 'debugProtocol' | 'telnet';
         let enableDebugProtocol = finalConfig?.enableDebugProtocol ?? initialConfig?.enableDebugProtocol;
         if (enableDebugProtocol === true) {
@@ -67,7 +69,7 @@ export class TelemetryManager implements Disposable {
             isExtensionLogfilePathDefined: isDefined(
                 util.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),
-            hasConfiguredDevices: boolToString(hasConfiguredDevices),
+            hasConfiguredDevices: boolToString(this.deviceManager?.hasConfiguredDevices),
             // include some deviceInfo data
             deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,
             deviceInfoSoftwareBuild: deviceInfo?.softwareBuild?.toString(),
