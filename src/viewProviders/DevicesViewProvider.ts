@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { DeviceManager, RokuDeviceDetails } from '../deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -98,14 +98,18 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         return util.getConfiguration('brightscript.deviceDiscovery').get('concealDeviceInfo') === true;
     }
 
-    private devices: Array<RokuDeviceDetails>;
+    private devices: Array<RokuDevice>;
 
-    private makeName(device: RokuDeviceDetails) {
-        return [
+    private makeName(device: RokuDevice) {
+        // Use configuredName if available, otherwise fall back to user-device-name
+        const displayName = device.configuredName || device.deviceInfo['user-device-name'] || device.ip;
+        const softwareVersion = device.deviceInfo['software-version'];
+        const parts = [
             device.deviceInfo['model-number'],
-            device.deviceInfo['user-device-name'],
-            `OS ${device.deviceInfo['software-version']}`
-        ].join(' – ');
+            displayName,
+            softwareVersion ? `OS ${softwareVersion}` : undefined
+        ].filter(Boolean);
+        return parts.join(' – ') || device.ip;
     }
 
     getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
@@ -122,25 +126,45 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                     let treeItem = new DeviceTreeItem(
                         this.makeName(device),
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        device.serialNumber,
+                        device.key,
                         device.deviceInfo
                     );
-                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name']} - ${this.concealString(device.deviceInfo['serial-number'])} | ${device.deviceInfo['user-device-location']}`;
+                    treeItem.tooltip = `${device.ip} | ${device.deviceInfo['friendly-model-name'] || ''} - ${this.concealString(device.deviceInfo['serial-number']?.toString() || '')} | ${device.deviceInfo['user-device-location'] || ''}`;
 
                     // Set resourceUri to enable FileDecorationProvider for text coloring
-                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`);
+                    // Use the device key which is serial-based when available, IP-based as fallback
+                    treeItem.resourceUri = vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`);
 
                     // Set icon based on device state
                     if (device.deviceState === 'offline') {
-                        treeItem.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('errorForeground'));
+                        // For offline devices, check cache to distinguish:
+                        // - warning icon: never successfully contacted (no cache)
+                        // - disconnect icon: was online before (has cache)
+                        const hasCache = device.serialNumber && this.deviceManager.hasDeviceCache(device.serialNumber);
+                        if (hasCache) {
+                            treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
+                        } else {
+                            treeItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
+                        }
                     } else if (device.deviceState === 'pending') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
                     } else {
-                        treeItem.iconPath = icons.getDeviceType(device);
+                        treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
                     }
 
-                    // Enable inline refresh button on hover
-                    treeItem.contextValue = 'device';
+                    // Set contextValue for context menu actions
+                    // Values: device, device-user, device-workspace, device-user-workspace
+                    const inUser = device.configuredIn?.includes('user');
+                    const inWorkspace = device.configuredIn?.includes('workspace');
+                    let contextValue = 'device';
+                    if (inUser && inWorkspace) {
+                        contextValue = 'device-user-workspace';
+                    } else if (inUser) {
+                        contextValue = 'device-user';
+                    } else if (inWorkspace) {
+                        contextValue = 'device-workspace';
+                    }
+                    treeItem.contextValue = contextValue;
 
                     items.push(treeItem);
                 }
@@ -178,13 +202,13 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 );
             }
 
-            const device = this.findDeviceById(element.key);
+            const device = this.deviceManager.getDevice(element.key);
             if (!device) {
                 return;
             }
             this.deviceManager.checkDeviceHealth(device).catch(() => { });
 
-            if (device.deviceInfo['is-tv'] === 'true') {
+            if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(
                     this.createDeviceInfoTreeItem({
                         label: '📺 Switch TV Input',
@@ -335,10 +359,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
 
-    private findDeviceById(serialNumber: string): RokuDeviceDetails {
-        return this.devices.find(device => device.serialNumber === serialNumber);
-    }
-
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
         return util.concealObject(
             object,
@@ -397,13 +417,13 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
 
     private deviceStates = new Map<string, string>();
 
-    updateDevices(devices: RokuDeviceDetails[]): void {
+    updateDevices(devices: RokuDevice[]): void {
         const changedUris: vscode.Uri[] = [];
         for (const device of devices) {
-            const oldState = this.deviceStates.get(device.serialNumber);
+            const oldState = this.deviceStates.get(device.key);
             if (oldState !== device.deviceState) {
-                this.deviceStates.set(device.serialNumber, device.deviceState);
-                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.serialNumber}`));
+                this.deviceStates.set(device.key, device.deviceState);
+                changedUris.push(vscode.Uri.parse(`${DEVICE_URI_SCHEME}:/${device.key}`));
             }
         }
         if (changedUris.length > 0) {
@@ -416,10 +436,10 @@ class DeviceDecorationProvider implements vscode.FileDecorationProvider {
             return undefined;
         }
 
-        const serialNumber = uri.path.slice(1); // Remove leading slash
-        const state = this.deviceStates.get(serialNumber);
+        const deviceKey = uri.path.slice(1); // Remove leading slash (key is "s:..." or "i:...")
+        const state = this.deviceStates.get(deviceKey);
 
-        if (state === 'pending') {
+        if (state === 'pending' || state === 'offline') {
             return {
                 color: new vscode.ThemeColor('disabledForeground')
             };

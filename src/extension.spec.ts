@@ -150,11 +150,11 @@ describe('extension', () => {
     });
 
     describe('process crash events', () => {
-        function makeCrashEvent(type: 'uncaughtException' | 'unhandledRejection', message: string, stack?: string) {
+        function makeCrashEvent(type: 'uncaughtException' | 'unhandledRejection', message: string, stack?: string, additionalInfo?: Record<string, unknown>) {
             return {
                 event: 'ProcessCrashEvent',
                 session: { id: 'test-session' } as any,
-                body: { type: type, message: message, stack: stack }
+                body: { type: type, message: message, stack: stack, additionalInfo: additionalInfo }
             };
         }
 
@@ -209,6 +209,26 @@ describe('extension', () => {
             expect(callArgs[1].issueTitle).to.include('uncaughtException');
             expect(callArgs[1].issueTitle).to.include('boom');
             expect(callArgs[1].issueBody).to.include('Error: boom');
+        });
+
+        it('includes additionalInfo fields as a table in the issue body', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves('Report Issue' as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom', undefined, {
+                    clientName: 'VS Code',
+                    rokuDebugVersion: '1.2.3',
+                    developerMode: true
+                }) as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            const issueBody: string = (executeStub.getCall(0).args as any[])[1].issueBody;
+            expect(issueBody).to.include('|Client Name|VS Code|');
+            expect(issueBody).to.include('|Roku Debug Version|1.2.3|');
+            expect(issueBody).to.include('|Developer Mode|true|');
         });
 
         it('does not open issue reporter when user dismisses the dialog', async () => {
