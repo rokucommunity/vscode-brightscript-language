@@ -376,10 +376,13 @@ export class Extension {
         const launchConfig = parentSession.configuration as BrightScriptLaunchConfiguration;
         tsPath = tsPath.replace(/\s*pkg:/, '');
         // const tsDir = path.dirname(tsPath);
-        const rootDir = launchConfig.rootDir;
         const workspaceFolders = vscode.workspace.workspaceFolders || [];
+        //use the stagingDir if provided, otherwise default to what we think it will probably be (hasn't changed in years...)
+        const stagingDir = parentSession.configuration.stagingDir ?? parentSession.configuration.stagingFolderPath ?? `${workspaceFolders[0].uri.fsPath}/out/.roku-deploy-staging`;
+        //something like ${rootDir}/source/compiled
         const remoteRoot = path.normalize(path.dirname(tsPath));
-        const localRoot = path.normalize(path.join(rootDir, remoteRoot));
+        //something like ${workspaceFolder}/out/.roku-deploy-staging/source/compiled
+        const localRoot = path.normalize(path.join(stagingDir, remoteRoot));
 
         // vscode doesn't trigger the onDidStartDebugSession event until the debugger is actually attached.
         // So there's a window where the parent debug session stops while this is still trying to attach.
