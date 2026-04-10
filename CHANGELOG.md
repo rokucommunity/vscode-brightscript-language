@@ -7,14 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [2.63.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.4...v2.63.5) - 2026-04-10
-### Changed
+### Fixed
  - upgrade to [roku-debug@0.23.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0234---2026-04-07). Notable changes since 0.23.3:
      - Fix sourcemap staging bugs when maps are from different depth than staging dir ([#308](https://github.com/rokucommunity/roku-debug/pull/308))
      - Handle THREAD_DETACHED gracefully and show [unavailable] for inaccessible threads ([#324](https://github.com/rokucommunity/roku-debug/pull/324))
      - Resolve relative source maps and honor sourceRoot ([#307](https://github.com/rokucommunity/roku-debug/pull/307))
  - upgrade to [roku-deploy@3.16.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3164---2026-04-07). Notable changes since 3.16.3:
      - Fix `zipFolder` bug that wasn't properly handling absolute stagingDir path ([#245](https://github.com/rokucommunity/roku-deploy/pull/245))
-     - Bump picomatch from 2.3.1 to 2.3.2 ([#242](https://github.com/rokucommunity/roku-deploy/pull/242))
 
 
 
