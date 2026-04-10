@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.5...v2.63.6) - 2026-04-10
+### Changed
+ - rolled back changes in 2.62.5 causing sideloading issues ([#753](https://github.com/rokucommunity/vscode-brightscript-language/pull/753))
+ - downgrade from 0.23.4 to [roku-debug@0.23.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0233---2026-04-01).
+ - downgrade from 3.16.4 to [roku-deploy@3.16.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3163---2026-03-24).
+
+
+
 ## [2.63.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.4...v2.63.5) - 2026-04-10
 ### Fixed
  - upgrade to [roku-debug@0.23.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0234---2026-04-07). Notable changes since 0.23.3:
