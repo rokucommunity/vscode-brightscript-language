@@ -66,7 +66,7 @@ export class UserInputManager {
 
         const scanTimeoutMs = 7_000;
         let scanTimeoutId: NodeJS.Timeout | null = null;
-        let hasScanned = this.deviceManager.refresh();
+        let hasScanned = this.deviceManager.refresh(false, false);
         this.deviceManager.on('scanNeeded-changed', () => {
             hasScanned = true;
             if (scanTimeoutId) {

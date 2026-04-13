@@ -111,11 +111,8 @@ export class DeviceManager {
         });
 
         this.finder.on('lost', (ip: string) => {
-            // Find and remove device by IP
-            const device = this.getDeviceEntry({ ip: ip });
-            if (device) {
-                this.removeDevice(device.ip);
-            }
+            // Remove device from discovered array and update state
+            this.removeDevice(ip);
         });
 
         // Forward scan events from RokuFinder
@@ -146,7 +143,8 @@ export class DeviceManager {
     // #endregion
 
     // Core state and dependencies
-    private devices: DeviceEntry[] = [];
+    private configuredDevices: ConfiguredDeviceEntry[] = [];
+    private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private scanNeeded = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
@@ -212,60 +210,78 @@ export class DeviceManager {
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
     public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
-        // Normalize input to lookup object
-        let lookup: { ip?: string; serialNumber?: string };
-        if (typeof keyOrLookup === 'string') {
-            // Decode string key - require explicit "s:" or "i:" prefix
-            if (keyOrLookup.startsWith('s:')) {
-                const serial = keyOrLookup.slice(2);
-                if (!serial) {
-                    return undefined;
-                }
-                lookup = { serialNumber: serial };
-            } else if (keyOrLookup.startsWith('i:')) {
-                const ip = keyOrLookup.slice(2);
-                if (!ip) {
-                    return undefined;
-                }
-                lookup = { ip: ip };
-            } else {
+        const device = this.buildMergedDevice(keyOrLookup as any);
+
+        // If lookup object with both ip and serialNumber, verify exact match
+        if (typeof keyOrLookup !== 'string' && keyOrLookup.ip && keyOrLookup.serialNumber && device) {
+            if (device.ip !== keyOrLookup.ip || device.serialNumber !== keyOrLookup.serialNumber) {
                 return undefined;
             }
-        } else {
-            lookup = keyOrLookup;
         }
 
-        const device = this.getDeviceEntry(lookup);
-        if (!device) {
-            return undefined;
-        }
-
-        // Hydrate deviceInfo from cache (use getSerial for fallback to IP→serial mapping)
-        const serial = this.getSerial(device);
-        const cached = serial ? this.globalStateManager.getCachedDevice(serial) : undefined;
-
-        return {
-            ...device,
-            deviceInfo: cached?.deviceInfo ?? {}
-        };
+        return device;
     }
 
     /**
      * Get a list of all roku devices known by this extension (by scanning, hardcoded lists, etc)
      * Returns full devices with deviceInfo hydrated from cache.
-     * Configured devices are sorted first, then by form factor, name, and id.
+     * Builds merged view on-demand from configuredDevices and discoveredDevices arrays.
+     * Deduplication by serial number (preferred) or IP (fallback).
      */
     public getAllDevices(): RokuDevice[] {
-        // Hydrate each device using getDevice()
-        const devices: RokuDevice[] = [];
-        for (const device of this.devices) {
-            const deviceDetail = this.getDevice({ ip: device.ip });
-            if (deviceDetail) {
-                devices.push(deviceDetail);
+        const mergedDevices = new Map<string, RokuDevice>();
+        const processedDiscoveredIndices = new Set<number>();
+
+        // Process configured devices first, finding matching discovered entries
+        for (const configured of this.configuredDevices) {
+            // Find matching discovered entry by serial, resolvedIp, or host
+            let discoveredIdx = -1;
+            let discovered: DiscoveredDeviceEntry | undefined;
+
+            if (configured.serialNumber) {
+                discoveredIdx = this.discoveredDevices.findIndex(d => d.serialNumber === configured.serialNumber);
+            }
+            if (discoveredIdx < 0 && configured.resolvedIp) {
+                discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.resolvedIp);
+            }
+            if (discoveredIdx < 0) {
+                discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.host);
+            }
+
+            if (discoveredIdx >= 0) {
+                discovered = this.discoveredDevices[discoveredIdx];
+                processedDiscoveredIndices.add(discoveredIdx);
+            }
+
+            const device = this.buildMergedDevice(configured, discovered);
+            if (device) {
+                mergedDevices.set(device.key, device);
             }
         }
 
-        return devices.sort(
+        // Process discovered-only devices (not already merged via configured)
+        for (let i = 0; i < this.discoveredDevices.length; i++) {
+            if (processedDiscoveredIndices.has(i)) {
+                continue;
+            }
+
+            const discovered = this.discoveredDevices[i];
+            const device = this.buildMergedDevice(undefined, discovered);
+            if (device) {
+                // Check for duplicate by key or IP
+                if (mergedDevices.has(device.key)) {
+                    continue;
+                }
+                const existingByIp = Array.from(mergedDevices.values()).find(d => d.ip === device.ip);
+                if (existingByIp) {
+                    continue;
+                }
+                mergedDevices.set(device.key, device);
+            }
+        }
+
+        // Convert to array and sort
+        return Array.from(mergedDevices.values()).sort(
             // Sort by form factor
             firstBy<RokuDevice>((a, b) => {
                 return this.getPriorityForDeviceFormFactor(a.deviceInfo) - this.getPriorityForDeviceFormFactor(b.deviceInfo);
@@ -290,6 +306,23 @@ export class DeviceManager {
     }
 
     /**
+     * Compute merged device state from configured and discovered states.
+     * Priority: online > offline > pending
+     */
+    private computeMergedState(
+        configuredState: DeviceState,
+        discoveredState: 'pending' | 'online' | undefined
+    ): DeviceState {
+        if (configuredState === 'online' || discoveredState === 'online') {
+            return 'online';
+        }
+        if (configuredState === 'offline') {
+            return 'offline';
+        }
+        return 'pending';
+    }
+
+    /**
      * Check if a device has cached info (has been successfully resolved before).
      * Used by view providers to determine icon: warning (no cache) vs disconnect (has cache).
      */
@@ -300,8 +333,8 @@ export class DeviceManager {
     /**
      * Re-scan the network for devices and health-check existing ones
      */
-    public refresh(force = false): boolean {
-        this.checkDevicesHealth(force).catch(() => { });
+    public refresh(force = false, doSyntheticDelay = true): boolean {
+        this.checkDevicesHealth(force, doSyntheticDelay).catch(() => { });
         // Block automatic scans when device discovery is disabled
         if (!force && !this.deviceDiscoveryEnabled) {
             return false;
@@ -314,15 +347,25 @@ export class DeviceManager {
      * Useful for refreshing the network scan without losing user-configured devices.
      */
     public clearCurrentDeviceList() {
-        // Keep configured devices, remove discovered-only devices
-        this.devices = this.devices.filter(d => d.isConfigured);
+        // Clear discovered devices (ephemeral)
+        this.discoveredDevices = [];
+
+        // Reset configured devices to pending (they persist but need re-verification)
+        for (const entry of this.configuredDevices) {
+            entry.deviceState = 'pending';
+        }
 
         // Clear short-lived device info cache
         this.deviceInfoCache.clear();
 
-        // Only clear lastUsedDeviceIp if it belonged to a discovered device that was removed
-        if (this.lastUsedDeviceIp && !this.devices.some(d => d.ip === this.lastUsedDeviceIp)) {
-            this.lastUsedDeviceIp = undefined;
+        // Only clear lastUsedDeviceIp if it belonged to a discovered-only device
+        if (this.lastUsedDeviceIp) {
+            const stillExists = this.configuredDevices.some(
+                d => d.resolvedIp === this.lastUsedDeviceIp || d.host === this.lastUsedDeviceIp
+            );
+            if (!stillExists) {
+                this.lastUsedDeviceIp = undefined;
+            }
         }
 
         this.emitDevicesChanged();
@@ -334,6 +377,9 @@ export class DeviceManager {
 
         // Clear current device list
         this.clearCurrentDeviceList();
+
+        // Clear new arrays completely (clearCurrentDeviceList already cleared discoveredDevices)
+        this.configuredDevices = [];
 
         // Clear global state
         this.globalStateManager.clearLastSeenDevices();
@@ -393,7 +439,8 @@ export class DeviceManager {
         this.systemSleepMonitor?.dispose?.();
         this.networkChangeMonitor?.dispose?.();
         this.finder?.dispose?.();
-        this.devices = [];
+        this.configuredDevices = [];
+        this.discoveredDevices = [];
         this.emitter.removeAllListeners();
 
         //clear any timeouts
@@ -414,40 +461,6 @@ export class DeviceManager {
         return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
     }
 
-    /**
-     * Get device reference from array (lightweight, no cache lookup).
-     * For internal use only - doesn't hydrate from cache.
-     *
-     * @param lookup - Object with optional ip and/or serialNumber
-     * @returns Device reference from array or undefined
-     */
-    private getDeviceEntry(lookup: { ip?: string; serialNumber?: string }): DeviceEntry | undefined {
-        if (!lookup.ip && !lookup.serialNumber) {
-            return undefined;
-        }
-
-        if (lookup.ip && lookup.serialNumber) {
-            // Both provided: Must match both
-            return this.devices.find(d => d.ip === lookup.ip && this.getSerial(d) === lookup.serialNumber);
-        } else if (lookup.ip) {
-            // IP only: Match by IP (primary key)
-            return this.devices.find(d => d.ip === lookup.ip);
-        } else if (lookup.serialNumber) {
-            // Serial only: Match by serial in deviceInfo
-            return this.devices.find(d => this.getSerial(d) === lookup.serialNumber);
-        }
-
-        return undefined;
-    }
-
-    /**
-     * Get serial number for a device.
-     * Checks device.serialNumber first, falls back to IP→serial mapping.
-     */
-    private getSerial(device: DeviceEntry): string | undefined {
-        return device.serialNumber ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
-    }
-
     private get timeSinceLastScan(): number {
         if (!this.lastScanDate) {
             return Infinity; // Never scanned, so always stale
@@ -466,133 +479,44 @@ export class DeviceManager {
     }
 
     /**
-     * Add or update a device in the devices array.
-     * Computes the device key from serialNumber (or falls back to IP).
-     * Handles deduplication when a device changes IP (same serial, different IP).
+     * Remove a device from the discoveredDevices array and update lastSeenDevices.
      */
-    private setDevice(input: Omit<DeviceEntry, 'key'>): void {
-        /**
-         * Apply merge rules: preserve state from existing entry based on discovered/configured status.
-         * - Keep highest device state: online > offline > pending
-         * - If existing is discovered and input is configuring: keep discovered state, apply config
-         * - If existing is configured and input is discovering: keep config props, apply discovered
-         */
-        const applyMergeRules = (existing: DeviceEntry) => {
-            // Keep highest device state: online > offline > pending
-            const stateRank: Record<DeviceState, number> = { online: 2, offline: 1, pending: 0 };
-            if (stateRank[existing.deviceState] > stateRank[input.deviceState]) {
-                input.deviceState = existing.deviceState;
-            }
+    private removeDevice(deviceIp: string): void {
+        // Find the serial before removing
+        const discovered = this.discoveredDevices.find(d => d.ip === deviceIp);
+        const serial = discovered?.serialNumber ?? this.globalStateManager.getSerialNumberForIp(deviceIp, this.networkId);
 
-            if (existing.isDiscovered && 'isConfigured' in input && input.isConfigured) {
-                input.isDiscovered = existing.isDiscovered;
-            } else if (existing.isConfigured && 'isDiscovered' in input && input.isDiscovered) {
-                input.isConfigured = existing.isConfigured;
-                input.configuredName = existing.configuredName;
-                input.configuredPassword = existing.configuredPassword;
-                input.configuredIn = existing.configuredIn;
-            }
-        };
+        // Remove from discovered devices
+        this.removeDiscoveredDevice(deviceIp);
 
-        // Serial dedupe: check for existing device with same serial at DIFFERENT IP
-        if (input.serialNumber) {
-            const oldEntry = this.devices.find(d => d.ip !== input.ip && this.getSerial(d) === input.serialNumber);
-            if (oldEntry) {
-                // If old is discovered and new is config, keep the discovered IP
-                if (oldEntry.isDiscovered && 'isConfigured' in input && input.isConfigured) {
-                    input.ip = oldEntry.ip;
-                }
-
-                applyMergeRules(oldEntry);
-
-                // Transfer lastUsedDeviceIp to new IP if it was pointing to old device
-                if (this.lastUsedDeviceIp === oldEntry.ip) {
-                    this.lastUsedDeviceIp = input.ip;
-                }
-
-                // Remove old entry directly from array
-                this.devices = this.devices.filter(d => d.ip !== oldEntry.ip);
-            }
+        // Remove from last seen devices (if has serial)
+        if (serial) {
+            this.globalStateManager.removeLastSeenDevice(this.networkId, serial);
         }
 
-        // IP dedupe: check for existing device at same IP
-        const existingIndex = this.devices.findIndex(d => d.ip === input.ip);
-        if (existingIndex >= 0) {
-            applyMergeRules(this.devices[existingIndex]);
-            this.devices = this.devices.filter((_, i) => i !== existingIndex);
+        // Clear lastUsedDeviceIp if the removed device was the last used
+        if (this.lastUsedDeviceIp === deviceIp) {
+            this.lastUsedDeviceIp = undefined;
         }
-
-        // Compute key: serial-based when available, IP-based as fallback
-        const key = input.serialNumber ? `s:${input.serialNumber}` : `i:${input.ip}`;
-        const device: DeviceEntry = { ...input, key: key };
-
-        this.devices.push(device);
 
         this.emitDevicesChanged();
     }
 
     /**
-     * Mark a device as unreachable after a failed health check.
-     * - Configured devices: marked 'offline', isDiscovered = false
-     * - Discovered-only devices: removed from the list
-     */
-    private markDeviceUnreachable(deviceIp: string): void {
-        const device = this.getDeviceEntry({ ip: deviceIp });
-        if (!device) {
-            return;
-        }
-
-        if (device.isConfigured) {
-            // Configured devices stay but marked offline and not discovered
-            device.deviceState = 'offline';
-            device.isDiscovered = false;
-            this.emitDevicesChanged();
-        } else {
-            // Discovered-only device: remove it
-            this.removeDevice(deviceIp);
-        }
-    }
-
-    /**
-     * Remove a device from the devices array.
-     */
-    private removeDevice(deviceIp: string): void {
-        const device = this.getDeviceEntry({ ip: deviceIp });
-        if (device) {
-            this.devices = this.devices.filter(d => d.ip !== deviceIp);
-
-            // Remove from last seen devices (if has serial)
-            const serial = this.getSerial(device);
-            if (serial) {
-                this.globalStateManager.removeLastSeenDevice(this.networkId, serial);
-            }
-
-            // Clear lastUsedDeviceIp if the removed device was the last used
-            if (this.lastUsedDeviceIp === deviceIp) {
-                this.lastUsedDeviceIp = undefined;
-            }
-
-            this.emitDevicesChanged();
-        }
-    }
-
-    /**
      * Load last seen devices from cache.
-     * Removes non-configured devices and resets configured devices to pending (no-op at startup).
-     * Then loads cached devices for the current network.
+     * Resets configured devices to pending and clears discovered devices.
+     * Last seen devices are used to pre-populate the IP→serial mapping.
      */
     private loadLastSeenDevices(): void {
-        // flip configured devices to pending and remove all the rest
-        for (let i = this.devices.length - 1; i >= 0; i--) {
-            const device = this.devices[i];
-            if (device.isConfigured) {
-                device.deviceState = 'pending';
-            } else {
-                this.devices.splice(i, 1);
-            }
+        // Reset configured devices to pending
+        for (const entry of this.configuredDevices) {
+            entry.deviceState = 'pending';
         }
 
-        // Load cached devices for current network
+        // Clear discovered devices (ephemeral - reload from network)
+        this.discoveredDevices = [];
+
+        // Load cached devices for current network - add to discoveredDevices with 'pending' state
         const lastSeenDevices = this.globalStateManager.getLastSeenDevices(this.networkId);
         for (const serialNumber of lastSeenDevices) {
             const cached = this.globalStateManager.getCachedDevice(serialNumber);
@@ -604,15 +528,15 @@ export class DeviceManager {
                     this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
                     continue;
                 }
-                // Create device with serial (key computed by setDevice)
-                this.setDevice({
-                    ip: ip,
-                    serialNumber: serialNumber,
-                    deviceState: 'pending',
-                    isDiscovered: false
-                });
                 // Ensure IP→serial mapping is set up
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
+
+                // Add to discoveredDevices with 'pending' state (will be updated when device responds)
+                this.discoveredDevices.push({
+                    ip: ip,
+                    serialNumber: serialNumber,
+                    deviceState: 'pending'
+                });
             } else {
                 // No cached info - remove stale entry
                 this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
@@ -682,21 +606,33 @@ export class DeviceManager {
             });
         }
 
-        const configuredDevices = Array.from(deviceMap.values());
+        const configuredDevicesList = Array.from(deviceMap.values());
+
+        // Track which hosts are still in config (for removal logic)
+        const configuredHosts = new Set<string>();
+        const configuredSerials = new Set<string>();
 
         // Track resolved IPs so removal loop can compare against them (not hostnames)
         const configuredIps = new Set<string>();
 
         // First: add/update configured devices (with DNS resolution)
-        for (const configured of configuredDevices) {
-            // Resolve hostname to IP address (handles both hostnames and IPs)
-            let ip = configured.host;
-            try {
-                ip = await rokuDebugUtil.dnsLookup(configured.host);
-            } catch {
-                // DNS lookup failed - keep original host value as fallback
-                // This allows IP addresses to work even if DNS resolution fails
+        for (const configured of configuredDevicesList) {
+            configuredHosts.add(configured.host);
+            if (configured.serialNumber) {
+                configuredSerials.add(configured.serialNumber);
             }
+
+            // Resolve hostname to IP address (handles both hostnames and IPs)
+            let resolvedIp: string | undefined;
+            try {
+                resolvedIp = await rokuDebugUtil.dnsLookup(configured.host);
+            } catch {
+                // DNS lookup failed - resolvedIp remains undefined
+                // This allows the original host to be used if it's an IP
+            }
+
+            // Use resolved IP or fall back to host (if host looks like IP)
+            const ip = resolvedIp ?? configured.host;
 
             // Track resolved IP for removal loop
             configuredIps.add(ip);
@@ -707,64 +643,48 @@ export class DeviceManager {
                 serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
             }
 
-            // Check if device already exists by IP (primary key)
-            const existingDevice = this.getDeviceEntry({ ip: ip });
+            // Check for existing entry in configuredDevices by host
+            const existingConfiguredIdx = this.configuredDevices.findIndex(
+                d => d.host === configured.host ||
+                    (configured.serialNumber && d.serialNumber === configured.serialNumber)
+            );
+            const existingConfigured = existingConfiguredIdx >= 0 ? this.configuredDevices[existingConfiguredIdx] : undefined;
 
             // Preserve state if device exists
-            const deviceState = existingDevice?.deviceState ?? 'pending';
-            const isDiscovered = existingDevice?.isDiscovered ?? false;
+            const deviceState = existingConfigured?.deviceState ?? 'pending';
+
+            // Update or add to configuredDevices array
+            const configuredEntry: ConfiguredDeviceEntry = {
+                ...configured,
+                resolvedIp: resolvedIp,
+                deviceState: deviceState
+            };
+
+            if (existingConfiguredIdx >= 0) {
+                this.configuredDevices[existingConfiguredIdx] = configuredEntry;
+            } else {
+                this.configuredDevices.push(configuredEntry);
+            }
 
             // Set up IP→serial mapping if we have serial (deviceInfo already cached if it exists)
             if (serialNumber) {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
             }
-
-            // Create device with serial if known (key computed by setDevice)
-            this.setDevice({
-                ip: ip,
-                serialNumber: serialNumber,
-                deviceState: deviceState,
-                isConfigured: true,
-                configuredIn: configured.configuredIn,
-                isDiscovered: isDiscovered,
-                configuredName: configured.name,
-                configuredPassword: configured.password
-            });
         }
 
-        // Then: remove devices no longer in config (using resolved IPs, not hostnames)
-        for (let i = this.devices.length - 1; i >= 0; i--) {
-            const device = this.devices[i];
+        // Remove configured devices no longer in config
+        for (let i = this.configuredDevices.length - 1; i >= 0; i--) {
+            const entry = this.configuredDevices[i];
+            const stillConfigured = configuredHosts.has(entry.host) ||
+                (entry.serialNumber && configuredSerials.has(entry.serialNumber));
 
-            // Skip non-configured devices
-            if (!device.isConfigured) {
-                continue;
-            }
-
-            // Check if still in config (by resolved IP or serial)
-            const serial = this.getSerial(device);
-            const stillConfigured = configuredIps.has(device.ip) ||
-                configuredDevices.some(c => serial && c.serialNumber === serial);
-
-            if (stillConfigured) {
-                continue;
-            }
-
-            // Device removed from config
-            if (device.isDiscovered) {
-                // Keep as discovered-only device
-                device.isConfigured = false;
-                device.configuredIn = [];
-                device.configuredName = undefined;
-                device.configuredPassword = undefined;
-            } else {
-                // Not discovered either, remove completely
-                this.devices.splice(i, 1);
+            if (!stillConfigured) {
+                this.configuredDevices.splice(i, 1);
             }
         }
     }
 
-    private async resolveDevice(device: DeviceEntry, doSyntheticDelay = true): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true): Promise<boolean> {
 
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
@@ -772,9 +692,22 @@ export class DeviceManager {
         this.resolveDeviceSequence.set(device.ip, currentSeq);
 
         // Set to pending during health check with immediate UI feedback
-        const existingDevice = this.getDeviceEntry({ ip: device.ip });
-        if (existingDevice && existingDevice.deviceState !== 'pending') {
-            existingDevice.deviceState = 'pending';
+        // Update both arrays to show pending state
+        let stateChanged = false;
+
+        const configuredEntry = this.getConfiguredDeviceByIp(device.ip);
+        if (configuredEntry && configuredEntry.deviceState !== 'pending') {
+            configuredEntry.deviceState = 'pending';
+            stateChanged = true;
+        }
+
+        const discoveredEntry = this.discoveredDevices.find(d => d.ip === device.ip);
+        if (discoveredEntry && discoveredEntry.deviceState !== 'pending') {
+            discoveredEntry.deviceState = 'pending';
+            stateChanged = true;
+        }
+
+        if (stateChanged) {
             this.emitDevicesChanged();
         }
 
@@ -811,24 +744,51 @@ export class DeviceManager {
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
 
-            // Create device with serial (key computed by setDevice, dedupe handled internally)
-            this.setDevice({
-                ip: device.ip,
-                serialNumber: serial,
-                deviceState: 'online',
-                isDiscovered: true
-            });
+            // Update discoveredDevices array
+            this.setDiscoveredDevice(device.ip, serial, 'online');
 
+            // Update configuredDevices if this device is configured
+            this.updateConfiguredDeviceState(device.ip, serial, 'online');
+
+            this.emitDevicesChanged();
             return true;
         } else {
-            this.markDeviceUnreachable(device.ip);
+            // Remove from discoveredDevices (ephemeral - offline devices are removed)
+            this.removeDiscoveredDevice(device.ip);
+
+            // Update configured device state to offline (configured devices persist)
+            this.updateConfiguredDeviceState(device.ip, undefined, 'offline');
+
+            this.emitDevicesChanged();
             return false;
         }
     }
 
-    private async checkDevicesHealth(force = false): Promise<void> {
-        // Use internal devices array directly - no need to hydrate from cache
-        const devices = this.devices;
+    /**
+     * Update state for a configured device by IP or serial number.
+     */
+    private updateConfiguredDeviceState(ip: string, serialNumber: string | undefined, state: DeviceState): void {
+        // Try to find by serial first (more reliable), then by IP
+        let entry: ConfiguredDeviceEntry | undefined;
+        if (serialNumber) {
+            entry = this.getConfiguredDeviceBySerial(serialNumber);
+        }
+        if (!entry) {
+            entry = this.getConfiguredDeviceByIp(ip);
+        }
+
+        if (entry) {
+            entry.deviceState = state;
+            // Update resolvedIp if we have a successful resolution
+            if (state === 'online' && ip) {
+                entry.resolvedIp = ip;
+            }
+        }
+    }
+
+    private async checkDevicesHealth(force = false, doSyntheticDelay = true): Promise<void> {
+        // Get all devices from merged view
+        const devices = this.getAllDevices();
 
         // Filter to devices that need checking
         const devicesToCheck = force ? devices : devices.filter(d => {
@@ -842,7 +802,15 @@ export class DeviceManager {
 
         // Set all to pending and emit before async work
         for (const device of devicesToCheck) {
-            device.deviceState = 'pending';
+            // Update state in source arrays (both configured and discovered)
+            const configuredEntry = this.getConfiguredDeviceByIp(device.ip);
+            if (configuredEntry) {
+                configuredEntry.deviceState = 'pending';
+            }
+            const discoveredEntry = this.discoveredDevices.find(d => d.ip === device.ip);
+            if (discoveredEntry) {
+                discoveredEntry.deviceState = 'pending';
+            }
             this.lastHealthCheckTime.set(device.ip, Date.now());
         }
         this.emitDevicesChanged();
@@ -850,7 +818,7 @@ export class DeviceManager {
         // Check all devices
         let needsScan = false;
         await Promise.all(devicesToCheck.map(async (device) => {
-            const isHealthy = await this.resolveDevice(device);
+            const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
             if (!isHealthy) {
                 needsScan = true;
             }
@@ -937,16 +905,194 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
             }
 
-            // Create device with serial (key computed by setDevice, dedupe handled internally)
-            this.setDevice({
-                ip: ip,
-                serialNumber: serial,
-                deviceState: 'online',
-                isDiscovered: true
-            });
+            // Update discoveredDevices array
+            this.setDiscoveredDevice(ip, serial, 'online');
+
+            // Update configured device state if present
+            this.updateConfiguredDeviceState(ip, serial, 'online');
+
+            this.emitDevicesChanged();
         } catch {
-            // Device unreachable, ignore
+            // Device unreachable - remove from discoveredDevices if present
+            this.removeDiscoveredDevice(ip);
         }
+    }
+
+    /**
+     * Add or update a device in the discoveredDevices array.
+     * Handles deduplication by serial number (removes old IP entry if serial matches).
+     */
+    private setDiscoveredDevice(ip: string, serialNumber: string | undefined, deviceState: 'pending' | 'online'): void {
+        // Serial dedupe: if same serial exists at different IP, remove old entry
+        if (serialNumber) {
+            const oldIdx = this.discoveredDevices.findIndex(d => d.ip !== ip && d.serialNumber === serialNumber);
+            if (oldIdx >= 0) {
+                const oldIp = this.discoveredDevices[oldIdx].ip;
+                // Transfer lastUsedDeviceIp to new IP if it was pointing to old IP
+                if (this.lastUsedDeviceIp === oldIp) {
+                    this.lastUsedDeviceIp = ip;
+                }
+                this.discoveredDevices.splice(oldIdx, 1);
+            }
+        }
+
+        // IP dedupe: find existing entry at same IP
+        const existingIdx = this.discoveredDevices.findIndex(d => d.ip === ip);
+        if (existingIdx >= 0) {
+            // Update existing entry
+            this.discoveredDevices[existingIdx] = {
+                ip: ip,
+                serialNumber: serialNumber,
+                deviceState: deviceState
+            };
+        } else {
+            // Add new entry
+            this.discoveredDevices.push({
+                ip: ip,
+                serialNumber: serialNumber,
+                deviceState: deviceState
+            });
+        }
+    }
+
+    /**
+     * Remove a device from the discoveredDevices array by IP.
+     */
+    private removeDiscoveredDevice(ip: string): void {
+        const idx = this.discoveredDevices.findIndex(d => d.ip === ip);
+        if (idx >= 0) {
+            this.discoveredDevices.splice(idx, 1);
+        }
+    }
+
+    /**
+     * Find a configured device by serial number.
+     */
+    private getConfiguredDeviceBySerial(serialNumber: string): ConfiguredDeviceEntry | undefined {
+        return this.configuredDevices.find(d => d.serialNumber === serialNumber);
+    }
+
+    /**
+     * Find a configured device by host or resolved IP.
+     */
+    private getConfiguredDeviceByIp(ip: string): ConfiguredDeviceEntry | undefined {
+        return this.configuredDevices.find(d => d.resolvedIp === ip || d.host === ip);
+    }
+
+    /**
+     * Build a merged RokuDevice by decoding an encoded key (s:serial or i:ip).
+     */
+    private buildMergedDevice(key: string): RokuDevice | undefined;
+    /**
+     * Build a merged RokuDevice by looking up in source arrays.
+     */
+    private buildMergedDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
+    /**
+     * Build a merged RokuDevice from provided entries.
+     */
+    private buildMergedDevice(configuredEntry: ConfiguredDeviceEntry | undefined, discoveredEntry: DiscoveredDeviceEntry | undefined): RokuDevice | undefined;
+    private buildMergedDevice(
+        keyOrLookupOrConfigured: string | { ip?: string; serialNumber?: string } | ConfiguredDeviceEntry | undefined,
+        discoveredEntry?: DiscoveredDeviceEntry | undefined
+    ): RokuDevice | undefined {
+        let configuredEntry: ConfiguredDeviceEntry | undefined;
+        let discovered: DiscoveredDeviceEntry | undefined;
+
+        // Determine which overload was called
+        if (typeof keyOrLookupOrConfigured === 'string') {
+            // Called with encoded key - decode and look up
+            const key = keyOrLookupOrConfigured;
+            if (key.startsWith('s:')) {
+                const serial = key.slice(2);
+                if (!serial) {
+                    return undefined;
+                }
+                configuredEntry = this.configuredDevices.find(c => c.serialNumber === serial);
+                discovered = this.discoveredDevices.find(d => d.serialNumber === serial);
+            } else if (key.startsWith('i:')) {
+                const ip = key.slice(2);
+                if (!ip) {
+                    return undefined;
+                }
+                configuredEntry = this.configuredDevices.find(c => c.resolvedIp === ip || c.host === ip);
+                discovered = this.discoveredDevices.find(d => d.ip === ip);
+            } else {
+                // Invalid key format
+                return undefined;
+            }
+        } else if (discoveredEntry !== undefined || this.isConfiguredDeviceEntry(keyOrLookupOrConfigured)) {
+            // Called with entries directly
+            configuredEntry = keyOrLookupOrConfigured as ConfiguredDeviceEntry | undefined;
+            discovered = discoveredEntry;
+        } else if (keyOrLookupOrConfigured && ('ip' in keyOrLookupOrConfigured || 'serialNumber' in keyOrLookupOrConfigured)) {
+            // Called with lookup object - find entries in source arrays
+            const lookup = keyOrLookupOrConfigured as { ip?: string; serialNumber?: string };
+
+            if (lookup.serialNumber) {
+                configuredEntry = this.configuredDevices.find(c => c.serialNumber === lookup.serialNumber);
+                discovered = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
+            }
+
+            if (lookup.ip) {
+                if (!configuredEntry) {
+                    configuredEntry = this.configuredDevices.find(c => c.resolvedIp === lookup.ip || c.host === lookup.ip);
+                }
+                if (!discovered) {
+                    discovered = this.discoveredDevices.find(d => d.ip === lookup.ip);
+                }
+            }
+        }
+
+        if (!configuredEntry && !discovered) {
+            return undefined;
+        }
+
+        // Determine IP: discovered > resolvedIp > host
+        let ip: string;
+        if (discovered) {
+            ip = discovered.ip;
+        } else if (configuredEntry?.resolvedIp) {
+            ip = configuredEntry.resolvedIp;
+        } else {
+            ip = configuredEntry.host;
+        }
+
+        // Determine serial: cache > configured > discovered
+        const serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ??
+            configuredEntry?.serialNumber ??
+            discovered?.serialNumber;
+
+        // Compute merged state: online > offline > pending
+        const deviceState = this.computeMergedState(
+            configuredEntry?.deviceState,
+            discovered?.deviceState
+        );
+
+        // Build key
+        const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
+
+        // Hydrate deviceInfo from cache
+        const cached = serialNumber ? this.globalStateManager.getCachedDevice(serialNumber) : undefined;
+
+        return {
+            ip: ip,
+            serialNumber: serialNumber,
+            key: key,
+            deviceState: deviceState,
+            deviceInfo: cached?.deviceInfo ?? {},
+            isDiscovered: !!discovered,
+            isConfigured: !!configuredEntry,
+            configuredIn: configuredEntry?.configuredIn,
+            configuredName: configuredEntry?.name,
+            configuredPassword: configuredEntry?.password
+        };
+    }
+
+    /**
+     * Type guard to check if an object is a ConfiguredDeviceEntry.
+     */
+    private isConfiguredDeviceEntry(obj: unknown): obj is ConfiguredDeviceEntry {
+        return obj !== null && typeof obj === 'object' && 'host' in obj;
     }
 
     /**
@@ -1037,7 +1183,7 @@ export type ConfigurationScope = 'user' | 'workspace';
 /**
  * User-configured device from settings (brightscript.devices)
  */
-export interface ConfiguredDevice {
+interface ConfiguredDevice {
     host: string;
     name?: string;
     serialNumber?: string;
@@ -1045,53 +1191,89 @@ export interface ConfiguredDevice {
 }
 
 /**
- * Internal device entry with runtime state
- * Used internally by DeviceManager for tracking devices
+ * Internal: configured device from settings
+ * Extends the raw settings shape with runtime tracking fields.
+ * Persists even when device goes offline.
  */
-interface DeviceEntry {
-    ip: string;
+interface ConfiguredDeviceEntry extends ConfiguredDevice {
     /**
-     * Device serial number, when known. Set when device is resolved.
+     * IP from DNS lookup (updated on resolution)
      */
-    serialNumber?: string;
+    resolvedIp?: string;
     /**
-     * Encoded device key for identification.
-     * Format: "s:{serialNumber}" when serial is available, "i:{ip}" as fallback.
-     * Computed in setDevice() whenever device state changes.
+     * Device state: pending/online/offline (persists even when offline)
      */
-    key: string;
     deviceState: DeviceState;
     /**
-     * Current discovery state. True when device is actively discovered on network.
-     * Toggles false when device becomes unreachable.
-     */
-    isDiscovered?: boolean;
-    /**
-     * If true, this device was configured by the user (in any scope).
-     * Configured devices are never auto-removed.
-     */
-    isConfigured?: boolean;
-    /**
-     * Which settings scopes this device is configured in.
+     * Which settings scopes this device is configured in
      */
     configuredIn?: ConfigurationScope[];
-    /**
-     * User-provided name from config (brightscript.devices).
-     * UI should display this over deviceInfo['user-device-name'] when present.
-     */
-    configuredName?: string;
-    /**
-     * User-provided password from config.
-     */
-    configuredPassword?: string;
 }
 
 /**
- * Full device details returned by public API (extends DeviceEntry with cached data)
- * Includes runtime state plus cached deviceInfo from GlobalStateManager
+ * Internal: discovered device from network
+ * Removed when device goes offline (ephemeral)
  */
-export interface RokuDevice extends DeviceEntry {
+interface DiscoveredDeviceEntry {
+    /**
+     * Current IP from SSDP/resolution
+     */
+    ip: string;
+    /**
+     * Serial number from device-info response
+     */
+    serialNumber?: string;
+    /**
+     * Device state: pending/online only (offline = removed from array)
+     */
+    deviceState: 'pending' | 'online';
+}
+
+/**
+ * Full device details returned by public API
+ * Built on-demand by merging configured and discovered device data
+ */
+export interface RokuDevice {
+    /**
+     * Computed IP from resolution order: discovered > resolvedIp > host
+     */
+    ip: string;
+    /**
+     * Serial number from discovered or configured
+     */
+    serialNumber?: string;
+    /**
+     * Encoded device key: "s:{serial}" or "i:{ip}"
+     */
+    key: string;
+    /**
+     * Computed state: online > offline > pending (from both sources)
+     */
+    deviceState: DeviceState;
+    /**
+     * Cached device info from GlobalStateManager
+     */
     deviceInfo: Record<string, any>;
+    /**
+     * True if device exists in discoveredDevices array
+     */
+    isDiscovered: boolean;
+    /**
+     * True if device exists in configuredDevices array
+     */
+    isConfigured: boolean;
+    /**
+     * Which settings scopes this device is configured in
+     */
+    configuredIn?: ConfigurationScope[];
+    /**
+     * User-provided name from config
+     */
+    configuredName?: string;
+    /**
+     * User-provided password from config
+     */
+    configuredPassword?: string;
 }
 
 function throttleBounce<T extends (...args: any[]) => void>(
