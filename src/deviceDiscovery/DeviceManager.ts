@@ -125,6 +125,8 @@ export class DeviceManager {
 
         this.finder.on('scan-ended', () => {
             this.emitter.emit('scan-ended');
+            // Health check devices that didn't respond to the scan (stale cache)
+            this.healthCheckStaleDevices();
         });
 
         if (this.deviceDiscoveryEnabled) {
@@ -160,6 +162,8 @@ export class DeviceManager {
     private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
     private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
+    private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
+    private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Device info caching (reduces redundant network calls)
@@ -621,11 +625,14 @@ export class DeviceManager {
                     this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
                     continue;
                 }
+                // If cache is fresh (within 5 minutes), treat as online
+                const cacheAge = Date.now() - cached.createdAt;
+                const isFresh = cacheAge < this.FRESH_CACHE_THRESHOLD_MS;
                 // Create device with serial (key computed by setDevice)
                 this.setDevice({
                     ip: ip,
                     serialNumber: serialNumber,
-                    deviceState: 'pending',
+                    deviceState: isFresh ? 'online' : 'pending',
                     isDiscovered: false
                 });
                 // Ensure IP→serial mapping is set up
@@ -775,7 +782,6 @@ export class DeviceManager {
     }
 
     private async resolveDevice(device: DeviceEntry, doSyntheticDelay = true): Promise<boolean> {
-
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
         const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
@@ -875,6 +881,35 @@ export class DeviceManager {
 
         if (needsScan) {
             this.discoverAll(this.deviceDiscoveryEnabled);
+        }
+    }
+
+    /**
+     * Health check devices that didn't respond to a scan.
+     * Called after scan-ended. Checks devices whose cache is older than STALE_DEVICE_AFTER_SCAN_MS.
+     */
+    private healthCheckStaleDevices(): void {
+        const now = Date.now();
+        const staleDevices = this.devices.filter(device => {
+            if (!device.serialNumber) {
+                // No serial = no cache, consider stale
+                return true;
+            }
+            const cached = this.globalStateManager.getCachedDevice(device.serialNumber);
+            if (!cached) {
+                return true;
+            }
+            const cacheAge = now - cached.createdAt;
+            return cacheAge > this.STALE_DEVICE_AFTER_SCAN_MS;
+        });
+
+        if (staleDevices.length === 0) {
+            return;
+        }
+
+        // Health check each stale device
+        for (const device of staleDevices) {
+            void this.resolveDevice(device, false);
         }
     }
 

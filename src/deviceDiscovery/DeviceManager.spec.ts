@@ -912,7 +912,7 @@ describe('DeviceManager', () => {
             expect(manager['devices'].some(d => d.serialNumber === 'cached-device')).to.be.true;
         });
 
-        it('loads cached devices as pending state', () => {
+        it('loads cached devices as online when cache is fresh (within 5 minutes)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
@@ -922,7 +922,27 @@ describe('DeviceManager', () => {
                     'default-device-name': 'Test Roku',
                     'serial-number': 'device-1'
                 },
-                createdAt: Date.now()
+                createdAt: Date.now() // Fresh cache
+            });
+            // Mock getIpForSerial to return the IP
+            mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
+
+            manager['loadLastSeenDevices']();
+
+            expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
+            mockGlobalStateManager.getCachedDevice.returns({
+                serialNumber: 'device-1',
+                deviceInfo: {
+                    'default-device-name': 'Test Roku',
+                    'serial-number': 'device-1'
+                },
+                createdAt: Date.now() - (6 * 60 * 1_000) // 6 minutes ago - stale
             });
             // Mock getIpForSerial to return the IP
             mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
