@@ -1277,12 +1277,85 @@ describe('DeviceManager', () => {
             await manager['getDeviceInfoCached']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
+            // Simulate network change by changing the stub's return value to a different hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
             // Simulate network change by calling the networkChangeMonitor callback
+            // (now handlePotentialNetworkChange will see the different hash)
             manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Wait for the async handlePotentialNetworkChange to complete
+            await util.sleep(10);
 
             // Cache should be cleared, next call hits network
             await manager['getDeviceInfoCached']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('handlePotentialNetworkChange', () => {
+        it('returns false when network unchanged', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Network hash hasn't changed (stub returns same value)
+            const result = await manager['handlePotentialNetworkChange']();
+
+            expect(result).to.equal(false);
+        });
+
+        it('returns true and reloads devices when network changed', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a discovered device to verify it gets cleared on network change
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            expect(manager['devices'].length).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            const result = await manager['handlePotentialNetworkChange']();
+
+            expect(result).to.equal(true);
+            // Discovered device should be removed (loadLastSeenDevices clears non-configured)
+            expect(manager['devices'].length).to.equal(0);
+            // networkId should be updated
+            expect(manager['networkId']).to.equal('new-network-hash');
+        });
+
+        it('clears deviceInfoCache when network changes', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Populate the cache
+            manager['deviceInfoCache'].set('192.168.1.100', {
+                info: { 'serial-number': 'device-123' } as any,
+                timestamp: Date.now()
+            });
+            expect(manager['deviceInfoCache'].size).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            await manager['handlePotentialNetworkChange']();
+
+            expect(manager['deviceInfoCache'].size).to.equal(0);
+        });
+
+        it('is called by SystemSleepMonitor callback', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const handleSpy = sinon.spy(manager as any, 'handlePotentialNetworkChange');
+
+            // Trigger the sleep monitor callback
+            manager['systemSleepMonitor']['onSleepDetected']();
+
+            // Wait for async execution
+            await util.sleep(10);
+
+            expect(handleSpy.calledOnce).to.equal(true);
         });
     });
 

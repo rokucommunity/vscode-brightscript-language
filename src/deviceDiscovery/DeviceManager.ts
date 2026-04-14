@@ -78,16 +78,46 @@ export class DeviceManager {
 
     private setupMonitors() {
         this.systemSleepMonitor = new SystemSleepMonitor(() => {
-            this.setScanNeeded();
+            this.handlePotentialNetworkChange().then(() => {
+                this.setScanNeeded();
+            }).catch(() => { });
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
-            this.networkId = getNetworkHash();
-            this.deviceInfoCache.clear();
-            this.loadLastSeenDevices();
-            this.restartRokuFinder();
-
-            this.setScanNeeded();
+            this.handlePotentialNetworkChange().then((changed) => {
+                if (changed) {
+                    this.setScanNeeded();
+                }
+            }).catch(() => { });
         });
+    }
+
+    /**
+     * Check for network change and reload state if needed.
+     * Retries if 'no-network' detected (WiFi may still be connecting after wake).
+     * @returns true if network changed, false otherwise
+     */
+    private async handlePotentialNetworkChange(): Promise<boolean> {
+        let newHash = getNetworkHash();
+
+        // Retry if no network detected (WiFi might still be connecting after wake)
+        if (newHash === 'no-network') {
+            await util.sleep(2000);
+            newHash = getNetworkHash();
+        }
+        if (newHash === 'no-network') {
+            await util.sleep(4000);
+            newHash = getNetworkHash();
+        }
+
+        if (newHash === this.networkId) {
+            return false; // No change
+        }
+
+        this.networkId = newHash;
+        this.deviceInfoCache.clear();
+        this.loadLastSeenDevices();
+        this.restartRokuFinder();
+        return true;
     }
 
     private initialize() {
@@ -1045,6 +1075,7 @@ export class DeviceManager {
     }
 
     private notifyFocusGained() {
+        this.handlePotentialNetworkChange().catch(() => { }); // Immediate check (fire and forget)
         this.networkChangeMonitor.start();
     }
 
