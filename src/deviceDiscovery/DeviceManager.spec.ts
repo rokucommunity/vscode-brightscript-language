@@ -310,6 +310,60 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('scan', () => {
+        it('triggers discovery without health checking', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+            const checkDevicesHealthSpy = sinon.spy(manager as any, 'checkDevicesHealth');
+
+            manager.scan(true);
+
+            expect(discoverAllSpy.calledOnce).to.be.true;
+            expect(checkDevicesHealthSpy.called).to.be.false;
+        });
+
+        it('respects deviceDiscoveryEnabled when force=false', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+
+            const result = manager.scan(false);
+
+            expect(result).to.be.false;
+            expect(discoverAllSpy.called).to.be.false;
+        });
+
+        it('ignores deviceDiscoveryEnabled when force=true', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+
+            const result = manager.scan(true);
+
+            expect(result).to.be.true;
+            expect(discoverAllSpy.calledOnce).to.be.true;
+        });
+
+        it('emits scan-started event', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const scanStartedSpy = sinon.spy();
+                manager.on('scan-started', scanStartedSpy);
+
+                manager.scan(true);
+
+                expect(scanStartedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
     describe('checkDevicesHealth', () => {
         it('sets all devices to pending and checks all when force=true', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);

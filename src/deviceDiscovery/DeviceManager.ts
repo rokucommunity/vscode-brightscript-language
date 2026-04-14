@@ -310,6 +310,19 @@ export class DeviceManager {
     }
 
     /**
+     * Trigger a network scan for devices without health checking existing devices.
+     * Use this when you just want to discover new devices without verifying existing ones.
+     * @param force - If true, scan even if deviceDiscovery is disabled
+     * @returns true if a scan was started, false otherwise
+     */
+    public scan(force = false): boolean {
+        if (!force && !this.deviceDiscoveryEnabled) {
+            return false;
+        }
+        return this.discoverAll(force);
+    }
+
+    /**
      * Clear discovered devices from the device list, keeping configured devices.
      * Useful for refreshing the network scan without losing user-configured devices.
      */
