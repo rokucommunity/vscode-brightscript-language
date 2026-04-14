@@ -84,6 +84,8 @@ export class DeviceManager {
             this.networkId = getNetworkHash();
             this.deviceInfoCache.clear();
             this.loadLastSeenDevices();
+            this.restartRokuFinder();
+
             this.setScanNeeded();
         });
     }
@@ -96,36 +98,8 @@ export class DeviceManager {
         this.loadConfiguredDevices().catch(() => { });
         this.loadLastSeenDevices();
 
-        /**
-         * Set up event listeners for the RokuFinder.
-         * This must be called regardless of passiveScanPermitted so that
-         * active scan responses are processed.
-         */
-        this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.serialNumber);
-        });
-
-        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
-            this.handleDeviceOnline(ip, serialNumber);
-        });
-
-        this.finder.on('lost', (ip: string) => {
-            // Find and remove device by IP
-            const device = this.getDeviceEntry({ ip: ip });
-            if (device) {
-                this.removeDevice(device.ip);
-            }
-        });
-
-        // Forward scan events from RokuFinder
-        this.finder.on('scan-started', () => {
-            this.emitter.emit('scan-started');
-        });
-
-        this.finder.on('scan-ended', () => {
-            this.emitter.emit('scan-ended');
-        });
+        // Set up event listeners for the RokuFinder
+        this.setupFinderListeners();
 
         if (this.deviceDiscoveryEnabled) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
@@ -1002,6 +976,61 @@ export class DeviceManager {
     private deactivateMonitoring() {
         this.networkChangeMonitor.stop();
         this.stopRokuFinder();
+    }
+
+    /**
+     * Set up event listeners for the RokuFinder.
+     * This must be called regardless of deviceDiscoveryEnabled so that
+     * active scan responses are processed.
+     */
+    private setupFinderListeners() {
+        this.finder.removeAllListeners();
+        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.serialNumber);
+        });
+
+        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
+            this.handleDeviceOnline(ip, serialNumber);
+        });
+
+        this.finder.on('lost', (ip: string) => {
+            // Find and remove device by IP
+            const device = this.getDeviceEntry({ ip: ip });
+            if (device) {
+                this.removeDevice(device.ip);
+            }
+        });
+
+        // Forward scan events from RokuFinder
+        this.finder.on('scan-started', () => {
+            this.emitter.emit('scan-started');
+        });
+
+        this.finder.on('scan-ended', () => {
+            this.emitter.emit('scan-ended');
+        });
+    }
+
+    /**
+     * Restart the RokuFinder to rebind UDP sockets to new network interfaces.
+     * Called when network changes to ensure SSDP can communicate on the new network.
+     */
+    private restartRokuFinder() {
+        // Dispose old finder (releases sockets, clears state)
+        this.finder?.dispose();
+
+        // Create new finder instance
+        this.finder = new RokuFinder();
+
+        // Re-attach event listeners
+        this.setupFinderListeners();
+
+        // Restart if device discovery is enabled
+        if (this.deviceDiscoveryEnabled) {
+            this.startRokuFinder().catch((e) => {
+                console.error('Failed to restart RokuFinder:', e);
+            });
+        }
     }
 
     /**
