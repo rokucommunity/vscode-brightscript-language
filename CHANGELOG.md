@@ -6,6 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.6...v2.63.7) - 2026-04-14
+### Changed
+ - Register tsdk for workspace ([#755](https://github.com/rokucommunity/vscode-brightscript-language/pull/755))
+ - upgrade to [brighterscript@0.71.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0711---2026-04-14). Notable changes since 0.71.0:
+     - Bump lodash from 4.17.23 to 4.18.1 ([#1673](https://github.com/rokucommunity/brighterscript/pull/1673))
+     - Bump follow-redirects from 1.15.6 to 1.16.0 ([#1672](https://github.com/rokucommunity/brighterscript/pull/1672))
+     - Bump lodash from 4.17.23 to 4.18.1 in /benchmarks ([#1670](https://github.com/rokucommunity/brighterscript/pull/1670))
+     - Bump brace-expansion in /benchmarks ([#1666](https://github.com/rokucommunity/brighterscript/pull/1666))
+ - upgrade to [brighterscript-formatter@1.7.23](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1723---2026-04-14). Notable changes since 1.7.22:
+     - Bump brace-expansion from 1.1.12 to 1.1.13 ([#127](https://github.com/rokucommunity/brighterscript-formatter/pull/127))
+     - Bump lodash from 4.17.23 to 4.18.1 ([#126](https://github.com/rokucommunity/brighterscript-formatter/pull/126))
+     - Bump picomatch from 2.3.1 to 2.3.2 ([#123](https://github.com/rokucommunity/brighterscript-formatter/pull/123))
+ - upgrade to [roku-debug@0.23.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0235---2026-04-14). Notable changes since 0.23.3:
+     - Bump lodash from 4.17.23 to 4.18.1 ([#326](https://github.com/rokucommunity/roku-debug/pull/326))
+     - Fix sourcemap comments ([#327](https://github.com/rokucommunity/roku-debug/pull/327))
+     - Avoid monkey-patching roku-deploy's getFiles function ([#329](https://github.com/rokucommunity/roku-debug/pull/329))
+     - Fix sourcemap staging bugs when maps are from different depth than staging dir ([#308](https://github.com/rokucommunity/roku-debug/pull/308))
+     - Handle THREAD_DETACHED gracefully and show [unavailable] for inaccessible threads ([#324](https://github.com/rokucommunity/roku-debug/pull/324))
+     - Resolve relative source maps and honor sourceRoot ([#307](https://github.com/rokucommunity/roku-debug/pull/307))
+ - upgrade to [roku-deploy@3.16.5](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3165---2026-04-13). Notable changes since 3.16.3:
+     - Bump lodash from 4.17.23 to 4.18.1 ([#247](https://github.com/rokucommunity/roku-deploy/pull/247))
+     - Resolve files array staging option ([#249](https://github.com/rokucommunity/roku-deploy/pull/249))
+     - Fix `zipFolder` bug that wasn't properly handling absolute stagingDir path ([#245](https://github.com/rokucommunity/roku-deploy/pull/245))
+     - Bump picomatch from 2.3.1 to 2.3.2 ([#242](https://github.com/rokucommunity/roku-deploy/pull/242))
+
+
+
 ## [2.63.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.5...v2.63.6) - 2026-04-10
 ### Changed
  - rolled back changes in 2.62.5 causing sideloading issues ([#753](https://github.com/rokucommunity/vscode-brightscript-language/pull/753))
