@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { standardizePath } from 'brighterscript';
 import type { BrightScriptTaskProvider, TaskConfig } from '../../BrightScriptTaskProvider';
 import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsViewProvider';
 import { ProjectTreeItem } from '../../viewProviders/RokuProjectsViewProvider';
@@ -110,7 +111,7 @@ export class RokuProjectManager {
                 // Unregister all projects from removed folders
                 for (const removed of event.removed) {
                     for (const [projectDir] of [...this.discoveredProjects]) {
-                        if (projectDir.startsWith(removed.uri.fsPath + path.sep)) {
+                        if (standardizePath(projectDir).startsWith(standardizePath(removed.uri.fsPath) + '/')) {
                             this.unregisterProject(this.discoveredProjects.get(projectDir).configUri);
                         }
                     }
@@ -122,7 +123,7 @@ export class RokuProjectManager {
                     for (const provider of this.providers) {
                         Promise.resolve(provider.findProjectConfigs()).then(uris => {
                             for (const uri of uris) {
-                                if (uri.fsPath.startsWith(added.uri.fsPath + path.sep)) {
+                                if (standardizePath(uri.fsPath).startsWith(standardizePath(added.uri.fsPath) + '/')) {
                                     this.registerProject(uri);
                                 }
                             }
@@ -194,7 +195,7 @@ export class RokuProjectManager {
 
         // Skip if a higher-priority provider (lower index) already owns an ancestor directory.
         for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
-            if (claimedIndex < providerIndex && project.projectDir.startsWith(claimedDir + path.sep)) {
+            if (claimedIndex < providerIndex && standardizePath(project.projectDir).startsWith(standardizePath(claimedDir) + '/')) {
                 return;
             }
         }
@@ -246,7 +247,7 @@ export class RokuProjectManager {
     public provideDebugConfigurations(folder?: vscode.WorkspaceFolder): vscode.DebugConfiguration[] {
         const configs: vscode.DebugConfiguration[] = [];
         for (const project of this.discoveredProjects.values()) {
-            if (folder && !project.projectDir.startsWith(folder.uri.fsPath + path.sep)) {
+            if (folder && !standardizePath(project.projectDir).startsWith(standardizePath(folder.uri.fsPath) + '/')) {
                 continue;
             }
             const provider = this.providers.find(configProvider => configProvider.ownsConfig(project.configUri));
@@ -362,4 +363,5 @@ export class RokuProjectManager {
             debugConfig
         );
     }
+
 }

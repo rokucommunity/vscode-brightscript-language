@@ -125,15 +125,15 @@ describe('BrsConfigProjectProvider', () => {
         });
 
         it('uses the projectDir as rootDir when rootDir is absent from config', () => {
-            const projectDir = '/project';
-            const configUri = makeUri(path.join(projectDir, 'brsconfig.json'));
+            const configUri = makeUri(path.join('/project', 'brsconfig.json'));
 
             sinon.stub(fs, 'readFileSync').returns(JSON.stringify({ files: [] }) as any);
 
             provider.afterConfigRegistered(configUri);
 
             const indexed = (provider as any).configIndex.get(configUri.fsPath);
-            expect(indexed.rootDir).to.equal(projectDir);
+            // Use path.dirname to get the OS-normalized expected value (avoids / vs \ on Windows)
+            expect(indexed.rootDir).to.equal(path.dirname(configUri.fsPath));
         });
 
         it('silently ignores an invalid or unreadable brsconfig', () => {
