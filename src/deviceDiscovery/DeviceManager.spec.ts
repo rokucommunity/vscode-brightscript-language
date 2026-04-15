@@ -1237,7 +1237,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('getDeviceInfoCached', () => {
+    describe('fetchDeviceInfo', () => {
         it('only makes one network call for rapid successive requests', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
@@ -1248,8 +1248,8 @@ describe('DeviceManager', () => {
             } as any);
 
             // Call twice in rapid succession
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
 
             // Should only have made one actual network call
             expect(getDeviceInfoStub.callCount).to.equal(1);
@@ -1266,14 +1266,14 @@ describe('DeviceManager', () => {
                 } as any);
 
                 // First call - should hit network
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Advance past TTL (5 seconds)
                 clock.tick(6_000);
 
                 // Second call - cache expired, should hit network again
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
@@ -1290,15 +1290,15 @@ describe('DeviceManager', () => {
             } as any);
 
             // Call for two different IPs
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
 
             // Should make two network calls (different IPs)
             expect(getDeviceInfoStub.callCount).to.equal(2);
 
             // But calling same IPs again should use cache
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
 
             // Still only two calls
             expect(getDeviceInfoStub.callCount).to.equal(2);
@@ -1315,19 +1315,19 @@ describe('DeviceManager', () => {
                 } as any);
 
                 // First call - populates cache
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Call again within TTL - should use cache
                 clock.tick(2_000);
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Advance past cleanup delay (10 seconds of inactivity)
                 clock.tick(11_000);
 
                 // Cache should be cleared, next call hits network
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
@@ -1344,18 +1344,18 @@ describe('DeviceManager', () => {
             } as any);
 
             // Populate cache
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Verify cache is working
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Simulate network change by calling the networkChangeMonitor callback
             manager['networkChangeMonitor']['onNetworkChanged']();
 
             // Cache should be cleared, next call hits network
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
     });
@@ -1807,27 +1807,27 @@ describe('DeviceManager', () => {
             });
 
             describe('timer clearing', () => {
-                it('clears cacheCleanupTimer', () => {
+                it('clears fetchDeviceInfoThrottleTimer', () => {
                     const clock = sinon.useFakeTimers();
                     try {
                         manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                         // Trigger cache cleanup timer by resetting it
                         manager['resetCacheCleanupTimer']();
-                        expect(manager['cacheCleanupTimer']).to.not.be.null;
+                        expect(manager['fetchDeviceInfoThrottleTimer']).to.not.be.null;
 
                         manager.clearAllCache();
 
-                        expect(manager['cacheCleanupTimer']).to.be.null;
+                        expect(manager['fetchDeviceInfoThrottleTimer']).to.be.null;
                     } finally {
                         clock.restore();
                     }
                 });
 
-                it('does not throw if cacheCleanupTimer is already null', () => {
+                it('does not throw if fetchDeviceInfoThrottleTimer is already null', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                    manager['cacheCleanupTimer'] = null;
+                    manager['fetchDeviceInfoThrottleTimer'] = null;
 
                     expect(() => manager.clearAllCache()).to.not.throw();
                 });
