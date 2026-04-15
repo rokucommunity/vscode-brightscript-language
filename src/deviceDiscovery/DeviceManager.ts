@@ -82,7 +82,7 @@ export class DeviceManager {
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
-            this.deviceInfoCache.clear();
+            this.fetchDeviceThrottleData.clear();
             this.loadLastSeenDevices();
             this.setScanNeeded();
         });
@@ -165,12 +165,6 @@ export class DeviceManager {
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
-
-    // Device info caching (reduces redundant network calls)
-    private readonly DEVICE_INFO_CACHE_TTL_MS = 5_000; // 5 seconds
-    private readonly CACHE_CLEANUP_DELAY_MS = 10_000; // 10 seconds of inactivity
-    private deviceInfoCache = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
-    private cacheCleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
@@ -335,7 +329,7 @@ export class DeviceManager {
         this.devices = this.devices.filter(d => d.isConfigured);
 
         // Clear short-lived device info cache
-        this.deviceInfoCache.clear();
+        this.fetchDeviceThrottleData.clear();
 
         // Only clear lastUsedDeviceIp if it belonged to a discovered device that was removed
         if (this.lastUsedDeviceIp && !this.devices.some(d => d.ip === this.lastUsedDeviceIp)) {
@@ -363,9 +357,9 @@ export class DeviceManager {
         this.resolveDeviceSequence.clear();
 
         // Clear cache cleanup timer
-        if (this.cacheCleanupTimer) {
-            clearTimeout(this.cacheCleanupTimer);
-            this.cacheCleanupTimer = null;
+        if (this.fetchDeviceInfoThrottleTimer) {
+            clearTimeout(this.fetchDeviceInfoThrottleTimer);
+            this.fetchDeviceInfoThrottleTimer = null;
         }
     }
 
@@ -414,7 +408,7 @@ export class DeviceManager {
         this.emitter.removeAllListeners();
 
         //clear any timeouts
-        clearTimeout(this.cacheCleanupTimer);
+        clearTimeout(this.fetchDeviceInfoThrottleTimer);
     }
 
     /**
@@ -910,13 +904,13 @@ export class DeviceManager {
      * Reset the cache cleanup timer. After inactivity, the cache will be cleared.
      */
     private resetCacheCleanupTimer(): void {
-        if (this.cacheCleanupTimer) {
-            clearTimeout(this.cacheCleanupTimer);
+        if (this.fetchDeviceInfoThrottleTimer) {
+            clearTimeout(this.fetchDeviceInfoThrottleTimer);
         }
-        this.cacheCleanupTimer = setTimeout(() => {
-            this.deviceInfoCache.clear();
-            this.cacheCleanupTimer = null;
-        }, this.CACHE_CLEANUP_DELAY_MS);
+        this.fetchDeviceInfoThrottleTimer = setTimeout(() => {
+            this.fetchDeviceThrottleData.clear();
+            this.fetchDeviceInfoThrottleTimer = null;
+        }, 10_000);
     }
 
     /**
@@ -928,8 +922,8 @@ export class DeviceManager {
     private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
         this.resetCacheCleanupTimer();
 
-        const cached = this.deviceInfoCache.get(ip);
-        if (cached && Date.now() - cached.timestamp < this.DEVICE_INFO_CACHE_TTL_MS) {
+        const cached = this.fetchDeviceThrottleData.get(ip);
+        if (cached && Date.now() - cached.timestamp < 5_000) {
             return cached.info;
         }
 
@@ -949,12 +943,13 @@ export class DeviceManager {
                 createdAt: Date.now()
             });
             this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
-            this.globalStateManager.addLastSeenDevice(this.networkId, serial);
         }
 
-        this.deviceInfoCache.set(ip, { info: info, timestamp: Date.now() });
+        this.fetchDeviceThrottleData.set(ip, { info: info, timestamp: Date.now() });
         return info;
     }
+    private fetchDeviceThrottleData = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
+    private fetchDeviceInfoThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
      * Discover all Roku devices on the network and watch for new ones that connect
@@ -991,6 +986,10 @@ export class DeviceManager {
 
             // Extract serial and cache the deviceInfo
             const serial = deviceInfo['serial-number']?.toString?.();
+
+            if (serial) {
+                this.globalStateManager.addLastSeenDevice(this.networkId, serial);
+            }
 
             // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
             const preserved = serial ? this.dedupeBySerial(ip, serial) : undefined;
