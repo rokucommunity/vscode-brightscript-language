@@ -150,6 +150,7 @@
         "workspaceContains:**/manifest",
         "workspaceContains:**/bsconfig.json",
         "onDebug",
+        "onDebugDynamicConfigurations:brightscript",
         "onTaskType:brightscript"
     ],
     "contributes": {
@@ -188,6 +189,12 @@
         },
         "views": {
             "vscode-brightscript-language": [
+                {
+                    "id": "rokuProjectsView",
+                    "name": "Roku Projects",
+                    "icon": "$(project)",
+                    "when": "brightscript.hasRokuProjects && false"
+                },
                 {
                     "id": "devicesView",
                     "name": "Devices"
@@ -249,6 +256,11 @@
                 {
                     "when": "editorLangId == brighterscript && resourceScheme == file",
                     "command": "brighterscript.showPreviewToSide",
+                    "group": "navigation"
+                },
+                {
+                    "when": "resourcePath in brightscript.rokuProjectConfigFiles",
+                    "command": "extension.brightscript.debugRokuProject",
                     "group": "navigation"
                 }
             ],
@@ -443,6 +455,11 @@
             ],
             "view/item/context": [
                 {
+                    "command": "extension.brightscript.debugRokuProject",
+                    "when": "view == rokuProjectsView && viewItem == rokuProject",
+                    "group": "inline"
+                },
+                {
                     "command": "extension.brightscript.setActiveDevice",
                     "when": "view == devicesView && viewItem =~ /^device-/",
                     "group": "navigation@1"
@@ -473,6 +490,13 @@
                     "group": "settings@2"
                 }
             ],
+            "explorer/context": [
+                {
+                    "command": "extension.brightscript.debugRokuProject",
+                    "when": "resourcePath in brightscript.rokuProjectConfigFiles",
+                    "group": "debug@1"
+                }
+            ],
             "webview/context": [
                 {
                     "command": "extension.brightscript.rokuDeviceView.copyScreenshot",
@@ -481,6 +505,13 @@
             ],
             "commandPalette": []
         },
+        "viewsWelcome": [
+            {
+                "view": "debug",
+                "contents": "[$(debug-alt) Debug Roku Project](command:extension.brightscript.debugRokuProject)\nAutomatically discovers Roku projects files in your workspace.",
+                "when": "workbenchState != empty && brightscript.hasRokuProjects"
+            }
+        ],
         "customEditors": [
             {
                 "viewType": "brightscript.perfettoViewer",
@@ -508,6 +539,7 @@
             {
                 "label": "BrightScript Debug",
                 "type": "brightscript",
+                "languages": ["brightscript", "brighterscript"],
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {
@@ -2959,6 +2991,12 @@
             }
         ],
         "commands": [
+            {
+                "command": "extension.brightscript.debugRokuProject",
+                "title": "Debug Roku Project",
+                "icon": "$(debug-start)",
+                "category": "BrightScript"
+            },
             {
                 "command": "extension.brightscript.startTracing",
                 "title": "Start Perfetto Tracing",

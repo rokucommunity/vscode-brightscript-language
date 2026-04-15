@@ -68,6 +68,7 @@ export let vscode = {
         stopDebugging: () => { }
     },
     languages: {
+        registerCodeLensProvider: () => { },
         registerDefinitionProvider: () => { },
         registerDocumentSymbolProvider: () => { },
         registerWorkspaceSymbolProvider: () => { },
@@ -530,6 +531,10 @@ export let vscode = {
     TaskScope: {
         Global: 1,
         Workspace: 2
+    },
+    DebugConfigurationProviderTriggerKind: {
+        Initial: 1,
+        Dynamic: 2
     }
 };
 

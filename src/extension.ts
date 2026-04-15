@@ -34,6 +34,8 @@ import { LocalPackageManager } from './managers/LocalPackageManager';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
+import { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
+import { RokuProjectsViewProvider } from './viewProviders/RokuProjectsViewProvider';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -134,6 +136,15 @@ export class Extension {
         const tasksManager = new BrightScriptTaskProvider();
         context.subscriptions.push(tasksManager);
 
+        const rokuProjectsViewProvider = new RokuProjectsViewProvider();
+        vscode.window.createTreeView(ViewProviderId.rokuProjectsView, {
+            treeDataProvider: rokuProjectsViewProvider,
+            showCollapseAll: false
+        });
+
+        const rokuProjectProvider = new RokuProjectManager(tasksManager, rokuProjectsViewProvider);
+        rokuProjectProvider.register(context);
+
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
                 await vscode.debug.activeDebugSession.customRequest('rendezvous.clearHistory');
@@ -160,9 +171,12 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, rokuProjectProvider);
         context.subscriptions.push(
-            vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
+            // Initial: resolveDebugConfiguration — handles launch.json configs and F5 with no launch.json
+            vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider, vscode.DebugConfigurationProviderTriggerKind.Initial),
+            // Dynamic: provideDebugConfigurations — surfaces discovered Roku projects in the debug picker
+            vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider, vscode.DebugConfigurationProviderTriggerKind.Dynamic)
         );
 
         //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.

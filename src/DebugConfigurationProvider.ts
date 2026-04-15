@@ -21,6 +21,7 @@ import { rokuDeploy } from 'roku-deploy';
 import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
+import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -30,7 +31,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private telemetryManager: TelemetryManager,
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
-        private brightScriptCommands: BrightScriptCommands
+        private brightScriptCommands: BrightScriptCommands,
+        private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
     }
@@ -77,11 +79,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
     };
 
+    public provideDebugConfigurations(folder?: WorkspaceFolder, _token?: CancellationToken): vscode.DebugConfiguration[] {
+        return this.rokuProjectDiscovery?.provideDebugConfigurations(folder) ?? [];
+    }
+
     /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
     public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        // F5 with no launch.json — ask RokuProjectDiscovery to find a config from the active file.
+        if (!config.type && !config.request) {
+            const discovered = await this.rokuProjectDiscovery?.resolveDebugConfigFromActiveFile();
+            if (!discovered) {
+                return undefined;
+            }
+            config = discovered as BrightScriptLaunchConfiguration;
+        }
+
         let deviceInfo: DeviceInfo;
         let result: BrightScriptLaunchConfiguration;
         try {

@@ -8,8 +8,7 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     constructor() {
         this.taskProvider = vscode.tasks.registerTaskProvider('brightscript', {
             provideTasks: () => {
-                // Return empty array so all tasks go through resolveTask
-                return [];
+                return this.buildDiscoveredTasks();
             },
             resolveTask: (_task: vscode.Task): vscode.Task | undefined => {
                 return this.resolveTask(_task);
@@ -18,8 +17,45 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     }
 
     private taskProvider: vscode.Disposable;
+    private registeredTasks = new Map<string, TaskConfig>();
+
+    public registerTask(name: string, config: TaskConfig) {
+        this.registeredTasks.set(name, config);
+    }
+
+    public unregisterTask(name: string) {
+        this.registeredTasks.delete(name);
+    }
+
+    // Build vscode.Task objects from the currently registered tasks. These tasks will show up in the UI and can be resolved when run.
+    private buildDiscoveredTasks(): vscode.Task[] {
+        const tasks = Array.from(this.registeredTasks.entries()).map(([name, config]) => {
+            const definition: BrightscriptTaskDefinition = { type: 'brightscript', command: config.command };
+            return new vscode.Task(
+                definition,
+                config.workspaceFolder ?? vscode.TaskScope.Workspace,
+                name,
+                'BrightScript',
+                new vscode.ShellExecution(config.command, { cwd: config.cwd })
+            );
+        });
+        return tasks;
+    }
 
     private resolveTask(task: vscode.Task): vscode.Task | undefined {
+        // Check registered discovered tasks first (e.g. from RokuProjectProvider)
+        const registered = this.registeredTasks.get(task.name);
+        if (registered) {
+            const definition: BrightscriptTaskDefinition = { type: 'brightscript', command: registered.command };
+            return new vscode.Task(
+                definition,
+                registered.workspaceFolder ?? task.scope ?? vscode.TaskScope.Workspace,
+                task.name,
+                'BrightScript',
+                new vscode.ShellExecution(registered.command, { cwd: registered.cwd })
+            );
+        }
+
         const command: string = task.definition.command;
 
         // A BrightScript task consists of a task definition
@@ -615,4 +651,10 @@ interface BrightscriptTaskDefinition extends vscode.TaskDefinition {
      * The command to run
      */
     command: string;
+}
+
+export interface TaskConfig {
+    command: string;
+    cwd: string;
+    workspaceFolder?: vscode.WorkspaceFolder;
 }
