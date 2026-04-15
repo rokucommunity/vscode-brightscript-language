@@ -492,14 +492,14 @@ export class DeviceManager {
 
         // Compute key: serial-based when available, IP-based as fallback
         const key = input.serialNumber ? `s:${input.serialNumber}` : `i:${input.ip}`;
-        const device: DeviceEntry = { ...input, key: key };
+        let device: DeviceEntry = { ...input, key: key };
 
         if (isNewDevice) {
             this.devices.push(device);
         } else {
             // Merge: incoming wins for most fields, but preserve configured properties
             const existing = this.devices[index];
-            this.devices[index] = {
+            device = this.devices[index] = {
                 ...existing,
                 ...device,
                 // Preserve configured status from either side
@@ -797,7 +797,7 @@ export class DeviceManager {
         // Fetch latest device info from the network (with short-lived cache)
         let deviceInfo: DeviceInfoRaw | undefined;
         try {
-            deviceInfo = await this.getDeviceInfoCached(device.ip, 8060);
+            deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
 
             if (doSyntheticDelay) {
                 await this.randomDelay(400, 1_000);
@@ -816,13 +816,6 @@ export class DeviceManager {
             // Extract serial and cache the deviceInfo
             const serial = deviceInfo['serial-number']?.toString?.();
             if (serial) {
-                this.globalStateManager.setCachedDevice(serial, {
-                    serialNumber: serial,
-                    deviceInfo: deviceInfo,
-                    createdAt: Date.now()
-                });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, device.ip, serial);
-
                 // Add to last seen devices (successfully resolved with serial)
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
@@ -929,8 +922,10 @@ export class DeviceManager {
     /**
      * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
      * when health checks and SSDP responses race during refresh.
+     *
+     * We cache many things about this in globalState since we just verified this device really exists at that location
      */
-    private async getDeviceInfoCached(ip: string, port: number): Promise<DeviceInfoRaw> {
+    private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
         this.resetCacheCleanupTimer();
 
         const cached = this.deviceInfoCache.get(ip);
@@ -943,6 +938,19 @@ export class DeviceManager {
             remotePort: port,
             timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
         });
+
+        const serial = info['serial-number'];
+
+        //immediately cache this info
+        if (serial) {
+            this.globalStateManager.setCachedDevice(serial, {
+                serialNumber: serial,
+                deviceInfo: info,
+                createdAt: Date.now()
+            });
+            this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
+            this.globalStateManager.addLastSeenDevice(this.networkId, serial);
+        }
 
         this.deviceInfoCache.set(ip, { info: info, timestamp: Date.now() });
         return info;
@@ -968,7 +976,7 @@ export class DeviceManager {
      */
     private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         try {
-            const deviceInfo = await this.getDeviceInfoCached(ip, 8060);
+            const deviceInfo = await this.fetchDeviceInfo(ip, 8060);
 
             const config: any = util.getConfiguration('brightscript') || {};
             const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
@@ -983,14 +991,6 @@ export class DeviceManager {
 
             // Extract serial and cache the deviceInfo
             const serial = deviceInfo['serial-number']?.toString?.();
-            if (serial) {
-                this.globalStateManager.setCachedDevice(serial, {
-                    serialNumber: serial,
-                    deviceInfo: deviceInfo,
-                    createdAt: Date.now()
-                });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serial);
-            }
 
             // Dedupe by serial - if device moved IPs, remove old entry and preserve its config
             const preserved = serial ? this.dedupeBySerial(ip, serial) : undefined;
