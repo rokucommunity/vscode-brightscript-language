@@ -673,7 +673,39 @@ export class DeviceManager {
         }
         const deviceMap = new Map<string, ConfiguredDeviceWithScope>();
 
-        // Process user settings
+        // Process .roku/roku-dev-config.json files first (lowest priority)
+        for (const configPath of this.rokuDevConfigPaths) {
+            try {
+                if (!fsExtra.existsSync(configPath)) {
+                    continue;
+                }
+                const config = fsExtra.readJsonSync(configPath);
+                if (Array.isArray(config?.devices)) {
+                    for (const device of config.devices) {
+                        if (!device?.ip) {
+                            continue;
+                        }
+                        const key = device.id || device.ip;
+                        const existing = deviceMap.get(key);
+                        const scopes = existing?.configuredIn ?? [];
+                        if (!scopes.includes('rokuDevConfig')) {
+                            scopes.push('rokuDevConfig');
+                        }
+                        deviceMap.set(key, {
+                            host: device.ip,
+                            name: device.name,
+                            password: device.password,
+                            ...existing,
+                            configuredIn: scopes
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to load roku-dev-config.json from ${configPath}:`, e);
+            }
+        }
+
+        // Process user settings (overrides rokuDevConfig)
         for (const device of userDevices) {
             if (!device?.host) {
                 continue;
@@ -691,7 +723,7 @@ export class DeviceManager {
             });
         }
 
-        // Process workspace settings
+        // Process workspace settings (overrides user settings)
         for (const device of workspaceDevices) {
             if (!device?.host) {
                 continue;
@@ -1069,7 +1101,7 @@ export class DeviceManager {
 
 export type DeviceState = 'offline' | 'pending' | 'online';
 
-export type ConfigurationScope = 'user' | 'workspace';
+export type ConfigurationScope = 'rokuDevConfig' | 'user' | 'workspace';
 
 /**
  * User-configured device from settings (brightscript.devices)
