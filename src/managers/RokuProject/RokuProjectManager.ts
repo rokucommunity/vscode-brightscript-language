@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { standardizePath } from 'brighterscript';
 import type { BrightScriptTaskProvider, TaskConfig } from '../../BrightScriptTaskProvider';
 import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsViewProvider';
 import { ProjectTreeItem } from '../../viewProviders/RokuProjectsViewProvider';
@@ -8,6 +7,11 @@ import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 
 export const DEBUG_ROKU_PROJECT_COMMAND = 'extension.brightscript.debugRokuProject';
+
+function isSubdirectoryOf(parent: string, child: string): boolean {
+    const rel = path.relative(parent, child);
+    return rel !== '' && !rel.startsWith('..');
+}
 
 export interface DiscoveredRokuProject {
     configUri: vscode.Uri;
@@ -111,7 +115,7 @@ export class RokuProjectManager {
                 // Unregister all projects from removed folders
                 for (const removed of event.removed) {
                     for (const [projectDir] of [...this.discoveredProjects]) {
-                        if (standardizePath(projectDir).startsWith(standardizePath(removed.uri.fsPath) + '/')) {
+                        if (isSubdirectoryOf(removed.uri.fsPath, projectDir)) {
                             this.unregisterProject(this.discoveredProjects.get(projectDir).configUri);
                         }
                     }
@@ -123,7 +127,7 @@ export class RokuProjectManager {
                     for (const provider of this.providers) {
                         Promise.resolve(provider.findProjectConfigs()).then(uris => {
                             for (const uri of uris) {
-                                if (standardizePath(uri.fsPath).startsWith(standardizePath(added.uri.fsPath) + '/')) {
+                                if (isSubdirectoryOf(added.uri.fsPath, uri.fsPath)) {
                                     this.registerProject(uri);
                                 }
                             }
@@ -195,7 +199,7 @@ export class RokuProjectManager {
 
         // Skip if a higher-priority provider (lower index) already owns an ancestor directory.
         for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
-            if (claimedIndex < providerIndex && standardizePath(project.projectDir).startsWith(standardizePath(claimedDir) + '/')) {
+            if (claimedIndex < providerIndex && isSubdirectoryOf(claimedDir, project.projectDir)) {
                 return;
             }
         }
@@ -247,7 +251,7 @@ export class RokuProjectManager {
     public provideDebugConfigurations(folder?: vscode.WorkspaceFolder): vscode.DebugConfiguration[] {
         const configs: vscode.DebugConfiguration[] = [];
         for (const project of this.discoveredProjects.values()) {
-            if (folder && !standardizePath(project.projectDir).startsWith(standardizePath(folder.uri.fsPath) + '/')) {
+            if (folder && !isSubdirectoryOf(folder.uri.fsPath, project.projectDir)) {
                 continue;
             }
             const provider = this.providers.find(configProvider => configProvider.ownsConfig(project.configUri));
