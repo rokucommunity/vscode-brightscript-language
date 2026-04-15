@@ -30,9 +30,9 @@ describe('BsConfigProjectProvider', () => {
         provider = new BsConfigProjectProvider();
 
         // asRelativePath is not in the vscode mock; add a passthrough stub
-        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) =>
-            typeof uri === 'string' ? uri : uri.fsPath
-        );
+        (vscode.workspace as any).asRelativePath = sinon.stub().callsFake((uri: any) => {
+            return typeof uri === 'string' ? uri : uri.fsPath;
+        });
         (vscode.workspace as any).getWorkspaceFolder = sinon.stub().returns(undefined);
     });
 
