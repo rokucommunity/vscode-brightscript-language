@@ -2,7 +2,7 @@ import TelemetryReporter from '@vscode/extension-telemetry';
 import type { Disposable } from 'vscode';
 import type { BrightScriptLaunchConfiguration } from '../DebugConfigurationProvider';
 import type { RemoteControlModeInitiator } from './RemoteControlManager';
-import * as vscode from 'vscode';
+import { util } from '../util';
 import type { DeviceInfo } from 'roku-deploy';
 
 const APP_INSIGHTS_KEY = '8618f206-4732-4729-88ed-d07dcf17f199';
@@ -63,7 +63,7 @@ export class TelemetryManager implements Disposable {
             isLogfilePathDefined: isDefined(initialConfig.logfilePath),
             isBsConstDefined: isDefined(initialConfig.bsConst),
             isExtensionLogfilePathDefined: isDefined(
-                vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath')
+                util.getConfiguration('brightscript').get<string>('extensionLogfilePath')
             ),
             // include some deviceInfo data
             deviceInfoSoftwareVersion: deviceInfo?.softwareVersion,

@@ -247,7 +247,7 @@ export class Extension {
 
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
-            vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
+            vscode.languages.registerDocumentLinkProvider({ language: 'Log', scheme: 'output' }, docLinkProvider)
         );
 
         vscode.window.registerUriHandler({
@@ -279,7 +279,7 @@ export class Extension {
         vscode.debug.onDidStartDebugSession(this.onDidStartDebugSession.bind(this));
         vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession.bind(this));
 
-        let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
+        let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
                 //show the output panel on extension startup without taking focus (only if configured to do so...defaults to 'nothing')
@@ -481,11 +481,42 @@ export class Extension {
             );
             void vscode.debug.stopDebugging(e.session);
             if (selected === 'Report Issue') {
+                let additionalInfoSection = '';
+                if (data.additionalInfo && Object.keys(data.additionalInfo).length > 0) {
+                    const lines = Object.entries(data.additionalInfo).map(([key, value]) => {
+                        // Insert a space before all uppercase letters preceded by a lowercase letter, then uppercase the first char
+                        const spacedString = key.replace(/([a-z])([A-Z])/g, '$1 $2');
+                        const formattedKey = spacedString.charAt(0).toUpperCase() + spacedString.slice(1);
+                        return `|${formattedKey}|${typeof value === 'string' ? value : JSON.stringify(value)}|`;
+                    });
+                    additionalInfoSection = lines.join('\n');
+                }
                 await vscode.commands.executeCommand('workbench.action.openIssueReporter', {
                     extensionId: 'RokuCommunity.brightscript',
                     issueType: 0,
                     issueTitle: `DAP crash: ${data.type} - ${data.message}`,
-                    issueBody: `## Debug Adapter Crash\n\n**Type:** ${data.type}\n**Message:** ${data.message}\n\n**Stack:**\n\`\`\`\n${data.stack ?? 'N/A'}\n\`\`\`\n\n**Steps to reproduce:**\n<!-- Please describe what you were doing when this crash occurred -->`
+                    issueBody: [
+                        '## Debug Adapter Crash',
+                        `**Type:** ${data.type}`,
+                        `**Message:** ${data.message}`,
+                        '',
+                        '**Steps to reproduce:**',
+                        '<!-- Please describe what you were doing when this crash occurred -->',
+                        '',
+                        '**Stack:**',
+                        '```',
+                        `${data.stack ?? 'N/A'}`,
+                        '```',
+                        '',
+                        `<details>`,
+                        `<summary>Additional Info</summary>`,
+                        '',
+                        `|Item|Value|`,
+                        `|---|---|`,
+                        `${additionalInfoSection || ''}`,
+                        '',
+                        `</details>`
+                    ].join('\n')
                 });
             }
 
@@ -588,7 +619,7 @@ export class Extension {
      * Writes text to a logfile if enabled
      */
     private writeExtensionLog(text: string) {
-        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        let extensionLogfilePath = util.getConfiguration('brightscript').get<string>('extensionLogfilePath');
         if (extensionLogfilePath) {
             //replace the ${workspaceFolder} variable with the path to the first workspace
             extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);

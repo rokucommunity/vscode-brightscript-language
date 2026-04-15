@@ -108,7 +108,7 @@ class InstallLocalRunner {
 
             log(`deleting ${chalk.green(`./node_modules/${dependency}`)} to prevent contention`);
             try {
-                fsExtra.removeSync(`node_modules/${project.name}`);
+                fsExtra.removeSync(`${projectDir}/node_modules/${dependency}`);
             } catch (e) {
                 console.error(e);
             }
