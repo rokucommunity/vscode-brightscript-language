@@ -214,6 +214,7 @@ export class UserInputManager {
                 this.deviceManager.refresh(true);
             } else if (button.tooltip === CLEAR_DEVICE_LIST) {
                 this.deviceManager.clearCurrentDeviceList();
+                void util.showTimedNotification('Clearing device list');
             } else if (button.tooltip === ENABLE_DEVICE_DISCOVERY) {
                 void util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
             } else if (button.tooltip === DISABLE_DEVICE_DISCOVERY) {

@@ -336,6 +336,9 @@ export class DeviceManager {
             this.lastUsedDeviceIp = undefined;
         }
 
+        //clear the cache for the current list of devices
+        this.globalStateManager.setLastSeenDevices(this.networkId, []);
+
         this.emitDevicesChanged();
     }
 
