@@ -17,6 +17,7 @@ afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
     vscode.workspace.workspaceFolders = [] as any;
+    vscode.workspace.findFiles = () => [] as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
 });
@@ -68,6 +69,7 @@ export let vscode = {
         stopDebugging: () => { }
     },
     languages: {
+        registerCodeLensProvider: () => { },
         registerDefinitionProvider: () => { },
         registerDocumentSymbolProvider: () => { },
         registerWorkspaceSymbolProvider: () => { },
@@ -162,6 +164,9 @@ export let vscode = {
         getWorkspaceFolder: (uri: Uri) => {
             return undefined;
         },
+        asRelativePath: (pathOrUri: string | Uri) => {
+            return typeof pathOrUri === 'string' ? pathOrUri : pathOrUri.fsPath;
+        },
         findFiles: (include, exclude) => {
             return [] as any;
         },
@@ -188,6 +193,7 @@ export let vscode = {
                 clear: () => { },
                 text: '',
                 show: () => { },
+                hide: () => { },
                 dispose: () => { }
             };
         },
@@ -530,6 +536,10 @@ export let vscode = {
     TaskScope: {
         Global: 1,
         Workspace: 2
+    },
+    DebugConfigurationProviderTriggerKind: {
+        Initial: 1,
+        Dynamic: 2
     }
 };
 
