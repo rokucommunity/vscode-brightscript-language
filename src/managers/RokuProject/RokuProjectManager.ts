@@ -8,57 +8,6 @@ import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 
 export const DEBUG_ROKU_PROJECT_COMMAND = 'extension.brightscript.debugRokuProject';
 
-function isSubdirectoryOf(parent: string, child: string): boolean {
-    const rel = path.relative(parent, child);
-    return rel !== '' && !rel.startsWith('..');
-}
-
-export interface DiscoveredRokuProject {
-    configUri: vscode.Uri;
-    projectDir: string;
-    projectName: string;
-}
-
-export interface ProjectBuildResult {
-    project: DiscoveredRokuProject;
-    taskName?: string;
-    taskConfig?: TaskConfig;
-    debugConfig: vscode.DebugConfiguration;
-}
-
-/**
- * Implemented by project-type-specific providers to supply the config discovery
- * and build logic that RokuProjectManager orchestrates.
- */
-export interface ProjectConfigProvider {
-    /** DocumentFilter(s) used to register CodeLens over project config files. */
-    readonly configFileSelector: vscode.DocumentFilter[];
-    /** Returns true if this provider is responsible for the given config URI. */
-    ownsConfig(uri: vscode.Uri): boolean;
-    /** Find all project config file URIs in the workspace. */
-    findProjectConfigs(): Thenable<vscode.Uri[]>;
-    /**
-     * Given an open file URI, return all config URIs that own it.
-     * A file may be claimed by more than one config (e.g. a shared source file
-     * referenced by multiple bsconfigs), so callers must handle multiple results.
-     * Providers without a file index may walk up the directory tree and return
-     * at most one result.
-     */
-    findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]>;
-    /** Build project info, task metadata, and a debug config from a project config URI. */
-    buildProject(configUri: vscode.Uri): ProjectBuildResult;
-    /**
-     * Called after a config URI is registered. Providers may use this to update
-     * internal file-ownership indexes.
-     */
-    afterConfigRegistered?(configUri: vscode.Uri): void;
-    /**
-     * Called after a config URI is unregistered. Providers may use this to clean
-     * up entries in internal file-ownership indexes.
-     */
-    afterConfigUnregistered?(configUri: vscode.Uri): void;
-}
-
 export class RokuProjectManager {
 
     constructor(
@@ -368,4 +317,65 @@ export class RokuProjectManager {
         );
     }
 
+}
+
+// -------------------------------------------------------------------------
+// Interfaces & helpers
+// -------------------------------------------------------------------------
+
+function isSubdirectoryOf(parent: string, child: string): boolean {
+    const rel = path.relative(parent, child);
+    return rel !== '' && !rel.startsWith('..');
+}
+
+/** A Roku project discovered in the workspace, identified by its config file. */
+export interface DiscoveredRokuProject {
+    configUri: vscode.Uri;
+    projectDir: string;
+    projectName: string;
+}
+
+/**
+ * The output of a provider's buildProject() call. Bundles together everything
+ * RokuProjectManager needs to register a project: the discovered project metadata,
+ * an optional pre-launch build task, and the VS Code debug configuration to launch.
+ */
+export interface ProjectBuildResult {
+    project: DiscoveredRokuProject;
+    taskName?: string;
+    taskConfig?: TaskConfig;
+    debugConfig: vscode.DebugConfiguration;
+}
+
+/**
+ * Implemented by project-type-specific providers to supply the config discovery
+ * and build logic that RokuProjectManager orchestrates.
+ */
+export interface ProjectConfigProvider {
+    /** DocumentFilter(s) used to register CodeLens over project config files. */
+    readonly configFileSelector: vscode.DocumentFilter[];
+    /** Returns true if this provider is responsible for the given config URI. */
+    ownsConfig(uri: vscode.Uri): boolean;
+    /** Find all project config file URIs in the workspace. */
+    findProjectConfigs(): Thenable<vscode.Uri[]>;
+    /**
+     * Given an open file URI, return all config URIs that own it.
+     * A file may be claimed by more than one config (e.g. a shared source file
+     * referenced by multiple project configs), so callers must handle multiple results.
+     * Providers without a file index may walk up the directory tree and return
+     * at most one result.
+     */
+    findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]>;
+    /** Build project info, task metadata, and a debug config from a project config URI. */
+    buildProject(configUri: vscode.Uri): ProjectBuildResult;
+    /**
+     * Called after a config URI is registered. Providers may use this to update
+     * internal file-ownership lookups.
+     */
+    afterConfigRegistered?(configUri: vscode.Uri): void;
+    /**
+     * Called after a config URI is unregistered. Providers may use this to clean
+     * up entries in internal file-ownership lookups.
+     */
+    afterConfigUnregistered?(configUri: vscode.Uri): void;
 }
