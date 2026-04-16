@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DEBUG_ROKU_PROJECT_COMMAND } from '../managers/RokuProject/RokuProjectManager';
+import { VscodeCommand } from '../commands/VscodeCommand';
 import type { DiscoveredRokuProject } from '../managers/RokuProject/RokuProjectManager';
 import { ViewProviderId } from './ViewProviderId';
 
@@ -58,7 +58,7 @@ export class ProjectTreeItem extends vscode.TreeItem {
         this.contextValue = sessionActive ? 'rokuProject.sessionActive' : 'rokuProject';
         this.command = sessionActive ? undefined : {
             title: 'Debug Roku Project',
-            command: DEBUG_ROKU_PROJECT_COMMAND,
+            command: VscodeCommand.debugRokuProject,
             arguments: [project.configUri]
         };
     }

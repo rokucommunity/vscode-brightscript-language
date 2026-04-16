@@ -6,6 +6,7 @@ import * as fsExtra from 'fs-extra';
 import { util } from './util';
 import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
+import { debugRokuProjectCommand } from './commands/DebugRokuProjectCommand';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
@@ -144,6 +145,7 @@ export class Extension {
 
         const rokuProjectProvider = new RokuProjectManager(tasksManager, rokuProjectsViewProvider);
         rokuProjectProvider.register(context);
+        debugRokuProjectCommand.register(context, rokuProjectProvider);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {

@@ -2,11 +2,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { BrightScriptTaskProvider, TaskConfig } from '../../BrightScriptTaskProvider';
 import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsViewProvider';
-import { ProjectTreeItem } from '../../viewProviders/RokuProjectsViewProvider';
 import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
-
-export const DEBUG_ROKU_PROJECT_COMMAND = 'extension.brightscript.debugRokuProject';
+import { VscodeCommand } from '../../commands/VscodeCommand';
 
 export class RokuProjectManager {
 
@@ -22,10 +20,6 @@ export class RokuProjectManager {
 
     public register(context: vscode.ExtensionContext) {
         context.subscriptions.push(
-            vscode.commands.registerCommand(DEBUG_ROKU_PROJECT_COMMAND, (arg?: vscode.Uri | ProjectTreeItem) => {
-                const uri = arg instanceof ProjectTreeItem ? arg.project.configUri : arg;
-                void this.debugProject(uri);
-            }),
             ...this.providers.map(provider => vscode.languages.registerCodeLensProvider(provider.configFileSelector, this)),
             vscode.debug.onDidStartDebugSession(() => this.statusBarItem?.hide()),
             vscode.debug.onDidTerminateDebugSession(() => this.syncStatusBar())
@@ -103,7 +97,7 @@ export class RokuProjectManager {
     private syncStatusBar(context?: vscode.ExtensionContext) {
         if (!this.statusBarItem) {
             this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-            this.statusBarItem.command = DEBUG_ROKU_PROJECT_COMMAND;
+            this.statusBarItem.command = VscodeCommand.debugRokuProject;
             this.statusBarItem.text = '$(debug-start) Debug Roku Project';
             this.statusBarItem.tooltip = 'Debug Roku Project';
             context?.subscriptions.push(this.statusBarItem);
@@ -187,7 +181,7 @@ export class RokuProjectManager {
         return [
             new vscode.CodeLens(new vscode.Range(0, 0, 0, 0), {
                 title: '$(debug-alt) Debug Roku Project',
-                command: DEBUG_ROKU_PROJECT_COMMAND,
+                command: VscodeCommand.debugRokuProject,
                 arguments: [document.uri]
             })
         ];
@@ -273,7 +267,7 @@ export class RokuProjectManager {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private async debugProject(uri?: vscode.Uri) {
+    public async debugProject(uri?: vscode.Uri) {
         let targetUri = uri;
 
         if (!targetUri) {
