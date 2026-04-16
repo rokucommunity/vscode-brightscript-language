@@ -208,13 +208,13 @@ describe('RokuConfigProjectProvider', () => {
             expect(result.taskConfig.cwd).to.equal('/workspace/project');
         });
 
-        it('sets the debug rootDir to dist-build/pkg-dir inside the project', () => {
+        it('sets the debug rootDir to dist-build/bundle inside the project', () => {
             const configUri = makeUri('/workspace/project/roku-config.ts');
 
             const result = provider.createProject(configUri);
 
             expect(result.debugConfig.rootDir).to.equal(
-                path.join('/workspace/project', 'dist-build', 'pkg-dir')
+                path.join('/workspace/project', 'dist-build', 'bundle')
             );
         });
 
