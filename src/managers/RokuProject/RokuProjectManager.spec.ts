@@ -302,17 +302,16 @@ describe('RokuProjectManager', () => {
     // updateStatusBar
     // -------------------------------------------------------------------------
 
-    describe('updateStatusBar', () => {
+    describe('syncStatusBar', () => {
         it('shows the item when at least one project is registered', () => {
+            const item = { show: sinon.stub(), hide: sinon.stub() };
+            (manager as any).statusBarItem = item;
+
             const uri = makeUri('/workspace/project/bsconfig.json');
             const result = makeBuildResult('/workspace/project', uri);
-
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
-
-            const item = { show: sinon.stub(), hide: sinon.stub() };
-            (manager as any).updateStatusBar(item as any);
 
             expect(item.show.calledOnce).to.be.true;
             expect(item.hide.called).to.be.false;
@@ -320,14 +319,15 @@ describe('RokuProjectManager', () => {
 
         it('hides the item when no projects are registered', () => {
             const item = { show: sinon.stub(), hide: sinon.stub() };
-            (manager as any).updateStatusBar(item as any);
+            (manager as any).statusBarItem = item;
+            (manager as any).syncStatusBar();
 
             expect(item.hide.calledOnce).to.be.true;
             expect(item.show.called).to.be.false;
         });
 
-        it('does not throw when item is undefined', () => {
-            expect(() => (manager as any).updateStatusBar(undefined as any)).to.not.throw();
+        it('does not throw when no item has been initialized yet', () => {
+            expect(() => (manager as any).syncStatusBar()).to.not.throw();
         });
 
         it('sets brightscript.hasRokuProjects context to true when projects exist', () => {
@@ -338,8 +338,6 @@ describe('RokuProjectManager', () => {
             (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
-            (manager as any).updateStatusBar(undefined as any);
-
             const executeCommand = vscode.commands.executeCommand as sinon.SinonStub;
             const hasProjectsCall = executeCommand.getCalls().find(c => c.args[1] === 'brightscript.hasRokuProjects');
             expect(hasProjectsCall).to.not.be.undefined;
@@ -347,7 +345,7 @@ describe('RokuProjectManager', () => {
         });
 
         it('sets brightscript.hasRokuProjects context to false when no projects', () => {
-            (manager as any).updateStatusBar(undefined as any);
+            (manager as any).syncStatusBar();
 
             const executeCommand = vscode.commands.executeCommand as sinon.SinonStub;
             const hasProjectsCall = executeCommand.getCalls().find(c => c.args[1] === 'brightscript.hasRokuProjects');

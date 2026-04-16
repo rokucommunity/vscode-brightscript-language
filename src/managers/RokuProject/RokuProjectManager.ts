@@ -21,23 +21,17 @@ export class RokuProjectManager {
     ];
 
     public register(context: vscode.ExtensionContext) {
-        const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-        statusBarItem.command = DEBUG_ROKU_PROJECT_COMMAND;
-        statusBarItem.text = '$(debug-start) Debug Roku Project';
-        statusBarItem.tooltip = 'Debug Roku Project';
-
         context.subscriptions.push(
-            statusBarItem,
             vscode.commands.registerCommand(DEBUG_ROKU_PROJECT_COMMAND, (arg?: vscode.Uri | ProjectTreeItem) => {
                 const uri = arg instanceof ProjectTreeItem ? arg.project.configUri : arg;
                 void this.debugProject(uri);
             }),
             ...this.providers.map(provider => vscode.languages.registerCodeLensProvider(provider.configFileSelector, this)),
-            vscode.debug.onDidStartDebugSession(() => statusBarItem.hide()),
-            vscode.debug.onDidTerminateDebugSession(() => this.updateStatusBar(statusBarItem))
+            vscode.debug.onDidStartDebugSession(() => this.statusBarItem?.hide()),
+            vscode.debug.onDidTerminateDebugSession(() => this.syncStatusBar())
         );
 
-        this.setStatusBar(statusBarItem);
+        this.syncStatusBar(context);
 
         // Watch for config file changes across all providers
         for (const provider of this.providers) {
@@ -100,22 +94,28 @@ export class RokuProjectManager {
 
     private statusBarItem: vscode.StatusBarItem | undefined;
 
-    private setStatusBar(item: vscode.StatusBarItem) {
-        this.statusBarItem = item;
-    }
-
-    private updateStatusBar(item: vscode.StatusBarItem = this.statusBarItem) {
+    /**
+     * Creates the status bar item on first call (registering it for disposal when a context is
+     * provided), then syncs its visibility and the brightscript VS Code context variables to the
+     * current project state. Safe to call any time projects change — no-ops gracefully if the
+     * item hasn't been initialized yet.
+     */
+    private syncStatusBar(context?: vscode.ExtensionContext) {
+        if (!this.statusBarItem) {
+            this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+            this.statusBarItem.command = DEBUG_ROKU_PROJECT_COMMAND;
+            this.statusBarItem.text = '$(debug-start) Debug Roku Project';
+            this.statusBarItem.tooltip = 'Debug Roku Project';
+            context?.subscriptions.push(this.statusBarItem);
+        }
         const hasProjects = this.discoveredProjects.size > 0;
         void vscode.commands.executeCommand('setContext', 'brightscript.hasRokuProjects', hasProjects);
-        const configPaths = Array.from(this.discoveredProjects.values()).map(provider => provider.configUri.fsPath);
+        const configPaths = Array.from(this.discoveredProjects.values()).map(p => p.configUri.fsPath);
         void vscode.commands.executeCommand('setContext', 'brightscript.rokuProjectConfigFiles', configPaths);
-        if (!item) {
-            return;
-        }
         if (hasProjects) {
-            item.show();
+            this.statusBarItem.show();
         } else {
-            item.hide();
+            this.statusBarItem.hide();
         }
     }
 
@@ -159,7 +159,7 @@ export class RokuProjectManager {
         this.discoveredProjects.set(project.projectDir, project);
         this.providerIndexByProjectDir.set(project.projectDir, providerIndex);
         this.viewProvider?.setProjects(Array.from(this.discoveredProjects.values()));
-        this.updateStatusBar();
+        this.syncStatusBar();
         provider.afterConfigRegistered?.(uri);
     }
 
@@ -176,7 +176,7 @@ export class RokuProjectManager {
         this.discoveredProjects.delete(project.projectDir);
         this.providerIndexByProjectDir.delete(project.projectDir);
         this.viewProvider?.setProjects(Array.from(this.discoveredProjects.values()));
-        this.updateStatusBar();
+        this.syncStatusBar();
     }
 
     // -------------------------------------------------------------------------

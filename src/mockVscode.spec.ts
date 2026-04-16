@@ -189,6 +189,7 @@ export let vscode = {
                 clear: () => { },
                 text: '',
                 show: () => { },
+                hide: () => { },
                 dispose: () => { }
             };
         },
