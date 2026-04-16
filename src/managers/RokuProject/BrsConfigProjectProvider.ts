@@ -22,7 +22,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
      * Per-config store keyed by configUri.fsPath.
      * Populated by afterConfigRegistered; used by findProjectConfigFromFile.
      */
-    private readonly configIndex = new Map<string, IndexedConfig>();
+    private readonly configByPath = new Map<string, IndexedConfig>();
 
     public ownsConfig(uri: vscode.Uri): boolean {
         const basename = path.basename(uri.fsPath);
@@ -56,7 +56,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     public findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]> {
         const filePath = util.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
-        for (const entry of this.configIndex.values()) {
+        for (const entry of this.configByPath.values()) {
             if (rokuDeploy.getDestPath(filePath, entry.files, entry.rootDir)) {
                 matches.push(entry.configUri);
             }
@@ -72,7 +72,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
         const projectDir = path.dirname(configUri.fsPath);
         try {
             const raw = JSON.parse(fs.readFileSync(configUri.fsPath, 'utf8'));
-            this.configIndex.set(configUri.fsPath, {
+            this.configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: raw.files ?? [],
                 rootDir: raw.rootDir ? path.resolve(projectDir, raw.rootDir) : projectDir
@@ -83,7 +83,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public afterConfigUnregistered(configUri: vscode.Uri): void {
-        this.configIndex.delete(configUri.fsPath);
+        this.configByPath.delete(configUri.fsPath);
     }
 
     public buildProject(configUri: vscode.Uri): ProjectBuildResult {
@@ -92,7 +92,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
         const configFilename = path.basename(configUri.fsPath);
         // "brsconfig.build.json" → "build", "brsconfig.json" → ""
         const flavor = configFilename.replace(/^brsconfig\W?(.*)\.json$/, '$1').replace(/\W+/g, ' ').trim();
-        const indexed = this.configIndex.get(configUri.fsPath);
+        const indexed = this.configByPath.get(configUri.fsPath);
         const files = indexed?.files ?? [];
         const rootDir = indexed?.rootDir ?? projectDir;
 

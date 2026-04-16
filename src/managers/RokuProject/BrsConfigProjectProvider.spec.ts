@@ -109,7 +109,7 @@ describe('BrsConfigProjectProvider', () => {
     // -------------------------------------------------------------------------
 
     describe('afterConfigRegistered', () => {
-        it('populates the configIndex with files and rootDir', () => {
+        it('populates the configByPath with files and rootDir', () => {
             const projectDir = '/project';
             const configUri = makeUri(path.join(projectDir, 'brsconfig.json'));
             const fakeConfig = { files: ['src/**/*.brs'], rootDir: 'src' };
@@ -118,7 +118,7 @@ describe('BrsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             expect(indexed).to.not.be.undefined;
             expect(indexed.files).to.eql(fakeConfig.files);
             expect(indexed.rootDir).to.equal(path.resolve(projectDir, 'src'));
@@ -131,7 +131,7 @@ describe('BrsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             // Use path.dirname to get the OS-normalized expected value (avoids / vs \ on Windows)
             expect(indexed.rootDir).to.equal(path.dirname(configUri.fsPath));
         });
@@ -141,7 +141,7 @@ describe('BrsConfigProjectProvider', () => {
             sinon.stub(fs, 'readFileSync').throws(new Error('read error'));
 
             expect(() => provider.afterConfigRegistered(configUri)).to.not.throw();
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.false;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.false;
         });
 
         it('silently ignores a brsconfig with invalid JSON', () => {
@@ -149,7 +149,7 @@ describe('BrsConfigProjectProvider', () => {
             sinon.stub(fs, 'readFileSync').returns('not valid json' as any);
 
             expect(() => provider.afterConfigRegistered(configUri)).to.not.throw();
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.false;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.false;
         });
 
         it('defaults files to an empty array when the field is absent', () => {
@@ -160,23 +160,23 @@ describe('BrsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             expect(indexed.files).to.eql([]);
         });
     });
 
     describe('afterConfigUnregistered', () => {
-        it('removes the entry from the configIndex', () => {
+        it('removes the entry from the configByPath', () => {
             const projectDir = '/project';
             const configUri = makeUri(path.join(projectDir, 'brsconfig.json'));
 
             sinon.stub(fs, 'readFileSync').returns(JSON.stringify({ files: [], rootDir: projectDir }) as any);
 
             provider.afterConfigRegistered(configUri);
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.true;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.true;
 
             provider.afterConfigUnregistered(configUri);
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.false;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.false;
         });
 
         it('does not throw when the URI was never registered', () => {
@@ -195,7 +195,7 @@ describe('BrsConfigProjectProvider', () => {
             const configUri = makeUri(path.join(projectDir, 'brsconfig.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [{ src: 'src/**/*.brs', dest: 'source' }],
                 rootDir: projectDir
@@ -224,10 +224,10 @@ describe('BrsConfigProjectProvider', () => {
             const configUri2 = makeUri(path.join(projectDir, 'brsconfig.prod.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
-            (provider as any).configIndex.set(configUri1.fsPath, {
+            (provider as any).configByPath.set(configUri1.fsPath, {
                 configUri: configUri1, files: [], rootDir: projectDir
             });
-            (provider as any).configIndex.set(configUri2.fsPath, {
+            (provider as any).configByPath.set(configUri2.fsPath, {
                 configUri: configUri2, files: [], rootDir: projectDir
             });
 
@@ -246,7 +246,7 @@ describe('BrsConfigProjectProvider', () => {
     describe('buildProject', () => {
         it('produces a debug config name with no flavor for brsconfig.json', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
@@ -257,7 +257,7 @@ describe('BrsConfigProjectProvider', () => {
 
         it('appends the flavor in parentheses for brsconfig.prod.json', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.prod.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
@@ -269,7 +269,7 @@ describe('BrsConfigProjectProvider', () => {
         it('uses the indexed rootDir as the debug rootDir', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
             const rootDir = '/workspace/myapp/src';
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: rootDir
             });
 
@@ -289,7 +289,7 @@ describe('BrsConfigProjectProvider', () => {
         it('includes the files array from the indexed config in the debug config', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
             const files = [{ src: 'src/**/*.brs', dest: 'source' }];
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: files, rootDir: '/workspace/myapp'
             });
 
@@ -300,7 +300,7 @@ describe('BrsConfigProjectProvider', () => {
 
         it('does not include a taskName or taskConfig', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
@@ -312,7 +312,7 @@ describe('BrsConfigProjectProvider', () => {
 
         it('does not include a preLaunchTask in the debug config', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
@@ -323,7 +323,7 @@ describe('BrsConfigProjectProvider', () => {
 
         it('populates project.projectDir and project.projectName correctly', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 

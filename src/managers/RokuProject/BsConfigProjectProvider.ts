@@ -26,7 +26,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
      * Per-config store keyed by configUri.fsPath.
      * Populated by afterConfigRegistered; used by findProjectConfigFromFile.
      */
-    private readonly configIndex = new Map<string, IndexedConfig>();
+    private readonly configByPath = new Map<string, IndexedConfig>();
 
     public ownsConfig(uri: vscode.Uri): boolean {
         const basename = path.basename(uri.fsPath);
@@ -60,7 +60,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
     public findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]> {
         const filePath = util.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
-        for (const entry of this.configIndex.values()) {
+        for (const entry of this.configByPath.values()) {
             // getDestPath returns undefined at runtime when the file doesn't match
             // (TypeScript types the return as string, but the implementation returns undefined for no match)
             if (rokuDeploy.getDestPath(filePath, entry.files, entry.rootDir)) {
@@ -79,7 +79,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
         try {
             const rawConfig = util.loadConfigFile(configUri.fsPath, undefined, projectDir);
             const config = util.normalizeConfig(rawConfig);
-            this.configIndex.set(configUri.fsPath, {
+            this.configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: config.files ?? [],
                 rootDir: config.rootDir ?? projectDir,
@@ -91,7 +91,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public afterConfigUnregistered(configUri: vscode.Uri): void {
-        this.configIndex.delete(configUri.fsPath);
+        this.configByPath.delete(configUri.fsPath);
     }
 
     public buildProject(configUri: vscode.Uri): ProjectBuildResult {
@@ -115,7 +115,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
         };
 
         // Use the already-indexed stagingDir if available; otherwise resolve from file
-        const stagingDir = this.configIndex.get(configUri.fsPath)?.stagingDir ??
+        const stagingDir = this.configByPath.get(configUri.fsPath)?.stagingDir ??
             this.resolveStagingDir(configUri, projectDir);
         const debugConfig: vscode.DebugConfiguration = {
             type: 'brightscript',

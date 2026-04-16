@@ -108,7 +108,7 @@ describe('BsConfigProjectProvider', () => {
     // -------------------------------------------------------------------------
 
     describe('afterConfigRegistered', () => {
-        it('populates the configIndex with resolved files and rootDir', () => {
+        it('populates the configByPath with resolved files and rootDir', () => {
             const projectDir = '/project';
             const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
             const fakeConfig = { files: ['src/**/*.brs'], rootDir: projectDir };
@@ -122,7 +122,7 @@ describe('BsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             expect(indexed).to.not.be.undefined;
             expect(indexed.rootDir).to.equal(projectDir);
         });
@@ -132,7 +132,7 @@ describe('BsConfigProjectProvider', () => {
             sinon.stub(util, 'loadConfigFile').throws(new Error('parse error'));
 
             expect(() => provider.afterConfigRegistered(configUri)).to.not.throw();
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.false;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.false;
         });
 
         it('uses stagingFolderPath (deprecated field) when stagingDir is absent', () => {
@@ -149,7 +149,7 @@ describe('BsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             expect(indexed.stagingDir).to.equal(path.resolve(projectDir, 'custom-staging'));
         });
 
@@ -165,13 +165,13 @@ describe('BsConfigProjectProvider', () => {
 
             provider.afterConfigRegistered(configUri);
 
-            const indexed = (provider as any).configIndex.get(configUri.fsPath);
+            const indexed = (provider as any).configByPath.get(configUri.fsPath);
             expect(indexed.stagingDir).to.equal(path.join(projectDir, 'out', '.roku-deploy-staging'));
         });
     });
 
     describe('afterConfigUnregistered', () => {
-        it('removes the entry from the configIndex', () => {
+        it('removes the entry from the configByPath', () => {
             const projectDir = '/project';
             const configUri = makeUri(path.join(projectDir, 'bsconfig.json'));
 
@@ -179,10 +179,10 @@ describe('BsConfigProjectProvider', () => {
             sinon.stub(util, 'normalizeConfig').returns({ files: [], rootDir: projectDir } as any);
 
             provider.afterConfigRegistered(configUri);
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.true;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.true;
 
             provider.afterConfigUnregistered(configUri);
-            expect((provider as any).configIndex.has(configUri.fsPath)).to.be.false;
+            expect((provider as any).configByPath.has(configUri.fsPath)).to.be.false;
         });
 
         it('does not throw when the URI was never registered', () => {
@@ -202,7 +202,7 @@ describe('BsConfigProjectProvider', () => {
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
             // Populate the index
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [{ src: 'src/**/*.brs', dest: 'source' }],
                 rootDir: projectDir,
@@ -232,10 +232,10 @@ describe('BsConfigProjectProvider', () => {
             const configUri2 = makeUri(path.join(projectDir, 'bsconfig.prod.json'));
             const fileUri = makeUri(path.join(projectDir, 'src', 'main.brs'));
 
-            (provider as any).configIndex.set(configUri1.fsPath, {
+            (provider as any).configByPath.set(configUri1.fsPath, {
                 configUri: configUri1, files: [], rootDir: projectDir, stagingDir: ''
             });
-            (provider as any).configIndex.set(configUri2.fsPath, {
+            (provider as any).configByPath.set(configUri2.fsPath, {
                 configUri: configUri2, files: [], rootDir: projectDir, stagingDir: ''
             });
 
@@ -255,7 +255,7 @@ describe('BsConfigProjectProvider', () => {
         it('generates the correct task name from the config URI', () => {
             const configUri = makeUri('/workspace/project/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
                 rootDir: '/workspace/project',
@@ -270,7 +270,7 @@ describe('BsConfigProjectProvider', () => {
         it('embeds the config filename in the bsc command', () => {
             const configUri = makeUri('/workspace/project/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
                 rootDir: '/workspace/project',
@@ -285,7 +285,7 @@ describe('BsConfigProjectProvider', () => {
         it('produces a debug config name with no flavor for bsconfig.json', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
                 rootDir: '/workspace/myapp',
@@ -300,7 +300,7 @@ describe('BsConfigProjectProvider', () => {
         it('appends the flavor in parentheses for bsconfig.prod.json', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.prod.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.prod.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
                 rootDir: '/workspace/myapp',
@@ -316,7 +316,7 @@ describe('BsConfigProjectProvider', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             const stagingDir = '/workspace/myapp/custom-staging';
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: [],
                 rootDir: '/workspace/myapp',
@@ -348,7 +348,7 @@ describe('BsConfigProjectProvider', () => {
         it('includes the preLaunchTask in the debug config', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp',
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
@@ -361,7 +361,7 @@ describe('BsConfigProjectProvider', () => {
         it('sets the cwd of the task to the project directory', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
-            (provider as any).configIndex.set(configUri.fsPath, {
+            (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp',
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
