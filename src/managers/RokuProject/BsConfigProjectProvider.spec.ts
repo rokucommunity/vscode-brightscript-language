@@ -345,6 +345,19 @@ describe('BsConfigProjectProvider', () => {
             expect(result.debugConfig.rootDir).to.equal(path.join(projectDir, 'out', '.roku-deploy-staging'));
         });
 
+        it('sets files to ["**/*"] in the debug config so the debugger deploys all staged files', () => {
+            const configUri = makeUri('/workspace/myapp/bsconfig.json');
+            (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');
+            (provider as any).configByPath.set(configUri.fsPath, {
+                configUri: configUri, files: [], rootDir: '/workspace/myapp',
+                stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
+            });
+
+            const result = provider.createProject(configUri);
+
+            expect(result.debugConfig.files).to.eql(['**/*']);
+        });
+
         it('includes the preLaunchTask in the debug config', () => {
             const configUri = makeUri('/workspace/myapp/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('myapp/bsconfig.json');

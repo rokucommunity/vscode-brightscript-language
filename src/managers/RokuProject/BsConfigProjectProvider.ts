@@ -126,6 +126,8 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
             request: 'launch',
             name: flavor ? `Debug ${projectName} (${flavor})` : `Debug ${projectName}`,
             rootDir: stagingDir,
+            // bsc already staged all files into stagingDir; include everything so the debugger deploys them
+            files: ['**/*'],
             preLaunchTask: `BrightScript: ${taskName}`,
             host: '${promptForHost}',
             password: '${promptForPassword}'
