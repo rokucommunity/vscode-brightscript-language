@@ -2,9 +2,9 @@
 import type * as rta from 'roku-test-automation';
 import { RequestType } from 'roku-test-automation/client/dist/types/OnDeviceComponent';
 import type { VscodeCommand } from '../../src/commands/VscodeCommand';
-import type { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
+import { ViewProviderEvent } from '../../src/viewProviders/ViewProviderEvent';
 import { ViewProviderCommand } from '../../src/viewProviders/ViewProviderCommand';
-import type { DeleteEntireRegistrySectionsArgs, DeleteNodeReferencesArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, StoreNodeReferencesArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs } from 'roku-test-automation';
+import type { DeleteEntireRegistrySectionsArgs, DeleteRegistrySectionsArgs, FindNodesAtLocationArgs, GetFocusedNodeArgs, GetNodesInfoArgs, GetNodesWithPropertiesArgs, GetValueArgs, GetValuesArgs, HasFocusArgs, IsInFocusChainArgs, OnFieldChangeOnceArgs, ReadRegistryArgs, RequestOptions, SetValueArgs, WriteRegistryArgs, GetVolumeListArgs, GetDirectoryListingArgs, StatPathArgs, RenameFileArgs, DeleteFileArgs, CreateDirectoryArgs, RemoveNodeArgs, RemoveNodeChildrenArgs, FocusNodeArgs, AppUIResponse, ConvertKeyPathToSceneKeyPathArgs } from 'roku-test-automation';
 
 class ExtensionIntermediary {
     private inflightRequests = {};
@@ -90,11 +90,23 @@ class ExtensionIntermediary {
         });
     }
 
-    public setVscodeContext(key: string, value: boolean | number | string) {
+    public setVscodeContext(key: string, value: boolean | number | string, notifyViewIds: string | string[] = []) {
         this.postMessage(this.createCommandMessage(ViewProviderCommand.setVscodeContext, {
             key: key,
             value: value
         }));
+
+        const message = intermediary.createEventMessage(ViewProviderEvent.onVscodeContextSet, {
+            key: key,
+            value: value
+        });
+        intermediary.sendMessageToWebviews(notifyViewIds, message);
+    }
+
+    public getVscodeContext(key: string) {
+        return this.sendCommand(ViewProviderCommand.getVscodeContext, {
+            key: key
+        });
     }
 
     public updateWorkspaceState(key: string, value: any) {
@@ -111,8 +123,13 @@ class ExtensionIntermediary {
         });
     }
 
-    public async getStoredNodeReferences() {
-        return this.sendCommand<ReturnType<typeof rta.odc.storeNodeReferences>>(ViewProviderCommand.getStoredNodeReferences);
+    public async getStoredAppUI() {
+        return this.sendCommand<AppUIResponse | undefined>(ViewProviderCommand.getStoredAppUI);
+    }
+
+    public async getAppUI() {
+        const { response } = await this.sendCommand(ViewProviderCommand.getAppUI);
+        return response as AppUIResponse;
     }
 
     public observeEvent(eventName: string, callback: ObserverCallback) {
@@ -126,6 +143,10 @@ class ExtensionIntermediary {
     }
 
     public sendMessageToWebviews(viewIds: string | string[], message) {
+        if (!viewIds || (Array.isArray(viewIds) && viewIds.length === 0)) {
+            return;
+        }
+
         this.postMessage(this.createCommandMessage(ViewProviderCommand.sendMessageToWebviews, {
             viewIds: viewIds,
             message: message
@@ -201,14 +222,6 @@ class ODCIntermediary {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteEntireRegistry>>(RequestType.deleteEntireRegistry, args, options);
     }
 
-    public async storeNodeReferences(args?: StoreNodeReferencesArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.storeNodeReferences>>(RequestType.storeNodeReferences, args, options);
-    }
-
-    public async deleteNodeReferences(args: DeleteNodeReferencesArgs, options?: RequestOptions) {
-        return this.sendOdcMessage<ReturnType<typeof rta.odc.deleteNodeReferences>>(RequestType.deleteNodeReferences, args, options);
-    }
-
     public async getNodesWithProperties(args: GetNodesWithPropertiesArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.getNodesWithProperties>>(RequestType.getNodesWithProperties, args, options);
     }
@@ -255,6 +268,10 @@ class ODCIntermediary {
 
     public async focusNode(args: FocusNodeArgs, options?: RequestOptions) {
         return this.sendOdcMessage<ReturnType<typeof rta.odc.focusNode>>(RequestType.focusNode, args, options);
+    }
+
+    public async convertKeyPathToSceneKeyPath(args: ConvertKeyPathToSceneKeyPathArgs, options?: RequestOptions) {
+        return this.sendOdcMessage<ReturnType<typeof rta.odc.convertKeyPathToSceneKeyPath>>(RequestType.convertKeyPathToSceneKeyPath, args, options);
     }
 }
 

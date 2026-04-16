@@ -9,7 +9,8 @@ import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProv
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { GlobalStateManager } from './GlobalStateManager';
 import { rokuDeploy } from 'roku-deploy';
 
 const sinon = createSandbox();
@@ -43,17 +44,21 @@ describe('BrightScriptConfigurationProvider', () => {
             index: 0
         };
 
-        //prevent the 'start' method from actually running
-        sinon.stub(ActiveDeviceManager.prototype as any, 'start').callsFake(() => { });
-        let activeDeviceManager = new ActiveDeviceManager();
-        userInputManager = new UserInputManager(activeDeviceManager);
+        //prevent the DeviceManager from actually running
+        sinon.stub(DeviceManager.prototype as any, 'initialize').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        let globalStateManager = new GlobalStateManager(vscode.context);
+        let deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        userInputManager = new UserInputManager(deviceManager);
 
         configProvider = new BrightScriptDebugConfigurationProvider(
             vscode.context,
-            activeDeviceManager,
             null,
             vscode.window.createOutputChannel('Extension'),
-            userInputManager
+            userInputManager,
+            null // BrightScriptCommands is not used in this test
         );
     });
 
@@ -246,6 +251,45 @@ describe('BrightScriptConfigurationProvider', () => {
             } catch (e) {
                 expect(true, 'Successfully threw').to.be.true;
             }
+        });
+    });
+
+    describe('processDapLogFilePath', () => {
+        const tmpPath = s`${rootDir}/.tmp`;
+        const workspaceFolder = <any>{ uri: { fsPath: tmpPath } };
+
+        beforeEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+        afterEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+
+        it('does nothing when debugAdapterProtocolLogging is falsey', () => {
+            expect(configProvider.processDapLogFilePath(undefined, <any>{}).debugAdapterProtocolLogFilePath).not.to.be.ok;
+            expect(configProvider.processDapLogFilePath(undefined, <any>{ debugAdapterProtocolLogging: false }).debugAdapterProtocolLogFilePath).not.to.be.ok;
+        });
+
+        it('sets debugAdapterProtocolLogFilePath when enabled', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+            expect(result.debugAdapterProtocolLogFilePath).to.include(tmpPath);
+        });
+
+        it('prepends a timestamp', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            // ISO timestamp format: 2026-03-26T00-00-00
+            expect(result.debugAdapterProtocolLogFilePath).to.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
+        });
+
+        it('writes to workspace logs/ folder', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include(path.join(tmpPath, 'logs'));
+        });
+
+        it('creates the log directory', () => {
+            configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(fsExtra.pathExistsSync(path.join(tmpPath, 'logs'))).to.be.true;
         });
     });
 

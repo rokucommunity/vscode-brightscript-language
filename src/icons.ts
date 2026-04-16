@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import type { RokuDeviceDetails } from './ActiveDeviceManager';
 
 export const icons = {
     streamingStick: {
@@ -14,13 +13,21 @@ export const icons = {
         light: vscode.Uri.file(`${__dirname}/../images/icons/set-top-box-light.svg`),
         dark: vscode.Uri.file(`${__dirname}/../images/icons/set-top-box-dark.svg`)
     },
+    radioTower: {
+        light: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-light.svg`),
+        dark: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-dark.svg`)
+    },
+    radioTowerOff: {
+        light: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-off-light.svg`),
+        dark: vscode.Uri.file(`${__dirname}/../images/icons/radio-tower-off-dark.svg`)
+    },
     /**
      * Get the correct icon for the device type
      */
-    getDeviceType: (device: RokuDeviceDetails) => {
-        if (device.deviceInfo?.['is-stick']) {
+    getDeviceType: (deviceInfo?: Record<string, any>) => {
+        if (deviceInfo?.['is-stick'] === 'true') {
             return icons.streamingStick;
-        } else if (device.deviceInfo?.['is-tv']) {
+        } else if (deviceInfo?.['is-tv'] === 'true') {
             return icons.tv;
             //fall back to settop box in all other cases
         } else {

@@ -37,4 +37,9 @@ export default class BrightScriptFileUtils {
             return undefined;
         }
     }
+
+    public getParentComponentName(xmlContent: string): string | undefined {
+        const match = /<component[^>]+extends\s*=\s*["']([^"']+)["']/i.exec(xmlContent);
+        return match?.[1];
+    }
 }

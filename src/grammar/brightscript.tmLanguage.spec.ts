@@ -460,6 +460,96 @@ describe('brightscript.tmlanguage.json', () => {
             `);
         });
 
+        it('interface as param name does not break later tokens', async () => {
+            await testGrammar(`
+                function test(interface as string)
+                '                          ^^^^^^ storage.type.brs
+                '                       ^^ keyword.control.as.brs
+                '             ^^^^^^^^^ variable.parameter.brs
+                '        ^^^^ entity.name.function.brs
+                '^^^^^^^ keyword.declaration.function.brs
+                end function
+               '^^^^^^^^^^^^ keyword.declaration.function.brs
+            `);
+        });
+
+        it('does not match array literal comma as param separator', async () => {
+            await testGrammar(`
+                function test(items = [1, 2])
+                '                         ^ constant.numeric.brs
+                '             ^^^^^ entity.name.variable.local.brs
+                '        ^^^^ entity.name.function.brs
+            `);
+        });
+
+        it('does not match expression comma as param separator', async () => {
+            await testGrammar(`
+                function test(value = (calc(), 5))
+                '                              ^ constant.numeric.brs
+                '             ^^^^^ entity.name.variable.local.brs
+            `);
+        });
+
+        it('handles param with newline before as keyword', async () => {
+            await testGrammar(`
+                function test(param as string)
+                '                      ^^^^^^ storage.type.brs
+                '                   ^^ keyword.control.as.brs
+            `);
+        });
+
+        it('distinguishes param type from type cast in default value', async () => {
+            await testGrammar(`
+                function test(a as integer, b = val as string)
+                '                                      ^^^^^^ storage.type.brs
+                '                                   ^^ keyword.control.brs
+                '                           ^ entity.name.variable.local.brs
+            `);
+        });
+
+        it('handles multiple spaces between param and as', async () => {
+            await testGrammar(`
+                function test(param     as string)
+                '                          ^^^^^^ storage.type.brs
+                '                       ^^ keyword.control.as.brs
+                '             ^^^^^ variable.parameter.brs
+            `);
+        });
+
+        it('handles function call with comma in default param value', async () => {
+            await testGrammar(`
+                function test(val = call(a, b))
+                '                           ^ entity.name.variable.local.brs
+                '             ^^^ entity.name.variable.local.brs
+            `);
+        });
+
+        it('handles nested function declaration as default value', async () => {
+            await testGrammar(`
+                function outer(cb = function(x as integer)
+                '                                 ^^^^^^^ storage.type.brs
+                '                              ^^ keyword.control.as.brs
+                '                            ^ variable.parameter.brs
+            `);
+        });
+
+        it('does not match interface field as param', async () => {
+            await testGrammar(`
+                interface Test
+                    field as string
+                '            ^^^^^^ storage.type.brs
+                '         ^^ keyword.control.as.brs
+                '   ^^^^^ variable.object.property.brs
+            `);
+        });
+
+        it('handles param starting with number (invalid identifier)', async () => {
+            await testGrammar(`
+                function test(123param as string)
+                '             ^^^ variable.parameter.brs
+            `);
+        });
+
         it('colorizes @param without name', async () => {
             await testGrammar(`
                 t'@type {boolean}
@@ -767,8 +857,8 @@ describe('brightscript.tmlanguage.json', () => {
             '                                ^^^^^^ storage.type.brs
             '                             ^^ keyword.control.brs
             '                   ^^^^^^^^ storage.type.brs
-            '                ^^ keyword.control.brs
-            '          ^^^^^ entity.name.variable.local.brs
+            '                ^^ keyword.control.as.brs
+            '          ^^^^^ variable.parameter.brs
             '    ^^^^^ entity.name.function.brs
             '^^^ keyword.declaration.function.brs
 
@@ -875,8 +965,8 @@ describe('brightscript.tmlanguage.json', () => {
         await testGrammar(`
              sub nameless(rnd as dynamic)
             '                    ^^^^^^^ storage.type.brs
-            '                 ^^ keyword.control.brs
-            '             ^^^ entity.name.variable.local.brs
+            '                 ^^ keyword.control.as.brs
+            '             ^^^ variable.parameter.brs
             '    ^^^^^^^^ entity.name.function.brs
             '^^^ keyword.declaration.function.brs
 
@@ -969,8 +1059,8 @@ describe('brightscript.tmlanguage.json', () => {
         await testGrammar(`
              sub rnd(randomVal as Dynamic, rnd as dynamic)
             '                                     ^^^^^^^ storage.type.brs
-            '                                  ^^ keyword.control.brs
-            '                              ^^^ entity.name.variable.local.brs
+            '                                  ^^ keyword.control.as.brs
+            '                              ^^^ variable.parameter.brs
             '                     ^^^^^^^ storage.type.brs
             '                  ^^ keyword.control.brs
             '        ^^^^^^^^^ entity.name.variable.local.brs
@@ -1120,8 +1210,8 @@ describe('brightscript.tmlanguage.json', () => {
             '                                       ^^^^^^ storage.type.brs
             '                                    ^^ keyword.control.brs
             '                          ^^^^^^^^ storage.type.brs
-            '                       ^^ keyword.control.brs
-            '                 ^^^^^ entity.name.variable.local.brs
+            '                       ^^ keyword.control.as.brs
+            '                 ^^^^^ variable.parameter.brs
             '           ^^^^^ entity.name.function.brs
             '       ^^^ keyword.declaration.function.brs
             '^^^^^^ storage.modifier.brs
@@ -1183,8 +1273,8 @@ describe('brightscript.tmlanguage.json', () => {
             '                                                ^^^^^^ storage.type.brs
             '                                             ^^ keyword.control.brs
             '                                   ^^^^^^^^ storage.type.brs
-            '                                ^^ keyword.control.brs
-            '                          ^^^^^ entity.name.variable.local.brs
+            '                                ^^ keyword.control.as.brs
+            '                          ^^^^^ variable.parameter.brs
             '                    ^^^^^ entity.name.function.brs
             '                ^^^ keyword.declaration.function.brs
             '       ^^^^^^^^ storage.modifier.brs
@@ -1230,8 +1320,8 @@ describe('brightscript.tmlanguage.json', () => {
             '                                     ^^^^^^ storage.type.brs
             '                                  ^^ keyword.control.brs
             '                        ^^^^^^^^ storage.type.brs
-            '                     ^^ keyword.control.brs
-            '               ^^^^^ entity.name.variable.local.brs
+            '                     ^^ keyword.control.as.brs
+            '               ^^^^^ variable.parameter.brs
             '      ^^^^^^^^ keyword.declaration.function.brs
             '^^^ entity.name.variable.local.brs
 
@@ -1257,8 +1347,8 @@ describe('brightscript.tmlanguage.json', () => {
               '                                      ^^^^^^ storage.type.brs
               '                                   ^^ keyword.control.brs
               '                         ^^^^^^^^ storage.type.brs
-              '                      ^^ keyword.control.brs
-              '                ^^^^^ entity.name.variable.local.brs
+              '                      ^^ keyword.control.as.brs
+              '                ^^^^^ variable.parameter.brs
               '       ^^^^^^^^ keyword.declaration.function.brs
 
                end function
@@ -1287,7 +1377,7 @@ describe('brightscript.tmlanguage.json', () => {
     });
 
     it('colorizes class_roku_builtin correctly', async () => {
-        async function testRokuClass (className: string) {
+        async function testRokuClass(className: string) {
             return testGrammar(`
                 var = createObject("${className}")
                '                    ${'^'.repeat(className.length)} support.class.brs
@@ -1577,7 +1667,7 @@ describe('brightscript.tmlanguage.json', () => {
     });
 
     it('does NOT colorize class_roku_builtin if exact match is not found', async () => {
-        async function testRokuClass (className: string) {
+        async function testRokuClass(className: string) {
             return testGrammar(`
                 var = createObject("${className}")
                '                    ${'^'.repeat(className.length)} string.quoted.double.brs

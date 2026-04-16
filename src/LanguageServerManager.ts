@@ -138,6 +138,12 @@ export class LanguageServerManager {
             if (configuration.affectsConfiguration('brightscript.bsdk')) {
                 await this.syncVersionAndTryRun();
             }
+
+            //if the language server enable setting changed, restart the language server
+            if (configuration.affectsConfiguration('brightscript.enableLanguageServer') ||
+                configuration.affectsConfiguration('brightscript.languageServer.enabled')) {
+                await this.syncVersionAndTryRun();
+            }
         });
         await this.syncVersionAndTryRun();
     }
@@ -289,7 +295,6 @@ export class LanguageServerManager {
 
         const logger = new Logger();
         this.client.onNotification(NotificationName.busyStatus, (event: any) => {
-            console.log(event);
             this.updateStatusbar(event.status === BusyStatus.busy, event.activeRuns);
 
             //clear any existing timeout
@@ -427,9 +432,8 @@ export class LanguageServerManager {
     }
 
     public isLanguageServerEnabledInSettings() {
-        let settings = vscode.workspace.getConfiguration('brightscript');
-        let value = settings.enableLanguageServer === false ? false : true;
-        return value;
+        const result = util.getConfigurationValueIfDefined('brightscript.languageServer.enabled') ?? util.getConfigurationValueIfDefined('brightscript.enableLanguageServer', true);
+        return result;
     }
 
     public async getTranspiledFileContents(pathAbsolute: string) {
@@ -497,7 +501,7 @@ export class LanguageServerManager {
         //use bsdk entry in the code-workspace file
         if (this.workspaceConfigIncludesBsdkKey()) {
             let result = this.parseVersionInfo(
-                vscode.workspace.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
+                util.getConfiguration('brightscript', vscode.workspace.workspaceFile).get<string>('bsdk')?.trim?.(),
                 path.dirname(vscode.workspace.workspaceFile.fsPath)
             );
             if (result) {
@@ -507,7 +511,7 @@ export class LanguageServerManager {
 
         //collect `brightscript.bsdk` setting value from each workspaceFolder
         const folderResults = vscode.workspace.workspaceFolders?.reduce((acc, workspaceFolder) => {
-            const versionInfo = vscode.workspace.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
+            const versionInfo = util.getConfiguration('brightscript', workspaceFolder).get<string>('bsdk');
             const parsed = this.parseVersionInfo(versionInfo, workspaceFolder.uri.fsPath);
             if (parsed) {
                 acc.set(parsed.value, parsed);
@@ -596,7 +600,7 @@ export class LanguageServerManager {
      * Delete any brighterscript versions that haven't been used in a while
      */
     private async deleteOutdatedBscVersions() {
-        const npmCacheRetentionDays = vscode.workspace.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
+        const npmCacheRetentionDays = util.getConfiguration('brightscript')?.get?.('npmCacheRetentionDays', 45) ?? 45;
 
         //build the cutoff date (i.e. 45 days ago)
         const cutoffDate = dayjs().subtract(npmCacheRetentionDays, 'days');

@@ -4,7 +4,7 @@ import { extensions } from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
 import { util } from './util';
-import { ActiveDeviceManager } from './ActiveDeviceManager';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import BrightScriptXmlDefinitionProvider from './BrightScriptXmlDefinitionProvider';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
@@ -15,15 +15,15 @@ import { Formatter } from './formatter';
 import { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { LogOutputManager } from './LogOutputManager';
 import { RendezvousViewProvider } from './viewProviders/RendezvousViewProvider';
-import { OnlineDevicesViewProvider } from './viewProviders/OnlineDevicesViewProvider';
+import { DevicesViewProvider } from './viewProviders/DevicesViewProvider';
 import { sceneGraphDebugCommands } from './SceneGraphDebugCommands';
 import { GlobalStateManager } from './GlobalStateManager';
 import { languageServerManager } from './LanguageServerManager';
 import { TelemetryManager } from './managers/TelemetryManager';
 import { RemoteControlManager } from './managers/RemoteControlManager';
 import { WhatsNewManager } from './managers/WhatsNewManager';
-import type { CustomRequestEvent } from 'roku-debug';
-import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName } from 'roku-debug';
+import type { CustomRequestEvent, ProcessCrashEventData } from 'roku-debug';
+import { isChannelPublishedEvent, isChanperfEvent, isDiagnosticsEvent, isDebugServerLogOutputEvent, isLaunchStartEvent, isRendezvousEvent, isCustomRequestEvent, isExecuteTaskCustomRequest, ClientToServerCustomEventName, isShowPopupMessageCustomRequest, isProcessCrashEvent } from 'roku-debug';
 import { RtaManager } from './managers/RtaManager';
 import { WebviewViewProviderManager } from './managers/WebviewViewProviderManager';
 import { ViewProviderId } from './viewProviders/ViewProviderId';
@@ -31,7 +31,9 @@ import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
+import { PerfettoEditorProvider } from './editors/PerfettoEditor';
 
 export class Extension {
     public outputChannel: vscode.OutputChannel;
@@ -49,8 +51,11 @@ export class Extension {
     private rtaManager: RtaManager;
     private webviewViewProviderManager: WebviewViewProviderManager;
     private diagnosticManager = new DiagnosticManager();
+    private deviceManager: DeviceManager;
 
     public async activate(context: vscode.ExtensionContext) {
+        //make this entire extension disposable so that all resources will be cleaned up on extension deactivation
+        context.subscriptions.push(this);
         const currentExtensionVersion = extensions.getExtension(EXTENSION_ID)?.packageJSON.version as string;
 
         this.globalStateManager = new GlobalStateManager(context);
@@ -71,9 +76,9 @@ export class Extension {
         );
 
         this.telemetryManager.sendStartupEvent();
-        let activeDeviceManager = new ActiveDeviceManager();
+        this.deviceManager = new DeviceManager(context, this.globalStateManager);
         let userInputManager = new UserInputManager(
-            activeDeviceManager
+            this.deviceManager
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
@@ -81,7 +86,7 @@ export class Extension {
             this.remoteControlManager,
             this.whatsNewManager,
             context,
-            activeDeviceManager,
+            this.deviceManager,
             userInputManager,
             localPackageManager
         );
@@ -89,6 +94,8 @@ export class Extension {
         this.rtaManager = new RtaManager(context);
         this.webviewViewProviderManager = new WebviewViewProviderManager(context, this.rtaManager, this.brightScriptCommands);
         this.rtaManager.setWebviewViewProviderManager(this.webviewViewProviderManager);
+
+        PerfettoEditorProvider.register(context);
 
         //update the tracked version of the extension
         this.globalStateManager.lastRunExtensionVersion = currentExtensionVersion;
@@ -116,9 +123,16 @@ export class Extension {
         let rendezvousViewProvider = new RendezvousViewProvider(context);
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
-        //register a tree data provider for this extension's "Online Devices" view
-        let onlineDevicesViewProvider = new OnlineDevicesViewProvider(activeDeviceManager);
-        vscode.window.registerTreeDataProvider(ViewProviderId.onlineDevicesView, onlineDevicesViewProvider);
+        //register a tree data provider for this extension's "Devices" view
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager);
+        const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
+            treeDataProvider: devicesViewProvider
+        });
+        devicesViewProvider.setTreeView(devicesTreeView);
+
+        // Initialize tasks manager
+        const tasksManager = new BrightScriptTaskProvider();
+        context.subscriptions.push(tasksManager);
 
         context.subscriptions.push(vscode.commands.registerCommand('extension.brightscript.rendezvous.clearHistory', async () => {
             try {
@@ -146,14 +160,35 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, activeDeviceManager, this.telemetryManager, this.extensionOutputChannel, userInputManager);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands);
         context.subscriptions.push(
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider)
         );
 
+        //register a descriptor factory so we can inject process-level env vars into the debug adapter before it starts.
+        //this is required for features like DAP protocol logging, which must be configured before the first DAP message arrives.
+        context.subscriptions.push(
+            vscode.debug.registerDebugAdapterDescriptorFactory('brightscript', {
+                createDebugAdapterDescriptor: (session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> => {
+                    if (!executable) {
+                        return executable;
+                    }
+                    const env: Record<string, string> = {};
+
+                    // Only inject the DAP protocol log path if the user explicitly configured it.
+                    const dapLogFilePath = (session.configuration as any).debugAdapterProtocolLogFilePath as string | undefined;
+                    if (dapLogFilePath) {
+                        env.ROKU_DAP_LOG_FILE = dapLogFilePath;
+                    }
+
+                    return new vscode.DebugAdapterExecutable(executable.command, executable.args, { ...executable.options, env: env });
+                }
+            })
+        );
+
         //register a link provider for this extension's "BrightScript Log" output
         context.subscriptions.push(
-            vscode.languages.registerDocumentLinkProvider({ language: 'Log' }, docLinkProvider)
+            vscode.languages.registerDocumentLinkProvider({ language: 'Log', scheme: 'output' }, docLinkProvider)
         );
 
         vscode.window.registerUriHandler({
@@ -204,11 +239,7 @@ export class Extension {
             this.diagnosticManager.clear();
         });
 
-        vscode.debug.onDidReceiveDebugSessionCustomEvent(async (e) => {
-            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
-        });
-
-        let brightscriptConfig = vscode.workspace.getConfiguration('brightscript');
+        let brightscriptConfig = util.getConfiguration('brightscript');
         if (brightscriptConfig?.outputPanelStartupBehavior) {
             if (brightscriptConfig.outputPanelStartupBehavior === 'show') {
                 //show the output panel on extension startup without taking focus (only if configured to do so...defaults to 'nothing')
@@ -232,6 +263,7 @@ export class Extension {
     }
 
     private async debugSessionCustomEventHandler(e: vscode.DebugSessionCustomEvent, context: vscode.ExtensionContext, docLinkProvider: LogDocumentLinkProvider, logOutputManager: LogOutputManager, rendezvousViewProvider: RendezvousViewProvider) {
+
         if (isLaunchStartEvent(e)) {
             const config = e.body as BrightScriptLaunchConfiguration;
             await docLinkProvider.setLaunchConfig(config);
@@ -258,6 +290,56 @@ export class Extension {
             }
 
             this.chanperfStatusBar.show();
+
+        } else if (isProcessCrashEvent(e)) {
+            const data: ProcessCrashEventData = e.body;
+            const label = data.type === 'uncaughtException' ? 'Uncaught exception' : 'Unhandled rejection';
+            const selected = await vscode.window.showErrorMessage(
+                `BrightScript debug adapter crashed (${label}): ${data.message}`,
+                { modal: true },
+                'Report Issue'
+            );
+            void vscode.debug.stopDebugging(e.session);
+            if (selected === 'Report Issue') {
+                let additionalInfoSection = '';
+                if (data.additionalInfo && Object.keys(data.additionalInfo).length > 0) {
+                    const lines = Object.entries(data.additionalInfo).map(([key, value]) => {
+                        // Insert a space before all uppercase letters preceded by a lowercase letter, then uppercase the first char
+                        const spacedString = key.replace(/([a-z])([A-Z])/g, '$1 $2');
+                        const formattedKey = spacedString.charAt(0).toUpperCase() + spacedString.slice(1);
+                        return `|${formattedKey}|${typeof value === 'string' ? value : JSON.stringify(value)}|`;
+                    });
+                    additionalInfoSection = lines.join('\n');
+                }
+                await vscode.commands.executeCommand('workbench.action.openIssueReporter', {
+                    extensionId: 'RokuCommunity.brightscript',
+                    issueType: 0,
+                    issueTitle: `DAP crash: ${data.type} - ${data.message}`,
+                    issueBody: [
+                        '## Debug Adapter Crash',
+                        `**Type:** ${data.type}`,
+                        `**Message:** ${data.message}`,
+                        '',
+                        '**Steps to reproduce:**',
+                        '<!-- Please describe what you were doing when this crash occurred -->',
+                        '',
+                        '**Stack:**',
+                        '```',
+                        `${data.stack ?? 'N/A'}`,
+                        '```',
+                        '',
+                        `<details>`,
+                        `<summary>Additional Info</summary>`,
+                        '',
+                        `|Item|Value|`,
+                        `|---|---|`,
+                        `${additionalInfoSection || ''}`,
+                        '',
+                        `</details>`
+                    ].join('\n')
+                });
+            }
+
 
         } else if (isDiagnosticsEvent(e)) {
             const diagnostics = e.body?.diagnostics ?? [];
@@ -287,6 +369,23 @@ export class Extension {
                 }
             }
         }
+
+        try {
+            await logOutputManager.onDidReceiveDebugSessionCustomEvent(e);
+        } catch (err) {
+            console.error('Error handling custom event', e, err);
+        }
+    }
+
+    private async showMessage(e: any) {
+        const methods = {
+            error: vscode.window.showErrorMessage,
+            info: vscode.window.showInformationMessage,
+            warn: vscode.window.showWarningMessage
+        };
+        return {
+            selectedAction: await methods[e.body.severity](e.body.message, { modal: e.body.modal }, ...(e?.body?.actions ?? []))
+        };
     }
 
     private async processCustomRequestEvent(event: CustomRequestEvent, session: vscode.DebugSession) {
@@ -294,17 +393,21 @@ export class Extension {
             let response: any;
             if (isExecuteTaskCustomRequest(event)) {
                 response = await this.executeTask(event.body.task);
+            } else if (isShowPopupMessageCustomRequest(event)) {
+                response = await this.showMessage(event);
             }
+            //send the response back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: event.body.requestId,
                 ...response ?? {}
             });
-        } catch (e) {
+        } catch (error) {
+            //send the error back to the server
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
-                requestId: e.body.requestId,
+                requestId: event.body.requestId,
                 error: {
-                    message: e?.message,
-                    stack: e?.stack
+                    message: error?.message,
+                    stack: error?.stack
                 }
             });
         }
@@ -336,7 +439,7 @@ export class Extension {
      * Writes text to a logfile if enabled
      */
     private writeExtensionLog(text: string) {
-        let extensionLogfilePath = vscode.workspace.getConfiguration('brightscript').get<string>('extensionLogfilePath');
+        let extensionLogfilePath = util.getConfiguration('brightscript').get<string>('extensionLogfilePath');
         if (extensionLogfilePath) {
             //replace the ${workspaceFolder} variable with the path to the first workspace
             extensionLogfilePath = extensionLogfilePath.replace('${workspaceFolder}', vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
@@ -345,6 +448,15 @@ export class Extension {
             );
             fsExtra.appendFileSync(extensionLogfilePath, text);
         }
+    }
+
+    public dispose() {
+        this.outputChannel?.dispose?.();
+        this.sceneGraphDebugChannel?.dispose?.();
+        this.extensionOutputChannel?.dispose?.();
+        this.chanperfStatusBar?.dispose?.();
+        this.diagnosticManager?.dispose?.();
+        this.deviceManager?.dispose?.();
     }
 }
 export const extension = new Extension();
