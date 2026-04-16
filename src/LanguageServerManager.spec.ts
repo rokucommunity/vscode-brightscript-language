@@ -23,8 +23,6 @@ import undent from 'undent';
 const Module = require('module');
 const sinon = createSandbox();
 
-const cwd = s`${__dirname}/../`;
-
 //override the "require" call to mock certain items
 const { require: oldRequire } = Module.prototype;
 Module.prototype.require = function hijacked(file) {

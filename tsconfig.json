@@ -14,7 +14,6 @@
         "strictNullChecks": false,
         "noUnusedParameters": false,
         "allowSyntheticDefaultImports": true,
-        "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true
