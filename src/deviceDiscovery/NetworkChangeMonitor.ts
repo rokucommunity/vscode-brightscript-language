@@ -1,5 +1,5 @@
 import * as os from 'os';
-import * as md5 from 'md5';
+import md5 = require('md5');
 
 /**
  * Generate a hash of current network interfaces for detecting network changes

@@ -12,7 +12,7 @@ import { type LocalPackageManager } from '../managers/LocalPackageManager';
 import * as semver from 'semver';
 import { standardizePath as s } from 'brighterscript';
 import type { QuickPickItem } from 'vscode';
-import * as dayjs from 'dayjs';
+import dayjs = require('dayjs');
 dayjs.extend(relativeTime);
 
 export class LanguageServerInfoCommand {

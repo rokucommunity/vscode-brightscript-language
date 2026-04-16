@@ -11,7 +11,7 @@ import type { DeviceInfo } from 'roku-deploy';
 import * as request from 'postman-request';
 import type { Response, CoreOptions } from 'request';
 import * as childProcess from 'child_process';
-import * as minimatch from 'minimatch';
+import minimatch = require('minimatch');
 
 class Util {
     public async readDir(dirPath: string) {

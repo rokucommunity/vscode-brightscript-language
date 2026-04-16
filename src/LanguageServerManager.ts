@@ -18,7 +18,7 @@ import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
-import * as dayjs from 'dayjs';
+import dayjs = require('dayjs');
 import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
 import { firstBy } from 'thenby';
 
