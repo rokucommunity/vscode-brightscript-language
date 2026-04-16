@@ -233,6 +233,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
+                const resolvedRootDir = library.rootDir.replace('${workspaceFolder}', folderUri.fsPath);
+                const libBsconfig = this.getBsConfig(vscode.Uri.file(resolvedRootDir.replace(/[/\\]+$/, '')));
+                if (libBsconfig) {
+                    Object.assign(library, { ...libBsconfig, ...library });
+                }
+
                 library.files = library.files ? library.files : [...DefaultFiles];
             }
         } else {
