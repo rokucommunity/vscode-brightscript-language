@@ -19,10 +19,26 @@ export class BrightScriptTaskProvider implements vscode.Disposable {
     private taskProvider: vscode.Disposable;
     private registeredTasks = new Map<string, TaskConfig>();
 
+    /**
+     * Stores a task config under the given name so it will be surfaced the next time VS Code
+     * asks for available tasks (via `provideTasks`) or tries to execute one (via `resolveTask`).
+     * This does NOT register anything with VS Code directly — it simply keeps the config in
+     * memory until VS Code requests it.
+     *
+     * Primarily called by `RokuProjectManager` when a Roku project is discovered or its
+     * configuration changes.
+     */
     public registerTask(name: string, config: TaskConfig) {
         this.registeredTasks.set(name, config);
     }
 
+    /**
+     * Removes the named task from memory so it will no longer appear when VS Code queries
+     * available tasks. Has no immediate effect on tasks already running in VS Code.
+     *
+     * Primarily called by `RokuProjectManager` when a Roku project is removed from the
+     * workspace.
+     */
     public unregisterTask(name: string) {
         this.registeredTasks.delete(name);
     }
