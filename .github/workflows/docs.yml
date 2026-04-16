@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "14.19.0"
+          node-version: "18.18.2"
       - run: npm install
       - run: npm run build-docs
       - name: Deploy

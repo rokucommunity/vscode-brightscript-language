@@ -4,7 +4,6 @@ import type {
     Position,
     TextDocument
 } from 'vscode';
-import { Uri } from 'vscode';
 import { BrightScriptDeclaration } from './BrightScriptDeclaration';
 import type { DeclarationProvider } from './DeclarationProvider';
 import { getExcludeGlob } from './DeclarationProvider';

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import * as sinonImport from 'sinon';
 import { vscode } from '../mockVscode.spec';
 import { RokuCommandsViewProvider } from './RokuCommandsViewProvider';
+import { VscodeCommand } from '../commands/VscodeCommand';
 
 let Module = require('module');
 const { require: oldRequire } = Module.prototype;
@@ -16,6 +17,7 @@ Module.prototype.require = function hijacked(file) {
 let sinon: sinonImport.SinonSandbox;
 let view;
 let callback;
+let provider: RokuCommandsViewProvider;
 beforeEach(() => {
     sinon = sinonImport.createSandbox();
     view = {
@@ -27,35 +29,36 @@ beforeEach(() => {
         },
         show: () => { }
     };
+
+    provider = new RokuCommandsViewProvider(vscode.context, {}) as any;
 });
 afterEach(() => {
+    provider.dispose();
     sinon.restore();
 });
 
 describe('RokuCommandsViewProvider', () => {
     describe('getHtmlForWebview', () => {
-        const provider = new RokuCommandsViewProvider(vscode.context) as any;
-
         it('includes the contents of additionalScriptContents', async () => {
-            const html = await provider.getHtmlForWebview();
-            for (const line of provider.additionalScriptContents()) {
+            const html = await provider['getHtmlForWebview']();
+            for (const line of provider['additionalScriptContents']()) {
                 expect(html).to.contain(line);
             }
         });
     });
 
     describe('resolveWebviewView', () => {
-        it('sets up observer to handle messages from the ui', () => {
-            const provider = new RokuCommandsViewProvider(vscode.context) as any;
-            provider.resolveWebviewView(view, {}, {});
+        it('sets up observer to handle messages from the ui', async () => {
+            await provider['resolveWebviewView'](view, {} as any, {} as any);
 
             expect(typeof callback).to.equal('function');
-            const spy = sinon.spy(provider, 'handleViewMessage');
+            const fake = sinonImport.fake.returns(Promise.resolve(true));
+            provider['addMessageCommandCallback'](VscodeCommand.rokuRegistryImportRegistry, fake);
             callback({
-                command: 'importRegistry',
+                command: VscodeCommand.rokuRegistryImportRegistry,
                 context: {}
             });
-            expect(spy.calledOnce).to.be.true;
+            expect(fake.calledOnce).to.be.true;
         });
     });
 });

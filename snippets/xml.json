@@ -57,12 +57,29 @@
         "description": "Interface element"
     },
 
+    "Functional Field": {
+        "prefix": "<function",
+        "body": [
+            "<function name=\"${1:functionName}\" />"
+        ],
+        "description": "Functional field"
+    },
+
     "Script element": {
         "prefix": "<script",
         "body": [
             "<script type=\"text/brightscript\" uri=\"${1:fileName}\" />"
         ],
         "description": "Script element"
+    },
+    "Inline Script element": {
+        "prefix": "<script-inline",
+        "body": [
+            "<script type=\"text/${1|brightscript,brighterscript|}\"><![CDATA[",
+            "\t$0",
+            "]]></script>"
+        ],
+        "description": "Inline BrightScript/BrighterScript script element with CDATA"
     }
 
 }

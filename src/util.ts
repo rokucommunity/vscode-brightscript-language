@@ -5,6 +5,13 @@ import * as url from 'url';
 import { debounce } from 'debounce';
 import * as vscode from 'vscode';
 import { Cache } from 'brighterscript/dist/Cache';
+import undent from 'undent';
+import { EXTENSION_ID, ROKU_DEBUG_VERSION } from './constants';
+import type { DeviceInfo } from 'roku-deploy';
+import * as request from 'postman-request';
+import type { Response, CoreOptions } from 'request';
+import * as childProcess from 'child_process';
+import * as minimatch from 'minimatch';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -188,10 +195,6 @@ class Util {
         this.debounceByKey[key]();
     }
 
-    public isExtensionHostRunning() {
-        return process.argv.includes('--type=extensionHost');
-    }
-
     /**
      * Wraps a function and calls a callback before calling the original function
      */
@@ -201,27 +204,6 @@ class Util {
             callback(...args);
             fn.call(subject, ...args);
         };
-    }
-
-    /**
-     * Decode HTML entities like &nbsp; &#39; to its original character
-     */
-    public decodeHtmlEntities(encodedString: string) {
-        let translateRegex = /&(nbsp|amp|quot|lt|gt);/g;
-        let translate = {
-            'nbsp': ' ',
-            'amp': '&',
-            'quot': '"',
-            'lt': '<',
-            'gt': '>'
-        };
-
-        return encodedString.replace(translateRegex, (match, entity) => {
-            return translate[entity];
-        }).replace(/&#(\d+);/gi, (match, numStr) => {
-            let num = parseInt(numStr, 10);
-            return String.fromCharCode(num);
-        });
     }
 
     /**
@@ -288,9 +270,14 @@ class Util {
      * Get a promise that resolves after the given number of milliseconds.
      */
     public sleep(milliseconds: number) {
-        return new Promise((resolve) => {
-            setTimeout(resolve, milliseconds);
-        });
+        let handle: NodeJS.Timeout;
+        const promise = new Promise((resolve) => {
+            handle = setTimeout(resolve, milliseconds);
+        }) as Promise<void> & { cancel: () => void };
+        promise.cancel = () => {
+            clearTimeout(handle);
+        };
+        return promise;
     }
 
     /**
@@ -329,7 +316,7 @@ class Util {
         }
 
         //do value transforms
-        for (let [key, entry] of result) {
+        for (let [, entry] of result) {
             let { value } = entry;
             for (const secretValue of secretValues) {
                 if (typeof value === 'string') {
@@ -384,6 +371,305 @@ class Util {
      */
     public escapeRegex(text: string) {
         return text?.toString().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    }
+
+    /**
+     * Do an http GET request
+     */
+    public httpGet(url: string, options?: CoreOptions) {
+        return new Promise<Response>((resolve, reject) => {
+            request.get(url, options, (err, response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
+    }
+
+    public async openIssueReporter(options: { title?: string; body?: string; deviceInfo?: DeviceInfo }) {
+        if (!options.body) {
+            options.body = undent`
+                Please describe the issue you are experiencing:
+
+                Steps to reproduce:
+
+                Additional feedback:
+            `;
+        }
+        options.body += `\n\nroku-debug version: ${ROKU_DEBUG_VERSION}`;
+        if (options.deviceInfo) {
+            options.body += '\n' + undent`
+                Device firmware: ${options.deviceInfo.softwareVersion}.${options.deviceInfo.softwareBuild}
+                Debug protocol version: ${options.deviceInfo.brightscriptDebuggerVersion}
+                Device model: ${options.deviceInfo.modelNumber}
+            `;
+        }
+        await vscode.commands.executeCommand('vscode.openIssueReporter', {
+            extensionId: EXTENSION_ID,
+            issueTitle: options.title ?? 'Problem with Debug Protocol',
+            issueBody: options.body
+        });
+    }
+
+    public createStatusbarSpinner(message: string) {
+        const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
+        statusbarItem.text = `$(sync~spin) ${message}`;
+        statusbarItem.show();
+        return statusbarItem;
+    }
+
+    /**
+     * Show a notification with a progress bar that auto-dismisses after the specified duration.
+     * @param message the message to display in the notification
+     * @param durationMs how long (in milliseconds) to show the notification before it dismisses
+     */
+    public async showTimedNotification(message: string, durationMs = 2000) {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: message
+        }, async (progress) => {
+            const intervalMs = 100;
+            const steps = durationMs / intervalMs;
+            const increment = 100 / steps;
+            for (let i = 0; i < steps; i++) {
+                await new Promise<void>(resolve => {
+                    setTimeout(resolve, intervalMs);
+                });
+                progress.report({ increment: increment });
+            }
+        });
+    }
+
+    /**
+     * Show a statusbar spinner that is hidden once the callback resolves
+     * @param message the message that should be shown in the statusbar spinner
+     * @param callback the function to run, that when completed will hide the spinner
+     * @returns
+     */
+    public async spinAsync<T>(message: string, callback: () => Promise<T>) {
+        const spinner = this.createStatusbarSpinner(message);
+        try {
+            const result = await callback();
+            return result;
+        } finally {
+            spinner.dispose();
+        }
+    }
+
+    /**
+     * Execute a command and get a promise for when it finishes.
+     * @param command the command to execute
+     * @param options the options to pass to exec
+     * @returns the stdout if successful, or an error if failed
+     */
+    public async exec(command: string, options?: childProcess.ExecOptions): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            childProcess.exec(command, options, (error, stdout) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(stdout);
+                }
+            });
+        });
+    }
+
+    /**
+     * Determine if the current OS is running a version of windows
+     */
+    private isWindowsPlatform() {
+        return process.platform.startsWith('win');
+    }
+
+    /**
+     * Spawn an npm command and return a promise.
+     * This is necessary because spawn requires the file extension (.cmd) on windows.
+     * @param args - the list of args to pass to npm. Any undefined args will be removed from the list, so feel free to use ternary outside to simplify things
+     */
+    spawnNpmAsync(args: Array<string | undefined>, options?: childProcess.SpawnOptions) {
+        //filter out undefined args
+        args = args.filter(arg => arg !== undefined);
+
+        if (this.isWindowsPlatform()) {
+            return this.spawnAsync('npm.cmd', args, {
+                ...options,
+                shell: true,
+                detached: false,
+                windowsHide: true
+            });
+        } else {
+            return this.spawnAsync('npm', args, options);
+        }
+    }
+
+    /**
+     * Executes an exec command and returns a promise that completes when it's finished
+     */
+    spawnAsync(command: string, args?: string[], options?: childProcess.SpawnOptions) {
+        return new Promise((resolve, reject) => {
+            const child = childProcess.spawn(command, args ?? [], {
+                ...(options ?? {}),
+                stdio: 'inherit'
+            });
+            child.addListener('error', reject);
+            child.addListener('exit', resolve);
+        });
+    }
+
+
+    /**
+     * Run an action with option for a progress spinner. If `showProgress` is `false` then no progress is shown and instead the action is run directly
+     */
+    public async runWithProgress<T>(options: Partial<vscode.ProgressOptions> & { showProgress?: boolean }, action: () => PromiseLike<T>): Promise<T> {
+        //show a progress spinner if configured to do so
+        if (options?.showProgress !== false) {
+            return vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                cancellable: false,
+                ...options
+            }, action);
+        } else {
+            return action();
+        }
+    }
+
+    /**
+     * Is the value a non-empty string?
+     */
+    public isNonEmptyString(value: any): value is string {
+        return typeof value === 'string' && value.trim() !== '';
+    }
+
+    /**
+     * Wrapper around `vscode.workspace.getConfiguration` that defaults the resource to `null`.
+     * This avoids VS Code warnings when accessing resource-scoped settings without a URI.
+     *
+    * Get a workspace configuration object.
+    *
+    * When a section-identifier is provided only that part of the configuration
+    * is returned. Dots in the section-identifier are interpreted as child-access,
+    * like `{ myExt: { setting: { doIt: true }}}` and `getConfiguration('myExt.setting').get('doIt') === true`.
+    *
+    * When a scope is provided configuration confined to that scope is returned. Scope can be a resource or a language identifier or both.
+    *
+    * @param section A dot-separated identifier.
+    * @param scope A scope for which the configuration is asked for.
+    * @return The full configuration or a subset.
+    */
+    public getConfiguration(section?: string, scope?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration(section, scope ?? null);
+    }
+
+    public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {
+        const [, configurationKey, settingKey] = /(.+?)\.([^\.]+)$/.exec(key) ?? [];
+        let settings = this.getConfiguration(configurationKey);
+        const inspection = settings.inspect(settingKey);
+
+        if (
+            inspection.defaultLanguageValue !== undefined ||
+            inspection.globalLanguageValue !== undefined ||
+            inspection.globalValue !== undefined ||
+            inspection.workspaceFolderLanguageValue !== undefined ||
+            inspection.workspaceFolderValue !== undefined ||
+            inspection.workspaceLanguageValue !== undefined ||
+            inspection.workspaceValue !== undefined
+        ) {
+            return settings.get(settingKey, defaultValue);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Writes a configuration value to the closest scope where it is already defined, falling back to global (user) settings.
+     * In a single-folder workspace, "closest" means `.vscode/settings.json`.
+     * In a `.code-workspace`, "closest" means the top-level `settings` block — per-folder `.vscode/settings.json`
+     * files are ignored because VS Code gives the workspace block higher priority than them.
+     */
+    public async setConfigurationValueAtUserOrClosestScope(key: string, value: any) {
+        const match = /(.+?)\.([^.]+)$/.exec(key);
+        if (!match) {
+            throw new Error(`Invalid configuration key format: '${key}'. Expected 'namespace.settingName'.`);
+        }
+        const [, configurationKey, settingKey] = match;
+        const scope = vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.workspace.workspaceFile;
+        const inspection = vscode.workspace.getConfiguration(configurationKey, scope).inspect(settingKey);
+
+        let target: vscode.ConfigurationTarget;
+        let resource: vscode.Uri | undefined;
+        if (!vscode.workspace.workspaceFile && inspection?.workspaceFolderValue !== undefined) {
+            // Single-folder: write to .vscode/settings.json
+            target = vscode.ConfigurationTarget.WorkspaceFolder;
+            resource = vscode.workspace.workspaceFolders?.[0]?.uri;
+        } else if (inspection?.workspaceValue !== undefined) {
+            // .code-workspace: write to the top-level settings block
+            target = vscode.ConfigurationTarget.Workspace;
+        } else {
+            // Not defined anywhere closer — fall back to user (global) settings
+            target = vscode.ConfigurationTarget.Global;
+        }
+
+        await vscode.workspace.getConfiguration(configurationKey, resource).update(settingKey, value, target);
+    }
+
+    /**
+     * Returns the deduplicated set of active exclude patterns by combining enabled entries from
+     * the user's `files.exclude` and `search.exclude` settings with any additional patterns provided.
+     *
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public getExcludePatterns(additionalExcludes: string[], scope?: vscode.ConfigurationScope): string[] {
+        const filesExclude = this.getConfiguration('files', scope).get<Record<string, boolean>>('exclude') ?? {};
+        const searchExclude = this.getConfiguration('search', scope).get<Record<string, boolean>>('exclude') ?? {};
+
+        return [...new Set([
+            ...Object.entries(filesExclude).filter(([, enabled]) => enabled).map(([pattern]) => pattern),
+            ...Object.entries(searchExclude).filter(([, enabled]) => enabled).map(([pattern]) => pattern),
+            ...additionalExcludes
+        ])];
+    }
+
+    /**
+     * Builds a single exclude glob pattern suitable for passing directly to `vscode.workspace.findFiles`
+     * as the `exclude` argument. Returns `undefined` when there are no patterns, which preserves
+     * `findFiles`' default exclude behavior.
+     *
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public buildExcludeGlob(additionalExcludes: string[], scope?: vscode.ConfigurationScope): string | undefined {
+        const patterns = this.getExcludePatterns(additionalExcludes, scope);
+        if (patterns.length === 0) {
+            return undefined;
+        }
+        if (patterns.length === 1) {
+            return patterns[0];
+        }
+        return `{${patterns.join(',')}}`;
+    }
+
+    /**
+     * Returns true if the given URI matches any of the active exclude patterns from `files.exclude`,
+     * `search.exclude`, or the provided additional patterns. Intended for filtering file watcher events.
+     *
+     * @param uri The file URI to test.
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public isUriExcluded(uri: vscode.Uri, additionalExcludes: string[], scope?: vscode.ConfigurationScope): boolean {
+        const patterns = this.getExcludePatterns(additionalExcludes, scope);
+        if (patterns.length === 0) {
+            return false;
+        }
+        const relativePath = vscode.workspace.asRelativePath(uri, false);
+        // Check the path itself and each ancestor so that directory-level patterns
+        // (e.g. `**/.git`) also match files nested inside them (e.g. `.git/config`).
+        const segments = relativePath.split('/');
+        for (let i = segments.length; i > 0; i--) {
+            const candidate = segments.slice(0, i).join('/');
+            if (patterns.some(pattern => minimatch(candidate, pattern, { dot: true }))) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

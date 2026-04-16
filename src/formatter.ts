@@ -2,11 +2,10 @@ import type { FormattingOptions } from 'brighterscript-formatter';
 import { Runner, Formatter as BrighterScriptFormatter } from 'brighterscript-formatter';
 import type {
     DocumentRangeFormattingEditProvider,
-    ProviderResult,
     TextDocument
 } from 'vscode';
+import { util } from './util';
 import {
-    EndOfLine,
     Position,
     Range,
     TextEdit,
@@ -22,14 +21,18 @@ export class Formatter implements DocumentRangeFormattingEditProvider {
         //vscode seems to pick the lowest workspace (or perhaps the last workspace?)
         const workspaceFolder = workspace.getWorkspaceFolder(document.uri);
 
-        let bsfmtOptions = new Runner().getBsfmtOptions({
-            cwd: workspaceFolder.uri.fsPath,
-            //we just want bsfmt options...but files is mandatory. Don't worry, we won't actually use it.
-            files: []
-        });
-        let userSettingsOptions = workspace.getConfiguration('brightscript.format');
-
         try {
+            let userSettingsOptions = util.getConfiguration('brightscript.format', document.uri);
+            let bsfmtPath = userSettingsOptions.get<string>('bsfmtPath');
+
+            let bsfmtOptions = new Runner().getBsfmtOptions({
+                cwd: workspaceFolder.uri.fsPath,
+                //we just want bsfmt options...but files is mandatory. Don't worry, we won't actually use it.
+                files: [],
+                //if the user specified a custom config file path, use it
+                bsfmtPath: bsfmtPath
+            });
+
             let text = document.getText();
             let formatter = new BrighterScriptFormatter();
             let formattedText = formatter.format(text, <FormattingOptions>{

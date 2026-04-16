@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { vscodeContextManager } from './VscodeContextManager';
 import type { TelemetryManager } from './TelemetryManager';
+import { VscodeCommand } from '../commands/VscodeCommand';
+import { util } from '../util';
 
 export class RemoteControlManager {
     constructor(
@@ -17,7 +19,7 @@ export class RemoteControlManager {
     }
 
     private loadIsFlasherAllowedByUser() {
-        this.isFlasherAllowedByUser = vscode.workspace.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
+        this.isFlasherAllowedByUser = util.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
     }
 
     private isEnabled = false;
@@ -70,6 +72,11 @@ export class RemoteControlManager {
     }
 
     public async setRemoteControlMode(isEnabled: boolean, initiator: RemoteControlModeInitiator) {
+        if (this.isEnabled && !isEnabled) {
+            // Want to also stop Roku automation recording if it was running
+            await vscode.commands.executeCommand(VscodeCommand.rokuAutomationViewStopRecording);
+        }
+
         //only send a telemetry event if we know who initiated the mode. `undefined` usually means our internal system set the value...so don't track that
         if (initiator) {
             this.telemetryManager.sendSetRemoteControlModeEvent(isEnabled, initiator);
@@ -122,4 +129,4 @@ export class RemoteControlManager {
     }
 }
 
-export type RemoteControlModeInitiator = 'statusbar' | 'command';
+export type RemoteControlModeInitiator = 'statusbar' | 'command' | 'launch';

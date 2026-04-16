@@ -8,7 +8,11 @@ class RegistryView {
             } else if (typeof values[key] === 'string') {
                 try {
                     // Try and parse it to see if it's json
-                    values[key] = JSON.parse(values[key]);
+                    // Only want to convert with json if not a number or boolean
+                    const result = JSON.parse(values[key]);
+                    if (typeof result !== 'number' && typeof result !== 'boolean') {
+                        values[key] = result;
+                    }
                 } catch (e) {
                     // If we fail we leave it unchanged
                 }

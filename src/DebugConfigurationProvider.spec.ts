@@ -1,15 +1,17 @@
-/* eslint-disable no-template-curly-in-string */
-import * as brighterscript from 'brighterscript';
 import { assert, expect } from 'chai';
 import * as path from 'path';
 import { createSandbox } from 'sinon';
 import type { WorkspaceFolder } from 'vscode';
 import Uri from 'vscode-uri';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import { UserInputManager } from './managers/UserInputManager';
 import { BrightScriptDebugConfigurationProvider } from './DebugConfigurationProvider';
 import { vscode } from './mockVscode.spec';
 import { standardizePath as s } from 'brighterscript';
 import * as fsExtra from 'fs-extra';
+import { DeviceManager } from './deviceDiscovery/DeviceManager';
+import { GlobalStateManager } from './GlobalStateManager';
+import { rokuDeploy } from 'roku-deploy';
 
 const sinon = createSandbox();
 const Module = require('module');
@@ -31,16 +33,10 @@ describe('BrightScriptConfigurationProvider', () => {
 
     let configProvider: BrightScriptDebugConfigurationProvider;
     let folder: WorkspaceFolder;
+    let userInputManager: UserInputManager;
 
     beforeEach(() => {
         fsExtra.emptyDirSync(tempDir);
-        let context = {
-            workspaceState: {
-                update: () => {
-                    return Promise.resolve();
-                }
-            }
-        };
 
         folder = {
             uri: Uri.file(rootDir),
@@ -48,10 +44,22 @@ describe('BrightScriptConfigurationProvider', () => {
             index: 0
         };
 
-        let activeDeviceManager = {
-            getActiveDevices: () => []
-        };
-        configProvider = new BrightScriptDebugConfigurationProvider(<any>context, activeDeviceManager, null);
+        //prevent the DeviceManager from actually running
+        sinon.stub(DeviceManager.prototype as any, 'initialize').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupConfiguration').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupWindowFocusHandling').callsFake(() => { });
+        sinon.stub(DeviceManager.prototype as any, 'setupMonitors').callsFake(() => { });
+        let globalStateManager = new GlobalStateManager(vscode.context);
+        let deviceManager = new DeviceManager(vscode.context, globalStateManager);
+        userInputManager = new UserInputManager(deviceManager);
+
+        configProvider = new BrightScriptDebugConfigurationProvider(
+            vscode.context,
+            null,
+            vscode.window.createOutputChannel('Extension'),
+            userInputManager,
+            null // BrightScriptCommands is not used in this test
+        );
     });
 
     afterEach(() => {
@@ -70,6 +78,8 @@ describe('BrightScriptConfigurationProvider', () => {
             // Override any properties that would cause a prompt if not overridden
             configDefaults.host = '192.168.1.100';
             configDefaults.password = 'aaaa';
+            //return an empty deviceInfo response
+            sinon.stub(rokuDeploy, 'getDeviceInfo').returns(Promise.reject(new Error('Failure during test')));
         });
 
         afterEach(() => {
@@ -139,7 +149,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('uses the default values if not provided', async () => {
-            const config = await configProvider.resolveDebugConfiguration(folder, <any>{});
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{ type: 'brightscript' });
             const configDefaults = (configProvider as any).configDefaults;
             for (const key in configDefaults) {
                 if (key === 'outDir') {
@@ -149,13 +159,14 @@ describe('BrightScriptConfigurationProvider', () => {
                         s`${folder.uri.fsPath}/out/`
                     );
                 } else {
-                    expect(config[key], `Expected "${key}" to match the default`).to.equal(configDefaults[key]);
+                    expect(config[key], `Expected "${key}" to match the default`).to.deep.equal(configDefaults[key]);
                 }
             }
         });
 
         it('allows for overriding packagePort and remotePort', async () => {
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                type: 'brightscript',
                 host: '127.0.0.1',
                 password: 'password',
                 packagePort: 1234,
@@ -163,6 +174,58 @@ describe('BrightScriptConfigurationProvider', () => {
             });
             expect(config.packagePort).to.equal(1234);
             expect(config.remotePort).to.equal(5678);
+        });
+
+        it('allows using a bool value for remoteConfigMode', async () => {
+            async function doTest(remoteControlMode: boolean, expected: any) {
+                let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                    type: 'brightscript',
+                    remoteControlMode: remoteControlMode
+                });
+                expect(config.remoteControlMode).to.deep.equal(expected);
+            }
+            await doTest(true, { activateOnSessionStart: true, deactivateOnSessionEnd: true });
+            await doTest(false, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+            await doTest(undefined, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+        });
+
+        describe('F5 with no launch.json', () => {
+            it('returns undefined when no project is discovered from the active file', async () => {
+                (configProvider as any).rokuProjectDiscovery = {
+                    resolveDebugConfigFromActiveFile: sinon.stub().resolves(undefined)
+                };
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.be.undefined;
+            });
+
+            it('returns undefined when rokuProjectDiscovery is not set', async () => {
+                (configProvider as any).rokuProjectDiscovery = undefined;
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.be.undefined;
+            });
+
+            it('processes the discovered config through the full resolution pipeline', async () => {
+                const discoveredConfig = {
+                    type: 'brightscript',
+                    request: 'launch',
+                    host: '192.168.1.200',
+                    password: 'secret',
+                    rootDir: '/project/out'
+                };
+                (configProvider as any).rokuProjectDiscovery = {
+                    resolveDebugConfigFromActiveFile: sinon.stub().resolves(discoveredConfig)
+                };
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.not.be.undefined;
+                expect(result.host).to.equal('192.168.1.200');
+                expect(result.password).to.equal('secret');
+            });
         });
     });
 
@@ -232,6 +295,45 @@ describe('BrightScriptConfigurationProvider', () => {
         });
     });
 
+    describe('processDapLogFilePath', () => {
+        const tmpPath = s`${rootDir}/.tmp`;
+        const workspaceFolder = <any>{ uri: { fsPath: tmpPath } };
+
+        beforeEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+        afterEach(() => {
+            fsExtra.emptyDirSync(tmpPath);
+        });
+
+        it('does nothing when debugAdapterProtocolLogging is falsey', () => {
+            expect(configProvider.processDapLogFilePath(undefined, <any>{}).debugAdapterProtocolLogFilePath).not.to.be.ok;
+            expect(configProvider.processDapLogFilePath(undefined, <any>{ debugAdapterProtocolLogging: false }).debugAdapterProtocolLogFilePath).not.to.be.ok;
+        });
+
+        it('sets debugAdapterProtocolLogFilePath when enabled', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include('debugAdapterProtocol.log');
+            expect(result.debugAdapterProtocolLogFilePath).to.include(tmpPath);
+        });
+
+        it('prepends a timestamp', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            // ISO timestamp format: 2026-03-26T00-00-00
+            expect(result.debugAdapterProtocolLogFilePath).to.match(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/);
+        });
+
+        it('writes to workspace logs/ folder', () => {
+            const result = configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(result.debugAdapterProtocolLogFilePath).to.include(path.join(tmpPath, 'logs'));
+        });
+
+        it('creates the log directory', () => {
+            configProvider.processDapLogFilePath(workspaceFolder, <any>{ debugAdapterProtocolLogging: true });
+            expect(fsExtra.pathExistsSync(path.join(tmpPath, 'logs'))).to.be.true;
+        });
+    });
+
     describe('processEnvFile', () => {
         function processEnvFile(folder: WorkspaceFolder, config: Partial<BrightScriptLaunchConfiguration> & Record<string, any>) {
             return configProvider['processEnvFile'](folder, config as any);
@@ -271,11 +373,11 @@ describe('BrightScriptConfigurationProvider', () => {
             let config = await processEnvFile(folder, {
                 envFile: '${workspaceFolder}/.env',
                 rootDir: '${env:PASSWORD}',
-                stagingFolderPath: '${env:PASSWORD}'
+                stagingDir: '${env:PASSWORD}'
             });
 
             expect(config.rootDir).to.equal('password');
-            expect(config.stagingFolderPath).to.equal('password');
+            expect(config.stagingDir).to.equal('password');
         });
 
         it('does not replace text outside of the ${} syntax', async () => {

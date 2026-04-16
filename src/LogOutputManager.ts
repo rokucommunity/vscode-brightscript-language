@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
-import type { DiagnosticCollection } from 'vscode';
-import type { BSDebugDiagnostic } from 'roku-debug';
-import { isChanperfEvent, isDiagnosticsEvent, isLaunchStartEvent, isLogOutputEvent, isPopupMessageEvent, isRendezvousEvent } from 'roku-debug';
+import { isChanperfEvent, isLaunchStartEvent, isLogOutputEvent, isRendezvousEvent } from 'roku-debug';
 import type { DeclarationProvider } from './DeclarationProvider';
 import type { LogDocumentLinkProvider } from './LogDocumentLinkProvider';
 import { CustomDocumentLink } from './LogDocumentLinkProvider';
+import { util } from './util';
 import * as fsExtra from 'fs-extra';
 import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
+import stripAnsi from 'strip-ansi';
 
 export class LogLine {
     constructor(
@@ -24,7 +24,6 @@ export class LogOutputManager {
         docLinkProvider,
         private declarationProvider: DeclarationProvider
     ) {
-        this.collection = vscode.languages.createDiagnosticCollection('BrightScript');
         this.outputChannel = outputChannel;
         this.docLinkProvider = docLinkProvider;
 
@@ -33,7 +32,6 @@ export class LogOutputManager {
             this.loadConfigSettings();
         });
 
-        this.context = context;
         let subscriptions = context.subscriptions;
         this.includeRegex = null;
         this.logLevelRegex = null;
@@ -87,7 +85,6 @@ export class LogOutputManager {
         this.clearOutput();
 
     }
-    private context: any;
     private displayedLogLines: LogLine[];
     private allLogLines: LogLine[];
     private markCount: number;
@@ -103,7 +100,6 @@ export class LogOutputManager {
     public isClearingOutputOnLaunch: boolean;
     public isClearingConsoleOnChannelStart: boolean;
     public hyperlinkFormat: string;
-    private collection: DiagnosticCollection;
     private outputChannel: vscode.OutputChannel;
     private docLinkProvider: LogDocumentLinkProvider;
     private debugStartRegex: RegExp;
@@ -118,7 +114,7 @@ export class LogOutputManager {
     }
 
     private loadConfigSettings() {
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let config: any = util.getConfiguration('brightscript') || {};
         this.includeStackTraces = config.output?.includeStackTraces;
         this.isFocusingOutputOnLaunch = config?.output?.focusOnLaunch === false ? false : true;
         this.isClearingOutputOnLaunch = config?.output?.clearOnLaunch === false ? false : true;
@@ -137,10 +133,101 @@ export class LogOutputManager {
         }
 
         if (isLogOutputEvent(e)) {
-            this.appendLine(e.body.line);
 
-        } else if (isPopupMessageEvent(e)) {
-            this.showMessage(e.body.message, e.body.severity);
+            const errorCodes = new Map<string, string>([
+                ['&h00', '(ERR_NF: next without for)'],
+                ['&h02', '(ERR_SYNTAX): syntax error'],
+                ['&h04', '(ERR_RG: return without gosub)'],
+                ['&h06', '(ERR_OD: out of data (READ))'],
+                ['&h08', '(ERR_FC: invalid parameter passed to function/array (e.g neg matrix dim or square root))'],
+                ['&h0C', '(ERR_OUTOFMEM: out of memory)'],
+                ['&h0E', '(ERR_MISSING_LN: missing line)'],
+                ['&h10', '(ERR_BS: array subscript out of bounds)'],
+                ['&h12', '(ERR_DD: attempted to redimension an array)'],
+                ['&h14', '(ERR_DIV_ZERO: divide by zero error)'],
+                ['&h18', '(ERR_TM: type mismatch (string / numeric operation mismatch))'],
+                ['&h1A', '(ERR_OS: out of string space)'],
+                ['&h1C', '(ERR_STRINGTOLONG: error parsing string to long)'],
+                ['&h20', '(ERR_CN: continue not allowed)'],
+                ['&h9F', '(ERR_INVALID_CONST_NAME: invalid constant name)'],
+                ['&hA0', '(ERR_VAR_CANNOT_BE_SUBNAME: invalid subroutine name)'],
+                ['&hA1', '(ERR_TOO_MANY_LABELS)'],
+                ['&hA2', '(ERR_RO_NOT_FOUND:)'],
+                ['&hA3', '(ERR_IF_TOO_LARGE:)'],
+                ['&hA4', '(ERR_MISSING_INITILIZER:)'],
+                ['&hA5', '(ERR_EXIT_FOR_NOT_IN_FOR: exit for statement found when not in for loop)'],
+                ['&hA6', '(ERR_NOLONGER: no longer supported)'],
+                ['&hA7', '(ERR_INVALID_TYPE: invalid typhe)'],
+                ['&hA8', '(ERR_FUN_MUST_HAVE_RET_TYPE: function must have a return type)'],
+                ['&hA9', '(ERR_RET_MUST_HAVE_VALUE: return statement must have a value)'],
+                ['&hAA', '(ERR_RET_CANNOT_HAVE_VALUE: return statement cannot have a value)'],
+                ['&hAB', '(ERR_FOREACH_INDEX_TM)'],
+                ['&hAC', '(ERR_NOMAIN: no main function present)'],
+                ['&hAD', '(ERR_SUB_DEFINED_TWICE: sub defined twice)'],
+                ['&hAE', '(ERR_INTERNAL_LIMIT_EXCEDED: internal limit exceeded)'],
+                ['&hAF', '(ERR_EXIT_WHILE_NOT_IN_WHILE: exit while statement found when not in while loop)'],
+                ['&hB0', '(ERR_TOO_MANY_VAR: too many variables)'],
+                ['&hB1', '(ERR_TOO_MANY_CONST: too many constants)'],
+                ['&hB2', '(ERR_FUN_NOT_EXPECTED: function not expected)'],
+                ['&hB3', '(ERR_UNTERMED_STRING: literal string does not have ending quote)'],
+                ['&hB4', '(ERR_LABELTWICE: label defined more than once)'],
+                ['&hB5', '(ERR_NO_BLOCK_END: no end to block)'],
+                ['&hB6', '(ERR_FOR_NEXT_MISMATCH: variable on a NEXT does not match that for the FOR)'],
+                ['&hB7', '(ERR_UNEXPECTED_EOF: end of string being compiled encountered when not expected (missing end of block usually))'],
+                ['&hB8', '(ERR_NOMATCH: "match" statement did not match)'],
+                ['&hB9', '(ERR_LOADFILE: error loading a file)'],
+                ['&hBA', '(ERR_LNSEQ: line number sequence error)'],
+                ['&hBB', '(ERR_NOLN: no line number found)'],
+                ['&hBC', '(ERR_MISSING_ENDIF: end of code reached without finding ENDIF)'],
+                ['&hBE', '(ERR_MISSING_ENDWHILE: while statement is missing a matching endwhile)'],
+                ['&hBF', '(ERR_NW: endwhile with no while)'],
+                ['&hDF', '(ERR_STACK_OVERFLOW): stack overflow error'],
+                ['&hE0', '(ERR_NOTFUNOPABLE)'],
+                ['&hE1', '(ERR_UNICODE_NOT_SUPPORTED: unicode character not supported)'],
+                ['&hE2', '(ERR_VALUE_RETURN: return executed, and a value returned on the stack)'],
+                ['&hE3', '(ERR_INVALID_NUM_ARRAY_IDX: invalid number of array indexes)'],
+                ['&hE4', '(ERR_INVALID_LVALUE: invalid left side of expression)'],
+                ['&hE5', '(ERR_MUST_HAVE_RETURN: function must have return value)'],
+                ['&hE6', '(ERR_USE_OF_UNINIT_BRSUBREF: used a reference to SUB that is not initialized)'],
+                ['&hE7', '(ERR_ARRAYNOTDIMMED: array has not been dimensioned)'],
+                ['&hE8', '(ERR_TM2: non-numeric index to array)'],
+                ['&hE9', '(ERR_USE_OF_UNINIT_VAR: illegal use of uninitialized var)'],
+                ['&hEB', '(ERR_NOTYPEOP: operation on two typeless operands attempted)'],
+                ['&hEC', '(ERR_RO4: . (dot) operator used on a variable that does not contain a legal object or interface reference)'],
+                ['&hED', '(ERR_MUST_BE_STATIC: interface calls from type rotINTERFACE must be static)'],
+                ['&hEE', '(ERR_NOTWAITABLE: tried to wait on a function that does not have MessagePort interface)'],
+                ['&hEF', '(ERR_NOTPRINTABLE: non-printable value)'],
+                ['&hF0', '(ERR_RVIG: function returns a value, but is ignored)'],
+                ['&hF1', '(ERR_WRONG_NUM_PARAM: incorect number of function parameters)'],
+                ['&hF2', '(ERR_TOO_MANY_PARAM: too many function parameters to handle)'],
+                ['&hF3', '(ERR_RO3: interface not a member of object)'],
+                ['&hF4', '(ERR_RO2: member function not found in object or interface)'],
+                ['&hF5', '(ERR_RO1: function call does not have the right number of parameters)'],
+                ['&hF6', '(ERR_RO0: bscNewComponent failed because object class not found)'],
+                ['&hF7', '(ERR_STOP: stop statement executed)'],
+                ['&hF8', '(ERR_BREAK: scriptBreak() called)'],
+                ['&hF9', '(ERR_STACK_UNDER: nothing on stack to pop)'],
+                ['&hFA', '(ERR_MISSING_PARN)'],
+                ['&hFB', '(ERR_UNDEFINED_OP: an expression operator that we do not handle)'],
+                ['&hFC', '(ERR_NORMAL_END: normal, but terminate execution.  END, shell "exit", window closed, etc'],
+                ['&hFD', '(ERR_UNDEFINED_OPCD: an opcode that we do not handle )'],
+                ['&hFE', '(ERR_INTERNAL: a condition that should not occur did)'],
+                ['&hFF', '(ERR_OKAY)']
+            ]);
+
+            // need to upgrade this includes statement to include a full hex regex
+            if (e.body.line.includes('&h')) {
+                const regexGlobal = /&h[0-9A-F][0-9A-F]/g;
+                let regexMatches: RegExpExecArray;
+                while ((regexMatches = regexGlobal.exec(e.body.line)) !== null) {
+                    const regexMatch: string = regexMatches[0];
+                    if (errorCodes.has(regexMatch)) {
+                        const errorDescription = errorCodes.get(regexMatch);
+                        e.body.line = e.body.line.replace(regexMatch, regexMatch + ' ' + errorDescription + ' ');
+                    }
+                }
+            }
+            this.appendLine(e.body.line);
 
         } else if (isLaunchStartEvent(e)) {
             this.isInMicroDebugger = false;
@@ -153,64 +240,6 @@ export class LogOutputManager {
                 this.clearOutput();
             }
 
-        } else if (isDiagnosticsEvent(e)) {
-            let errorsByPath = {};
-            for (const diagnostic of e.body.diagnostics) {
-                if (diagnostic.path) {
-                    if (!errorsByPath[diagnostic.path]) {
-                        errorsByPath[diagnostic.path] = [];
-                    }
-                    errorsByPath[diagnostic.path].push(diagnostic);
-                }
-            }
-            for (const path in errorsByPath) {
-                if (errorsByPath.hasOwnProperty(path)) {
-                    const errors = errorsByPath[path];
-                    await this.addDiagnosticForError(path, errors);
-                }
-            }
-        }
-    }
-
-    private showMessage(message: string, severity: string) {
-        const methods = {
-            error: vscode.window.showErrorMessage,
-            info: vscode.window.showInformationMessage,
-            warn: vscode.window.showWarningMessage
-        };
-        methods[severity](message);
-    }
-
-    public async addDiagnosticForError(path: string, diagnostics: BSDebugDiagnostic[]) {
-        //TODO get the actual folder
-        let documentUri: vscode.Uri;
-        let uri = vscode.Uri.file(path);
-        let doc = await vscode.workspace.openTextDocument(uri); // calls back
-        if (doc !== undefined) {
-            documentUri = doc.uri;
-        }
-        // console.log("got " + documentUri);
-
-        //debug crap - for some reason - using this URI works - using the one from the path does not :()
-        // const document = vscode.window.activeTextEditor.document;
-        // const currentDocumentUri = document.uri;
-        // console.log("currentDocumentUri " + currentDocumentUri);
-        if (documentUri !== undefined) {
-            let result: vscode.Diagnostic[] = [];
-            for (const diagnostic of diagnostics) {
-                result.push({
-                    code: diagnostic.code,
-                    message: diagnostic.message,
-                    source: diagnostic.source,
-                    severity: diagnostic.severity,
-                    tags: diagnostic.tags,
-                    range: new vscode.Range(
-                        new vscode.Position(diagnostic.range.start.line, diagnostic.range.start.character),
-                        new vscode.Position(diagnostic.range.end.line, diagnostic.range.end.character)
-                    )
-                });
-            }
-            this.collection.set(documentUri, result);
         }
     }
 
@@ -219,6 +248,12 @@ export class LogOutputManager {
      */
     public appendLine(lineText: string, mustInclude = false): void {
         let lines = lineText.split(/\r?\n/g);
+
+        // Remove the last line if it's empty as a result of a trailing newline
+        if (lines[lines.length - 1] === '') {
+            lines.pop();
+        }
+
         for (let line of lines) {
             if (line !== '') {
                 if (!this.includeStackTraces) {
@@ -245,7 +280,9 @@ export class LogOutputManager {
                     }
                 }
             }
-            if (line) {
+            if (typeof line === 'string') {
+                // Strip ANSI color codes
+                line = stripAnsi(line);
                 const logLine = new LogLine(line, mustInclude);
                 this.allLogLines.push(logLine);
                 if (this.shouldLineBeShown(logLine)) {
@@ -369,7 +406,6 @@ export class LogOutputManager {
         this.allLogLines = [];
         this.displayedLogLines = [];
         this.outputChannel.clear();
-        this.collection.clear();
         this.docLinkProvider.resetCustomLinks();
     }
 

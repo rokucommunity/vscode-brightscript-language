@@ -46,11 +46,12 @@
             "args": [
                 "--server=4711"
             ],
+            "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/dist/**/*.js",
                 "${workspaceFolder}/../roku-debug/dist/**/*.js",
-                "${workspaceFolder}/../roku-deploy/dist/**/*.js"
+                "!**/node_modules/**"
             ],
+            "resolveSourceMapLocations": null,
             "stopOnEntry": false
         },
         {
@@ -74,7 +75,7 @@
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
-                "0"
+                "987654"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         }

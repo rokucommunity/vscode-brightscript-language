@@ -1,14 +1,22 @@
-import * as request from 'request';
+import * as request from 'postman-request';
 import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
+import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
+import { rekeyAndPackageCommand } from './commands/RekeyAndPackageCommand';
 import { languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { ActiveDeviceManager } from './ActiveDeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import * as xml2js from 'xml2js';
+import { firstBy } from 'thenby';
+import type { UserInputManager } from './managers/UserInputManager';
+import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
+import type { LocalPackageManager } from './managers/LocalPackageManager';
+import { profilingCommands } from './commands/ProfilingCommands';
 
 export class BrightScriptCommands {
 
@@ -16,18 +24,27 @@ export class BrightScriptCommands {
         private remoteControlManager: RemoteControlManager,
         private whatsNewManager: WhatsNewManager,
         private context: vscode.ExtensionContext,
-        private activeDeviceManager: ActiveDeviceManager
+        private deviceManager: DeviceManager,
+        private userInputManager: UserInputManager,
+        private localPackageManager: LocalPackageManager
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }
 
     private fileUtils: BrightScriptFileUtils;
-    private host: string;
+    public host: string;
+    public password: string;
+    public workspacePath: string;
+    private keypressNotifiers = [] as ((key: string, literalCharacter: boolean) => void)[];
 
     public registerCommands() {
 
         brighterScriptPreviewCommand.register(this.context);
-        languageServerInfoCommand.register(this.context);
+        languageServerInfoCommand.register(this.context, this.localPackageManager);
+        captureScreenshotCommand.register(this.context, this);
+        rekeyAndPackageCommand.register(this.context, this, this.userInputManager);
+        clearNpmPackageCacheCommand.register(this.context, this.localPackageManager);
+        profilingCommands.register(this.context);
 
         this.registerGeneralCommands();
 
@@ -37,7 +54,16 @@ export class BrightScriptCommands {
 
         //the "Refresh" button in the Devices list
         this.registerCommand('refreshDeviceList', (key: string) => {
-            this.activeDeviceManager.refresh();
+            this.deviceManager.refresh(true);
+        });
+
+        this.registerCommand('rescanDevices', () => {
+            this.deviceManager.refresh(true);
+        });
+
+        // Refresh a single device (inline button on hover in devices panel)
+        this.registerCommand('refreshDevice', async (item: { key: string }) => {
+            await this.deviceManager.checkDeviceHealth({ serialNumber: item.key }, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -162,11 +188,55 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('pressVolumeUp', async () => {
-            await this.sendRemoteCommand('FindVolumeUp');
+            await this.sendRemoteCommand('VolumeUp');
+        });
+
+        this.registerCommand('setVolume', async () => {
+            let result = await vscode.window.showInputBox({
+                placeHolder: 'The target volume level (0-100)',
+                value: '',
+                validateInput: (text: string) => {
+                    const num = Number(text);
+                    if (isNaN(num)) {
+                        return 'Value must be a number';
+                    } else if (num < 0 || num > 100) {
+                        return 'Please enter a number between 0 and 100';
+                    }
+                    return null;
+                }
+            });
+            const targetVolume = Number(result);
+
+            if (!isNaN(targetVolume)) {
+                await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: 'Setting volume'
+                }, async (progress) => {
+                    const totalCommands = 100 + targetVolume;
+                    const incrementValue = 100 / totalCommands;
+                    let executedCommands = 0;
+
+                    for (let i = 0; i < 100; i++) {
+                        await this.sendRemoteCommand('VolumeDown');
+                        executedCommands++;
+                        progress.report({ increment: incrementValue, message: `decreasing volume - ${Math.round((executedCommands / totalCommands) * 100)}%` });
+                    }
+
+                    for (let i = 0; i < targetVolume; i++) {
+                        await this.sendRemoteCommand('VolumeUp');
+                        executedCommands++;
+                        progress.report({ increment: incrementValue, message: `increasing volume - ${Math.round((executedCommands / totalCommands) * 100)}%` });
+                    }
+                });
+            }
         });
 
         this.registerCommand('pressPowerOff', async () => {
             await this.sendRemoteCommand('PowerOff');
+        });
+
+        this.registerCommand('pressPowerOn', async () => {
+            await this.sendRemoteCommand('PowerOn');
         });
 
         this.registerCommand('pressChannelUp', async () => {
@@ -175,6 +245,26 @@ export class BrightScriptCommands {
 
         this.registerCommand('pressChannelDown', async () => {
             await this.sendRemoteCommand('ChannelDown');
+        });
+
+        this.registerCommand('pressBlue', async () => {
+            await this.sendRemoteCommand('Blue');
+        });
+
+        this.registerCommand('pressGreen', async () => {
+            await this.sendRemoteCommand('Green');
+        });
+
+        this.registerCommand('pressRed', async () => {
+            await this.sendRemoteCommand('Red');
+        });
+
+        this.registerCommand('pressYellow', async () => {
+            await this.sendRemoteCommand('Yellow');
+        });
+
+        this.registerCommand('pressExit', async () => {
+            await this.sendRemoteCommand('Exit');
         });
 
         this.registerCommand('changeTvInput', async (host?: string) => {
@@ -232,14 +322,44 @@ export class BrightScriptCommands {
             await this.onToggleXml();
         });
 
+        this.registerCommand('goToParentComponent', async () => {
+            await this.onGoToParentComponent();
+        });
+
         this.registerCommand('clearGlobalState', async () => {
             new GlobalStateManager(this.context).clear();
             await vscode.window.showInformationMessage('BrightScript Language extension global state cleared');
         });
 
+        this.registerCommand('clearCurrentDeviceList', async () => {
+            this.deviceManager.clearCurrentDeviceList();
+            await util.showTimedNotification('Clearing device list');
+        });
+
+        this.registerCommand('enableDeviceDiscovery', async () => {
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', true);
+        });
+
+        this.registerCommand('disableDeviceDiscovery', async () => {
+            await util.setConfigurationValueAtUserOrClosestScope('brightscript.deviceDiscovery.enabled', false);
+        });
+
+        this.registerCommand('clearDeviceCache', async () => {
+            this.deviceManager.clearAllCache();
+            await util.showTimedNotification('Clearing device cache');
+        });
+
+        this.registerCommand('clearLastSeenDevices', async () => {
+            new GlobalStateManager(this.context).clearLastSeenDevices();
+            await vscode.window.showInformationMessage('Last seen devices cleared');
+        });
+
         this.registerCommand('copyToClipboard', async (value: string) => {
             try {
-                await vscode.env.clipboard.writeText(value);
+                if (util.isNullish(value)) {
+                    throw new Error('Cannot copy ${value} to clipboard');
+                }
+                await vscode.env.clipboard.writeText(value?.toString());
                 await vscode.window.showInformationMessage(`Copied to clipboard: ${value}`);
             } catch (error) {
                 await vscode.window.showErrorMessage(`Could not copy value to clipboard`);
@@ -252,6 +372,160 @@ export class BrightScriptCommands {
             } catch (error) {
                 await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
             }
+        });
+
+        this.registerCommand('openRegistryInBrowser', async (host: string) => {
+            if (!host) {
+                host = await this.userInputManager.promptForHost();
+            }
+
+            let responseText = await util.spinAsync('Fetching app list', async () => {
+                return (await util.httpGet(`http://${host}:8060/query/apps`, { timeout: 4_000 })).body as string;
+            });
+
+            const parsed = await xml2js.parseStringPromise(responseText);
+
+            //convert the items to QuickPick items
+            const items: Array<vscode.QuickPickItem & { appId?: string }> = parsed.apps.app.map((appData: any) => {
+                return {
+                    label: appData._,
+                    detail: `ID: ${appData.$.id}`,
+                    description: `${appData.$.version}`,
+                    appId: `${appData.$.id}`
+                } as vscode.QuickPickItem;
+                //sort the items alphabetically
+            }).sort(firstBy('label'));
+
+            //move the dev app to the top (and add a label/section to differentiate it)
+            const devApp = items.find(x => x.appId === 'dev');
+            if (devApp) {
+                items.splice(items.indexOf(devApp), 1);
+                items.unshift(
+                    { kind: vscode.QuickPickItemKind.Separator, label: 'dev' },
+                    devApp,
+                    { kind: vscode.QuickPickItemKind.Separator, label: ' ' }
+                );
+            }
+
+            const selectedApp: typeof items[0] = await vscode.window.showQuickPick(items, { placeHolder: 'Which app would you like to see the registry for?' });
+
+            if (selectedApp) {
+                const appId = selectedApp.appId;
+                let url = `http://${host}:8060/query/registry/${appId}`;
+                try {
+                    await vscode.env.openExternal(vscode.Uri.parse(url));
+                } catch (error) {
+                    await vscode.window.showErrorMessage(`Tried to open url but failed: ${url}`);
+                }
+            }
+        });
+
+        this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
+            let ip: string;
+            if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
+                ip = this.deviceManager.getDevice(deviceOrItem.key)?.ip;
+            } else if (typeof deviceOrItem === 'string') {
+                ip = deviceOrItem;
+            }
+            if (!ip) {
+                ip = await this.userInputManager.promptForHost();
+            }
+            if (!ip) {
+                throw new Error('Tried to set active device but failed.');
+            } else {
+                await this.context.workspaceState.update('remoteHost', ip);
+                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
+            }
+        });
+
+        this.registerCommand('editDeviceInUserSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            await this.openSettingsJsonAtDevice(device, 'user');
+        });
+
+        this.registerCommand('editDeviceInWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            await this.openSettingsJsonAtDevice(device, 'workspace');
+        });
+
+        this.registerCommand('addDeviceToUserSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const userDevices = inspection?.globalValue || [];
+
+            if (userDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+                void vscode.window.showInformationMessage('Device is already in your user settings.');
+                return;
+            }
+
+            const newDevice = {
+                host: device.ip,
+                ...(device.serialNumber && { serialNumber: device.serialNumber })
+            };
+            userDevices.push(newDevice);
+
+            await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to user settings.`);
+        });
+
+        this.registerCommand('addDeviceToWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const workspaceDevices = inspection?.workspaceValue || [];
+
+            if (workspaceDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+                void vscode.window.showInformationMessage('Device is already in your workspace settings.');
+                return;
+            }
+
+            const newDevice = {
+                host: device.ip,
+                ...(device.serialNumber && { serialNumber: device.serialNumber })
+            };
+            workspaceDevices.push(newDevice);
+
+            await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
+        });
+
+        this.registerCommand('setDevicePassword', async (deviceIp: string) => {
+            if (!deviceIp) {
+                throw new Error('Device IP is required to set password.');
+            }
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the developer account password for this device',
+                password: true,
+                prompt: `Set password for device: ${deviceIp}`
+            });
+
+            if (password !== undefined) {
+                await this.setDevicePassword(deviceIp, password);
+                if (password) {
+                    await vscode.window.showInformationMessage(`Password set for device: ${deviceIp}`);
+                } else {
+                    await vscode.window.showInformationMessage(`Password cleared for device: ${deviceIp}`);
+                }
+            }
+        });
+
+        this.registerCommand('clearActiveDevice', async () => {
+            await this.context.workspaceState.update('remoteHost', '');
+            await vscode.window.showInformationMessage('BrightScript Language extension active device cleared');
         });
 
         this.registerCommand('showReleaseNotes', () => {
@@ -302,7 +576,93 @@ export class BrightScriptCommands {
         }
     }
 
-    public async sendRemoteCommand(key: string, host?: string) {
+    public async onGoToParentComponent() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+        const currentDocument = editor.document;
+        const fileName = currentDocument.fileName;
+        const lowerFileName = fileName.toLowerCase();
+        const isXml = lowerFileName.endsWith('.xml');
+        const isBrs = lowerFileName.endsWith('.brs') || lowerFileName.endsWith('.bs');
+
+        if (!isXml && !isBrs) {
+            return;
+        }
+
+        // Get or open the XML document
+        let xmlDoc: vscode.TextDocument;
+        if (isXml) {
+            xmlDoc = currentDocument;
+        } else {
+            const xmlFileName = this.fileUtils.getAlternateFileName(fileName);
+            if (!xmlFileName) {
+                return;
+            }
+            try {
+                xmlDoc = await vscode.workspace.openTextDocument(vscode.Uri.file(xmlFileName));
+            } catch (e) {
+                return;
+            }
+        }
+
+        const xmlContent = xmlDoc.getText();
+        const parentName = this.fileUtils.getParentComponentName(xmlContent);
+        if (!parentName) {
+            await vscode.window.showInformationMessage('No parent component found');
+            return;
+        }
+
+        const extendsPosition = this.getExtendsValuePosition(xmlContent, xmlDoc);
+        if (!extendsPosition) {
+            return;
+        }
+
+        // Delegate to the definition provider via the LSP
+        const locations = await vscode.commands.executeCommand<vscode.Location[]>(
+            'vscode.executeDefinitionProvider',
+            xmlDoc.uri,
+            extendsPosition
+        );
+
+        if (!locations || locations.length === 0) {
+            await vscode.window.showInformationMessage(`Could not find parent component: ${parentName}`);
+            return;
+        }
+
+        const parentXmlPath = locations[0].uri.fsPath;
+
+        if (isBrs) {
+            const parentBrsPath = this.fileUtils.getAlternateFileName(parentXmlPath);
+            if (parentBrsPath && !await this.openFile(parentBrsPath)) {
+                await this.openFile(this.fileUtils.getBsFileName(parentBrsPath));
+            }
+        } else {
+            await this.openFile(parentXmlPath);
+        }
+    }
+
+    private getExtendsValuePosition(xmlContent: string, xmlDoc: vscode.TextDocument): vscode.Position | undefined {
+        // Match extends="VALUE" capturing the VALUE portion; [^>]+ spans across lines since [^>] matches \n
+        const match = /<component[^>]+extends\s*=\s*["']([^"']+)/i.exec(xmlContent);
+        if (!match) {
+            return undefined;
+        }
+        // Offset to first character of the value (after the opening quote)
+        const valueOffset = match.index + match[0].length - match[1].length;
+        return xmlDoc.positionAt(valueOffset);
+    }
+
+    public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {
+        for (const notifier of this.keypressNotifiers) {
+            notifier(key, literalCharacter);
+        }
+
+        if (literalCharacter) {
+            key = 'Lit_' + encodeURIComponent(key);
+        }
+
         // do we have a temporary override?
         if (!host) {
             // Get the long lived host ip
@@ -324,13 +684,13 @@ export class BrightScriptCommands {
         }
     }
 
-    public async getRemoteHost() {
+    public async getRemoteHost(showPrompt = true) {
         this.host = await this.context.workspaceState.get('remoteHost');
         if (!this.host) {
-            let config = vscode.workspace.getConfiguration('brightscript.remoteControl', null);
+            let config = util.getConfiguration('brightscript.remoteControl');
             this.host = config.get('host');
             // eslint-disable-next-line no-template-curly-in-string
-            if (this.host === '${promptForHost}') {
+            if ((!this.host || this.host === '${promptForHost}') && showPrompt) {
                 this.host = await vscode.window.showInputBox({
                     placeHolder: 'The IP address of your Roku device',
                     value: ''
@@ -343,8 +703,142 @@ export class BrightScriptCommands {
             await this.context.workspaceState.update('remoteHost', this.host);
         }
         if (this.host) {
-            this.host = await rokuDebugUtil.dnsLookup(this.host);
+            //try resolving the hostname. (sometimes it fails for no reason, so just ignore the crash if it does)
+            try {
+                this.host = await rokuDebugUtil.dnsLookup(this.host);
+            } catch (e) {
+                console.error('Error doing dns lookup for host ', this.host, e);
+            }
         }
+        return this.host;
+    }
+
+    public async getRemotePassword(showPrompt = true) {
+        this.password = await this.context.workspaceState.get('remotePassword');
+        if (!this.password) {
+            let config = util.getConfiguration('brightscript.remoteControl');
+            this.password = config.get('password');
+            // eslint-disable-next-line no-template-curly-in-string
+            if ((!this.password || this.password === '${promptForPassword}') && showPrompt) {
+                this.password = await vscode.window.showInputBox({
+                    placeHolder: 'The developer account password for your Roku device',
+                    value: ''
+                });
+            }
+        }
+        if (!this.password) {
+            throw new Error(`Can't send command: password is required.`);
+        } else {
+            await this.context.workspaceState.update('remotePassword', this.password);
+        }
+        return this.password;
+    }
+
+    public async getWorkspacePath() {
+        this.workspacePath = await this.context.workspaceState.get('workspacePath');
+        //let folderUri: vscode.Uri;
+        if (!this.workspacePath) {
+            if (vscode.workspace.workspaceFolders?.length === 1) {
+                this.workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+            } else {
+                //there are multiple workspaces, ask the user to specify which one they want to use
+                let workspaceFolder = await vscode.window.showWorkspaceFolderPick();
+                if (workspaceFolder) {
+                    this.workspacePath = workspaceFolder.uri.fsPath;
+                }
+            }
+        }
+        return this.workspacePath;
+    }
+
+    /**
+     * Store a password for a specific device
+     * @param deviceIp The IP address of the device
+     * @param password The password to store for this device
+     */
+    public async setDevicePassword(deviceIp: string, password: string) {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        devicePasswords[deviceIp] = password;
+        await this.context.workspaceState.update('devicePasswords', devicePasswords);
+    }
+
+    /**
+     * Get the password for a specific device
+     * @param deviceIp The IP address of the device
+     * @returns The password for the device, or undefined if not set
+     */
+    public async getDevicePassword(deviceIp: string): Promise<string | undefined> {
+        const devicePasswords = await this.getDevicePasswordsFromStorage();
+        return devicePasswords[deviceIp];
+    }
+
+    /**
+     * Get the password for the currently active device
+     * @returns The password for the active device, or falls back to global password
+     */
+    public async getActiveHostPassword(): Promise<string | undefined> {
+        const activeHost = this.context.workspaceState.get<string>('remoteHost');
+        if (activeHost && typeof activeHost === 'string') {
+            const devicePassword = await this.getDevicePassword(activeHost);
+            if (devicePassword) {
+                return devicePassword;
+            }
+        }
+        // Fallback to global password
+        return this.getRemotePassword(false);
+    }
+
+    /**
+     * Get all device passwords from storage
+     * @returns Object mapping device IPs to passwords
+     */
+    private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
+        return await this.context.workspaceState.get('devicePasswords') || {};
+    }
+
+    /**
+     * Open the settings JSON file and position cursor at the specified device entry
+     */
+    private async openSettingsJsonAtDevice(device: RokuDevice | undefined, scope: 'user' | 'workspace'): Promise<void> {
+        // Open the appropriate settings JSON file
+        const command = scope === 'user'
+            ? 'workbench.action.openSettingsJson'
+            : 'workbench.action.openWorkspaceSettingsFile';
+        await vscode.commands.executeCommand(command);
+
+        // Get the active editor (should be the settings file we just opened)
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !device) {
+            return;
+        }
+
+        const text = editor.document.getText();
+
+        // Search for the device by IP or serial number
+        const searchTerms = [device.ip];
+        if (device.serialNumber) {
+            searchTerms.push(device.serialNumber);
+        }
+
+        let matchIndex = -1;
+        for (const term of searchTerms) {
+            const index = text.indexOf(`"${term}"`);
+            if (index !== -1) {
+                matchIndex = index;
+                break;
+            }
+        }
+
+        if (matchIndex !== -1) {
+            const position = editor.document.positionAt(matchIndex + 1); // +1 to skip opening quote
+            const selection = new vscode.Selection(position, position);
+            editor.selection = selection;
+            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+        }
+    }
+
+    public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {
+        this.keypressNotifiers.push(notifier);
     }
 
     private registerCommand(name: string, callback: (...args: any[]) => any, thisArg?: any) {
@@ -354,7 +848,6 @@ export class BrightScriptCommands {
     }
 
     private async sendAsciiToDevice(character: string) {
-        let commandToSend: string = 'Lit_' + encodeURIComponent(character);
-        await this.sendRemoteCommand(commandToSend);
+        await this.sendRemoteCommand(character, undefined, true);
     }
 }

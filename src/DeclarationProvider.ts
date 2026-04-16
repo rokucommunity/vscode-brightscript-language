@@ -49,13 +49,13 @@ export class WorkspaceEncoding {
 
     public reset() {
         this.encoding = [];
-        for (const folder of vscode.workspace.workspaceFolders) {
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
             this.encoding.push([folder.uri.fsPath, this.getConfiguration(folder.uri)]);
         }
     }
 
     private getConfiguration(uri: Uri): string {
-        const encoding: string = vscode.workspace.getConfiguration('files', uri).get('encoding', 'utf8');
+        const encoding: string = util.getConfiguration('files', uri).get('encoding', 'utf8');
         if (encoding === 'utf8bom') {
             return 'utf8'; // iconv-lite removes bom by default when decoding, so this is fine
         }
@@ -137,7 +137,6 @@ export class DeclarationProvider implements Disposable {
     }
 
     private onDidChangeFile(uri: Uri) {
-        const excludes = getExcludeGlob();
         this.dirty.set(uri.fsPath, uri);
     }
 
@@ -197,7 +196,7 @@ export class DeclarationProvider implements Disposable {
 
         // Prevents results in the out directory from being returned
         if (uriPath.startsWith(outDir)) {
-            return;
+            return [];
         }
 
         const container = BrightScriptDeclaration.fromUri(uri);
@@ -317,7 +316,7 @@ export class DeclarationProvider implements Disposable {
                         new Range(line, match[0].length - match[1].length, line, match[0].length),
                         new Range(line, 0, line, text.length)
                     );
-                    console.log('FOUND VAR ' + varSymbol.name);
+                    // console.log('FOUND VAR ' + varSymbol.name);
                     symbols.push(varSymbol);
 
                     if (classSymbol) {
@@ -457,8 +456,8 @@ export class DeclarationProvider implements Disposable {
 
 export function getExcludeGlob(): string {
     const exclude = [
-        ...Object.keys(vscode.workspace.getConfiguration('search', null).get('exclude') || {}),
-        ...Object.keys(vscode.workspace.getConfiguration('files', null).get('exclude') || {})
+        ...Object.keys(util.getConfiguration('search').get('exclude') || {}),
+        ...Object.keys(util.getConfiguration('files').get('exclude') || {})
     ].join(',');
     return `{${exclude}}`;
 }

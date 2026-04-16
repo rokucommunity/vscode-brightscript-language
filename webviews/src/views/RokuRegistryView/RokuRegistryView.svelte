@@ -5,25 +5,31 @@
     import { registryView } from './RokuRegistryView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import Loader from '../../shared/Loader.svelte';
+    import { ViewProviderEvent } from '../../../../src/viewProviders/ViewProviderEvent';
 
     let loading = true;
 
     let registryValues = {};
-    (async () => {
+
+    let odcAvailable = false;
+
+    intermediary.observeEvent(ViewProviderEvent.onDeviceAvailabilityChange, async (message) => {
+        odcAvailable = message.context.odcAvailable;
+        if (odcAvailable) {
+            loading = true;
+            const { values } = await odc.readRegistry();
+            registryValues = registryView.formatValues(values);
+            loading = false;
+        } else {
+            registryValues = {}
+        }
+    });
+
+    intermediary.observeEvent(ViewProviderEvent.onRegistryUpdated, async (message) => {
         loading = true;
         const { values } = await odc.readRegistry();
         registryValues = registryView.formatValues(values);
         loading = false;
-    })();
-
-    let odcAvailable = true;
-
-    intermediary.observeEvent('onDeviceComponentStatus', (message) => {
-        odcAvailable = message.available;
-    });
-
-    intermediary.observeEvent('registryUpdated', (message) => {
-        registryValues = registryView.formatValues(message.values);
     });
 
     // Required by any view so we can know that the view is ready to receive messages

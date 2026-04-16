@@ -1,34 +1,19 @@
 <script lang="ts">
     import { utils } from '../../utils';
     import VscodeCheckbox from '../../shared/vscode-ui-toolkit/VscodeCheckbox.svelte';
-    export let showSettings: boolean;
+    export let showSettingsPage: boolean;
 
     let enableDebugLogging = utils.getStorageBooleanValue('enableDebugLogging');
     $: {
         utils.setStorageValue('enableDebugLogging', enableDebugLogging);
     }
 
-    let includeNodeCountInfo = utils.getStorageBooleanValue('includeNodeCountInfo', true);
-    $: {
-        utils.setStorageValue('includeNodeCountInfo', includeNodeCountInfo);
-    }
-
-    let includeArrayGridChildren = utils.getStorageBooleanValue('includeArrayGridChildren', true);
-    $: {
-        if (includeArrayGridChildren) {
-            includeNodeCountInfo = true;
-        }
-        utils.setStorageValue(
-            'includeArrayGridChildren',
-            includeArrayGridChildren
-        );
-    }
 
     function close() {
-        showSettings = false;
+        showSettingsPage = false;
     }
 
-    function handleKeydown(event) {
+    function onKeydown(event) {
         const key = event.key;
 
         switch (key) {
@@ -88,7 +73,7 @@
     }
 </style>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={onKeydown} />
 <div id="background" />
 <div id="container">
     <div id="header">
@@ -100,18 +85,6 @@
             <div class="title">Debug Logging</div>
             <VscodeCheckbox bind:value={enableDebugLogging}>
                 Enable debug logging
-            </VscodeCheckbox>
-        </li>
-        <li>
-            <div class="title">Include Node Counts</div>
-            <VscodeCheckbox bind:value={includeNodeCountInfo}>
-                Load the total and type-based node counts. (Disabled by default to improve performance)</VscodeCheckbox>
-        </li>
-        <li>
-            <div class="title">Include ArrayGrid Children</div>
-            <VscodeCheckbox bind:value={includeArrayGridChildren}>
-                Load ArrayGrid (RowList, MarkupGrid, etc) children when
-                possible. (Disabled by default to improve performance)
             </VscodeCheckbox>
         </li>
     </ul>

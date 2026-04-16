@@ -1,12 +1,29 @@
-import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration } from 'vscode';
+import { EventEmitter } from 'eventemitter3';
+import type { Command, Range, TreeDataProvider, TreeItemCollapsibleState, Uri, WorkspaceFolder, ConfigurationScope, ExtensionContext, WorkspaceConfiguration, OutputChannel, QuickPickItem } from 'vscode';
+import URI from 'vscode-uri';
+import * as path from 'path';
+import { standardizePath as s } from 'brighterscript';
+
+const cwd = s`${__dirname}/../`;
+const tempDir = s`${cwd}/.tmp`;
+
+//copied from vscode to help with unit tests
+enum QuickPickItemKind {
+    Separator = -1,
+    Default = 0
+}
 
 afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
+    vscode.workspace.workspaceFolders = [] as any;
+    vscode.workspace.findFiles = () => [] as any;
     vscode.context.globalState['_data'] = {};
+    vscode.context.workspaceState['_data'] = {};
 });
 
 export let vscode = {
+    version: '1.89.1',
     env: {
         //disable all telemetry reporting during unit tests
         telemetryConfiguration: {
@@ -15,11 +32,20 @@ export let vscode = {
             isCrashEnabled: false
         }
     },
+    ExtensionMode: {
+        Production: 1,
+        Development: 2,
+        Test: 3
+    },
     CompletionItem: class { },
     CodeLens: class { },
     CodeAction: class { },
     Diagnostic: class { },
     CallHierarchyItem: class { },
+    ProgressLocation: {
+        Notification: 1
+    },
+    QuickPickItemKind: QuickPickItemKind,
     StatusBarAlignment: {
         Left: 1,
         Right: 2
@@ -36,11 +62,14 @@ export let vscode = {
     },
     debug: {
         registerDebugConfigurationProvider: () => { },
+        registerDebugAdapterDescriptorFactory: () => { },
         onDidStartDebugSession: () => { },
         onDidTerminateDebugSession: () => { },
-        onDidReceiveDebugSessionCustomEvent: () => { }
+        onDidReceiveDebugSessionCustomEvent: () => { },
+        stopDebugging: () => { }
     },
     languages: {
+        registerCodeLensProvider: () => { },
         registerDefinitionProvider: () => { },
         registerDocumentSymbolProvider: () => { },
         registerWorkspaceSymbolProvider: () => { },
@@ -64,10 +93,12 @@ export let vscode = {
 
         }
     },
+    CodeActionKind: {
+    },
     context: {
         subscriptions: [],
-        asAbsolutePath: () => {
-            return '';
+        asAbsolutePath: (arg) => {
+            return path.resolve(arg);
         },
         extensionUri: undefined as Uri,
         extensionPath: '',
@@ -79,12 +110,20 @@ export let vscode = {
             update: function(key: string, value: any) {
                 this._data[key] = value;
             },
+            get: function(key: string, defaultData) {
+                return this._data[key] ?? defaultData;
+            }
+        } as any,
+        workspaceState: {
+            _data: {},
+            update: function(key: string, value: any) {
+                this._data[key] = value;
+            },
             get: function(key: string) {
                 return this._data[key];
             }
         } as any,
-        globalStorageUri: undefined as Uri,
-        workspaceState: {} as any,
+        globalStorageUri: URI.file(tempDir),
         environmentVariableCollection: {} as any,
         logUri: undefined as Uri,
         logPath: '',
@@ -122,8 +161,14 @@ export let vscode = {
         },
         onDidChangeConfiguration: () => { },
         onDidChangeWorkspaceFolders: () => { },
+        getWorkspaceFolder: (uri: Uri) => {
+            return undefined;
+        },
+        asRelativePath: (pathOrUri: string | Uri) => {
+            return typeof pathOrUri === 'string' ? pathOrUri : pathOrUri.fsPath;
+        },
         findFiles: (include, exclude) => {
-            return [];
+            return [] as any;
         },
         fs: {
             writeFile: (uri, buffer) => { },
@@ -136,22 +181,80 @@ export let vscode = {
         onDidCloseTextDocument: () => { }
     },
     window: {
+        registerCustomEditorProvider: () => { },
+        withProgress: (options, action) => {
+            return action();
+        },
+        showInputBox: () => {
+            return Promise.resolve(undefined);
+        },
         createStatusBarItem: () => {
             return {
                 clear: () => { },
                 text: '',
-                show: () => { }
+                show: () => { },
+                hide: () => { },
+                dispose: () => { }
             };
         },
-        createOutputChannel: function() {
+        onDidChangeWindowState: () => { },
+        registerFileDecorationProvider: () => ({ dispose: () => { } }),
+        createTreeView: () => ({
+            onDidChangeVisibility: () => { }
+        }),
+        createQuickPick: () => {
+            class QuickPick {
+                private emitter = new EventEmitter();
+
+                public placeholder = '';
+
+                public items: QuickPickItem[];
+                public keepScrollPosition = false;
+
+                public show() { }
+
+                public onDidAccept(cb) {
+                    this.emitter.on('didAccept', cb);
+                }
+
+                public onDidHide(cb) {
+                    this.emitter.on('didHide', cb);
+                }
+
+                public hide() {
+                    this.emitter.emit('didHide');
+                }
+
+                public onDidChangeSelection(cb) {
+                    this.emitter.on('didChangeSelection', cb);
+                }
+
+                public dispose() {
+                    this.emitter.removeAllListeners();
+                }
+            }
+            return new QuickPick();
+        },
+        createOutputChannel: function(name?: string) {
             return {
+                name: name,
+                append: () => { },
+                dispose: () => { },
+                hide: () => { },
+                replace: () => { },
                 show: () => { },
                 clear: () => { },
                 appendLine: () => { }
-            };
+            } as OutputChannel;
         },
         registerTreeDataProvider: function(viewId: string, treeDataProvider: TreeDataProvider<any>) { },
-        showErrorMessage: function(message: string) {
+        showInformationMessage: function(message: string) {
+
+        },
+        showWarningMessage: function(message: string) {
+
+        },
+        showErrorMessage: function(message: string, ..._rest: any[]): any {
 
         },
         activeTextEditor: {
@@ -159,12 +262,22 @@ export let vscode = {
         },
         onDidChangeTextEditorSelection: () => { },
         registerUriHandler: () => { },
-        registerWebviewViewProvider: () => { },
+        registerWebviewViewProvider: () => {
+            return {
+                asWebViewUri: () => { }
+            };
+        },
         showSaveDialog: () => {
             return Promise.resolve('');
         },
         showOpenDialog: () => {
             return Promise.resolve([]);
+        },
+        showQuickPick: () => {
+            return Promise.resolve(undefined);
+        },
+        showWorkspaceFolderPick: () => {
+            return Promise.resolve(undefined);
         }
     },
     CompletionItemKind: {
@@ -176,10 +289,41 @@ export let vscode = {
         }
     },
     EventEmitter: class {
-        public fire() {
+        private handlers = new Map<string, Array<(data: any) => void>>();
 
+        public event = (handler: (data: any) => void) => {
+            const eventName = 'event';
+            if (!this.handlers.has(eventName)) {
+                this.handlers.set(eventName, []);
+            }
+            this.handlers.get(eventName).push(handler);
+            return {
+                dispose: () => {
+                    const handlers = this.handlers.get(eventName) || [];
+                    const index = handlers.indexOf(handler);
+                    if (index > -1) {
+                        handlers.splice(index, 1);
+                    }
+                }
+            };
+        };
+
+        public fire(data?: any) {
+            const handlers = this.handlers.get('event') || [];
+            for (const handler of handlers) {
+                handler(data);
+            }
         }
-        public event() {
+
+        public dispose() {
+            this.handlers.clear();
+        }
+    },
+    tasks: {
+        registerTaskProvider: (type: string, provider: any) => {
+            return {
+                dispose: () => { }
+            };
         }
     },
     DeclarationProvider: class {
@@ -202,32 +346,32 @@ export let vscode = {
             this.line = line;
             this.character = character;
         }
-        private line: number;
-        private character: number;
+        public line: number;
+        public character: number;
     },
     ParameterInformation: class {
         constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
-        private label: string;
-        private documentation: any;
+        public label: string;
+        public documentation: any;
     },
     SignatureHelp: class {
         constructor() {
             this.signatures = [];
         }
-        private signatures: any[];
-        private activeParameter: number;
-        private activeSignature: number;
+        public signatures: any[];
+        public activeParameter: number;
+        public activeSignature: number;
     },
     SignatureInformation: class {
         constructor(label: string, documentation?: any) {
             this.label = label;
             this.documentation = documentation;
         }
-        private label: string;
-        private documentation: any;
+        public label: string;
+        public documentation: any;
     },
     Range: class {
         constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
@@ -236,10 +380,10 @@ export let vscode = {
             this.endLine = endLine;
             this.endCharacter = endCharacter;
         }
-        private startLine: number;
-        private startCharacter: number;
-        private endLine: number;
-        private endCharacter: number;
+        public startLine: number;
+        public startCharacter: number;
+        public endLine: number;
+        public endCharacter: number;
     },
     SymbolKind: {
         File: 0,
@@ -276,7 +420,7 @@ export let vscode = {
         }
 
         private text: any;
-        private fileName: string;
+        public fileName: string;
         public getText() {
             return this.text;
         }
@@ -309,23 +453,45 @@ export let vscode = {
             this.range = range;
             this.uri = uri;
         }
-        private range: any;
-        private uri: string;
+        public range: any;
+        public uri: string;
     },
     MarkdownString: class {
         constructor(value: string = null) {
             this.value = value;
         }
-        private value: string;
+        public value: string;
     },
     ThemeColor: class { },
+    ThemeIcon: class {
+        constructor(public id: string, public color?: any) { }
+    },
+    TextEdit: class {
+        constructor(public range: any, public newText: string) { }
+        static replace(range: any, newText: string) {
+            return new vscode.TextEdit(range, newText);
+        }
+    },
     Uri: {
         file: (src: string) => {
             return {
+                fsPath: src,
+                path: src,
+                scheme: 'file',
+                authority: '',
+                query: '',
+                fragment: '',
                 with: () => {
                     return {};
+                },
+                toJSON: () => {
+                    return {
+                        fsPath: src,
+                        path: src,
+                        scheme: 'file'
+                    };
                 }
-            };
+            } as any;
         },
         parse: () => { }
     },
@@ -333,7 +499,47 @@ export let vscode = {
         constructor(value: string = null) {
             this.value = value;
         }
-        private value: string;
+        public value: string;
+    },
+    Task: class {
+        constructor(definition, scope, name, source, execution, problemMatchers = []) {
+            this.definition = definition;
+            this.scope = scope;
+            this.name = name;
+            this.source = source;
+            this.execution = execution;
+            this.problemMatchers = problemMatchers;
+        }
+        public definition: any;
+        public scope: any;
+        public name: string;
+        public source: string;
+        public execution: any;
+        public problemMatchers: any[];
+        public isBackground: boolean;
+        public presentationOptions: any;
+        public group: any;
+        public runOptions: any;
+    },
+    ShellExecution: class {
+        constructor(commandLine: string) {
+            this.commandLine = commandLine;
+        }
+        public commandLine: string;
+    },
+    CustomExecution: class {
+        constructor(callback: () => Promise<any>) {
+            this.callback = callback;
+        }
+        public callback: () => Promise<any>;
+    },
+    TaskScope: {
+        Global: 1,
+        Workspace: 2
+    },
+    DebugConfigurationProviderTriggerKind: {
+        Initial: 1,
+        Dynamic: 2
     }
 };
 

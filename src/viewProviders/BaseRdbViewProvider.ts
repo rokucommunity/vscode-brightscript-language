@@ -1,72 +1,78 @@
 import * as rta from 'roku-test-automation';
+import type * as vscode from 'vscode';
+import type { RequestType } from 'roku-test-automation';
+import * as fsExtra from 'fs-extra';
+import * as path from 'path';
 
 import { BaseWebviewViewProvider } from './BaseWebviewViewProvider';
+import { ViewProviderEvent } from './ViewProviderEvent';
+import { ViewProviderCommand } from './ViewProviderCommand';
+
 
 export abstract class BaseRdbViewProvider extends BaseWebviewViewProvider {
-    protected onDeviceComponent?: rta.OnDeviceComponent;
+    protected odcCommands: Array<RequestType>;
 
-    protected odcCommands: Array<keyof rta.OnDeviceComponent> = [
-        'callFunc',
-        'deleteEntireRegistry',
-        'deleteRegistrySections',
-        'getFocusedNode',
-        'getValue',
-        'getValues',
-        'getNodesInfo',
-        'hasFocus',
-        'isInFocusChain',
-        'observeField',
-        'readRegistry',
-        'setValue',
-        'writeRegistry',
-        'storeNodeReferences',
-        'deleteNodeReferences'
-    ];
+    constructor(context: vscode.ExtensionContext, dependencies) {
+        super(context, dependencies);
+        const requestTypesPath = path.join(rta.utils.getClientFilesPath(), 'requestTypes.schema.json');
+        const json = JSON.parse(fsExtra.readFileSync(requestTypesPath, 'utf8'));
+        this.odcCommands = Object.values(json.enum);
 
-    // @param odc - The OnDeviceComponent class instance. If undefined existing instance will be removed. Used to notify webview of change in ODC status
-    public setOnDeviceComponent(onDeviceComponent?: rta.OnDeviceComponent) {
-        this.onDeviceComponent = onDeviceComponent;
+        this.setupCommandObservers();
+    }
 
-        this.postOrQueueMessage({
-            name: 'onDeviceComponentStatus',
-            available: onDeviceComponent ? true : false
+    public updateDeviceAvailability() {
+        const message = this.createEventMessage(ViewProviderEvent.onDeviceAvailabilityChange, {
+            odcAvailable: !!this.dependencies.rtaManager.onDeviceComponent,
+            deviceAvailable: !!this.dependencies.rtaManager.device
+        });
+
+        this.postOrQueueMessage(message);
+    }
+
+    protected setupCommandObservers() {
+        for (const command of this.odcCommands) {
+            this.addMessageCommandCallback(command, async (message) => {
+                const { command, context } = message;
+                const response = await this.dependencies.rtaManager.sendOdcRequest(this.id, command, context);
+                this.postOrQueueMessage(this.createResponseMessage(message, response));
+                return true;
+            });
+        }
+
+        this.addMessageCommandCallback(ViewProviderCommand.setManualIpAddress, (message) => {
+            this.dependencies.rtaManager.setupRtaWithConfig({
+                ...message.context,
+                injectRdbOnDeviceComponent: true
+            });
+            return Promise.resolve(true);
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.getStoredAppUI, (message) => {
+            const response = this.dependencies.rtaManager.getStoredAppUI();
+            this.postOrQueueMessage(this.createResponseMessage(message, response));
+            return Promise.resolve(true);
+        });
+
+        this.addMessageCommandCallback(ViewProviderCommand.getAppUI, async (message) => {
+            try {
+                const appUIResponse = await this.dependencies.rtaManager.getAppUI(this.id);
+
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: true,
+                    response: appUIResponse
+                }));
+            } catch (e) {
+                this.postOrQueueMessage(this.createResponseMessage(message, {
+                    success: false
+                }));
+            }
+            return true;
         });
     }
 
     protected onViewReady() {
-        // Always post back the ODC status so we make sure the client doesn't miss it if it got refreshed
-        this.setOnDeviceComponent(this.onDeviceComponent);
-    }
-
-    protected async handleViewMessage(message) {
-        const { command, context } = message;
-        if (this.odcCommands.includes(command)) {
-            const response = await this.onDeviceComponent[command](context.args, context.options);
-            this.postMessage({
-                ...message,
-                response: response
-            });
-            return true;
-        } else if (command === 'setManualIpAddress') {
-            const onDeviceComponent = rta.odc;
-
-            const rtaConfig: rta.ConfigOptions = {
-                RokuDevice: {
-                    devices: [{
-                        host: context.ipAddress,
-                        password: ''
-                    }]
-                },
-                OnDeviceComponent: {
-                    disableTelnet: true,
-                    disableCallOriginationLine: true
-                }
-            };
-
-            onDeviceComponent.setConfig(rtaConfig);
-            this.setOnDeviceComponent(onDeviceComponent);
-        }
-
-        return false;
+        // Always post back the device status so we make sure the client doesn't miss it if it got refreshed
+        this.updateDeviceAvailability();
     }
 }

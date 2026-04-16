@@ -184,7 +184,7 @@ module.exports = {
     },
     //disable some rules for certain files
     overrides: [{
-        //these files are getting deleted soon, so ingore the eslint warnings for now
+        //these files are getting deleted soon, so ignore the eslint warnings for now
         files: ['src/brsTypes/**/*.ts'],
         rules: {
             '@typescript-eslint/no-invalid-this': 'off',

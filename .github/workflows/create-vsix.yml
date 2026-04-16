@@ -12,10 +12,10 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "14.16.1"
+          node-version: "18.18.2"
       - run: npm ci
-      - run: node scripts/create-vsix.js ${{ github.event.inputs.branch }}
-      - uses: actions/upload-artifact@v2
+      - run: npx ts-node scripts/create-vsix.ts ${{ github.event.inputs.branch }}
+      - uses: actions/upload-artifact@v4
         with:
           name: vscode-brightscript-language.vsix
           path: .vsix-building/vscode-brightscript-language/*.vsix

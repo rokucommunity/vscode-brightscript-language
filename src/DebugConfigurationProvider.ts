@@ -1,9 +1,7 @@
-/* eslint-disable no-template-curly-in-string */
 import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
-import type { FileEntry } from 'roku-deploy';
 import { DefaultFiles } from 'roku-deploy';
 import * as rta from 'roku-test-automation';
 import type {
@@ -17,90 +15,142 @@ import type { LaunchConfiguration } from 'roku-debug';
 import { fileUtils } from 'roku-debug';
 import { util } from './util';
 import type { TelemetryManager } from './managers/TelemetryManager';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import cloneDeep = require('clone-deep');
+import { rokuDeploy } from 'roku-deploy';
+import type { DeviceInfo } from 'roku-deploy';
+import type { UserInputManager } from './managers/UserInputManager';
+import type { BrightScriptCommands } from './BrightScriptCommands';
+import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
+
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
 
     public constructor(
         private context: ExtensionContext,
-        private activeDeviceManager: any,
-        private telemetryManager: TelemetryManager
+        private telemetryManager: TelemetryManager,
+        private extensionOutputChannel: vscode.OutputChannel,
+        private userInputManager: UserInputManager,
+        private brightScriptCommands: BrightScriptCommands,
+        private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
-        this.activeDeviceManager = activeDeviceManager;
-
-        this.configDefaults = {
-            type: 'brightscript',
-            name: 'BrightScript Debug: Launch',
-            host: '${promptForHost}',
-            password: '${promptForPassword}',
-            consoleOutput: 'normal',
-            request: 'launch',
-            stopOnEntry: false,
-            outDir: '${workspaceFolder}/out/',
-            retainDeploymentArchive: true,
-            injectRaleTrackerTask: false,
-            injectRdbOnDeviceComponent: false,
-            disableScreenSaver: true,
-            retainStagingFolder: false,
-            enableVariablesPanel: true,
-            enableDebuggerAutoRecovery: false,
-            stopDebuggerOnAppExit: false,
-            autoRunSgDebugCommands: [],
-            files: [...DefaultFiles],
-            enableSourceMaps: true,
-            packagePort: 80,
-            enableDebugProtocol: false,
-            remotePort: 8060
-        };
-
-        let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-        this.showDeviceInfoMessages = config.deviceDiscovery?.showInfoMessages;
-
-        vscode.workspace.onDidChangeConfiguration((e) => {
-            let config: any = vscode.workspace.getConfiguration('brightscript') || {};
-            this.showDeviceInfoMessages = config.deviceDiscovery?.showInfoMessages;
-        });
     }
 
     //make unit testing easier by adding these imports properties
     public fsExtra = fsExtra;
     public util = util;
 
-    private configDefaults: any;
-    private showDeviceInfoMessages: boolean;
+    private configDefaults: Partial<BrightScriptLaunchConfiguration> = {
+        type: 'brightscript',
+        name: 'BrightScript Debug: Launch',
+        host: '${promptForHost}',
+        password: '${promptForPassword}',
+        consoleOutput: 'normal',
+        request: 'launch',
+        stopOnEntry: false,
+        outDir: '${workspaceFolder}/out/',
+        retainDeploymentArchive: true,
+        injectRaleTrackerTask: false,
+        injectRdbOnDeviceComponent: false,
+        disableScreenSaver: true,
+        retainStagingFolder: false,
+        enableVariablesPanel: true,
+        deferScopeLoading: false,
+        autoResolveVirtualVariables: false,
+        enhanceREPLCompletions: true,
+        showHiddenVariables: false,
+        enableDebuggerAutoRecovery: false,
+        stopDebuggerOnAppExit: false,
+        autoRunSgDebugCommands: [],
+        files: [...DefaultFiles],
+        enableSourceMaps: true,
+        rewriteDevicePathsInLogs: true,
+        packagePort: 80,
+        enableDebugProtocol: true,
+        remotePort: 8060,
+        rendezvousTracking: true,
+        deleteDevChannelBeforeInstall: false,
+        sceneGraphDebugCommandsPort: 8080,
+        componentLibrariesPort: 8080,
+        remoteControlMode: {
+            activateOnSessionStart: false,
+            deactivateOnSessionEnd: false
+        }
+    };
+
+    public async provideDebugConfigurations(folder?: WorkspaceFolder, _token?: CancellationToken): Promise<vscode.DebugConfiguration[]> {
+        return (await this.rokuProjectDiscovery?.provideDebugConfigurations(folder)) ?? [];
+    }
 
     /**
      * Massage a debug configuration just before a debug session is being launched,
      * e.g. add all missing attributes to the debug configuration.
      */
-    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: any, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+    public async resolveDebugConfiguration(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration, token?: CancellationToken): Promise<BrightScriptLaunchConfiguration> {
+        // F5 with no launch.json — ask RokuProjectDiscovery to find a config from the active file.
+        if (!config.type && !config.request) {
+            const discovered = await this.rokuProjectDiscovery?.resolveDebugConfigFromActiveFile();
+            if (!discovered) {
+                return undefined;
+            }
+            config = discovered as BrightScriptLaunchConfiguration;
+        }
 
-        // merge user and workspace settings into the config
-        config = this.processUserWorkspaceSettings(config);
+        let deviceInfo: DeviceInfo;
+        let result: BrightScriptLaunchConfiguration;
+        try {
+            // merge user and workspace settings into the config
+            result = this.processUserWorkspaceSettings(config);
 
-        //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
-        this.telemetryManager?.sendStartDebugSessionEvent(config);
+            //force a specific stagingDir because sometimes this conflicts with bsconfig.json
+            result.stagingDir ??= path.join('${outDir}/.roku-deploy-staging');
+            result.stagingFolderPath = result.stagingDir;
 
-        //force a specific staging folder path because sometimes this conflicts with bsconfig.json
-        config.stagingFolderPath = path.join('${outDir}/.roku-deploy-staging');
+            result = await this.sanitizeConfiguration(result, folder);
+            result = await this.processEnvFile(folder, result);
+            result = await this.processHostParameter(result);
+            result = await this.processPasswordParameter(result);
+            result = await this.processDeepLinkUrlParameter(result);
+            result = await this.processLogfilePath(folder, result);
+            result = this.processDapLogFilePath(folder, result);
 
-        config = await this.sanitizeConfiguration(config, folder);
-        config = await this.processEnvFile(folder, config);
-        config = await this.processHostParameter(config);
-        config = await this.processPasswordParameter(config);
-        config = await this.processDeepLinkUrlParameter(config);
-        config = await this.processLogfilePath(folder, config);
+            const statusbarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 9_999_999);
+            statusbarItem.text = '$(sync~spin) Fetching device info';
+            statusbarItem.show();
+            try {
+                deviceInfo = await rokuDeploy.getDeviceInfo({ host: result.host, remotePort: result.remotePort, enhance: true, timeout: 4000 });
+            } catch (e) {
+                // a failed deviceInfo request should NOT fail the launch
+                console.error(`Failed to fetch device info for ${result.host}`, e);
+            }
+            statusbarItem.dispose();
 
-        await this.context.workspaceState.update('enableDebuggerAutoRecovery', config.enableDebuggerAutoRecovery);
+            if (deviceInfo && !deviceInfo.developerEnabled) {
+                throw new Error(`Cannot deploy: developer mode is disabled on '${result.host}'`);
+            }
+            await this.context.workspaceState.update('enableDebuggerAutoRecovery', result.enableDebuggerAutoRecovery);
 
-        return config;
+            return result;
+        } catch (e) {
+            //log any exceptions to the extension panel
+            this.extensionOutputChannel.append((e as Error).stack);
+            throw e;
+        } finally {
+            //send telemetry about this debug session (don't worry, it gets sanitized...we're just checking if certain features are being used)
+            this.telemetryManager?.sendStartDebugSessionEvent(
+                this.processUserWorkspaceSettings(config) as any,
+                result,
+                deviceInfo
+            );
+        }
     }
 
     /**
      * There are several debug-level config values that can be stored in user settings, so get those
      */
-    private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration) {
-        const workspaceConfig = vscode.workspace.getConfiguration('brightscript.debug');
+    private processUserWorkspaceSettings(config: BrightScriptLaunchConfiguration): BrightScriptLaunchConfiguration {
+        const workspaceConfig = util.getConfiguration('brightscript.debug');
 
         let userWorkspaceSettings = {} as BrightScriptLaunchConfiguration;
 
@@ -124,9 +174,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         //merge the user/workspace settings in with the config (the config wins on conflict)
         const result = {
             ...userWorkspaceSettings ?? {},
-            ...config ?? {}
+            ...cloneDeep(config ?? {})
         };
-        return result;
+        return result as BrightScriptLaunchConfiguration;
     }
 
     /**
@@ -134,7 +184,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config current config object
      */
     private async sanitizeConfiguration(config: BrightScriptLaunchConfiguration, folder: WorkspaceFolder): Promise<BrightScriptLaunchConfiguration> {
-        let userWorkspaceSettings: any = vscode.workspace.getConfiguration('brightscript') || {};
+        let userWorkspaceSettings: any = util.getConfiguration('brightscript') || {};
 
         //make sure we have an object
         config = {
@@ -151,7 +201,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             folderUri = folder.uri;
 
             //if there's only one workspace, use that workspace's folder path
-        } else if (vscode.workspace.workspaceFolders.length === 1) {
+        } else if (vscode.workspace.workspaceFolders?.length === 1) {
             folderUri = vscode.workspace.workspaceFolders[0].uri;
         } else {
             //there are multiple workspaces, ask the user to specify which one they want to use
@@ -171,6 +221,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         if (bsconfig) {
             config = { ...bsconfig, ...config };
         }
+
+        config.cwd = folderUri.fsPath;
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
 
@@ -203,43 +255,53 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             //create an empty array so it's easier to reason with downstream
             config.componentLibraries = [];
         }
-        config.componentLibrariesPort = config.componentLibrariesPort ? config.componentLibrariesPort : 8080;
+
+        // Apply any defaults to missing values
+        for (const key in this.configDefaults) {
+            config[key] ??= this.configDefaults[key];
+        }
+
+        // Run any required post processing after applying defaults
+        config.outDir = this.util.ensureTrailingSlash(config.outDir);
 
         // Pass along files needed by RDB to roku-debug
         config.rdbFilesBasePath = rta.utils.getDeviceFilesPath();
 
-        // Apply any defaults to missing values
-        config.type = config.type ? config.type : this.configDefaults.type;
-        config.name = config.name ? config.name : this.configDefaults.name;
-        config.host = config.host ? config.host : this.configDefaults.host;
-        config.password = config.password ? config.password : this.configDefaults.password;
-        config.consoleOutput = config.consoleOutput ? config.consoleOutput : this.configDefaults.consoleOutput;
-        config.autoRunSgDebugCommands = config.autoRunSgDebugCommands ? config.autoRunSgDebugCommands : this.configDefaults.autoRunSgDebugCommands;
-        config.request = config.request ? config.request : this.configDefaults.request;
-        config.stopOnEntry ??= this.configDefaults.stopOnEntry;
-        config.outDir = this.util.ensureTrailingSlash(config.outDir ? config.outDir : this.configDefaults.outDir);
-        config.retainDeploymentArchive = config.retainDeploymentArchive === false ? false : this.configDefaults.retainDeploymentArchive;
-        config.injectRaleTrackerTask = config.injectRaleTrackerTask === true ? true : this.configDefaults.injectRaleTrackerTask;
-        config.injectRdbOnDeviceComponent = config.injectRdbOnDeviceComponent === true ? true : this.configDefaults.injectRdbOnDeviceComponent;
-        config.disableScreenSaver = config.disableScreenSaver === false ? false : this.configDefaults.disableScreenSaver;
-        config.retainStagingFolder ??= this.configDefaults.retainStagingFolder;
-        config.enableVariablesPanel = 'enableVariablesPanel' in config ? config.enableVariablesPanel : this.configDefaults.enableVariablesPanel;
-        config.enableDebuggerAutoRecovery = config.enableDebuggerAutoRecovery === true ? true : this.configDefaults.enableDebuggerAutoRecovery;
-        config.stopDebuggerOnAppExit = config.stopDebuggerOnAppExit === true ? true : this.configDefaults.stopDebuggerOnAppExit;
-        config.files = config.files ? config.files : this.configDefaults.files;
-        config.enableSourceMaps = config.enableSourceMaps === false ? false : this.configDefaults.enableSourceMaps;
-        config.packagePort = config.packagePort ? config.packagePort : this.configDefaults.packagePort;
-        config.remotePort = config.remotePort ? config.remotePort : this.configDefaults.remotePort;
-        config.logfilePath ??= null;
-        config.enableDebugProtocol = config.enableDebugProtocol ? true : false;
+        //if packageTask is defined, make sure there's actually a task with that name defined
+        if (config.packageTask) {
+            const targetTask = (await vscode.tasks.fetchTasks()).find(x => x.name === config.packageTask);
+            if (!targetTask) {
+                throw new Error(`Cannot find task '${config.packageTask}' for launch option 'packageTask'`);
+            }
+        }
+
+        if (typeof config.remoteControlMode === 'boolean') {
+            config.remoteControlMode = {
+                activateOnSessionStart: config.remoteControlMode,
+                deactivateOnSessionEnd: config.remoteControlMode
+            };
+        } else {
+            config.remoteControlMode = {
+                activateOnSessionStart: config.remoteControlMode?.activateOnSessionStart ?? this.configDefaults.remoteControlMode.activateOnSessionStart,
+                deactivateOnSessionEnd: config.remoteControlMode?.deactivateOnSessionEnd ?? this.configDefaults.remoteControlMode.deactivateOnSessionEnd
+            };
+        }
 
         if (config.request !== 'launch') {
             await vscode.window.showErrorMessage(`roku-debug only supports the 'launch' request type`);
         }
 
+        if (config.raleTrackerTaskFileLocation?.includes('${workspaceFolder}')) {
+            config.raleTrackerTaskFileLocation = path.normalize(config.raleTrackerTaskFileLocation.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
         // Check for the existence of the tracker task file in auto injection is enabled
-        if (config.injectRaleTrackerTask && await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
-            await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+        if (config.injectRaleTrackerTask) {
+            if (!config.raleTrackerTaskFileLocation) {
+                await vscode.window.showErrorMessage(`"raleTrackerTaskFileLocation" must be defined when "injectRaleTrackerTask" is enabled`);
+            } else if (await this.util.fileExists(config.raleTrackerTaskFileLocation) === false) {
+                await vscode.window.showErrorMessage(`injectRaleTrackerTask was set to true but could not find TrackerTask.xml at:\n${config.raleTrackerTaskFileLocation}`);
+            }
         }
 
         //for rootDir, replace workspaceFolder now to avoid issues in vscode itself
@@ -259,9 +321,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.stagingFolderPath = path.normalize(config.stagingFolderPath.replace('${workspaceFolder}', folderUri.fsPath));
         }
 
+        if (config.stagingDir.includes('${outDir}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${outDir}', config.outDir));
+        }
+        if (config.stagingDir.includes('${workspaceFolder}')) {
+            config.stagingDir = path.normalize(config.stagingDir.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+
+
         // Make sure that directory paths end in a trailing slash
         if (config.debugRootDir) {
             config.debugRootDir = this.util.ensureTrailingSlash(config.debugRootDir);
+        }
+
+        if (config.packagePath?.includes('${workspaceFolder}')) {
+            config.packagePath = path.normalize(config.packagePath.replace('${workspaceFolder}', folderUri.fsPath));
+        }
+        if (config.packagePath?.includes('${outDir}')) {
+            config.packagePath = path.normalize(config.packagePath.replace('${outDir}', config.outDir));
         }
 
         if (!config.rootDir) {
@@ -294,6 +371,18 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Could not create logfile at "${config.logfilePath}"`);
             }
         }
+        return config;
+    }
+
+    public processDapLogFilePath(folder: WorkspaceFolder | undefined, config: BrightScriptLaunchConfiguration) {
+        if (!config.debugAdapterProtocolLogging) {
+            return config;
+        }
+        const folderPath = folder?.uri.fsPath ?? process.cwd();
+        const dir = path.resolve(folderPath, './logs');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        fsExtra.ensureDirSync(dir);
+        config.debugAdapterProtocolLogFilePath = path.join(dir, `${timestamp}-debugAdapterProtocol.log`);
         return config;
     }
 
@@ -346,7 +435,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 //replace all environment variable placeholders with their values
                 while ((match = regexp.exec(configValue))) {
                     let environmentVariableName = match[1];
-                    let environmentVariableValue = envConfig[environmentVariableName];
                     configValue = configDefaults[key];
                     console.log(`The configuration value for ${key} was not found in the env file under the name ${environmentVariableName}. Defaulting the value to: ${configValue}`);
                 }
@@ -361,67 +449,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        let showInputBox = false;
-
         if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            if (this.activeDeviceManager.enabled) {
-                if (this.activeDeviceManager.firstRequestForDevices && !this.activeDeviceManager.getCacheStats().keys) {
-                    let deviceWaitTime = 5000;
-                    if (this.showDeviceInfoMessages) {
-                        await vscode.window.showInformationMessage(`Device Info: Allowing time for device discovery (${deviceWaitTime} ms)`);
-                    }
-
-                    await util.delay(deviceWaitTime);
-                }
-
-                let activeDevices = this.activeDeviceManager.getActiveDevices();
-
-                if (activeDevices && Object.keys(activeDevices).length) {
-                    let items = [];
-
-                    // Create the Quick Picker option items
-                    for (const key of Object.keys(activeDevices)) {
-                        let device = activeDevices[key];
-                        let itemText = `${device.ip} | ${device.deviceInfo['default-device-name']} - ${device.deviceInfo['model-number']}`;
-
-                        if (this.activeDeviceManager.lastUsedDevice && device.deviceInfo['default-device-name'] === this.activeDeviceManager.lastUsedDevice) {
-                            items.unshift(itemText);
-                        } else {
-                            items.push(itemText);
-                        }
-                    }
-
-                    // Give the user the option to type their own IP incase the device they want has not yet been detected on the network
-                    let manualIpOption = 'Other';
-                    items.push(manualIpOption);
-
-                    let host = await vscode.window.showQuickPick(items, { placeHolder: `Please Select a Roku or use the "${manualIpOption}" option to enter a IP` });
-
-                    if (host === manualIpOption) {
-                        showInputBox = true;
-                    } else if (host) {
-                        let defaultDeviceName = host.substring(host.toLowerCase().indexOf(' | ') + 3, host.toLowerCase().lastIndexOf(' - '));
-                        let deviceIP = host.substring(0, host.toLowerCase().indexOf(' | '));
-                        if (defaultDeviceName) {
-                            this.activeDeviceManager.lastUsedDevice = defaultDeviceName;
-                        }
-                        config.host = deviceIP;
-                    } else {
-                        // User canceled. Give them one more change to enter an ip
-                        showInputBox = true;
-                    }
-                } else {
-                    showInputBox = true;
-                }
-            } else {
-                showInputBox = true;
-            }
+            config.host = await this.userInputManager.promptForHost();
+        } else if (config.host.trim() === '${activeHost}') {
+            // Get the current remote host from workspace state (it will prompt for host as a fallback)
+            config.host = await this.brightScriptCommands.getRemoteHost();
         }
-
-        if (showInputBox) {
-            config.host = await this.openInputBox('The IP address of your Roku device');
-        }
-        // #endregion
 
         //check the host and throw error if not provided or update the workspace to set last host
         if (!config.host) {
@@ -443,6 +476,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
+            } else {
+                await this.context.workspaceState.update('remotePassword', config.password);
+            }
+        } else if (config.password.trim() === '${activeHostPassword}') {
+            // Get the password for the current active device
+            config.password = await this.brightScriptCommands.getActiveHostPassword();
+            if (!config.password) {
+                throw new Error('Debug session terminated: no password set for active device.');
             }
         }
 
@@ -485,7 +526,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      */
     public getBsConfig(workspaceFolder: vscode.Uri) {
         //try to load bsconfig settings
-        let settings = vscode.workspace.getConfiguration('brightscript', workspaceFolder);
+        let settings = util.getConfiguration('brightscript', workspaceFolder);
         let configFilePath = settings.get<string>('configFile');
         let isDefaultPath = false;
         if (!configFilePath) {
@@ -527,6 +568,19 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * A path to a file where all brightscript console output will be written. If falsey, file logging will be disabled.
      */
     logfilePath?: string;
+
+    /**
+     * Enable DAP protocol logging. Can be set via the `brightscript.debug.debugAdapterProtocolLogging` workspace setting or in launch.json.
+     * The resolved absolute log file path is written to `debugAdapterProtocolLogFilePath` by `processDapLogFilePath`
+     * and passed to the debug adapter process as the `ROKU_DAP_LOG_FILE` env var by the descriptor factory.
+     */
+    debugAdapterProtocolLogging?: boolean;
+
+    /**
+     * Resolved absolute path for the DAP protocol log file, populated by `processDapLogFilePath`.
+     * Consumed by the DebugAdapterDescriptorFactory to inject `ROKU_DAP_LOG_FILE` into the adapter process.
+     */
+    debugAdapterProtocolLogFilePath?: string;
     /**
      *  If true, then the zip archive is NOT deleted after a debug session has been closed.
      * @default true
@@ -542,4 +596,10 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * If injectRdbOnDeviceComponent is true and this is true the screen saver will be be disabled while the deployed application is running.
      */
     disableScreenSaver?: boolean;
+
+    /**
+     * If set, the remote control will be enabled/disabled at the start/end of the debug session, respectively.
+     * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
+     */
+    remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 }

@@ -1,12 +1,10 @@
 import { expect } from 'chai';
 import { createSandbox } from 'sinon';
 let Module = require('module');
-import * as extension from './extension';
+import { Extension } from './extension';
 import { vscode, vscodeLanguageClient } from './mockVscode.spec';
 import { BrightScriptCommands } from './BrightScriptCommands';
 import { languageServerManager } from './LanguageServerManager';
-import * as rta from 'roku-test-automation';
-import type { BrightScriptLaunchConfiguration } from './DebugConfigurationProvider';
 
 const sinon = createSandbox();
 
@@ -23,140 +21,228 @@ Module.prototype.require = function hijacked(file) {
 };
 
 describe('extension', () => {
-    let context: any;
-    let originalWebviews;
-    const extensionInstance = extension.extension;
-
+    let extension: Extension;
     beforeEach(() => {
         sinon.stub(languageServerManager, 'init').returns(Promise.resolve());
-
-        context = {
-            extensionPath: '',
-            subscriptions: [],
-            asAbsolutePath: () => { },
-            globalState: {
-                get: () => {
-
-                },
-                update: () => {
-
-                }
-            }
-        };
-
-        originalWebviews = extensionInstance['webviews'];
-        extensionInstance['webviews'] = [];
+        extension = new Extension();
     });
 
     afterEach(() => {
-        extensionInstance.odc = undefined;
-        extensionInstance['webviews'] = originalWebviews;
         sinon.restore();
+        extension.dispose();
     });
 
     it('registers configuration provider', async () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
-        expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
+        expect(spy.called).to.be.false;
+        await extension.activate(vscode.context);
+        expect(spy.calledTwice).to.be.true;
     });
 
     it('registers formatter', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDocumentRangeFormattingEditProvider');
         expect(spy.getCalls().length).to.equal(0);
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.getCalls().length).to.be.greaterThan(1);
     });
 
     it('registers definition provider', async () => {
         let spy = sinon.spy(vscode.languages, 'registerDefinitionProvider');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.callCount).to.be.greaterThan(0);
     });
 
     it('registers all commands', async () => {
         let stub = sinon.stub(BrightScriptCommands.prototype, 'registerCommands').callsFake(() => { });
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(stub.callCount).to.equal(1);
     });
 
     it('registers onDidStartDebugSession', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidStartDebugSession');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
+        await extension.activate(vscode.context);
+        expect(spy.callCount).greaterThan(0);
     });
 
     it('registers onDidTerminateDebugSession', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidTerminateDebugSession');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
-        expect(spy.calledOnce).to.be.true;
+        await extension.activate(vscode.context);
+        expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 
     it('registers onDidReceiveDebugSessionCustomEvent', async () => {
         let spy = sinon.spy(vscode.debug, 'onDidReceiveDebugSessionCustomEvent');
         expect(spy.calledOnce).to.be.false;
-        await extension.activate(context);
+        await extension.activate(vscode.context);
         expect(spy.getCalls().length).to.be.greaterThan(0);
     });
 
-    describe('RDB', () => {
-        const config = {} as BrightScriptLaunchConfiguration;
-        let context;
-        beforeEach(() => {
-            context = { ...vscode.context };
-            config.host = '86.75.30.9';
-            config.password = 'jenny';
+    it('show message even when no actions are provided', async () => {
+        const event = {
+            seq: 1,
+            type: 'event',
+            event: 'CustomRequestEvent',
+            body: {
+                name: 'showPopupMessage',
+                message: 'Test message',
+                severity: 'info',
+                modal: false,
+                actions: []
+            }
+        };
+        let selectedAction;
+        const session = {
+            customRequest: sinon.stub().callsFake((_, response) => {
+                selectedAction = response?.selectedAction;
+                return Promise.resolve(response);
+            })
+        };
+
+        const vscodeinfostub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => { });
+
+        await extension['processCustomRequestEvent'](event, session as any);
+        const args = vscodeinfostub.getCall(0).args;
+        expect(args.at(0)).to.be.equal('Test message');
+        expect(args.at(1)).to.be.deep.equal({ modal: false });
+        expect(selectedAction).to.be.undefined;
+
+        expect(vscodeinfostub.calledOnce).to.be.true;
+    });
+
+    it('show message and handle action response', async () => {
+        const actions = ['OK', 'Cancel'];
+        const event = {
+            seq: 1,
+            type: 'event',
+            event: 'CustomRequestEvent',
+            body: {
+                name: 'showPopupMessage',
+                message: 'Test message',
+                severity: 'info',
+                modal: false,
+                actions: actions
+            }
+        };
+        let selectedAction;
+        const session = {
+            customRequest: sinon.stub().callsFake((_, response) => {
+                selectedAction = response.selectedAction;
+                return Promise.resolve(response);
+            })
+        };
+
+        const vscodeinfostub = sinon.stub(vscode.window, 'showInformationMessage').callsFake(() => {
+            return actions[0];
         });
 
-        describe('setupODC', () => {
-            it('sets up the underlying RokuDevice instance', () => {
-                const odc = extensionInstance['setupODC'](config);
-                expect(odc.device).to.be.instanceOf(rta.RokuDevice);
-            });
+        await extension['processCustomRequestEvent'](event, session as any);
+        const args = vscodeinfostub.getCall(0).args;
+        expect(args.at(0)).to.be.equal('Test message');
+        expect(args.at(1)).to.be.deep.equal({ modal: false });
+        expect(args.at(2)).to.be.equal(actions[0]);
+        expect(args.at(3)).to.be.equal(actions[1]);
+        expect(selectedAction).to.be.equal(actions[0]);
 
-            it('has the correct config values passed from the extension', () => {
-                const odc = extensionInstance['setupODC'](config);
-                const deviceConfig = odc.device.getCurrentDeviceConfig();
-                expect(deviceConfig.host).to.equal(config.host);
-                expect(deviceConfig.password).to.equal(config.password);
-            });
+        expect(vscodeinfostub.calledOnce).to.be.true;
+    });
+
+    describe('process crash events', () => {
+        function makeCrashEvent(type: 'uncaughtException' | 'unhandledRejection', message: string, stack?: string, additionalInfo?: Record<string, unknown>) {
+            return {
+                event: 'ProcessCrashEvent',
+                session: { id: 'test-session' } as any,
+                body: { type: type, message: message, stack: stack, additionalInfo: additionalInfo }
+            };
+        }
+
+        beforeEach(async () => {
+            await extension.activate(vscode.context);
         });
 
-        describe('registerWebViewProviders', () => {
-            it('initializes webview providers and calls registerWebviewViewProvider for each', () => {
-                extensionInstance['webviews'] = originalWebviews;
-                const spy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
-                extensionInstance['registerWebviewProviders'](context);
-                expect(spy.callCount).to.equal(Object.keys(originalWebviews).length);
-            });
+        it('shows error message with uncaughtException label', async () => {
+            const stub = sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'something went wrong') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(stub.calledOnce).to.be.true;
+            const callArgs0 = stub.getCall(0).args as any[];
+            expect(callArgs0[0]).to.include('Uncaught exception');
+            expect(callArgs0[0]).to.include('something went wrong');
         });
 
-        describe('debugSessionCustomEventHandler', () => {
-            describe('ChannelPublishedEvent', () => {
-                const e = {
-                    event: 'ChannelPublishedEvent',
-                    body: {
-                        launchConfiguration: config
-                    }
-                };
+        it('shows error message with unhandledRejection label', async () => {
+            const stub = sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
 
-                it('calls setupODC to create the odc instance if enabled', async () => {
-                    config.injectRdbOnDeviceComponent = true;
-                    const spy = sinon.stub(extensionInstance as any, 'setupODC').returns(undefined);
-                    await extensionInstance['debugSessionCustomEventHandler'](e, {} as any, {} as any, {} as any, {} as any);
-                    expect(spy.calledOnce).to.be.true;
-                });
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('unhandledRejection', 'promise rejected') as any,
+                vscode.context, null as any, null as any, null as any
+            );
 
-                it('does not call setupODC if not enabled', async () => {
-                    config.injectRdbOnDeviceComponent = false;
-                    const spy = sinon.stub(extensionInstance as any, 'setupODC').returns(undefined);
-                    await extensionInstance['debugSessionCustomEventHandler'](e, {} as any, {} as any, {} as any, {} as any);
-                    expect(spy.callCount).to.equal(0);
-                });
-            });
+            expect(stub.calledOnce).to.be.true;
+            const callArgs1 = stub.getCall(0).args as any[];
+            expect(callArgs1[0]).to.include('Unhandled rejection');
+            expect(callArgs1[0]).to.include('promise rejected');
+        });
+
+        it('opens issue reporter as bug report when user clicks Report Issue', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves('Report Issue' as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom', 'Error: boom\n  at foo.ts:1') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(executeStub.calledOnce).to.be.true;
+            const callArgs = executeStub.getCall(0).args as any[];
+            expect(callArgs[0]).to.equal('workbench.action.openIssueReporter');
+            expect(callArgs[1].issueType).to.equal(0);
+            expect(callArgs[1].issueTitle).to.include('uncaughtException');
+            expect(callArgs[1].issueTitle).to.include('boom');
+            expect(callArgs[1].issueBody).to.include('Error: boom');
+        });
+
+        it('includes additionalInfo fields as a table in the issue body', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves('Report Issue' as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom', undefined, {
+                    clientName: 'VS Code',
+                    rokuDebugVersion: '1.2.3',
+                    developerMode: true
+                }) as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            const issueBody: string = (executeStub.getCall(0).args as any[])[1].issueBody;
+            expect(issueBody).to.include('|Client Name|VS Code|');
+            expect(issueBody).to.include('|Roku Debug Version|1.2.3|');
+            expect(issueBody).to.include('|Developer Mode|true|');
+        });
+
+        it('does not open issue reporter when user dismisses the dialog', async () => {
+            sinon.stub(vscode.window, 'showErrorMessage').resolves(undefined as any);
+            sinon.stub(vscode.debug, 'stopDebugging').resolves();
+            const executeStub = sinon.stub(vscode.commands, 'executeCommand').resolves();
+
+            await extension['debugSessionCustomEventHandler'](
+                makeCrashEvent('uncaughtException', 'boom') as any,
+                vscode.context, null as any, null as any, null as any
+            );
+
+            expect(executeStub.called).to.be.false;
         });
     });
+
 });

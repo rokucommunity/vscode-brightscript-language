@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import * as sinonImport from 'sinon';
+import { RtaManager } from '../managers/RtaManager';
 import { vscode } from '../mockVscode.spec';
 import { RokuRegistryViewProvider } from './RokuRegistryViewProvider';
 
@@ -15,31 +16,23 @@ Module.prototype.require = function hijacked(file) {
 };
 
 let sinon: sinonImport.SinonSandbox;
-let view;
-let callback;
 beforeEach(() => {
     sinon = sinonImport.createSandbox();
-    view = {
-        webview: {
-            onDidReceiveMessage: (cb) => {
-                callback = cb;
-            },
-            postMessage: (message) => { }
-        },
-        show: () => { }
-    };
 });
 afterEach(() => {
     sinon.restore();
 });
 
 describe('RokuRegistryViewProvider', () => {
-    const provider = new RokuRegistryViewProvider(vscode.context);
+    const rtaManager = new RtaManager(vscode.context);
+    const provider = new RokuRegistryViewProvider(vscode.context, {
+        rtaManager: rtaManager
+    });
 
     describe('sendRegistryUpdated', () => {
-        it('Triggers postOrQueueMessage to send message to web view that the registry was updated', async () => {
+        it('Triggers postOrQueueMessage to send message to web view that the registry was updated', () => {
             const spy = sinon.stub(provider as any, 'postOrQueueMessage');
-            await provider['sendRegistryUpdated']();
+            provider['sendRegistryUpdated']();
             expect(spy.calledOnce).to.be.true;
         });
     });

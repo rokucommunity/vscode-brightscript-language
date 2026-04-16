@@ -1,13 +1,59 @@
 <script lang="ts">
+    import { ArrowLeft } from 'svelte-codicons';
+    import Chevron from '../../shared/Chevron.svelte';
+    import type { AppUIResponse, AppUIResponseChild } from 'roku-test-automation';
+
     export let showNodeCountByType: boolean;
+
     export let nodeCountByType = {} as {
         [key: string]: number;
     };
+
+    export let appUIResponse: AppUIResponse;
+
+    export let inspectNode: AppUIResponseChild | null;
+
+    let nodesByType = {} as {
+        [key: string]: AppUIResponseChild[];
+    };
+
     function close() {
         showNodeCountByType = false;
     }
 
-    function handleKeydown(event) {
+    function toggleShowNodes() {
+        const nodeSubtype = this.id;
+        if (nodesByType[nodeSubtype]) {
+            nodesByType[nodeSubtype] = null;
+        } else {
+            nodesByType[nodeSubtype] = buildNodeListforSubtype(nodeSubtype, appUIResponse.screen.children);
+        }
+    }
+
+    function buildNodeListforSubtype(nodeSubtype: string, children?: AppUIResponseChild[], nodes = []) {
+        for (const node of children ?? []) {
+            if (node.subtype === nodeSubtype) {
+                nodes.push(node);
+            }
+
+            buildNodeListforSubtype(nodeSubtype, node.children, nodes);
+        }
+
+        return nodes;
+    }
+
+    function onNodeClicked() {
+        const nodeSubTypeAndPosition = this.id.split('.');
+
+        inspectNode = nodesByType[nodeSubTypeAndPosition[0]][+nodeSubTypeAndPosition[1]];
+    }
+
+    function onKeydown(event) {
+        // Don't handle anything if we're not the top detail view
+        if (inspectNode) {
+            return;
+        }
+
         const key = event.key;
 
         switch (key) {
@@ -25,6 +71,7 @@
         top: 0;
         left: 0;
         right: 0;
+        bottom: 0;
         z-index: 200;
     }
 
@@ -49,38 +96,47 @@
         z-index: -1;
     }
 
-    #closeButton {
-        font-size: small;
-        float: right;
-        cursor: pointer;
-        padding: 3px 20px 0 0;
-    }
-
-    ul {
+    #nodesOfTypeContainer {
         padding: var(--headerHeight) 0 0;
         margin: 5px;
-        list-style: none;
     }
 
-    li {
-        padding: 0 5px 10px;
+    .nodeOfType {
+        display: inline-block;
+        margin: 2px 5px 10px;
+    }
+
+    .nodesOfTypeItem {
+        cursor: pointer;
+        padding: 5px;
     }
 </style>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={onKeydown} />
 <div id="container">
     <div id="background" />
     <div id="header">
-        Node Count By Type
-        <div id="closeButton" on:click={close}>X</div>
+        <section style="display: flex; flex-direction:row">
+            <vscode-button appearance="icon" title="Back" on:click={close}>
+                <ArrowLeft />
+            </vscode-button>
+
+            Node Count By Type
+        </section>
     </div>
 
-    <ul>
+    <div id="nodesOfTypeContainer">
         {#each Object.entries(nodeCountByType) as [key, value]}
-            <li>
-                <strong>{key}:</strong>
-                {value}
-            </li>
+            <div id={key} class="nodesOfTypeItem" on:click={toggleShowNodes}>
+                <Chevron expanded={!!nodesByType[key]} />
+                <div>{key} ({value})</div>
+                <div style="clear: both" />
+            </div>
+
+            {#each nodesByType[key] ?? [] as node, i}
+                <vscode-button id="{key}.{i}" class="nodeOfType" appearance="secondary" title={node.keyPath ?? 'No key path available'} on:click={onNodeClicked}>{i}</vscode-button>
+            {/each}
+            <div style="clear: both" />
         {/each}
-    </ul>
+    </div>
 </div>
