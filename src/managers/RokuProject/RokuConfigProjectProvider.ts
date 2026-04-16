@@ -68,6 +68,7 @@ export class RokuConfigProjectProvider implements ProjectConfigProvider {
             type: 'brightscript',
             request: 'launch',
             name: `Debug ${projectName}`,
+            rootDir: path.join(projectDir, 'dist-build', 'bundle'),
             files: ['**/*'],
             preLaunchTask: `BrightScript: ${taskName}`,
             host: '${promptForHost}',
