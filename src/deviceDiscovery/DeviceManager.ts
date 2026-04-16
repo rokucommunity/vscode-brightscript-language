@@ -47,7 +47,7 @@ export class DeviceManager {
                 }
             }
 
-            this.processStaticDevices().catch(e => console.error(e));
+            this.loadConfiguredDevices().catch(e => console.error(e));
 
             //if the `concealDeviceInfo` setting was changed, refresh the UI (no reload needed)
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.concealDeviceInfo')) {
