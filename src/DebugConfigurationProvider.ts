@@ -209,6 +209,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.cwd = folderUri.fsPath;
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        const resolvedRootDir = config.rootDir.replace('${workspaceFolder}', folderUri.fsPath);
+        let rootDirBsConfig = this.getBsConfig(vscode.Uri.file(resolvedRootDir.replace(/[/\\]+$/, '')));
+        //load the bsconfig settings from rootDir
+        if (rootDirBsConfig) {
+            config = { ...rootDirBsConfig, ...config };
+        }
 
         //Check for depreciated Items
         if (config.debugRootDir) {
