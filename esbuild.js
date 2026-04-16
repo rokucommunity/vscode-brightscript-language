@@ -1,5 +1,6 @@
 const esbuild = require('esbuild');
 const fsExtra = require('fs-extra');
+const bscVersion = require('./node_modules/brighterscript/package.json').version;
 
 class Plugin {
     constructor() {
@@ -35,6 +36,11 @@ esbuild.build({
     external: [
         'vscode'
     ],
+    define: {
+        // Inject the embedded brighterscript version at bundle time so
+        // LanguageServerManager can display it without require.resolve()
+        BSC_EMBEDDED_VERSION: JSON.stringify(bscVersion)
+    },
     format: 'cjs',
     platform: 'node',
     logLevel: 'info',
