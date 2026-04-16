@@ -6,6 +6,7 @@ import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
 import { util } from '../../util';
+import { RokuConfigProjectProvider } from './RokuConfigProjectProvider';
 
 export class RokuProjectManager {
 
@@ -22,6 +23,7 @@ export class RokuProjectManager {
     });
 
     private readonly providers: ProjectConfigProvider[] = [
+        new RokuConfigProjectProvider(),
         new BsConfigProjectProvider(),
         new BrsConfigProjectProvider()
     ];
