@@ -1054,6 +1054,8 @@ export class DeviceManager {
 
         this.finder.on('scan-ended', () => {
             this.emitter.emit('scan-ended');
+            // Health check devices that didn't respond to the scan (stale cache)
+            this.healthCheckStaleDevices();
         });
     }
 
