@@ -110,7 +110,7 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             expect(taskRegistry.registerTask.calledOnceWith(result.taskName, result.taskConfig)).to.be.true;
             expect(viewProvider.setProjects.calledOnce).to.be.true;
@@ -123,7 +123,7 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             expect((manager as any).discoveredProjects.has('/workspace/project')).to.be.true;
         });
@@ -135,7 +135,7 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             expect((mockProvider.afterConfigRegistered as sinon.SinonStub).calledOnceWith(uri)).to.be.true;
         });
@@ -144,7 +144,7 @@ describe('RokuProjectManager', () => {
             const uri = makeUri('/workspace/project/unknown.json');
             (mockProvider.ownsConfig as sinon.SinonStub).returns(false);
 
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             expect(taskRegistry.registerTask.called).to.be.false;
             expect(viewProvider.setProjects.called).to.be.false;
@@ -161,7 +161,7 @@ describe('RokuProjectManager', () => {
             (highPri.ownsConfig as sinon.SinonStub).returns(true);
             (highPri.buildProject as sinon.SinonStub).returns(highPriBuild);
             (highPri.afterConfigRegistered as sinon.SinonStub);
-            manager.registerProject(highPriUri);
+            (manager as any).registerProject(highPriUri);
 
             // Now try to register a project in a subdirectory via the low-priority provider
             // '/workspace/sub'.startsWith('/workspace/') → true → should be skipped
@@ -172,7 +172,7 @@ describe('RokuProjectManager', () => {
             (lowPri.buildProject as sinon.SinonStub).returns(lowPriBuild);
 
             const callsBefore = taskRegistry.registerTask.callCount;
-            manager.registerProject(lowPriUri);
+            (manager as any).registerProject(lowPriUri);
 
             expect(taskRegistry.registerTask.callCount).to.equal(callsBefore);
             expect((lowPri.afterConfigRegistered as sinon.SinonStub).called).to.be.false;
@@ -189,8 +189,8 @@ describe('RokuProjectManager', () => {
                 .onFirstCall().returns(result1)
                 .onSecondCall().returns(result2);
 
-            manager.registerProject(uri1);
-            manager.registerProject(uri2);
+            (manager as any).registerProject(uri1);
+            (manager as any).registerProject(uri2);
 
             expect((manager as any).discoveredProjects.size).to.equal(2);
             expect(taskRegistry.registerTask.callCount).to.equal(2);
@@ -209,10 +209,10 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
             expect((manager as any).discoveredProjects.size).to.equal(1);
 
-            manager.unregisterProject(uri);
+            (manager as any).unregisterProject(uri);
 
             expect(taskRegistry.unregisterTask.calledOnceWith(result.taskName)).to.be.true;
             expect((manager as any).discoveredProjects.size).to.equal(0);
@@ -226,8 +226,8 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
-            manager.unregisterProject(uri);
+            (manager as any).registerProject(uri);
+            (manager as any).unregisterProject(uri);
 
             expect((mockProvider.afterConfigUnregistered as sinon.SinonStub).calledOnceWith(uri)).to.be.true;
         });
@@ -236,7 +236,7 @@ describe('RokuProjectManager', () => {
             const uri = makeUri('/workspace/project/unknown.json');
             (mockProvider.ownsConfig as sinon.SinonStub).returns(false);
 
-            manager.unregisterProject(uri);
+            (manager as any).unregisterProject(uri);
 
             expect(taskRegistry.unregisterTask.called).to.be.false;
         });
@@ -248,8 +248,8 @@ describe('RokuProjectManager', () => {
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
 
-            manager.registerProject(uri);
-            manager.unregisterProject(uri);
+            (manager as any).registerProject(uri);
+            (manager as any).unregisterProject(uri);
 
             expect((manager as any).providerIndexByProjectDir.has('/workspace/project')).to.be.false;
         });
@@ -265,8 +265,8 @@ describe('RokuProjectManager', () => {
             const uri2 = makeUri('/workspace/b/bsconfig.json');
             (mockProvider.findProjectConfigs as sinon.SinonStub).resolves([uri1, uri2]);
 
-            const registerStub = sinon.stub(manager, 'registerProject');
-            await manager.syncProjects();
+            const registerStub = sinon.stub(manager as any, 'registerProject');
+            await (manager as any).syncProjects();
 
             expect(registerStub.calledTwice).to.be.true;
             expect(registerStub.firstCall.args[0]).to.equal(uri1);
@@ -276,8 +276,8 @@ describe('RokuProjectManager', () => {
         it('does not call registerProject when a provider returns no configs', async () => {
             (mockProvider.findProjectConfigs as sinon.SinonStub).resolves([]);
 
-            const registerStub = sinon.stub(manager, 'registerProject');
-            await manager.syncProjects();
+            const registerStub = sinon.stub(manager as any, 'registerProject');
+            await (manager as any).syncProjects();
 
             expect(registerStub.called).to.be.false;
         });
@@ -291,8 +291,8 @@ describe('RokuProjectManager', () => {
             (mockProvider.findProjectConfigs as sinon.SinonStub).resolves([uri1]);
             (provider2.findProjectConfigs as sinon.SinonStub).resolves([uri2]);
 
-            const registerStub = sinon.stub(manager, 'registerProject');
-            await manager.syncProjects();
+            const registerStub = sinon.stub(manager as any, 'registerProject');
+            await (manager as any).syncProjects();
 
             expect(registerStub.callCount).to.equal(2);
         });
@@ -309,10 +309,10 @@ describe('RokuProjectManager', () => {
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             const item = { show: sinon.stub(), hide: sinon.stub() };
-            manager.updateStatusBar(item as any);
+            (manager as any).updateStatusBar(item as any);
 
             expect(item.show.calledOnce).to.be.true;
             expect(item.hide.called).to.be.false;
@@ -320,14 +320,14 @@ describe('RokuProjectManager', () => {
 
         it('hides the item when no projects are registered', () => {
             const item = { show: sinon.stub(), hide: sinon.stub() };
-            manager.updateStatusBar(item as any);
+            (manager as any).updateStatusBar(item as any);
 
             expect(item.hide.calledOnce).to.be.true;
             expect(item.show.called).to.be.false;
         });
 
         it('does not throw when item is undefined', () => {
-            expect(() => manager.updateStatusBar(undefined as any)).to.not.throw();
+            expect(() => (manager as any).updateStatusBar(undefined as any)).to.not.throw();
         });
 
         it('sets brightscript.hasRokuProjects context to true when projects exist', () => {
@@ -336,9 +336,9 @@ describe('RokuProjectManager', () => {
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
-            manager.updateStatusBar(undefined as any);
+            (manager as any).updateStatusBar(undefined as any);
 
             const executeCommand = vscode.commands.executeCommand as sinon.SinonStub;
             const hasProjectsCall = executeCommand.getCalls().find(c => c.args[1] === 'brightscript.hasRokuProjects');
@@ -347,7 +347,7 @@ describe('RokuProjectManager', () => {
         });
 
         it('sets brightscript.hasRokuProjects context to false when no projects', () => {
-            manager.updateStatusBar(undefined as any);
+            (manager as any).updateStatusBar(undefined as any);
 
             const executeCommand = vscode.commands.executeCommand as sinon.SinonStub;
             const hasProjectsCall = executeCommand.getCalls().find(c => c.args[1] === 'brightscript.hasRokuProjects');
@@ -391,7 +391,7 @@ describe('RokuProjectManager', () => {
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             const configs = manager.provideDebugConfigurations();
 
@@ -410,7 +410,7 @@ describe('RokuProjectManager', () => {
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
             (mockProvider.buildProject as sinon.SinonStub).returns(result);
-            manager.registerProject(uri);
+            (manager as any).registerProject(uri);
 
             const otherFolder = { uri: { fsPath: '/other' } } as any;
             expect(manager.provideDebugConfigurations(otherFolder)).to.have.length(0);

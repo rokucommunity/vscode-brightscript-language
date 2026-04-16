@@ -100,11 +100,11 @@ export class RokuProjectManager {
 
     private statusBarItem: vscode.StatusBarItem | undefined;
 
-    public setStatusBar(item: vscode.StatusBarItem) {
+    private setStatusBar(item: vscode.StatusBarItem) {
         this.statusBarItem = item;
     }
 
-    public updateStatusBar(item: vscode.StatusBarItem = this.statusBarItem) {
+    private updateStatusBar(item: vscode.StatusBarItem = this.statusBarItem) {
         const hasProjects = this.discoveredProjects.size > 0;
         void vscode.commands.executeCommand('setContext', 'brightscript.hasRokuProjects', hasProjects);
         const configPaths = Array.from(this.discoveredProjects.values()).map(provider => provider.configUri.fsPath);
@@ -127,7 +127,7 @@ export class RokuProjectManager {
     /** Tracks which provider index registered each projectDir, for priority-based exclusion. */
     private providerIndexByProjectDir = new Map<string, number>();
 
-    public async syncProjects() {
+    private async syncProjects() {
         // findProjectConfigs() uses vscode.workspace.findFiles which searches across
         // all workspace folders automatically — no need to iterate them explicitly here.
         for (const provider of this.providers) {
@@ -138,7 +138,7 @@ export class RokuProjectManager {
         }
     }
 
-    public registerProject(uri: vscode.Uri) {
+    private registerProject(uri: vscode.Uri) {
         const providerIndex = this.providers.findIndex(configProvider => configProvider.ownsConfig(uri));
         if (providerIndex === -1) {
             return;
@@ -163,7 +163,7 @@ export class RokuProjectManager {
         provider.afterConfigRegistered?.(uri);
     }
 
-    public unregisterProject(uri: vscode.Uri) {
+    private unregisterProject(uri: vscode.Uri) {
         const provider = this.providers.find(configProvider => configProvider.ownsConfig(uri));
         if (!provider) {
             return;
