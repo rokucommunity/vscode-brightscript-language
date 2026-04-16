@@ -114,7 +114,7 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
         this.messageCommandCallbacks[command] = callback;
     }
 
-    private setupViewMessageObserver(webview: vscode.Webview) {
+    protected setupViewMessageObserver(webview: vscode.Webview) {
         webview.onDidReceiveMessage(async (message) => {
             try {
                 const command = message.command;
@@ -217,7 +217,8 @@ export abstract class BaseWebviewViewProvider implements vscode.WebviewViewProvi
     * Get a webview-supported URI for the given path
     */
     private asWebviewUri(...parts: string[]) {
-        return this.view?.webview?.asWebviewUri?.(
+        const webview = this.view?.webview ?? this.panel?.webview;
+        return webview?.asWebviewUri?.(
             vscode.Uri.file(
                 path.join(...parts)
             )

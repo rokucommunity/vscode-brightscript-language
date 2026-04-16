@@ -11,6 +11,8 @@ export enum ViewProviderCommand {
     runRokuAutomationConfig = 'runRokuAutomationConfig',
     sendMessageToWebviews = 'sendMessageToWebviews',
     sendReplRequest = 'sendReplRequest',
+    sendRemoteCommand = 'sendRemoteCommand',
+    sendRemoteText = 'sendRemoteText',
     setManualIpAddress = 'setManualIpAddress',
     setVscodeContext = 'setVscodeContext',
     stopRokuAutomationConfig = 'stopRokuAutomationConfig',

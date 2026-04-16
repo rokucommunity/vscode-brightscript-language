@@ -22,7 +22,12 @@ export class RemoteControlManager {
         this.isFlasherAllowedByUser = util.getConfiguration('brightscript')?.get('remoteControlMode.enableActiveAnimation') ?? true;
     }
 
-    private isEnabled = false;
+    public isEnabled = false;
+    private onModeChangedCallback?: (isEnabled: boolean) => void;
+
+    public setModeChangedCallback(callback: (isEnabled: boolean) => void) {
+        this.onModeChangedCallback = callback;
+    }
 
     private isFlasherAllowedByUser: boolean;
 
@@ -96,9 +101,11 @@ export class RemoteControlManager {
         this.isEnabled = isEnabled;
         if (this.isEnabled) {
             this.enableFlasher();
+            await vscode.commands.executeCommand(VscodeCommand.openRemoteControlPanelInPanel);
         } else {
             this.disableFlasher?.();
         }
+        this.onModeChangedCallback?.(isEnabled);
     }
 
     private disableFlasher: () => void;

@@ -8,5 +8,6 @@ export enum ViewProviderId {
     rokuAppOverlaysView = 'rokuAppOverlaysView',
     rokuCommandsView = 'rokuCommandsView',
     rokuAutomationView = 'rokuAutomationView',
-    rokuReplView = 'rokuReplView'
+    rokuReplView = 'rokuReplView',
+    remoteControlPanel = 'remoteControlPanel'
 }
