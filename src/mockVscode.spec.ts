@@ -17,6 +17,7 @@ afterEach(() => {
     delete vscode.workspace.workspaceFile;
     delete vscode.workspace._configuration;
     vscode.workspace.workspaceFolders = [] as any;
+    vscode.workspace.findFiles = () => [] as any;
     vscode.context.globalState['_data'] = {};
     vscode.context.workspaceState['_data'] = {};
 });
