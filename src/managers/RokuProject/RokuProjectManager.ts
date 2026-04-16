@@ -82,10 +82,6 @@ export class RokuProjectManager {
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Status bar
-    // -------------------------------------------------------------------------
-
     private statusBarItem: vscode.StatusBarItem | undefined;
 
     /**
@@ -112,10 +108,6 @@ export class RokuProjectManager {
             this.statusBarItem.hide();
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Project registry management
-    // -------------------------------------------------------------------------
 
     private discoveredProjects = new Map<string, DiscoveredRokuProject>();
     /** Tracks which provider index registered each projectDir, for priority-based exclusion. */
@@ -173,10 +165,6 @@ export class RokuProjectManager {
         this.syncStatusBar();
     }
 
-    // -------------------------------------------------------------------------
-    // CodeLensProvider
-    // -------------------------------------------------------------------------
-
     public provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
         return [
             new vscode.CodeLens(new vscode.Range(0, 0, 0, 0), {
@@ -186,10 +174,6 @@ export class RokuProjectManager {
             })
         ];
     }
-
-    // -------------------------------------------------------------------------
-    // DebugConfigurationProvider (Dynamic + Initial)
-    // -------------------------------------------------------------------------
 
     public provideDebugConfigurations(folder?: vscode.WorkspaceFolder): vscode.DebugConfiguration[] {
         const configs: vscode.DebugConfiguration[] = [];
@@ -263,10 +247,6 @@ export class RokuProjectManager {
         return debugConfig;
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     public async debugProject(uri?: vscode.Uri) {
         let targetUri = uri;
 
@@ -312,10 +292,6 @@ export class RokuProjectManager {
     }
 
 }
-
-// -------------------------------------------------------------------------
-// Interfaces & helpers
-// -------------------------------------------------------------------------
 
 function isSubdirectoryOf(parent: string, child: string): boolean {
     const rel = path.relative(parent, child);
