@@ -34,9 +34,9 @@ describe('extension', () => {
 
     it('registers configuration provider', async () => {
         let spy = sinon.spy(vscode.debug, 'registerDebugConfigurationProvider');
-        expect(spy.calledOnce).to.be.false;
+        expect(spy.called).to.be.false;
         await extension.activate(vscode.context);
-        expect(spy.calledOnce).to.be.true;
+        expect(spy.calledTwice).to.be.true;
     });
 
     it('registers formatter', async () => {

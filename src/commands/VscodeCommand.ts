@@ -22,5 +22,6 @@ export enum VscodeCommand {
     rokuFileSystemViewRefresh = 'extension.brightscript.rokuFileSystemView.refresh',
     disconnectFromDevice = 'extension.brightscript.disconnectFromDevice',
     openSceneGraphInspectorInPanel = 'extension.brightscript.openSceneGraphInspectorInPanel',
-    clearNpmPackageCache = 'extension.brightscript.clearNpmPackageCache'
+    clearNpmPackageCache = 'extension.brightscript.clearNpmPackageCache',
+    debugRokuProject = 'extension.brightscript.debugRokuProject'
 }
