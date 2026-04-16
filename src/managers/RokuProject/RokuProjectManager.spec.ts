@@ -42,6 +42,7 @@ function makeBuildResult(projectDir: string, configUri: ReturnType<typeof makeUr
 function makeMockProvider(ownsResult = false): ProjectConfigProvider {
     return {
         configFileSelector: [{ pattern: '**/bsconfig.json', scheme: 'file' }],
+        excludePatterns: [],
         ownsConfig: sinon.stub().returns(ownsResult),
         findProjectConfigs: sinon.stub().resolves([]),
         findProjectConfigFromFile: sinon.stub().resolves([]),

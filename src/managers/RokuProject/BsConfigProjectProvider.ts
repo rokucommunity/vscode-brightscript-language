@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { util } from 'brighterscript';
+import { util as bsUtil } from 'brighterscript';
+import { util } from '../../util';
 import { rokuDeploy } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { TaskConfig } from '../../BrightScriptTaskProvider';
@@ -21,6 +22,8 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
     public readonly configFileSelector: vscode.DocumentFilter[] = [
         { pattern: '**/bsconfig*.json', scheme: 'file' }
     ];
+
+    public readonly excludePatterns = ['**/node_modules/**'];
 
     /**
      * Per-config store keyed by configUri.fsPath.
@@ -45,10 +48,11 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public async findProjectConfigs(): Promise<vscode.Uri[]> {
+        const exclude = util.buildExcludeGlob(this.excludePatterns);
         const results = await Promise.all(
             this.configFileSelector
                 .filter(selector => selector.pattern)
-                .map(selector => vscode.workspace.findFiles(selector.pattern as string))
+                .map(selector => vscode.workspace.findFiles(selector.pattern as string, exclude))
         );
         return results.flat();
     }
@@ -58,7 +62,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
      * Returns undefined (not owned) when getDestPath returns undefined for all configs.
      */
     public findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]> {
-        const filePath = util.driveLetterToLower(fileUri.fsPath);
+        const filePath = bsUtil.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
             // getDestPath returns undefined at runtime when the file doesn't match
@@ -77,8 +81,8 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
     public afterConfigRegistered(configUri: vscode.Uri): void {
         const projectDir = path.dirname(configUri.fsPath);
         try {
-            const rawConfig = util.loadConfigFile(configUri.fsPath, undefined, projectDir);
-            const config = util.normalizeConfig(rawConfig);
+            const rawConfig = bsUtil.loadConfigFile(configUri.fsPath, undefined, projectDir);
+            const config = bsUtil.normalizeConfig(rawConfig);
             this.configByPath.set(configUri.fsPath, {
                 configUri: configUri,
                 files: config.files ?? [],
@@ -109,7 +113,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
             // --source-map: generate source maps for debugging
             // --copy-to-staging: copy files to the staging dir even if they don't need to be transformed by bsc, so that the staging dir is a complete set of the files needed for debugging
             // --create-package false: don't create a zip package since the staging dir is used directly as the debug root
-            command: `npx bsc --project "${configFilename}" --retain-staging-folder --source-map --copy-to-staging --create-package false`,
+            command: `npx --no bsc --project "${configFilename}" --retain-staging-folder --source-map --copy-to-staging --create-package false`,
             cwd: projectDir,
             workspaceFolder: workspaceFolder
         };
@@ -135,7 +139,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
      * `loadConfigFile` resolves `stagingDir` to an absolute path but leaves the
      * deprecated `stagingFolderPath` as-is, so we must check both.
      */
-    private stagingDirFromConfig(config: ReturnType<typeof util.normalizeConfig>, projectDir: string): string {
+    private stagingDirFromConfig(config: ReturnType<typeof bsUtil.normalizeConfig>, projectDir: string): string {
         if (config.stagingDir) {
             return config.stagingDir;
         }
@@ -151,8 +155,8 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
      */
     private resolveStagingDir(configUri: vscode.Uri, projectDir: string): string {
         try {
-            const rawConfig = util.loadConfigFile(configUri.fsPath, undefined, projectDir);
-            const config = util.normalizeConfig(rawConfig);
+            const rawConfig = bsUtil.loadConfigFile(configUri.fsPath, undefined, projectDir);
+            const config = bsUtil.normalizeConfig(rawConfig);
             return this.stagingDirFromConfig(config, projectDir);
         } catch {
             return path.join(projectDir, BSC_DEFAULT_STAGING_DIR);

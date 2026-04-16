@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { util } from 'brighterscript';
+import { util as bsUtil } from 'brighterscript';
+import { util } from '../../util';
 import { rokuDeploy } from 'roku-deploy';
 import type { FileEntry } from 'roku-deploy';
 import type { DiscoveredRokuProject, ProjectBuildResult, ProjectConfigProvider } from './RokuProjectManager';
@@ -17,6 +18,8 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     public readonly configFileSelector: vscode.DocumentFilter[] = [
         { pattern: '**/brsconfig*.json', scheme: 'file' }
     ];
+
+    public readonly excludePatterns = ['**/node_modules/**'];
 
     /**
      * Per-config store keyed by configUri.fsPath.
@@ -41,10 +44,11 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
     }
 
     public async findProjectConfigs(): Promise<vscode.Uri[]> {
+        const exclude = util.buildExcludeGlob(this.excludePatterns);
         const results = await Promise.all(
             this.configFileSelector
                 .filter(selector => selector.pattern)
-                .map(selector => vscode.workspace.findFiles(selector.pattern as string))
+                .map(selector => vscode.workspace.findFiles(selector.pattern as string, exclude))
         );
         return results.flat();
     }
@@ -54,7 +58,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
      * Returns undefined (not owned) when getDestPath returns undefined for all configs.
      */
     public findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]> {
-        const filePath = util.driveLetterToLower(fileUri.fsPath);
+        const filePath = bsUtil.driveLetterToLower(fileUri.fsPath);
         const matches: vscode.Uri[] = [];
         for (const entry of this.configByPath.values()) {
             if (rokuDeploy.getDestPath(filePath, entry.files, entry.rootDir)) {

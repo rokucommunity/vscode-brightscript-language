@@ -5,6 +5,7 @@ import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsV
 import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
+import { util } from '../../util';
 
 export class RokuProjectManager {
 
@@ -34,20 +35,41 @@ export class RokuProjectManager {
                     continue;
                 }
                 const watcher = vscode.workspace.createFileSystemWatcher(selector.pattern);
+                const isExcluded = (uri: vscode.Uri) => util.isUriExcluded(uri, provider.excludePatterns);
                 context.subscriptions.push(
                     watcher,
-                    watcher.onDidCreate(uri => this.registerProject(uri)),
-                    watcher.onDidDelete(uri => this.unregisterProject(uri)),
+                    watcher.onDidCreate(uri => {
+                        if (!isExcluded(uri)) {
+                            this.registerProject(uri);
+                        }
+                    }),
+                    watcher.onDidDelete(uri => {
+                        if (!isExcluded(uri)) {
+                            this.unregisterProject(uri);
+                        }
+                    }),
                     watcher.onDidChange(uri => {
-                        // rebuilds the project from the updated file
-                        this.unregisterProject(uri);
-                        this.registerProject(uri);
+                        if (!isExcluded(uri)) {
+                            // rebuilds the project from the updated file
+                            this.unregisterProject(uri);
+                            this.registerProject(uri);
+                        }
                     })
                 );
             }
         }
 
         context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('files.exclude') || e.affectsConfiguration('search.exclude')) {
+                    for (const project of [...this.discoveredProjects.values()]) {
+                        this.unregisterProject(project.configUri);
+                    }
+                    this.syncProjects().catch(err => {
+                        console.error('Error resyncing Roku projects after exclude change:', err);
+                    });
+                }
+            }),
             vscode.workspace.onDidChangeWorkspaceFolders(event => {
                 // Unregister all projects from removed folders
                 for (const removed of event.removed) {
@@ -251,8 +273,7 @@ export class RokuProjectManager {
         let targetUri = uri;
 
         if (!targetUri) {
-            const allUris = await Promise.all(this.providers.map(provider => provider.findProjectConfigs()));
-            const configs = allUris.flat();
+            const configs = Array.from(this.discoveredProjects.values()).map(p => p.configUri);
             if (configs.length === 0) {
                 void vscode.window.showWarningMessage('Something went wrong.');
                 return;
@@ -260,13 +281,18 @@ export class RokuProjectManager {
             if (configs.length === 1) {
                 targetUri = configs[0];
             } else {
-                const items = configs.map(uri => ({
-                    label: path.basename(path.dirname(uri.fsPath)),
-                    description: vscode.workspace.asRelativePath(uri),
-                    uri: uri
-                }));
+                const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+                const items = configs.map(uri => {
+                    const provider = this.providers.find(configProvider => configProvider.ownsConfig(uri));
+                    return {
+                        label: provider?.createProject(uri).debugConfig.name ?? path.basename(path.dirname(uri.fsPath)),
+                        description: vscode.workspace.asRelativePath(uri, false),
+                        detail: multiRoot ? vscode.workspace.getWorkspaceFolder(uri)?.name : undefined,
+                        uri: uri
+                    };
+                });
                 const picked = await vscode.window.showQuickPick(items, {
-                    placeHolder: 'Please select to debug:'
+                    placeHolder: 'Select a project to debug:'
                 });
                 if (!picked) {
                     return;
@@ -324,6 +350,8 @@ export interface ProjectBuildResult {
 export interface ProjectConfigProvider {
     /** DocumentFilter(s) used to register CodeLens over project config files. */
     readonly configFileSelector: vscode.DocumentFilter[];
+    /** Glob patterns this provider excludes from file discovery and watcher events. */
+    readonly excludePatterns: string[];
     /** Returns true if this provider is responsible for the given config URI. */
     ownsConfig(uri: vscode.Uri): boolean;
     /** Find all project config file URIs in the workspace. */

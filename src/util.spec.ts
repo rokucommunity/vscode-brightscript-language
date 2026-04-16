@@ -404,4 +404,102 @@ describe('Util', () => {
             ).to.be.undefined;
         });
     });
+
+    describe('buildExcludeGlob', () => {
+        beforeEach(() => {
+            vscode.workspace._configuration = {
+                'files.exclude': {},
+                'search.exclude': {}
+            };
+        });
+
+        it('returns undefined when there are no VS Code excludes and no additional patterns', () => {
+            expect(util.buildExcludeGlob([])).to.be.undefined;
+        });
+
+        it('returns a plain string when there is exactly one pattern total', () => {
+            expect(util.buildExcludeGlob(['**/node_modules/**'])).to.equal('**/node_modules/**');
+        });
+
+        it('wraps multiple patterns in brace expansion', () => {
+            expect(util.buildExcludeGlob(['**/node_modules/**', '**/dist/**'])).to.equal('{**/node_modules/**,**/dist/**}');
+        });
+
+        it('includes enabled files.exclude entries', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/.git': true, '**/.DS_Store': false };
+            expect(util.buildExcludeGlob([])).to.equal('**/.git');
+        });
+
+        it('includes enabled search.exclude entries', () => {
+            vscode.workspace._configuration['search.exclude'] = { '**/build/**': true, '**/tmp/**': false };
+            expect(util.buildExcludeGlob([])).to.equal('**/build/**');
+        });
+
+        it('combines files.exclude, search.exclude, and additional patterns', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/.git': true };
+            vscode.workspace._configuration['search.exclude'] = { '**/build/**': true };
+            const result = util.buildExcludeGlob(['**/node_modules/**']);
+            expect(result).to.equal('{**/.git,**/build/**,**/node_modules/**}');
+        });
+
+        it('deduplicates patterns that appear in multiple sources', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/node_modules/**': true };
+            vscode.workspace._configuration['search.exclude'] = { '**/node_modules/**': true };
+            expect(util.buildExcludeGlob(['**/node_modules/**'])).to.equal('**/node_modules/**');
+        });
+
+        it('skips disabled files.exclude and search.exclude entries', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/.git': false };
+            vscode.workspace._configuration['search.exclude'] = { '**/build/**': false };
+            expect(util.buildExcludeGlob([])).to.be.undefined;
+        });
+    });
+
+    describe('isUriExcluded', () => {
+        beforeEach(() => {
+            vscode.workspace._configuration = {
+                'files.exclude': {},
+                'search.exclude': {}
+            };
+        });
+
+        function makeUri(relativePath: string) {
+            sinon.stub(vscode.workspace, 'asRelativePath').returns(relativePath);
+            return { fsPath: relativePath } as any;
+        }
+
+        it('returns false and skips asRelativePath when there are no patterns', () => {
+            const stub = sinon.stub(vscode.workspace, 'asRelativePath');
+            expect(util.isUriExcluded({ fsPath: 'src/foo.ts' } as any, [])).to.be.false;
+            expect(stub.called).to.be.false;
+        });
+
+        it('returns true when the URI matches an additional pattern', () => {
+            const uri = makeUri('node_modules/some-lib/index.js');
+            expect(util.isUriExcluded(uri, ['**/node_modules/**'])).to.be.true;
+        });
+
+        it('returns false when the URI does not match any pattern', () => {
+            const uri = makeUri('src/foo.ts');
+            expect(util.isUriExcluded(uri, ['**/node_modules/**'])).to.be.false;
+        });
+
+        it('returns true when the URI matches an enabled files.exclude entry', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/.git': true };
+            const uri = makeUri('.git');
+            expect(util.isUriExcluded(uri, [])).to.be.true;
+        });
+
+        it('returns true for a file nested inside an excluded directory', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/.git': true };
+            const uri = makeUri('.git/config');
+            expect(util.isUriExcluded(uri, [])).to.be.true;
+        });
+
+        it('returns false when the URI only matches a disabled files.exclude entry', () => {
+            vscode.workspace._configuration['files.exclude'] = { '**/node_modules/**': false };
+            const uri = makeUri('node_modules/some-lib/index.js');
+            expect(util.isUriExcluded(uri, [])).to.be.false;
+        });
+    });
 });

@@ -163,6 +163,9 @@ export let vscode = {
         getWorkspaceFolder: (uri: Uri) => {
             return undefined;
         },
+        asRelativePath: (pathOrUri: string | Uri) => {
+            return typeof pathOrUri === 'string' ? pathOrUri : pathOrUri.fsPath;
+        },
         findFiles: (include, exclude) => {
             return [] as any;
         },

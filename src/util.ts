@@ -11,6 +11,7 @@ import type { DeviceInfo } from 'roku-deploy';
 import * as request from 'postman-request';
 import type { Response, CoreOptions } from 'request';
 import * as childProcess from 'child_process';
+import * as minimatch from 'minimatch';
 
 class Util {
     public async readDir(dirPath: string) {
@@ -540,9 +541,21 @@ class Util {
     /**
      * Wrapper around `vscode.workspace.getConfiguration` that defaults the resource to `null`.
      * This avoids VS Code warnings when accessing resource-scoped settings without a URI.
-     */
-    public getConfiguration(section?: string, resource?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
-        return vscode.workspace.getConfiguration(section, resource ?? null);
+     *
+    * Get a workspace configuration object.
+    *
+    * When a section-identifier is provided only that part of the configuration
+    * is returned. Dots in the section-identifier are interpreted as child-access,
+    * like `{ myExt: { setting: { doIt: true }}}` and `getConfiguration('myExt.setting').get('doIt') === true`.
+    *
+    * When a scope is provided configuration confined to that scope is returned. Scope can be a resource or a language identifier or both.
+    *
+    * @param section A dot-separated identifier.
+    * @param scope A scope for which the configuration is asked for.
+    * @return The full configuration or a subset.
+    */
+    public getConfiguration(section?: string, scope?: vscode.ConfigurationScope): vscode.WorkspaceConfiguration {
+        return vscode.workspace.getConfiguration(section, scope ?? null);
     }
 
     public getConfigurationValueIfDefined(key: string, defaultValue = undefined) {
@@ -594,6 +607,69 @@ class Util {
         }
 
         await vscode.workspace.getConfiguration(configurationKey, resource).update(settingKey, value, target);
+    }
+
+    /**
+     * Returns the deduplicated set of active exclude patterns by combining enabled entries from
+     * the user's `files.exclude` and `search.exclude` settings with any additional patterns provided.
+     *
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public getExcludePatterns(additionalExcludes: string[], scope?: vscode.ConfigurationScope): string[] {
+        const filesExclude = this.getConfiguration('files', scope).get<Record<string, boolean>>('exclude') ?? {};
+        const searchExclude = this.getConfiguration('search', scope).get<Record<string, boolean>>('exclude') ?? {};
+
+        return [...new Set([
+            ...Object.entries(filesExclude).filter(([, enabled]) => enabled).map(([pattern]) => pattern),
+            ...Object.entries(searchExclude).filter(([, enabled]) => enabled).map(([pattern]) => pattern),
+            ...additionalExcludes
+        ])];
+    }
+
+    /**
+     * Builds a single exclude glob pattern suitable for passing directly to `vscode.workspace.findFiles`
+     * as the `exclude` argument. Returns `undefined` when there are no patterns, which preserves
+     * `findFiles`' default exclude behavior.
+     *
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public buildExcludeGlob(additionalExcludes: string[], scope?: vscode.ConfigurationScope): string | undefined {
+        const patterns = this.getExcludePatterns(additionalExcludes, scope);
+        if (patterns.length === 0) {
+            return undefined;
+        }
+        if (patterns.length === 1) {
+            return patterns[0];
+        }
+        return `{${patterns.join(',')}}`;
+    }
+
+    /**
+     * Returns true if the given URI matches any of the active exclude patterns from `files.exclude`,
+     * `search.exclude`, or the provided additional patterns. Intended for filtering file watcher events.
+     *
+     * @param uri The file URI to test.
+     * @param additionalExcludes Extra glob patterns to exclude on top of the VS Code settings.
+     * @param scope A scope for which the configuration is asked for.
+     */
+    public isUriExcluded(uri: vscode.Uri, additionalExcludes: string[], scope?: vscode.ConfigurationScope): boolean {
+        const patterns = this.getExcludePatterns(additionalExcludes, scope);
+        if (patterns.length === 0) {
+            return false;
+        }
+        const relativePath = vscode.workspace.asRelativePath(uri, false);
+        // Check the path itself and each ancestor so that directory-level patterns
+        // (e.g. `**/.git`) also match files nested inside them (e.g. `.git/config`).
+        const segments = relativePath.split('/');
+        for (let i = segments.length; i > 0; i--) {
+            const candidate = segments.slice(0, i).join('/');
+            if (patterns.some(pattern => minimatch(candidate, pattern, { dot: true }))) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
