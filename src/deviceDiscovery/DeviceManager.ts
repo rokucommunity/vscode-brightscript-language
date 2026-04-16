@@ -1062,8 +1062,8 @@ export class DeviceManager {
      * Called when network changes to ensure SSDP can communicate on the new network.
      */
     private restartRokuFinder() {
-        // Dispose old finder (releases sockets, clears state)
-        this.finder?.dispose();
+        // Keep reference to old finder for delayed disposal
+        const oldFinder = this.finder;
 
         // Create new finder instance
         this.finder = new RokuFinder();
@@ -1077,6 +1077,11 @@ export class DeviceManager {
                 console.error('Failed to restart RokuFinder:', e);
             });
         }
+
+        // Dispose old finder after 3 seconds to allow overlap
+        setTimeout(() => {
+            oldFinder?.dispose();
+        }, 3_000);
     }
 
     /**
