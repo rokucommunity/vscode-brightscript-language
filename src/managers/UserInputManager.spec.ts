@@ -205,4 +205,35 @@ describe('UserInputManager', () => {
             ]);
         });
     });
+
+    describe('promptForHost', () => {
+        it('calls scan() instead of refresh() when picker opens', async () => {
+            const scanSpy = sinon.spy(deviceManager, 'scan');
+            const refreshSpy = sinon.spy(deviceManager, 'refresh');
+
+            // Capture the quickPick instance when created
+            let quickPick: any;
+            const originalCreateQuickPick = vscode.window.createQuickPick;
+            sinon.stub(vscode.window, 'createQuickPick').callsFake(() => {
+                quickPick = originalCreateQuickPick();
+                return quickPick;
+            });
+
+            // Start the prompt (don't await - it waits for user input)
+            const promptPromise = userInputManager.promptForHost();
+
+            // Give it a tick to set up
+            await new Promise<void>(resolve => {
+                setTimeout(resolve, 10);
+            });
+
+            // Verify scan was called, not refresh
+            expect(scanSpy.called).to.be.true;
+            expect(refreshSpy.called).to.be.false;
+
+            // Clean up by hiding the quickpick (triggers rejection)
+            quickPick?.hide();
+            await promptPromise.catch(() => { });
+        });
+    });
 });
