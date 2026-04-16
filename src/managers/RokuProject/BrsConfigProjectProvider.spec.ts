@@ -37,9 +37,6 @@ describe('BrsConfigProjectProvider', () => {
         sinon.restore();
     });
 
-    // -------------------------------------------------------------------------
-    // ownsConfig
-    // -------------------------------------------------------------------------
 
     describe('ownsConfig', () => {
         it('returns true for brsconfig.json', () => {
@@ -80,9 +77,6 @@ describe('BrsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // findProjectConfigs
-    // -------------------------------------------------------------------------
 
     describe('findProjectConfigs', () => {
         it('calls workspace.findFiles for the brsconfig glob and returns results', async () => {
@@ -104,9 +98,6 @@ describe('BrsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // afterConfigRegistered / afterConfigUnregistered
-    // -------------------------------------------------------------------------
 
     describe('afterConfigRegistered', () => {
         it('populates the configByPath with files and rootDir', () => {
@@ -185,9 +176,6 @@ describe('BrsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // findProjectConfigFromFile
-    // -------------------------------------------------------------------------
 
     describe('findProjectConfigFromFile', () => {
         it('returns matching config URIs for a file that is part of the project', async () => {
@@ -239,9 +227,6 @@ describe('BrsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // createProject
-    // -------------------------------------------------------------------------
 
     describe('createProject', () => {
         it('produces a debug config name with no flavor for brsconfig.json', () => {

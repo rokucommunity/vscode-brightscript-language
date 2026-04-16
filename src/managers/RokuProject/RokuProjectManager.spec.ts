@@ -99,9 +99,6 @@ describe('RokuProjectManager', () => {
         sinon.restore();
     });
 
-    // -------------------------------------------------------------------------
-    // registerProject
-    // -------------------------------------------------------------------------
 
     describe('registerProject', () => {
         it('registers a task and project when a provider owns the URI', () => {
@@ -198,9 +195,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // unregisterProject
-    // -------------------------------------------------------------------------
 
     describe('unregisterProject', () => {
         it('unregisters the task and removes the project', () => {
@@ -256,9 +250,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // syncProjects
-    // -------------------------------------------------------------------------
 
     describe('syncProjects', () => {
         it('calls findProjectConfigs on every provider and registers each URI', async () => {
@@ -299,9 +290,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // updateStatusBar
-    // -------------------------------------------------------------------------
 
     describe('syncStatusBar', () => {
         it('shows the item when at least one project is registered', () => {
@@ -355,9 +343,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // provideCodeLenses
-    // -------------------------------------------------------------------------
 
     describe('provideCodeLenses', () => {
         it('returns one CodeLens at the top of the document', () => {
@@ -379,9 +364,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // provideDebugConfigurations
-    // -------------------------------------------------------------------------
 
     describe('provideDebugConfigurations', () => {
         it('returns a debug config for each registered project', () => {
@@ -419,9 +401,6 @@ describe('RokuProjectManager', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // resolveDebugConfigFromActiveFile
-    // -------------------------------------------------------------------------
 
     describe('resolveDebugConfigFromActiveFile', () => {
         afterEach(() => {

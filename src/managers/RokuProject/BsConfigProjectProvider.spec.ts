@@ -40,9 +40,6 @@ describe('BsConfigProjectProvider', () => {
         sinon.restore();
     });
 
-    // -------------------------------------------------------------------------
-    // ownsConfig
-    // -------------------------------------------------------------------------
 
     describe('ownsConfig', () => {
         it('returns true for bsconfig.json', () => {
@@ -79,9 +76,6 @@ describe('BsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // findProjectConfigs
-    // -------------------------------------------------------------------------
 
     describe('findProjectConfigs', () => {
         it('calls workspace.findFiles for the bsconfig glob and returns results', async () => {
@@ -103,9 +97,6 @@ describe('BsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // afterConfigRegistered / afterConfigUnregistered
-    // -------------------------------------------------------------------------
 
     describe('afterConfigRegistered', () => {
         it('populates the configByPath with resolved files and rootDir', () => {
@@ -191,9 +182,6 @@ describe('BsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // findProjectConfigFromFile
-    // -------------------------------------------------------------------------
 
     describe('findProjectConfigFromFile', () => {
         it('returns matching config URIs for a file that is part of the project', async () => {
@@ -247,9 +235,6 @@ describe('BsConfigProjectProvider', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // createProject
-    // -------------------------------------------------------------------------
 
     describe('createProject', () => {
         it('generates the correct task name from the config URI', () => {
