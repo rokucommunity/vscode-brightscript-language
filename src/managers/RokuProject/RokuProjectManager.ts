@@ -144,7 +144,7 @@ export class RokuProjectManager {
             return;
         }
         const provider = this.providers[providerIndex];
-        const { taskName, taskConfig, project } = provider.buildProject(uri);
+        const { taskName, taskConfig, project } = provider.createProject(uri);
 
         // Skip if a higher-priority provider (lower index) already owns an ancestor directory.
         for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
@@ -169,7 +169,7 @@ export class RokuProjectManager {
             return;
         }
         provider.afterConfigUnregistered?.(uri);
-        const { taskName, project } = provider.buildProject(uri);
+        const { taskName, project } = provider.createProject(uri);
         if (taskName) {
             this.taskRegistry.unregisterTask(taskName);
         }
@@ -205,7 +205,7 @@ export class RokuProjectManager {
             }
             const provider = this.providers.find(configProvider => configProvider.ownsConfig(project.configUri));
             if (provider) {
-                configs.push(provider.buildProject(project.configUri).debugConfig);
+                configs.push(provider.createProject(project.configUri).debugConfig);
             }
         }
         return configs;
@@ -241,7 +241,7 @@ export class RokuProjectManager {
             const items = allMatches.map(uri => {
                 const provider = this.providers.find(configProvider => configProvider.ownsConfig(uri));
                 return {
-                    label: provider?.buildProject(uri).debugConfig.name ?? path.basename(path.dirname(uri.fsPath)),
+                    label: provider?.createProject(uri).debugConfig.name ?? path.basename(path.dirname(uri.fsPath)),
                     // asRelativePath with false omits the workspace folder prefix, keeping it concise
                     description: vscode.workspace.asRelativePath(uri, false),
                     // In multi-root workspaces show the workspace folder name below so it's clear which root owns the config
@@ -262,7 +262,7 @@ export class RokuProjectManager {
         if (!provider) {
             return undefined;
         }
-        const { taskName, taskConfig, debugConfig } = provider.buildProject(targetUri);
+        const { taskName, taskConfig, debugConfig } = provider.createProject(targetUri);
         if (taskName) {
             this.taskRegistry.registerTask(taskName, taskConfig);
         }
@@ -305,7 +305,7 @@ export class RokuProjectManager {
         if (!provider) {
             return;
         }
-        const { taskName, taskConfig, debugConfig } = provider.buildProject(targetUri);
+        const { taskName, taskConfig, debugConfig } = provider.createProject(targetUri);
         // Register the task before startDebugging so the preLaunchTask lookup succeeds
         // regardless of whether syncProjects() has completed yet.
         if (taskName) {
@@ -336,7 +336,7 @@ export interface DiscoveredRokuProject {
 }
 
 /**
- * The output of a provider's buildProject() call. Bundles together everything
+ * The output of a provider's createProject() call. Bundles together everything
  * RokuProjectManager needs to register a project: the discovered project metadata,
  * an optional pre-launch build task, and the VS Code debug configuration to launch.
  */
@@ -367,7 +367,7 @@ export interface ProjectConfigProvider {
      */
     findProjectConfigFromFile(fileUri: vscode.Uri): Promise<vscode.Uri[]>;
     /** Build project info, task metadata, and a debug config from a project config URI. */
-    buildProject(configUri: vscode.Uri): ProjectBuildResult;
+    createProject(configUri: vscode.Uri): ProjectBuildResult;
     /**
      * Called after a config URI is registered. Providers may use this to update
      * internal file-ownership lookups.

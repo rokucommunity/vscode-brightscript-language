@@ -86,7 +86,7 @@ export class BrsConfigProjectProvider implements ProjectConfigProvider {
         this.configByPath.delete(configUri.fsPath);
     }
 
-    public buildProject(configUri: vscode.Uri): ProjectBuildResult {
+    public createProject(configUri: vscode.Uri): ProjectBuildResult {
         const project = this.toProject(configUri);
         const { projectDir, projectName } = project;
         const configFilename = path.basename(configUri.fsPath);

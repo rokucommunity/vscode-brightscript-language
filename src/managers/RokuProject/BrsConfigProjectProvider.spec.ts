@@ -240,17 +240,17 @@ describe('BrsConfigProjectProvider', () => {
     });
 
     // -------------------------------------------------------------------------
-    // buildProject
+    // createProject
     // -------------------------------------------------------------------------
 
-    describe('buildProject', () => {
+    describe('createProject', () => {
         it('produces a debug config name with no flavor for brsconfig.json', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
             (provider as any).configByPath.set(configUri.fsPath, {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.name).to.equal('Debug myapp');
         });
@@ -261,7 +261,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.name).to.equal('Debug myapp (prod)');
         });
@@ -273,7 +273,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: [], rootDir: rootDir
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.rootDir).to.equal(rootDir);
         });
@@ -281,7 +281,7 @@ describe('BrsConfigProjectProvider', () => {
         it('falls back to projectDir when no config is indexed', () => {
             const configUri = makeUri('/workspace/myapp/brsconfig.json');
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.rootDir).to.equal('/workspace/myapp');
         });
@@ -293,7 +293,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: files, rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.files).to.eql(files);
         });
@@ -304,7 +304,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.taskName).to.be.undefined;
             expect(result.taskConfig).to.be.undefined;
@@ -316,7 +316,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.preLaunchTask).to.be.undefined;
         });
@@ -327,7 +327,7 @@ describe('BrsConfigProjectProvider', () => {
                 configUri: configUri, files: [], rootDir: '/workspace/myapp'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.project.projectDir).to.equal('/workspace/myapp');
             expect(result.project.projectName).to.equal('myapp');

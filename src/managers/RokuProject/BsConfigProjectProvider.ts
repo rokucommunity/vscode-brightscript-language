@@ -94,7 +94,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
         this.configByPath.delete(configUri.fsPath);
     }
 
-    public buildProject(configUri: vscode.Uri): ProjectBuildResult {
+    public createProject(configUri: vscode.Uri): ProjectBuildResult {
         const project = this.toProject(configUri);
         const { projectDir, projectName } = project;
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(configUri);
@@ -147,7 +147,7 @@ export class BsConfigProjectProvider implements ProjectConfigProvider {
 
     /**
      * Fallback staging-dir resolution used when the config hasn't been indexed yet
-     * (e.g. buildProject is called before afterConfigRegistered fires).
+     * (e.g. createProject is called before afterConfigRegistered fires).
      */
     private resolveStagingDir(configUri: vscode.Uri, projectDir: string): string {
         try {

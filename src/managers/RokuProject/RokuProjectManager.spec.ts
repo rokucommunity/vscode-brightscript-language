@@ -45,7 +45,7 @@ function makeMockProvider(ownsResult = false): ProjectConfigProvider {
         ownsConfig: sinon.stub().returns(ownsResult),
         findProjectConfigs: sinon.stub().resolves([]),
         findProjectConfigFromFile: sinon.stub().resolves([]),
-        buildProject: sinon.stub(),
+        createProject: sinon.stub(),
         afterConfigRegistered: sinon.stub(),
         afterConfigUnregistered: sinon.stub()
     };
@@ -108,7 +108,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
 
@@ -121,7 +121,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
 
@@ -133,7 +133,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
 
@@ -159,7 +159,7 @@ describe('RokuProjectManager', () => {
             const highPriUri = makeUri('/workspace/bsconfig.json');
             const highPriBuild = makeBuildResult('/workspace', highPriUri);
             (highPri.ownsConfig as sinon.SinonStub).returns(true);
-            (highPri.buildProject as sinon.SinonStub).returns(highPriBuild);
+            (highPri.createProject as sinon.SinonStub).returns(highPriBuild);
             (highPri.afterConfigRegistered as sinon.SinonStub);
             (manager as any).registerProject(highPriUri);
 
@@ -169,7 +169,7 @@ describe('RokuProjectManager', () => {
             (lowPri.ownsConfig as sinon.SinonStub).returns(true);
             const lowPriUri = makeUri('/workspace/sub/bsconfig.json');
             const lowPriBuild = makeBuildResult('/workspace/sub', lowPriUri);
-            (lowPri.buildProject as sinon.SinonStub).returns(lowPriBuild);
+            (lowPri.createProject as sinon.SinonStub).returns(lowPriBuild);
 
             const callsBefore = taskRegistry.registerTask.callCount;
             (manager as any).registerProject(lowPriUri);
@@ -185,7 +185,7 @@ describe('RokuProjectManager', () => {
             const result2 = makeBuildResult('/workspace/project-b', uri2);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub)
+            (mockProvider.createProject as sinon.SinonStub)
                 .onFirstCall().returns(result1)
                 .onSecondCall().returns(result2);
 
@@ -207,7 +207,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
             expect((manager as any).discoveredProjects.size).to.equal(1);
@@ -224,7 +224,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
             (manager as any).unregisterProject(uri);
@@ -246,7 +246,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             (manager as any).registerProject(uri);
             (manager as any).unregisterProject(uri);
@@ -308,7 +308,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
             const item = { show: sinon.stub(), hide: sinon.stub() };
@@ -335,7 +335,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
             (manager as any).updateStatusBar(undefined as any);
@@ -390,7 +390,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
             const configs = manager.provideDebugConfigurations();
@@ -409,7 +409,7 @@ describe('RokuProjectManager', () => {
             const result = makeBuildResult('/workspace/project', uri);
 
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
             const otherFolder = { uri: { fsPath: '/other' } } as any;
@@ -458,7 +458,7 @@ describe('RokuProjectManager', () => {
             };
             (mockProvider.findProjectConfigFromFile as sinon.SinonStub).resolves([configUri]);
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub).returns(result);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
 
             const config = await manager.resolveDebugConfigFromActiveFile();
 
@@ -477,7 +477,7 @@ describe('RokuProjectManager', () => {
             };
             (mockProvider.findProjectConfigFromFile as sinon.SinonStub).resolves([configUri1, configUri2]);
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub)
+            (mockProvider.createProject as sinon.SinonStub)
                 .withArgs(configUri1).returns(result1)
                 .withArgs(configUri2).returns(result2);
 
@@ -501,7 +501,7 @@ describe('RokuProjectManager', () => {
             };
             (mockProvider.findProjectConfigFromFile as sinon.SinonStub).resolves([configUri1, configUri2]);
             (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
-            (mockProvider.buildProject as sinon.SinonStub)
+            (mockProvider.createProject as sinon.SinonStub)
                 .withArgs(configUri1).returns(result1)
                 .withArgs(configUri2).returns(result2);
 

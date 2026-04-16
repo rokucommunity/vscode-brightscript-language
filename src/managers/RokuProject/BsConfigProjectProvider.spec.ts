@@ -248,10 +248,10 @@ describe('BsConfigProjectProvider', () => {
     });
 
     // -------------------------------------------------------------------------
-    // buildProject
+    // createProject
     // -------------------------------------------------------------------------
 
-    describe('buildProject', () => {
+    describe('createProject', () => {
         it('generates the correct task name from the config URI', () => {
             const configUri = makeUri('/workspace/project/bsconfig.json');
             (vscode.workspace as any).asRelativePath = sinon.stub().returns('project/bsconfig.json');
@@ -262,7 +262,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/project/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.taskName).to.equal('build project/bsconfig.json');
         });
@@ -277,7 +277,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/project/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.taskConfig.command).to.include('"bsconfig.json"');
         });
@@ -292,7 +292,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.name).to.equal('Debug myapp');
         });
@@ -307,7 +307,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.name).to.equal('Debug myapp (prod)');
         });
@@ -323,7 +323,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: stagingDir
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.rootDir).to.equal(stagingDir);
         });
@@ -340,7 +340,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: path.join(projectDir, 'out', '.roku-deploy-staging')
             } as any);
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.rootDir).to.equal(path.join(projectDir, 'out', '.roku-deploy-staging'));
         });
@@ -353,7 +353,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.debugConfig.preLaunchTask).to.equal('BrightScript: build myapp/bsconfig.json');
         });
@@ -366,7 +366,7 @@ describe('BsConfigProjectProvider', () => {
                 stagingDir: '/workspace/myapp/out/.roku-deploy-staging'
             });
 
-            const result = provider.buildProject(configUri);
+            const result = provider.createProject(configUri);
 
             expect(result.taskConfig.cwd).to.equal('/workspace/myapp');
         });
