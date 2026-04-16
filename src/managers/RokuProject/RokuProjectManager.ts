@@ -14,6 +14,13 @@ export class RokuProjectManager {
         private viewProvider?: RokuProjectsViewProvider
     ) { }
 
+    // Resolved when the initial syncProjects() call completes. Callers that need
+    // a complete project list (e.g. debug config providers) should await this.
+    private _syncReadyResolve!: () => void;
+    private readonly _syncReady: Promise<void> = new Promise<void>(resolve => {
+        this._syncReadyResolve = resolve;
+    });
+
     private readonly providers: ProjectConfigProvider[] = [
         new BsConfigProjectProvider(),
         new BrsConfigProjectProvider()
@@ -138,11 +145,15 @@ export class RokuProjectManager {
     private async syncProjects() {
         // findProjectConfigs() uses vscode.workspace.findFiles which searches across
         // all workspace folders automatically — no need to iterate them explicitly here.
-        for (const provider of this.providers) {
-            const uris = await provider.findProjectConfigs();
-            for (const uri of uris) {
-                this.registerProject(uri);
+        try {
+            for (const provider of this.providers) {
+                const uris = await provider.findProjectConfigs();
+                for (const uri of uris) {
+                    this.registerProject(uri);
+                }
             }
+        } finally {
+            this._syncReadyResolve();
         }
     }
 
@@ -197,7 +208,8 @@ export class RokuProjectManager {
         ];
     }
 
-    public provideDebugConfigurations(folder?: vscode.WorkspaceFolder): vscode.DebugConfiguration[] {
+    public async provideDebugConfigurations(folder?: vscode.WorkspaceFolder): Promise<vscode.DebugConfiguration[]> {
+        await this._syncReady;
         const configs: vscode.DebugConfiguration[] = [];
         for (const project of this.discoveredProjects.values()) {
             if (folder && !isSubdirectoryOf(folder.uri.fsPath, project.projectDir)) {
@@ -218,6 +230,7 @@ export class RokuProjectManager {
      * to pick one.
      */
     public async resolveDebugConfigFromActiveFile(): Promise<vscode.DebugConfiguration | undefined> {
+        await this._syncReady;
         const activeFile = vscode.window.activeTextEditor?.document.uri;
         if (!activeFile) {
             return undefined;

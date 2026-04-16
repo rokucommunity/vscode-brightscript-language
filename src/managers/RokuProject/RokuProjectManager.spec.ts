@@ -366,7 +366,13 @@ describe('RokuProjectManager', () => {
 
 
     describe('provideDebugConfigurations', () => {
-        it('returns a debug config for each registered project', () => {
+        beforeEach(() => {
+            // Resolve the startup deferred so provideDebugConfigurations doesn't hang.
+            // In real usage this is resolved by syncProjects(); here we bypass that.
+            (manager as any)._syncReadyResolve();
+        });
+
+        it('returns a debug config for each registered project', async () => {
             const uri = makeUri('/workspace/project/bsconfig.json');
             const result = makeBuildResult('/workspace/project', uri);
 
@@ -374,18 +380,18 @@ describe('RokuProjectManager', () => {
             (mockProvider.createProject as sinon.SinonStub).returns(result);
             (manager as any).registerProject(uri);
 
-            const configs = manager.provideDebugConfigurations();
+            const configs = await manager.provideDebugConfigurations();
 
             expect(configs).to.have.length(1);
             expect(configs[0]).to.deep.equal(result.debugConfig);
         });
 
-        it('returns an empty array when no projects are registered', () => {
-            const configs = manager.provideDebugConfigurations();
+        it('returns an empty array when no projects are registered', async () => {
+            const configs = await manager.provideDebugConfigurations();
             expect(configs).to.have.length(0);
         });
 
-        it('filters by workspace folder when one is provided', () => {
+        it('filters by workspace folder when one is provided', async () => {
             const uri = makeUri('/workspace/project/bsconfig.json');
             const result = makeBuildResult('/workspace/project', uri);
 
@@ -394,15 +400,20 @@ describe('RokuProjectManager', () => {
             (manager as any).registerProject(uri);
 
             const otherFolder = { uri: { fsPath: '/other' } } as any;
-            expect(manager.provideDebugConfigurations(otherFolder)).to.have.length(0);
+            expect(await manager.provideDebugConfigurations(otherFolder)).to.have.length(0);
 
             const matchingFolder = { uri: { fsPath: '/workspace' } } as any;
-            expect(manager.provideDebugConfigurations(matchingFolder)).to.have.length(1);
+            expect(await manager.provideDebugConfigurations(matchingFolder)).to.have.length(1);
         });
     });
 
 
     describe('resolveDebugConfigFromActiveFile', () => {
+        beforeEach(() => {
+            // Resolve the startup deferred so resolveDebugConfigFromActiveFile doesn't hang.
+            (manager as any)._syncReadyResolve();
+        });
+
         afterEach(() => {
             // Restore activeTextEditor to the mock default
             (vscode.window as any).activeTextEditor = { document: undefined };

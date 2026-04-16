@@ -79,8 +79,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         }
     };
 
-    public provideDebugConfigurations(folder?: WorkspaceFolder, _token?: CancellationToken): vscode.DebugConfiguration[] {
-        return this.rokuProjectDiscovery?.provideDebugConfigurations(folder) ?? [];
+    public async provideDebugConfigurations(folder?: WorkspaceFolder, _token?: CancellationToken): Promise<vscode.DebugConfiguration[]> {
+        return (await this.rokuProjectDiscovery?.provideDebugConfigurations(folder)) ?? [];
     }
 
     /**
