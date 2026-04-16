@@ -19,10 +19,9 @@
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4,
-    "tslint.autoFixOnSave": true,
-    "typescript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
+    "js/ts.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
     "html.format.unformatted": "wbr,%",
-    "typescript.tsdk": "node_modules\\typescript\\lib",
+    "js/ts.tsdk.path": "node_modules\\typescript\\lib",
     "svelte.plugin.svelte.compilerWarnings": {
         "a11y-aria-attributes": "ignore",
         "a11y-incorrect-aria-attribute-type": "ignore",
@@ -47,5 +46,5 @@
         "a11y-mouse-events-have-key-events": "ignore",
         "a11y-missing-content": "ignore",
         "a11y-click-events-have-key-events": "ignore"
-    }
+    },
 }

@@ -10,7 +10,7 @@ import { util } from './util';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { RemoteControlManager, RemoteControlModeInitiator } from './managers/RemoteControlManager';
 import type { WhatsNewManager } from './managers/WhatsNewManager';
-import type { DeviceManager } from './deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import * as xml2js from 'xml2js';
 import { firstBy } from 'thenby';
 import type { UserInputManager } from './managers/UserInputManager';
@@ -78,10 +78,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            const device = this.deviceManager.getDevice(item.key);
-            if (device) {
-                await this.deviceManager.checkDeviceHealth(device, true);
-            }
+            await this.deviceManager.checkDeviceHealth({ serialNumber: item.key }, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -441,8 +438,7 @@ export class BrightScriptCommands {
         this.registerCommand('setActiveDevice', async (deviceOrItem: string | { key: string }) => {
             let ip: string;
             if (typeof deviceOrItem === 'object' && deviceOrItem?.key) {
-                const serialNumber = deviceOrItem.key;
-                ip = this.deviceManager.getDevice(serialNumber)?.ip;
+                ip = this.deviceManager.getDevice(deviceOrItem.key)?.ip;
             } else if (typeof deviceOrItem === 'string') {
                 ip = deviceOrItem;
             }
@@ -456,6 +452,70 @@ export class BrightScriptCommands {
                 this.webviewViewProviderManager?.onRemoteHostChanged();
                 await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
             }
+        });
+
+        this.registerCommand('editDeviceInUserSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            await this.openSettingsJsonAtDevice(device, 'user');
+        });
+
+        this.registerCommand('editDeviceInWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            await this.openSettingsJsonAtDevice(device, 'workspace');
+        });
+
+        this.registerCommand('addDeviceToUserSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const userDevices = inspection?.globalValue || [];
+
+            if (userDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+                void vscode.window.showInformationMessage('Device is already in your user settings.');
+                return;
+            }
+
+            const newDevice = {
+                host: device.ip,
+                ...(device.serialNumber && { serialNumber: device.serialNumber })
+            };
+            userDevices.push(newDevice);
+
+            await config.update('devices', userDevices, vscode.ConfigurationTarget.Global);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to user settings.`);
+        });
+
+        this.registerCommand('addDeviceToWorkspaceSettings', async (deviceOrItem: { key: string }) => {
+            const device = this.deviceManager.getDevice(deviceOrItem?.key);
+            if (!device) {
+                void vscode.window.showErrorMessage('Could not find device to add to settings.');
+                return;
+            }
+
+            const config = vscode.workspace.getConfiguration('brightscript');
+            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const workspaceDevices = inspection?.workspaceValue || [];
+
+            if (workspaceDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+                void vscode.window.showInformationMessage('Device is already in your workspace settings.');
+                return;
+            }
+
+            const newDevice = {
+                host: device.ip,
+                ...(device.serialNumber && { serialNumber: device.serialNumber })
+            };
+            workspaceDevices.push(newDevice);
+
+            await config.update('devices', workspaceDevices, vscode.ConfigurationTarget.Workspace);
+            const displayName = device.deviceInfo['user-device-name'] || device.deviceInfo['default-device-name'] || device.ip;
+            void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {
@@ -752,6 +812,47 @@ export class BrightScriptCommands {
      */
     private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
         return await this.context.workspaceState.get('devicePasswords') || {};
+    }
+
+    /**
+     * Open the settings JSON file and position cursor at the specified device entry
+     */
+    private async openSettingsJsonAtDevice(device: RokuDevice | undefined, scope: 'user' | 'workspace'): Promise<void> {
+        // Open the appropriate settings JSON file
+        const command = scope === 'user'
+            ? 'workbench.action.openSettingsJson'
+            : 'workbench.action.openWorkspaceSettingsFile';
+        await vscode.commands.executeCommand(command);
+
+        // Get the active editor (should be the settings file we just opened)
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !device) {
+            return;
+        }
+
+        const text = editor.document.getText();
+
+        // Search for the device by IP or serial number
+        const searchTerms = [device.ip];
+        if (device.serialNumber) {
+            searchTerms.push(device.serialNumber);
+        }
+
+        let matchIndex = -1;
+        for (const term of searchTerms) {
+            const index = text.indexOf(`"${term}"`);
+            if (index !== -1) {
+                matchIndex = index;
+                break;
+            }
+        }
+
+        if (matchIndex !== -1) {
+            const position = editor.document.positionAt(matchIndex + 1); // +1 to skip opening quote
+            const selection = new vscode.Selection(position, position);
+            editor.selection = selection;
+            editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+        }
     }
 
     public registerKeypressNotifier(notifier: (key: string, literalCharacter: boolean) => void) {

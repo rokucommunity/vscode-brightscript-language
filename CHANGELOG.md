@@ -6,6 +6,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [2.63.7](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.6...v2.63.7) - 2026-04-14
+### Changed
+ - upgrade to [brighterscript@0.71.1](https://github.com/rokucommunity/brighterscript/blob/master/CHANGELOG.md#0711---2026-04-14). Notable changes since 0.71.0:
+ - upgrade to [brighterscript-formatter@1.7.23](https://github.com/rokucommunity/brighterscript-formatter/blob/master/CHANGELOG.md#1723---2026-04-14). Notable changes since 1.7.22:
+ - upgrade to [roku-debug@0.23.5](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0235---2026-04-14). Notable changes since 0.23.3:
+     - Fix sourcemap comments ([#327](https://github.com/rokucommunity/roku-debug/pull/327))
+     - Avoid monkey-patching roku-deploy's getFiles function ([#329](https://github.com/rokucommunity/roku-debug/pull/329))
+     - Fix sourcemap staging bugs when maps are from different depth than staging dir ([#308](https://github.com/rokucommunity/roku-debug/pull/308))
+     - Handle THREAD_DETACHED gracefully and show [unavailable] for inaccessible threads ([#324](https://github.com/rokucommunity/roku-debug/pull/324))
+     - Resolve relative source maps and honor sourceRoot ([#307](https://github.com/rokucommunity/roku-debug/pull/307))
+ - upgrade to [roku-deploy@3.16.5](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3165---2026-04-13). Notable changes since 3.16.3:
+     - Resolve files array staging option ([#249](https://github.com/rokucommunity/roku-deploy/pull/249))
+     - Fix `zipFolder` bug that wasn't properly handling absolute stagingDir path ([#245](https://github.com/rokucommunity/roku-deploy/pull/245))
+
+
+
+## [2.63.6](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.5...v2.63.6) - 2026-04-10
+### Changed
+ - rolled back changes in 2.62.5 causing sideloading issues ([#753](https://github.com/rokucommunity/vscode-brightscript-language/pull/753))
+ - downgrade from 0.23.4 to [roku-debug@0.23.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0233---2026-04-01).
+ - downgrade from 3.16.4 to [roku-deploy@3.16.3](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3163---2026-03-24).
+
+
+
+## [2.63.5](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.4...v2.63.5) - 2026-04-10
+### Fixed
+ - upgrade to [roku-debug@0.23.4](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0234---2026-04-07). Notable changes since 0.23.3:
+     - Fix sourcemap staging bugs when maps are from different depth than staging dir ([#308](https://github.com/rokucommunity/roku-debug/pull/308))
+     - Handle THREAD_DETACHED gracefully and show [unavailable] for inaccessible threads ([#324](https://github.com/rokucommunity/roku-debug/pull/324))
+     - Resolve relative source maps and honor sourceRoot ([#307](https://github.com/rokucommunity/roku-debug/pull/307))
+ - upgrade to [roku-deploy@3.16.4](https://github.com/rokucommunity/roku-deploy/blob/master/CHANGELOG.md#3164---2026-04-07). Notable changes since 3.16.3:
+     - Fix `zipFolder` bug that wasn't properly handling absolute stagingDir path ([#245](https://github.com/rokucommunity/roku-deploy/pull/245))
+
+
+
+## [2.63.4](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.3...v2.63.4) - 2026-04-02
+### Changed
+ - Support hand curated device lists ([#709](https://github.com/rokucommunity/vscode-brightscript-language/pull/709))
+
+
+
+## [2.63.3](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.2...v2.63.3) - 2026-04-01
+### Fixed
+ - upgrade to [roku-debug@0.23.3](https://github.com/rokucommunity/roku-debug/blob/master/CHANGELOG.md#0233---2026-04-01). Notable changes since 0.23.2:
+     - Respect client line and col numbers for stack frames and compile errors ([#309](https://github.com/rokucommunity/roku-debug/pull/309))
+     - Crash when socket errors after a successful connection is established ([#321](https://github.com/rokucommunity/roku-debug/pull/321))
+
+
+
 ## [2.63.2](https://github.com/rokucommunity/vscode-brightscript-language/compare/2.63.1...v2.63.2) - 2026-04-01
 ### Added
  - Button to toggle device discovery in device panel and device quick picker ([#723](https://github.com/rokucommunity/vscode-brightscript-language/pull/723))
