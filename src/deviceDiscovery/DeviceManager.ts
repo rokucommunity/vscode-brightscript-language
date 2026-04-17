@@ -1073,17 +1073,15 @@ export class DeviceManager {
         // Re-attach event listeners
         this.setupFinderListeners();
 
+        // Dispose old finder
+        oldFinder?.dispose();
+
         // Restart if device discovery is enabled
         if (this.deviceDiscoveryEnabled) {
             this.startRokuFinder().catch((e) => {
                 console.error('Failed to restart RokuFinder:', e);
             });
         }
-
-        // Dispose old finder after 3 seconds to allow overlap
-        setTimeout(() => {
-            oldFinder?.dispose();
-        }, 3_000);
     }
 
     /**
