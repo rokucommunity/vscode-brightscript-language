@@ -571,6 +571,11 @@ export class LanguageServerManager {
      */
     @OneAtATime({ timeout: 3 * 60 * 1000 })
     private async ensureBscVersionInstalled(versionInfo: string, retryCount = 1, showProgress = true): Promise<BscInfo> {
+        //if this matches the embedded bsc (a bundled .js file, not a directory), use it directly
+        if (versionInfo === this.embeddedBscInfo.packageDir) {
+            return this.embeddedBscInfo;
+        }
+
         const parsed = this.parseVersionInfo(versionInfo);
 
         //if this is a directory, use it as-is

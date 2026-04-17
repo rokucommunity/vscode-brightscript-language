@@ -22,7 +22,10 @@ esbuild.build({
         'extension': './src/extension.ts',
         'extension-web': './src/extension-web.ts',
         'LanguageServerRunner': './src/LanguageServerRunner.ts',
-        'brighterscript': './node_modules/brighterscript/dist/index.js'
+        'brighterscript': './node_modules/brighterscript/dist/index.js',
+        //brighterscript spawns a worker thread from `${__dirname}/run.js`; bundle that entry
+        //point to `dist/run.js` so the bundled brighterscript.js can locate it at runtime
+        'run': './node_modules/brighterscript/dist/lsp/worker/run.js'
     },
     bundle: true,
     sourcemap: true,
@@ -34,7 +37,10 @@ esbuild.build({
     entryNames: '[name]',
     outdir: 'dist',
     external: [
-        'vscode'
+        'vscode',
+        //roku-test-automation uses __dirname to locate its JSON schema files at runtime,
+        //which breaks when bundled. Keep it in node_modules so Node's module resolution works.
+        'roku-test-automation'
     ],
     define: {
         // Inject the embedded brighterscript version at bundle time so

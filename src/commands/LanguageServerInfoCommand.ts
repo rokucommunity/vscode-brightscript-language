@@ -6,7 +6,7 @@ import * as fsExtra from 'fs-extra';
 import { firstBy } from 'thenby';
 import { VscodeCommand } from './VscodeCommand';
 import URI from 'vscode-uri';
-import * as relativeTime from 'dayjs/plugin/relativeTime';
+import relativeTime = require('dayjs/plugin/relativeTime');
 import { util } from '../util';
 import { type LocalPackageManager } from '../managers/LocalPackageManager';
 import * as semver from 'semver';
