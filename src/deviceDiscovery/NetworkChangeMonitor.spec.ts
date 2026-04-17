@@ -174,7 +174,7 @@ describe('NetworkChangeMonitor', () => {
                 expect(callback.called).to.be.false;
             });
 
-            it('does not fire callback when network becomes no-network', () => {
+            it('fires callback when network becomes no-network', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
@@ -190,7 +190,7 @@ describe('NetworkChangeMonitor', () => {
 
                 clock.tick(ALERT_INTERVAL);
 
-                expect(callback.called).to.be.false;
+                expect(callback.calledOnce).to.be.true;
             });
 
             it('fires callback when reconnecting to same network after being disconnected', () => {
@@ -211,7 +211,7 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
                 clock.tick(ALERT_INTERVAL);
-                expect(callback.called).to.be.false; // no broadcast for going to no-network
+                expect(callback.calledOnce).to.be.true; // callback fires for going to no-network
 
                 // Same network comes back
                 networkInterfacesStub.returns({
@@ -224,8 +224,8 @@ describe('NetworkChangeMonitor', () => {
                 });
                 clock.tick(ALERT_INTERVAL);
 
-                // Should broadcast because currentHash was 'no-network'
-                expect(callback.calledOnce).to.be.true;
+                // Should broadcast again because network changed back
+                expect(callback.calledTwice).to.be.true;
             });
         });
 
