@@ -29,10 +29,18 @@ export class RokuFinder extends EventEmitter {
     private server: Server;
     private running = false;
     private scanTimers: ReturnType<typeof setTimeout>[] = [];
-    private aliveDebounceMap = new Map<string, number>();
+    // Suppresses duplicate `found` emits within the debounce window; entries self-clean
+    // when their timer fires, so there's no long-lived state for devices that go away.
+    private aliveDebounceMap = new Map<string, ReturnType<typeof setTimeout>>();
     private readonly ALIVE_DEBOUNCE_MS = 500;
-    private lastCleanupTime = 0;
-    private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+    // Burst detection: Roku devices send multiple ssdp:alive packets in quick succession
+    // when they first come online; steady-state heartbeats are spaced minutes apart. We
+    // infer "just came online" from the burst pattern rather than any single alive.
+    // Entries self-clean when their timer fires after the window goes quiet.
+    private aliveBurstMap = new Map<string, { timestamps: number[]; emitted: boolean; cleanupTimer: ReturnType<typeof setTimeout> }>();
+    private readonly ALIVE_BURST_WINDOW_MS = 5_000;
+    private readonly ALIVE_BURST_MIN_COUNT = 2;
 
     private readonly SCAN_MIN_DURATION_MS = 3_000;
     private readonly SCAN_SETTLE_MS = 1_500;
@@ -204,34 +212,67 @@ export class RokuFinder extends EventEmitter {
             try {
                 const url = new URL(location);
                 const ip = url.hostname;
-                const now = Date.now();
+                const serialNumber = this.extractSerialFromUsn(usn);
 
-                // Periodic cleanup of stale entries
-                if (now - this.lastCleanupTime > this.CLEANUP_INTERVAL_MS) {
-                    this.lastCleanupTime = now;
-                    for (const [cachedIp, timestamp] of this.aliveDebounceMap) {
-                        if (now - timestamp > this.CLEANUP_INTERVAL_MS) {
-                            this.aliveDebounceMap.delete(cachedIp);
-                        }
-                    }
-                }
-
-                const lastEmit = this.aliveDebounceMap.get(ip);
-                if (lastEmit === undefined || now - lastEmit >= this.ALIVE_DEBOUNCE_MS) {
-                    this.aliveDebounceMap.set(ip, now);
-                    const serialNumber = this.extractSerialFromUsn(usn);
+                // Always run the `found` path first, independent of burst detection — every
+                // alive needs to feed discovery, even if the burst tracker decides not to fire
+                // `device-online` or something downstream of it throws.
+                if (!this.aliveDebounceMap.has(ip)) {
+                    this.aliveDebounceMap.set(
+                        ip,
+                        setTimeout(() => this.aliveDebounceMap.delete(ip), this.ALIVE_DEBOUNCE_MS)
+                    );
                     this.emit('found', ip, { serialNumber: serialNumber });
-                    this.emit('device-online', ip, serialNumber);
 
                     // Reset settle timer when device found during active scan
                     if (this.isScanning) {
                         this.resetSettleTimer();
                     }
                 }
+
+                // Then track every alive for burst detection (may emit `device-online`)
+                this.detectDeviceOnlineBurst(ip, serialNumber, Date.now());
             } catch {
                 // Invalid URL, ignore
             }
         }
+    }
+
+    /**
+     * Detect a burst of ssdp:alive packets from the same IP, which implies the
+     * device just came online (Rokus send several alives in quick succession on
+     * boot/join; steady-state heartbeats are far apart and won't accumulate).
+     * Emits 'device-online' once per burst, then clears the window so lingering
+     * alives in the same burst don't trigger additional emits.
+     */
+    private detectDeviceOnlineBurst(ip: string, serialNumber: string | undefined, now: number): void {
+        const existing = this.aliveBurstMap.get(ip);
+        if (existing) {
+            clearTimeout(existing.cleanupTimer);
+        }
+        const recent = existing
+            ? existing.timestamps.filter(time => now - time <= this.ALIVE_BURST_WINDOW_MS)
+            : [];
+
+        // Re-arm once the burst window goes quiet, so a future burst can fire again.
+        let emitted = existing?.emitted ?? false;
+        if (emitted && recent.length === 0) {
+            emitted = false;
+        }
+
+        recent.push(now);
+
+        if (!emitted && recent.length >= this.ALIVE_BURST_MIN_COUNT) {
+            emitted = true;
+            this.emit('device-online', ip, serialNumber);
+        }
+
+        // Entry self-cleans once the burst window elapses with no new alives
+        this.aliveBurstMap.set(ip, {
+            timestamps: recent,
+            emitted: emitted,
+            cleanupTimer: setTimeout(() => this.aliveBurstMap.delete(ip), this.ALIVE_BURST_WINDOW_MS)
+        });
     }
 
     /**
@@ -262,7 +303,14 @@ export class RokuFinder extends EventEmitter {
         }
         this.scanTimers = [];
         this.clearScanTimers();
+        for (const timer of this.aliveDebounceMap.values()) {
+            clearTimeout(timer);
+        }
         this.aliveDebounceMap.clear();
+        for (const tracker of this.aliveBurstMap.values()) {
+            clearTimeout(tracker.cleanupTimer);
+        }
+        this.aliveBurstMap.clear();
 
         this.client.removeAllListeners();
         this.client.stop();

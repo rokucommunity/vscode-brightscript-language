@@ -10,7 +10,6 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
-import { debounce } from 'lodash';
 
 export class DeviceManager {
     // #region constructor
@@ -168,7 +167,6 @@ export class DeviceManager {
 
     // Notifications and event debouncing
     private readonly DEVICES_CHANGED_DEBOUNCE_MS = 50;
-    private deviceOnlineNotifiers = new Map<string, ReturnType<typeof debounce>>();
 
     // Scan state management
     private readonly STALE_SCAN_THRESHOLD_MS = 30 * 60 * 1_000; // 30 minutes
@@ -1033,15 +1031,8 @@ export class DeviceManager {
         // Get display name from cache
         const fallbackName = actualSerial ? `${ip} (${actualSerial})` : ip;
         const displayName = cachedDevice?.deviceInfo?.['default-device-name'] ?? fallbackName;
-        const notifierId = actualSerial ?? ip;
 
-        if (!this.deviceOnlineNotifiers.has(notifierId)) {
-            this.deviceOnlineNotifiers.set(notifierId, debounce((name: string) => {
-                this.deviceOnlineNotifiers.delete(notifierId);
-                void util.showTimedNotification(`Device Online: ${name}`);
-            }, 500));
-        }
-        this.deviceOnlineNotifiers.get(notifierId)(displayName);
+        void util.showTimedNotification(`Device Online: ${displayName}`);
     }
 
     private async activateMonitoring() {

@@ -181,7 +181,29 @@ describe('RokuFinder', () => {
             expect(options.serialNumber).to.equal('ABC123');
         });
 
-        it('emits "device-online" with IP and serial number on ssdp:alive', async () => {
+        it('emits "device-online" with IP and serial number when a burst of ssdp:alive is seen', async () => {
+            finder = new RokuFinder();
+            await finder.start();
+
+            const deviceOnlineSpy = sinon.spy();
+            finder.on('device-online', deviceOnlineSpy);
+
+            const aliveMessage = {
+                NT: 'roku:ecp',
+                NTS: 'ssdp:alive',
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:ABC123'
+            };
+
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+
+            expect(deviceOnlineSpy.calledOnce).to.be.true;
+            expect(deviceOnlineSpy.firstCall.args[0]).to.equal('192.168.1.100');
+            expect(deviceOnlineSpy.firstCall.args[1]).to.equal('ABC123');
+        });
+
+        it('does not emit "device-online" for a single ssdp:alive', async () => {
             finder = new RokuFinder();
             await finder.start();
 
@@ -195,9 +217,120 @@ describe('RokuFinder', () => {
                 USN: 'uuid:roku:ecp:ABC123'
             });
 
+            expect(deviceOnlineSpy.called).to.be.false;
+        });
+
+        it('emits "device-online" only once per burst regardless of how many alives arrive', async () => {
+            finder = new RokuFinder();
+            await finder.start();
+
+            const deviceOnlineSpy = sinon.spy();
+            finder.on('device-online', deviceOnlineSpy);
+
+            const aliveMessage = {
+                NT: 'roku:ecp',
+                NTS: 'ssdp:alive',
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:ABC123'
+            };
+
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+            (finder['server'] as any).emit('advertise-alive', aliveMessage);
+
             expect(deviceOnlineSpy.calledOnce).to.be.true;
+        });
+
+        it('does not emit "device-online" for periodic heartbeats spaced beyond the burst window', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                clock.tick(10_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                clock.tick(10_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+
+                expect(deviceOnlineSpy.called).to.be.false;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits "device-online" again on a new burst after a quiet period', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                clock.tick(10_000);
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('tracks bursts independently per IP', async () => {
+            finder = new RokuFinder();
+            await finder.start();
+
+            const deviceOnlineSpy = sinon.spy();
+            finder.on('device-online', deviceOnlineSpy);
+
+            const alive1 = {
+                NT: 'roku:ecp',
+                NTS: 'ssdp:alive',
+                LOCATION: 'http://192.168.1.100:8060',
+                USN: 'uuid:roku:ecp:ABC123'
+            };
+            const alive2 = {
+                NT: 'roku:ecp',
+                NTS: 'ssdp:alive',
+                LOCATION: 'http://192.168.1.101:8060',
+                USN: 'uuid:roku:ecp:DEF456'
+            };
+
+            // One alive from each IP - neither alone forms a burst
+            (finder['server'] as any).emit('advertise-alive', alive1);
+            (finder['server'] as any).emit('advertise-alive', alive2);
+            expect(deviceOnlineSpy.called).to.be.false;
+
+            // Second alive from each IP - now each forms a burst
+            (finder['server'] as any).emit('advertise-alive', alive1);
+            (finder['server'] as any).emit('advertise-alive', alive2);
+            expect(deviceOnlineSpy.calledTwice).to.be.true;
             expect(deviceOnlineSpy.firstCall.args[0]).to.equal('192.168.1.100');
-            expect(deviceOnlineSpy.firstCall.args[1]).to.equal('ABC123');
+            expect(deviceOnlineSpy.secondCall.args[0]).to.equal('192.168.1.101');
         });
 
         it('emits "lost" on ssdp:byebye', async () => {
@@ -325,11 +458,11 @@ describe('RokuFinder', () => {
             expect(foundSpy.secondCall.args[0]).to.equal('192.168.1.101');
         });
 
-        it('cleans up stale debounce entries after 5 minutes', async () => {
+        it('auto-cleans debounce entries once the debounce window elapses', () => {
             const clock = sinon.useFakeTimers();
             try {
                 finder = new RokuFinder();
-                await finder.start();
+                finder['running'] = true;
 
                 const aliveMessage = {
                     NT: 'roku:ecp',
@@ -338,20 +471,35 @@ describe('RokuFinder', () => {
                     USN: 'uuid:roku:ecp:ABC123'
                 };
 
-                // First message - adds entry to map
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(finder['aliveDebounceMap'].size).to.equal(1);
 
-                // Advance past cleanup interval (5 minutes)
-                clock.tick((5 * 60 * 1000) + 1);
+                // After the debounce window, the entry removes itself without waiting for another alive
+                clock.tick(500);
+                expect(finder['aliveDebounceMap'].size).to.equal(0);
+            } finally {
+                clock.restore();
+            }
+        });
 
-                // Next message triggers cleanup and removes stale entry, then adds fresh one
+        it('auto-cleans burst tracker entries once the burst window elapses', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
-                expect(finder['aliveDebounceMap'].size).to.equal(1);
+                expect(finder['aliveBurstMap'].size).to.equal(1);
 
-                // Verify the entry is fresh (timestamp should be current time)
-                const timestamp = finder['aliveDebounceMap'].get('192.168.1.100');
-                expect(timestamp).to.equal(Date.now());
+                clock.tick(5_000);
+                expect(finder['aliveBurstMap'].size).to.equal(0);
             } finally {
                 clock.restore();
             }
