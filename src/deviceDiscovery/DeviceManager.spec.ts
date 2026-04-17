@@ -1420,6 +1420,46 @@ describe('DeviceManager', () => {
 
             expect(manager['fetchDeviceThrottleData'].size).to.equal(0);
         });
+
+        it('calls setScanNeeded when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const setScanNeededSpy = sinon.spy(manager as any, 'setScanNeeded');
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(setScanNeededSpy.calledOnce).to.be.true;
+        });
+
+        it('clears devices array when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add multiple devices
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-456',
+                ip: '192.168.1.101',
+                isConfigured: true
+            }));
+            expect(manager['devices'].length).to.equal(2);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Devices array should be cleared (both discovered and configured)
+            expect(manager['devices'].length).to.equal(0);
+        });
     });
 
     describe('configured devices', () => {
