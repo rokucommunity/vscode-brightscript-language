@@ -83,8 +83,16 @@ export class DeviceManager {
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
             this.fetchDeviceThrottleData.clear();
+
+            //clear and reload all devices anytime this network changes
+            this.devices = [];
             this.loadLastSeenDevices();
+            this.loadConfiguredDevices().catch(e => console.error(e));
+
             this.restartRokuFinder();
+
+            //this is important for telling the devices view to refresh and health check its devices
+            this.setScanNeeded();
         });
     }
 

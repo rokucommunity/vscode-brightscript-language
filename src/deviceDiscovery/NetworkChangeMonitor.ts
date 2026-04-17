@@ -106,9 +106,7 @@ export class NetworkChangeMonitor {
         const hash = getNetworkHash();
         if (hash !== this.currentHash) {
             this.currentHash = hash;
-            if (hash !== 'no-network') {
-                this.onNetworkChanged();
-            }
+            this.onNetworkChanged();
         }
     }
 
