@@ -502,6 +502,97 @@ export class BrightScriptCommands {
             void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
+        this.registerCommand('clearDefaultDevicePassword', async () => {
+            // Clear the value from every scope where it's set, so "clear" really means clear.
+            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<string>('defaultDevicePassword');
+
+            if (rootInspection?.globalValue !== undefined) {
+                await vscode.workspace.getConfiguration('brightscript')
+                    .update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.Global);
+            }
+
+            if (rootInspection?.workspaceValue !== undefined) {
+                await vscode.workspace.getConfiguration('brightscript')
+                    .update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.Workspace);
+            }
+
+            // Per-folder values need to be inspected with that folder's URI as scope
+            for (const folder of vscode.workspace.workspaceFolders ?? []) {
+                const folderConfig = vscode.workspace.getConfiguration('brightscript', folder.uri);
+                const folderInspection = folderConfig.inspect<string>('defaultDevicePassword');
+                if (folderInspection?.workspaceFolderValue !== undefined) {
+                    await folderConfig.update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.WorkspaceFolder);
+                }
+            }
+
+            await vscode.window.showInformationMessage('Default device password cleared.');
+        });
+
+        this.registerCommand('setDefaultDevicePassword', async () => {
+            const currentValue = vscode.workspace.getConfiguration('brightscript').get<string>('defaultDevicePassword') ?? '';
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the default developer password (applied to devices without their own password)',
+                password: true,
+                value: currentValue,
+                prompt: 'Set default device password'
+            });
+
+            if (password === undefined) {
+                return;
+            }
+
+            // Pick the right "workspace" target and scope resource:
+            // - A .code-workspace file: write to Workspace (no resource needed)
+            // - A plain folder: write to WorkspaceFolder and provide the folder URI as the config scope
+            let workspaceTarget: vscode.ConfigurationTarget;
+            let scopeUri: vscode.Uri | undefined;
+
+            if (vscode.workspace.workspaceFile) {
+                workspaceTarget = vscode.ConfigurationTarget.Workspace;
+            } else {
+                workspaceTarget = vscode.ConfigurationTarget.WorkspaceFolder;
+                const folders = vscode.workspace.workspaceFolders ?? [];
+                if (folders.length === 0) {
+                    void vscode.window.showErrorMessage('Cannot set workspace default password: no workspace is open.');
+                    return;
+                } else if (folders.length === 1) {
+                    scopeUri = folders[0].uri;
+                } else {
+                    const pickedFolder = await vscode.window.showWorkspaceFolderPick({
+                        placeHolder: 'Select which folder to save the default password to'
+                    });
+                    if (!pickedFolder) {
+                        return;
+                    }
+                    scopeUri = pickedFolder.uri;
+                }
+            }
+
+            const targetChoice = await vscode.window.showQuickPick(
+                [
+                    { label: 'User', description: 'Apply to all workspaces', target: vscode.ConfigurationTarget.Global },
+                    { label: 'Workspace', description: 'Apply to this workspace only', target: workspaceTarget }
+                ],
+                { placeHolder: 'Where should the default password be saved?' }
+            );
+
+            if (!targetChoice) {
+                return;
+            }
+
+            // For WorkspaceFolder writes, the configuration must be scoped to a folder URI
+            const updateScope = targetChoice.target === vscode.ConfigurationTarget.WorkspaceFolder ? scopeUri : undefined;
+            await vscode.workspace.getConfiguration('brightscript', updateScope)
+                .update('defaultDevicePassword', password || undefined, targetChoice.target);
+
+            if (password) {
+                await vscode.window.showInformationMessage('Default device password set.');
+            } else {
+                await vscode.window.showInformationMessage('Default device password cleared.');
+            }
+        });
+
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {
             if (!deviceIp) {
                 throw new Error('Device IP is required to set password.');
