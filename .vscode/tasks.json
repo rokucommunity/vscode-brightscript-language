@@ -27,12 +27,27 @@
             "presentation": {
                 "group": "watch",
                 "echo": true,
-                "reveal": "silent",
+                "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },
             "isBackground": true,
-            "problemMatcher": "$tsc-watch"
+            "problemMatcher": [
+                {
+                    "pattern": {
+                        "regexp": ""
+                    },
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": {
+                            "regexp": "\\[watch\\] build started"
+                        },
+                        "endsPattern": {
+                            "regexp": "\\[watch\\] build finished"
+                        }
+                    }
+                }
+            ]
         },
         {
             "label": "watch-webviews",
@@ -41,7 +56,7 @@
             "presentation": {
                 "group": "watch",
                 "echo": true,
-                "reveal": "silent",
+                "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },

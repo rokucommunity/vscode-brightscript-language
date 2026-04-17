@@ -228,5 +228,11 @@ module.exports = {
             '@typescript-eslint/no-require-imports': 'off',
             '@typescript-eslint/no-var-requires': 'off'
         }
+    }, {
+        files: ['esbuild.js'],
+        rules: {
+            '@typescript-eslint/no-require-imports': 'off',
+            '@typescript-eslint/no-var-requires': 'off'
+        }
     }]
 };

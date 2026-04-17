@@ -8,6 +8,7 @@ src/**
 webviews/**
 docs/**
 .tmp/**
+node_modules/**
 **/*.map
 **/*.spec.js
 developer-guidelines.md

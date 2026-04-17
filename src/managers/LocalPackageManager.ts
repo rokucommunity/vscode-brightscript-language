@@ -4,7 +4,7 @@ import { standardizePath as s } from 'brighterscript';
 import { util } from '../util';
 import type { ExtensionContext } from 'vscode';
 import * as lodash from 'lodash';
-import * as md5 from 'md5';
+import md5 = require('md5');
 import * as semver from 'semver';
 import * as path from 'path';
 

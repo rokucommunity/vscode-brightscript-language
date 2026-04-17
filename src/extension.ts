@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as prettyBytes from 'pretty-bytes';
+import prettyBytes from 'pretty-bytes';
 import { extensions } from 'vscode';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
@@ -475,6 +475,7 @@ export class Extension {
         this.deviceManager?.dispose?.();
     }
 }
+
 export const extension = new Extension();
 export async function activate(context: vscode.ExtensionContext) {
     await extension.activate(context);

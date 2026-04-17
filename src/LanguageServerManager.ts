@@ -18,7 +18,7 @@ import { util } from './util';
 import { LanguageServerInfoCommand, languageServerInfoCommand } from './commands/LanguageServerInfoCommand';
 import * as fsExtra from 'fs-extra';
 import { EventEmitter } from 'eventemitter3';
-import * as dayjs from 'dayjs';
+import dayjs = require('dayjs');
 import type { LocalPackageManager, ParsedVersionInfo } from './managers/LocalPackageManager';
 import { firstBy } from 'thenby';
 
@@ -59,11 +59,23 @@ class LspRunTracker {
 
 export const LANGUAGE_SERVER_NAME = 'BrighterScript Language Server';
 
+// Injected by esbuild at bundle time; falls back to require.resolve in dev/test mode
+declare const BSC_EMBEDDED_VERSION: string;
+
 export class LanguageServerManager {
     constructor() {
         this.deferred = new Deferred();
-        const brighterscriptDir = require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, '');
-        const version = fsExtra.readJsonSync(`${brighterscriptDir}/package.json`).version;
+        // In dev mode, resolve from node_modules. In the packaged extension, require.resolve
+        // won't work because brighterscript is bundled — packageDir gets overridden in init().
+        let brighterscriptDir = '';
+        let version: string;
+        try {
+            brighterscriptDir = require.resolve('brighterscript').replace(/[\\\/]dist[\\\/]index.js/i, '');
+            version = fsExtra.readJsonSync(`${brighterscriptDir}/package.json`).version;
+        } catch {
+            // Bundled extension: BSC_EMBEDDED_VERSION is injected by esbuild
+            version = typeof BSC_EMBEDDED_VERSION !== 'undefined' ? BSC_EMBEDDED_VERSION : 'unknown';
+        }
         this.embeddedBscInfo = {
             packageDir: brighterscriptDir,
             versionInfo: version,
@@ -105,6 +117,14 @@ export class LanguageServerManager {
         this.definitionRepository = definitionRepository;
 
         this.localPackageManager = localPackageManager;
+
+        // When running as a packaged extension, use the bundled brighterscript.js instead of
+        // node_modules (which won't be present). In dev mode, the bundled file may also exist
+        // in dist/ after a build, so prefer it to keep behaviour consistent.
+        const bundledBscPath = context.asAbsolutePath(path.join('dist', 'brighterscript.js'));
+        if (await fsExtra.pathExists(bundledBscPath)) {
+            this.embeddedBscInfo.packageDir = bundledBscPath;
+        }
 
         //anytime the window changes focus, save the current brighterscript version
         vscode.window.onDidChangeWindowState(async (e) => {
@@ -551,6 +571,11 @@ export class LanguageServerManager {
      */
     @OneAtATime({ timeout: 3 * 60 * 1000 })
     private async ensureBscVersionInstalled(versionInfo: string, retryCount = 1, showProgress = true): Promise<BscInfo> {
+        //if this matches the embedded bsc (a bundled .js file, not a directory), use it directly
+        if (versionInfo === this.embeddedBscInfo.packageDir) {
+            return this.embeddedBscInfo;
+        }
+
         const parsed = this.parseVersionInfo(versionInfo);
 
         //if this is a directory, use it as-is
