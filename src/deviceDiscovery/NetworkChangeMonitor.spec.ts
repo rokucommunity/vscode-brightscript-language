@@ -3,15 +3,9 @@ import * as sinon from 'sinon';
 import * as os from 'os';
 import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 
-const IDLE_INTERVAL = 3 * 60 * 1_000; // 3 minutes
-const ALERT_TIER_1_INTERVAL = 1_000;
-const ALERT_TIER_1_DURATION = 30_000;
-const ALERT_TIER_2_INTERVAL = 5_000;
-const ALERT_TIER_2_DURATION = 30_000;
-const ALERT_TIER_3_INTERVAL = 15_000;
-const ALERT_TIER_3_DURATION = 180_000;
-const VERIFYING_INTERVAL = 1_000;
-const VERIFYING_REQUIRED_COUNT = 3;
+const ALERT_INTERVAL = 1_000; // 1 second
+const NORMAL_INTERVAL = 15_000; // 15 seconds
+const ALERT_THRESHOLD = 30;
 
 describe('NetworkChangeMonitor', () => {
     let networkInterfacesStub: sinon.SinonStub;
@@ -138,13 +132,18 @@ describe('NetworkChangeMonitor', () => {
                 expect(callback.called).to.be.false;
             });
 
-            it('initializes in idle state', () => {
+            it('starts with alertCounter at 0', () => {
                 monitor = new NetworkChangeMonitor(callback);
-                expect(monitor.getState()).to.equal('idle');
+                expect(monitor.getAlertCounter()).to.equal(0);
+            });
+
+            it('starts in alert mode', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                expect(monitor.isInAlertMode()).to.be.true;
             });
         });
 
-        describe('idle state', () => {
+        describe('network change detection', () => {
             it('fires callback when network changes', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
@@ -159,19 +158,18 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
 
-                clock.tick(IDLE_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
 
                 expect(callback.calledOnce).to.be.true;
-                expect(monitor.getState()).to.equal('idle');
             });
 
             it('does not fire callback when network unchanged', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
-                clock.tick(IDLE_INTERVAL);
-                clock.tick(IDLE_INTERVAL);
-                clock.tick(IDLE_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
 
                 expect(callback.called).to.be.false;
             });
@@ -190,236 +188,18 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
 
-                clock.tick(IDLE_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
 
                 expect(callback.called).to.be.false;
             });
 
-            it('fires callback when IP is added', () => {
+            it('fires callback when reconnecting to same network after being disconnected', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
-                // Add a new IP
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '192.168.1.100',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }],
-                    'en1': [{
-                        address: '192.168.1.101',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(IDLE_INTERVAL);
-
-                expect(callback.calledOnce).to.be.true;
-            });
-
-            it('fires callback when IP is removed', () => {
-                // Start with two IPs
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '192.168.1.100',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }],
-                    'en1': [{
-                        address: '192.168.1.101',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-
-                // Remove one IP
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '192.168.1.100',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(IDLE_INTERVAL);
-
-                expect(callback.calledOnce).to.be.true;
-            });
-        });
-
-        describe('sleep detection', () => {
-            it('enters alert state when sleep is simulated', () => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-
-                expect(monitor.getState()).to.equal('idle');
-
-                // Simulate sleep detection
-                monitor.simulateSleep();
-
-                expect(monitor.getState()).to.equal('alert');
-                expect(monitor.getAlertTier()).to.equal(1);
-            });
-        });
-
-        describe('alert state', () => {
-            beforeEach(() => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-                // Simulate sleep to enter alert state
-                monitor.simulateSleep();
-                expect(monitor.getState()).to.equal('alert');
-            });
-
-            it('broadcasts and enters verifying when network detected with different hash', () => {
-                // Change network
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.50',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(ALERT_TIER_1_INTERVAL);
-
-                expect(callback.calledOnce).to.be.true;
-                expect(monitor.getState()).to.equal('verifying');
-            });
-
-            it('enters verifying without broadcast when network detected with same hash', () => {
-                // Network unchanged (same as initial)
-                clock.tick(ALERT_TIER_1_INTERVAL);
-
+                // Start on a network
+                clock.tick(ALERT_INTERVAL);
                 expect(callback.called).to.be.false;
-                expect(monitor.getState()).to.equal('verifying');
-            });
-
-            it('advances from tier 1 to tier 2 on timeout with no network', () => {
-                // Simulate no network
-                networkInterfacesStub.returns({
-                    'lo0': [{
-                        address: '127.0.0.1',
-                        netmask: '255.0.0.0',
-                        family: 'IPv4',
-                        internal: true
-                    }]
-                });
-
-                // Tick through tier 1 duration
-                for (let elapsed = 0; elapsed < ALERT_TIER_1_DURATION; elapsed += ALERT_TIER_1_INTERVAL) {
-                    clock.tick(ALERT_TIER_1_INTERVAL);
-                }
-
-                expect(monitor.getState()).to.equal('alert');
-                expect(monitor.getAlertTier()).to.equal(2);
-            });
-
-            it('advances from tier 2 to tier 3 on timeout with no network', () => {
-                // Simulate no network
-                networkInterfacesStub.returns({
-                    'lo0': [{
-                        address: '127.0.0.1',
-                        netmask: '255.0.0.0',
-                        family: 'IPv4',
-                        internal: true
-                    }]
-                });
-
-                // Tick through tier 1
-                for (let elapsed = 0; elapsed < ALERT_TIER_1_DURATION; elapsed += ALERT_TIER_1_INTERVAL) {
-                    clock.tick(ALERT_TIER_1_INTERVAL);
-                }
-                expect(monitor.getAlertTier()).to.equal(2);
-
-                // Tick through tier 2
-                for (let elapsed = 0; elapsed < ALERT_TIER_2_DURATION; elapsed += ALERT_TIER_2_INTERVAL) {
-                    clock.tick(ALERT_TIER_2_INTERVAL);
-                }
-                expect(monitor.getAlertTier()).to.equal(3);
-            });
-
-            it('returns to idle when tier 3 times out (gave up)', () => {
-                // Simulate no network throughout
-                networkInterfacesStub.returns({
-                    'lo0': [{
-                        address: '127.0.0.1',
-                        netmask: '255.0.0.0',
-                        family: 'IPv4',
-                        internal: true
-                    }]
-                });
-
-                // Tick through all tiers
-                for (let elapsed = 0; elapsed < ALERT_TIER_1_DURATION; elapsed += ALERT_TIER_1_INTERVAL) {
-                    clock.tick(ALERT_TIER_1_INTERVAL);
-                }
-                expect(monitor.getAlertTier()).to.equal(2);
-
-                for (let elapsed = 0; elapsed < ALERT_TIER_2_DURATION; elapsed += ALERT_TIER_2_INTERVAL) {
-                    clock.tick(ALERT_TIER_2_INTERVAL);
-                }
-                expect(monitor.getAlertTier()).to.equal(3);
-
-                for (let elapsed = 0; elapsed < ALERT_TIER_3_DURATION; elapsed += ALERT_TIER_3_INTERVAL) {
-                    clock.tick(ALERT_TIER_3_INTERVAL);
-                }
-
-                expect(monitor.getState()).to.equal('idle');
-                // Should NOT have broadcast (gave up without finding network)
-                expect(callback.called).to.be.false;
-            });
-        });
-
-        describe('verifying state', () => {
-            beforeEach(() => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-                // Simulate sleep then detect network to enter verifying
-                monitor.simulateSleep();
-                clock.tick(ALERT_TIER_1_INTERVAL); // Detect network, enter verifying
-                expect(monitor.getState()).to.equal('verifying');
-            });
-
-            it('returns to idle after 3 consecutive matching polls', () => {
-                // Tick through verifying checks
-                for (let i = 0; i < VERIFYING_REQUIRED_COUNT; i++) {
-                    clock.tick(VERIFYING_INTERVAL);
-                }
-
-                expect(monitor.getState()).to.equal('idle');
-            });
-
-            it('goes back to alert when hash changes (unstable)', () => {
-                clock.tick(VERIFYING_INTERVAL); // First verifying check passes
-
-                // Network changes during verifying
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.99',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-
-                clock.tick(VERIFYING_INTERVAL);
-
-                expect(monitor.getState()).to.equal('alert');
-            });
-
-            it('goes back to alert when no-network detected', () => {
-                clock.tick(VERIFYING_INTERVAL); // First verifying check passes
 
                 // Network goes down
                 networkInterfacesStub.returns({
@@ -430,38 +210,134 @@ describe('NetworkChangeMonitor', () => {
                         internal: true
                     }]
                 });
+                clock.tick(ALERT_INTERVAL);
+                expect(callback.called).to.be.false; // no broadcast for going to no-network
 
-                clock.tick(VERIFYING_INTERVAL);
+                // Same network comes back
+                networkInterfacesStub.returns({
+                    'en0': [{
+                        address: '192.168.1.100',
+                        netmask: '255.255.255.0',
+                        family: 'IPv4',
+                        internal: false
+                    }]
+                });
+                clock.tick(ALERT_INTERVAL);
 
-                expect(monitor.getState()).to.equal('alert');
+                // Should broadcast because currentHash was 'no-network'
+                expect(callback.calledOnce).to.be.true;
             });
         });
 
-        describe('full scenarios', () => {
-            it('sleep → no-network → network found → verifying passes → idle', () => {
+        describe('alert mode behavior', () => {
+            it('uses 1 second interval when in alert mode', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
-                // Start with network down (simulating sleep disconnect)
-                networkInterfacesStub.returns({
-                    'lo0': [{
-                        address: '127.0.0.1',
-                        netmask: '255.0.0.0',
-                        family: 'IPv4',
-                        internal: true
-                    }]
-                });
+                expect(monitor.isInAlertMode()).to.be.true;
 
-                // Sleep detected
+                // Should increment counter after 1 second
+                clock.tick(ALERT_INTERVAL);
+                expect(monitor.getAlertCounter()).to.equal(1);
+
+                clock.tick(ALERT_INTERVAL);
+                expect(monitor.getAlertCounter()).to.equal(2);
+            });
+
+            it('transitions to normal mode after threshold polls', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                expect(monitor.isInAlertMode()).to.be.true;
+
+                // Poll until threshold
+                for (let i = 0; i < ALERT_THRESHOLD; i++) {
+                    clock.tick(ALERT_INTERVAL);
+                }
+
+                expect(monitor.isInAlertMode()).to.be.false;
+                expect(monitor.getAlertCounter()).to.equal(ALERT_THRESHOLD);
+            });
+
+            it('uses 15 second interval in normal mode', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Get to normal mode
+                for (let i = 0; i < ALERT_THRESHOLD; i++) {
+                    clock.tick(ALERT_INTERVAL);
+                }
+
+                expect(monitor.isInAlertMode()).to.be.false;
+                const counterAtThreshold = monitor.getAlertCounter();
+
+                // Now should use 15 second interval
+                clock.tick(NORMAL_INTERVAL);
+                expect(monitor.getAlertCounter()).to.equal(counterAtThreshold + 1);
+            });
+        });
+
+        describe('sleep detection', () => {
+            it('resets counter to 0 when sleep is simulated', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Get past threshold into normal mode
+                for (let i = 0; i < ALERT_THRESHOLD + 5; i++) {
+                    clock.tick(ALERT_INTERVAL);
+                }
+
+                expect(monitor.isInAlertMode()).to.be.false;
+
+                // Simulate sleep
                 monitor.simulateSleep();
-                expect(monitor.getState()).to.equal('alert');
 
-                // Poll a few times with no network
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                expect(monitor.getState()).to.equal('alert');
+                expect(monitor.getAlertCounter()).to.equal(0);
+                expect(monitor.isInAlertMode()).to.be.true;
+            });
 
-                // Network comes back (different from initial)
+            it('returns to fast polling after sleep', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Get to normal mode
+                for (let i = 0; i < ALERT_THRESHOLD; i++) {
+                    clock.tick(ALERT_INTERVAL);
+                }
+                expect(monitor.isInAlertMode()).to.be.false;
+
+                // Simulate sleep - this resets counter and triggers immediate poll
+                monitor.simulateSleep();
+
+                // Should be back in alert mode with fast polling
+                expect(monitor.isInAlertMode()).to.be.true;
+
+                // Tick to trigger the next poll (first one happens immediately on simulateSleep)
+                clock.tick(ALERT_INTERVAL);
+
+                // Counter should be incrementing with fast 1s interval
+                const counterAfterFirstTick = monitor.getAlertCounter();
+                clock.tick(ALERT_INTERVAL);
+                expect(monitor.getAlertCounter()).to.equal(counterAfterFirstTick + 1);
+            });
+        });
+
+        describe('full scenario', () => {
+            it('sleep → fast polling → detects network change → broadcasts', () => {
+                monitor = new NetworkChangeMonitor(callback);
+                monitor.start();
+
+                // Get to normal mode
+                for (let i = 0; i < ALERT_THRESHOLD; i++) {
+                    clock.tick(ALERT_INTERVAL);
+                }
+                expect(monitor.isInAlertMode()).to.be.false;
+
+                // Simulate sleep (going from home to work)
+                monitor.simulateSleep();
+                expect(monitor.isInAlertMode()).to.be.true;
+
+                // Network changes (now at work)
                 networkInterfacesStub.returns({
                     'en0': [{
                         address: '10.0.0.50',
@@ -471,77 +347,28 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
 
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                expect(callback.calledOnce).to.be.true; // Broadcast!
-                expect(monitor.getState()).to.equal('verifying');
+                // Fast polling should detect it within 1 second
+                clock.tick(ALERT_INTERVAL);
 
-                // Verifying checks pass
-                for (let i = 0; i < VERIFYING_REQUIRED_COUNT; i++) {
-                    clock.tick(VERIFYING_INTERVAL);
-                }
-
-                expect(monitor.getState()).to.equal('idle');
+                expect(callback.calledOnce).to.be.true;
             });
 
-            it('wake on same network → no broadcast, quick verifying', () => {
+            it('wake on same network → no broadcast', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
-                // Sleep detected
-                monitor.simulateSleep();
-                expect(monitor.getState()).to.equal('alert');
-
-                // Network still same
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                expect(callback.called).to.be.false; // No broadcast
-                expect(monitor.getState()).to.equal('verifying');
-
-                // Verifying passes
-                for (let i = 0; i < VERIFYING_REQUIRED_COUNT; i++) {
-                    clock.tick(VERIFYING_INTERVAL);
+                // Get to normal mode
+                for (let i = 0; i < ALERT_THRESHOLD; i++) {
+                    clock.tick(ALERT_INTERVAL);
                 }
 
-                expect(monitor.getState()).to.equal('idle');
-                expect(callback.called).to.be.false; // Still no broadcast
-            });
-
-            it('flaky WiFi: broadcasts on each change, verifying fails, retries from alert', () => {
-                monitor = new NetworkChangeMonitor(callback);
-                monitor.start();
-
-                // Sleep detected
+                // Simulate sleep
                 monitor.simulateSleep();
-                expect(monitor.getState()).to.equal('alert');
 
-                // Network comes back (changed)
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.50',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                expect(callback.callCount).to.equal(1);
-                expect(monitor.getState()).to.equal('verifying');
+                // Network unchanged
+                clock.tick(ALERT_INTERVAL);
 
-                // Flaky: network changes again during verifying
-                networkInterfacesStub.returns({
-                    'en0': [{
-                        address: '10.0.0.51',
-                        netmask: '255.255.255.0',
-                        family: 'IPv4',
-                        internal: false
-                    }]
-                });
-                clock.tick(VERIFYING_INTERVAL);
-                expect(monitor.getState()).to.equal('alert'); // Back to alert
-
-                // New network detected → broadcast
-                clock.tick(ALERT_TIER_1_INTERVAL);
-                expect(callback.callCount).to.equal(2);
-                expect(monitor.getState()).to.equal('verifying');
+                expect(callback.called).to.be.false;
             });
         });
 
@@ -561,8 +388,8 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
 
-                clock.tick(IDLE_INTERVAL);
-                clock.tick(IDLE_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
+                clock.tick(ALERT_INTERVAL);
 
                 expect(callback.called).to.be.false;
             });
@@ -576,15 +403,14 @@ describe('NetworkChangeMonitor', () => {
                 monitor = new NetworkChangeMonitor(callback);
                 monitor.start();
 
-                // Let it run for one full interval
-                clock.tick(IDLE_INTERVAL);
-                expect(callback.called).to.be.false; // No network change
+                // Let it run for a bit
+                clock.tick(ALERT_INTERVAL);
 
                 // Stop the monitor
                 monitor.stop();
 
-                // Advance time well past another interval
-                clock.tick(IDLE_INTERVAL * 2);
+                // Advance time
+                clock.tick(ALERT_INTERVAL * 10);
 
                 // Change the network while stopped
                 networkInterfacesStub.returns({
@@ -596,10 +422,9 @@ describe('NetworkChangeMonitor', () => {
                     }]
                 });
 
-                // Restart the monitor
+                // Restart the monitor - should detect change immediately
                 monitor.start();
 
-                // The callback should fire immediately since we've been stopped > interval
                 expect(callback.calledOnce).to.be.true;
             });
         });
