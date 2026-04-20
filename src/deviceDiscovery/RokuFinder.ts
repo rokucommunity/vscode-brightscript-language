@@ -256,6 +256,8 @@ export class RokuFinder extends EventEmitter {
     public dispose() {
         this.stop();
 
+        this.removeAllListeners();
+
         // Clear all timers
         for (const timer of this.scanTimers) {
             clearTimeout(timer);
