@@ -2947,31 +2947,6 @@
                 "id": "deviceControl",
                 "title": "Device Control (ECP)",
                 "properties": {
-                    "brightscript.devices": {
-                        "type": "array",
-                        "description": "An array of Roku devices that can be connected to. Each device should have a name and host property. The host is the IP address of the Roku device. This will override the auto-discovered devices, so if specified, you must provide ALL devices.",
-                        "scope": "resource",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {
-                                    "type": "string",
-                                    "description": "A name to identify this Roku device in the extension"
-                                },
-                                "host": {
-                                    "type": "string",
-                                    "description": "The IP address or hostname of the Roku device"
-                                },
-                                "password": {
-                                    "type": "string",
-                                    "description": "The password for this Roku device"
-                                }
-                            },
-                            "required": [
-                                "host"
-                            ]
-                        }
-                    },
                     "brightscript.remoteControl.host": {
                         "type": "string",
                         "default": "${promptForHost}",
