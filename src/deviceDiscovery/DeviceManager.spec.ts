@@ -349,6 +349,60 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('scan', () => {
+        it('triggers discovery without health checking', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+            const checkDevicesHealthSpy = sinon.spy(manager as any, 'checkDevicesHealth');
+
+            manager.scan(true);
+
+            expect(discoverAllSpy.calledOnce).to.be.true;
+            expect(checkDevicesHealthSpy.called).to.be.false;
+        });
+
+        it('respects deviceDiscoveryEnabled when force=false', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+
+            const result = manager.scan(false);
+
+            expect(result).to.be.false;
+            expect(discoverAllSpy.called).to.be.false;
+        });
+
+        it('ignores deviceDiscoveryEnabled when force=true', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            sinon.stub(manager as any, 'deviceDiscoveryEnabled').get(() => false);
+
+            const discoverAllSpy = sinon.spy(manager as any, 'discoverAll');
+
+            const result = manager.scan(true);
+
+            expect(result).to.be.true;
+            expect(discoverAllSpy.calledOnce).to.be.true;
+        });
+
+        it('emits scan-started event', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const scanStartedSpy = sinon.spy();
+                manager.on('scan-started', scanStartedSpy);
+
+                manager.scan(true);
+
+                expect(scanStartedSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+    });
+
     describe('checkDevicesHealth', () => {
         it('sets all devices to pending and checks all when force=true', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
@@ -907,7 +961,7 @@ describe('DeviceManager', () => {
             expect(manager.getAllDevices().some(d => d.serialNumber === 'cached-device')).to.be.true;
         });
 
-        it('loads cached devices as pending state', () => {
+        it('loads cached devices as online when cache is fresh (within 5 minutes)', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
@@ -917,7 +971,27 @@ describe('DeviceManager', () => {
                     'default-device-name': 'Test Roku',
                     'serial-number': 'device-1'
                 },
-                createdAt: Date.now()
+                createdAt: Date.now() // Fresh cache
+            });
+            // Mock getIpForSerial to return the IP
+            mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
+
+            manager['loadLastSeenDevices']();
+
+            expect(manager['devices'][0].deviceState).to.equal('online');
+        });
+
+        it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            mockGlobalStateManager.getLastSeenDevices.returns(['device-1']);
+            mockGlobalStateManager.getCachedDevice.returns({
+                serialNumber: 'device-1',
+                deviceInfo: {
+                    'default-device-name': 'Test Roku',
+                    'serial-number': 'device-1'
+                },
+                createdAt: Date.now() - (6 * 60 * 1_000) // 6 minutes ago - stale
             });
             // Mock getIpForSerial to return the IP
             mockGlobalStateManager.getIpForSerial = sinon.stub().returns('192.168.1.100');
@@ -1212,7 +1286,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('getDeviceInfoCached', () => {
+    describe('fetchDeviceInfo', () => {
         it('only makes one network call for rapid successive requests', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
@@ -1223,8 +1297,8 @@ describe('DeviceManager', () => {
             } as any);
 
             // Call twice in rapid succession
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
 
             // Should only have made one actual network call
             expect(getDeviceInfoStub.callCount).to.equal(1);
@@ -1241,14 +1315,14 @@ describe('DeviceManager', () => {
                 } as any);
 
                 // First call - should hit network
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Advance past TTL (5 seconds)
                 clock.tick(6_000);
 
                 // Second call - cache expired, should hit network again
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
@@ -1265,15 +1339,15 @@ describe('DeviceManager', () => {
             } as any);
 
             // Call for two different IPs
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
 
             // Should make two network calls (different IPs)
             expect(getDeviceInfoStub.callCount).to.equal(2);
 
             // But calling same IPs again should use cache
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
-            await manager['getDeviceInfoCached']('192.168.1.101', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
 
             // Still only two calls
             expect(getDeviceInfoStub.callCount).to.equal(2);
@@ -1290,19 +1364,19 @@ describe('DeviceManager', () => {
                 } as any);
 
                 // First call - populates cache
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Call again within TTL - should use cache
                 clock.tick(2_000);
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
                 // Advance past cleanup delay (10 seconds of inactivity)
                 clock.tick(11_000);
 
                 // Cache should be cleared, next call hits network
-                await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
@@ -1319,19 +1393,121 @@ describe('DeviceManager', () => {
             } as any);
 
             // Populate cache
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Verify cache is working
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
+            // Simulate network change by changing the stub's return value to a different hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
             // Simulate network change by calling the networkChangeMonitor callback
+            // (now handlePotentialNetworkChange will see the different hash)
             manager['networkChangeMonitor']['onNetworkChanged']();
 
+            // Wait for the async handlePotentialNetworkChange to complete
+            await util.sleep(10);
+
             // Cache should be cleared, next call hits network
-            await manager['getDeviceInfoCached']('192.168.1.100', 8060);
+            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('network change handling', () => {
+        it('updates networkId when NetworkChangeMonitor triggers callback', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // networkId should be updated
+            expect(manager['networkId']).to.equal('new-network-hash');
+        });
+
+        it('reloads devices when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a discovered device to verify it gets cleared on network change
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            expect(manager['devices'].length).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Discovered device should be removed (loadLastSeenDevices clears non-configured)
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('clears fetchDeviceThrottleData when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Populate the cache
+            manager['fetchDeviceThrottleData'].set('192.168.1.100', {
+                info: { 'serial-number': 'device-123' } as any,
+                timestamp: Date.now()
+            });
+            expect(manager['fetchDeviceThrottleData'].size).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(manager['fetchDeviceThrottleData'].size).to.equal(0);
+        });
+
+        it('calls setScanNeeded when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const setScanNeededSpy = sinon.spy(manager as any, 'setScanNeeded');
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(setScanNeededSpy.calledOnce).to.be.true;
+        });
+
+        it('clears devices array when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add multiple devices
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-456',
+                ip: '192.168.1.101',
+                isConfigured: true
+            }));
+            expect(manager['devices'].length).to.equal(2);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Devices array should be cleared (both discovered and configured)
+            expect(manager['devices'].length).to.equal(0);
         });
     });
 
@@ -1829,27 +2005,27 @@ describe('DeviceManager', () => {
             });
 
             describe('timer clearing', () => {
-                it('clears cacheCleanupTimer', () => {
+                it('clears fetchDeviceInfoThrottleTimer', () => {
                     const clock = sinon.useFakeTimers();
                     try {
                         manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                         // Trigger cache cleanup timer by resetting it
                         manager['resetCacheCleanupTimer']();
-                        expect(manager['cacheCleanupTimer']).to.not.be.null;
+                        expect(manager['fetchDeviceInfoThrottleTimer']).to.not.be.null;
 
                         manager.clearAllCache();
 
-                        expect(manager['cacheCleanupTimer']).to.be.null;
+                        expect(manager['fetchDeviceInfoThrottleTimer']).to.be.null;
                     } finally {
                         clock.restore();
                     }
                 });
 
-                it('does not throw if cacheCleanupTimer is already null', () => {
+                it('does not throw if fetchDeviceInfoThrottleTimer is already null', () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-                    manager['cacheCleanupTimer'] = null;
+                    manager['fetchDeviceInfoThrottleTimer'] = null;
 
                     expect(() => manager.clearAllCache()).to.not.throw();
                 });

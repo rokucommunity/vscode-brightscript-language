@@ -149,7 +149,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('uses the default values if not provided', async () => {
-            const config = await configProvider.resolveDebugConfiguration(folder, <any>{});
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{ type: 'brightscript' });
             const configDefaults = (configProvider as any).configDefaults;
             for (const key in configDefaults) {
                 if (key === 'outDir') {
@@ -166,6 +166,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('allows for overriding packagePort and remotePort', async () => {
             let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                type: 'brightscript',
                 host: '127.0.0.1',
                 password: 'password',
                 packagePort: 1234,
@@ -178,6 +179,7 @@ describe('BrightScriptConfigurationProvider', () => {
         it('allows using a bool value for remoteConfigMode', async () => {
             async function doTest(remoteControlMode: boolean, expected: any) {
                 let config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                    type: 'brightscript',
                     remoteControlMode: remoteControlMode
                 });
                 expect(config.remoteControlMode).to.deep.equal(expected);
@@ -185,6 +187,45 @@ describe('BrightScriptConfigurationProvider', () => {
             await doTest(true, { activateOnSessionStart: true, deactivateOnSessionEnd: true });
             await doTest(false, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
             await doTest(undefined, { activateOnSessionStart: false, deactivateOnSessionEnd: false });
+        });
+
+        describe('F5 with no launch.json', () => {
+            it('returns undefined when no project is discovered from the active file', async () => {
+                (configProvider as any).rokuProjectDiscovery = {
+                    resolveDebugConfigFromActiveFile: sinon.stub().resolves(undefined)
+                };
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.be.undefined;
+            });
+
+            it('returns undefined when rokuProjectDiscovery is not set', async () => {
+                (configProvider as any).rokuProjectDiscovery = undefined;
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.be.undefined;
+            });
+
+            it('processes the discovered config through the full resolution pipeline', async () => {
+                const discoveredConfig = {
+                    type: 'brightscript',
+                    request: 'launch',
+                    host: '192.168.1.200',
+                    password: 'secret',
+                    rootDir: '/project/out'
+                };
+                (configProvider as any).rokuProjectDiscovery = {
+                    resolveDebugConfigFromActiveFile: sinon.stub().resolves(discoveredConfig)
+                };
+
+                const result = await configProvider.resolveDebugConfiguration(folder, <any>{});
+
+                expect(result).to.not.be.undefined;
+                expect(result.host).to.equal('192.168.1.200');
+                expect(result.password).to.equal('secret');
+            });
         });
     });
 
