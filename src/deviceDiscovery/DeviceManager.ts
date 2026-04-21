@@ -84,10 +84,9 @@ export class DeviceManager {
             this.networkId = getNetworkHash();
             this.fetchDeviceThrottleData.clear();
 
-            //clear and reload all devices anytime this network changes
-            this.devices = [];
+            //clear and reload discovered devices anytime this network changes
+            this.discoveredDevices = [];
             this.loadLastSeenDevices();
-            this.loadConfiguredDevices().catch(e => console.error(e));
 
             this.restartRokuFinder();
 
@@ -474,88 +473,6 @@ export class DeviceManager {
     }
 
     /**
-     * Remove a device from the discoveredDevices array and update lastSeenDevices.
-     */
-    private setDevice(input: Omit<DeviceEntry, 'key'>): void {
-        const index = this.devices.findIndex(d => d.ip === input.ip);
-        const isNewDevice = index < 0;
-
-        // Compute key: serial-based when available, IP-based as fallback
-        const key = input.serialNumber ? `s:${input.serialNumber}` : `i:${input.ip}`;
-        let device: DeviceEntry = { ...input, key: key };
-
-        if (isNewDevice) {
-            this.devices.push(device);
-        } else {
-            // Merge: incoming wins for most fields, but preserve configured properties
-            const existing = this.devices[index];
-            device = this.devices[index] = {
-                ...existing,
-                ...device,
-                // Preserve configured status from either side
-                isDiscovered: device.isDiscovered ?? existing.isDiscovered,
-                isConfigured: device.isConfigured ?? existing.isConfigured,
-                configuredIn: device.configuredIn ?? existing.configuredIn,
-                configuredName: device.configuredName ?? existing.configuredName,
-                configuredPassword: device.configuredPassword ?? existing.configuredPassword
-            };
-        }
-
-        this.emitDevicesChanged();
-    }
-
-    /**
-     * Deduplicate devices by serial number when a device changes IP (e.g., DHCP reassignment).
-     * If an existing device with the same serial exists at a DIFFERENT IP, removes it and
-     * returns its configured properties to be preserved on the new entry.
-     *
-     * @param newIp - The IP address where the device was just discovered/resolved
-     * @param serial - The serial number from the device
-     * @returns Configured properties to preserve, or undefined if no deduplication needed
-     */
-    private dedupeBySerial(newIp: string, serial: string): Pick<DeviceEntry, 'isConfigured' | 'configuredIn' | 'configuredName' | 'configuredPassword'> | undefined {
-        // Find existing device with same serial at a DIFFERENT IP
-        const existingDevice = this.devices.find(d => d.ip !== newIp && this.getSerial(d) === serial);
-
-        if (!existingDevice) {
-            return undefined;
-        }
-
-        // Capture configured properties to preserve
-        const preserved = {
-            isConfigured: existingDevice.isConfigured,
-            configuredIn: existingDevice.configuredIn,
-            configuredName: existingDevice.configuredName,
-            configuredPassword: existingDevice.configuredPassword
-        };
-
-        // Transfer lastUsedDeviceIp to new IP if it was pointing to old device
-        // (User's "active device" should follow the physical device, not the stale IP)
-        if (this.lastUsedDeviceIp === existingDevice.ip) {
-            this.lastUsedDeviceIp = newIp;
-        }
-
-        // Remove old entry directly from array (don't use removeDevice to avoid
-        // side effects like removing from lastSeenDevices - device still exists)
-        this.devices = this.devices.filter(d => d.ip !== existingDevice.ip);
-
-        // Remove from discovered devices
-        this.removeDiscoveredDevice(deviceIp);
-
-        // Remove from last seen devices (if has serial)
-        if (serial) {
-            this.globalStateManager.removeLastSeenDevice(this.networkId, serial);
-        }
-
-        // Clear lastUsedDeviceIp if the removed device was the last used
-        if (this.lastUsedDeviceIp === deviceIp) {
-            this.lastUsedDeviceIp = undefined;
-        }
-
-        this.emitDevicesChanged();
-    }
-
-    /**
      * Load last seen devices from cache.
      * Resets configured devices to pending and clears discovered devices.
      * Last seen devices are used to pre-populate the IP→serial mapping.
@@ -584,13 +501,8 @@ export class DeviceManager {
                 // If cache is fresh (within 5 minutes), treat as online
                 const cacheAge = Date.now() - cached.createdAt;
                 const isFresh = cacheAge < this.FRESH_CACHE_THRESHOLD_MS;
-                // Create device with serial (key computed by setDevice)
-                this.setDevice({
-                    ip: ip,
-                    serialNumber: serialNumber,
-                    deviceState: isFresh ? 'online' : 'pending',
-                    isDiscovered: false
-                });
+                // Add to discoveredDevices array
+                this.setDiscoveredDevice(ip, serialNumber, isFresh ? 'online' : 'pending');
             } else {
                 // No cached info - remove stale entry
                 this.globalStateManager.removeLastSeenDevice(this.networkId, serialNumber);
@@ -882,7 +794,7 @@ export class DeviceManager {
      */
     private healthCheckStaleDevices(): void {
         const now = Date.now();
-        const staleDevices = this.devices.filter(device => {
+        const staleDevices = this.getAllDevices().filter(device => {
             if (!device.serialNumber) {
                 // No serial = no cache, consider stale
                 return true;
@@ -1051,6 +963,30 @@ export class DeviceManager {
         if (idx >= 0) {
             this.discoveredDevices.splice(idx, 1);
         }
+    }
+
+    /**
+     * Remove a device by IP. Clears from discoveredDevices, updates lastSeenDevices,
+     * and clears lastUsedDeviceIp if it matches.
+     */
+    private removeDevice(ip: string): void {
+        // Find the device first to get its serial number
+        const device = this.discoveredDevices.find(d => d.ip === ip);
+
+        // Remove from discoveredDevices array
+        this.removeDiscoveredDevice(ip);
+
+        // Clear lastUsedDeviceIp if it matches
+        if (this.lastUsedDeviceIp === ip) {
+            this.lastUsedDeviceIp = undefined;
+        }
+
+        // Remove from lastSeenDevices if we have a serial
+        if (device?.serialNumber) {
+            this.globalStateManager.removeLastSeenDevice(this.networkId, device.serialNumber);
+        }
+
+        this.emitDevicesChanged();
     }
 
     /**
@@ -1240,11 +1176,7 @@ export class DeviceManager {
         });
 
         this.finder.on('lost', (ip: string) => {
-            // Find and remove device by IP
-            const device = this.getDeviceEntry({ ip: ip });
-            if (device) {
-                this.removeDevice(device.ip);
-            }
+            this.removeDevice(ip);
         });
 
         // Forward scan events from RokuFinder

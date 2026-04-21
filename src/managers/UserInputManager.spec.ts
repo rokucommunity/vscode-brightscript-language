@@ -56,6 +56,8 @@ describe('UserInputManager', () => {
             serialNumber: 'alpha',
             key: 's:alpha',
             deviceState: 'online',
+            isDiscovered: true,
+            isConfigured: false,
             deviceInfo: {
                 'user-device-name': 'roku1',
                 'serial-number': 'alpha',
@@ -67,6 +69,8 @@ describe('UserInputManager', () => {
             serialNumber: 'beta',
             key: 's:beta',
             deviceState: 'online',
+            isDiscovered: true,
+            isConfigured: false,
             deviceInfo: {
                 'user-device-name': 'roku2',
                 'serial-number': 'beta',
@@ -78,6 +82,8 @@ describe('UserInputManager', () => {
             serialNumber: 'charlie',
             key: 's:charlie',
             deviceState: 'online',
+            isDiscovered: true,
+            isConfigured: false,
             deviceInfo: {
                 'user-device-name': 'roku3',
                 'serial-number': 'charlie',
