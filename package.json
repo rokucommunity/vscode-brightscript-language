@@ -3145,7 +3145,7 @@
             },
             {
                 "command": "extension.brightscript.custom8080Command",
-                "title": "custom - Enter any command string to be run on port 8080'",
+                "title": "custom - Enter any command string to be run on port 8080",
                 "category": "Brightscript Debug"
             },
             {
