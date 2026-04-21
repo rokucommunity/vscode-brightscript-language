@@ -18,6 +18,7 @@ import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheComm
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
 import { vscodeContextManager } from './managers/VscodeContextManager';
+import type { CredentialStore } from './managers/CredentialStore';
 
 export class BrightScriptCommands {
 
@@ -27,7 +28,8 @@ export class BrightScriptCommands {
         private context: vscode.ExtensionContext,
         private deviceManager: DeviceManager,
         private userInputManager: UserInputManager,
-        private localPackageManager: LocalPackageManager
+        private localPackageManager: LocalPackageManager,
+        private credentialStore: CredentialStore
     ) {
         this.fileUtils = new BrightScriptFileUtils();
     }

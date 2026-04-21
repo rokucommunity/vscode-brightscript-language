@@ -32,6 +32,7 @@ import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { CredentialStore } from './managers/CredentialStore';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
@@ -85,13 +86,15 @@ export class Extension {
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
+        const credentialStore = new CredentialStore(context);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,
             context,
             this.deviceManager,
             userInputManager,
-            localPackageManager
+            localPackageManager,
+            credentialStore
         );
 
         this.rtaManager = new RtaManager(context);
