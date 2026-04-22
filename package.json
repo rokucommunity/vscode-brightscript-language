@@ -110,7 +110,7 @@
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.81.0",
         "@types/xml2js": "^0.4.14",
-        "@types/yargs": "^17.0.10",
+        "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
         "@vscode/vsce": "^2.22.0",
@@ -540,7 +540,10 @@
             {
                 "label": "BrightScript Debug",
                 "type": "brightscript",
-                "languages": ["brightscript", "brighterscript"],
+                "languages": [
+                    "brightscript",
+                    "brighterscript"
+                ],
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {

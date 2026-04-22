@@ -27,7 +27,7 @@ const args = yargs
         string: true,
         description: 'Only install local versions of these projects (leave others at their published versions)'
     })
-    .parseSync();
+    .argv;
 
 const pull = args.pull;
 const enableVerboseLogging = args.verbose;
