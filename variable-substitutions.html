@@ -319,8 +319,8 @@
 </thead>
 <tbody><tr>
 <td><code>${promptForHost}</code></td>
-<td>Prompts you to enter or select a host IP address</td>
-<td>Shows input dialog or device picker when debugging starts</td>
+<td>Resolves to the active device when set and reachable; otherwise opens the device picker</td>
+<td>Uses the active device after a successful health check, or shows the picker when no active device is set or the health check fails</td>
 </tr>
 <tr>
 <td><code>${promptForPassword}</code></td>
@@ -329,8 +329,8 @@
 </tr>
 <tr>
 <td><code>${activeHost}</code></td>
-<td>Uses the currently active device</td>
-<td>Automatically uses pre-configured device, or prompts if none set</td>
+<td><strong>Deprecated.</strong> Alias for <code>${promptForHost}</code></td>
+<td>Same behavior as <code>${promptForHost}</code></td>
 </tr>
 <tr>
 <td><code>${activeHostPassword}</code></td>
@@ -343,77 +343,40 @@
 <td>Can be used in other fields like <code>deepLinkUrl</code></td>
 </tr>
 </tbody></table>
-<a href="#promptforhost---interactive-host-selection"><h2 id="promptforhost---interactive-host-selection"><code>${promptForHost}</code> - Interactive Host Selection</h2></a><p>The most common variable substitution. When used, VS Code will:</p>
-<ul>
-<li>Show a list of discovered Roku devices (if device discovery is enabled)</li>
-<li>Allow manual IP entry</li>
-<li>Remember the last used device</li>
+<a href="#promptforhost---smart-host-selection"><h2 id="promptforhost---smart-host-selection"><code>${promptForHost}</code> - Smart Host Selection</h2></a><p>The most common variable substitution. Resolution order:</p>
+<ol>
+<li>If an <strong>active device</strong> is set (e.g. via the Roku Devices view or the <code>Set Active Device</code> command) and it passes a health check, it is used automatically — no prompt.</li>
+<li>Otherwise, VS Code shows the device picker, which:<ul>
+<li>Lists discovered Roku devices (if device discovery is enabled)</li>
+<li>Allows manual IP entry</li>
+<li>Remembers the last used device</li>
 </ul>
+</li>
+</ol>
 <pre><code class="language-json">{
     &quot;host&quot;: &quot;${promptForHost}&quot;
 }
 </code></pre>
+<p>To set an active device:</p>
+<ul>
+<li>Open the Command Palette and run <strong>BrightScript: Set Active Device</strong></li>
+<li>Or, in the Roku Devices view, expand a device and click <strong>⭐ Set as Active Device</strong></li>
+</ul>
 <a href="#promptforpassword---interactive-password-entry"><h2 id="promptforpassword---interactive-password-entry"><code>${promptForPassword}</code> - Interactive Password Entry</h2></a><p>Prompts for the developer password when debugging starts:</p>
 <pre><code class="language-json">{
     &quot;password&quot;: &quot;${promptForPassword}&quot;
 }
 </code></pre>
-<a href="#activehost---smart-device-selection"><h2 id="activehost---smart-device-selection"><code>${activeHost}</code> - Smart Device Selection</h2></a><p><strong>New!</strong> Uses the currently active device without prompting, but gracefully falls back to prompting if no device is set. This provides the best of both worlds: convenience when you have a preferred device, flexibility when you don&#39;t.</p>
-<a href="#basic-usage"><h3 id="basic-usage">Basic Usage</h3></a><pre><code class="language-json">{
-    &quot;version&quot;: &quot;0.2.0&quot;,
-    &quot;configurations&quot;: [
-        {
-            &quot;type&quot;: &quot;brightscript&quot;,
-            &quot;name&quot;: &quot;Launch with Current Device&quot;,
-            &quot;request&quot;: &quot;launch&quot;,
-            &quot;host&quot;: &quot;${activeHost}&quot;,
-            &quot;password&quot;: &quot;${promptForPassword}&quot;,
-            &quot;rootDir&quot;: &quot;${workspaceFolder}&quot;,
-            &quot;files&quot;: [
-                &quot;manifest&quot;,
-                &quot;source/**/*.*&quot;,
-                &quot;components/**/*.*&quot;,
-                &quot;images/**/*.*&quot;
-            ]
-        }
-    ]
-}
-</code></pre>
-<a href="#requirements"><h3 id="requirements">Requirements</h3></a><p>To use <code>${activeHost}</code> optimally, you should set an active device using one of these methods:</p>
-<ol>
-<li><p><strong>Via Command Palette:</strong></p>
-<ul>
-<li>Open Command Palette (<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>)</li>
-<li>Type &quot;BrightScript: Set Active Device&quot;</li>
-<li>Enter the IP address of your Roku device</li>
-</ul>
-</li>
-<li><p><strong>Via Device List:</strong></p>
-<ul>
-<li>Use the Roku Devices view in the sidebar to select a device (if device discovery is enabled)</li>
-</ul>
-</li>
-<li><p><strong>Via Debugging Session:</strong></p>
-<ul>
-<li>The active device is automatically set when you start a debugging session with <code>${promptForHost}</code></li>
-</ul>
-</li>
-</ol>
-<a href="#fallback-handling"><h3 id="fallback-handling">Fallback Handling</h3></a><p>If you use <code>${activeHost}</code> but no active device is set, it will automatically fallback to prompting for host selection (same behavior as <code>${promptForHost}</code>).</p>
-<p>This provides a seamless experience:</p>
-<ul>
-<li><strong>When active device is set</strong>: Uses it automatically without prompting</li>
-<li><strong>When no active device</strong>: Falls back to the device picker/input dialog</li>
-</ul>
+<a href="#activehost---deprecated"><h2 id="activehost---deprecated"><code>${activeHost}</code> - Deprecated</h2></a><p><strong>Deprecated.</strong> <code>${activeHost}</code> is now an alias for <a href="#promptforhost---smart-host-selection"><code>${promptForHost}</code></a> and is kept only for backwards compatibility. New configurations should prefer <code>${promptForHost}</code>, which now uses the active device automatically when set and reachable.</p>
 <a href="#activehostpassword---device-specific-password"><h2 id="activehostpassword---device-specific-password"><code>${activeHostPassword}</code> - Device-Specific Password</h2></a><p>Uses the password stored for the currently active device. This allows different devices to have different developer passwords while maintaining the convenience of automatic password selection.</p>
-<a href="#basic-usage-1"><h3 id="basic-usage-1">Basic Usage</h3></a><pre><code class="language-json">{
+<a href="#basic-usage"><h3 id="basic-usage">Basic Usage</h3></a><pre><code class="language-json">{
     &quot;version&quot;: &quot;0.2.0&quot;,
     &quot;configurations&quot;: [
         {
             &quot;name&quot;: &quot;Launch&quot;,
             &quot;type&quot;: &quot;brightscript&quot;,
             &quot;request&quot;: &quot;launch&quot;,
-            &quot;host&quot;: &quot;${activeHost}&quot;,
+            &quot;host&quot;: &quot;${promptForHost}&quot;,
             &quot;password&quot;: &quot;${activeHostPassword}&quot;
         }
     ]
@@ -429,7 +392,7 @@
 </ul>
 </li>
 </ol>
-<a href="#fallback-handling-1"><h3 id="fallback-handling-1">Fallback Handling</h3></a><p>If you use <code>${activeHostPassword}</code> but no password is set for the active device, it will automatically fall back to the global password setting.</p>
+<a href="#fallback-handling"><h3 id="fallback-handling">Fallback Handling</h3></a><p>If you use <code>${activeHostPassword}</code> but no password is set for the active device, it will automatically fall back to the global password setting.</p>
 <p>This provides flexibility:</p>
 <ul>
 <li><strong>When device-specific password is set</strong>: Uses it automatically</li>
