@@ -52,6 +52,11 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
+            //if the `includeNonDeveloperDevices` setting was changed, refresh the UI to show/hide devices
+            if (event?.affectsConfiguration('brightscript.deviceDiscovery.includeNonDeveloperDevices')) {
+                this.emitDevicesChanged();
+            }
+
             //if the `devices` setting was changed, re-apply configured devices
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
@@ -907,11 +912,16 @@ export class DeviceManager {
         // IP dedupe: find existing entry at same IP
         const existingIdx = this.discoveredDevices.findIndex(d => d.ip === ip);
         if (existingIdx >= 0) {
+            const existing = this.discoveredDevices[existingIdx];
+            // Don't downgrade from online to pending
+            const newState = (existing.deviceState === 'online' && deviceState === 'pending')
+                ? 'online'
+                : deviceState;
             // Update existing entry
             this.discoveredDevices[existingIdx] = {
                 ip: ip,
-                serialNumber: serialNumber,
-                deviceState: deviceState
+                serialNumber: serialNumber ?? existing.serialNumber,
+                deviceState: newState
             };
         } else {
             // Add new entry

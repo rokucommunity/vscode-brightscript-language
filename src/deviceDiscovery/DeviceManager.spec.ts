@@ -1180,6 +1180,50 @@ describe('DeviceManager', () => {
 
             expect(manager.getDevice({ ip: '192.168.1.100' })).to.be.undefined;
         });
+
+        it('emits devices-changed when includeNonDeveloperDevices setting changes', () => {
+            // Capture the onDidChangeConfiguration callback
+            let configChangeCallback: (event: any) => void;
+            (vscode.workspace.onDidChangeConfiguration as any) = (callback: any) => {
+                configChangeCallback = callback;
+                return { dispose: () => { } };
+            };
+
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a non-developer device
+            const device = createMockDevice({
+                serialNumber: 'ABC123',
+                ip: '192.168.1.100',
+                deviceInfo: { 'developer-enabled': 'false' }
+            });
+            addDevice(device);
+
+            // Device should be filtered initially
+            expect(manager.getAllDevices().length).to.equal(0);
+
+            // Listen for devices-changed event
+            const devicesChangedSpy = sinon.spy();
+            manager.on('devices-changed', devicesChangedSpy);
+
+            // Simulate config change
+            configChangeCallback({
+                affectsConfiguration: (key: string) => key === 'brightscript.deviceDiscovery.includeNonDeveloperDevices'
+            });
+
+            // Should have emitted devices-changed
+            expect(devicesChangedSpy.called).to.be.true;
+        });
     });
 
     describe('handleDeviceOnline', () => {
