@@ -2752,4 +2752,124 @@ describe('DeviceManager', () => {
             });
         });
     });
+
+    describe('defaultPassword', () => {
+        function stubConfig(defaultDevicePassword: string | undefined) {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false
+                },
+                defaultDevicePassword: defaultDevicePassword
+            } as any);
+        }
+
+        it('returns undefined when setting is missing', () => {
+            stubConfig(undefined);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.defaultPassword).to.be.undefined;
+        });
+
+        it('returns undefined when setting is an empty string', () => {
+            stubConfig('');
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.defaultPassword).to.be.undefined;
+        });
+
+        it('returns the configured value when setting is a non-empty string', () => {
+            stubConfig('hunter2');
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.defaultPassword).to.equal('hunter2');
+        });
+
+        describe('getDevice fallback', () => {
+            it('applies defaultPassword to a device missing configuredPassword', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['discoveredDevices'].push({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5',
+                    deviceState: 'online'
+                });
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.equal('hunter2');
+            });
+
+            it('preserves a device-specific configuredPassword over defaultPassword', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Add a configured device with a specific password
+                manager['configuredDevices'].push({
+                    host: '10.0.0.5',
+                    password: 'specific',
+                    deviceState: 'online'
+                } as any);
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.equal('specific');
+            });
+
+            it('leaves configuredPassword undefined when no default and no per-device password', () => {
+                stubConfig(undefined);
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['discoveredDevices'].push({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5',
+                    deviceState: 'online'
+                });
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.be.undefined;
+            });
+        });
+
+        describe('getAllDevices fallback', () => {
+            it('applies defaultPassword to every device missing a per-device password', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Discovered device without password
+                manager['discoveredDevices'].push({
+                    serialNumber: 'no-pw',
+                    ip: '10.0.0.5',
+                    deviceState: 'online'
+                });
+                // Configured device with specific password
+                manager['configuredDevices'].push({
+                    host: '10.0.0.6',
+                    password: 'specific',
+                    serialNumber: 'has-pw',
+                    deviceState: 'online'
+                } as any);
+
+                const devices = manager.getAllDevices();
+                const withoutPw = devices.find(d => d.serialNumber === 'no-pw');
+                const withPw = devices.find(d => d.serialNumber === 'has-pw');
+                expect(withoutPw?.configuredPassword).to.equal('hunter2');
+                expect(withPw?.configuredPassword).to.equal('specific');
+            });
+
+            it('does not mutate the underlying device entry when applying the fallback', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['discoveredDevices'].push({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5',
+                    deviceState: 'online'
+                });
+
+                manager.getAllDevices();
+
+                // Internal discoveredDevices entry should not have configuredPassword field
+                expect((manager['discoveredDevices'][0] as any).configuredPassword).to.be.undefined;
+            });
+        });
+    });
 });

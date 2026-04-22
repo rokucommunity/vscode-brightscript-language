@@ -32,6 +32,7 @@ export class DeviceManager {
             let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
+            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.defaultPassword);
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
@@ -56,6 +57,11 @@ export class DeviceManager {
                 this.loadConfiguredDevices().then(() => {
                     this.emitDevicesChanged();
                 }).catch(() => { });
+            }
+
+            //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
+            if (event?.affectsConfiguration('brightscript.defaultDevicePassword')) {
+                this.emitDevicesChanged();
             }
         };
         this.context.subscriptions.push(
@@ -453,6 +459,15 @@ export class DeviceManager {
      */
     private get showInfoMessages() {
         return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
+
+    /**
+     * Default password applied to any device that does not have its own configured password.
+     * Returns undefined when the setting is empty so callers can fall through to their own logic.
+     */
+    public get defaultPassword(): string | undefined {
+        const value = util.getConfiguration('brightscript')?.defaultDevicePassword;
+        return typeof value === 'string' && value.length > 0 ? value : undefined;
     }
 
     private get timeSinceLastScan(): number {
@@ -1108,7 +1123,7 @@ export class DeviceManager {
             isConfigured: !!configuredEntry,
             configuredIn: configuredEntry?.configuredIn,
             configuredName: configuredEntry?.name,
-            configuredPassword: configuredEntry?.password
+            configuredPassword: configuredEntry?.password ?? this.defaultPassword
         };
     }
 

@@ -110,7 +110,7 @@
         "@types/sinon": "7.0.6",
         "@types/vscode": "^1.81.0",
         "@types/xml2js": "^0.4.14",
-        "@types/yargs": "^17.0.10",
+        "@types/yargs": "^15.0.5",
         "@typescript-eslint/eslint-plugin": "^5.14.0",
         "@typescript-eslint/parser": "^5.14.0",
         "@vscode/vsce": "^2.22.0",
@@ -322,6 +322,16 @@
                     "command": "extension.brightscript.refreshDeviceList",
                     "when": "view == devicesView",
                     "group": "navigation@3"
+                },
+                {
+                    "command": "extension.brightscript.setDefaultDevicePassword",
+                    "when": "view == devicesView",
+                    "group": "1_devices@1"
+                },
+                {
+                    "command": "extension.brightscript.clearDefaultDevicePassword",
+                    "when": "view == devicesView && brightscript.hasDefaultDevicePassword",
+                    "group": "1_devices@2"
                 },
                 {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
@@ -540,7 +550,10 @@
             {
                 "label": "BrightScript Debug",
                 "type": "brightscript",
-                "languages": ["brightscript", "brighterscript"],
+                "languages": [
+                    "brightscript",
+                    "brighterscript"
+                ],
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
                 "configurationAttributes": {
@@ -2260,6 +2273,12 @@
                             }
                         },
                         "scope": "resource"
+                    },
+                    "brightscript.defaultDevicePassword": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
+                        "scope": "resource"
                     }
                 }
             },
@@ -3145,7 +3164,7 @@
             },
             {
                 "command": "extension.brightscript.custom8080Command",
-                "title": "custom - Enter any command string to be run on port 8080'",
+                "title": "custom - Enter any command string to be run on port 8080",
                 "category": "Brightscript Debug"
             },
             {
@@ -3427,6 +3446,17 @@
                 "title": "Refresh",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.setDefaultDevicePassword",
+                "title": "Set Default Device Password",
+                "category": "BrightScript",
+                "icon": "$(key)"
+            },
+            {
+                "command": "extension.brightscript.clearDefaultDevicePassword",
+                "title": "Clear Default Device Password",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.enableDeviceDiscovery",

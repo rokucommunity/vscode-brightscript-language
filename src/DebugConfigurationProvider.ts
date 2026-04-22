@@ -445,15 +445,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}
+     * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}.
+     * ${activeHost} is a deprecated alias for ${promptForHost}.
+     * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
      * @param config  current config object
      */
     private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        if (config.host.trim() === '${promptForHost}' || (config?.deepLinkUrl?.includes('${promptForHost}'))) {
-            config.host = await this.userInputManager.promptForHost();
-        } else if (config.host.trim() === '${activeHost}') {
-            // Get the current remote host from workspace state (it will prompt for host as a fallback)
-            config.host = await this.brightScriptCommands.getRemoteHost();
+        const trimmedHost = config.host.trim();
+        const needsHostPrompt =
+            trimmedHost === '' ||
+            trimmedHost === '${promptForHost}' ||
+            trimmedHost === '${activeHost}' ||
+            config?.deepLinkUrl?.includes('${promptForHost}');
+
+        if (needsHostPrompt) {
+            const healthyActiveHost = await this.brightScriptCommands.getHealthyActiveHost();
+            if (healthyActiveHost) {
+                config.host = healthyActiveHost;
+            } else {
+                config.host = await this.userInputManager.promptForHost();
+            }
         }
 
         //check the host and throw error if not provided or update the workspace to set last host
