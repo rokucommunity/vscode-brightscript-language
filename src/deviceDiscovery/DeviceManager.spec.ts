@@ -63,7 +63,7 @@ describe('DeviceManager', () => {
         manager['discoveredDevices'].push({
             ip: device.ip,
             serialNumber: device.serialNumber,
-            deviceState: device.deviceState === 'offline' ? 'pending' : (device.deviceState as 'pending' | 'online')
+            deviceState: device.deviceState === 'offline' ? 'pending' : device.deviceState
         });
     }
 
