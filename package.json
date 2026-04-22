@@ -324,6 +324,16 @@
                     "group": "navigation@3"
                 },
                 {
+                    "command": "extension.brightscript.setDefaultDevicePassword",
+                    "when": "view == devicesView",
+                    "group": "1_devices@1"
+                },
+                {
+                    "command": "extension.brightscript.clearDefaultDevicePassword",
+                    "when": "view == devicesView && brightscript.hasDefaultDevicePassword",
+                    "group": "1_devices@2"
+                },
+                {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
                     "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
@@ -2263,6 +2273,12 @@
                             }
                         },
                         "scope": "resource"
+                    },
+                    "brightscript.defaultDevicePassword": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
+                        "scope": "resource"
                     }
                 }
             },
@@ -3430,6 +3446,17 @@
                 "title": "Refresh",
                 "category": "BrightScript",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "extension.brightscript.setDefaultDevicePassword",
+                "title": "Set Default Device Password",
+                "category": "BrightScript",
+                "icon": "$(key)"
+            },
+            {
+                "command": "extension.brightscript.clearDefaultDevicePassword",
+                "title": "Clear Default Device Password",
+                "category": "BrightScript"
             },
             {
                 "command": "extension.brightscript.enableDeviceDiscovery",
