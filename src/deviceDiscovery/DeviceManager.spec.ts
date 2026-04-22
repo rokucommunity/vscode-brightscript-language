@@ -139,6 +139,7 @@ describe('DeviceManager', () => {
         // Mock vscode configuration
         sinon.stub(vscode.workspace, 'getConfiguration').returns({
             get: () => undefined,
+            inspect: () => ({ workspaceValue: [], globalValue: [] }),
             deviceDiscovery: {
                 enabled: false, // Disabled to prevent auto-initialization
                 showInfoMessages: false
@@ -1971,11 +1972,11 @@ describe('DeviceManager', () => {
 
                 manager['loadLastSeenDevices']();
 
-                // Only configured device should remain
+                // Only configured device should remain (state unchanged - reset happens in network change handler)
                 expect(manager.getAllDevices().length).to.equal(1);
                 const serial = manager.getAllDevices()[0].serialNumber;
                 expect(serial).to.equal('configured-1');
-                expect(manager.getAllDevices()[0].deviceState).to.equal('pending');
+                expect(manager.getAllDevices()[0].deviceState).to.equal('online');
             });
         });
 

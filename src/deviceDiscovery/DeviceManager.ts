@@ -90,6 +90,11 @@ export class DeviceManager {
             this.networkId = getNetworkHash();
             this.fetchDeviceThrottleData.clear();
 
+            //reset configured devices to pending - need to re-verify on new network
+            for (const entry of this.configuredDevices) {
+                entry.deviceState = 'pending';
+            }
+
             //clear and reload discovered devices anytime this network changes
             this.discoveredDevices = [];
             this.loadLastSeenDevices();
@@ -489,15 +494,9 @@ export class DeviceManager {
 
     /**
      * Load last seen devices from cache.
-     * Resets configured devices to pending and clears discovered devices.
      * Last seen devices are used to pre-populate the IP→serial mapping.
      */
     private loadLastSeenDevices(): void {
-        // Reset configured devices to pending
-        for (const entry of this.configuredDevices) {
-            entry.deviceState = 'pending';
-        }
-
         // Clear discovered devices (ephemeral - reload from network)
         this.discoveredDevices = [];
 
@@ -533,134 +532,83 @@ export class DeviceManager {
      */
     private async loadConfiguredDevices(): Promise<void> {
         // Read config from all VSCode scopes
-        const config = vscode.workspace.getConfiguration('brightscript');
-        // inspect may not be available in test mocks
-        if (typeof config.inspect !== 'function') {
-            return;
-        }
-        const inspection = config.inspect<ConfiguredDevice[]>('devices');
-
-        // Get devices from specific scopes we care about
+        const inspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
         const userDevices = inspection?.globalValue ?? [];
         const workspaceDevices = inspection?.workspaceValue ?? [];
 
         // Build a map tracking which scopes each device is in
-        // Key is serialNumber or host, value includes scope info
         interface ConfiguredDeviceWithScope extends ConfiguredDevice {
             configuredIn: ConfigurationScope[];
         }
         const deviceMap = new Map<string, ConfiguredDeviceWithScope>();
 
-        // Process user settings
-        for (const device of userDevices) {
-            if (!device?.host) {
-                continue;
+        function addDevicesFromScope(devices: ConfiguredDevice[], scope: ConfigurationScope) {
+            for (const device of devices) {
+                if (!device?.host) {
+                    continue;
+                }
+                const key = device.serialNumber || device.host;
+                const existing = deviceMap.get(key);
+                const scopes = existing?.configuredIn ?? [];
+                if (!scopes.includes(scope)) {
+                    scopes.push(scope);
+                }
+                deviceMap.set(key, {
+                    ...existing,
+                    ...device,
+                    configuredIn: scopes
+                });
             }
-            const key = device.serialNumber || device.host;
-            const existing = deviceMap.get(key);
-            const scopes = existing?.configuredIn ?? [];
-            if (!scopes.includes('user')) {
-                scopes.push('user');
-            }
-            deviceMap.set(key, {
-                ...existing,
-                ...device,
-                configuredIn: scopes
-            });
         }
 
-        // Process workspace settings
-        for (const device of workspaceDevices) {
-            if (!device?.host) {
-                continue;
+        addDevicesFromScope(userDevices, 'user');
+        addDevicesFromScope(workspaceDevices, 'workspace');
+
+        // Capture existing states before clearing (to avoid UI flicker)
+        const previousStatesByHost = new Map<string, DeviceState>();
+        const previousStatesBySerial = new Map<string, DeviceState>();
+        for (const entry of this.configuredDevices) {
+            previousStatesByHost.set(entry.host, entry.deviceState);
+            if (entry.serialNumber) {
+                previousStatesBySerial.set(entry.serialNumber, entry.deviceState);
             }
-            const key = device.serialNumber || device.host;
-            const existing = deviceMap.get(key);
-            const scopes = existing?.configuredIn ?? [];
-            if (!scopes.includes('workspace')) {
-                scopes.push('workspace');
-            }
-            deviceMap.set(key, {
-                ...existing,
-                ...device,
-                configuredIn: scopes
-            });
         }
 
-        const configuredDevicesList = Array.from(deviceMap.values());
+        // Clear and rebuild
+        this.configuredDevices = [];
 
-        // Track which hosts are still in config (for removal logic)
-        const configuredHosts = new Set<string>();
-        const configuredSerials = new Set<string>();
-
-        // Track resolved IPs so removal loop can compare against them (not hostnames)
-        const configuredIps = new Set<string>();
-
-        // First: add/update configured devices (with DNS resolution)
-        for (const configured of configuredDevicesList) {
-            configuredHosts.add(configured.host);
-            if (configured.serialNumber) {
-                configuredSerials.add(configured.serialNumber);
-            }
-
+        for (const configured of deviceMap.values()) {
             // Resolve hostname to IP address (handles both hostnames and IPs)
             let resolvedIp: string | undefined;
             try {
                 resolvedIp = await rokuDebugUtil.dnsLookup(configured.host);
             } catch {
                 // DNS lookup failed - resolvedIp remains undefined
-                // This allows the original host to be used if it's an IP
             }
 
-            // Use resolved IP or fall back to host (if host looks like IP)
             const ip = resolvedIp ?? configured.host;
 
-            // Track resolved IP for removal loop
-            configuredIps.add(ip);
-
-            // Determine serial number (must be after DNS resolution so IP lookup works)
+            // Look up serial from cache if not provided in config
             let serialNumber = configured.serialNumber;
             if (!serialNumber) {
                 serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
             }
 
-            // Check for existing entry in configuredDevices by host
-            const existingConfiguredIdx = this.configuredDevices.findIndex(
-                d => d.host === configured.host ||
-                    (configured.serialNumber && d.serialNumber === configured.serialNumber)
-            );
-            const existingConfigured = existingConfiguredIdx >= 0 ? this.configuredDevices[existingConfiguredIdx] : undefined;
+            // Restore previous state if available (prefer serial match over host match)
+            const deviceState =
+                previousStatesBySerial.get(configured.serialNumber) ??
+                previousStatesByHost.get(configured.host) ??
+                'pending';
 
-            // Preserve state if device exists
-            const deviceState = existingConfigured?.deviceState ?? 'pending';
-
-            // Update or add to configuredDevices array
-            const configuredEntry: ConfiguredDeviceEntry = {
+            this.configuredDevices.push({
                 ...configured,
                 resolvedIp: resolvedIp,
                 deviceState: deviceState
-            };
+            });
 
-            if (existingConfiguredIdx >= 0) {
-                this.configuredDevices[existingConfiguredIdx] = configuredEntry;
-            } else {
-                this.configuredDevices.push(configuredEntry);
-            }
-
-            // Set up IP→serial mapping if we have serial (deviceInfo already cached if it exists)
+            // Set up IP→serial mapping if we have serial
             if (serialNumber) {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
-            }
-        }
-
-        // Remove configured devices no longer in config
-        for (let i = this.configuredDevices.length - 1; i >= 0; i--) {
-            const entry = this.configuredDevices[i];
-            const stillConfigured = configuredHosts.has(entry.host) ||
-                (entry.serialNumber && configuredSerials.has(entry.serialNumber));
-
-            if (!stillConfigured) {
-                this.configuredDevices.splice(i, 1);
             }
         }
     }
