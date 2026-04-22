@@ -185,20 +185,35 @@ export class DeviceManager {
     /**
      * Get device by encoded key string.
      * Key format: "s:{serialNumber}" or "i:{ip}"
+     * Respects includeNonDeveloperDevices setting.
      *
      * @param key - Encoded device key
-     * @returns Device with deviceInfo or undefined if not found
+     * @returns Device with deviceInfo or undefined if not found/filtered
      */
     public getDevice(key: string): RokuDevice | undefined;
     /**
      * Get device by IP or serial number.
      * Returns device with deviceInfo hydrated from cache.
+     * Respects includeNonDeveloperDevices setting.
      *
      * @param lookup - Object with optional ip and/or serialNumber
-     * @returns Device with deviceInfo or undefined if not found
+     * @returns Device with deviceInfo or undefined if not found/filtered
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
     public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+        const device = this.getDeviceUnfiltered(keyOrLookup as any);
+        if (device && !this.shouldShowDevice(device)) {
+            return undefined;
+        }
+        return device;
+    }
+
+    /**
+     * Get device without filtering. Used internally.
+     */
+    private getDeviceUnfiltered(key: string): RokuDevice | undefined;
+    private getDeviceUnfiltered(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
+    private getDeviceUnfiltered(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
         const device = this.buildMergedDevice(keyOrLookup as any);
 
         // If lookup object with both ip and serialNumber, verify exact match
@@ -212,12 +227,19 @@ export class DeviceManager {
     }
 
     /**
-     * Get a list of all roku devices known by this extension (by scanning, hardcoded lists, etc)
-     * Returns full devices with deviceInfo hydrated from cache.
+     * Get a list of all visible roku devices.
+     * Respects includeNonDeveloperDevices setting.
+     */
+    public getAllDevices(): RokuDevice[] {
+        return this.getAllDevicesUnfiltered().filter(d => this.shouldShowDevice(d));
+    }
+
+    /**
+     * Get all devices without filtering. Used internally.
      * Builds merged view on-demand from configuredDevices and discoveredDevices arrays.
      * Deduplication by serial number (preferred) or IP (fallback).
      */
-    public getAllDevices(): RokuDevice[] {
+    private getAllDevicesUnfiltered(): RokuDevice[] {
         const mergedDevices = new Map<string, RokuDevice>();
         const processedDiscoveredIndices = new Set<number>();
 
@@ -407,7 +429,7 @@ export class DeviceManager {
         // If already a device object with deviceState, use it directly; otherwise look it up
         const device = 'deviceState' in deviceOrLookup
             ? deviceOrLookup
-            : this.getDevice(deviceOrLookup);
+            : this.getDeviceUnfiltered(deviceOrLookup);
 
         if (!device) {
             return false;
@@ -464,6 +486,25 @@ export class DeviceManager {
      */
     private get showInfoMessages() {
         return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
+
+    /**
+     * Should non-developer devices be included in device lists?
+     */
+    private get includeNonDeveloperDevices() {
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.includeNonDeveloperDevices === true;
+    }
+
+    /**
+     * Should this device be shown via public API?
+     * Filters based on includeNonDeveloperDevices setting.
+     */
+    private shouldShowDevice(device: RokuDevice): boolean {
+        if (this.includeNonDeveloperDevices) {
+            return true;
+        }
+        // Must have device info AND be developer-enabled to show
+        return device.deviceInfo?.['developer-enabled'] === 'true';
     }
 
     /**
@@ -709,8 +750,8 @@ export class DeviceManager {
     }
 
     private async checkDevicesHealth(force = false, doSyntheticDelay = true): Promise<void> {
-        // Get all devices from merged view
-        const devices = this.getAllDevices();
+        // Get all devices (unfiltered - health check all devices)
+        const devices = this.getAllDevicesUnfiltered();
 
         // Filter to devices that need checking
         const devicesToCheck = force ? devices : devices.filter(d => {
@@ -757,7 +798,7 @@ export class DeviceManager {
      */
     private healthCheckStaleDevices(): void {
         const now = Date.now();
-        const staleDevices = this.getAllDevices().filter(device => {
+        const staleDevices = this.getAllDevicesUnfiltered().filter(device => {
             if (!device.serialNumber) {
                 // No serial = no cache, consider stale
                 return true;
@@ -844,42 +885,6 @@ export class DeviceManager {
         return false;
     }
 
-    /**
-     * Process a discovered IP address from SSDP.
-     * Fetches device info, applies filtering, and sets if valid.
-     * @param serialNumber - Serial number from SSDP USN header, if available
-     */
-    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
-        try {
-            const deviceInfo = await this.fetchDeviceInfo(ip, 8060);
-
-            const config: any = util.getConfiguration('brightscript') || {};
-            const includeNonDeveloperDevices = config?.deviceDiscovery?.includeNonDeveloperDevices === true;
-            const developerEnabled = deviceInfo['developer-enabled'] === 'true';
-
-            if (!includeNonDeveloperDevices && !developerEnabled) {
-                return;
-            }
-
-            // Extract serial and cache the deviceInfo
-            const serial = deviceInfo['serial-number']?.toString?.();
-
-            if (serial) {
-                this.globalStateManager.addLastSeenDevice(this.networkId, serial);
-            }
-
-            // Update discoveredDevices array
-            this.setDiscoveredDevice(ip, serial, 'online');
-
-            // Update configured device state if present
-            this.updateConfiguredDeviceState(ip, serial, 'online');
-
-            this.emitDevicesChanged();
-        } catch {
-            // Device unreachable - remove from discoveredDevices if present
-            this.removeDiscoveredDevice(ip);
-        }
-    }
 
     /**
      * Add or update a device in the discoveredDevices array.
@@ -1131,7 +1136,8 @@ export class DeviceManager {
     private setupFinderListeners() {
         this.finder.removeAllListeners();
         this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.serialNumber);
+            this.setDiscoveredDevice(ip, options?.serialNumber, 'pending');
+            this.emitDevicesChanged();
         });
 
         this.finder.on('device-online', (ip: string, serialNumber?: string) => {
