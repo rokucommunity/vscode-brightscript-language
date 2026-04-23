@@ -579,11 +579,13 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(threw?.message).to.contain('password is required');
         });
 
-        it('throws when the typed password is also rejected', async () => {
-            const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
-            stub.onFirstCall().resolves('bad-password');
-            stub.onSecondCall().resolves('bad-password');
-            (sinon.stub(configProvider as any, 'openInputBox') as any).resolves('still-wrong');
+        it('re-prompts after a rejected typed password and terminates when the user cancels', async () => {
+            const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+            validateStub.onCall(0).resolves('bad-password'); // first candidate
+            validateStub.onCall(1).resolves('bad-password'); // first typed attempt
+            const promptStub = sinon.stub(configProvider as any, 'openInputBox') as any;
+            promptStub.onCall(0).resolves('still-wrong');
+            promptStub.onCall(1).resolves(''); // user cancels the retry
 
             let threw: Error | undefined;
             try {
@@ -591,7 +593,26 @@ describe('BrightScriptConfigurationProvider', () => {
             } catch (error) {
                 threw = error as Error;
             }
-            expect(threw?.message).to.contain('rejected');
+            expect(threw?.message).to.contain('password is required');
+            expect(promptStub.callCount).to.equal(2);
+            expect(validateStub.callCount).to.equal(2);
+        });
+
+        it('accepts a retried password that validates ok after an earlier rejection', async () => {
+            const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+            validateStub.onCall(0).resolves('bad-password'); // first candidate
+            validateStub.onCall(1).resolves('bad-password'); // first typed attempt
+            validateStub.onCall(2).resolves('ok'); // second typed attempt
+            const promptStub = sinon.stub(configProvider as any, 'openInputBox') as any;
+            promptStub.onCall(0).resolves('first-try');
+            promptStub.onCall(1).resolves('correct-pw');
+
+            const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
+            const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+            expect(returned.password).to.equal('correct-pw');
+            expect(await credentialStore.getPassword('SN-001')).to.equal('correct-pw');
+            expect(promptStub.callCount).to.equal(2);
         });
 
         it('does not write to the cred store when no serial number is available', async () => {

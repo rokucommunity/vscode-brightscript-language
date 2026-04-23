@@ -531,20 +531,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // 'bad-password' — fall through to the next candidate
         }
 
-        // No stored / configured candidate was accepted. Prompt the user.
-        const entered = await this.openInputBox('The Roku development webserver password.');
-        if (!entered) {
-            throw new Error('Debug session terminated: password is required.');
+        // No stored / configured candidate was accepted. Prompt the user, and keep
+        // re-prompting after each bad-password attempt until they either enter a
+        // working one or cancel (empty / Esc).
+        let prompt = 'The Roku development webserver password.';
+        while (true) {
+            const entered = await this.openInputBox(prompt);
+            if (!entered) {
+                throw new Error('Debug session terminated: password is required.');
+            }
+            const validation = await this.deviceManager.validateDevicePassword(host, entered);
+            if (validation === 'unreachable') {
+                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
+            }
+            if (validation === 'ok') {
+                await this.acceptPassword(result, entered, serialNumber);
+                return result;
+            }
+            // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
+            prompt = 'The password was rejected by the device. Try again, or press Esc to cancel.';
         }
-        const validation = await this.deviceManager.validateDevicePassword(host, entered);
-        if (validation === 'unreachable') {
-            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
-        }
-        if (validation === 'bad-password') {
-            throw new Error('Debug session terminated: the Roku development webserver password was rejected by the device.');
-        }
-        await this.acceptPassword(result, entered, serialNumber);
-        return result;
     }
 
     /**
