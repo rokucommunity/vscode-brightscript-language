@@ -221,17 +221,20 @@ export class GlobalStateManager {
             }
         }
 
-        // Fallback: Any network
+        // Fallback: Any network, return the most recently updated IP for this serial
+        let mostRecent: { ip: string; timestamp: number } | undefined;
         for (const networkId in map) {
             const networkMap = map[networkId];
             for (const [ip, entry] of Object.entries(networkMap)) {
                 if (entry.serialNumber === serialNumber) {
-                    return ip;
+                    if (!mostRecent || entry.timestamp > mostRecent.timestamp) {
+                        mostRecent = { ip, timestamp: entry.timestamp };
+                    }
                 }
             }
         }
 
-        return undefined;
+        return mostRecent?.ip;
     }
 
     /**
