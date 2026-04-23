@@ -103,7 +103,7 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any);
             capturedCommands = {};
-            sinon.stub(vscode.commands, 'registerCommand').callsFake((name: string, cb: (...args: any[]) => any) => {
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
             });
             updateStub = sinon.stub().resolves();
@@ -157,7 +157,7 @@ describe('BrightScriptFileUtils ', () => {
         beforeEach(() => {
             localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any);
             capturedCommands = {};
-            sinon.stub(vscode.commands, 'registerCommand').callsFake((name: string, cb: (...args: any[]) => any) => {
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
                 capturedCommands[name] = cb;
             });
             updateStub = sinon.stub().resolves();

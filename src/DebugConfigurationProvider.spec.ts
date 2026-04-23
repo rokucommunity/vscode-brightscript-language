@@ -58,7 +58,8 @@ describe('BrightScriptConfigurationProvider', () => {
             null,
             vscode.window.createOutputChannel('Extension'),
             userInputManager,
-            null // BrightScriptCommands is not used in this test
+            null, // BrightScriptCommands is not used in this test
+            deviceManager
         );
     });
 
@@ -130,7 +131,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 });
                 assert.fail('Should have thrown exception');
             } catch (e) {
-                expect(e.message).to.contain('Cannot find .env');
+                expect((e as Error)?.message).to.contain('Cannot find .env');
             }
         });
 
