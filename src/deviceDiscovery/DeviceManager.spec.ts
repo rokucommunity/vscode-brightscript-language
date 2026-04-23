@@ -1351,12 +1351,114 @@ describe('DeviceManager', () => {
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
+            // Simulate network change by changing the stub's return value to a different hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
             // Simulate network change by calling the networkChangeMonitor callback
+            // (now handlePotentialNetworkChange will see the different hash)
             manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Wait for the async handlePotentialNetworkChange to complete
+            await util.sleep(10);
 
             // Cache should be cleared, next call hits network
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('network change handling', () => {
+        it('updates networkId when NetworkChangeMonitor triggers callback', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // networkId should be updated
+            expect(manager['networkId']).to.equal('new-network-hash');
+        });
+
+        it('reloads devices when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a discovered device to verify it gets cleared on network change
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            expect(manager['devices'].length).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Discovered device should be removed (loadLastSeenDevices clears non-configured)
+            expect(manager['devices'].length).to.equal(0);
+        });
+
+        it('clears fetchDeviceThrottleData when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Populate the cache
+            manager['fetchDeviceThrottleData'].set('192.168.1.100', {
+                info: { 'serial-number': 'device-123' } as any,
+                timestamp: Date.now()
+            });
+            expect(manager['fetchDeviceThrottleData'].size).to.equal(1);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(manager['fetchDeviceThrottleData'].size).to.equal(0);
+        });
+
+        it('calls setScanNeeded when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const setScanNeededSpy = sinon.spy(manager as any, 'setScanNeeded');
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            expect(setScanNeededSpy.calledOnce).to.be.true;
+        });
+
+        it('clears devices array when network changes', () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add multiple devices
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-123',
+                ip: '192.168.1.100',
+                isDiscovered: true
+            }));
+            manager['devices'].push(createMockDevice({
+                serialNumber: 'device-456',
+                ip: '192.168.1.101',
+                isConfigured: true
+            }));
+            expect(manager['devices'].length).to.equal(2);
+
+            // Change the network hash
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+
+            // Trigger the network change callback directly
+            manager['networkChangeMonitor']['onNetworkChanged']();
+
+            // Devices array should be cleared (both discovered and configured)
+            expect(manager['devices'].length).to.equal(0);
         });
     });
 
@@ -2433,6 +2535,119 @@ describe('DeviceManager', () => {
                 expect(manager['devices'].length).to.equal(1);
                 expect(manager['devices'][0].ip).to.equal('192.168.1.100');
                 expect(manager['devices'][0].deviceState).to.equal('online');
+            });
+        });
+    });
+
+    describe('defaultPassword', () => {
+        function stubConfig(defaultDevicePassword: string | undefined) {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false
+                },
+                defaultDevicePassword: defaultDevicePassword
+            } as any);
+        }
+
+        it('returns undefined when setting is missing', () => {
+            stubConfig(undefined);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.getDefaultPassword()).to.be.undefined;
+        });
+
+        it('returns undefined when setting is an empty string', () => {
+            stubConfig('');
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.getDefaultPassword()).to.be.undefined;
+        });
+
+        it('returns the configured value when setting is a non-empty string', () => {
+            stubConfig('hunter2');
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            expect(manager.getDefaultPassword()).to.equal('hunter2');
+        });
+
+        describe('getDevice fallback', () => {
+            it('applies defaultPassword to a device missing configuredPassword', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5'
+                    // no configuredPassword
+                }));
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.equal('hunter2');
+            });
+
+            it('preserves a device-specific configuredPassword over defaultPassword', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5',
+                    configuredPassword: 'specific'
+                }));
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.equal('specific');
+            });
+
+            it('leaves configuredPassword undefined when no default and no per-device password', () => {
+                stubConfig(undefined);
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5'
+                }));
+
+                const device = manager.getDevice({ ip: '10.0.0.5' });
+                expect(device?.configuredPassword).to.be.undefined;
+            });
+        });
+
+        describe('getAllDevices fallback', () => {
+            it('applies defaultPassword to every device missing a per-device password', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'no-pw',
+                    ip: '10.0.0.5'
+                }));
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'has-pw',
+                    ip: '10.0.0.6',
+                    configuredPassword: 'specific'
+                }));
+
+                const devices = manager.getAllDevices();
+                const withoutPw = devices.find(d => d.serialNumber === 'no-pw');
+                const withPw = devices.find(d => d.serialNumber === 'has-pw');
+                expect(withoutPw?.configuredPassword).to.equal('hunter2');
+                expect(withPw?.configuredPassword).to.equal('specific');
+            });
+
+            it('does not mutate the underlying device entry when applying the fallback', () => {
+                stubConfig('hunter2');
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                manager['devices'].push(createMockDevice({
+                    serialNumber: 'abc',
+                    ip: '10.0.0.5'
+                }));
+
+                manager.getAllDevices();
+
+                // Internal entry should still have no configuredPassword stored on it
+                expect(manager['devices'][0].configuredPassword).to.be.undefined;
             });
         });
     });

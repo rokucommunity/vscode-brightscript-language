@@ -17,6 +17,7 @@ import type { UserInputManager } from './managers/UserInputManager';
 import { clearNpmPackageCacheCommand } from './commands/ClearNpmPackageCacheCommand';
 import type { LocalPackageManager } from './managers/LocalPackageManager';
 import { profilingCommands } from './commands/ProfilingCommands';
+import { vscodeContextManager } from './managers/VscodeContextManager';
 
 export class BrightScriptCommands {
 
@@ -434,7 +435,8 @@ export class BrightScriptCommands {
                 throw new Error('Tried to set active device but failed.');
             } else {
                 await this.context.workspaceState.update('remoteHost', ip);
-                await vscode.window.showInformationMessage(`BrightScript Language extension active device set to: ${ip}`);
+                await vscodeContextManager.set('activeHost', ip);
+                await util.showTimedNotification(`'${ip}' set as active device`);
             }
         });
 
@@ -502,6 +504,29 @@ export class BrightScriptCommands {
             void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
+        this.registerCommand('clearDefaultDevicePassword', async () => {
+            await vscode.workspace.getConfiguration('brightscript').update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.Global);
+            await util.showTimedNotification('Default device password cleared.');
+        });
+
+        this.registerCommand('setDefaultDevicePassword', async () => {
+            const currentValue = vscode.workspace.getConfiguration('brightscript').get<string>('defaultDevicePassword') ?? '';
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the default developer password (applied to devices without their own password)',
+                password: true,
+                value: currentValue,
+                prompt: 'Set default device password'
+            });
+
+            if (password === undefined) {
+                return;
+            }
+
+            //this value is only supported at the global level, so just always write it there
+            await vscode.workspace.getConfiguration('brightscript').update('defaultDevicePassword', password, vscode.ConfigurationTarget.Global);
+        });
+
         this.registerCommand('setDevicePassword', async (deviceIp: string) => {
             if (!deviceIp) {
                 throw new Error('Device IP is required to set password.');
@@ -525,7 +550,8 @@ export class BrightScriptCommands {
 
         this.registerCommand('clearActiveDevice', async () => {
             await this.context.workspaceState.update('remoteHost', '');
-            await vscode.window.showInformationMessage('BrightScript Language extension active device cleared');
+            await vscodeContextManager.set('activeHost', '');
+            await util.showTimedNotification('Active device cleared');
         });
 
         this.registerCommand('showReleaseNotes', () => {
@@ -786,6 +812,18 @@ export class BrightScriptCommands {
         }
         // Fallback to global password
         return this.getRemotePassword(false);
+    }
+
+    /**
+     * Return the active host IP if one is set and passes a health check; otherwise undefined.
+     */
+    public async getHealthyActiveHost(): Promise<string | undefined> {
+        const activeHost = vscodeContextManager.get<string>('activeHost');
+        if (!activeHost) {
+            return undefined;
+        }
+        const isHealthy = await this.deviceManager.checkDeviceHealth({ ip: activeHost }, true, false);
+        return isHealthy ? activeHost : undefined;
     }
 
     /**
