@@ -32,7 +32,7 @@ export class DeviceManager {
             let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
-            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.defaultPassword);
+            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.getDefaultPassword());
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
@@ -227,7 +227,7 @@ export class DeviceManager {
         const cached = serial ? this.globalStateManager.getCachedDevice(serial) : undefined;
 
         // Fall back to the extension-wide default password when this device has none configured
-        const configuredPassword = device.configuredPassword ?? this.defaultPassword;
+        const configuredPassword = device.configuredPassword ?? this.getDefaultPassword();
 
         return {
             ...device,
@@ -420,7 +420,7 @@ export class DeviceManager {
      * Default password applied to any device that does not have its own configured password.
      * Returns undefined when the setting is empty so callers can fall through to their own logic.
      */
-    public get defaultPassword(): string | undefined {
+    public getDefaultPassword(): string | undefined {
         const value = util.getConfiguration('brightscript')?.defaultDevicePassword;
         return typeof value === 'string' && value.length > 0 ? value : undefined;
     }
