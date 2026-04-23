@@ -22,7 +22,9 @@ import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
-import type { DeviceManager } from './deviceDiscovery/DeviceManager';
+import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import type { CredentialStore } from './managers/CredentialStore';
+import type { ConfiguredDevice } from './GlobalStateManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -34,6 +36,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands,
         private deviceManager: DeviceManager,
+        private credentialStore: CredentialStore,
         private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
@@ -111,8 +114,9 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             result = await this.sanitizeConfiguration(result, folder);
             result = await this.processEnvFile(folder, result);
-            result = await this.processHostParameter(result);
-            result = await this.processPasswordParameter(result);
+            const [resultAfterHost, device] = await this.processHostParameter(result);
+            result = resultAfterHost;
+            result = await this.processPasswordParameter(config, result, device);
             result = await this.processDeepLinkUrlParameter(result);
             result = await this.processLogfilePath(folder, result);
             result = this.processDapLogFilePath(folder, result);
@@ -450,9 +454,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the host parameter in the config and opens an input ui if set to ${promptForHost}.
      * ${activeHost} is a deprecated alias for ${promptForHost}.
      * Both use the active device when it's set and passes a health check, otherwise fall back to the device picker.
+     *
+     * Returns the updated config alongside the probed `RokuDevice` so downstream
+     * password resolution can look up credentials by serial number without
+     * re-fetching device info. Device is undefined when the resolved host is
+     * unreachable or not a developer-enabled Roku.
      * @param config  current config object
      */
-    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+    private async processHostParameter(config: BrightScriptLaunchConfiguration): Promise<[BrightScriptLaunchConfiguration, RokuDevice | undefined]> {
         const trimmedHost = config.host.trim();
         const needsHostPrompt =
             trimmedHost === '' ||
@@ -476,40 +485,136 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.context.workspaceState.update('remoteHost', config.host);
         }
 
-        return config;
+        // Probe the resolved host so downstream password resolution has fresh SN/deviceInfo.
+        // Unreachable or filtered hosts yield no registered device; password resolution handles that.
+        await this.deviceManager.processDiscoveredIp(config.host);
+        const device = this.deviceManager.getDevice({ ip: config.host });
+
+        return [config, device];
     }
 
     /**
-     * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
-     * @param config  current config object
+     * Resolve the device password for the launch configuration.
+     *
+     * Collects candidate passwords from every known source (cred store, matching
+     * `brightscript.devices[]` entry across scopes, `brightscript.defaultDevicePassword`,
+     * the merged `result.password`, and the raw `config.password`), dedupes them,
+     * validates each against the device in order, and uses the first that is
+     * accepted. The winning password is cached in the cred store so later launches
+     * resolve without re-validating every candidate. If no candidate is accepted,
+     * the user is prompted.
+     *
+     * @param config  the raw launch configuration as received from VS Code
+     * @param result  the merged/resolved config being built up
+     * @param device  the probed device from `processHostParameter`, or undefined
+     *                when the host is unreachable / not a developer Roku
      */
-    private async processPasswordParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
-        const defaultPassword = this.deviceManager.getDefaultPassword();
-        //prompt for password if not hardcoded
-        if (config.password.trim() === '${promptForPassword}') {
-            if (defaultPassword) {
-                config.password = defaultPassword;
-                return config;
+    private async processPasswordParameter(
+        config: BrightScriptLaunchConfiguration,
+        result: BrightScriptLaunchConfiguration,
+        device: RokuDevice | undefined
+    ): Promise<BrightScriptLaunchConfiguration> {
+        const host = result.host;
+        const serialNumber = device?.serialNumber;
+
+        const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
+
+        for (const candidate of candidates) {
+            const validation = await this.deviceManager.validateDevicePassword(host, candidate);
+            if (validation === 'ok') {
+                await this.acceptPassword(result, candidate, serialNumber);
+                return result;
             }
-            config.password = await this.openInputBox('The developer account password for your Roku device.');
-            if (!config.password) {
-                throw new Error('Debug session terminated: password is required.');
-            } else {
-                await this.context.workspaceState.update('remotePassword', config.password);
+            if (validation === 'unreachable') {
+                throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
             }
-        } else if (config.password.trim() === '${activeHostPassword}') {
-            // Get the password for the current active device
-            config.password = await this.brightScriptCommands.getActiveHostPassword();
-            if (!config.password) {
-                if (defaultPassword) {
-                    config.password = defaultPassword;
-                    return config;
+            // 'bad-password' — fall through to the next candidate
+        }
+
+        // No stored / configured candidate was accepted. Prompt the user.
+        const entered = await this.openInputBox('The Roku development webserver password.');
+        if (!entered) {
+            throw new Error('Debug session terminated: password is required.');
+        }
+        const validation = await this.deviceManager.validateDevicePassword(host, entered);
+        if (validation === 'unreachable') {
+            throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
+        }
+        if (validation === 'bad-password') {
+            throw new Error('Debug session terminated: the Roku development webserver password was rejected by the device.');
+        }
+        await this.acceptPassword(result, entered, serialNumber);
+        return result;
+    }
+
+    /**
+     * Build the ordered, de-duplicated list of candidate passwords to try when
+     * resolving credentials for a launch. Variable placeholders and empty
+     * values are filtered out so the validation loop only sees real passwords.
+     */
+    private async collectPasswordCandidates(
+        config: BrightScriptLaunchConfiguration,
+        result: BrightScriptLaunchConfiguration,
+        serialNumber: string | undefined
+    ): Promise<string[]> {
+        const candidates: string[] = [];
+        const addCandidate = (value: string | undefined | null) => {
+            if (!value) {
+                return;
+            }
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return;
+            }
+            if (trimmed === '${promptForPassword}' || trimmed === '${activeHostPassword}') {
+                return;
+            }
+            candidates.push(trimmed);
+        };
+
+        if (serialNumber) {
+            addCandidate(await this.credentialStore.getPassword(serialNumber));
+
+            const scanScope = (devices: ConfiguredDevice[] | undefined) => {
+                for (const entry of devices ?? []) {
+                    if (entry.serialNumber === serialNumber) {
+                        addCandidate(entry.password);
+                    }
                 }
-                throw new Error('Debug session terminated: no password set for active device.');
+            };
+            const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
+            scanScope(rootInspection?.globalValue);
+            scanScope(rootInspection?.workspaceValue);
+            for (const folder of vscode.workspace.workspaceFolders ?? []) {
+                const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
+                scanScope(folderInspection?.workspaceFolderValue);
             }
         }
 
-        return config;
+        addCandidate(this.deviceManager.getDefaultPassword());
+        addCandidate(result.password);
+        addCandidate(config.password);
+
+        // Dedupe while preserving insertion order (Set iterates in insertion order),
+        // so a password referenced by multiple sources is still only validated once.
+        return Array.from(new Set(candidates));
+    }
+
+    /**
+     * Commit an accepted password: write it to the resolved config, refresh the
+     * cred store entry for the device's serial (so future launches short-circuit
+     * on candidate #1), and update the global `remotePassword` fallback.
+     */
+    private async acceptPassword(
+        result: BrightScriptLaunchConfiguration,
+        password: string,
+        serialNumber: string | undefined
+    ): Promise<void> {
+        result.password = password;
+        if (serialNumber) {
+            await this.credentialStore.setPassword(serialNumber, password);
+        }
+        await this.context.workspaceState.update('remotePassword', password);
     }
 
     /**
