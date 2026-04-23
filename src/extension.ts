@@ -176,7 +176,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, rokuProjectProvider);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager, rokuProjectProvider);
         context.subscriptions.push(
             // Initial: resolveDebugConfiguration — handles launch.json configs and F5 with no launch.json
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider, vscode.DebugConfigurationProviderTriggerKind.Initial),
@@ -425,8 +425,8 @@ export class Extension {
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: event.body.requestId,
                 error: {
-                    message: error?.message,
-                    stack: error?.stack
+                    message: (error as Error)?.message,
+                    stack: (error as Error)?.stack
                 }
             });
         }

@@ -521,6 +521,29 @@ export class BrightScriptCommands {
             void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
+        this.registerCommand('clearDefaultDevicePassword', async () => {
+            await vscode.workspace.getConfiguration('brightscript').update('defaultDevicePassword', undefined, vscode.ConfigurationTarget.Global);
+            await util.showTimedNotification('Default device password cleared.');
+        });
+
+        this.registerCommand('setDefaultDevicePassword', async () => {
+            const currentValue = vscode.workspace.getConfiguration('brightscript').get<string>('defaultDevicePassword') ?? '';
+
+            const password = await vscode.window.showInputBox({
+                placeHolder: 'Enter the default developer password (applied to devices without their own password)',
+                password: true,
+                value: currentValue,
+                prompt: 'Set default device password'
+            });
+
+            if (password === undefined) {
+                return;
+            }
+
+            //this value is only supported at the global level, so just always write it there
+            await vscode.workspace.getConfiguration('brightscript').update('defaultDevicePassword', password, vscode.ConfigurationTarget.Global);
+        });
+
         this.registerCommand('setDevicePassword', async (serialNumber: string) => {
             if (!serialNumber) {
                 throw new Error('Device serial number is required to set password.');
