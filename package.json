@@ -2243,7 +2243,7 @@
                             "properties": {
                                 "host": {
                                     "type": "string",
-                                    "description": "IP address or hostname of the device"
+                                    "description": "IP address or hostname of the device. Used as a location hint to speed up device detection on the network."
                                 },
                                 "name": {
                                     "type": "string",

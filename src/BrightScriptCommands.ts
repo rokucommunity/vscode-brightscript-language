@@ -1,6 +1,7 @@
 import * as request from 'postman-request';
 import * as vscode from 'vscode';
 import BrightScriptFileUtils from './BrightScriptFileUtils';
+import type { ConfiguredDevice } from './GlobalStateManager';
 import { GlobalStateManager } from './GlobalStateManager';
 import { brighterScriptPreviewCommand } from './commands/BrighterScriptPreviewCommand';
 import { captureScreenshotCommand } from './commands/CaptureScreenshotCommand';
@@ -460,7 +461,7 @@ export class BrightScriptCommands {
             }
 
             const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const inspection = config.inspect<ConfiguredDevice[]>('devices');
             const userDevices = inspection?.globalValue || [];
 
             if (userDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
@@ -468,9 +469,18 @@ export class BrightScriptCommands {
                 return;
             }
 
+            // Copy any cred-store-cached password into the settings entry so the device
+            // is portable across machines via Settings Sync. The cred store keeps its own
+            // copy — it's a running cache of validated passwords that gets refreshed on
+            // each successful password validation.
+            const storedPassword = device.serialNumber
+                ? await this.credentialStore.getPassword(device.serialNumber)
+                : undefined;
+
             const newDevice = {
                 host: device.ip,
-                ...(device.serialNumber && { serialNumber: device.serialNumber })
+                ...(device.serialNumber && { serialNumber: device.serialNumber }),
+                ...(storedPassword && { password: storedPassword })
             };
             userDevices.push(newDevice);
 
@@ -487,17 +497,22 @@ export class BrightScriptCommands {
             }
 
             const config = vscode.workspace.getConfiguration('brightscript');
-            const inspection = config.inspect<Array<{ host: string; name?: string; serialNumber?: string }>>('devices');
+            const inspection = config.inspect<ConfiguredDevice[]>('devices');
             const workspaceDevices = inspection?.workspaceValue || [];
 
-            if (workspaceDevices.some(d => d.host === device.ip || (device.serialNumber && d.serialNumber === device.serialNumber))) {
+            if (workspaceDevices.some(d => (device.serialNumber && d.serialNumber === device.serialNumber))) {
                 void vscode.window.showInformationMessage('Device is already in your workspace settings.');
                 return;
             }
 
+            const storedPassword = device.serialNumber
+                ? await this.credentialStore.getPassword(device.serialNumber)
+                : undefined;
+
             const newDevice = {
                 host: device.ip,
-                ...(device.serialNumber && { serialNumber: device.serialNumber })
+                ...(device.serialNumber && { serialNumber: device.serialNumber }),
+                ...(storedPassword && { password: storedPassword })
             };
             workspaceDevices.push(newDevice);
 
@@ -762,13 +777,75 @@ export class BrightScriptCommands {
     /**
      * Store a password for a specific device, keyed by serial number.
      * An empty password clears the stored entry.
+     *
+     * Writes the password to every `brightscript.devices[]` settings entry that
+     * matches the SN (user/workspace/workspace-folder scopes) and also keeps the
+     * cred store updated. The cred store acts as a running cache of passwords —
+     * kept fresh alongside settings here, and refreshed on each successful
+     * password validation elsewhere.
      */
     public async setDevicePassword(serialNumber: string, password: string) {
+        await this.writeDevicePasswordToSettings(serialNumber, password);
         if (password) {
             await this.credentialStore.setPassword(serialNumber, password);
         } else {
             await this.credentialStore.clearPassword(serialNumber);
         }
+    }
+
+    /**
+     * Update/clear the `password` field on any `brightscript.devices[]` entries
+     * whose `serialNumber` matches. Writes to every writable scope that contains
+     * a matching entry — user (Global), workspace, and each workspace folder.
+     * The default (package.json) scope is read-only and is never written.
+     * Empty password removes the field rather than writing an empty string.
+     * Returns true when at least one scope contained a matching entry.
+     */
+    private async writeDevicePasswordToSettings(serialNumber: string, password: string): Promise<boolean> {
+        if (!serialNumber) {
+            return false;
+        }
+
+        const scopeHasMatch = (devices: ConfiguredDevice[] | undefined): boolean => !!devices?.some(entry => entry.serialNumber === serialNumber);
+
+        const rewriteEntries = (devices: ConfiguredDevice[]): ConfiguredDevice[] => devices.map(entry => {
+            if (entry.serialNumber !== serialNumber) {
+                return entry;
+            }
+            if (password) {
+                return { ...entry, password: password };
+            }
+            const { password: _existingPassword, ...entryWithoutPassword } = entry;
+            return entryWithoutPassword;
+        });
+
+        let found = false;
+
+        // User (Global) + workspace scopes — resource-agnostic
+        const rootConfig = vscode.workspace.getConfiguration('brightscript');
+        const rootInspection = rootConfig.inspect<ConfiguredDevice[]>('devices');
+
+        if (scopeHasMatch(rootInspection?.globalValue)) {
+            found = true;
+            await rootConfig.update('devices', rewriteEntries(rootInspection.globalValue), vscode.ConfigurationTarget.Global);
+        }
+        if (scopeHasMatch(rootInspection?.workspaceValue)) {
+            found = true;
+            await rootConfig.update('devices', rewriteEntries(rootInspection.workspaceValue), vscode.ConfigurationTarget.Workspace);
+        }
+
+        // Workspace-folder scope — one setting per folder in multi-root workspaces
+        const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+        for (const folder of workspaceFolders) {
+            const folderConfig = vscode.workspace.getConfiguration('brightscript', folder.uri);
+            const folderInspection = folderConfig.inspect<ConfiguredDevice[]>('devices');
+            if (scopeHasMatch(folderInspection?.workspaceFolderValue)) {
+                found = true;
+                await folderConfig.update('devices', rewriteEntries(folderInspection.workspaceFolderValue), vscode.ConfigurationTarget.WorkspaceFolder);
+            }
+        }
+
+        return found;
     }
 
     /**
