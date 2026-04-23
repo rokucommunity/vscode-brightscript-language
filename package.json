@@ -2278,7 +2278,7 @@
                         "type": "string",
                         "default": "",
                         "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
-                        "scope": "resource"
+                        "scope": "application"
                     }
                 }
             },
