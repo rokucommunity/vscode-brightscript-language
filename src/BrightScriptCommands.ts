@@ -64,7 +64,7 @@ export class BrightScriptCommands {
 
         // Refresh a single device (inline button on hover in devices panel)
         this.registerCommand('refreshDevice', async (item: { key: string }) => {
-            await this.deviceManager.checkDeviceHealth({ serialNumber: item.key }, true);
+            await this.deviceManager.healthCheckDevice({ serialNumber: item.key }, true);
         });
 
         this.registerCommand('sendRemoteText', async () => {
@@ -890,7 +890,7 @@ export class BrightScriptCommands {
         if (!activeHost) {
             return undefined;
         }
-        const isHealthy = await this.deviceManager.checkDeviceHealth({ ip: activeHost }, true, false);
+        const isHealthy = await this.deviceManager.healthCheckDevice({ ip: activeHost }, true, false);
         return isHealthy ? activeHost : undefined;
     }
 

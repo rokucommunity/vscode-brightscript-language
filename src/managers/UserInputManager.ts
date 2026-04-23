@@ -102,7 +102,7 @@ export class UserInputManager {
                         const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
-                        const isHealthy = await this.deviceManager.checkDeviceHealth(device, true, false);
+                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
                         setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
@@ -158,7 +158,7 @@ export class UserInputManager {
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
-                this.deviceManager.getAllDevices(),
+                this.deviceManager.getDevicesForUI(),
                 this.deviceManager.getLastUsedDeviceIp(),
                 itemCache
             );

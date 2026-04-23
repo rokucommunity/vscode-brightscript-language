@@ -28,11 +28,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getAllDevices();
+        this.devices = this.deviceManager.getDevicesForUI();
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.devices = this.deviceManager.getAllDevices();
+            this.devices = this.deviceManager.getDevicesForUI();
             this.decorationProvider.updateDevices(this.devices);
             this._onDidChangeTreeData.fire(null);
         });
@@ -116,7 +116,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = this.deviceManager.getAllDevices();
+                this.devices = this.deviceManager.getDevicesForUI();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {
@@ -206,7 +206,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!device) {
                 return;
             }
-            this.deviceManager.checkDeviceHealth(device).catch(() => { });
+            this.deviceManager.healthCheckDevice(device).catch(() => { });
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(
