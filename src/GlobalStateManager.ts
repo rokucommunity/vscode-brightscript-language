@@ -228,7 +228,7 @@ export class GlobalStateManager {
             for (const [ip, entry] of Object.entries(networkMap)) {
                 if (entry.serialNumber === serialNumber) {
                     if (!mostRecent || entry.timestamp > mostRecent.timestamp) {
-                        mostRecent = { ip, timestamp: entry.timestamp };
+                        mostRecent = { ip: ip, timestamp: entry.timestamp };
                     }
                 }
             }
