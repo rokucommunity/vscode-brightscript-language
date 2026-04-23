@@ -88,6 +88,84 @@ describe('GlobalStateManager', () => {
         });
     });
 
+    describe('serialNumberByIpForNetwork', () => {
+        const network1 = 'network-hash-1';
+        const network2 = 'network-hash-2';
+        const serial1 = 'SERIAL001';
+        const serial2 = 'SERIAL002';
+
+        it('stores a new IP→serial mapping', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            expect(manager.getSerialNumberForIp('192.168.1.10', network1)).to.equal(serial1);
+        });
+
+        it('returns undefined for unknown IP', () => {
+            expect(manager.getSerialNumberForIp('10.0.0.1', network1)).to.be.undefined;
+        });
+
+        it('removes old IP entry when same serial is seen at a new IP on the same network', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.20', serial1);
+
+            // New IP should resolve correctly
+            expect(manager.getSerialNumberForIp('192.168.1.20', network1)).to.equal(serial1);
+            // Old IP should no longer exist in the cache
+            expect(manager.getSerialNumberForIp('192.168.1.10', network1)).to.be.undefined;
+        });
+
+        it('purges all stale entries when a serial accumulates multiple old IPs on the same network', () => {
+            // Simulate a Roku that changed IPs several times
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.11', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.12', serial1);
+            // Now it moves to a new IP
+            manager.setSerialNumberForIp(network1, '192.168.1.99', serial1);
+
+            // Only the latest IP survives
+            expect(manager.getSerialNumberForIp('192.168.1.99', network1)).to.equal(serial1);
+            expect(manager.getSerialNumberForIp('192.168.1.10', network1)).to.be.undefined;
+            expect(manager.getSerialNumberForIp('192.168.1.11', network1)).to.be.undefined;
+            expect(manager.getSerialNumberForIp('192.168.1.12', network1)).to.be.undefined;
+        });
+
+        it('does not affect entries for a different serial on the same network', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.20', serial2);
+            // Move serial1 to a new IP
+            manager.setSerialNumberForIp(network1, '192.168.1.30', serial1);
+
+            expect(manager.getSerialNumberForIp('192.168.1.30', network1)).to.equal(serial1);
+            // serial2 entry is untouched
+            expect(manager.getSerialNumberForIp('192.168.1.20', network1)).to.equal(serial2);
+        });
+
+        it('does not remove entries for the same serial on a different network', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network2, '10.0.0.5', serial1);
+            // Update serial1 on network1 only
+            manager.setSerialNumberForIp(network1, '192.168.1.50', serial1);
+
+            expect(manager.getSerialNumberForIp('192.168.1.50', network1)).to.equal(serial1);
+            expect(manager.getSerialNumberForIp('192.168.1.10', network1)).to.be.undefined;
+            // network2 entry should be untouched
+            expect(manager.getSerialNumberForIp('10.0.0.5', network2)).to.equal(serial1);
+        });
+
+        it('getIpForSerial returns the most recent IP after deduplication', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.20', serial1);
+
+            expect(manager.getIpForSerial(serial1, network1)).to.equal('192.168.1.20');
+        });
+
+        it('overwrites mapping when the same IP is re-used by the same serial', () => {
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+            manager.setSerialNumberForIp(network1, '192.168.1.10', serial1);
+
+            expect(manager.getSerialNumberForIp('192.168.1.10', network1)).to.equal(serial1);
+        });
+    });
+
     describe('clearExpiredDevices', () => {
         const testDevice = {
             serialNumber: 'device-123',
