@@ -971,7 +971,7 @@ export class DeviceManager {
      * Fetches device info, applies filtering, and sets if valid.
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
+    public async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         try {
             const deviceInfo = await this.fetchDeviceInfo(ip, 8060);
 
