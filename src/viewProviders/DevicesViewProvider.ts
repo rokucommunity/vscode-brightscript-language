@@ -253,19 +253,21 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 })
             );
 
-            result.unshift(
-                this.createDeviceInfoTreeItem({
-                    label: '🔑 Set Device Password',
-                    parent: element,
-                    collapsibleState: vscode.TreeItemCollapsibleState.None,
-                    tooltip: 'Set password for this device',
-                    command: {
-                        command: 'extension.brightscript.setDevicePassword',
-                        title: 'Set Device Password',
-                        arguments: [device.ip]
-                    }
-                })
-            );
+            if (device.serialNumber) {
+                result.unshift(
+                    this.createDeviceInfoTreeItem({
+                        label: '🔑 Set Device Password',
+                        parent: element,
+                        collapsibleState: vscode.TreeItemCollapsibleState.None,
+                        tooltip: 'Set password for this device',
+                        command: {
+                            command: 'extension.brightscript.setDevicePassword',
+                            title: 'Set Device Password',
+                            arguments: [device.serialNumber]
+                        }
+                    })
+                );
+            }
 
             if (semver.satisfies(element.details['software-version'], '>=11')) {
                 // TODO: add ECP system hooks here in the future (like registry call, etc...)

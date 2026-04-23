@@ -506,23 +506,26 @@ export class BrightScriptCommands {
             void vscode.window.showInformationMessage(`Added "${displayName}" to workspace settings.`);
         });
 
-        this.registerCommand('setDevicePassword', async (deviceIp: string) => {
-            if (!deviceIp) {
-                throw new Error('Device IP is required to set password.');
+        this.registerCommand('setDevicePassword', async (serialNumber: string) => {
+            if (!serialNumber) {
+                throw new Error('Device serial number is required to set password.');
             }
+
+            const device = this.deviceManager.getDevice({ serialNumber: serialNumber });
+            const displayName = device?.deviceInfo?.['user-device-name'] || device?.deviceInfo?.['default-device-name'] || device?.ip || serialNumber;
 
             const password = await vscode.window.showInputBox({
                 placeHolder: 'Enter the developer account password for this device',
                 password: true,
-                prompt: `Set password for device: ${deviceIp}`
+                prompt: `Set password for device: ${displayName}`
             });
 
             if (password !== undefined) {
-                await this.setDevicePassword(deviceIp, password);
+                await this.setDevicePassword(serialNumber, password);
                 if (password) {
-                    await vscode.window.showInformationMessage(`Password set for device: ${deviceIp}`);
+                    await vscode.window.showInformationMessage(`Password set for device: ${displayName}`);
                 } else {
-                    await vscode.window.showInformationMessage(`Password cleared for device: ${deviceIp}`);
+                    await vscode.window.showInformationMessage(`Password cleared for device: ${displayName}`);
                 }
             }
         });
@@ -757,39 +760,39 @@ export class BrightScriptCommands {
     }
 
     /**
-     * Store a password for a specific device
-     * @param deviceIp The IP address of the device
-     * @param password The password to store for this device
+     * Store a password for a specific device, keyed by serial number.
+     * An empty password clears the stored entry.
      */
-    public async setDevicePassword(deviceIp: string, password: string) {
-        const devicePasswords = await this.getDevicePasswordsFromStorage();
-        devicePasswords[deviceIp] = password;
-        await this.context.workspaceState.update('devicePasswords', devicePasswords);
+    public async setDevicePassword(serialNumber: string, password: string) {
+        if (password) {
+            await this.credentialStore.setPassword(serialNumber, password);
+        } else {
+            await this.credentialStore.clearPassword(serialNumber);
+        }
     }
 
     /**
-     * Get the password for a specific device
-     * @param deviceIp The IP address of the device
-     * @returns The password for the device, or undefined if not set
+     * Get the stored password for a specific device by serial number.
      */
-    public async getDevicePassword(deviceIp: string): Promise<string | undefined> {
-        const devicePasswords = await this.getDevicePasswordsFromStorage();
-        return devicePasswords[deviceIp];
+    public async getDevicePassword(serialNumber: string | undefined): Promise<string | undefined> {
+        return this.credentialStore.getPassword(serialNumber);
     }
 
     /**
-     * Get the password for the currently active device
-     * @returns The password for the active device, or falls back to global password
+     * Get the password for the currently active device.
+     * Resolves the active host's IP to a serial number via DeviceManager,
+     * then reads from the SN-keyed credential store. Falls back to the
+     * workspace-global password when no per-device entry exists.
      */
     public async getActiveHostPassword(): Promise<string | undefined> {
         const activeHost = this.context.workspaceState.get<string>('remoteHost');
         if (activeHost && typeof activeHost === 'string') {
-            const devicePassword = await this.getDevicePassword(activeHost);
+            const serialNumber = this.deviceManager.getDevice({ ip: activeHost })?.serialNumber;
+            const devicePassword = await this.credentialStore.getPassword(serialNumber);
             if (devicePassword) {
                 return devicePassword;
             }
         }
-        // Fallback to global password
         return this.getRemotePassword(false);
     }
 
@@ -803,14 +806,6 @@ export class BrightScriptCommands {
         }
         const isHealthy = await this.deviceManager.checkDeviceHealth({ ip: activeHost }, true, false);
         return isHealthy ? activeHost : undefined;
-    }
-
-    /**
-     * Get all device passwords from storage
-     * @returns Object mapping device IPs to passwords
-     */
-    private async getDevicePasswordsFromStorage(): Promise<Record<string, string>> {
-        return await this.context.workspaceState.get('devicePasswords') || {};
     }
 
     /**
