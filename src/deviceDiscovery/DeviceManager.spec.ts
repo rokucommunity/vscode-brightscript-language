@@ -2555,19 +2555,19 @@ describe('DeviceManager', () => {
         it('returns undefined when setting is missing', () => {
             stubConfig(undefined);
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            expect(manager.defaultPassword).to.be.undefined;
+            expect(manager.getDefaultPassword()).to.be.undefined;
         });
 
         it('returns undefined when setting is an empty string', () => {
             stubConfig('');
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            expect(manager.defaultPassword).to.be.undefined;
+            expect(manager.getDefaultPassword()).to.be.undefined;
         });
 
         it('returns the configured value when setting is a non-empty string', () => {
             stubConfig('hunter2');
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-            expect(manager.defaultPassword).to.equal('hunter2');
+            expect(manager.getDefaultPassword()).to.equal('hunter2');
         });
 
         describe('getDevice fallback', () => {

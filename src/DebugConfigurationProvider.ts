@@ -22,6 +22,7 @@ import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
+import type { DeviceManager } from './deviceDiscovery/DeviceManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
@@ -32,6 +33,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         private extensionOutputChannel: vscode.OutputChannel,
         private userInputManager: UserInputManager,
         private brightScriptCommands: BrightScriptCommands,
+        private deviceManager: DeviceManager,
         private rokuProjectDiscovery?: RokuProjectManager
     ) {
         this.context = context;
@@ -481,9 +483,14 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
      * Validates the password parameter in the config and opens an input ui if set to ${promptForPassword}
      * @param config  current config object
      */
-    private async processPasswordParameter(config: BrightScriptLaunchConfiguration) {
+    private async processPasswordParameter(config: BrightScriptLaunchConfiguration): Promise<BrightScriptLaunchConfiguration> {
+        const defaultPassword = this.deviceManager.getDefaultPassword();
         //prompt for password if not hardcoded
         if (config.password.trim() === '${promptForPassword}') {
+            if (defaultPassword) {
+                config.password = defaultPassword;
+                return config;
+            }
             config.password = await this.openInputBox('The developer account password for your Roku device.');
             if (!config.password) {
                 throw new Error('Debug session terminated: password is required.');
@@ -494,6 +501,10 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // Get the password for the current active device
             config.password = await this.brightScriptCommands.getActiveHostPassword();
             if (!config.password) {
+                if (defaultPassword) {
+                    config.password = defaultPassword;
+                    return config;
+                }
                 throw new Error('Debug session terminated: no password set for active device.');
             }
         }
