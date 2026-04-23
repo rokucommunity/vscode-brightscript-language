@@ -532,17 +532,29 @@ export class BrightScriptCommands {
             const password = await vscode.window.showInputBox({
                 placeHolder: 'Enter the developer account password for this device',
                 password: true,
-                prompt: `Set password for device: ${displayName}`
+                prompt: `Set password for device: ${displayName}`,
+                // Roku's own webserver UI enforces the same 4-character minimum.
+                validateInput: (value) => {
+                    return value.length < 4 ? 'Password must be at least 4 characters' : undefined;
+                }
             });
 
             if (password !== undefined) {
                 await this.setDevicePassword(serialNumber, password);
-                if (password) {
-                    await vscode.window.showInformationMessage(`Password set for device: ${displayName}`);
-                } else {
-                    await vscode.window.showInformationMessage(`Password cleared for device: ${displayName}`);
-                }
+                await vscode.window.showInformationMessage(`Password set for device: ${displayName}`);
             }
+        });
+
+        this.registerCommand('clearDevicePassword', async (serialNumber: string) => {
+            if (!serialNumber) {
+                throw new Error('Device serial number is required to clear password.');
+            }
+
+            const device = this.deviceManager.getDevice({ serialNumber: serialNumber });
+            const displayName = device?.deviceInfo?.['user-device-name'] || device?.deviceInfo?.['default-device-name'] || device?.ip || serialNumber;
+
+            await this.setDevicePassword(serialNumber, '');
+            await vscode.window.showInformationMessage(`Password cleared for device: ${displayName}`);
         });
 
         this.registerCommand('clearActiveDevice', async () => {

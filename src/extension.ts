@@ -130,7 +130,7 @@ export class Extension {
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Devices" view
-        let devicesViewProvider = new DevicesViewProvider(this.deviceManager);
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore);
         const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
             treeDataProvider: devicesViewProvider
         });

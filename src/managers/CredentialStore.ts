@@ -1,4 +1,6 @@
 import type * as vscode from 'vscode';
+import type { Disposable } from 'vscode';
+import { EventEmitter } from 'eventemitter3';
 
 /**
  * Stores device developer passwords keyed by device serial number.
@@ -17,6 +19,25 @@ export class CredentialStore {
     ) { }
 
     private readonly storageKey = 'devicePasswordsBySerial';
+
+    private emitter = new EventEmitter();
+
+    /**
+     * Subscribe to change events. `'changed'` fires whenever a stored password
+     * is added, changed, or removed.
+     */
+    public on(eventName: 'changed', handler: () => void, disposables?: Disposable[]): () => void {
+        this.emitter.on(eventName, handler);
+        const unsubscribe = () => {
+            this.emitter.removeListener(eventName, handler);
+        };
+
+        disposables?.push({
+            dispose: unsubscribe
+        });
+
+        return unsubscribe;
+    }
 
     /**
      * Get the stored password for a device by serial number.
@@ -40,6 +61,7 @@ export class CredentialStore {
         const map = await this.readMap();
         map[serialNumber] = password;
         await this.context.globalState.update(this.storageKey, map);
+        this.emitter.emit('changed');
     }
 
     /**
@@ -53,6 +75,7 @@ export class CredentialStore {
         if (serialNumber in map) {
             delete map[serialNumber];
             await this.context.globalState.update(this.storageKey, map);
+            this.emitter.emit('changed');
         }
     }
 
@@ -68,6 +91,7 @@ export class CredentialStore {
      */
     public async clearAll(): Promise<void> {
         await this.context.globalState.update(this.storageKey, undefined);
+        this.emitter.emit('changed');
     }
 
     private readMap(): Promise<Record<string, string>> {

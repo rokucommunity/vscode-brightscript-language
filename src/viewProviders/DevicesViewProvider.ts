@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
 import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { CredentialStore } from '../managers/CredentialStore';
+import type { ConfiguredDevice } from '../GlobalStateManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';
@@ -22,7 +24,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
     private decorationProvider: DeviceDecorationProvider;
 
     constructor(
-        private deviceManager: DeviceManager
+        private deviceManager: DeviceManager,
+        private credentialStore: CredentialStore
     ) {
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
@@ -42,6 +45,16 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
             this.deviceManager.refresh();
+        });
+
+        // Re-render when a device's stored password changes so the Clear item appears/disappears
+        this.credentialStore.on('changed', () => {
+            this._onDidChangeTreeData.fire(null);
+        });
+        vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration('brightscript.devices')) {
+                this._onDidChangeTreeData.fire(null);
+            }
         });
     }
 
@@ -112,7 +125,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         return parts.join(' – ') || device.ip;
     }
 
-    getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): vscode.ProviderResult<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
+    async getChildren(element?: DeviceTreeItem | DeviceInfoTreeItem): Promise<DeviceTreeItem[] | DeviceInfoTreeItem[]> {
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
@@ -254,15 +267,31 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             );
 
             if (device.serialNumber) {
+                const hasPassword = await this.hasStoredPasswordForSerial(device.serialNumber);
+                if (hasPassword) {
+                    result.unshift(
+                        this.createDeviceInfoTreeItem({
+                            label: '🗑️ Clear Device Password',
+                            parent: element,
+                            collapsibleState: vscode.TreeItemCollapsibleState.None,
+                            tooltip: 'Clear the stored developer password for this device',
+                            command: {
+                                command: 'extension.brightscript.clearDevicePassword',
+                                title: 'Clear Device Password',
+                                arguments: [device.serialNumber]
+                            }
+                        })
+                    );
+                }
                 result.unshift(
                     this.createDeviceInfoTreeItem({
-                        label: '🔑 Set Device Password',
+                        label: hasPassword ? '🔑 Change Device Password' : '🔑 Set Device Password',
                         parent: element,
                         collapsibleState: vscode.TreeItemCollapsibleState.None,
-                        tooltip: 'Set password for this device',
+                        tooltip: hasPassword ? 'Change the stored developer password for this device' : 'Set password for this device',
                         command: {
                             command: 'extension.brightscript.setDevicePassword',
-                            title: 'Set Device Password',
+                            title: hasPassword ? 'Change Device Password' : 'Set Device Password',
                             arguments: [device.serialNumber]
                         }
                     })
@@ -360,6 +389,35 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
 
     private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem> = new vscode.EventEmitter<vscode.TreeItem>();
     public readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem> = this._onDidChangeTreeData.event;
+
+    /**
+     * Returns true when a password for the given serial number is stored in
+     * the CredentialStore or in any `brightscript.devices[]` settings scope
+     * (user, workspace, or workspace-folder). Used to decide whether the
+     * "Clear Device Password" tree item should be shown.
+     */
+    private async hasStoredPasswordForSerial(serialNumber: string): Promise<boolean> {
+        if (await this.credentialStore.getPassword(serialNumber)) {
+            return true;
+        }
+
+        const scopeHasPassword = (devices: ConfiguredDevice[] | undefined): boolean => !!devices?.some(entry => entry.serialNumber === serialNumber && !!entry.password);
+
+        const rootConfig = vscode.workspace.getConfiguration('brightscript');
+        const rootInspection = rootConfig.inspect<ConfiguredDevice[]>('devices');
+        if (scopeHasPassword(rootInspection?.globalValue) || scopeHasPassword(rootInspection?.workspaceValue)) {
+            return true;
+        }
+
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
+            if (scopeHasPassword(folderInspection?.workspaceFolderValue)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private concealObject(object: Record<string, any>, secretKeys: string[]) {
         return util.concealObject(

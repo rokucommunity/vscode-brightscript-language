@@ -127,4 +127,74 @@ describe('CredentialStore', () => {
             expect(await store.listSerialNumbersWithPasswords()).to.deep.equal([]);
         });
     });
+
+    describe('on("changed")', () => {
+        it('fires when a password is stored', async () => {
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.setPassword('SN-001', 'one');
+            expect(fireCount).to.equal(1);
+        });
+
+        it('fires when a stored password is overwritten', async () => {
+            await store.setPassword('SN-001', 'one');
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.setPassword('SN-001', 'two');
+            expect(fireCount).to.equal(1);
+        });
+
+        it('fires when a stored password is cleared', async () => {
+            await store.setPassword('SN-001', 'one');
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.clearPassword('SN-001');
+            expect(fireCount).to.equal(1);
+        });
+
+        it('does not fire when clearPassword is called for an unknown serial number', async () => {
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.clearPassword('SN-999');
+            expect(fireCount).to.equal(0);
+        });
+
+        it('does not fire when clearPassword is called with an empty serial number', async () => {
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.clearPassword('');
+            expect(fireCount).to.equal(0);
+        });
+
+        it('fires on clearAll', async () => {
+            await store.setPassword('SN-001', 'one');
+            let fireCount = 0;
+            store.on('changed', () => fireCount++);
+            await store.clearAll();
+            expect(fireCount).to.equal(1);
+        });
+
+        it('returns an unsubscribe function that stops further delivery', async () => {
+            let fireCount = 0;
+            const unsubscribe = store.on('changed', () => fireCount++);
+            await store.setPassword('SN-001', 'one');
+            unsubscribe();
+            await store.setPassword('SN-002', 'two');
+            expect(fireCount).to.equal(1);
+        });
+
+        it('pushes a disposable when a disposables array is provided', async () => {
+            let fireCount = 0;
+            const disposables: Array<{ dispose: () => void }> = [];
+            store.on('changed', () => fireCount++, disposables as any);
+            expect(disposables).to.have.lengthOf(1);
+
+            await store.setPassword('SN-001', 'one');
+            expect(fireCount).to.equal(1);
+
+            disposables[0].dispose();
+            await store.setPassword('SN-002', 'two');
+            expect(fireCount).to.equal(1);
+        });
+    });
 });
