@@ -527,7 +527,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(host);
-                await this.acceptPassword(result, legacyPassword, serialNumber);
+                // A legacy entry is explicit historical opt-in, so always cache forward.
+                await this.acceptPassword(result, legacyPassword, serialNumber, true);
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
@@ -537,12 +538,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // fall through to the normal candidate flow, which will surface its own error.
         }
 
+        // Compute once whether the user has explicitly adopted this device. Gates the
+        // cred-store write inside acceptPassword so we don't silently persist credentials
+        // for devices the user has not signalled ownership of.
+        const adopted = serialNumber ? await this.isSerialAdopted(serialNumber) : false;
+
         const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
 
         for (const candidate of candidates) {
             const validation = await this.deviceManager.validateDevicePassword(host, candidate);
             if (validation === 'ok') {
-                await this.acceptPassword(result, candidate, serialNumber);
+                await this.acceptPassword(result, candidate, serialNumber, adopted);
                 return result;
             }
             if (validation === 'unreachable') {
@@ -565,7 +571,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
                 throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
             }
             if (validation === 'ok') {
-                await this.acceptPassword(result, entered, serialNumber);
+                await this.acceptPassword(result, entered, serialNumber, adopted);
                 return result;
             }
             // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
@@ -627,20 +633,56 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Commit an accepted password: write it to the resolved config, refresh the
-     * cred store entry for the device's serial (so future launches short-circuit
-     * on candidate #1), and update the global `remotePassword` fallback.
+     * Commit an accepted password: write it to the resolved config and update the
+     * global `remotePassword` fallback. When `adopted` is true, also refresh the
+     * cred store entry for the device's serial so future launches short-circuit
+     * on candidate #1. `adopted` is false for devices the user has not explicitly
+     * signalled ownership of, to avoid silently persisting credentials for
+     * passively-discovered devices.
      */
     private async acceptPassword(
         result: BrightScriptLaunchConfiguration,
         password: string,
-        serialNumber: string | undefined
+        serialNumber: string | undefined,
+        adopted: boolean
     ): Promise<void> {
         result.password = password;
-        if (serialNumber) {
+        if (serialNumber && adopted) {
             await this.credentialStore.setPassword(serialNumber, password);
         }
         await this.context.workspaceState.update('remotePassword', password);
+    }
+
+    /**
+     * Returns true when the user has explicitly signalled ownership of the
+     * device with the given serial number, either by storing a password for it
+     * in the cred store or by listing it in `brightscript.devices[]` (any
+     * scope). Used to gate automatic cred-store writes in `acceptPassword`.
+     */
+    private async isSerialAdopted(serialNumber: string): Promise<boolean> {
+        if (!serialNumber) {
+            return false;
+        }
+
+        if (await this.credentialStore.getPassword(serialNumber) !== undefined) {
+            return true;
+        }
+
+        const scopeHasSerial = (devices: ConfiguredDevice[] | undefined): boolean => !!devices?.some(entry => entry.serialNumber === serialNumber);
+
+        const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
+        if (scopeHasSerial(rootInspection?.globalValue) || scopeHasSerial(rootInspection?.workspaceValue)) {
+            return true;
+        }
+
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
+            if (scopeHasSerial(folderInspection?.workspaceFolderValue)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private readonly legacyPasswordStoreKey = 'devicePasswords';

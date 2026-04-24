@@ -512,11 +512,33 @@ describe('BrightScriptConfigurationProvider', () => {
             device: any
         ) => (configProvider as any).processPasswordParameter(config, result, device);
 
+        /**
+         * Register the given serial number in `brightscript.devices[]` user settings
+         * so `acceptPassword`'s cred-store write is gated open. Tests that assert a
+         * password lands in the cred store need to call this first; otherwise the
+         * gate skips the cred-store write by design.
+         */
+        const adoptSerial = (serialNumber: string) => {
+            const existing: any[] = (vscode.workspace as any)._configuration?.['brightscript.devices'] ?? [];
+            if (!existing.some(entry => entry.serialNumber === serialNumber)) {
+                (vscode.workspace as any)._configuration = (vscode.workspace as any)._configuration ?? {};
+                (vscode.workspace as any)._configuration['brightscript.devices'] = [
+                    ...existing,
+                    { serialNumber: serialNumber, host: '0.0.0.0' }
+                ];
+            }
+        };
+
         beforeEach(() => {
             sinon.stub(deviceManager, 'getDefaultPassword').returns(undefined);
         });
 
+        afterEach(() => {
+            delete (vscode.workspace as any)._configuration?.['brightscript.devices'];
+        });
+
         it('accepts the first candidate that validates ok and caches it to the cred store', async () => {
+            adoptSerial('SN-001');
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
             const result: any = { host: '1.2.3.4', password: 'winning-pw' };
@@ -527,6 +549,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('moves past bad-password candidates and uses the first accepted one', async () => {
+            adoptSerial('SN-001');
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onCall(0).resolves('bad-password');
             stub.onCall(1).resolves('ok');
@@ -554,6 +577,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('prompts the user when every candidate is rejected, then accepts a typed password', async () => {
+            adoptSerial('SN-001');
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onFirstCall().resolves('bad-password');
             stub.onSecondCall().resolves('ok');
@@ -599,6 +623,7 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('accepts a retried password that validates ok after an earlier rejection', async () => {
+            adoptSerial('SN-001');
             const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
@@ -644,6 +669,7 @@ describe('BrightScriptConfigurationProvider', () => {
             });
 
             it('drops a legacy entry on bad-password and falls through to the candidate loop', async () => {
+                adoptSerial('SN-001');
                 seedLegacy({ '1.2.3.4': 'legacy-wrong' });
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('bad-password'); // legacy
@@ -659,6 +685,7 @@ describe('BrightScriptConfigurationProvider', () => {
             });
 
             it('preserves the legacy entry on unreachable and lets the main flow continue', async () => {
+                adoptSerial('SN-001');
                 seedLegacy({ '1.2.3.4': 'legacy-pw' });
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('unreachable'); // legacy attempt — treated as transient
@@ -684,6 +711,52 @@ describe('BrightScriptConfigurationProvider', () => {
                 // legacy was never peeked/validated — only the normal candidate flow ran
                 expect(validateStub.callCount).to.equal(1);
                 expect(getLegacy()).to.deep.equal({ '9.9.9.9': 'stranger' });
+            });
+        });
+
+        describe('cred-store write gate', () => {
+            it('skips the cred-store write when the serial number is not in settings or the cred store', async () => {
+                sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-DISCOVERED' });
+
+                expect(await credentialStore.getPassword('SN-DISCOVERED')).to.be.undefined;
+            });
+
+            it('writes to the cred store when the SN is already present there (refreshing an existing entry)', async () => {
+                await credentialStore.setPassword('SN-001', 'old-pw');
+                // First candidate is the existing cred-store entry (priority #1). Reject it so
+                // the newer result.password wins, proving acceptPassword actually refreshed the entry.
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password');
+                validateStub.onCall(1).resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'new-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(await credentialStore.getPassword('SN-001')).to.equal('new-pw');
+            });
+
+            it('writes to the cred store when the SN is listed in brightscript.devices[] (even with no password field)', async () => {
+                adoptSerial('SN-001');
+                sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
+            });
+
+            it('always writes to the cred store when the winning password came from legacy migration', async () => {
+                // Deliberately no adoptSerial here; legacy presence is the historical opt-in.
+                (vscode.context.workspaceState as any)._data.devicePasswords = { '1.2.3.4': 'legacy-pw' };
+                sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'ignored' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-DISCOVERED' });
+
+                expect(await credentialStore.getPassword('SN-DISCOVERED')).to.equal('legacy-pw');
             });
         });
     });
