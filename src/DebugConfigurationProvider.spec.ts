@@ -623,5 +623,68 @@ describe('BrightScriptConfigurationProvider', () => {
 
             expect(await credentialStore.getPassword('SN-001')).to.be.undefined;
         });
+
+        describe('legacy workspaceState.devicePasswords migration', () => {
+            const seedLegacy = (entries: Record<string, string>) => {
+                (vscode.context.workspaceState as any)._data.devicePasswords = entries;
+            };
+
+            const getLegacy = () => (vscode.context.workspaceState as any)._data.devicePasswords as Record<string, string> | undefined;
+
+            it('migrates a legacy entry on ok: uses it, writes to the cred store, and drains the legacy entry', async () => {
+                seedLegacy({ '1.2.3.4': 'legacy-pw', '9.9.9.9': 'other-device' });
+                sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'ignored' };
+                const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(returned.password).to.equal('legacy-pw');
+                expect(await credentialStore.getPassword('SN-001')).to.equal('legacy-pw');
+                expect(getLegacy()).to.deep.equal({ '9.9.9.9': 'other-device' });
+            });
+
+            it('drops a legacy entry on bad-password and falls through to the candidate loop', async () => {
+                seedLegacy({ '1.2.3.4': 'legacy-wrong' });
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password'); // legacy
+                validateStub.onCall(1).resolves('ok'); // candidate flow picks up the first dedup'd candidate
+
+                const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+                const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(returned.password).to.equal('winning-pw');
+                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
+                expect(getLegacy()).to.deep.equal({});
+                expect(validateStub.callCount).to.equal(2);
+            });
+
+            it('preserves the legacy entry on unreachable and lets the main flow continue', async () => {
+                seedLegacy({ '1.2.3.4': 'legacy-pw' });
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('unreachable'); // legacy attempt — treated as transient
+                validateStub.onCall(1).resolves('ok'); // main flow picks up the first candidate
+
+                const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+                const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(returned.password).to.equal('winning-pw');
+                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
+                // legacy entry stays intact for next launch to try again
+                expect(getLegacy()).to.deep.equal({ '1.2.3.4': 'legacy-pw' });
+                expect(validateStub.callCount).to.equal(2);
+            });
+
+            it('leaves other legacy entries alone when none match the current host', async () => {
+                seedLegacy({ '9.9.9.9': 'stranger' });
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
+
+                const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                // legacy was never peeked/validated — only the normal candidate flow ran
+                expect(validateStub.callCount).to.equal(1);
+                expect(getLegacy()).to.deep.equal({ '9.9.9.9': 'stranger' });
+            });
+        });
     });
 });

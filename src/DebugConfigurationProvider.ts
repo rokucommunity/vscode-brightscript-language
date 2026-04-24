@@ -517,6 +517,26 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         const host = result.host;
         const serialNumber = device?.serialNumber;
 
+        // Opportunistically drain any legacy IP-keyed password that still lives in
+        // workspaceState from pre-refactor extension installs. Reads never consult
+        // this store anymore; it's peeked here and disposed of once we know whether
+        // it works. This step is best-effort: an unreachable device just means we
+        // try again next launch; the authoritative error surfaces from the main flow.
+        const legacyPassword = this.getLegacyIpKeyedPassword(host);
+        if (legacyPassword !== undefined) {
+            const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
+            if (validation === 'ok') {
+                await this.clearLegacyIpKeyedPassword(host);
+                await this.acceptPassword(result, legacyPassword, serialNumber);
+                return result;
+            } else if (validation === 'bad-password') {
+                // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
+                await this.clearLegacyIpKeyedPassword(host);
+            }
+            // 'unreachable' — leave the legacy entry alone (it may still be correct) and
+            // fall through to the normal candidate flow, which will surface its own error.
+        }
+
         const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
 
         for (const candidate of candidates) {
@@ -621,6 +641,37 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             await this.credentialStore.setPassword(serialNumber, password);
         }
         await this.context.workspaceState.update('remotePassword', password);
+    }
+
+    private readonly legacyPasswordStoreKey = 'devicePasswords';
+
+    /**
+     * Peek the legacy IP-keyed password store (`workspaceState.devicePasswords`).
+     * Reads never use this store anymore; it's consulted only for one-shot
+     * migration inside `processPasswordParameter` and drained on the first
+     * successful device contact.
+     */
+    private getLegacyIpKeyedPassword(ip: string): string | undefined {
+        if (!ip) {
+            return undefined;
+        }
+        const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
+        return map[ip];
+    }
+
+    /**
+     * Remove an entry from the legacy IP-keyed password store.
+     */
+    private async clearLegacyIpKeyedPassword(ip: string): Promise<void> {
+        if (!ip) {
+            return;
+        }
+        const map = this.context.workspaceState.get<Record<string, string>>(this.legacyPasswordStoreKey) ?? {};
+        if (!(ip in map)) {
+            return;
+        }
+        delete map[ip];
+        await this.context.workspaceState.update(this.legacyPasswordStoreKey, map);
     }
 
     /**
