@@ -581,7 +581,7 @@ describe('BrightScriptConfigurationProvider', () => {
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onFirstCall().resolves('bad-password');
             stub.onSecondCall().resolves('ok');
-            (sinon.stub(configProvider as any, 'openInputBox') as any).resolves('typed-pw');
+            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves({ value: 'typed-pw', remember: false });
 
             const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
@@ -592,7 +592,7 @@ describe('BrightScriptConfigurationProvider', () => {
 
         it('throws when the user cancels (empty) the password prompt', async () => {
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('bad-password');
-            (sinon.stub(configProvider as any, 'openInputBox') as any).resolves('');
+            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves(undefined);
 
             let threw: Error | undefined;
             try {
@@ -607,9 +607,9 @@ describe('BrightScriptConfigurationProvider', () => {
             const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
-            const promptStub = sinon.stub(configProvider as any, 'openInputBox') as any;
-            promptStub.onCall(0).resolves('still-wrong');
-            promptStub.onCall(1).resolves(''); // user cancels the retry
+            const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+            promptStub.onCall(0).resolves({ value: 'still-wrong', remember: false });
+            promptStub.onCall(1).resolves(undefined); // user cancels the retry
 
             let threw: Error | undefined;
             try {
@@ -628,9 +628,9 @@ describe('BrightScriptConfigurationProvider', () => {
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
             validateStub.onCall(2).resolves('ok'); // second typed attempt
-            const promptStub = sinon.stub(configProvider as any, 'openInputBox') as any;
-            promptStub.onCall(0).resolves('first-try');
-            promptStub.onCall(1).resolves('correct-pw');
+            const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+            promptStub.onCall(0).resolves({ value: 'first-try', remember: false });
+            promptStub.onCall(1).resolves({ value: 'correct-pw', remember: false });
 
             const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
@@ -757,6 +757,62 @@ describe('BrightScriptConfigurationProvider', () => {
                 await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-DISCOVERED' });
 
                 expect(await credentialStore.getPassword('SN-DISCOVERED')).to.equal('legacy-pw');
+            });
+        });
+
+        describe('remember-this-password toggle on typed passwords', () => {
+            it('persists the typed password when the user toggled Remember on', async () => {
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password'); // the only candidate (result.password)
+                validateStub.onCall(1).resolves('ok'); // typed password
+                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+                promptStub.resolves({ value: 'typed-pw', remember: true });
+
+                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });
+
+                expect(await credentialStore.getPassword('SN-NEW')).to.equal('typed-pw');
+                // the prompt was configured with the Remember toggle shown (un-adopted SN)
+                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: true });
+            });
+
+            it('does NOT persist the typed password when Remember was left off', async () => {
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password');
+                validateStub.onCall(1).resolves('ok');
+                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves({ value: 'typed-pw', remember: false });
+
+                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });
+
+                expect(await credentialStore.getPassword('SN-NEW')).to.be.undefined;
+            });
+
+            it('hides the Remember toggle for already-adopted devices and persists automatically', async () => {
+                adoptSerial('SN-001');
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password');
+                validateStub.onCall(1).resolves('ok');
+                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+                promptStub.resolves({ value: 'typed-pw', remember: false });
+
+                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
+
+                expect(await credentialStore.getPassword('SN-001')).to.equal('typed-pw');
+                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: false });
+            });
+
+            it('hides the Remember toggle when no SN is available', async () => {
+                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
+                validateStub.onCall(0).resolves('bad-password');
+                validateStub.onCall(1).resolves('ok');
+                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
+                promptStub.resolves({ value: 'typed-pw', remember: false });
+
+                await callProcess({ password: '${promptForPassword}' }, { host: '1.2.3.4', password: 'rejected-pw' }, undefined);
+
+                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: false });
             });
         });
     });

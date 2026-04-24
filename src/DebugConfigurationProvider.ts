@@ -559,23 +559,76 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // No stored / configured candidate was accepted. Prompt the user, and keep
         // re-prompting after each bad-password attempt until they either enter a
-        // working one or cancel (empty / Esc).
-        let prompt = 'The Roku development webserver password.';
+        // working one or cancel (empty / Esc). Un-adopted devices get an inline
+        // "Remember" toggle in the input box itself rather than a second popup.
+        let placeholder = 'The Roku development webserver password.';
+        const offerRememberToggle = !adopted && !!serialNumber;
         while (true) {
-            const entered = await this.openInputBox(prompt);
-            if (!entered) {
+            const entry = await this.promptForPassword(placeholder, { showRememberToggle: offerRememberToggle });
+            if (!entry?.value) {
                 throw new Error('Debug session terminated: password is required.');
             }
-            const validation = await this.deviceManager.validateDevicePassword(host, entered);
+            const validation = await this.deviceManager.validateDevicePassword(host, entry.value);
             if (validation === 'unreachable') {
                 throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
             }
             if (validation === 'ok') {
-                await this.acceptPassword(result, entered, serialNumber, adopted);
+                const shouldPersist = adopted || entry.remember;
+                await this.acceptPassword(result, entry.value, serialNumber, shouldPersist);
                 return result;
             }
             // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
-            prompt = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+            placeholder = 'The password was rejected by the device. Try again, or press Esc to cancel.';
+        }
+    }
+
+    /**
+     * Password input dialog with an optional "Remember this password" toggle
+     * surfaced as a button in the input's corner. Clicking the icon flips the
+     * toggle without submitting; Enter submits the typed value and the
+     * toggle state. Esc / hide returns undefined.
+     */
+    private async promptForPassword(
+        placeholder: string,
+        options: { showRememberToggle: boolean }
+    ): Promise<{ value: string; remember: boolean } | undefined> {
+        const input = vscode.window.createInputBox();
+        input.placeholder = placeholder;
+        let remember = false;
+
+        const renderButtons = () => {
+            if (!options.showRememberToggle) {
+                input.buttons = [];
+                return;
+            }
+            input.buttons = [{
+                iconPath: new vscode.ThemeIcon(remember ? 'check' : 'circle-large-outline'),
+                tooltip: remember ? 'Remember this password: on' : 'Remember this password: off'
+            }];
+        };
+        renderButtons();
+
+        if (options.showRememberToggle) {
+            input.prompt = 'Click the icon to remember this password for future launches.';
+        }
+
+        try {
+            return await new Promise<{ value: string; remember: boolean } | undefined>(resolve => {
+                input.onDidTriggerButton(() => {
+                    remember = !remember;
+                    renderButtons();
+                });
+                input.onDidAccept(() => {
+                    resolve({ value: input.value, remember: remember });
+                    input.hide();
+                });
+                input.onDidHide(() => {
+                    resolve(undefined);
+                });
+                input.show();
+            });
+        } finally {
+            input.dispose();
         }
     }
 
