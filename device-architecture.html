@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        Device Architecture (internal)
+    </title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="navbar">
+        <div class="nav-left-area">
+            <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <a href="/index.html">BrightScript VSCode Extension</a>
+        </div>
+        <a href="https://github.com/rokucommunity/vscode-brightscript-language" target="_blank" title="View project on GitHub">
+            <svg xmlns="http://www.w3.org/2000/svg" style="fill: white" width="24" height="24" viewBox="0 0 24 24">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            </svg>
+        </a>
+    </div>
+    <div id="body-area">
+        <div id="sidebar">
+
+            
+            
+            <div class="folder">
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="index.html">Introduction</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="features.html">Features</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="device-discovery.html">Device Discovery</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="installation.html">How to Install</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="extension-settings.html">Extension Settings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="keyboard-shortcuts.html">Keyboard shortcuts</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="device-architecture.html">Device Architecture (internal)</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="brightscript-tasks.html">BrightScript Tasks</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Debugging">Debugging</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/advanced-project-setup.html">Advanced Project Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/bs-const.html">bs_const</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/component-libraries.html">Component Libraries</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/deep-linking.html">Deep Linking (ECP)</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/env-file.html">.env file</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/rale.html">RALE Support</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/remote-control-mode.html">Remote Control Mode</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Debugging/source-maps.html">SourceMaps</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="Editing">Editing</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/index.html">Setup</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/code-formatting.html">Code formatting</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/error-handling.html">Ignoring Errors and Warnings</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/snippets.html">Snippets</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="Editing/word-separators.html">Editor word separator</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="prerelease-versions.html">Pre-release Versions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <div class="folder">
+                
+                <a class="name entry" href="release-notes">Release Notes</a>
+                
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.31.0.html">v2.31.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/v2.0.0.html">v2.0.0</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="release-notes/index.html">Release Notes</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="telemetry.html">Telemetry</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="variable-substitutions.html">Variable Substitutions</a>
+            
+            
+                </div>
+                
+                <div class="children">
+                    
+            
+            <a class="entry" href="contributing.html">Contributing</a>
+            
+            
+                </div>
+                
+            </div>
+            
+            
+
+            
+        </div>
+        <div id="content">
+            <a href="#device-architecture-internal"><h1 id="device-architecture-internal">Device Architecture (internal)</h1></a><blockquote>
+<p>Developer-facing companion to <a href="./device-discovery.md">device-discovery.md</a>.
+Focuses on how data flows internally — sources, resolution, persistence, lookup, and credential resolution. UI is intentionally glossed over.</p>
+</blockquote>
+<p>Devices are <strong>incrementally resolved</strong>. A device can exist at several stages of completeness, and each stage unlocks different capabilities (IP routing → credential lookup → cache restoration). The sections below describe the pieces in that order, then the launch-time password resolution that sits on top.</p>
+<hr>
+<a href="#1-high-level-architecture"><h2 id="1-high-level-architecture">1. High-level architecture</h2></a><p>Four data sources feed a single in-memory registry (<code>DeviceManager.devices[]</code>). Resolution enriches entries by calling the device&#39;s ECP endpoint, and the results are fanned out into three long-lived caches plus the SN-keyed credential store. At launch time, <code>DebugConfigurationProvider</code> re-probes the resolved host and runs a candidate-based password flow against the cred store + settings.</p>
+<pre><code class="language-mermaid">flowchart TB
+    subgraph sources[&quot;Data sources&quot;]
+        SSDP[&quot;SSDP discovery&lt;br/&gt;(RokuFinder)&lt;br/&gt;host + optional SN&quot;]
+        CONFIG[&quot;brightscript.devices[]&lt;br/&gt;(user / workspace / folder)&lt;br/&gt;host + optional SN / name / password&quot;]
+        LASTSEEN[&quot;lastSeenDevicesByNetwork&lt;br/&gt;(on-startup reload)&quot;]
+        MANUAL[&quot;Manual IP entry&lt;br/&gt;(Device Picker)&quot;]
+    end
+
+    subgraph dm[&quot;DeviceManager&quot;]
+        DEVICES[&quot;devices[] : DeviceEntry&quot;]
+        RESOLVE[&quot;resolveDevice() / processDiscoveredIp()&lt;br/&gt;→ ECP /query/device-info&quot;]
+        DEDUPE[&quot;dedupeBySerial()&quot;]
+    end
+
+    subgraph persist[&quot;GlobalStateManager (persistent)&quot;]
+        DEVCACHE[&quot;deviceCache&lt;br/&gt;SN → deviceInfo&lt;br/&gt;TTL ~30 days&quot;]
+        IPMAP[&quot;serialNumberByIpForNetwork&lt;br/&gt;networkId + ip → SN&quot;]
+        LASTSEENSTORE[&quot;lastSeenDevicesByNetwork&lt;br/&gt;networkId → SN[]&quot;]
+    end
+
+    subgraph creds[&quot;CredentialStore (globalState)&quot;]
+        CREDS[&quot;devicePasswordsBySerial&lt;br/&gt;SN → password&lt;br/&gt;emits &#39;changed&#39;&quot;]
+    end
+
+    subgraph consumers[&quot;Consumers&quot;]
+        UI[&quot;DevicesViewProvider&lt;br/&gt;UserInputManager (picker)&quot;]
+        DCP[&quot;DebugConfigurationProvider&lt;br/&gt;(launch-time host + password)&quot;]
+        CMD[&quot;BrightScriptCommands&quot;]
+    end
+
+    SSDP --&gt; DEVICES
+    CONFIG --&gt; DEVICES
+    LASTSEEN -.-&gt;|seeded on startup| DEVICES
+    MANUAL --&gt; DEVICES
+
+    DEVICES --&gt; RESOLVE
+    RESOLVE --&gt;|on success| DEVCACHE
+    RESOLVE --&gt;|on success| IPMAP
+    RESOLVE --&gt;|on success| LASTSEENSTORE
+    RESOLVE --&gt; DEDUPE
+    DEDUPE --&gt; DEVICES
+
+    DEVCACHE -.-&gt;|hydrate deviceInfo on lookup| DEVICES
+    IPMAP -.-&gt;|SN lookup by IP| DEVICES
+
+    DEVICES --&gt; UI
+    DEVICES --&gt; DCP
+    DEVICES --&gt; CMD
+
+    DCP --&gt;|read / write SN-keyed| CREDS
+    CMD --&gt;|read / write SN-keyed| CREDS
+    CREDS -.-&gt;|&#39;changed&#39; event| UI
+</code></pre>
+<p>Key implementation anchors:</p>
+<ul>
+<li>Registry and entry shape: <a href="../src/deviceDiscovery/DeviceManager.ts#L1195-L1239">src/deviceDiscovery/DeviceManager.ts:1195-1239</a></li>
+<li>Resolution: <a href="../src/deviceDiscovery/DeviceManager.ts#L799-L858">src/deviceDiscovery/DeviceManager.ts:799-858</a></li>
+<li>Config loader: <a href="../src/deviceDiscovery/DeviceManager.ts#L668-L797">src/deviceDiscovery/DeviceManager.ts:668-797</a></li>
+<li>SSDP / manual-IP entry: <a href="../src/deviceDiscovery/DeviceManager.ts#L993">src/deviceDiscovery/DeviceManager.ts:993</a></li>
+<li><code>validateDevicePassword</code>: <a href="../src/deviceDiscovery/DeviceManager.ts#L393-L404">src/deviceDiscovery/DeviceManager.ts:393-404</a></li>
+<li>Three persistent caches: <a href="../src/GlobalStateManager.ts">src/GlobalStateManager.ts</a></li>
+<li>Credentials: <a href="../src/managers/CredentialStore.ts">src/managers/CredentialStore.ts</a></li>
+<li>Launch-time host + password resolution: <a href="../src/DebugConfigurationProvider.ts#L463-L582">src/DebugConfigurationProvider.ts:463-582</a></li>
+</ul>
+<hr>
+<a href="#2-device-state-lifecycle"><h2 id="2-device-state-lifecycle">2. Device state lifecycle</h2></a><p>A device moves through these states as it becomes more completely known. &quot;Partial&quot; vs &quot;fully resolved&quot; is the distinction between the left half (no SN yet) and the right half (SN known, <code>deviceInfo</code> cached).</p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    direction LR
+
+    [*] --&gt; HostOnly: config / SSDP (host only)
+    [*] --&gt; HostPlusSN: config with SN / SSDP USN
+    [*] --&gt; RestoredFromCache: startup reload
+
+    HostOnly --&gt; Pending: checkDeviceHealth
+    HostPlusSN --&gt; Pending: checkDeviceHealth
+    RestoredFromCache --&gt; Pending: lazy health check
+
+    Pending --&gt; Online: ECP ok
+    Pending --&gt; Offline: ECP fails (configured)
+    Pending --&gt; [*]: ECP fails (discovered-only)
+
+    Online --&gt; Pending: refresh / cooldown
+    Offline --&gt; Pending: next health check
+
+    Online --&gt; Validated: validateDevicePassword ok
+    Validated --&gt; Online: (per-call result)
+
+    note left of HostOnly
+      Partially resolved
+      key = i:{ip}
+      No CredentialStore match
+      (store is SN-keyed only)
+    end note
+
+    note right of Online
+      Fully resolved
+      key = s:{SN}
+      deviceInfo hydrated from cache
+      CredentialStore lookup works
+      Survives IP changes via dedupeBySerial
+    end note
+
+    note right of Pending
+      On &#39;ECP ok&#39; transition:
+      setCachedDevice(SN, deviceInfo)
+      setSerialNumberForIp(net, ip, SN)
+      addLastSeenDevice(net, SN)
+    end note
+</code></pre>
+<p>Things that commonly surprise:</p>
+<ul>
+<li><strong>The <code>key</code> flips when SN is learned.</strong> It&#39;s <code>i:{ip}</code> while the device is host-only and <code>s:{SN}</code> after resolution. Lookups by either form work during the transition window.</li>
+<li><strong>Configured devices never disappear on failure</strong>, they just go <code>offline</code>. Only <em>discovered-only</em> entries get removed on health-check failure.</li>
+<li><strong><code>Validated</code> is not a stored state</strong>. Password validation returns <code>&#39;ok&#39; | &#39;bad-password&#39; | &#39;unreachable&#39;</code> from <code>DeviceManager.validateDevicePassword</code>, which delegates to <code>rokuDeploy.validateDeveloperPassword</code> (HEAD <code>/plugin_install</code> over digest auth). The result is a per-call branch key, not a field on the entry.</li>
+<li><strong>Adoption is a separate axis from resolution.</strong> A device can be online and fully resolved without being &quot;adopted&quot; by the user. Adoption status gates whether the launch-time flow is allowed to write a validated password back to the cred store. See section 5.</li>
+</ul>
+<hr>
+<a href="#3-resolution-sequence-end-to-end"><h2 id="3-resolution-sequence-end-to-end">3. Resolution sequence (end-to-end)</h2></a><p>This is the happy path from &quot;device appears&quot; through &quot;password validated&quot;, showing the cache writes.</p>
+<pre><code class="language-mermaid">sequenceDiagram
+    autonumber
+    participant Src as Source&lt;br/&gt;(SSDP / Config / LastSeen)
+    participant DM as DeviceManager
+    participant ECP as Roku ECP&lt;br/&gt;(device)
+    participant GSM as GlobalStateManager
+    participant DCP as DebugConfigurationProvider
+    participant CS as CredentialStore
+
+    Note over Src,DM: Entry — device arrives with ip and maybe SN
+
+    Src-&gt;&gt;DM: processDiscoveredIp(ip) /&lt;br/&gt;loadConfiguredDevices() /&lt;br/&gt;loadLastSeenDevices()
+    DM-&gt;&gt;DM: setDevice({ ip, deviceState: &#39;pending&#39;, ... })
+    DM--&gt;&gt;DM: emit &#39;devices-changed&#39; (debounced 50ms)
+
+    Note over DM,ECP: Resolution — resolveDevice() / processDiscoveredIp()
+
+    DM-&gt;&gt;ECP: GET /query/device-info
+    alt ECP succeeds
+        ECP--&gt;&gt;DM: { serial-number, model, default-device-name, ... }
+        DM-&gt;&gt;GSM: setCachedDevice(SN, deviceInfo)
+        DM-&gt;&gt;GSM: setSerialNumberForIp(networkId, ip, SN)
+        DM-&gt;&gt;GSM: addLastSeenDevice(networkId, SN)
+        DM-&gt;&gt;DM: dedupeBySerial(ip, SN)&lt;br/&gt;(merge if SN was at a different IP)
+        DM-&gt;&gt;DM: state = &#39;online&#39;, key = s:{SN}
+    else ECP fails
+        DM-&gt;&gt;DM: markDeviceUnreachable()
+        Note right of DM: configured → &#39;offline&#39;&lt;br/&gt;discovered-only → removed
+    end
+
+    Note over DCP,CS: Launch-time credential resolution&lt;br/&gt;(DebugConfigurationProvider)
+
+    DCP-&gt;&gt;DM: processDiscoveredIp(host) + getDevice({ ip: host })
+    Note right of DCP: gives DCP the SN&lt;br/&gt;(or undefined if unreachable)
+    DCP-&gt;&gt;DCP: isSerialAdopted(SN)?&lt;br/&gt;(cred store has entry OR&lt;br/&gt;SN listed in brightscript.devices[])
+    DCP-&gt;&gt;DCP: collectPasswordCandidates()&lt;br/&gt;cred store → matching devices[] entries&lt;br/&gt;→ defaultDevicePassword → result.password&lt;br/&gt;→ config.password (deduped)
+
+    loop for each candidate
+        DCP-&gt;&gt;DM: validateDevicePassword(host, candidate)
+        DM-&gt;&gt;ECP: rokuDeploy.validateDeveloperPassword&lt;br/&gt;(HEAD /plugin_install, digest)
+        alt &#39;ok&#39;
+            ECP--&gt;&gt;DM: 200
+            DM--&gt;&gt;DCP: &#39;ok&#39;
+            DCP-&gt;&gt;CS: setPassword(SN, candidate)&lt;br/&gt;only when adopted=true
+            DCP--&gt;&gt;DCP: result.password = candidate, return
+        else &#39;bad-password&#39;
+            ECP--&gt;&gt;DM: 401
+            DM--&gt;&gt;DCP: &#39;bad-password&#39;
+        else &#39;unreachable&#39;
+            ECP--&gt;&gt;DM: throws DeviceUnreachableError
+            DM--&gt;&gt;DCP: &#39;unreachable&#39;
+            DCP--&gt;&gt;DCP: throw, device is unreachable
+        end
+    end
+
+    Note over DCP,CS: All candidates rejected → prompt with Remember toggle
+
+    DCP-&gt;&gt;DCP: promptForPassword(showRememberToggle: !adopted &amp;&amp; !!SN)
+    Note right of DCP: bad-password re-prompts with hint&lt;br/&gt;Esc throws, password is required
+</code></pre>
+<p>Useful anchors:</p>
+<ul>
+<li><code>processDiscoveredIp</code>: <a href="../src/deviceDiscovery/DeviceManager.ts#L993">src/deviceDiscovery/DeviceManager.ts:993</a></li>
+<li><code>fetchDeviceInfo</code> + cache writes: <a href="../src/deviceDiscovery/DeviceManager.ts#L943-L971">src/deviceDiscovery/DeviceManager.ts:943-971</a></li>
+<li><code>dedupeBySerial</code>: <a href="../src/deviceDiscovery/DeviceManager.ts#L541-L568">src/deviceDiscovery/DeviceManager.ts:541-568</a></li>
+<li><code>validateDevicePassword</code>: <a href="../src/deviceDiscovery/DeviceManager.ts#L393-L404">src/deviceDiscovery/DeviceManager.ts:393-404</a></li>
+<li><code>processHostParameter</code>: <a href="../src/DebugConfigurationProvider.ts#L463-L493">src/DebugConfigurationProvider.ts:463-493</a></li>
+<li><code>processPasswordParameter</code>: <a href="../src/DebugConfigurationProvider.ts#L511-L582">src/DebugConfigurationProvider.ts:511-582</a></li>
+<li><code>getActiveHostPassword</code>: <a href="../src/BrightScriptCommands.ts#L898-L908">src/BrightScriptCommands.ts:898-908</a></li>
+</ul>
+<hr>
+<a href="#4-lookup-amp-hydration"><h2 id="4-lookup-amp-hydration">4. Lookup &amp; hydration</h2></a><p><code>getDevice()</code> is the universal read path. It finds an entry, then tries to hydrate <code>deviceInfo</code> from the persistent cache — that&#39;s what turns a partial entry into a fully-resolved <code>RokuDevice</code>.</p>
+<pre><code class="language-mermaid">flowchart LR
+    CALLER[&quot;Caller&lt;br/&gt;getDevice(key) or&lt;br/&gt;getDevice({ ip?, serialNumber? })&quot;]
+
+    CALLER --&gt; RESOLVE_KEY{&quot;Lookup form&quot;}
+    RESOLVE_KEY --&gt;|&quot;by SN&quot;| MATCH_SN[&quot;scan devices[] for SN&quot;]
+    RESOLVE_KEY --&gt;|&quot;by IP&quot;| MATCH_IP[&quot;scan devices[] for IP&quot;]
+
+    MATCH_SN --&gt; ENTRY[&quot;DeviceEntry&quot;]
+    MATCH_IP --&gt; ENTRY
+
+    ENTRY --&gt; HAS_SN{&quot;entry has serialNumber?&quot;}
+    HAS_SN --&gt;|&quot;yes&quot;| CACHE[&quot;GlobalState.getCachedDevice by SN&quot;]
+    HAS_SN --&gt;|&quot;no&quot;| IPLOOKUP[&quot;GlobalState.getSerialNumberForIp&lt;br/&gt;networkId + ip&quot;]
+    IPLOOKUP --&gt;|&quot;SN found&quot;| CACHE
+    IPLOOKUP --&gt;|&quot;no SN&quot;| PARTIAL[&quot;return entry WITHOUT deviceInfo&lt;br/&gt;partially resolved RokuDevice&quot;]
+    CACHE --&gt;|&quot;hit&quot;| FULL[&quot;return RokuDevice WITH deviceInfo&lt;br/&gt;fully resolved&quot;]
+    CACHE --&gt;|&quot;miss or expired&quot;| PARTIAL
+</code></pre>
+<p>Consequence worth internalizing: the IP→SN map (<code>serialNumberByIpForNetwork</code>) is the bridge that lets a <em>config entry with just a host</em> still get a cached <code>deviceInfo</code> without re-hitting the device — but only after the first successful resolution on this network has written the mapping.</p>
+<p><code>networkId</code> is a SHA256 hash of the active network interfaces (see <code>getNetworkHash</code> in <a href="../src/deviceDiscovery/NetworkChangeMonitor.ts">src/deviceDiscovery/NetworkChangeMonitor.ts</a>). Switching WiFi networks rotates the id, so per-network maps don&#39;t bleed across environments. The <code>deviceCache</code> itself is not network-scoped — once an SN&#39;s <code>deviceInfo</code> is cached, it hydrates on any network.</p>
+<hr>
+<a href="#5-credential-resolution-launch-time"><h2 id="5-credential-resolution-launch-time">5. Credential resolution (launch time)</h2></a><p>Password resolution is owned by <code>DebugConfigurationProvider.processPasswordParameter</code>. It runs once per launch, after the host has been resolved and probed. The shape is: drain legacy → check adoption → walk a deduped candidate list → prompt with retry.</p>
+<a href="#read-precedence-candidate-order"><h3 id="read-precedence-candidate-order">Read precedence (candidate order)</h3></a><p>For a launch with a known SN, candidates are gathered in this order, then deduped while preserving first occurrence:</p>
+<ol>
+<li><code>CredentialStore.getPassword(SN)</code> — globalState SN-keyed store</li>
+<li>Every <code>brightscript.devices[].password</code> entry whose <code>serialNumber</code> matches the SN, scanned across user / workspace / each workspace folder scope</li>
+<li><code>brightscript.defaultDevicePassword</code> (workspace-wide fallback)</li>
+<li><code>result.password</code> — merged user/workspace settings + config</li>
+<li><code>config.password</code> — raw launch.json value</li>
+</ol>
+<p>The four legacy variables (<code>${promptForHost}</code>, <code>${activeHost}</code>, <code>${promptForPassword}</code>, <code>${activeHostPassword}</code>) are filtered out so they&#39;re effectively no-ops — defaulted password slots fall through to the candidate flow regardless of which placeholder the user typed.</p>
+<p>When SN is unknown (host unreachable at probe time, or not a developer-mode Roku), only candidates 3-5 are considered.</p>
+<a href="#adoption-gating"><h3 id="adoption-gating">Adoption gating</h3></a><p>A device is &quot;adopted&quot; when the user has explicitly signalled ownership — either by storing a password for the SN in the cred store, or by listing the SN in <code>brightscript.devices[]</code> in any scope. <code>isSerialAdopted(SN)</code> is computed once at the top of the flow.</p>
+<p>The <code>acceptPassword(result, password, SN, adopted)</code> helper writes the winning password to the result config and the workspace-global <code>remotePassword</code> fallback, but only writes to <code>CredentialStore</code> when <code>adopted === true</code>. This prevents the extension from silently persisting credentials for passively-discovered devices the user has not opted into.</p>
+<p>The legacy migration path always passes <code>adopted = true</code>: a pre-existing IP-keyed entry is itself an explicit historical opt-in.</p>
+<a href="#validation-loop"><h3 id="validation-loop">Validation loop</h3></a><p>For each candidate in order, the flow calls <code>validateDevicePassword(host, candidate)</code>:</p>
+<ul>
+<li><code>&#39;ok&#39;</code> → <code>acceptPassword</code>, return.</li>
+<li><code>&#39;bad-password&#39;</code> → try next candidate.</li>
+<li><code>&#39;unreachable&#39;</code> → throw <code>&quot;Debug session terminated: device at {host} is unreachable.&quot;</code>. The flow does not fall through to legacy stores when the device is unreachable; the user can&#39;t debug it anyway.</li>
+</ul>
+<p>If every candidate is rejected with <code>&#39;bad-password&#39;</code>, the flow prompts via <code>promptForPassword</code>. Un-adopted devices with a known SN see an inline &quot;Remember this password&quot; toggle (an icon button on the input box, not a follow-up popup); adopted devices and devices without an SN don&#39;t see the toggle. A bad typed password re-prompts with a &quot;rejected, try again&quot; placeholder; Esc throws <code>&quot;password is required&quot;</code>.</p>
+<a href="#legacy-workspacestatedevicepasswords-migration"><h3 id="legacy-workspacestatedevicepasswords-migration">Legacy <code>workspaceState.devicePasswords</code> migration</h3></a><p>The old IP-keyed password store is <strong>drain-only</strong>. Reads never consult it. Before the candidate loop runs, <code>processPasswordParameter</code> peeks the legacy entry for the resolved IP:</p>
+<ul>
+<li><code>&#39;ok&#39;</code> → write to cred store (always, since this is an explicit historical opt-in), delete the legacy entry, accept the password, return.</li>
+<li><code>&#39;bad-password&#39;</code> → delete the legacy entry (proven wrong, dead weight) and fall through to the normal flow.</li>
+<li><code>&#39;unreachable&#39;</code> → leave the legacy entry alone (it may still be correct on a future attempt) and fall through.</li>
+</ul>
+<p>Anchors:</p>
+<ul>
+<li><code>processPasswordParameter</code>: <a href="../src/DebugConfigurationProvider.ts#L511-L582">src/DebugConfigurationProvider.ts:511-582</a></li>
+<li><code>collectPasswordCandidates</code>: <a href="../src/DebugConfigurationProvider.ts#L639-L685">src/DebugConfigurationProvider.ts:639-685</a></li>
+<li><code>acceptPassword</code>: <a href="../src/DebugConfigurationProvider.ts#L695-L706">src/DebugConfigurationProvider.ts:695-706</a></li>
+<li><code>isSerialAdopted</code>: <a href="../src/DebugConfigurationProvider.ts#L714-L738">src/DebugConfigurationProvider.ts:714-738</a></li>
+<li><code>promptForPassword</code> (with toggle): <a href="../src/DebugConfigurationProvider.ts#L590-L632">src/DebugConfigurationProvider.ts:590-632</a></li>
+<li>Legacy peek/drain helpers: <a href="../src/DebugConfigurationProvider.ts#L740-L769">src/DebugConfigurationProvider.ts:740-769</a></li>
+</ul>
+<hr>
+<a href="#6-partially-vs-fully-resolved--quick-reference"><h2 id="6-partially-vs-fully-resolved--quick-reference">6. Partially vs fully resolved — quick reference</h2></a><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Partially resolved</th>
+<th>Fully resolved</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Has <code>serialNumber</code>?</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>key</code></td>
+<td><code>i:{ip}</code></td>
+<td><code>s:{SN}</code></td>
+</tr>
+<tr>
+<td><code>deviceState</code></td>
+<td><code>pending</code> (or <code>offline</code>)</td>
+<td><code>online</code></td>
+</tr>
+<tr>
+<td><code>deviceInfo</code></td>
+<td>undefined</td>
+<td>hydrated from <code>deviceCache</code></td>
+</tr>
+<tr>
+<td>Credential lookup</td>
+<td>Not possible (store is SN-keyed)</td>
+<td><code>CredentialStore.getPassword(SN)</code></td>
+</tr>
+<tr>
+<td>Eligible for adoption</td>
+<td>No (no SN to key against)</td>
+<td>Yes (via cred store entry or <code>brightscript.devices[]</code>)</td>
+</tr>
+<tr>
+<td>Auto-write of validated pw</td>
+<td>No</td>
+<td>Only when adopted</td>
+</tr>
+<tr>
+<td>Survives IP change</td>
+<td>No (treated as new device)</td>
+<td>Yes (<code>dedupeBySerial</code> merges)</td>
+</tr>
+<tr>
+<td>Restored on startup</td>
+<td>Only via <code>brightscript.devices[]</code> config</td>
+<td>Via <code>lastSeenDevicesByNetwork</code> + <code>deviceCache</code></td>
+</tr>
+<tr>
+<td>How it becomes fully resolved</td>
+<td><code>resolveDevice()</code> / <code>processDiscoveredIp()</code> → ECP <code>/query/device-info</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+<hr>
+<a href="#7-things-intentionally-not-shown"><h2 id="7-things-intentionally-not-shown">7. Things intentionally not shown</h2></a><ul>
+<li><strong>Scan pacing</strong> (stale thresholds, settle windows, queued-scan flag) — covered in <a href="./device-discovery.md">device-discovery.md</a>.</li>
+<li><strong>Network change / sleep monitors</strong> — they trigger reloads and queue scans but don&#39;t change the resolution model.</li>
+<li><strong>View providers</strong> (<code>DevicesViewProvider</code>, Device Picker) — they consume <code>getAllDevices()</code> + <code>&#39;devices-changed&#39;</code> and subscribe to <code>CredentialStore.on(&#39;changed&#39;)</code> for password-presence indicators; they don&#39;t participate in resolution.</li>
+<li><strong>Legacy launch-config variables</strong> (<code>${promptForHost}</code>, <code>${activeHost}</code>, <code>${promptForPassword}</code>, <code>${activeHostPassword}</code>) — still accepted in launch.json for backwards compatibility, but treated identically to empty/missing. The default flow does the right thing in all cases.</li>
+<li><strong>Per-workspace <code>remoteHost</code> / <code>remotePassword</code></strong> — still written and read as the active-device pointer + global password fallback. Not yet SN-keyed (deferred follow-up).</li>
+</ul>
+            <div id="footer"></div>
+        </div>
+    </div>
+    <script>hljs.highlightAll();</script>
+</body>
+
+</html>
