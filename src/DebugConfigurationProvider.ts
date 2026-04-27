@@ -560,7 +560,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // re-prompting after each bad-password attempt until they either enter a
         // working one or cancel (empty / Esc). Un-adopted devices get an inline
         // "Remember" toggle in the input box itself rather than a second popup.
-        let placeholder = 'The Roku development webserver password.';
+        let placeholder = (candidates ?? []).length > 0 ? 'The password was rejected by the device. Try again, or press Esc to cancel.' : 'The Roku development webserver password.';
         const offerRememberToggle = !adopted && !!serialNumber;
         while (true) {
             const entry = await this.promptForPassword(placeholder, { showRememberToggle: offerRememberToggle });
