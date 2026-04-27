@@ -541,6 +541,11 @@ export let vscode = {
     DebugConfigurationProviderTriggerKind: {
         Initial: 1,
         Dynamic: 2
+    },
+    ConfigurationTarget: {
+        Global: 1,
+        Workspace: 2,
+        WorkspaceFolder: 3
     }
 };
 
