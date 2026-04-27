@@ -537,11 +537,11 @@ describe('BrightScriptConfigurationProvider', () => {
             delete (vscode.workspace as any)._configuration?.['brightscript.devices'];
         });
 
-        it('accepts the first candidate that validates ok and caches it to the cred store', async () => {
-            adoptSerial('SN-001');
+        it('accepts the first candidate that validates ok and refreshes the existing cred-store entry', async () => {
+            await credentialStore.setPassword('SN-001', 'winning-pw');
             sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
-            const result: any = { host: '1.2.3.4', password: 'winning-pw' };
+            const result: any = { host: '1.2.3.4', password: 'unused' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
             expect(returned.password).to.equal('winning-pw');
@@ -549,7 +549,6 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('moves past bad-password candidates and uses the first accepted one', async () => {
-            adoptSerial('SN-001');
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onCall(0).resolves('bad-password');
             stub.onCall(1).resolves('ok');
@@ -561,7 +560,6 @@ describe('BrightScriptConfigurationProvider', () => {
 
             expect(returned.password).to.equal('accepted-pw');
             expect(stub.callCount).to.equal(2);
-            expect(await credentialStore.getPassword('SN-001')).to.equal('accepted-pw');
         });
 
         it('throws and stops the flow on unreachable during candidate validation', async () => {
@@ -577,17 +575,15 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('prompts the user when every candidate is rejected, then accepts a typed password', async () => {
-            adoptSerial('SN-001');
             const stub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             stub.onFirstCall().resolves('bad-password');
             stub.onSecondCall().resolves('ok');
-            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves({ value: 'typed-pw', remember: false });
+            (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
 
             const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
             expect(returned.password).to.equal('typed-pw');
-            expect(await credentialStore.getPassword('SN-001')).to.equal('typed-pw');
         });
 
         it('throws when the user cancels (empty) the password prompt', async () => {
@@ -608,7 +604,7 @@ describe('BrightScriptConfigurationProvider', () => {
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
             const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
-            promptStub.onCall(0).resolves({ value: 'still-wrong', remember: false });
+            promptStub.onCall(0).resolves('still-wrong');
             promptStub.onCall(1).resolves(undefined); // user cancels the retry
 
             let threw: Error | undefined;
@@ -623,20 +619,18 @@ describe('BrightScriptConfigurationProvider', () => {
         });
 
         it('accepts a retried password that validates ok after an earlier rejection', async () => {
-            adoptSerial('SN-001');
             const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
             validateStub.onCall(0).resolves('bad-password'); // first candidate
             validateStub.onCall(1).resolves('bad-password'); // first typed attempt
             validateStub.onCall(2).resolves('ok'); // second typed attempt
             const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
-            promptStub.onCall(0).resolves({ value: 'first-try', remember: false });
-            promptStub.onCall(1).resolves({ value: 'correct-pw', remember: false });
+            promptStub.onCall(0).resolves('first-try');
+            promptStub.onCall(1).resolves('correct-pw');
 
             const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
             const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
             expect(returned.password).to.equal('correct-pw');
-            expect(await credentialStore.getPassword('SN-001')).to.equal('correct-pw');
             expect(promptStub.callCount).to.equal(2);
         });
 
@@ -669,7 +663,6 @@ describe('BrightScriptConfigurationProvider', () => {
             });
 
             it('drops a legacy entry on bad-password and falls through to the candidate loop', async () => {
-                adoptSerial('SN-001');
                 seedLegacy({ '1.2.3.4': 'legacy-wrong' });
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('bad-password'); // legacy
@@ -679,13 +672,11 @@ describe('BrightScriptConfigurationProvider', () => {
                 const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
                 expect(returned.password).to.equal('winning-pw');
-                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
                 expect(getLegacy()).to.deep.equal({});
                 expect(validateStub.callCount).to.equal(2);
             });
 
             it('preserves the legacy entry on unreachable and lets the main flow continue', async () => {
-                adoptSerial('SN-001');
                 seedLegacy({ '1.2.3.4': 'legacy-pw' });
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('unreachable'); // legacy attempt — treated as transient
@@ -695,7 +686,6 @@ describe('BrightScriptConfigurationProvider', () => {
                 const returned = await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
                 expect(returned.password).to.equal('winning-pw');
-                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
                 // legacy entry stays intact for next launch to try again
                 expect(getLegacy()).to.deep.equal({ '1.2.3.4': 'legacy-pw' });
                 expect(validateStub.callCount).to.equal(2);
@@ -738,14 +728,16 @@ describe('BrightScriptConfigurationProvider', () => {
                 expect(await credentialStore.getPassword('SN-001')).to.equal('new-pw');
             });
 
-            it('writes to the cred store when the SN is listed in brightscript.devices[] (even with no password field)', async () => {
+            it('does NOT write to the cred store when the SN is only listed in brightscript.devices[] without a stored password', async () => {
                 adoptSerial('SN-001');
                 sinon.stub(deviceManager, 'validateDevicePassword').resolves('ok');
 
                 const result: any = { host: '1.2.3.4', password: 'winning-pw' };
                 await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
-                expect(await credentialStore.getPassword('SN-001')).to.equal('winning-pw');
+                // Listing in settings is no longer enough on its own — the cred store
+                // only refreshes entries that already exist there.
+                expect(await credentialStore.getPassword('SN-001')).to.be.undefined;
             });
 
             it('always writes to the cred store when the winning password came from legacy migration', async () => {
@@ -760,59 +752,31 @@ describe('BrightScriptConfigurationProvider', () => {
             });
         });
 
-        describe('remember-this-password toggle on typed passwords', () => {
-            it('persists the typed password when the user toggled Remember on', async () => {
+        describe('typed-password persistence after prompt', () => {
+            it('refreshes the cred store with a typed password when an entry already exists for the SN', async () => {
+                await credentialStore.setPassword('SN-001', 'old-pw');
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
-                validateStub.onCall(0).resolves('bad-password'); // the only candidate (result.password)
-                validateStub.onCall(1).resolves('ok'); // typed password
-                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
-                promptStub.resolves({ value: 'typed-pw', remember: true });
-
-                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
-                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });
-
-                expect(await credentialStore.getPassword('SN-NEW')).to.equal('typed-pw');
-                // the prompt was configured with the Remember toggle shown (un-adopted SN)
-                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: true });
-            });
-
-            it('does NOT persist the typed password when Remember was left off', async () => {
-                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
-                validateStub.onCall(0).resolves('bad-password');
-                validateStub.onCall(1).resolves('ok');
-                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves({ value: 'typed-pw', remember: false });
-
-                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
-                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });
-
-                expect(await credentialStore.getPassword('SN-NEW')).to.be.undefined;
-            });
-
-            it('hides the Remember toggle for already-adopted devices and persists automatically', async () => {
-                adoptSerial('SN-001');
-                const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
-                validateStub.onCall(0).resolves('bad-password');
-                validateStub.onCall(1).resolves('ok');
-                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
-                promptStub.resolves({ value: 'typed-pw', remember: false });
+                validateStub.onCall(0).resolves('bad-password'); // existing cred-store entry (candidate #1)
+                validateStub.onCall(1).resolves('bad-password'); // result.password
+                validateStub.onCall(2).resolves('ok'); // typed password
+                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
 
                 const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
                 await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-001' });
 
                 expect(await credentialStore.getPassword('SN-001')).to.equal('typed-pw');
-                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: false });
             });
 
-            it('hides the Remember toggle when no SN is available', async () => {
+            it('does NOT persist a typed password when no cred-store entry exists for the SN', async () => {
                 const validateStub = sinon.stub(deviceManager, 'validateDevicePassword') as any;
                 validateStub.onCall(0).resolves('bad-password');
                 validateStub.onCall(1).resolves('ok');
-                const promptStub = sinon.stub(configProvider as any, 'promptForPassword') as any;
-                promptStub.resolves({ value: 'typed-pw', remember: false });
+                (sinon.stub(configProvider as any, 'promptForPassword') as any).resolves('typed-pw');
 
-                await callProcess({ password: '${promptForPassword}' }, { host: '1.2.3.4', password: 'rejected-pw' }, undefined);
+                const result: any = { host: '1.2.3.4', password: 'rejected-pw' };
+                await callProcess({ password: '${promptForPassword}' }, result, { serialNumber: 'SN-NEW' });
 
-                expect(promptStub.firstCall.args[1]).to.deep.equal({ showRememberToggle: false });
+                expect(await credentialStore.getPassword('SN-NEW')).to.be.undefined;
             });
         });
     });

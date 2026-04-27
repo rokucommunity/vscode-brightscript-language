@@ -526,8 +526,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             const validation = await this.deviceManager.validateDevicePassword(host, legacyPassword);
             if (validation === 'ok') {
                 await this.clearLegacyIpKeyedPassword(host);
-                // A legacy entry is explicit historical opt-in, so always cache forward.
-                await this.acceptPassword(result, legacyPassword, serialNumber, true);
+                // A legacy entry is explicit historical opt-in: seed the cred store so
+                // acceptPassword's "refresh existing" branch persists it forward.
+                if (serialNumber) {
+                    await this.credentialStore.setPassword(serialNumber, legacyPassword);
+                }
+                await this.acceptPassword(result, legacyPassword, serialNumber);
                 return result;
             } else if (validation === 'bad-password') {
                 // Reads don't use the legacy store anymore, so a proven-wrong entry is dead weight.
@@ -537,17 +541,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             // fall through to the normal candidate flow, which will surface its own error.
         }
 
-        // Compute once whether the user has explicitly adopted this device. Gates the
-        // cred-store write inside acceptPassword so we don't silently persist credentials
-        // for devices the user has not signalled ownership of.
-        const adopted = serialNumber ? await this.isSerialAdopted(serialNumber) : false;
-
         const candidates = await this.collectPasswordCandidates(config, result, serialNumber);
 
         for (const candidate of candidates) {
             const validation = await this.deviceManager.validateDevicePassword(host, candidate);
             if (validation === 'ok') {
-                await this.acceptPassword(result, candidate, serialNumber, adopted);
+                await this.acceptPassword(result, candidate, serialNumber);
                 return result;
             }
             if (validation === 'unreachable') {
@@ -558,22 +557,20 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // No stored / configured candidate was accepted. Prompt the user, and keep
         // re-prompting after each bad-password attempt until they either enter a
-        // working one or cancel (empty / Esc). Un-adopted devices get an inline
-        // "Remember" toggle in the input box itself rather than a second popup.
+        // working one or cancel (empty / Esc). Cred-store persistence is gated
+        // inside acceptPassword by whether an entry already exists for this SN.
         let placeholder = (candidates ?? []).length > 0 ? 'The password was rejected by the device. Try again, or press Esc to cancel.' : 'The Roku development webserver password.';
-        const offerRememberToggle = !adopted && !!serialNumber;
         while (true) {
-            const entry = await this.promptForPassword(placeholder, { showRememberToggle: offerRememberToggle });
-            if (!entry?.value) {
+            const value = await this.promptForPassword(placeholder);
+            if (!value) {
                 throw new Error('Debug session terminated: password is required.');
             }
-            const validation = await this.deviceManager.validateDevicePassword(host, entry.value);
+            const validation = await this.deviceManager.validateDevicePassword(host, value);
             if (validation === 'unreachable') {
                 throw new Error(`Debug session terminated: device at ${host} is unreachable.`);
             }
             if (validation === 'ok') {
-                const shouldPersist = adopted || entry.remember;
-                await this.acceptPassword(result, entry.value, serialNumber, shouldPersist);
+                await this.acceptPassword(result, value, serialNumber);
                 return result;
             }
             // 'bad-password' — re-prompt with a hint so the user knows why their input came back.
@@ -582,59 +579,24 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Password input dialog with an optional "Remember this password" toggle
-     * rendered as a checkbox item beneath the input. Space (or click) toggles
-     * the checkbox; Enter submits the typed value and the checkbox state.
-     * Esc / hide returns undefined.
+     * Password input dialog. Returns the typed value, or undefined on Esc / hide.
      */
-    private async promptForPassword(
-        placeholder: string,
-        options: { showRememberToggle: boolean }
-    ): Promise<{ value: string; remember: boolean } | undefined> {
-        if (!options.showRememberToggle) {
-            const input = vscode.window.createInputBox();
-            input.placeholder = placeholder;
-            try {
-                return await new Promise<{ value: string; remember: boolean } | undefined>(resolve => {
-                    input.onDidAccept(() => {
-                        resolve({ value: input.value, remember: false });
-                        input.hide();
-                    });
-                    input.onDidHide(() => {
-                        resolve(undefined);
-                    });
-                    input.show();
-                });
-            } finally {
-                input.dispose();
-            }
-        }
-
-        const quickPick = vscode.window.createQuickPick();
-        quickPick.placeholder = placeholder;
-        quickPick.canSelectMany = true;
-        const rememberItem: vscode.QuickPickItem = {
-            label: 'Remember this password',
-            description: 'check to save for future launches',
-            alwaysShow: true
-        };
-        quickPick.items = [rememberItem];
-        quickPick.selectedItems = [];
-
+    private async promptForPassword(placeholder: string): Promise<string | undefined> {
+        const input = vscode.window.createInputBox();
+        input.placeholder = placeholder;
         try {
-            return await new Promise<{ value: string; remember: boolean } | undefined>(resolve => {
-                quickPick.onDidAccept(() => {
-                    const remember = quickPick.selectedItems.includes(rememberItem);
-                    resolve({ value: quickPick.value, remember: remember });
-                    quickPick.hide();
+            return await new Promise<string | undefined>(resolve => {
+                input.onDidAccept(() => {
+                    resolve(input.value);
+                    input.hide();
                 });
-                quickPick.onDidHide(() => {
+                input.onDidHide(() => {
                     resolve(undefined);
                 });
-                quickPick.show();
+                input.show();
             });
         } finally {
-            quickPick.dispose();
+            input.dispose();
         }
     }
 
@@ -693,55 +655,22 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     /**
      * Commit an accepted password: write it to the resolved config and update the
-     * global `remotePassword` fallback. When `adopted` is true, also refresh the
-     * cred store entry for the device's serial so future launches short-circuit
-     * on candidate #1. `adopted` is false for devices the user has not explicitly
-     * signalled ownership of, to avoid silently persisting credentials for
-     * passively-discovered devices.
+     * global `remotePassword` fallback. When the cred store already has an entry
+     * for this serial, refresh it so future launches short-circuit on candidate #1.
+     * If no entry exists yet, the cred store is left alone, since persisting a
+     * password is an explicit user opt-in (via the `setDevicePassword` command,
+     * `brightscript.devices[].password` in settings, or legacy migration).
      */
     private async acceptPassword(
         result: BrightScriptLaunchConfiguration,
         password: string,
-        serialNumber: string | undefined,
-        adopted: boolean
+        serialNumber: string | undefined
     ): Promise<void> {
         result.password = password;
-        if (serialNumber && adopted) {
+        if (serialNumber && (await this.credentialStore.getPassword(serialNumber)) !== undefined) {
             await this.credentialStore.setPassword(serialNumber, password);
         }
         await this.context.workspaceState.update('remotePassword', password);
-    }
-
-    /**
-     * Returns true when the user has explicitly signalled ownership of the
-     * device with the given serial number, either by storing a password for it
-     * in the cred store or by listing it in `brightscript.devices[]` (any
-     * scope). Used to gate automatic cred-store writes in `acceptPassword`.
-     */
-    private async isSerialAdopted(serialNumber: string): Promise<boolean> {
-        if (!serialNumber) {
-            return false;
-        }
-
-        if (await this.credentialStore.getPassword(serialNumber) !== undefined) {
-            return true;
-        }
-
-        const scopeHasSerial = (devices: ConfiguredDevice[] | undefined): boolean => !!devices?.some(entry => entry.serialNumber === serialNumber);
-
-        const rootInspection = vscode.workspace.getConfiguration('brightscript').inspect<ConfiguredDevice[]>('devices');
-        if (scopeHasSerial(rootInspection?.globalValue) || scopeHasSerial(rootInspection?.workspaceValue)) {
-            return true;
-        }
-
-        for (const folder of vscode.workspace.workspaceFolders ?? []) {
-            const folderInspection = vscode.workspace.getConfiguration('brightscript', folder.uri).inspect<ConfiguredDevice[]>('devices');
-            if (scopeHasSerial(folderInspection?.workspaceFolderValue)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private readonly legacyPasswordStoreKey = 'devicePasswords';
