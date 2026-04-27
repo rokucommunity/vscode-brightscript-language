@@ -12,7 +12,8 @@ describe('DeviceManager', () => {
     let mockGlobalStateManager: any;
 
     function createMockDevice(overrides: Partial<RokuDevice> & { deviceInfo?: any; serialNumber?: string | null } = {}): RokuDevice {
-        const serialNumber = overrides.serialNumber ?? 'device-123';
+        // Explicit null means no serial, undefined means use default
+        const serialNumber = overrides.serialNumber === null ? undefined : (overrides.serialNumber ?? 'device-123');
         const ip = overrides.ip ?? '192.168.1.100';
 
         // Remove serialNumber and deviceInfo from overrides since we handle them separately
@@ -62,9 +63,10 @@ describe('DeviceManager', () => {
     function addDiscoveredDevice(device: RokuDevice): void {
         manager['discoveredDevices'].push({
             ip: device.ip,
-            serialNumber: device.serialNumber,
-            deviceState: device.deviceState === 'offline' ? 'pending' : device.deviceState
+            serialNumber: device.serialNumber
         });
+        // Set the device state in the separate state map
+        manager['setDeviceState']({ ip: device.ip, serialNumber: device.serialNumber }, device.deviceState === 'offline' ? 'pending' : device.deviceState);
     }
 
     /**
@@ -77,9 +79,10 @@ describe('DeviceManager', () => {
             name: device.configuredName,
             password: device.configuredPassword,
             serialNumber: device.serialNumber,
-            deviceState: device.deviceState,
             configuredIn: device.configuredIn
         });
+        // Set the device state in the separate state map
+        manager['setDeviceState']({ ip: device.ip, serialNumber: device.serialNumber }, device.deviceState);
     }
 
     /**
@@ -933,9 +936,9 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: 'device-123',
-                    deviceState: 'online'
+                    serialNumber: 'device-123'
                 });
+                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-123' }, 'online');
 
                 const spy = sinon.spy();
                 manager.on('devices-changed', spy);
@@ -1012,7 +1015,7 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            expect(manager['discoveredDevices'][0].deviceState).to.equal('online');
+            expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' })).to.equal('online');
         });
 
         it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
@@ -1102,9 +1105,9 @@ describe('DeviceManager', () => {
             // Add device without developer-enabled in deviceInfo
             manager['discoveredDevices'].push({
                 ip: '192.168.1.100',
-                serialNumber: 'ABC123',
-                deviceState: 'online'
+                serialNumber: 'ABC123'
             });
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
 
             // Device should be filtered out from getDevicesForUI
             expect(manager.getDevicesForUI().length).to.equal(0);
@@ -1176,9 +1179,9 @@ describe('DeviceManager', () => {
             // Add device without developer-enabled
             manager['discoveredDevices'].push({
                 ip: '192.168.1.100',
-                serialNumber: 'ABC123',
-                deviceState: 'online'
+                serialNumber: 'ABC123'
             });
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
 
             // getDevice now returns devices regardless of filtering
             expect(manager.getDevice({ ip: '192.168.1.100' })).to.not.be.undefined;
@@ -1501,9 +1504,9 @@ describe('DeviceManager', () => {
             // Add a discovered device to verify it gets cleared on network change
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.100',
-                deviceState: 'online'
+                ip: '192.168.1.100'
             });
+            manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.100' }, 'online');
             expect(manager['discoveredDevices'].length).to.equal(1);
 
             // Change the network hash
@@ -1555,14 +1558,14 @@ describe('DeviceManager', () => {
             // Add discovered devices
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.100',
-                deviceState: 'online'
+                ip: '192.168.1.100'
             });
+            manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.100' }, 'online');
             manager['discoveredDevices'].push({
                 serialNumber: 'device-456',
-                ip: '192.168.1.101',
-                deviceState: 'online'
+                ip: '192.168.1.101'
             });
+            manager['setDeviceState']({ serialNumber: 'device-456', ip: '192.168.1.101' }, 'online');
             expect(manager['discoveredDevices'].length).to.equal(2);
 
             // Change the network hash
@@ -1581,16 +1584,16 @@ describe('DeviceManager', () => {
             // Add a configured device
             manager['configuredDevices'].push({
                 host: '192.168.1.100',
-                name: 'My Roku',
-                deviceState: 'online'
+                name: 'My Roku'
             } as any);
+            manager['setDeviceState']({ ip: '192.168.1.100' }, 'online');
 
             // Add a discovered device
             manager['discoveredDevices'].push({
                 serialNumber: 'device-123',
-                ip: '192.168.1.101',
-                deviceState: 'online'
+                ip: '192.168.1.101'
             });
+            manager['setDeviceState']({ serialNumber: 'device-123', ip: '192.168.1.101' }, 'online');
 
             expect(manager['configuredDevices'].length).to.equal(1);
             expect(manager['discoveredDevices'].length).to.equal(1);
@@ -1642,9 +1645,9 @@ describe('DeviceManager', () => {
                     host: '192.168.1.100',
                     resolvedIp: '192.168.1.100',
                     name: 'My Roku',
-                    deviceState: 'pending',
                     serialNumber: undefined
-                });
+                } as any);
+                manager['setDeviceState']({ ip: '192.168.1.100' }, 'pending');
 
                 // Add discovered device at same IP with serial
                 addDiscoveredDevice(createMockDevice({
@@ -2290,9 +2293,9 @@ describe('DeviceManager', () => {
                 // Create device without serial - manually add to discovered array
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: undefined,
-                    deviceState: 'online'
+                    serialNumber: undefined
                 });
+                manager['setDeviceState']({ ip: '192.168.1.100' }, 'online');
 
                 const result = manager.getDevice({ ip: '192.168.1.100' });
 
@@ -2444,9 +2447,9 @@ describe('DeviceManager', () => {
                 // Start with device that has no serial
                 manager['discoveredDevices'].push({
                     ip: '192.168.1.100',
-                    serialNumber: undefined,
-                    deviceState: 'online'
+                    serialNumber: undefined
                 });
+                manager['setDeviceState']({ ip: '192.168.1.100' }, 'online');
 
                 // Initially should have IP-based key
                 let result = manager.getDevice('i:192.168.1.100');
@@ -2674,10 +2677,10 @@ describe('DeviceManager', () => {
                     host: '192.168.1.200', // stale IP from config
                     resolvedIp: '192.168.1.200',
                     serialNumber: 'ABC123',
-                    deviceState: 'pending',
                     name: 'My Configured Roku',
                     password: 'secret'
                 });
+                manager['setDeviceState']({ ip: '192.168.1.200', serialNumber: 'ABC123' }, 'pending');
 
                 // Should have ONE device at the DISCOVERED IP (not the configured IP)
                 expect(manager.getAllDevices().length).to.equal(1);
@@ -2800,9 +2803,9 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5',
-                    deviceState: 'online'
+                    ip: '10.0.0.5'
                 });
+                manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 
                 const device = manager.getDevice({ ip: '10.0.0.5' });
                 expect(device?.configuredPassword).to.equal('hunter2');
@@ -2815,9 +2818,9 @@ describe('DeviceManager', () => {
                 // Add a configured device with a specific password
                 manager['configuredDevices'].push({
                     host: '10.0.0.5',
-                    password: 'specific',
-                    deviceState: 'online'
+                    password: 'specific'
                 } as any);
+                manager['setDeviceState']({ ip: '10.0.0.5' }, 'online');
 
                 const device = manager.getDevice({ ip: '10.0.0.5' });
                 expect(device?.configuredPassword).to.equal('specific');
@@ -2829,9 +2832,9 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5',
-                    deviceState: 'online'
+                    ip: '10.0.0.5'
                 });
+                manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 
                 const device = manager.getDevice({ ip: '10.0.0.5' });
                 expect(device?.configuredPassword).to.be.undefined;
@@ -2846,16 +2849,16 @@ describe('DeviceManager', () => {
                 // Discovered device without password
                 manager['discoveredDevices'].push({
                     serialNumber: 'no-pw',
-                    ip: '10.0.0.5',
-                    deviceState: 'online'
+                    ip: '10.0.0.5'
                 });
+                manager['setDeviceState']({ serialNumber: 'no-pw', ip: '10.0.0.5' }, 'online');
                 // Configured device with specific password
                 manager['configuredDevices'].push({
                     host: '10.0.0.6',
                     password: 'specific',
-                    serialNumber: 'has-pw',
-                    deviceState: 'online'
+                    serialNumber: 'has-pw'
                 } as any);
+                manager['setDeviceState']({ serialNumber: 'has-pw', ip: '10.0.0.6' }, 'online');
 
                 const devices = manager.getAllDevices();
                 const withoutPw = devices.find(d => d.serialNumber === 'no-pw');
@@ -2870,9 +2873,9 @@ describe('DeviceManager', () => {
 
                 manager['discoveredDevices'].push({
                     serialNumber: 'abc',
-                    ip: '10.0.0.5',
-                    deviceState: 'online'
+                    ip: '10.0.0.5'
                 });
+                manager['setDeviceState']({ serialNumber: 'abc', ip: '10.0.0.5' }, 'online');
 
                 manager.getAllDevices();
 
