@@ -583,51 +583,58 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
     /**
      * Password input dialog with an optional "Remember this password" toggle
-     * surfaced as a button in the input's corner. Clicking the icon flips the
-     * toggle without submitting; Enter submits the typed value and the
-     * toggle state. Esc / hide returns undefined.
+     * rendered as a checkbox item beneath the input. Space (or click) toggles
+     * the checkbox; Enter submits the typed value and the checkbox state.
+     * Esc / hide returns undefined.
      */
     private async promptForPassword(
         placeholder: string,
         options: { showRememberToggle: boolean }
     ): Promise<{ value: string; remember: boolean } | undefined> {
-        const input = vscode.window.createInputBox();
-        input.placeholder = placeholder;
-        let remember = false;
-
-        const renderButtons = () => {
-            if (!options.showRememberToggle) {
-                input.buttons = [];
-                return;
+        if (!options.showRememberToggle) {
+            const input = vscode.window.createInputBox();
+            input.placeholder = placeholder;
+            try {
+                return await new Promise<{ value: string; remember: boolean } | undefined>(resolve => {
+                    input.onDidAccept(() => {
+                        resolve({ value: input.value, remember: false });
+                        input.hide();
+                    });
+                    input.onDidHide(() => {
+                        resolve(undefined);
+                    });
+                    input.show();
+                });
+            } finally {
+                input.dispose();
             }
-            input.buttons = [{
-                iconPath: new vscode.ThemeIcon(remember ? 'check' : 'circle-large-outline'),
-                tooltip: remember ? 'Remember this password: on' : 'Remember this password: off'
-            }];
-        };
-        renderButtons();
-
-        if (options.showRememberToggle) {
-            input.prompt = 'Click the icon to remember this password for future launches.';
         }
+
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.placeholder = placeholder;
+        quickPick.canSelectMany = true;
+        const rememberItem: vscode.QuickPickItem = {
+            label: 'Remember this password',
+            description: 'check to save for future launches',
+            alwaysShow: true
+        };
+        quickPick.items = [rememberItem];
+        quickPick.selectedItems = [];
 
         try {
             return await new Promise<{ value: string; remember: boolean } | undefined>(resolve => {
-                input.onDidTriggerButton(() => {
-                    remember = !remember;
-                    renderButtons();
+                quickPick.onDidAccept(() => {
+                    const remember = quickPick.selectedItems.includes(rememberItem);
+                    resolve({ value: quickPick.value, remember: remember });
+                    quickPick.hide();
                 });
-                input.onDidAccept(() => {
-                    resolve({ value: input.value, remember: remember });
-                    input.hide();
-                });
-                input.onDidHide(() => {
+                quickPick.onDidHide(() => {
                     resolve(undefined);
                 });
-                input.show();
+                quickPick.show();
             });
         } finally {
-            input.dispose();
+            quickPick.dispose();
         }
     }
 
