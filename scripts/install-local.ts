@@ -6,16 +6,51 @@ import * as path from 'path';
 import * as childProcess from 'child_process';
 import * as fsExtra from 'fs-extra';
 import * as chalk from 'chalk';
+import * as yargs from 'yargs';
+
 //path to the parent folder where all of the rokucommunity projects reside (i.e. 1 level above vscode-brightscript-language
 const cwd = path.normalize(`${__dirname}/../../`);
 
-const pull = process.argv.includes('--pull');
-const enableVerboseLogging = process.argv.includes('--verbose');
+const args = yargs
+    .option('pull', {
+        type: 'boolean',
+        default: false,
+        description: 'Fetch and pull latest for each repo'
+    })
+    .option('verbose', {
+        type: 'boolean',
+        default: false,
+        description: 'Enable verbose logging'
+    })
+    .option('projects', {
+        type: 'array',
+        string: true,
+        description: 'Only install local versions of these projects (leave others at their published versions)'
+    })
+    .argv;
+
+const pull = args.pull;
+const enableVerboseLogging = args.verbose;
 
 class InstallLocalRunner {
 
+    private requestedProjects!: Set<string>;
+
     public run() {
-        for (const project of this.projects) {
+        this.requestedProjects = new Set(args.projects?.length
+            ? args.projects
+            : this.projects.map(p => p.name)
+        );
+        this.requestedProjects.add('vscode-brightscript-language');
+
+        const unknown = Array.from(this.requestedProjects).filter(n => !this.projects.find(p => p.name === n));
+        if (unknown.length > 0) {
+            console.error(`Unknown projects: ${unknown.join(', ')}`);
+            console.error(`Valid projects: ${this.projects.map(p => p.name).join(', ')}`);
+            process.exit(1);
+        }
+
+        for (const project of this.projects.filter(p => this.requestedProjects.has(p.name))) {
             this.installProject(project.name);
         }
         console.log('Done!');
@@ -100,6 +135,11 @@ class InstallLocalRunner {
 
         //ensure all dependencies are installed
         for (const dependency of project.dependencies) {
+            // if --projects was specified and this dependency isn't in the list, leave the published version intact
+            if (!this.requestedProjects.has(dependency)) {
+                continue;
+            }
+
             log('\n', `installing dependency ${chalk.blue(dependency)}`);
             this.installProject(dependency);
 

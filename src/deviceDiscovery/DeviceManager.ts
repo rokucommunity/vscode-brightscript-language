@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
@@ -32,6 +32,7 @@ export class DeviceManager {
             let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
+            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.getDefaultPassword());
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
@@ -56,6 +57,11 @@ export class DeviceManager {
                 this.loadConfiguredDevices().then(() => {
                     this.emitDevicesChanged();
                 }).catch(() => { });
+            }
+
+            //if the `defaultDevicePassword` setting was changed, refresh any device views that rely on it
+            if (event?.affectsConfiguration('brightscript.defaultDevicePassword')) {
+                this.emitDevicesChanged();
             }
         };
         this.context.subscriptions.push(
@@ -83,7 +89,15 @@ export class DeviceManager {
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
             this.fetchDeviceThrottleData.clear();
+
+            //clear and reload all devices anytime this network changes
+            this.devices = [];
             this.loadLastSeenDevices();
+            this.loadConfiguredDevices().catch(e => console.error(e));
+
+            this.restartRokuFinder();
+
+            //this is important for telling the devices view to refresh and health check its devices
             this.setScanNeeded();
         });
     }
@@ -96,38 +110,8 @@ export class DeviceManager {
         this.loadConfiguredDevices().catch(() => { });
         this.loadLastSeenDevices();
 
-        /**
-         * Set up event listeners for the RokuFinder.
-         * This must be called regardless of passiveScanPermitted so that
-         * active scan responses are processed.
-         */
-        this.finder.removeAllListeners();
-        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
-            void this.processDiscoveredIp(ip, options?.serialNumber);
-        });
-
-        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
-            this.handleDeviceOnline(ip, serialNumber);
-        });
-
-        this.finder.on('lost', (ip: string) => {
-            // Find and remove device by IP
-            const device = this.getDeviceEntry({ ip: ip });
-            if (device) {
-                this.removeDevice(device.ip);
-            }
-        });
-
-        // Forward scan events from RokuFinder
-        this.finder.on('scan-started', () => {
-            this.emitter.emit('scan-started');
-        });
-
-        this.finder.on('scan-ended', () => {
-            this.emitter.emit('scan-ended');
-            // Health check devices that didn't respond to the scan (stale cache)
-            this.healthCheckStaleDevices();
-        });
+        // Set up event listeners for the RokuFinder
+        this.setupFinderListeners();
 
         if (this.deviceDiscoveryEnabled) {
             // Sleep monitor runs all the time when enabled (ignores focus state)
@@ -242,8 +226,12 @@ export class DeviceManager {
         const serial = this.getSerial(device);
         const cached = serial ? this.globalStateManager.getCachedDevice(serial) : undefined;
 
+        // Fall back to the extension-wide default password when this device has none configured
+        const configuredPassword = device.configuredPassword ?? this.getDefaultPassword();
+
         return {
             ...device,
+            configuredPassword: configuredPassword,
             deviceInfo: cached?.deviceInfo ?? {}
         };
     }
@@ -394,6 +382,27 @@ export class DeviceManager {
         return isHealthy;
     }
 
+    /**
+     * Validate a developer password against the device at `host`.
+     *
+     * Returns:
+     * - `'ok'` — credentials accepted
+     * - `'bad-password'` — device reachable, credentials rejected
+     * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
+     */
+    public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
+        try {
+            const accepted = await rokuDeploy.validateDeveloperPassword({ host: host, password: password });
+            return accepted ? 'ok' : 'bad-password';
+        } catch (e) {
+            if (e instanceof DeviceUnreachableError) {
+                return 'unreachable';
+            }
+            // Unexpected response code or any other failure — treat as unreachable so the caller retries/prompts rather than discarding credentials.
+            return 'unreachable';
+        }
+    }
+
     public getLastUsedDeviceIp(): string | undefined {
         return this.lastUsedDeviceIp;
     }
@@ -426,6 +435,15 @@ export class DeviceManager {
      */
     private get showInfoMessages() {
         return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
+
+    /**
+     * Default password applied to any device that does not have its own configured password.
+     * Returns undefined when the setting is empty so callers can fall through to their own logic.
+     */
+    public getDefaultPassword(): string | undefined {
+        const value = util.getConfiguration('brightscript')?.defaultDevicePassword;
+        return typeof value === 'string' && value.length > 0 ? value : undefined;
     }
 
     /**
@@ -972,7 +990,7 @@ export class DeviceManager {
      * Fetches device info, applies filtering, and sets if valid.
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
+    public async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         try {
             const deviceInfo = await this.fetchDeviceInfo(ip, 8060);
 
@@ -1055,6 +1073,66 @@ export class DeviceManager {
     }
 
     /**
+     * Set up event listeners for the RokuFinder.
+     * This must be called regardless of deviceDiscoveryEnabled so that
+     * active scan responses are processed.
+     */
+    private setupFinderListeners() {
+        this.finder.removeAllListeners();
+        this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
+            void this.processDiscoveredIp(ip, options?.serialNumber);
+        });
+
+        this.finder.on('device-online', (ip: string, serialNumber?: string) => {
+            this.handleDeviceOnline(ip, serialNumber);
+        });
+
+        this.finder.on('lost', (ip: string) => {
+            // Find and remove device by IP
+            const device = this.getDeviceEntry({ ip: ip });
+            if (device) {
+                this.removeDevice(device.ip);
+            }
+        });
+
+        // Forward scan events from RokuFinder
+        this.finder.on('scan-started', () => {
+            this.emitter.emit('scan-started');
+        });
+
+        this.finder.on('scan-ended', () => {
+            this.emitter.emit('scan-ended');
+            // Health check devices that didn't respond to the scan (stale cache)
+            this.healthCheckStaleDevices();
+        });
+    }
+
+    /**
+     * Restart the RokuFinder to rebind UDP sockets to new network interfaces.
+     * Called when network changes to ensure SSDP can communicate on the new network.
+     */
+    private restartRokuFinder() {
+        // Keep reference to old finder for delayed disposal
+        const oldFinder = this.finder;
+
+        // Create new finder instance
+        this.finder = new RokuFinder();
+
+        // Re-attach event listeners
+        this.setupFinderListeners();
+
+        // Dispose old finder
+        oldFinder?.dispose();
+
+        // Restart if device discovery is enabled
+        if (this.deviceDiscoveryEnabled) {
+            this.startRokuFinder().catch((e) => {
+                console.error('Failed to restart RokuFinder:', e);
+            });
+        }
+    }
+
+    /**
      * Start listening for passive SSDP announcements from Roku devices
      */
     private async startRokuFinder() {
@@ -1095,6 +1173,8 @@ export class DeviceManager {
 }
 
 export type DeviceState = 'offline' | 'pending' | 'online';
+
+export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
 export type ConfigurationScope = 'user' | 'workspace';
 

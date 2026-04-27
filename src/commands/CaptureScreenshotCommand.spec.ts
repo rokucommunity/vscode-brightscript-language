@@ -19,7 +19,7 @@ describe('CaptureScreenshotCommand', () => {
 
     beforeEach(() => {
         command = new CaptureScreenshotCommand();
-        brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+        brightScriptCommands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
         command.register(context, brightScriptCommands);
     });
 

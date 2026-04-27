@@ -32,6 +32,7 @@ import { DiagnosticManager } from './managers/DiagnosticManager';
 import { EXTENSION_ID } from './constants';
 import { UserInputManager } from './managers/UserInputManager';
 import { LocalPackageManager } from './managers/LocalPackageManager';
+import { CredentialStore } from './managers/CredentialStore';
 import { BrightScriptTaskProvider } from './BrightScriptTaskProvider';
 import { standardizePath as s } from 'brighterscript';
 import { PerfettoEditorProvider } from './editors/PerfettoEditor';
@@ -85,13 +86,15 @@ export class Extension {
         );
 
         this.remoteControlManager = new RemoteControlManager(this.telemetryManager);
+        const credentialStore = new CredentialStore(context);
         this.brightScriptCommands = new BrightScriptCommands(
             this.remoteControlManager,
             this.whatsNewManager,
             context,
             this.deviceManager,
             userInputManager,
-            localPackageManager
+            localPackageManager,
+            credentialStore
         );
 
         this.rtaManager = new RtaManager(context);
@@ -127,7 +130,7 @@ export class Extension {
         vscode.window.registerTreeDataProvider(ViewProviderId.rendezvousView, rendezvousViewProvider);
 
         //register a tree data provider for this extension's "Devices" view
-        let devicesViewProvider = new DevicesViewProvider(this.deviceManager);
+        let devicesViewProvider = new DevicesViewProvider(this.deviceManager, credentialStore);
         const devicesTreeView = vscode.window.createTreeView(ViewProviderId.devicesView, {
             treeDataProvider: devicesViewProvider
         });
@@ -173,7 +176,7 @@ export class Extension {
         );
 
         //register the debug configuration provider
-        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, rokuProjectProvider);
+        let configProvider = new BrightScriptDebugConfigurationProvider(context, this.telemetryManager, this.extensionOutputChannel, userInputManager, this.brightScriptCommands, this.deviceManager, credentialStore, rokuProjectProvider);
         context.subscriptions.push(
             // Initial: resolveDebugConfiguration — handles launch.json configs and F5 with no launch.json
             vscode.debug.registerDebugConfigurationProvider('brightscript', configProvider, vscode.DebugConfigurationProviderTriggerKind.Initial),
@@ -422,8 +425,8 @@ export class Extension {
             await session.customRequest(ClientToServerCustomEventName.customRequestEventResponse, {
                 requestId: event.body.requestId,
                 error: {
-                    message: error?.message,
-                    stack: error?.stack
+                    message: (error as Error)?.message,
+                    stack: (error as Error)?.stack
                 }
             });
         }
