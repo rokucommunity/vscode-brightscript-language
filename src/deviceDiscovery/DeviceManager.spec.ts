@@ -2764,6 +2764,136 @@ describe('DeviceManager', () => {
         });
     });
 
+    describe('serial mismatch detection', () => {
+        describe('checkForSerialMismatch', () => {
+            it('returns false when no new serial is provided', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', undefined);
+                expect(result).to.be.false;
+            });
+
+            it('returns false when no stored serial exists for IP', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
+                expect(result).to.be.false;
+            });
+
+            it('returns false when stored serial matches new serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                mockGlobalStateManager.getSerialNumberForIp.returns('ABC123');
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', 'ABC123');
+                expect(result).to.be.false;
+            });
+
+            it('returns true when stored serial differs from new serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
+                expect(result).to.be.true;
+            });
+
+            it('returns true when configured device has different serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+
+                // Add configured device with serial
+                manager['configuredDevices'].push({
+                    host: '192.168.1.100',
+                    resolvedIp: '192.168.1.100',
+                    serialNumber: 'CONFIGURED-SERIAL'
+                });
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
+                expect(result).to.be.true;
+            });
+
+            it('returns true when discovered device has different serial', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
+
+                // Add discovered device with serial
+                manager['discoveredDevices'].push({
+                    ip: '192.168.1.100',
+                    serialNumber: 'DISCOVERED-SERIAL'
+                });
+
+                const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
+                expect(result).to.be.true;
+            });
+        });
+
+        describe('config reload on mismatch', () => {
+            it('reloads configured devices when resolveDevice detects serial mismatch', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // Set up: stored serial for this IP
+                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+
+                // Spy on loadConfiguredDevices
+                const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
+
+                // Mock getDeviceInfo to return a different serial
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'NEW-SERIAL',
+                    'device-id': 'NEW-SERIAL',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve device
+                await manager['resolveDevice']({ ip: '192.168.1.100' });
+
+                // Should have called loadConfiguredDevices
+                expect(loadConfigSpy.calledOnce).to.be.true;
+            });
+
+            it('reloads configured devices when SSDP finds device with different serial at known IP', () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                // Set up: stored serial for this IP
+                mockGlobalStateManager.getSerialNumberForIp.returns('OLD-SERIAL');
+
+                // Spy on loadConfiguredDevices
+                const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
+
+                // Simulate SSDP finding a different device at the same IP
+                manager['finder'].emit('found', '192.168.1.100', { serialNumber: 'NEW-SERIAL' });
+
+                // Should have called loadConfiguredDevices
+                expect(loadConfigSpy.calledOnce).to.be.true;
+            });
+
+            it('does not reload when serial matches', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // Set up: stored serial for this IP
+                mockGlobalStateManager.getSerialNumberForIp.returns('SAME-SERIAL');
+
+                // Spy on loadConfiguredDevices
+                const loadConfigSpy = sinon.spy(manager as any, 'loadConfiguredDevices');
+
+                // Mock getDeviceInfo to return the same serial
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'SAME-SERIAL',
+                    'device-id': 'SAME-SERIAL',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve device
+                await manager['resolveDevice']({ ip: '192.168.1.100' });
+
+                // Should NOT have called loadConfiguredDevices
+                expect(loadConfigSpy.called).to.be.false;
+            });
+        });
+    });
+
     describe('defaultPassword', () => {
         function stubConfig(defaultDevicePassword: string | undefined) {
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
