@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
@@ -380,6 +380,27 @@ export class DeviceManager {
             this.refresh(this.deviceDiscoveryEnabled);
         }
         return isHealthy;
+    }
+
+    /**
+     * Validate a developer password against the device at `host`.
+     *
+     * Returns:
+     * - `'ok'` — credentials accepted
+     * - `'bad-password'` — device reachable, credentials rejected
+     * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
+     */
+    public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
+        try {
+            const accepted = await rokuDeploy.validateDeveloperPassword({ host: host, password: password });
+            return accepted ? 'ok' : 'bad-password';
+        } catch (e) {
+            if (e instanceof DeviceUnreachableError) {
+                return 'unreachable';
+            }
+            // Unexpected response code or any other failure — treat as unreachable so the caller retries/prompts rather than discarding credentials.
+            return 'unreachable';
+        }
     }
 
     public getLastUsedDeviceIp(): string | undefined {
@@ -969,7 +990,7 @@ export class DeviceManager {
      * Fetches device info, applies filtering, and sets if valid.
      * @param serialNumber - Serial number from SSDP USN header, if available
      */
-    private async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
+    public async processDiscoveredIp(ip: string, serialNumber?: string): Promise<void> {
         try {
             const deviceInfo = await this.fetchDeviceInfo(ip, 8060);
 
@@ -1152,6 +1173,8 @@ export class DeviceManager {
 }
 
 export type DeviceState = 'offline' | 'pending' | 'online';
+
+export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
 
 export type ConfigurationScope = 'user' | 'workspace';
 

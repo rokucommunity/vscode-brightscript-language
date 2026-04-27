@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import { rokuDeploy } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, InvalidDeviceResponseCodeError } from 'roku-deploy';
 import { vscode } from '../mockVscode.spec';
 import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
@@ -815,6 +815,46 @@ describe('DeviceManager', () => {
             expect(manager['devices'].length).to.equal(2);
             expect(manager['devices'].find(d => d.ip === device1.ip)?.deviceState).to.equal('online');
             expect(manager['devices'].find(d => d.ip === device2.ip)?.deviceState).to.equal('online');
+        });
+    });
+
+    describe('validateDevicePassword', () => {
+        let validateStub: sinon.SinonStub;
+
+        beforeEach(() => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            validateStub = sinon.stub(rokuDeploy, 'validateDeveloperPassword');
+        });
+
+        it(`returns 'ok' when the device accepts the credentials`, async () => {
+            validateStub.resolves(true);
+            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            expect(result).to.equal('ok');
+            expect(validateStub.firstCall.args[0]).to.deep.equal({ host: '192.168.1.100', password: 'rokudev' });
+        });
+
+        it(`returns 'bad-password' when the device rejects the credentials`, async () => {
+            validateStub.resolves(false);
+            const result = await manager.validateDevicePassword('192.168.1.100', 'wrong');
+            expect(result).to.equal('bad-password');
+        });
+
+        it(`returns 'unreachable' when roku-deploy throws DeviceUnreachableError`, async () => {
+            validateStub.rejects(new DeviceUnreachableError('offline'));
+            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            expect(result).to.equal('unreachable');
+        });
+
+        it(`returns 'unreachable' on unexpected response codes`, async () => {
+            validateStub.rejects(new InvalidDeviceResponseCodeError('500'));
+            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            expect(result).to.equal('unreachable');
+        });
+
+        it(`returns 'unreachable' on any other unexpected error`, async () => {
+            validateStub.rejects(new Error('something weird'));
+            const result = await manager.validateDevicePassword('192.168.1.100', 'rokudev');
+            expect(result).to.equal('unreachable');
         });
     });
 
