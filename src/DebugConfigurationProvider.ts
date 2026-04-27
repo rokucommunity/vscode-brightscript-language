@@ -22,9 +22,8 @@ import type { DeviceInfo } from 'roku-deploy';
 import type { UserInputManager } from './managers/UserInputManager';
 import type { BrightScriptCommands } from './BrightScriptCommands';
 import type { RokuProjectManager } from './managers/RokuProject/RokuProjectManager';
-import type { DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, RokuDevice } from './deviceDiscovery/DeviceManager';
 import type { CredentialStore } from './managers/CredentialStore';
-import type { ConfiguredDevice } from './GlobalStateManager';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {

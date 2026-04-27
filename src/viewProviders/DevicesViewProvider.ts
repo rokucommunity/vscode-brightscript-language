@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import * as semver from 'semver';
-import type { DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
+import type { ConfiguredDevice, DeviceManager, RokuDevice } from '../deviceDiscovery/DeviceManager';
 import type { CredentialStore } from '../managers/CredentialStore';
-import type { ConfiguredDevice } from '../GlobalStateManager';
 import { icons } from '../icons';
 import { util } from '../util';
 import { ViewProviderId } from './ViewProviderId';

@@ -331,13 +331,6 @@ interface IpToSerialNumberEntry {
     timestamp: number;
 }
 
-export interface ConfiguredDevice {
-    host: string;
-    name?: string;
-    serialNumber?: string;
-    password?: string;
-}
-
 /**
  * Per-network IP→serialNumber mapping with timestamps
  */
