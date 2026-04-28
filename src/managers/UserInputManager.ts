@@ -26,11 +26,26 @@ export class UserInputManager {
         private deviceManager: DeviceManager
     ) { }
 
-    public async promptForHostManual() {
-        return vscode.window.showInputBox({
-            placeHolder: 'Please enter the IP address of your Roku device',
-            value: ''
-        });
+    public async promptForHostManual(): Promise<string | undefined> {
+        while (true) {
+            const value = await vscode.window.showInputBox({
+                placeHolder: 'Please enter the IP address of your Roku device',
+                value: ''
+            });
+            if (!value) {
+                return undefined;
+            }
+            const probed = await vscode.window.withProgress(
+                { location: vscode.ProgressLocation.Notification, title: `Contacting ${value}...` },
+                async () => {
+                    return this.deviceManager.getDevice({ ip: value }, { fetch: true });
+                }
+            );
+            if (probed) {
+                return probed.ip;
+            }
+            await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${value}. Check the IP and confirm developer mode is enabled.`);
+        }
     }
 
     /**
@@ -114,11 +129,20 @@ export class UserInputManager {
                     quickPick.dispose();
                 }
                 selectedDevice = undefined;
-                // If the user has typed a value, resolve with value
+                // If the user has typed a value, probe the IP before resolving so
+                // the caller only ever receives a reachable device.
             } else if (quickPick.value) {
-                deferred.resolve({
-                    ip: quickPick.value
-                });
+                const typedValue = quickPick.value;
+                setBusy(true);
+                const probed = await this.deviceManager.getDevice({ ip: typedValue }, { fetch: true });
+                setBusy(false);
+                if (!probed) {
+                    await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);
+                    return;
+                }
+                this.deviceManager.setLastUsedDeviceIp(probed.ip);
+                deferred.resolve({ ip: probed.ip });
+                quickPick.dispose();
             }
         });
 

@@ -16,6 +16,7 @@ Module.prototype.require = function hijacked(file) {
 };
 
 import { BrightScriptCommands } from './BrightScriptCommands';
+import { util } from './util';
 
 describe('BrightScriptFileUtils ', () => {
     let commands: BrightScriptCommands;
@@ -23,7 +24,7 @@ describe('BrightScriptFileUtils ', () => {
     let languagesMock;
 
     beforeEach(() => {
-        commands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+        commands = new BrightScriptCommands({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
         commandsMock = sinon.mock(commands);
         languagesMock = sinon.mock(vscode.languages);
     });
@@ -90,6 +91,102 @@ describe('BrightScriptFileUtils ', () => {
 
             commandsMock.verify();
             (vscode.commands.executeCommand as any).restore();
+        });
+    });
+
+    describe('setDefaultDevicePassword', () => {
+        let localCommands: BrightScriptCommands;
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let updateStub: sinon.SinonStub;
+        let showTimedNotificationStub: sinon.SinonStub;
+
+        beforeEach(() => {
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            updateStub = sinon.stub().resolves();
+            sinon.stub(vscode.workspace, 'getConfiguration').returns({
+                get: sinon.stub().returns(''),
+                update: updateStub
+            } as any);
+            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+            (vscode.workspace.getConfiguration as any).restore();
+            showTimedNotificationStub.restore();
+        });
+
+        it('saves the password to Global configuration target only', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves('mypassword');
+            await capturedCommands['extension.brightscript.setDefaultDevicePassword']();
+            assert.isTrue(updateStub.calledOnce);
+            assert.equal(updateStub.firstCall.args[0], 'defaultDevicePassword');
+            assert.equal(updateStub.firstCall.args[1], 'mypassword');
+            assert.equal(updateStub.firstCall.args[2], vscode.ConfigurationTarget.Global);
+            (vscode.window.showInputBox as any).restore();
+        });
+
+        it('does not save when user cancels the input box', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves(undefined);
+            await capturedCommands['extension.brightscript.setDefaultDevicePassword']();
+            assert.isTrue(updateStub.notCalled);
+            (vscode.window.showInputBox as any).restore();
+        });
+
+        it('saves empty string when user clears the password', async () => {
+            sinon.stub(vscode.window, 'showInputBox').resolves('');
+            await capturedCommands['extension.brightscript.setDefaultDevicePassword']();
+            assert.isTrue(updateStub.calledOnce);
+            assert.equal(updateStub.firstCall.args[1], '');
+            assert.equal(updateStub.firstCall.args[2], vscode.ConfigurationTarget.Global);
+            (vscode.window.showInputBox as any).restore();
+        });
+    });
+
+    describe('clearDefaultDevicePassword', () => {
+        let localCommands: BrightScriptCommands;
+        let capturedCommands: Record<string, (...args: any[]) => any>;
+        let updateStub: sinon.SinonStub;
+        let showTimedNotificationStub: sinon.SinonStub;
+
+        beforeEach(() => {
+            localCommands = new BrightScriptCommands({} as any, {} as any, vscode.context, {} as any, {} as any, {} as any, {} as any);
+            capturedCommands = {};
+            sinon.stub(vscode.commands as any, 'registerCommand').callsFake((name: any, cb: any) => {
+                capturedCommands[name] = cb;
+            });
+            updateStub = sinon.stub().resolves();
+            sinon.stub(vscode.workspace, 'getConfiguration').returns({
+                get: sinon.stub().returns(''),
+                update: updateStub
+            } as any);
+            showTimedNotificationStub = sinon.stub(Object.getPrototypeOf(util), 'showTimedNotification').resolves();
+            localCommands.registerCommands();
+        });
+
+        afterEach(() => {
+            (vscode.commands.registerCommand as any).restore();
+            (vscode.workspace.getConfiguration as any).restore();
+            showTimedNotificationStub.restore();
+        });
+
+        it('clears the password in Global configuration target only', async () => {
+            await capturedCommands['extension.brightscript.clearDefaultDevicePassword']();
+            assert.isTrue(updateStub.calledOnce);
+            assert.equal(updateStub.firstCall.args[0], 'defaultDevicePassword');
+            assert.equal(updateStub.firstCall.args[1], undefined);
+            assert.equal(updateStub.firstCall.args[2], vscode.ConfigurationTarget.Global);
+        });
+
+        it('shows a confirmation notification after clearing', async () => {
+            await capturedCommands['extension.brightscript.clearDefaultDevicePassword']();
+            assert.isTrue(showTimedNotificationStub.calledOnce);
+            assert.equal(showTimedNotificationStub.firstCall.args[0], 'Default device password cleared.');
         });
     });
 

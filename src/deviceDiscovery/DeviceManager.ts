@@ -2,7 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 import * as vscode from 'vscode';
 import { firstBy } from 'thenby';
 import type { Disposable } from 'vscode';
-import { rokuDeploy, type DeviceInfoRaw } from 'roku-deploy';
+import { rokuDeploy, DeviceUnreachableError, type DeviceInfoRaw } from 'roku-deploy';
 import { util as rokuDebugUtil } from 'roku-debug/dist/util';
 import type { GlobalStateManager } from '../GlobalStateManager';
 import { RokuFinder } from './RokuFinder';
@@ -32,7 +32,7 @@ export class DeviceManager {
             let config: any = util.getConfiguration('brightscript') || {};
 
             void vscodeContextManager.set('brightscript.deviceDiscovery.enabled', config.deviceDiscovery?.enabled);
-            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.defaultPassword);
+            void vscodeContextManager.set('brightscript.hasDefaultDevicePassword', !!this.getDefaultPassword());
 
             //if the `deviceDiscovery.enabled` setting was changed, start or stop monitoring
             if (event?.affectsConfiguration('brightscript.deviceDiscovery.enabled')) {
@@ -202,7 +202,28 @@ export class DeviceManager {
      * @returns Device with deviceInfo or undefined if not found
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
-    public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
+    /**
+     * Get device by IP or serial number, optionally probing the network first.
+     * When `fetch: true`, probes the IP before returning.
+     *
+     * @param lookup - Object with optional ip and/or serialNumber
+     * @param options - Options object with `fetch` flag
+     * @returns Promise resolving to device with deviceInfo or undefined if not found/unreachable
+     */
+    public getDevice(
+        lookup: { ip?: string; serialNumber?: string },
+        options: { fetch: true }
+    ): Promise<RokuDevice | undefined>;
+    public getDevice(
+        keyOrLookup: string | { ip?: string; serialNumber?: string },
+        options?: { fetch?: boolean }
+    ): RokuDevice | undefined | Promise<RokuDevice | undefined> {
+        // If fetch requested, probe first then return
+        if (options?.fetch && typeof keyOrLookup !== 'string' && keyOrLookup.ip) {
+            return this.resolveDevice({ ip: keyOrLookup.ip, serialNumber: keyOrLookup.serialNumber }, false)
+                .then(() => this.getDevice(keyOrLookup));
+        }
+
         const device = this.buildMergedDevice(keyOrLookup as any);
 
         // If lookup object with both ip and serialNumber, verify exact match
@@ -517,6 +538,27 @@ export class DeviceManager {
         return isHealthy;
     }
 
+    /**
+     * Validate a developer password against the device at `host`.
+     *
+     * Returns:
+     * - `'ok'` — credentials accepted
+     * - `'bad-password'` — device reachable, credentials rejected
+     * - `'unreachable'` — device could not be contacted (transient; don't treat as wrong password)
+     */
+    public async validateDevicePassword(host: string, password: string): Promise<PasswordValidationResult> {
+        try {
+            const accepted = await rokuDeploy.validateDeveloperPassword({ host: host, password: password });
+            return accepted ? 'ok' : 'bad-password';
+        } catch (e) {
+            if (e instanceof DeviceUnreachableError) {
+                return 'unreachable';
+            }
+            // Unexpected response code or any other failure — treat as unreachable so the caller retries/prompts rather than discarding credentials.
+            return 'unreachable';
+        }
+    }
+
     public getLastUsedDeviceIp(): string | undefined {
         return this.lastUsedDeviceIp;
     }
@@ -575,7 +617,7 @@ export class DeviceManager {
      * Default password applied to any device that does not have its own configured password.
      * Returns undefined when the setting is empty so callers can fall through to their own logic.
      */
-    public get defaultPassword(): string | undefined {
+    public getDefaultPassword(): string | undefined {
         const value = util.getConfiguration('brightscript')?.defaultDevicePassword;
         return typeof value === 'string' && value.length > 0 ? value : undefined;
     }
@@ -1160,7 +1202,7 @@ export class DeviceManager {
             isConfigured: !!configuredEntry,
             configuredIn: configuredEntry?.configuredIn,
             configuredName: configuredEntry?.name,
-            configuredPassword: configuredEntry?.password ?? this.defaultPassword
+            configuredPassword: configuredEntry?.password ?? this.getDefaultPassword()
         };
     }
 
@@ -1311,12 +1353,14 @@ export class DeviceManager {
 
 export type DeviceState = 'offline' | 'pending' | 'online';
 
+export type PasswordValidationResult = 'ok' | 'bad-password' | 'unreachable';
+
 export type ConfigurationScope = 'user' | 'workspace';
 
 /**
  * User-configured device from settings (brightscript.devices)
  */
-interface ConfiguredDevice {
+export interface ConfiguredDevice {
     host: string;
     name?: string;
     serialNumber?: string;

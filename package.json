@@ -78,7 +78,7 @@
         "pretty-bytes": "^5.6.0",
         "resolve": "^1.22.8",
         "roku-debug": "^0.23.5",
-        "roku-deploy": "^3.16.5",
+        "roku-deploy": "^3.17.0",
         "roku-test-automation": "^2.2.1",
         "semver": "^7.1.3",
         "source-map": "^0.7.3",
@@ -2256,7 +2256,7 @@
                             "properties": {
                                 "host": {
                                     "type": "string",
-                                    "description": "IP address or hostname of the device"
+                                    "description": "IP address or hostname of the device. Used as a location hint to speed up device detection on the network."
                                 },
                                 "name": {
                                     "type": "string",
@@ -2278,7 +2278,7 @@
                         "type": "string",
                         "default": "",
                         "description": "Default developer password applied to any device that does not have its own password configured. Leave empty to disable.",
-                        "scope": "resource"
+                        "scope": "application"
                     }
                 }
             },
