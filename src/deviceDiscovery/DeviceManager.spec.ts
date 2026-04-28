@@ -2797,11 +2797,13 @@ describe('DeviceManager', () => {
                 expect(result).to.be.true;
             });
 
-            it('returns true when configured device has different serial', () => {
+            it('returns false when configured device has different serial (avoids reload loop)', () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 mockGlobalStateManager.getSerialNumberForIp.returns(undefined);
 
-                // Add configured device with serial
+                // Add configured device with serial - this is a user misconfiguration
+                // We intentionally don't trigger mismatch here because reloading
+                // won't fix the config and would cause an infinite loop
                 manager['configuredDevices'].push({
                     host: '192.168.1.100',
                     resolvedIp: '192.168.1.100',
@@ -2809,7 +2811,7 @@ describe('DeviceManager', () => {
                 });
 
                 const result = manager['checkForSerialMismatch']('192.168.1.100', 'NEW-SERIAL');
-                expect(result).to.be.true;
+                expect(result).to.be.false;
             });
 
             it('returns true when discovered device has different serial', () => {
@@ -2890,6 +2892,56 @@ describe('DeviceManager', () => {
 
                 // Should NOT have called loadConfiguredDevices
                 expect(loadConfigSpy.called).to.be.false;
+            });
+        });
+
+        describe('configured device with mismatched serial at IP', () => {
+            let ipToSerialMap: Map<string, string>;
+
+            beforeEach(() => {
+                // Reset the IP→serial tracking map and restore callsFake behavior
+                ipToSerialMap = new Map();
+                mockGlobalStateManager.getSerialNumberForIp.callsFake((ip: string, networkId: string) => {
+                    return ipToSerialMap.get(`${networkId}:${ip}`);
+                });
+                mockGlobalStateManager.setSerialNumberForIp.callsFake((networkId: string, ip: string, serial: string) => {
+                    ipToSerialMap.set(`${networkId}:${ip}`, serial);
+                });
+            });
+
+            it('shows actual device serial when configured serial differs from device at IP', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                // User configured device with serial ABC at this IP
+                manager['configuredDevices'].push({
+                    host: '192.168.1.100',
+                    serialNumber: 'CONFIGURED-ABC',
+                    name: 'My Living Room Roku'
+                });
+
+                // But device XYZ is actually at that IP
+                // Note: rokuDeploy.getDeviceInfo returns both serialNumber (camelCase) and 'serial-number' (kebab)
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ACTUAL-XYZ',
+                    'serialNumber': 'ACTUAL-XYZ',
+                    'device-id': 'ACTUAL-XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve the device
+                await manager['resolveDevice']({ ip: '192.168.1.100' });
+
+                // Get the devices
+                const devices = manager.getAllDevices();
+
+                // Current behavior: shows ONE device with the actual serial (XYZ)
+                // but with the user's configured name
+                expect(devices).to.have.lengthOf(1);
+                expect(devices[0].serialNumber).to.equal('ACTUAL-XYZ');
+                expect(devices[0].configuredName).to.equal('My Living Room Roku');
+                expect(devices[0].isConfigured).to.be.true;
+                expect(devices[0].isDiscovered).to.be.true;
             });
         });
     });

@@ -746,18 +746,12 @@ export class DeviceManager {
             // Extract serial from response, fall back to known serial
             const serial = deviceInfo['serial-number']?.toString?.() ?? knownSerial;
 
-            // Check for serial mismatch before updating state
-            // If a different device is now at this IP, reload configurations
-            if (this.checkForSerialMismatch(device.ip, serial)) {
-                void this.loadConfiguredDevices();
-            }
-
             if (serial) {
                 // Add to last seen devices (successfully resolved with serial)
                 this.globalStateManager.addLastSeenDevice(this.networkId, serial);
             }
 
-            // Update discoveredDevices array
+            // Update discoveredDevices array (handles mismatch detection internally)
             this.setDiscoveredDevice(device.ip, serial);
 
             // Update resolvedIp for configured device if applicable
@@ -787,9 +781,12 @@ export class DeviceManager {
      * a device has changed IPs or a different device is now at a known IP.
      *
      * Mismatch scenarios:
-     * - deviceInfo for IP1 expected SerialA, got SerialB
-     * - deviceInfo for IP1 (no serial known) returns any serial
-     * - SSDP arrives with IP1 + SerialB but lists had IP1 + SerialA
+     * - Stored IP→serial map has SerialA for IP1, but got SerialB
+     * - Discovered device at IP1 had SerialA, but now has SerialB
+     *
+     * Note: We intentionally don't check configured device serials here.
+     * If a user misconfigured a serial, reloading won't fix it and would
+     * cause an infinite reload loop.
      *
      * @param ip - The IP address
      * @param newSerial - The newly discovered serial number
@@ -809,12 +806,6 @@ export class DeviceManager {
             return true;
         }
 
-        // Check if any configured device at this IP has a different serial
-        const configuredDevice = this.getConfiguredDevice({ ip: ip });
-        if (configuredDevice?.serialNumber && configuredDevice.serialNumber !== newSerial) {
-            // Configured device has a different serial than what's actually at the IP
-            return true;
-        }
 
         // Check if any discovered device at this IP has a different serial
         const discoveredDevice = this.discoveredDevices.find(d => d.ip === ip);
@@ -979,6 +970,9 @@ export class DeviceManager {
      * Also sets device state using intelligent defaults (cache freshness check).
      */
     private setDiscoveredDevice(ip: string, serialNumber: string | undefined): void {
+        // Check for serial mismatch before updating state
+        const hasMismatch = this.checkForSerialMismatch(ip, serialNumber);
+
         // Serial dedupe: if same serial exists at different IP, remove old entry
         if (serialNumber) {
             const oldIdx = this.discoveredDevices.findIndex(d => d.ip !== ip && d.serialNumber === serialNumber);
@@ -1012,6 +1006,11 @@ export class DeviceManager {
 
         // Set device state using intelligent defaults (preserves existing online state or uses cache freshness)
         this.setDeviceState({ serialNumber: serialNumber, ip: ip });
+
+        // If a different device is now at this IP, reload configurations
+        if (hasMismatch) {
+            this.loadConfiguredDevices().catch(() => { });
+        }
     }
 
     /**
@@ -1221,12 +1220,6 @@ export class DeviceManager {
     private setupFinderListeners() {
         this.finder.removeAllListeners();
         this.finder.on('found', (ip: string, options?: { serialNumber?: string }) => {
-            // Check for serial mismatch before updating state
-            // If a different device is now at this IP, reload configurations
-            if (this.checkForSerialMismatch(ip, options?.serialNumber)) {
-                void this.loadConfiguredDevices();
-            }
-
             this.setDiscoveredDevice(ip, options?.serialNumber);
             this.emitDevicesChanged();
         });
