@@ -486,7 +486,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
         // Probe the resolved host so downstream password resolution has fresh SN/deviceInfo.
         // Unreachable or filtered hosts yield no registered device; password resolution handles that.
-        const device = await this.deviceManager.getDevice({ ip: config.host }, { fetch: true });
+        const device = await this.deviceManager.validateAndAddDevice(config.host);
 
         return [config, device];
     }

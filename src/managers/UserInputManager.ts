@@ -38,7 +38,7 @@ export class UserInputManager {
             const probed = await vscode.window.withProgress(
                 { location: vscode.ProgressLocation.Notification, title: `Contacting ${value}...` },
                 async () => {
-                    return this.deviceManager.getDevice({ ip: value }, { fetch: true });
+                    return this.deviceManager.validateAndAddDevice(value);
                 }
             );
             if (probed) {
@@ -134,7 +134,7 @@ export class UserInputManager {
             } else if (quickPick.value) {
                 const typedValue = quickPick.value;
                 setBusy(true);
-                const probed = await this.deviceManager.getDevice({ ip: typedValue }, { fetch: true });
+                const probed = await this.deviceManager.validateAndAddDevice(typedValue);
                 setBusy(false);
                 if (!probed) {
                     await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);

@@ -202,28 +202,7 @@ export class DeviceManager {
      * @returns Device with deviceInfo or undefined if not found
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
-    /**
-     * Get device by IP or serial number, optionally probing the network first.
-     * When `fetch: true`, probes the IP before returning.
-     *
-     * @param lookup - Object with optional ip and/or serialNumber
-     * @param options - Options object with `fetch` flag
-     * @returns Promise resolving to device with deviceInfo or undefined if not found/unreachable
-     */
-    public getDevice(
-        lookup: { ip?: string; serialNumber?: string },
-        options: { fetch: true }
-    ): Promise<RokuDevice | undefined>;
-    public getDevice(
-        keyOrLookup: string | { ip?: string; serialNumber?: string },
-        options?: { fetch?: boolean }
-    ): RokuDevice | undefined | Promise<RokuDevice | undefined> {
-        // If fetch requested, probe first then return
-        if (options?.fetch && typeof keyOrLookup !== 'string' && keyOrLookup.ip) {
-            return this.resolveDevice({ ip: keyOrLookup.ip, serialNumber: keyOrLookup.serialNumber }, false)
-                .then(() => this.getDevice(keyOrLookup));
-        }
-
+    public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
         const device = this.buildMergedDevice(keyOrLookup as any);
 
         // If lookup object with both ip and serialNumber, verify exact match
@@ -234,6 +213,18 @@ export class DeviceManager {
         }
 
         return device;
+    }
+
+    /**
+     * Probe an IP address, add it to the discovered devices list if reachable, and return the device.
+     * Used when user manually enters an IP or before resolving a debug config.
+     *
+     * @param ip - The IP address to probe
+     * @returns The device if reachable, undefined otherwise
+     */
+    public async validateAndAddDevice(ip: string): Promise<RokuDevice | undefined> {
+        await this.resolveDevice({ ip: ip }, false);
+        return this.getDevice({ ip: ip });
     }
 
     /**
