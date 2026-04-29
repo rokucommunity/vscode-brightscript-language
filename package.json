@@ -552,7 +552,9 @@
                 "type": "brightscript",
                 "languages": [
                     "brightscript",
-                    "brighterscript"
+                    "brighterscript",
+                    "typescript",
+                    "typescriptreact"
                 ],
                 "program": "./dist/debugAdapter.js",
                 "runtime": "node",
