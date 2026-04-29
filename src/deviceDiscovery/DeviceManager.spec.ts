@@ -1745,6 +1745,7 @@ describe('DeviceManager', () => {
             it('converts removed configured device to discovered-only when it was resolved', async () => {
                 // Configure the existing stub to return empty config
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
                     inspect: () => ({
                         workspaceValue: [],
                         globalValue: []
@@ -1782,6 +1783,7 @@ describe('DeviceManager', () => {
             it('removes unresolved configured device when removed from config', async () => {
                 // Configure the existing stub to return empty config
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
                     inspect: () => ({
                         workspaceValue: [],
                         globalValue: []
@@ -1812,6 +1814,7 @@ describe('DeviceManager', () => {
                 // Two config entries pointing to same IP with different serials
                 // This is a misconfiguration, but we should handle it gracefully
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
                     inspect: () => ({
                         workspaceValue: [],
                         globalValue: [
@@ -2689,6 +2692,100 @@ describe('DeviceManager', () => {
                 // Internal entry should still have no configuredPassword stored on it
                 expect(manager['devices'][0].configuredPassword).to.be.undefined;
             });
+        });
+    });
+
+    describe('setupConfiguration (roku-dev-config file discovery)', () => {
+        let watcherCallbacks: {
+            onCreate?: (uri: { fsPath: string }) => void;
+            onChange?: (uri: { fsPath: string }) => void;
+            onDelete?: (uri: { fsPath: string }) => void;
+        };
+
+        function makeUri(fsPath: string) {
+            return { fsPath: fsPath };
+        }
+
+        beforeEach(() => {
+            watcherCallbacks = {};
+            sinon.stub(vscode.workspace, 'createFileSystemWatcher').returns({
+                onDidCreate: (cb) => {
+                    watcherCallbacks.onCreate = cb;
+                },
+                onDidChange: (cb) => {
+                    watcherCallbacks.onChange = cb;
+                },
+                onDidDelete: (cb) => {
+                    watcherCallbacks.onDelete = cb;
+                }
+            } as any);
+        });
+
+        it('passes a node_modules exclude glob to findFiles', () => {
+            const findFilesStub = sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            expect(findFilesStub.calledOnce).to.be.true;
+            const excludeArg: string = findFilesStub.firstCall.args[1];
+            expect(excludeArg).to.include('node_modules');
+        });
+
+        it('populates rokuDevConfigPaths from initial findFiles results', async () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([
+                makeUri('/workspace/project-a/.roku/roku-dev-config.json'),
+                makeUri('/workspace/project-b/.roku/roku-dev-config.json')
+            ] as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            await Promise.resolve(); // flush the findFiles promise
+
+            expect(manager['rokuDevConfigPaths'].has('/workspace/project-a/.roku/roku-dev-config.json')).to.be.true;
+            expect(manager['rokuDevConfigPaths'].has('/workspace/project-b/.roku/roku-dev-config.json')).to.be.true;
+        });
+
+        it('watcher onCreate adds path to rokuDevConfigPaths', () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            watcherCallbacks.onCreate(makeUri('/workspace/new-project/.roku/roku-dev-config.json'));
+
+            expect(manager['rokuDevConfigPaths'].has('/workspace/new-project/.roku/roku-dev-config.json')).to.be.true;
+        });
+
+        it('watcher onChange adds path to rokuDevConfigPaths', () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            watcherCallbacks.onChange(makeUri('/workspace/changed-project/.roku/roku-dev-config.json'));
+
+            expect(manager['rokuDevConfigPaths'].has('/workspace/changed-project/.roku/roku-dev-config.json')).to.be.true;
+        });
+
+        it('watcher onDelete removes path from rokuDevConfigPaths', () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const configPath = '/workspace/project/.roku/roku-dev-config.json';
+            manager['rokuDevConfigPaths'].add(configPath);
+
+            watcherCallbacks.onDelete(makeUri(configPath));
+
+            expect(manager['rokuDevConfigPaths'].has(configPath)).to.be.false;
+        });
+
+        it('watcher onDelete does not remove other paths', () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const keepPath = '/workspace/project-a/.roku/roku-dev-config.json';
+            const deletePath = '/workspace/project-b/.roku/roku-dev-config.json';
+            manager['rokuDevConfigPaths'].add(keepPath);
+            manager['rokuDevConfigPaths'].add(deletePath);
+
+            watcherCallbacks.onDelete(makeUri(deletePath));
+
+            expect(manager['rokuDevConfigPaths'].has(keepPath)).to.be.true;
+            expect(manager['rokuDevConfigPaths'].has(deletePath)).to.be.false;
         });
     });
 });

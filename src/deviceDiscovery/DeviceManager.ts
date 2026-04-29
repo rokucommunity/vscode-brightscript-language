@@ -77,11 +77,15 @@ export class DeviceManager {
         };
         this.context.subscriptions.push(
             configWatcher.onDidCreate(onConfigFound),
-            configWatcher.onDidChange(onConfigFound)
+            configWatcher.onDidChange(onConfigFound),
+            configWatcher.onDidDelete((uri) => {
+                this.rokuDevConfigPaths.delete(uri.fsPath);
+                applyConfig();
+            })
         );
 
         // Discover existing config files, then apply
-        void vscode.workspace.findFiles('**/.roku/roku-dev-config.json').then((uris) => {
+        void vscode.workspace.findFiles('**/.roku/roku-dev-config.json', util.buildExcludeGlob(['**/node_modules/**'])).then((uris) => {
             for (const uri of uris) {
                 this.rokuDevConfigPaths.add(uri.fsPath);
             }
