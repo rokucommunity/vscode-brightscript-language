@@ -61,22 +61,31 @@ function processProject(project: Project, branch: string) {
         return;
     }
     log(`${project.name}: processing`);
-    const projectBranch = hasBranch(project, branch) ? branch : 'master';
-    const buildVersion = `9001.0.0-${projectBranch.replace(/[^a-zA-Z0-9]/g, '-')}.${Date.now()}`;
 
-    clone(project, projectBranch);
+    if (!hasBranch(project, branch)) {
+        log(`${project.name}: branch '${branch}' not found, using version from package.json`);
+        project.processed = true;
+        return;
+    }
+
+    const buildVersion = `9001.0.0-${branch.replace(/[^a-zA-Z0-9]/g, '-')}.${Date.now()}`;
+
+    clone(project, branch);
     changeVersion(project, buildVersion);
-    execSync(`npm i`, {
-        cwd: project.name
-    });
     for (const dependencyName of project.dependencies) {
         log(`${project.name}: Processing dependency '${dependencyName}'`);
         const dependency = projects.find(x => x.name === dependencyName)!;
         processProject(dependency, branch);
-        //install the dependency into this project
-        execSync(`npm i ${dependency.packagePath}`, { cwd: project.name });
     }
-    execSync(`npm i && npm run build && npm pack`, {
+    execSync(`npm i`, { cwd: project.name });
+    for (const dependencyName of project.dependencies) {
+        const dependency = projects.find(x => x.name === dependencyName)!;
+        //override with locally-built version if this dependency was built from source
+        if (dependency.packagePath) {
+            execSync(`npm i ${dependency.packagePath}`, { cwd: project.name });
+        }
+    }
+    execSync(`npm run build && npm pack`, {
         cwd: project.name
     });
 
