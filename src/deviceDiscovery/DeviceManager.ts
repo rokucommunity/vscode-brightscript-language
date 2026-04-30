@@ -258,13 +258,16 @@ export class DeviceManager {
             let discovered: DiscoveredDeviceEntry | undefined;
 
             if (configured.serialNumber) {
+                // Config has serial - ONLY match by serial (serial is primary key)
                 discoveredIdx = this.discoveredDevices.findIndex(d => d.serialNumber === configured.serialNumber);
-            }
-            if (discoveredIdx < 0 && configured.resolvedIp) {
-                discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.resolvedIp);
-            }
-            if (discoveredIdx < 0) {
-                discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.host);
+            } else {
+                // Config has no serial - match by IP
+                if (configured.resolvedIp) {
+                    discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.resolvedIp);
+                }
+                if (discoveredIdx < 0) {
+                    discoveredIdx = this.discoveredDevices.findIndex(d => d.ip === configured.host);
+                }
             }
 
             if (discoveredIdx >= 0) {
@@ -287,12 +290,14 @@ export class DeviceManager {
             const discovered = this.discoveredDevices[i];
             const device = this.buildMergedDevice(undefined, discovered);
             if (device) {
-                // Check for duplicate by key or IP
+                // Check for duplicate by key
                 if (mergedDevices.has(device.key)) {
                     continue;
                 }
+                // Only skip by IP if neither device has a serial (serial is primary key)
+                // Different serials at same IP = different devices
                 const existingByIp = Array.from(mergedDevices.values()).find(d => d.ip === device.ip);
-                if (existingByIp) {
+                if (existingByIp && !device.serialNumber && !existingByIp.serialNumber) {
                     continue;
                 }
                 mergedDevices.set(device.key, device);
@@ -852,19 +857,30 @@ export class DeviceManager {
 
     /**
      * Update resolvedIp for a configured device by IP or serial number.
+     * Also marks configured devices as offline when a different device is found at their IP.
      */
     private updateConfiguredDeviceResolvedIp(ip: string, serialNumber: string | undefined): void {
-        // Try to find by serial first (more reliable), then by IP
-        let entry: ConfiguredDeviceEntry | undefined;
+        // Try to find by serial first (more reliable)
         if (serialNumber) {
-            entry = this.getConfiguredDevice({ serialNumber: serialNumber });
-        }
-        if (!entry) {
-            entry = this.getConfiguredDevice({ ip: ip });
+            const entryBySerial = this.getConfiguredDevice({ serialNumber: serialNumber });
+            if (entryBySerial) {
+                // Found configured device with matching serial - update its resolved IP
+                entryBySerial.resolvedIp = ip;
+                return;
+            }
         }
 
-        if (entry) {
-            entry.resolvedIp = ip;
+        // No configured device with this serial - check if there's one configured at this IP
+        const entryByIp = this.getConfiguredDevice({ ip: ip });
+        if (entryByIp) {
+            if (entryByIp.serialNumber && serialNumber && entryByIp.serialNumber !== serialNumber) {
+                // Configured device has a different serial than what's actually at this IP
+                // Mark the configured device as offline (it's not where it should be)
+                this.setDeviceState({ serialNumber: entryByIp.serialNumber }, 'offline');
+            } else if (!entryByIp.serialNumber) {
+                // Configured device has no serial - update its resolvedIp via IP matching
+                entryByIp.resolvedIp = ip;
+            }
         }
     }
 
@@ -1169,9 +1185,10 @@ export class DeviceManager {
             ip = configuredEntry.host;
         }
 
-        // Determine serial: cache > configured > discovered
-        const serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ??
-            configuredEntry?.serialNumber ??
+        // Determine serial: configured entry has highest priority (user's explicit config),
+        // then cache (for lookup-by-IP scenarios), then discovered
+        const serialNumber = configuredEntry?.serialNumber ??
+            this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ??
             discovered?.serialNumber;
 
         // Get merged state from state map

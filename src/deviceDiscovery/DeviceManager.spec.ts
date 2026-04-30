@@ -1971,9 +1971,9 @@ describe('DeviceManager', () => {
                 expect(manager.getAllDevices().length).to.equal(0);
             });
 
-            it('merges config entries with same IP but different serials (last wins)', async () => {
+            it('shows separate entries when same IP has different serials in config', async () => {
                 // Two config entries pointing to same IP with different serials
-                // This is a misconfiguration, but we should handle it gracefully
+                // Since serial is primary key, these are treated as different devices
                 (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
                     inspect: () => ({
                         workspaceValue: [],
@@ -1992,11 +1992,22 @@ describe('DeviceManager', () => {
 
                 await manager['loadConfiguredDevices']();
 
-                // Should have exactly one device (merged by IP, second entry wins)
-                expect(manager.getAllDevices().length).to.equal(1);
-                expect(manager.getAllDevices()[0].ip).to.equal('192.168.1.100');
-                expect(manager.getAllDevices()[0].configuredName).to.equal('Second Entry');
-                expect(manager.getAllDevices()[0].isConfigured).to.equal(true);
+                // Should have two devices (different serials = different devices, even at same IP)
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(2);
+
+                const firstDevice = devices.find(d => d.serialNumber === 'ABC');
+                const secondDevice = devices.find(d => d.serialNumber === 'XYZ');
+
+                expect(firstDevice).to.exist;
+                expect(firstDevice.ip).to.equal('192.168.1.100');
+                expect(firstDevice.configuredName).to.equal('First Entry');
+                expect(firstDevice.isConfigured).to.equal(true);
+
+                expect(secondDevice).to.exist;
+                expect(secondDevice.ip).to.equal('192.168.1.100');
+                expect(secondDevice.configuredName).to.equal('Second Entry');
+                expect(secondDevice.isConfigured).to.equal(true);
             });
 
             it('clears configuredName when name is removed from config', async () => {
@@ -2949,7 +2960,7 @@ describe('DeviceManager', () => {
                 });
             });
 
-            it('shows actual device serial when configured serial differs from device at IP', async () => {
+            it('shows two devices when configured serial differs from device at IP', async () => {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
                 sinon.stub(manager as any, 'randomDelay').resolves();
 
@@ -2975,13 +2986,24 @@ describe('DeviceManager', () => {
                 // Get the devices
                 const devices = manager.getAllDevices();
 
-                // Current behavior: shows ONE device with the actual serial (XYZ)
-                // but with the user's configured name
-                expect(devices).to.have.lengthOf(1);
-                expect(devices[0].serialNumber).to.equal('ACTUAL-XYZ');
-                expect(devices[0].configuredName).to.equal('My Living Room Roku');
-                expect(devices[0].isConfigured).to.be.true;
-                expect(devices[0].isDiscovered).to.be.true;
+                // Expected: TWO devices - configured device offline, discovered device online
+                expect(devices).to.have.lengthOf(2);
+
+                // Find the configured device (serial ABC) - offline because a different device is at its IP
+                const configuredDevice = devices.find(d => d.serialNumber === 'CONFIGURED-ABC');
+                expect(configuredDevice).to.exist;
+                expect(configuredDevice.configuredName).to.equal('My Living Room Roku');
+                expect(configuredDevice.isConfigured).to.be.true;
+                expect(configuredDevice.isDiscovered).to.be.false;
+                expect(configuredDevice.deviceState).to.equal('offline');
+
+                // Find the discovered device (serial XYZ)
+                const discoveredDevice = devices.find(d => d.serialNumber === 'ACTUAL-XYZ');
+                expect(discoveredDevice).to.exist;
+                expect(discoveredDevice.configuredName).to.be.undefined;
+                expect(discoveredDevice.isConfigured).to.be.false;
+                expect(discoveredDevice.isDiscovered).to.be.true;
+                expect(discoveredDevice.deviceState).to.equal('online');
             });
         });
     });
