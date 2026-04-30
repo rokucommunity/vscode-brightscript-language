@@ -482,13 +482,10 @@ export class DeviceManager {
         // Stop any in-progress scan (finder.stop() emits scan-ended if scanning)
         this.finder.stop();
 
-        // Clear current device list
+        // Clear discovered devices and short-lived caches
         this.clearCurrentDeviceList();
 
-        // Clear new arrays completely (clearCurrentDeviceList already cleared discoveredDevices)
-        this.configuredDevices = [];
-
-        // Clear global state
+        // Clear persisted global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
         this.globalStateManager.clearSerialNumberByIpForNetwork();
@@ -725,24 +722,13 @@ export class DeviceManager {
 
             const ip = resolvedIp ?? configured.host;
 
-            // Look up serial from cache if not provided in config
-            let serialNumber = configured.serialNumber;
-            if (!serialNumber) {
-                serialNumber = this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
-            }
-
             this.configuredDevices.push({
                 ...configured,
                 resolvedIp: resolvedIp
             });
 
-            // Set up IP→serial mapping if we have serial
-            if (serialNumber) {
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, serialNumber);
-            }
-
-            // Set device state using intelligent defaults (preserves existing state or uses cache freshness)
-            this.setDeviceState({ serialNumber: serialNumber, ip: ip });
+            // Set device state using configured serial (not cache - cache might be stale)
+            this.setDeviceState({ serialNumber: configured.serialNumber, ip: ip });
         }
     }
 
@@ -792,8 +778,8 @@ export class DeviceManager {
             // Update discoveredDevices array (handles mismatch detection internally)
             this.setDiscoveredDevice(device.ip, serial);
 
-            // Update resolvedIp for configured device if applicable
-            this.updateConfiguredDeviceResolvedIp(device.ip, serial);
+            // Mark any configured devices at this IP with different serials as offline
+            this.markMismatchedConfiguredDevicesOffline(device.ip, serial);
 
             // Set state to online
             this.setDeviceState({ ip: device.ip, serialNumber: serial }, 'online');
@@ -856,29 +842,17 @@ export class DeviceManager {
     }
 
     /**
-     * Update resolvedIp for a configured device by IP or serial number.
-     * Also marks configured devices as offline when a different device is found at their IP.
+     * Mark configured devices as offline when a different device is found at their IP.
+     * Note: resolvedIp is only set during DNS resolution in loadConfiguredDevices(),
+     * not updated here when discovering devices.
      */
-    private updateConfiguredDeviceResolvedIp(ip: string, serialNumber: string | undefined): void {
-        // Try to find by serial first (more reliable)
-        if (serialNumber) {
-            const entryBySerial = this.getConfiguredDevice({ serialNumber: serialNumber });
-            if (entryBySerial) {
-                // Found configured device with matching serial - update its resolved IP
-                entryBySerial.resolvedIp = ip;
-            }
-        }
-
-        // Mark all OTHER configured devices at this IP (with different serials) as offline
+    private markMismatchedConfiguredDevicesOffline(ip: string, serialNumber: string | undefined): void {
         for (const entry of this.configuredDevices) {
             const isAtThisIp = entry.host === ip || entry.resolvedIp === ip;
             const hasDifferentSerial = entry.serialNumber && serialNumber && entry.serialNumber !== serialNumber;
 
             if (isAtThisIp && hasDifferentSerial) {
                 this.setDeviceState({ serialNumber: entry.serialNumber }, 'offline');
-            } else if (isAtThisIp && !entry.serialNumber) {
-                // Configured device has no serial - update its resolvedIp via IP matching
-                entry.resolvedIp = ip;
             }
         }
     }
@@ -979,9 +953,9 @@ export class DeviceManager {
                 remotePort: port,
                 timeout: DeviceManager.HEALTH_CHECK_TIMEOUT_MS
             });
-            if (info?.serialNumber) {
-                this.globalStateManager.setCachedDevice(info.serialNumber, {
-                    serialNumber: info.serialNumber,
+            if (info['serial-number']) {
+                this.globalStateManager.setCachedDevice(info['serial-number'], {
+                    serialNumber: info['serial-number'],
                     deviceInfo: info,
                     createdAt: Date.now()
                 });
@@ -1096,17 +1070,6 @@ export class DeviceManager {
     }
 
     /**
-     * Find a configured device by serial number or IP.
-     */
-    private getConfiguredDevice(lookup: { serialNumber: string } | { ip: string }): ConfiguredDeviceEntry | undefined {
-        if ('serialNumber' in lookup) {
-            return this.configuredDevices.find(d => d.serialNumber === lookup.serialNumber);
-        } else {
-            return this.configuredDevices.find(d => d.resolvedIp === lookup.ip || d.host === lookup.ip);
-        }
-    }
-
-    /**
      * Build a merged RokuDevice by decoding an encoded key (s:serial or i:ip).
      */
     private buildMergedDevice(key: string): RokuDevice | undefined;
@@ -1184,11 +1147,12 @@ export class DeviceManager {
             ip = configuredEntry.host;
         }
 
-        // Determine serial: configured entry has highest priority (user's explicit config),
-        // then cache (for lookup-by-IP scenarios), then discovered
+        // Determine serial: configured > discovered > cache
+        // Configured is user's explicit config, discovered is fresh network data,
+        // cache is fallback for initial load before discovery runs
         const serialNumber = configuredEntry?.serialNumber ??
-            this.globalStateManager.getSerialNumberForIp(ip, this.networkId) ??
-            discovered?.serialNumber;
+            discovered?.serialNumber ??
+            this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
         // Get merged state from state map
         const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip });
