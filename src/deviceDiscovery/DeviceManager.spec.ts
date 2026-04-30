@@ -2010,6 +2010,51 @@ describe('DeviceManager', () => {
                 expect(secondDevice.isConfigured).to.equal(true);
             });
 
+            it('marks other configured device offline when health check finds different serial at same IP', async () => {
+                // Two config entries pointing to same IP with different serials
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    inspect: () => ({
+                        workspaceValue: [],
+                        globalValue: [
+                            { host: '192.168.1.100', serialNumber: 'ABC', name: 'First Entry' },
+                            { host: '192.168.1.100', serialNumber: 'XYZ', name: 'Second Entry' }
+                        ]
+                    }),
+                    deviceDiscovery: {
+                        enabled: false,
+                        includeNonDeveloperDevices: true
+                    }
+                });
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+
+                await manager['loadConfiguredDevices']();
+
+                // Health check finds ABC at the IP
+                sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'serial-number': 'ABC',
+                    'serialNumber': 'ABC',
+                    'device-id': 'ABC',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                await manager['resolveDevice']({ ip: '192.168.1.100' });
+
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(2);
+
+                // ABC should be online (it's the device at the IP)
+                const abcDevice = devices.find(d => d.serialNumber === 'ABC');
+                expect(abcDevice).to.exist;
+                expect(abcDevice.deviceState).to.equal('online');
+
+                // XYZ should be offline (different device is at its configured IP)
+                const xyzDevice = devices.find(d => d.serialNumber === 'XYZ');
+                expect(xyzDevice).to.exist;
+                expect(xyzDevice.deviceState).to.equal('offline');
+            });
+
             it('clears configuredName when name is removed from config', async () => {
                 // Initial config with a name
                 const configStub = vscode.workspace.getConfiguration as sinon.SinonStub;

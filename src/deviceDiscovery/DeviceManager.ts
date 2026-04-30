@@ -866,20 +866,19 @@ export class DeviceManager {
             if (entryBySerial) {
                 // Found configured device with matching serial - update its resolved IP
                 entryBySerial.resolvedIp = ip;
-                return;
             }
         }
 
-        // No configured device with this serial - check if there's one configured at this IP
-        const entryByIp = this.getConfiguredDevice({ ip: ip });
-        if (entryByIp) {
-            if (entryByIp.serialNumber && serialNumber && entryByIp.serialNumber !== serialNumber) {
-                // Configured device has a different serial than what's actually at this IP
-                // Mark the configured device as offline (it's not where it should be)
-                this.setDeviceState({ serialNumber: entryByIp.serialNumber }, 'offline');
-            } else if (!entryByIp.serialNumber) {
+        // Mark all OTHER configured devices at this IP (with different serials) as offline
+        for (const entry of this.configuredDevices) {
+            const isAtThisIp = entry.host === ip || entry.resolvedIp === ip;
+            const hasDifferentSerial = entry.serialNumber && serialNumber && entry.serialNumber !== serialNumber;
+
+            if (isAtThisIp && hasDifferentSerial) {
+                this.setDeviceState({ serialNumber: entry.serialNumber }, 'offline');
+            } else if (isAtThisIp && !entry.serialNumber) {
                 // Configured device has no serial - update its resolvedIp via IP matching
-                entryByIp.resolvedIp = ip;
+                entry.resolvedIp = ip;
             }
         }
     }
