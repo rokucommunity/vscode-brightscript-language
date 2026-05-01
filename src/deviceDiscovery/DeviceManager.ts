@@ -140,7 +140,7 @@ export class DeviceManager {
     private emitter = new EventEmitter();
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
-    private finder = new RokuFinder();
+    private finder = new RokuFinder(this.globalStateManager);
 
     // Health check tracking and cooldowns
     private lastHealthCheckTime = new Map<string, number>();
@@ -1116,7 +1116,7 @@ export class DeviceManager {
         const oldFinder = this.finder;
 
         // Create new finder instance
-        this.finder = new RokuFinder();
+        this.finder = new RokuFinder(this.globalStateManager);
 
         // Re-attach event listeners
         this.setupFinderListeners();

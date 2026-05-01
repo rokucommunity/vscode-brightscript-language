@@ -1,9 +1,10 @@
 import { EventEmitter } from 'eventemitter3';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
+import type { GlobalStateManager } from '../GlobalStateManager';
 
 export class RokuFinder extends EventEmitter {
-    constructor() {
+    constructor(private globalStateManager: GlobalStateManager) {
         super();
 
         this.client = new Client({
@@ -37,8 +38,8 @@ export class RokuFinder extends EventEmitter {
     // Heartbeat suppression: Roku devices send ssdp:alive on a ~20-minute schedule.
     // We emit device-online only when the alive does NOT arrive on schedule — meaning
     // the device just woke up, rebooted, or the host missed heartbeats while asleep.
+    // Timestamps are persisted via GlobalStateManager so the clock survives restarts.
     // Keyed by serial number so a DHCP IP change doesn't reset the clock.
-    private lastAliveTimestampMap = new Map<string, number>();
     private readonly HEARTBEAT_INTERVAL_MS = 20 * 60 * 1_000;
     private readonly HEARTBEAT_TOLERANCE_MS = 5_000;
 
@@ -250,9 +251,9 @@ export class RokuFinder extends EventEmitter {
      */
     private maybeEmitDeviceOnline(ip: string, serialNumber: string | undefined, now: number): void {
         const key = serialNumber ?? ip;
-        const lastTs = this.lastAliveTimestampMap.get(key);
+        const lastTs = this.globalStateManager.getLastAliveTimestamp(key);
         const elapsed = lastTs !== undefined ? now - lastTs : undefined;
-        this.lastAliveTimestampMap.set(key, now);
+        this.globalStateManager.setLastAliveTimestamp(key, now);
 
         const isRoutineHeartbeat = elapsed !== undefined &&
             Math.abs(elapsed - this.HEARTBEAT_INTERVAL_MS) <= this.HEARTBEAT_TOLERANCE_MS;
@@ -293,7 +294,6 @@ export class RokuFinder extends EventEmitter {
         this.scanTimers = [];
         this.clearScanTimers();
         this.aliveDebounceMap.clear();
-        this.lastAliveTimestampMap.clear();
 
         this.client.removeAllListeners();
         this.client.stop();
