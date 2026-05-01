@@ -262,7 +262,8 @@ export class RokuFinder extends EventEmitter {
             Math.abs(elapsed - this.HEARTBEAT_INTERVAL_MS) <= this.HEARTBEAT_TOLERANCE_MS;
 
         const elapsedStr = elapsed !== undefined ? `${(elapsed / 1000).toFixed(1)}s ago` : 'first time seen';
-        this.log(`ssdp:alive ip=${ip} serial=${serialNumber ?? 'unknown'} lastSeen=${elapsedStr} decision=${isRoutineHeartbeat ? 'suppressed (routine heartbeat)' : 'device-online'}`);
+        const decision = isRoutineHeartbeat ? '🔇 suppressed' : '🔔 device-online';
+        this.log(`ssdp:alive  |  ${decision}  |  ip: ${ip}  |  serial: ${serialNumber ?? 'unknown'}  |  last seen: ${elapsedStr}`);
 
         if (!isRoutineHeartbeat) {
             this.emit('device-online', ip, serialNumber);
