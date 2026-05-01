@@ -4,7 +4,10 @@ import { Client, Server } from 'node-ssdp';
 import type { GlobalStateManager } from '../GlobalStateManager';
 
 export class RokuFinder extends EventEmitter {
-    constructor(private globalStateManager: GlobalStateManager) {
+    constructor(
+        private globalStateManager: GlobalStateManager,
+        private log: (msg: string) => void = () => { }
+    ) {
         super();
 
         this.client = new Client({
@@ -257,6 +260,9 @@ export class RokuFinder extends EventEmitter {
 
         const isRoutineHeartbeat = elapsed !== undefined &&
             Math.abs(elapsed - this.HEARTBEAT_INTERVAL_MS) <= this.HEARTBEAT_TOLERANCE_MS;
+
+        const elapsedStr = elapsed !== undefined ? `${(elapsed / 1000).toFixed(1)}s ago` : 'first time seen';
+        this.log(`ssdp:alive ip=${ip} serial=${serialNumber ?? 'unknown'} lastSeen=${elapsedStr} decision=${isRoutineHeartbeat ? 'suppressed (routine heartbeat)' : 'device-online'}`);
 
         if (!isRoutineHeartbeat) {
             this.emit('device-online', ip, serialNumber);
