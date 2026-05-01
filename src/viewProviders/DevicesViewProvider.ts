@@ -34,9 +34,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.devices = this.deviceManager.getDevicesForUI();
-            this.decorationProvider.updateDevices(this.devices);
-            this._onDidChangeTreeData.fire(null);
+            this.handleDevicesChanged().catch(() => { });
         });
 
         this.deviceManager.on('scanNeeded-changed', () => {
@@ -103,6 +101,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
+    private async handleDevicesChanged(): Promise<void> {
+        this.devices = await this.deviceManager.healthCheckStaleDevicesThenGetDevicesForUI();
+        this.decorationProvider.updateDevices(this.devices);
+        this._onDidChangeTreeData.fire(null);
+    }
+
     /**
      * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
@@ -128,7 +132,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = this.deviceManager.getDevicesForUI();
+                this.devices = await this.deviceManager.healthCheckStaleDevicesThenGetDevicesForUI();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {

@@ -143,6 +143,7 @@ export class DeviceManager {
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private deviceStates = new Map<DeviceStateKey, DeviceStateEntry>();
     private scanNeeded = false;
+    private suppressEmitDevicesChanged = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
 
@@ -223,6 +224,7 @@ export class DeviceManager {
      * @returns The device if reachable, undefined otherwise
      */
     public async validateAndAddDevice(ip: string): Promise<RokuDevice | undefined> {
+        this.setDiscoveredDevice(ip, undefined);
         await this.resolveDevice({ ip: ip }, false);
         return this.getDevice({ ip: ip });
     }
@@ -240,6 +242,16 @@ export class DeviceManager {
      * Respects includeNonDeveloperDevices setting.
      */
     public getDevicesForUI(): RokuDevice[] {
+        return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
+    }
+
+    public async healthCheckStaleDevicesThenGetDevicesForUI(): Promise<RokuDevice[]> {
+        this.suppressEmitDevicesChanged = true;
+        try {
+            await this.healthCheckStaleDevices();
+        } finally {
+            this.suppressEmitDevicesChanged = false;
+        }
         return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
     }
 
@@ -602,8 +614,7 @@ export class DeviceManager {
         if (this.includeNonDeveloperDevices) {
             return true;
         }
-        // Must have device info AND be developer-enabled to show
-        return device.deviceInfo?.['developer-enabled'] === 'true';
+        return device?.deviceInfo?.['developer-enabled'] !== 'false';
     }
 
     /**
@@ -732,7 +743,7 @@ export class DeviceManager {
         }
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string; serialNumber?: string }, doSyntheticDelay = true): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true): Promise<boolean> {
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
@@ -776,7 +787,9 @@ export class DeviceManager {
             }
 
             // Update discoveredDevices array (handles mismatch detection internally)
-            this.setDiscoveredDevice(device.ip, serial);
+            if ('isDiscovered' in device && device.isDiscovered) {
+                this.setDiscoveredDevice(device.ip, serial);
+            }
 
             // Mark any configured devices at this IP with different serials as offline
             this.markMismatchedConfiguredDevicesOffline(device.ip, serial);
@@ -896,7 +909,7 @@ export class DeviceManager {
      * Health check devices that didn't respond to a scan.
      * Called after scan-ended. Checks devices whose cache is older than STALE_DEVICE_AFTER_SCAN_MS.
      */
-    private healthCheckStaleDevices(): void {
+    private async healthCheckStaleDevices() {
         const now = Date.now();
         const staleDevices = this.getAllDevices().filter(device => {
             if (!device.serialNumber) {
@@ -915,10 +928,7 @@ export class DeviceManager {
             return;
         }
 
-        // Health check each stale device
-        for (const device of staleDevices) {
-            void this.resolveDevice(device, false);
-        }
+        await Promise.all(staleDevices.map(device => this.resolveDevice(device, false)));
     }
 
     /**
@@ -1252,7 +1262,7 @@ export class DeviceManager {
         this.finder.on('scan-ended', () => {
             this.emitter.emit('scan-ended');
             // Health check devices that didn't respond to the scan (stale cache)
-            this.healthCheckStaleDevices();
+            this.healthCheckStaleDevices().catch(() => { });
         });
     }
 
@@ -1312,6 +1322,9 @@ export class DeviceManager {
     }
 
     private emitDevicesChanged = throttleBounce(() => {
+        if (this.suppressEmitDevicesChanged) {
+            return;
+        }
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
