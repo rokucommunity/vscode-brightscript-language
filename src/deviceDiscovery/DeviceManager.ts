@@ -482,9 +482,6 @@ export class DeviceManager {
         // Stop any in-progress scan (finder.stop() emits scan-ended if scanning)
         this.finder.stop();
 
-        // Clear discovered devices and short-lived caches
-        this.clearCurrentDeviceList();
-
         // Clear persisted global state
         this.globalStateManager.clearLastSeenDevices();
         this.globalStateManager.clearDeviceCache();
@@ -501,6 +498,9 @@ export class DeviceManager {
             clearTimeout(this.fetchDeviceInfoThrottleTimer);
             this.fetchDeviceInfoThrottleTimer = null;
         }
+
+        // Clear discovered devices and short-lived caches
+        this.clearCurrentDeviceList();
     }
 
     public async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
@@ -524,7 +524,7 @@ export class DeviceManager {
         }
 
         const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
-        if (!isHealthy) {
+        if (!isHealthy && device.isDiscovered) {
             // force a scan if passive scan is permitted
             this.refresh(this.deviceDiscoveryEnabled);
         }
@@ -882,7 +882,7 @@ export class DeviceManager {
         let needsScan = false;
         await Promise.all(devicesToCheck.map(async (device) => {
             const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
-            if (!isHealthy) {
+            if (!isHealthy && device.isDiscovered) {
                 needsScan = true;
             }
         }));
@@ -1154,7 +1154,6 @@ export class DeviceManager {
             discovered?.serialNumber ??
             this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
-        // Get merged state from state map
         const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip });
 
         // Build key
