@@ -181,7 +181,7 @@ describe('RokuFinder', () => {
             expect(options.serialNumber).to.equal('ABC123');
         });
 
-        it('emits "device-online" with IP and serial number on ssdp:alive', async () => {
+        it('emits "device-online" with IP and serial number the first time a device is seen', async () => {
             finder = new RokuFinder();
             await finder.start();
 
@@ -198,6 +198,238 @@ describe('RokuFinder', () => {
             expect(deviceOnlineSpy.calledOnce).to.be.true;
             expect(deviceOnlineSpy.firstCall.args[0]).to.equal('192.168.1.100');
             expect(deviceOnlineSpy.firstCall.args[1]).to.equal('ABC123');
+        });
+
+        it('suppresses "device-online" for a routine ~20-minute heartbeat', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive — fires (first time seen)
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Exactly 20 minutes later — routine heartbeat, suppressed
+                clock.tick(20 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses "device-online" when alive arrives within ±5s of 20-minute schedule', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 4 seconds early (within ±5s tolerance) — suppressed
+                clock.tick(20 * 60 * 1_000 - 4_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 4 seconds late from that timestamp (within ±5s tolerance) — suppressed
+                clock.tick(20 * 60 * 1_000 + 4_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits "device-online" again when alive arrives off the 20-minute schedule (e.g. reboot)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive — fires
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 10 seconds later — not on 20-min schedule, fires again (reboot scenario)
+                clock.tick(10_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('resets the heartbeat clock on wake so the next 20-minute heartbeat is suppressed', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First heartbeat
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Device reboots 10 minutes into the cycle — fires device-online
+                clock.tick(10 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+
+                // 20 minutes after the reboot — routine heartbeat, clock was reset from wake time
+                clock.tick(20 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true; // suppressed
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits "device-online" again after a missed heartbeat (host was asleep)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Routine 20-minute heartbeat — suppressed
+                clock.tick(20 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Host was asleep for 3 days — next alive is way off schedule, fires again
+                clock.tick(3 * 24 * 60 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('uses serial number (not IP) as the heartbeat key so IP changes do not reset the clock', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveOldIp = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+                const aliveNewIp = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.200:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive on old IP
+                (finder['server'] as any).emit('advertise-alive', aliveOldIp);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Routine heartbeat on new IP — same serial, should still be suppressed
+                clock.tick(20 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveNewIp);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('tracks heartbeat independently per device', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder();
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const alive1 = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+                const alive2 = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.101:8060',
+                    USN: 'uuid:roku:ecp:DEF456'
+                };
+
+                // Both devices seen for the first time
+                (finder['server'] as any).emit('advertise-alive', alive1);
+                (finder['server'] as any).emit('advertise-alive', alive2);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+
+                // Both send routine 20-min heartbeat — both suppressed
+                clock.tick(20 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', alive1);
+                (finder['server'] as any).emit('advertise-alive', alive2);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
         });
 
         it('emits "lost" on ssdp:byebye', async () => {

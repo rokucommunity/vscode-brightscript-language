@@ -34,6 +34,14 @@ export class RokuFinder extends EventEmitter {
     private lastCleanupTime = 0;
     private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
+    // Heartbeat suppression: Roku devices send ssdp:alive on a ~20-minute schedule.
+    // We emit device-online only when the alive does NOT arrive on schedule — meaning
+    // the device just woke up, rebooted, or the host missed heartbeats while asleep.
+    // Keyed by serial number so a DHCP IP change doesn't reset the clock.
+    private lastAliveTimestampMap = new Map<string, number>();
+    private readonly HEARTBEAT_INTERVAL_MS = 20 * 60 * 1_000;
+    private readonly HEARTBEAT_TOLERANCE_MS = 5_000;
+
     private readonly SCAN_MIN_DURATION_MS = 3_000;
     private readonly SCAN_SETTLE_MS = 1_500;
     private scanMinTimer: ReturnType<typeof setTimeout> | null = null;
@@ -221,7 +229,7 @@ export class RokuFinder extends EventEmitter {
                     this.aliveDebounceMap.set(ip, now);
                     const serialNumber = this.extractSerialFromUsn(usn);
                     this.emit('found', ip, { serialNumber: serialNumber });
-                    this.emit('device-online', ip, serialNumber);
+                    this.maybeEmitDeviceOnline(ip, serialNumber, now);
 
                     // Reset settle timer when device found during active scan
                     if (this.isScanning) {
@@ -231,6 +239,26 @@ export class RokuFinder extends EventEmitter {
             } catch {
                 // Invalid URL, ignore
             }
+        }
+    }
+
+    /**
+     * Emit 'device-online' unless this alive arrived right on the ~20-minute heartbeat
+     * schedule. Suppressing on-schedule heartbeats means we only notify when the device
+     * actually just came online: first time seen, after a reboot, or after the host was
+     * asleep long enough to miss the regular cadence.
+     */
+    private maybeEmitDeviceOnline(ip: string, serialNumber: string | undefined, now: number): void {
+        const key = serialNumber ?? ip;
+        const lastTs = this.lastAliveTimestampMap.get(key);
+        const elapsed = lastTs !== undefined ? now - lastTs : undefined;
+        this.lastAliveTimestampMap.set(key, now);
+
+        const isRoutineHeartbeat = elapsed !== undefined &&
+            Math.abs(elapsed - this.HEARTBEAT_INTERVAL_MS) <= this.HEARTBEAT_TOLERANCE_MS;
+
+        if (!isRoutineHeartbeat) {
+            this.emit('device-online', ip, serialNumber);
         }
     }
 
@@ -265,6 +293,7 @@ export class RokuFinder extends EventEmitter {
         this.scanTimers = [];
         this.clearScanTimers();
         this.aliveDebounceMap.clear();
+        this.lastAliveTimestampMap.clear();
 
         this.client.removeAllListeners();
         this.client.stop();
