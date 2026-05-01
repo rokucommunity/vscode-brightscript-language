@@ -260,12 +260,12 @@ describe('RokuFinder', () => {
                 expect(deviceOnlineSpy.calledOnce).to.be.true;
 
                 // 4 seconds early (within ±5s tolerance) — suppressed
-                clock.tick(20 * 60 * 1_000 - 4_000);
+                clock.tick((20 * 60 * 1_000) - 4_000);
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(deviceOnlineSpy.calledOnce).to.be.true;
 
                 // 4 seconds late from that timestamp (within ±5s tolerance) — suppressed
-                clock.tick(20 * 60 * 1_000 + 4_000);
+                clock.tick((20 * 60 * 1_000) + 4_000);
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(deviceOnlineSpy.calledOnce).to.be.true;
             } finally {
