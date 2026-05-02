@@ -230,6 +230,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         config.cwd = folderUri.fsPath;
 
         config.rootDir = this.util.ensureTrailingSlash(config.rootDir ? config.rootDir : '${workspaceFolder}');
+        const resolvedRootDir = config.rootDir.replace('${workspaceFolder}', folderUri.fsPath);
+        let rootDirBsConfig = this.getBsConfig(vscode.Uri.file(resolvedRootDir.replace(/[/\\]+$/, '')));
+        //load the bsconfig settings from rootDir
+        if (rootDirBsConfig) {
+            config = { ...rootDirBsConfig, ...config };
+        }
 
         //Check for depreciated Items
         if (config.debugRootDir) {
@@ -254,6 +260,12 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
+                const resolvedRootDir = library.rootDir.replace('${workspaceFolder}', folderUri.fsPath);
+                const libBsconfig = this.getBsConfig(vscode.Uri.file(resolvedRootDir.replace(/[/\\]+$/, '')));
+                if (libBsconfig) {
+                    Object.assign(library, { ...libBsconfig, ...library });
+                }
+
                 library.files = library.files ? library.files : [...DefaultFiles];
             }
         } else {
