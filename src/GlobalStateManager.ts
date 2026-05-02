@@ -305,7 +305,8 @@ export class GlobalStateManager {
 
     public setLastAliveTimestamp(key: string, timestamp: number): void {
         const map = this.context.globalState.get<Record<string, number>>(this.keys.lastAliveTimestamp) || {};
-        void this.context.globalState.update(this.keys.lastAliveTimestamp, { ...map, [key]: timestamp });
+        map[key] = timestamp;
+        void this.context.globalState.update(this.keys.lastAliveTimestamp, map);
     }
 
     /**
