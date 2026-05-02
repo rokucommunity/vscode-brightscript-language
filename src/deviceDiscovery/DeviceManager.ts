@@ -445,7 +445,7 @@ export class DeviceManager {
     private makeFinderLogger(): (msg: string) => void {
         return (msg: string) => {
             if (this.heartbeatLogging) {
-                this.extensionOutputChannel?.appendLine(`[DeviceDiscovery] ${msg}`);
+                this.extensionOutputChannel?.appendLine(`[heartbeat] ${msg}`);
             }
         };
     }
@@ -1150,6 +1150,8 @@ export class DeviceManager {
      */
     private async startRokuFinder() {
         await this.finder.start();
+        const ts = new Date().toLocaleTimeString();
+        this.makeFinderLogger()(`[${ts}] RokuFinder started — passive ssdp:alive monitoring active`);
     }
 
     private stopRokuFinder() {
