@@ -912,6 +912,17 @@ export class DeviceManager {
     private async healthCheckStaleDevices() {
         const now = Date.now();
         const staleDevices = this.getAllDevices().filter(device => {
+            // Skip devices that are already offline - no point health checking them
+            if (device.deviceState === 'offline') {
+                return false;
+            }
+
+            // Skip devices that are currently being health checked
+            const lastCheck = this.lastHealthCheckTime.get(device.ip) ?? 0;
+            if (now - lastCheck < this.STALE_DEVICE_AFTER_SCAN_MS) {
+                return false;
+            }
+
             if (!device.serialNumber) {
                 // No serial = no cache, consider stale
                 return true;
@@ -969,7 +980,7 @@ export class DeviceManager {
                     deviceInfo: info,
                     createdAt: Date.now()
                 });
-                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info.serialNumber);
+                this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
             }
 
             this.fetchDeviceThrottleData.set(ip, { info: info, timestamp: Date.now() });
