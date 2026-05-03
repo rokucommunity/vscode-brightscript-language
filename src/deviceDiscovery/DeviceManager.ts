@@ -204,7 +204,8 @@ export class DeviceManager {
      */
     public getDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
     public getDevice(keyOrLookup: string | { ip?: string; serialNumber?: string }): RokuDevice | undefined {
-        const device = this.buildMergedDevice(keyOrLookup as any);
+        const { configured, discovered } = this.findDeviceEntries(keyOrLookup);
+        const device = this.buildMergedDevice(configured, discovered);
 
         // If lookup object with both ip and serialNumber, verify exact match
         if (typeof keyOrLookup !== 'string' && keyOrLookup.ip && keyOrLookup.serialNumber && device) {
@@ -1057,25 +1058,18 @@ export class DeviceManager {
     }
 
     /**
-     * Remove a device from the discoveredDevices array by IP.
+     * Remove a discovered device by IP. Clears from discoveredDevices array,
+     * clears lastUsedDeviceIp if it matches, and removes from lastSeenDevices cache.
      */
     private removeDiscoveredDevice(ip: string): void {
-        const idx = this.discoveredDevices.findIndex(d => d.ip === ip);
-        if (idx >= 0) {
-            this.discoveredDevices.splice(idx, 1);
-        }
-    }
-
-    /**
-     * Remove a device by IP. Clears from discoveredDevices, updates lastSeenDevices,
-     * and clears lastUsedDeviceIp if it matches.
-     */
-    private removeDevice(ip: string): void {
         // Find the device first to get its serial number
-        const device = this.discoveredDevices.find(d => d.ip === ip);
+        const idx = this.discoveredDevices.findIndex(d => d.ip === ip);
+        if (idx < 0) {
+            return;
+        }
 
-        // Remove from discoveredDevices array
-        this.removeDiscoveredDevice(ip);
+        const device = this.discoveredDevices[idx];
+        this.discoveredDevices.splice(idx, 1);
 
         // Clear lastUsedDeviceIp if it matches
         if (this.lastUsedDeviceIp === ip) {
@@ -1086,67 +1080,48 @@ export class DeviceManager {
         if (device?.serialNumber) {
             this.globalStateManager.removeLastSeenDevice(this.networkId, device.serialNumber);
         }
-
-        this.emitDevicesChanged();
     }
 
     /**
-     * Build a merged RokuDevice by decoding an encoded key (s:serial or i:ip).
+     * Find configured and discovered device entries by key or lookup criteria.
+     * Key format: "s:{serialNumber}" or "i:{ip}"
+     * Lookup format: { ip?: string; serialNumber?: string }
      */
-    private buildMergedDevice(key: string): RokuDevice | undefined;
-    /**
-     * Build a merged RokuDevice by looking up in source arrays.
-     */
-    private buildMergedDevice(lookup: { ip?: string; serialNumber?: string }): RokuDevice | undefined;
-    /**
-     * Build a merged RokuDevice from provided entries.
-     */
-    private buildMergedDevice(configuredEntry: ConfiguredDeviceEntry | undefined, discoveredEntry: DiscoveredDeviceEntry | undefined): RokuDevice | undefined;
-    private buildMergedDevice(
-        keyOrLookupOrConfigured: string | { ip?: string; serialNumber?: string } | ConfiguredDeviceEntry | undefined,
-        discoveredEntry?: DiscoveredDeviceEntry | undefined
-    ): RokuDevice | undefined {
-        let configuredEntry: ConfiguredDeviceEntry | undefined;
+    private findDeviceEntries(keyOrLookup: string | { ip?: string; serialNumber?: string }): {
+        configured: ConfiguredDeviceEntry | undefined;
+        discovered: DiscoveredDeviceEntry | undefined;
+    } {
+        let configured: ConfiguredDeviceEntry | undefined;
         let discovered: DiscoveredDeviceEntry | undefined;
 
-        // Determine which overload was called
-        if (typeof keyOrLookupOrConfigured === 'string') {
-            // Called with encoded key - decode and look up
-            const key = keyOrLookupOrConfigured;
+        if (typeof keyOrLookup === 'string') {
+            // Decode encoded key
+            const key = keyOrLookup;
             if (key.startsWith('s:')) {
                 const serial = key.slice(2);
-                if (!serial) {
-                    return undefined;
+                if (serial) {
+                    configured = this.configuredDevices.find(c => c.serialNumber === serial);
+                    discovered = this.discoveredDevices.find(d => d.serialNumber === serial);
                 }
-                configuredEntry = this.configuredDevices.find(c => c.serialNumber === serial);
-                discovered = this.discoveredDevices.find(d => d.serialNumber === serial);
             } else if (key.startsWith('i:')) {
                 const ip = key.slice(2);
-                if (!ip) {
-                    return undefined;
+                if (ip) {
+                    configured = this.configuredDevices.find(c => c.resolvedIp === ip || c.host === ip);
+                    discovered = this.discoveredDevices.find(d => d.ip === ip);
                 }
-                configuredEntry = this.configuredDevices.find(c => c.resolvedIp === ip || c.host === ip);
-                discovered = this.discoveredDevices.find(d => d.ip === ip);
-            } else {
-                // Invalid key format
-                return undefined;
             }
-        } else if (discoveredEntry !== undefined || this.isConfiguredDeviceEntry(keyOrLookupOrConfigured)) {
-            // Called with entries directly
-            configuredEntry = keyOrLookupOrConfigured as ConfiguredDeviceEntry | undefined;
-            discovered = discoveredEntry;
-        } else if (keyOrLookupOrConfigured && ('ip' in keyOrLookupOrConfigured || 'serialNumber' in keyOrLookupOrConfigured)) {
-            // Called with lookup object - find entries in source arrays
-            const lookup = keyOrLookupOrConfigured as { ip?: string; serialNumber?: string };
+        } else {
+            // Lookup object
+            const lookup = keyOrLookup;
 
             if (lookup.serialNumber) {
-                configuredEntry = this.configuredDevices.find(c => c.serialNumber === lookup.serialNumber);
+                configured = this.configuredDevices.find(c => c.serialNumber === lookup.serialNumber);
                 discovered = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
             }
 
             if (lookup.ip) {
-                if (!configuredEntry) {
-                    configuredEntry = this.configuredDevices.find(c => c.resolvedIp === lookup.ip || c.host === lookup.ip);
+                if (!configured) {
+                    configured = this.configuredDevices.find(c => c.resolvedIp === lookup.ip || c.host === lookup.ip);
                 }
                 if (!discovered) {
                     discovered = this.discoveredDevices.find(d => d.ip === lookup.ip);
@@ -1154,14 +1129,25 @@ export class DeviceManager {
             }
         }
 
-        if (!configuredEntry && !discovered) {
+        return { configured: configured, discovered: discovered };
+    }
+
+    /**
+     * Build a merged RokuDevice from configured and discovered entries.
+     * At least one of configured or discovered must be provided.
+     */
+    private buildMergedDevice(
+        configuredEntry: ConfiguredDeviceEntry | undefined,
+        discoveredEntry: DiscoveredDeviceEntry | undefined
+    ): RokuDevice | undefined {
+        if (!configuredEntry && !discoveredEntry) {
             return undefined;
         }
 
         // Determine IP: discovered > resolvedIp > host
         let ip: string;
-        if (discovered) {
-            ip = discovered.ip;
+        if (discoveredEntry) {
+            ip = discoveredEntry.ip;
         } else if (configuredEntry?.resolvedIp) {
             ip = configuredEntry.resolvedIp;
         } else {
@@ -1172,7 +1158,7 @@ export class DeviceManager {
         // Configured is user's explicit config, discovered is fresh network data,
         // cache is fallback for initial load before discovery runs
         const serialNumber = configuredEntry?.serialNumber ??
-            discovered?.serialNumber ??
+            discoveredEntry?.serialNumber ??
             this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
         const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip });
@@ -1189,19 +1175,12 @@ export class DeviceManager {
             key: key,
             deviceState: deviceState,
             deviceInfo: cached?.deviceInfo ?? {},
-            isDiscovered: !!discovered,
+            isDiscovered: !!discoveredEntry,
             isConfigured: !!configuredEntry,
             configuredIn: configuredEntry?.configuredIn,
             configuredName: configuredEntry?.name,
             configuredPassword: configuredEntry?.password ?? this.getDefaultPassword()
         };
-    }
-
-    /**
-     * Type guard to check if an object is a ConfiguredDeviceEntry.
-     */
-    private isConfiguredDeviceEntry(obj: unknown): obj is ConfiguredDeviceEntry {
-        return obj !== null && typeof obj === 'object' && 'host' in obj;
     }
 
     /**
@@ -1262,7 +1241,8 @@ export class DeviceManager {
         });
 
         this.finder.on('lost', (ip: string) => {
-            this.removeDevice(ip);
+            this.removeDiscoveredDevice(ip);
+            this.emitDevicesChanged();
         });
 
         // Forward scan events from RokuFinder

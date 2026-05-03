@@ -659,7 +659,8 @@ describe('DeviceManager', () => {
                 const devicesChangedSpy = sinon.spy();
                 manager.on('devices-changed', devicesChangedSpy);
 
-                manager['removeDevice'](device.ip);
+                manager['removeDiscoveredDevice'](device.ip);
+                manager['emitDevicesChanged']();
 
                 // First call after throttle window emits immediately
                 expect(devicesChangedSpy.calledOnce).to.be.true;
@@ -911,7 +912,7 @@ describe('DeviceManager', () => {
         });
     });
 
-    describe('removeDevice', () => {
+    describe('removeDiscoveredDevice', () => {
         it('clears lastUsedDeviceIp when removed device matches', () => {
             const clock = sinon.useFakeTimers();
             try {
@@ -924,7 +925,7 @@ describe('DeviceManager', () => {
 
                 expect(manager.getLastUsedDeviceIp()).to.equal(device.ip);
 
-                manager['removeDevice'](device.ip);
+                manager['removeDiscoveredDevice'](device.ip);
 
                 expect(manager.getLastUsedDeviceIp()).to.be.undefined;
             } finally {
@@ -944,7 +945,7 @@ describe('DeviceManager', () => {
                 addDevice(device2);
                 manager.setLastUsedDeviceIp(device1.ip);
 
-                manager['removeDevice'](device2.ip);
+                manager['removeDiscoveredDevice'](device2.ip);
 
                 expect(manager.getLastUsedDeviceIp()).to.equal(device1.ip);
             } finally {
@@ -961,34 +962,9 @@ describe('DeviceManager', () => {
                 const device = createMockDevice();
                 addDevice(device);
 
-                manager['removeDevice'](device.ip);
+                manager['removeDiscoveredDevice'](device.ip);
 
                 expect(mockGlobalStateManager.removeLastSeenDevice.calledWith('test-network-hash', device.serialNumber)).to.be.true;
-            } finally {
-                clock.restore();
-            }
-        });
-
-        it('emits devices-changed when device is removed', () => {
-            const clock = sinon.useFakeTimers();
-            try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                manager['discoveredDevices'].push({
-                    ip: '192.168.1.100',
-                    serialNumber: 'device-123'
-                });
-                manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-123' }, 'online');
-
-                const spy = sinon.spy();
-                manager.on('devices-changed', spy);
-
-                manager['removeDevice']('192.168.1.100');
-
-                // Advance past throttle
-                clock.tick(100);
-
-                expect(spy.called).to.be.true;
             } finally {
                 clock.restore();
             }
@@ -998,7 +974,7 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Should not throw
-            expect(() => manager['removeDevice']('192.168.1.100')).to.not.throw();
+            expect(() => manager['removeDiscoveredDevice']('192.168.1.100')).to.not.throw();
         });
     });
 
