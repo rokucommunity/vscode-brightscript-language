@@ -134,8 +134,12 @@ describe('DeviceManager', () => {
                 return undefined;
             }),
             clearLastSeenDevices: sinon.stub(),
-            clearDeviceCache: sinon.stub(),
-            clearSerialNumberByIpForNetwork: sinon.stub(),
+            clearDeviceCache: sinon.stub().callsFake(() => {
+                deviceCache.clear();
+            }),
+            clearSerialNumberByIpForNetwork: sinon.stub().callsFake(() => {
+                ipToSerialMap.clear();
+            }),
             clearExpiredEntriesSerialNumberByIpForNetwork: sinon.stub()
         };
 
@@ -424,7 +428,7 @@ describe('DeviceManager', () => {
             expect(resolveDeviceSpy.calledTwice).to.be.true;
         });
 
-        it('only checks stale devices when force=false', async () => {
+        it('calls resolveDevice for all devices (caching happens in resolveDevice)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device1 = createMockDevice({ serialNumber: 'device-1', ip: '192.168.1.101' });
@@ -432,16 +436,12 @@ describe('DeviceManager', () => {
             addDevice(device1);
             addDevice(device2);
 
-            // Mark device1 as recently checked (not stale)
-            (manager as any).lastHealthCheckTime.set('192.168.1.101', Date.now());
-
             const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true) as any);
 
             await (manager as any).healthCheckAllDevices(false);
 
-            // Only device2 should be checked (device1 is not stale)
-            expect(resolveDeviceSpy.calledOnce).to.be.true;
-            expect(resolveDeviceSpy.firstCall.args[0].serialNumber).to.equal('device-2');
+            // Both devices should have resolveDevice called (caching is internal to resolveDevice)
+            expect(resolveDeviceSpy.calledTwice).to.be.true;
         });
 
         it('sets devices to pending before checking when force=false', async () => {
@@ -462,75 +462,112 @@ describe('DeviceManager', () => {
             expect(stateWhenResolveCalled).to.equal('pending');
         });
 
-        it('skips check when no devices are stale', async () => {
+        it('resolveDevice uses cached data when recently fetched', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
             addDevice(device);
 
-            // Mark device as recently checked
-            (manager as any).lastHealthCheckTime.set(device.ip, Date.now());
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'serial-number': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
 
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
 
+            // Pre-populate the cache by calling resolveDevice once
+            await manager['resolveDevice'](device, false);
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+
+            // Now call healthCheckAllDevices - should use cached data
             await (manager as any).healthCheckAllDevices(false);
 
-            expect(resolveDeviceSpy.called).to.be.false;
+            // Still only one network call (second used cache)
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
         });
     });
 
     describe('healthCheckDevice with force=false (cooldown)', () => {
-        it('skips check if within cooldown period', async () => {
+        it('skips network fetch if within cooldown period (uses cached data)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+            addDevice(device);
 
-            // First call - should check
-            await manager.healthCheckDevice(device);
-            expect(resolveDeviceSpy.calledOnce).to.be.true;
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'serial-number': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
 
-            // Second call immediately - should skip due to cooldown
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            // First call - should fetch from network
             await manager.healthCheckDevice(device);
-            expect(resolveDeviceSpy.calledOnce).to.be.true; // Still just one call
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
+
+            // Second call immediately - should use cache, no new network call
+            await manager.healthCheckDevice(device);
+            expect(getDeviceInfoStub.calledOnce).to.be.true; // Still just one call
         });
 
-        it('checks again after cooldown expires', async () => {
+        it('fetches again after cooldown expires', async () => {
             const clock = sinon.useFakeTimers(Date.now());
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                 const device = createMockDevice();
-                const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+                addDevice(device);
+
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                    'device-id': 'device-123',
+                    'serial-number': 'device-123',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Stub random delay to be instant
+                sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // First call
                 await manager.healthCheckDevice(device);
-                expect(resolveDeviceSpy.calledOnce).to.be.true;
+                expect(getDeviceInfoStub.calledOnce).to.be.true;
 
                 // Advance past cooldown (5 minutes)
                 clock.tick((5 * 60 * 1_000) + 1);
 
-                // Second call - should check again
+                // Second call - cache expired, should fetch again
                 await manager.healthCheckDevice(device);
-                expect(resolveDeviceSpy.calledTwice).to.be.true;
+                expect(getDeviceInfoStub.calledTwice).to.be.true;
             } finally {
                 clock.restore();
             }
         });
 
-        it('always checks when force=true regardless of cooldown', async () => {
+        it('always fetches when force=true regardless of cooldown', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const device = createMockDevice();
-            const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+            addDevice(device);
+
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'serial-number': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
 
             // First call with force
             await manager.healthCheckDevice(device, true);
-            expect(resolveDeviceSpy.calledOnce).to.be.true;
+            expect(getDeviceInfoStub.calledOnce).to.be.true;
 
-            // Second call immediately with force - should still check
+            // Second call immediately with force - should still fetch
             await manager.healthCheckDevice(device, true);
-            expect(resolveDeviceSpy.calledTwice).to.be.true;
+            expect(getDeviceInfoStub.calledTwice).to.be.true;
         });
     });
 
@@ -1371,7 +1408,7 @@ describe('DeviceManager', () => {
     });
 
     describe('fetchDeviceInfo', () => {
-        it('only makes one network call for rapid successive requests', async () => {
+        it('always makes network call (no caching in fetchDeviceInfo)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
@@ -1380,41 +1417,121 @@ describe('DeviceManager', () => {
                 'default-device-name': 'Roku Express'
             } as any);
 
-            // Call twice in rapid succession
+            // Call twice in rapid succession - both should hit network
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
             await manager['fetchDeviceInfo']('192.168.1.100', 8060);
 
-            // Should only have made one actual network call
+            // fetchDeviceInfo always makes network calls (caching is in resolveDevice)
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+    });
+
+    describe('resolveDevice caching', () => {
+        it('only makes one network call for rapid successive requests', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const device = createMockDevice();
+            addDevice(device);
+
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                'device-id': 'device-123',
+                'serial-number': 'device-123',
+                'default-device-name': 'Roku Express'
+            } as any);
+
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            // Call twice in rapid succession via resolveDevice
+            await manager['resolveDevice'](device, false);
+            await manager['resolveDevice'](device, false);
+
+            // Should only have made one actual network call (second uses cache)
             expect(getDeviceInfoStub.callCount).to.equal(1);
         });
 
         it('makes a new network call after cache TTL expires', async () => {
-            const clock = sinon.useFakeTimers();
+            const clock = sinon.useFakeTimers(Date.now());
             try {
                 manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
+                const device = createMockDevice();
+                addDevice(device);
+
                 const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                     'device-id': 'device-123',
+                    'serial-number': 'device-123',
                     'default-device-name': 'Roku Express'
                 } as any);
+
+                // Stub random delay to be instant
+                sinon.stub(manager as any, 'randomDelay').resolves();
 
                 // First call - should hit network
-                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+                await manager['resolveDevice'](device, false);
                 expect(getDeviceInfoStub.callCount).to.equal(1);
 
-                // Advance past TTL (5 seconds)
-                clock.tick(6_000);
+                // Advance past TTL (5 minutes)
+                clock.tick((5 * 60 * 1_000) + 1);
 
                 // Second call - cache expired, should hit network again
-                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+                await manager['resolveDevice'](device, false);
                 expect(getDeviceInfoStub.callCount).to.equal(2);
             } finally {
                 clock.restore();
             }
         });
 
-        it('caches different IPs separately', async () => {
+        it('caches different serial numbers separately', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            const device1 = createMockDevice({ ip: '192.168.1.100', serialNumber: 'device-100' });
+            const device2 = createMockDevice({ ip: '192.168.1.101', serialNumber: 'device-101' });
+            addDevice(device1);
+            addDevice(device2);
+
+            // Return different serials for different devices
+            const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+            getDeviceInfoStub.onCall(0).resolves({
+                'device-id': 'device-100',
+                'serial-number': 'device-100',
+                'default-device-name': 'Roku Express 1'
+            } as any);
+            getDeviceInfoStub.onCall(1).resolves({
+                'device-id': 'device-101',
+                'serial-number': 'device-101',
+                'default-device-name': 'Roku Express 2'
+            } as any);
+            // Subsequent calls return same data for cache hits
+            getDeviceInfoStub.resolves({
+                'device-id': 'device-100',
+                'serial-number': 'device-100',
+                'default-device-name': 'Roku Express 1'
+            } as any);
+
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            // Call for two different devices
+            await manager['resolveDevice'](device1, false);
+            await manager['resolveDevice'](device2, false);
+
+            // Should make two network calls (different serials)
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+
+            // Calling same devices again should use cache (keyed by serial)
+            await manager['resolveDevice'](device1, false);
+            await manager['resolveDevice'](device2, false);
+
+            // Still only two calls (cache hit)
+            expect(getDeviceInfoStub.callCount).to.equal(2);
+        });
+
+        it('refetches on network change when serial unknown (IP→serial mapping is network-specific)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Device with unknown serial (only IP known) - like a newly discovered device
+            const deviceIpOnly = { ip: '192.168.1.100' };
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
@@ -1422,53 +1539,34 @@ describe('DeviceManager', () => {
                 'default-device-name': 'Roku Express'
             } as any);
 
-            // Call for two different IPs
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
 
-            // Should make two network calls (different IPs)
-            expect(getDeviceInfoStub.callCount).to.equal(2);
+            // First call - fetches from network (no cache, no IP→serial mapping)
+            await manager['resolveDevice'](deviceIpOnly, false);
+            expect(getDeviceInfoStub.callCount).to.equal(1);
 
-            // But calling same IPs again should use cache
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-            await manager['fetchDeviceInfo']('192.168.1.101', 8060);
+            // Now we have IP→serial mapping. Second call should use cache.
+            await manager['resolveDevice'](deviceIpOnly, false);
+            expect(getDeviceInfoStub.callCount).to.equal(1);
 
-            // Still only two calls
+            // Simulate network change
+            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
+            manager['networkChangeMonitor']['onNetworkChanged']();
+            await util.sleep(10);
+
+            // On new network, IP→serial mapping is cleared.
+            // Resolving by IP alone should refetch since we can't look up the serial.
+            await manager['resolveDevice'](deviceIpOnly, false);
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
 
-        it('clears cache after inactivity timeout', async () => {
-            const clock = sinon.useFakeTimers();
-            try {
-                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
-                    'device-id': 'device-123',
-                    'default-device-name': 'Roku Express'
-                } as any);
-
-                // First call - populates cache
-                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-                expect(getDeviceInfoStub.callCount).to.equal(1);
-
-                // Call again within TTL - should use cache
-                clock.tick(2_000);
-                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-                expect(getDeviceInfoStub.callCount).to.equal(1);
-
-                // Advance past cleanup delay (10 seconds of inactivity)
-                clock.tick(11_000);
-
-                // Cache should be cleared, next call hits network
-                await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-                expect(getDeviceInfoStub.callCount).to.equal(2);
-            } finally {
-                clock.restore();
-            }
-        });
-
-        it('clears cache on network change', async () => {
+        it('uses cached data on network change when serial is known', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Device with known serial (from config or previous discovery)
+            const device = createMockDevice();
+            addDevice(device);
 
             const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
                 'device-id': 'device-123',
@@ -1476,27 +1574,29 @@ describe('DeviceManager', () => {
                 'default-device-name': 'Roku Express'
             } as any);
 
-            // Populate cache
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            // Stub random delay to be instant
+            sinon.stub(manager as any, 'randomDelay').resolves();
+
+            // First call - fetches from network
+            await manager['resolveDevice'](device, false);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
             // Verify cache is working
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
+            await manager['resolveDevice'](device, false);
             expect(getDeviceInfoStub.callCount).to.equal(1);
 
-            // Simulate network change by changing the stub's return value to a different hash
+            // Simulate network change
             (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
-
-            // Simulate network change by calling the networkChangeMonitor callback
-            // (now handlePotentialNetworkChange will see the different hash)
             manager['networkChangeMonitor']['onNetworkChanged']();
-
-            // Wait for the async handlePotentialNetworkChange to complete
             await util.sleep(10);
 
-            // Cache should be cleared, next call hits network
-            await manager['fetchDeviceInfo']('192.168.1.100', 8060);
-            expect(getDeviceInfoStub.callCount).to.equal(2);
+            // Re-add device (network change clears discovered devices)
+            addDevice(device);
+
+            // Device info cache is keyed by serial, not network.
+            // Since we know the serial, we can use cached data even on new network.
+            await manager['resolveDevice'](device, false);
+            expect(getDeviceInfoStub.callCount).to.equal(1); // Still uses cache
         });
     });
 
@@ -1533,25 +1633,6 @@ describe('DeviceManager', () => {
 
             // Discovered device should be removed (loadLastSeenDevices clears discoveredDevices)
             expect(manager['discoveredDevices'].length).to.equal(0);
-        });
-
-        it('clears fetchDeviceThrottleData when network changes', () => {
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-            // Populate the cache
-            manager['fetchDeviceThrottleData'].set('192.168.1.100', {
-                info: { 'serial-number': 'device-123' } as any,
-                timestamp: Date.now()
-            });
-            expect(manager['fetchDeviceThrottleData'].size).to.equal(1);
-
-            // Change the network hash
-            (NetworkChangeMonitorModule.getNetworkHash as sinon.SinonStub).returns('new-network-hash');
-
-            // Trigger the network change callback directly
-            manager['networkChangeMonitor']['onNetworkChanged']();
-
-            expect(manager['fetchDeviceThrottleData'].size).to.equal(0);
         });
 
         it('calls setScanNeeded when network changes', () => {
@@ -2153,26 +2234,38 @@ describe('DeviceManager', () => {
                     expect(manager['timeSinceLastScan']).to.equal(Infinity);
                 });
 
-                it('clears lastHealthCheckTime map', async () => {
+                it('clears globalStateManager device cache (enables fresh fetch)', async () => {
                     manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
                     const device = createMockDevice();
-                    const resolveDeviceSpy = sinon.stub(manager as any, 'resolveDevice').returns(Promise.resolve(true));
+                    addDevice(device);
 
-                    // Perform health check to populate cooldown
+                    const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo').resolves({
+                        'device-id': 'device-123',
+                        'serial-number': 'device-123',
+                        'default-device-name': 'Roku Express'
+                    } as any);
+
+                    // Stub random delay to be instant
+                    sinon.stub(manager as any, 'randomDelay').resolves();
+
+                    // Perform health check to populate cache
                     await manager.healthCheckDevice(device);
-                    expect(resolveDeviceSpy.calledOnce).to.be.true;
+                    expect(getDeviceInfoStub.calledOnce).to.be.true;
 
-                    // Second call should be skipped due to cooldown
+                    // Second call should use cache (no new network call)
                     await manager.healthCheckDevice(device);
-                    expect(resolveDeviceSpy.calledOnce).to.be.true; // Still just one call
+                    expect(getDeviceInfoStub.calledOnce).to.be.true; // Still just one call
 
-                    // Clear cache
+                    // Clear cache (clears globalStateManager.deviceCache and IP→serial mappings)
                     manager.clearAllCache();
 
-                    // Now health check should work immediately
+                    // Re-add the device (clearAllCache removes discovered devices)
+                    addDevice(device);
+
+                    // Now health check should hit network again (cache was cleared)
                     await manager.healthCheckDevice(device);
-                    expect(resolveDeviceSpy.calledTwice).to.be.true; // Cooldown was cleared
+                    expect(getDeviceInfoStub.calledTwice).to.be.true;
                 });
 
                 it('clears resolveDeviceSequence map', () => {
@@ -2187,33 +2280,6 @@ describe('DeviceManager', () => {
                     manager.clearAllCache();
 
                     expect(manager['resolveDeviceSequence'].has(device.ip)).to.be.false;
-                });
-            });
-
-            describe('timer clearing', () => {
-                it('clears fetchDeviceInfoThrottleTimer', () => {
-                    const clock = sinon.useFakeTimers();
-                    try {
-                        manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                        // Trigger cache cleanup timer by resetting it
-                        manager['resetCacheCleanupTimer']();
-                        expect(manager['fetchDeviceInfoThrottleTimer']).to.not.be.null;
-
-                        manager.clearAllCache();
-
-                        expect(manager['fetchDeviceInfoThrottleTimer']).to.be.null;
-                    } finally {
-                        clock.restore();
-                    }
-                });
-
-                it('does not throw if fetchDeviceInfoThrottleTimer is already null', () => {
-                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
-
-                    manager['fetchDeviceInfoThrottleTimer'] = null;
-
-                    expect(() => manager.clearAllCache()).to.not.throw();
                 });
             });
 

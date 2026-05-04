@@ -34,7 +34,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.handleDevicesChanged().catch(() => { });
+            this.handleDevicesChanged();
         });
 
         this.deviceManager.on('scanNeeded-changed', () => {
@@ -101,8 +101,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
-    private async handleDevicesChanged(): Promise<void> {
-        this.devices = await this.deviceManager.healthCheckStaleDevicesThenGetDevicesForUI();
+    private handleDevicesChanged(): void {
+        this.devices = this.deviceManager.getDevicesForUI();
         this.decorationProvider.updateDevices(this.devices);
         this._onDidChangeTreeData.fire(null);
     }
@@ -132,7 +132,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = await this.deviceManager.healthCheckStaleDevicesThenGetDevicesForUI();
+                this.devices = this.deviceManager.getDevicesForUI();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {

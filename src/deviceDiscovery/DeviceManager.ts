@@ -57,10 +57,10 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
-            //if the `devices` setting was changed, re-apply configured devices
+            //if the `devices` setting was changed, re-apply configured devices and health check them
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
-                    this.emitDevicesChanged();
+                    return this.healthCheckAllDevices(false, true);
                 }).catch(() => { });
             }
 
@@ -93,7 +93,6 @@ export class DeviceManager {
         });
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
-            this.fetchDeviceThrottleData.clear();
 
             //reset all device states to pending - need to re-verify on new network
             this.deviceStates.clear();
@@ -143,7 +142,6 @@ export class DeviceManager {
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
     private deviceStates = new Map<DeviceStateKey, DeviceStateEntry>();
     private scanNeeded = false;
-    private suppressEmitDevicesChanged = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
 
@@ -153,9 +151,8 @@ export class DeviceManager {
     private finder = new RokuFinder();
 
     // Health check tracking and cooldowns
-    private lastHealthCheckTime = new Map<string, number>();
     private resolveDeviceSequence = new Map<string, number>();
-    private readonly HEALTH_CHECK_COOLDOWN_MS = 5 * 60 * 1_000; // 5 minutes
+    private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - cache duration for fetchDeviceInfo
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
@@ -243,16 +240,6 @@ export class DeviceManager {
      * Respects includeNonDeveloperDevices setting.
      */
     public getDevicesForUI(): RokuDevice[] {
-        return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
-    }
-
-    public async healthCheckStaleDevicesThenGetDevicesForUI(): Promise<RokuDevice[]> {
-        this.suppressEmitDevicesChanged = true;
-        try {
-            await this.healthCheckStaleDevices();
-        } finally {
-            this.suppressEmitDevicesChanged = false;
-        }
         return this.buildAllDevices().filter(d => this.shouldShowDevice(d));
     }
 
@@ -472,9 +459,6 @@ export class DeviceManager {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
-        // Clear short-lived device info cache
-        this.fetchDeviceThrottleData.clear();
-
         // Only clear lastUsedDeviceIp if it belonged to a discovered-only device
         if (this.lastUsedDeviceIp) {
             const stillExists = this.configuredDevices.some(
@@ -502,17 +486,10 @@ export class DeviceManager {
 
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
-        this.lastHealthCheckTime.clear();
         this.resolveDeviceSequence.clear();
         this.deviceStates.clear();
 
-        // Clear cache cleanup timer
-        if (this.fetchDeviceInfoThrottleTimer) {
-            clearTimeout(this.fetchDeviceInfoThrottleTimer);
-            this.fetchDeviceInfoThrottleTimer = null;
-        }
-
-        // Clear discovered devices and short-lived caches
+        // Clear discovered devices
         this.clearCurrentDeviceList();
     }
 
@@ -526,17 +503,8 @@ export class DeviceManager {
             return false;
         }
 
-        // If not forcing, respect the per-device cooldown
-        if (!force) {
-            const lastCheck = this.lastHealthCheckTime.get(device.ip) ?? 0;
-            const now = Date.now();
-            if (now - lastCheck <= this.HEALTH_CHECK_COOLDOWN_MS) {
-                return true;
-            }
-            this.lastHealthCheckTime.set(device.ip, now);
-        }
-
-        const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
+        // Cooldown is handled by fetchDeviceInfo cache; force bypasses it
+        const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
         if (!isHealthy && device.isDiscovered) {
             // force a scan if passive scan is permitted
             this.refresh(this.deviceDiscoveryEnabled);
@@ -581,9 +549,6 @@ export class DeviceManager {
         this.configuredDevices = [];
         this.discoveredDevices = [];
         this.emitter.removeAllListeners();
-
-        //clear any timeouts
-        clearTimeout(this.fetchDeviceInfoThrottleTimer);
     }
 
     /**
@@ -742,9 +707,11 @@ export class DeviceManager {
             // Set device state using configured serial (not cache - cache might be stale)
             this.setDeviceState({ serialNumber: configured.serialNumber, ip: ip });
         }
+
+        this.emitDevicesChanged();
     }
 
-    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true): Promise<boolean> {
+    private async resolveDevice(device: RokuDevice | { ip: string }, doSyntheticDelay = true, force = false): Promise<boolean> {
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
@@ -760,16 +727,28 @@ export class DeviceManager {
             this.emitDevicesChanged();
         }
 
-        // Fetch latest device info from the network (with short-lived cache)
+        // Get device info from cache or network
         let deviceInfo: DeviceInfoRaw | undefined;
-        try {
-            deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
 
-            if (doSyntheticDelay) {
-                await this.randomDelay(400, 1_000);
+        // Try to find cached data via serial number
+        const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
+        const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
+        const cacheIsFresh = cached && Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS;
+
+        if (!force && cacheIsFresh) {
+            // Use cached data
+            deviceInfo = cached.deviceInfo as DeviceInfoRaw;
+        } else {
+            // Fetch fresh data from network
+            try {
+                deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
+
+                if (doSyntheticDelay) {
+                    await this.randomDelay(400, 1_000);
+                }
+            } catch {
+                deviceInfo = undefined;
             }
-        } catch {
-            deviceInfo = undefined;
         }
 
         // Only apply result if this is still the latest request for this device
@@ -872,30 +851,23 @@ export class DeviceManager {
     }
 
     private async healthCheckAllDevices(force = false, doSyntheticDelay = true): Promise<void> {
-        // Get all devices (health check all devices)
+        // Get all devices
         const devices = this.getAllDevices();
 
-        // Filter to devices that need checking
-        const devicesToCheck = force ? devices : devices.filter(d => {
-            const lastCheck = this.lastHealthCheckTime.get(d.ip) ?? 0;
-            return Date.now() - lastCheck > this.HEALTH_CHECK_COOLDOWN_MS;
-        });
-
-        if (devicesToCheck.length === 0) {
+        if (devices.length === 0) {
             return;
         }
 
         // Set all to pending and emit before async work
-        for (const device of devicesToCheck) {
+        for (const device of devices) {
             this.setDeviceState({ ip: device.ip, serialNumber: device.serialNumber }, 'pending');
-            this.lastHealthCheckTime.set(device.ip, Date.now());
         }
         this.emitDevicesChanged();
 
-        // Check all devices
+        // Check all devices (force flag bypasses fetch cache)
         let needsScan = false;
-        await Promise.all(devicesToCheck.map(async (device) => {
-            const isHealthy = await this.resolveDevice(device, doSyntheticDelay);
+        await Promise.all(devices.map(async (device) => {
+            const isHealthy = await this.resolveDevice(device, doSyntheticDelay, force);
             if (!isHealthy && device.isDiscovered) {
                 needsScan = true;
             }
@@ -918,12 +890,6 @@ export class DeviceManager {
                 return false;
             }
 
-            // Skip devices that are currently being health checked
-            const lastCheck = this.lastHealthCheckTime.get(device.ip) ?? 0;
-            if (now - lastCheck < this.STALE_DEVICE_AFTER_SCAN_MS) {
-                return false;
-            }
-
             if (!device.serialNumber) {
                 // No serial = no cache, consider stale
                 return true;
@@ -940,35 +906,15 @@ export class DeviceManager {
             return;
         }
 
+        // Cooldown is handled by fetchDeviceInfo cache
         await Promise.all(staleDevices.map(device => this.resolveDevice(device, false)));
     }
 
     /**
-     * Reset the cache cleanup timer. After inactivity, the cache will be cleared.
-     */
-    private resetCacheCleanupTimer(): void {
-        if (this.fetchDeviceInfoThrottleTimer) {
-            clearTimeout(this.fetchDeviceInfoThrottleTimer);
-        }
-        this.fetchDeviceInfoThrottleTimer = setTimeout(() => {
-            this.fetchDeviceThrottleData.clear();
-            this.fetchDeviceInfoThrottleTimer = null;
-        }, 10_000);
-    }
-
-    /**
-     * Cached wrapper around rokuDeploy.getDeviceInfo to prevent duplicate calls
-     * when health checks and SSDP responses race during refresh.
-     *
-     * We cache many things about this in globalState since we just verified this device really exists at that location
+     * Fetch device info from the network. Always makes a network request.
+     * Caches the result in globalStateManager for future lookups.
      */
     private async fetchDeviceInfo(ip: string, port: number): Promise<DeviceInfoRaw> {
-        this.resetCacheCleanupTimer();
-
-        const cached = this.fetchDeviceThrottleData.get(ip);
-        if (cached && Date.now() - cached.timestamp < 5_000) {
-            return cached.info;
-        }
         try {
             const info = await rokuDeploy.getDeviceInfo({
                 host: ip,
@@ -984,15 +930,12 @@ export class DeviceManager {
                 this.globalStateManager.setSerialNumberForIp(this.networkId, ip, info['serial-number']);
             }
 
-            this.fetchDeviceThrottleData.set(ip, { info: info, timestamp: Date.now() });
             return info;
         } catch (e) {
             console.error(e);
             return undefined;
         }
     }
-    private fetchDeviceThrottleData = new Map<string, { info: DeviceInfoRaw; timestamp: number }>();
-    private fetchDeviceInfoThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
      * Discover all Roku devices on the network and watch for new ones that connect
@@ -1313,9 +1256,6 @@ export class DeviceManager {
     }
 
     private emitDevicesChanged = throttleBounce(() => {
-        if (this.suppressEmitDevicesChanged) {
-            return;
-        }
         this.emitter.emit('devices-changed');
     }, this.DEVICES_CHANGED_DEBOUNCE_MS);
 
