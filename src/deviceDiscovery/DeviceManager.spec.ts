@@ -789,6 +789,29 @@ describe('DeviceManager', () => {
             expect(manager.getAllDevices().length).to.equal(0);
         });
 
+        it('preserves cache data when device goes offline (for offline display)', async () => {
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            (vscode.window as any).state = { focused: true };
+
+            const device = createMockDevice({
+                serialNumber: 'device-123',
+                deviceInfo: { 'default-device-name': 'My Roku' }
+            });
+            addDevice(device);
+
+            // First health check fails (device offline)
+            sinon.stub(rokuDeploy, 'getDeviceInfo').rejects(new Error('Device not responding'));
+            await manager.healthCheckDevice(device, true);
+
+            // Cache should still exist with device info preserved for offline display
+            const cached = mockGlobalStateManager.getCachedDevice('device-123');
+            expect(cached).to.exist;
+            expect(cached.deviceInfo['default-device-name']).to.equal('My Roku');
+
+            // Device should be offline
+            expect(manager.getDeviceState({ serialNumber: 'device-123' }).state).to.equal('offline');
+        });
+
         it('returns true when device is healthy', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
@@ -1068,7 +1091,7 @@ describe('DeviceManager', () => {
 
             manager['loadLastSeenDevices']();
 
-            expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' })).to.equal('online');
+            expect(manager['getDeviceState']({ ip: '192.168.1.100', serialNumber: 'device-1' }).state).to.equal('online');
         });
 
         it('loads cached devices as pending when cache is stale (older than 5 minutes)', () => {
@@ -3116,7 +3139,8 @@ describe('DeviceManager', () => {
                 const device = createMockDevice({
                     ip: '192.168.1.100',
                     serialNumber: null, // No serial known yet from SSDP
-                    isDiscovered: true
+                    isDiscovered: true,
+                    deviceState: 'pending' // Unresolved device starts as pending
                 });
                 addDiscoveredDevice(device);
 

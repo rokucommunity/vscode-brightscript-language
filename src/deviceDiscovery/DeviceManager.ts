@@ -155,6 +155,7 @@ export class DeviceManager {
     private readonly DEVICE_INFO_CACHE_MS = 5 * 60 * 1_000; // 5 minutes - cache duration for fetchDeviceInfo
     private readonly FRESH_CACHE_THRESHOLD_MS = 5 * 60 * 1_000; // 5 minutes - cache fresher than this = online on load
     private readonly STALE_DEVICE_AFTER_SCAN_MS = 10_000; // 10 seconds - health check devices with cache older than this after scan
+    private readonly OFFLINE_COOLDOWN_MS = 5_000; // 5 seconds - minimum time between resolve attempts for offline devices
     public static readonly HEALTH_CHECK_TIMEOUT_MS = 2_000; // 2 seconds
 
     // Notifications and event debouncing
@@ -347,12 +348,12 @@ export class DeviceManager {
      * @param lookup - Device lookup by serial and/or IP
      * @returns The device state, defaulting to 'pending' if not found
      */
-    public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceState {
+    public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
         // Try serial key first (most stable)
         if (lookup.serialNumber) {
             const serialEntry = this.deviceStates.get(`s:${lookup.serialNumber}`);
             if (serialEntry) {
-                return serialEntry.state;
+                return serialEntry;
             }
         }
 
@@ -360,11 +361,11 @@ export class DeviceManager {
         if (lookup.ip) {
             const ipEntry = this.deviceStates.get(`i:${lookup.ip}`);
             if (ipEntry) {
-                return ipEntry.state;
+                return ipEntry;
             }
         }
 
-        return 'pending';
+        return { state: 'pending', lastUpdated: Date.now() };
     }
 
     /**
@@ -386,7 +387,7 @@ export class DeviceManager {
             resolvedState = state;
         } else {
             // Intelligent default: check current state and cache freshness
-            const currentState = this.getDeviceState(lookup);
+            const currentState = this.getDeviceState(lookup).state;
             if (currentState === 'online') {
                 // Already online, keep it online
                 resolvedState = 'online';
@@ -715,17 +716,20 @@ export class DeviceManager {
         // Extract serial from device if available (for proper state key management)
         const knownSerial = 'serialNumber' in device ? device.serialNumber : undefined;
 
+        const currentStateObject = this.getDeviceState({ ip: device.ip, serialNumber: knownSerial });
+
+        // Offline cooldown: if device is offline and we recently checked, skip unless forced
+        // This prevents the loop: healthCheck → resolve → offline → emit → refresh → healthCheck...
+        const isOffline = currentStateObject.state === 'offline';
+        const recentlyCheckedOffline = isOffline && (Date.now() - currentStateObject.lastUpdated < this.OFFLINE_COOLDOWN_MS);
+        if (!force && recentlyCheckedOffline) {
+            return false;
+        }
+
         // Increment and capture sequence number to handle concurrent refresh calls
         // Use IP for sequence tracking (primary key)
         const currentSeq = (this.resolveDeviceSequence.get(device.ip) ?? 0) + 1;
         this.resolveDeviceSequence.set(device.ip, currentSeq);
-
-        // Set to pending during health check with immediate UI feedback
-        const currentState = this.getDeviceState({ ip: device.ip, serialNumber: knownSerial });
-        if (currentState !== 'pending') {
-            this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'pending');
-            this.emitDevicesChanged();
-        }
 
         // Get device info from cache or network
         let deviceInfo: DeviceInfoRaw | undefined;
@@ -733,12 +737,23 @@ export class DeviceManager {
         // Try to find cached data via serial number
         const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
         const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
-        const cacheIsFresh = cached && Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS;
+        const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS);
 
-        if (!force && cacheIsFresh) {
+        // Use cache only if:
+        // - Not forced
+        // - Cache is fresh
+        // - Device is not offline (offline devices should always hit network to check if back online)
+        if (!force && cacheIsFresh && !isOffline) {
             // Use cached data
             deviceInfo = cached.deviceInfo as DeviceInfoRaw;
         } else {
+            // Set to pending before making network call
+            // This prevents unnecessary state flicker (online→pending→online) when using cache
+            if (currentStateObject.state !== 'pending') {
+                this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'pending');
+                this.emitDevicesChanged();
+            }
+
             // Fetch fresh data from network
             try {
                 deviceInfo = await this.fetchDeviceInfo(device.ip, 8060);
@@ -774,10 +789,11 @@ export class DeviceManager {
             // Mark any configured devices at this IP with different serials as offline
             this.markMismatchedConfiguredDevicesOffline(device.ip, serial);
 
-            // Set state to online
+            // Only emit if state actually changed
             this.setDeviceState({ ip: device.ip, serialNumber: serial }, 'online');
-
-            this.emitDevicesChanged();
+            if (currentStateObject.state !== 'online') {
+                this.emitDevicesChanged();
+            }
             return true;
         } else {
             // Remove from discoveredDevices (ephemeral - offline devices are removed)
@@ -787,7 +803,9 @@ export class DeviceManager {
             // Use known serial if available for proper key management
             this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'offline');
 
-            this.emitDevicesChanged();
+            if (currentStateObject.state !== 'offline') {
+                this.emitDevicesChanged();
+            }
             return false;
         }
     }
@@ -1104,7 +1122,7 @@ export class DeviceManager {
             discoveredEntry?.serialNumber ??
             this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
-        const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip });
+        const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip }).state;
 
         // Build key
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
