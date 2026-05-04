@@ -1140,7 +1140,7 @@ describe('DeviceManager', () => {
     });
 
     describe('device filtering (shouldShowDevice)', () => {
-        it('filters devices without developer-enabled via getDevicesForUI', () => {
+        it('filters devices with developer-enabled: false via getDevicesForUI', () => {
             // Default config has includeNonDeveloperDevices: true for tests,
             // so override to test filtering
             (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
@@ -1155,17 +1155,43 @@ describe('DeviceManager', () => {
 
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            // Add device without developer-enabled in deviceInfo
+            // Add device with developer-enabled: false in cached deviceInfo
+            const device = createMockDevice({
+                serialNumber: 'ABC123',
+                ip: '192.168.1.100',
+                deviceInfo: { 'developer-enabled': 'false' }
+            });
+            addDevice(device);
+
+            // Device should be filtered out from getDevicesForUI
+            expect(manager.getDevicesForUI().length).to.equal(0);
+            // But still available via getAllDevices (unfiltered)
+            expect(manager.getAllDevices().length).to.equal(1);
+        });
+
+        it('shows devices with unknown developer-enabled status via getDevicesForUI', () => {
+            // When developer-enabled is not set, device should still be shown
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add device without developer-enabled in deviceInfo (unknown status)
             manager['discoveredDevices'].push({
                 ip: '192.168.1.100',
                 serialNumber: 'ABC123'
             });
             manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
 
-            // Device should be filtered out from getDevicesForUI
-            expect(manager.getDevicesForUI().length).to.equal(0);
-            // But still available via getAllDevices (unfiltered)
-            expect(manager.getAllDevices().length).to.equal(1);
+            // Device with unknown status should still be shown (only 'false' is filtered)
+            expect(manager.getDevicesForUI().length).to.equal(1);
         });
 
         it('shows devices with developer-enabled: true via getDevicesForUI', () => {
@@ -1241,49 +1267,57 @@ describe('DeviceManager', () => {
         });
 
         it('emits devices-changed when includeNonDeveloperDevices setting changes', () => {
-            // Capture the onDidChangeConfiguration callback
-            let configChangeCallback: (event: any) => void;
-            (vscode.workspace.onDidChangeConfiguration as any) = (callback: any) => {
-                configChangeCallback = callback;
-                return { dispose: () => { } };
-            };
+            const clock = sinon.useFakeTimers();
+            try {
+                // Capture the onDidChangeConfiguration callback
+                let configChangeCallback: (event: any) => void;
+                (vscode.workspace.onDidChangeConfiguration as any) = (callback: any) => {
+                    configChangeCallback = callback;
+                    return { dispose: () => { } };
+                };
 
-            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
-                get: () => undefined,
-                inspect: () => ({ workspaceValue: [], globalValue: [] }),
-                deviceDiscovery: {
-                    enabled: false,
-                    showInfoMessages: false,
-                    includeNonDeveloperDevices: false
-                }
-            } as any);
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
+                    inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                    deviceDiscovery: {
+                        enabled: false,
+                        showInfoMessages: false,
+                        includeNonDeveloperDevices: false
+                    }
+                } as any);
 
-            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
-            // Add a non-developer device
-            const device = createMockDevice({
-                serialNumber: 'ABC123',
-                ip: '192.168.1.100',
-                deviceInfo: { 'developer-enabled': 'false' }
-            });
-            addDevice(device);
+                // Add a non-developer device
+                const device = createMockDevice({
+                    serialNumber: 'ABC123',
+                    ip: '192.168.1.100',
+                    deviceInfo: { 'developer-enabled': 'false' }
+                });
+                addDevice(device);
 
-            // Device should be filtered initially from getDevicesForUI
-            expect(manager.getDevicesForUI().length).to.equal(0);
-            // But available from getAllDevices (unfiltered)
-            expect(manager.getAllDevices().length).to.equal(1);
+                // Device should be filtered initially from getDevicesForUI
+                expect(manager.getDevicesForUI().length).to.equal(0);
+                // But available from getAllDevices (unfiltered)
+                expect(manager.getAllDevices().length).to.equal(1);
 
-            // Listen for devices-changed event
-            const devicesChangedSpy = sinon.spy();
-            manager.on('devices-changed', devicesChangedSpy);
+                // Listen for devices-changed event
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
 
-            // Simulate config change
-            configChangeCallback({
-                affectsConfiguration: (key: string) => key === 'brightscript.deviceDiscovery.includeNonDeveloperDevices'
-            });
+                // Simulate config change
+                configChangeCallback({
+                    affectsConfiguration: (key: string) => key === 'brightscript.deviceDiscovery.includeNonDeveloperDevices'
+                });
 
-            // Should have emitted devices-changed
-            expect(devicesChangedSpy.called).to.be.true;
+                // Advance past debounce period (50ms)
+                clock.tick(100);
+
+                // Should have emitted devices-changed
+                expect(devicesChangedSpy.called).to.be.true;
+            } finally {
+                clock.restore();
+            }
         });
     });
 
@@ -2694,6 +2728,7 @@ describe('DeviceManager', () => {
                     serialNumber: null, // Not yet resolved
                     ip: '192.168.1.200',
                     deviceState: 'pending',
+                    isConfigured: true,
                     isDiscovered: false
                 });
                 addDevice(newDevice);
@@ -2730,12 +2765,12 @@ describe('DeviceManager', () => {
                 });
                 addDevice(oldDevice);
 
-                // New device at different IP being resolved
+                // New device at different IP discovered via SSDP (no serial yet)
                 const newDevice = createMockDevice({
                     serialNumber: null,
                     ip: '192.168.1.200',
                     deviceState: 'pending',
-                    isDiscovered: false
+                    isDiscovered: true
                 });
                 addDevice(newDevice);
 
@@ -2985,8 +3020,16 @@ describe('DeviceManager', () => {
                     'default-device-name': 'Roku Express'
                 } as any);
 
+                // Add discovered device at IP (mismatch detection happens in setDiscoveredDevice
+                // which is only called when isDiscovered is true)
+                const device = createMockDevice({
+                    ip: '192.168.1.100',
+                    isDiscovered: true
+                });
+                addDiscoveredDevice(device);
+
                 // Resolve device
-                await manager['resolveDevice']({ ip: '192.168.1.100' });
+                await manager['resolveDevice'](device);
 
                 // Should have called loadConfiguredDevices
                 expect(loadConfigSpy.calledOnce).to.be.true;
@@ -3067,8 +3110,18 @@ describe('DeviceManager', () => {
                     'default-device-name': 'Roku Express'
                 } as any);
 
-                // Resolve the device
-                await manager['resolveDevice']({ ip: '192.168.1.100' });
+                // Simulate SSDP discovering a device at the configured IP (no serial known yet)
+                // setDiscoveredDevice is only called when isDiscovered is true, which creates
+                // the discovered device entry after resolution
+                const device = createMockDevice({
+                    ip: '192.168.1.100',
+                    serialNumber: null, // No serial known yet from SSDP
+                    isDiscovered: true
+                });
+                addDiscoveredDevice(device);
+
+                // Resolve the discovered device - this will find XYZ serial
+                await manager['resolveDevice'](device);
 
                 // Get the devices
                 const devices = manager.getAllDevices();
