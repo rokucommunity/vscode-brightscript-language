@@ -339,6 +339,39 @@ end sub
 sub DoSomething()
 end sub
 </code></pre>
+<a href="#ignore-errors-and-warnings-for-a-block-of-code-or-whole-file"><h1 id="ignore-errors-and-warnings-for-a-block-of-code-or-whole-file">Ignore errors and warnings for a block of code or whole file</h1></a><p>Use <code>bs:disable</code> and <code>bs:enable</code> to suppress diagnostics for a span of code. A <code>bs:disable</code> opens a suppression block, and a matching <code>bs:enable</code> closes it. If no <code>bs:enable</code> follows, the block runs to the end of the file, so a bare <code>bs:disable</code> at the top of a file suppresses the whole file.</p>
+<ul>
+<li><code>bs:disable</code>: suppress all diagnostics from this line until the next <code>bs:enable</code></li>
+<li><code>bs:disable: code1 code2 code3</code>: suppress only the listed codes</li>
+<li><code>bs:enable</code>: close any open <code>bs:disable</code> block</li>
+<li><code>bs:enable: code1 code2 code3</code>: re-enable specific codes from an open <code>bs:disable</code></li>
+</ul>
+<pre><code class="language-vb">&#39; bs:disable: 1001 1002
+
+sub Main()
+    DoSomething()
+end sub
+</code></pre>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; ?&gt;
+&lt;!-- bs:disable: 1006 --&gt;
+&lt;component name=&quot;Foo&quot;&gt;
+&lt;/component&gt;
+</code></pre>
+<p><code>bs:enable: &lt;code&gt;</code> after a bare <code>bs:disable</code> re-enables one diagnostic while keeping the rest suppressed:</p>
+<pre><code class="language-vb">&#39; bs:disable
+&#39;   1006 is still suppressed below, but 1001 reports normally
+&#39; bs:enable: 1001
+
+sub Main()
+    DoSomething()
+end sub
+</code></pre>
+<a href="#quick-fixes-for-disabling-diagnostics"><h1 id="quick-fixes-for-disabling-diagnostics">Quick fixes for disabling diagnostics</h1></a><p>Every diagnostic surfaced in the editor has two quick fixes for suppressing it without leaving the file:</p>
+<ul>
+<li><strong>Disable {code} for this line: {message}</strong>: appends the code to an existing <code>bs:disable-line</code> or <code>bs:disable-next-line</code> directive on or above the diagnostic line if there is one, otherwise inserts a new <code>bs:disable-next-line: {code}</code> directive above the diagnostic.</li>
+<li><strong>Disable {code} for this file: {message}</strong>: appends the code to an existing header-level <code>bs:disable</code> directive if there is one, otherwise inserts a new <code>bs:disable: {code}</code> directive at the top of the file.</li>
+</ul>
+<p>Open the quick-fix menu the same way you would for any other diagnostic (the lightbulb in the gutter, or <code>Ctrl+.</code> / <code>Cmd+.</code>).</p>
             <div id="footer"></div>
         </div>
     </div>
