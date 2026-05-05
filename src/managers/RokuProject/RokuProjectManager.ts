@@ -47,7 +47,9 @@ export class RokuProjectManager {
                     watcher,
                     watcher.onDidCreate(uri => {
                         if (!isExcluded(uri)) {
-                            this.registerProject(uri);
+                            this.registerProject(uri).catch(err => {
+                                console.error('Error registering Roku project:', err);
+                            });
                         }
                     }),
                     watcher.onDidDelete(uri => {
@@ -59,7 +61,9 @@ export class RokuProjectManager {
                         if (!isExcluded(uri)) {
                             // rebuilds the project from the updated file
                             this.unregisterProject(uri);
-                            this.registerProject(uri);
+                            this.registerProject(uri).catch(err => {
+                                console.error('Error registering Roku project after change:', err);
+                            });
                         }
                     })
                 );
@@ -91,10 +95,10 @@ export class RokuProjectManager {
                 // filter down to only the URIs that belong to the folder being added.
                 for (const added of event.added) {
                     for (const provider of this.providers) {
-                        Promise.resolve(provider.findProjectConfigs()).then(uris => {
+                        Promise.resolve(provider.findProjectConfigs()).then(async uris => {
                             for (const uri of uris) {
                                 if (isSubdirectoryOf(added.uri.fsPath, uri.fsPath)) {
-                                    this.registerProject(uri);
+                                    await this.registerProject(uri);
                                 }
                             }
                         }).catch((err: unknown) => {
@@ -149,7 +153,7 @@ export class RokuProjectManager {
             for (const provider of this.providers) {
                 const uris = await provider.findProjectConfigs();
                 for (const uri of uris) {
-                    this.registerProject(uri);
+                    await this.registerProject(uri);
                 }
             }
         } finally {
@@ -157,7 +161,7 @@ export class RokuProjectManager {
         }
     }
 
-    private registerProject(uri: vscode.Uri) {
+    private async registerProject(uri: vscode.Uri) {
         const providerIndex = this.providers.findIndex(configProvider => configProvider.ownsConfig(uri));
         if (providerIndex === -1) {
             return;
@@ -165,11 +169,8 @@ export class RokuProjectManager {
         const provider = this.providers[providerIndex];
         const { taskName, taskConfig, project } = provider.createProject(uri);
 
-        // Skip if a higher-priority provider (lower index) already owns an ancestor directory.
-        for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
-            if (claimedIndex < providerIndex && isSubdirectoryOf(claimedDir, project.projectDir)) {
-                return;
-            }
+        if (await this.isSupersededByHigherPriorityProvider(uri, providerIndex, project.projectDir)) {
+            return;
         }
 
         if (taskName) {
@@ -180,6 +181,26 @@ export class RokuProjectManager {
         this.viewProvider?.setProjects(Array.from(this.discoveredProjects.values()));
         this.syncStatusBar();
         provider.afterConfigRegistered?.(uri);
+    }
+
+    /**
+     * Returns true if a higher-priority (lower-index) provider already owns this project's
+     * territory. Cheap dir-overlap check first, then falls back to the more expensive
+     * cross-provider claim query so most calls short-circuit without IO.
+     */
+    private async isSupersededByHigherPriorityProvider(uri: vscode.Uri, providerIndex: number, projectDir: string): Promise<boolean> {
+        for (const [claimedDir, claimedIndex] of this.providerIndexByProjectDir) {
+            if (claimedIndex < providerIndex && isSubdirectoryOf(claimedDir, projectDir)) {
+                return true;
+            }
+        }
+        for (let higherIndex = 0; higherIndex < providerIndex; higherIndex++) {
+            const claims = await this.providers[higherIndex].findProjectConfigFromFile(uri);
+            if (claims.length > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private unregisterProject(uri: vscode.Uri) {
@@ -242,16 +263,30 @@ export class RokuProjectManager {
             allMatches.push(...uris);
         }
 
-        if (allMatches.length === 0) {
+        // Mirror registerProject's precedence so F5 silently picks the richer config
+        // (e.g. bsconfig.json wins over a manifest it already owns).
+        const filteredMatches: vscode.Uri[] = [];
+        for (const uri of allMatches) {
+            const providerIndex = this.providers.findIndex(configProvider => configProvider.ownsConfig(uri));
+            if (providerIndex === -1) {
+                continue;
+            }
+            const projectDir = this.providers[providerIndex].createProject(uri).project.projectDir;
+            if (!(await this.isSupersededByHigherPriorityProvider(uri, providerIndex, projectDir))) {
+                filteredMatches.push(uri);
+            }
+        }
+
+        if (filteredMatches.length === 0) {
             return undefined;
         }
 
         let targetUri: vscode.Uri;
-        if (allMatches.length === 1) {
-            targetUri = allMatches[0];
+        if (filteredMatches.length === 1) {
+            targetUri = filteredMatches[0];
         } else {
             const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
-            const items = allMatches.map(uri => {
+            const items = filteredMatches.map(uri => {
                 const provider = this.providers.find(configProvider => configProvider.ownsConfig(uri));
                 return {
                     label: provider?.createProject(uri).debugConfig.name ?? path.basename(path.dirname(uri.fsPath)),
