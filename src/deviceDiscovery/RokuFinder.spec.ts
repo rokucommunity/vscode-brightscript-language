@@ -344,25 +344,25 @@ describe('RokuFinder', () => {
 
         // Real-world data points from observed logs (elapsed values that must be suppressed)
         const realWorldElapsedMs = [
-            1198.8,   // 1× — standard heartbeat
-            2397.7,   // 2× — one missed
-            3596.5,   // 3× — two missed
-            4795.6,   // 4× — three missed
-            5994.5,   // 5× — four missed
-            7193.4,   // 6× — five missed
-            8392.1,   // 7× — six missed
-            9591.1,   // 8× — seven missed (max within ±10s at 1198.86 cadence)
+            1198.8, // 1× — standard heartbeat
+            2397.7, // 2× — one missed
+            3596.5, // 3× — two missed
+            4795.6, // 4× — three missed
+            5994.5, // 5× — four missed
+            7193.4, // 6× — five missed
+            8392.1, // 7× — six missed
+            9591.1 // 8× — seven missed (max within ±10s at 1198.86 cadence)
         ].map(s => s * 1_000);
 
-        for (const elapsedMs of realWorldElapsedMs) {
+        realWorldElapsedMs.forEach((elapsedMs) => {
             it(`suppresses at real-world elapsed ${(elapsedMs / 1000).toFixed(1)}s (${(elapsedMs / (1198.86 * 1000)).toFixed(0)}× interval)`, () => {
+                const localFinder = new RokuFinder(mockGlobalStateManager);
                 const clock = sinon.useFakeTimers();
                 try {
-                    finder = new RokuFinder(mockGlobalStateManager);
-                    finder['running'] = true;
+                    localFinder['running'] = true;
 
                     const deviceOnlineSpy = sinon.spy();
-                    finder.on('device-online', deviceOnlineSpy);
+                    localFinder.on('device-online', deviceOnlineSpy);
 
                     const aliveMessage = {
                         NT: 'roku:ecp',
@@ -371,17 +371,17 @@ describe('RokuFinder', () => {
                         USN: 'uuid:roku:ecp:ABC123'
                     };
 
-                    (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                    (localFinder['server'] as any).emit('advertise-alive', aliveMessage);
                     expect(deviceOnlineSpy.calledOnce).to.be.true;
 
                     clock.tick(elapsedMs);
-                    (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                    (localFinder['server'] as any).emit('advertise-alive', aliveMessage);
                     expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed
                 } finally {
                     clock.restore();
                 }
             });
-        }
+        });
 
         it('emits "device-online" again when alive arrives off the 20-minute schedule (e.g. reboot)', () => {
             const clock = sinon.useFakeTimers();
@@ -412,7 +412,63 @@ describe('RokuFinder', () => {
             }
         });
 
-        it('resets the heartbeat clock on wake so the next 20-minute heartbeat is suppressed', () => {
+        it('suppresses after a 3-day gap if the Roku fires on its regular schedule (host slept, Roku did not reboot)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 3 days = 216 heartbeat intervals — device stayed up, host was asleep
+                clock.tick(216 * HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed — on schedule
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('fires device-online after a 3-day gap if the Roku rebooted (alive arrives off schedule)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 3 days plus 10 minutes — off schedule, device rebooted
+                clock.tick(3 * 24 * 60 * 60 * 1_000 + 10 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses the next routine heartbeat after a reboot (clock resets from the reboot alive)', () => {
             const clock = sinon.useFakeTimers();
             try {
                 finder = new RokuFinder(mockGlobalStateManager);
@@ -437,7 +493,7 @@ describe('RokuFinder', () => {
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(deviceOnlineSpy.calledTwice).to.be.true;
 
-                // 20 minutes after the reboot — routine heartbeat, clock was reset from wake time
+                // 20 minutes after the reboot — routine heartbeat, clock was reset from the reboot alive
                 clock.tick(HEARTBEAT_INTERVAL_MS);
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(deviceOnlineSpy.calledTwice).to.be.true; // suppressed
