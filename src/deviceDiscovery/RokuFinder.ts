@@ -38,13 +38,20 @@ export class RokuFinder extends EventEmitter {
     private lastCleanupTime = 0;
     private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
-    // Heartbeat suppression: Roku devices send ssdp:alive on a ~20-minute schedule.
-    // We emit device-online only when the alive does NOT arrive on schedule — meaning
-    // the device just woke up, rebooted, or the host missed heartbeats while asleep.
-    // Timestamps are persisted via GlobalStateManager so the clock survives restarts.
-    // Keyed by serial number so a DHCP IP change doesn't reset the clock.
-    private readonly HEARTBEAT_INTERVAL_MS = 20 * 60 * 1_000;
-    private readonly HEARTBEAT_TOLERANCE_MS = 5_000;
+    /**
+     * Heartbeat suppression: Roku devices send ssdp:alive on a ~20-minute schedule.
+     * We emit device-online only when the alive does NOT arrive on schedule — meaning
+     * the device just woke up or rebooted
+     * Timestamps are persisted via GlobalStateManager so the clock survives restarts.
+     * Keyed by serial number so a DHCP IP change doesn't reset the clock.
+     *
+     * Roku devices actually fire slightly less than 20minute interval. So use that value to help avoid overnight clock drift
+     */
+    private readonly HEARTBEAT_INTERVAL_MS = 1198.86 * 1_000;
+    /**
+     * Give some tolerance to the heartbeat interval to account for clock drift and Roku's non-exact timing, while still reliably suppressing regular heartbeats. 10 seconds should be more than enough.
+     */
+    private readonly HEARTBEAT_TOLERANCE_MS = 10_000;
 
     private readonly SCAN_MIN_DURATION_MS = 3_000;
     private readonly SCAN_SETTLE_MS = 1_500;
@@ -258,8 +265,10 @@ export class RokuFinder extends EventEmitter {
         const elapsed = lastTs !== undefined ? now - lastTs : undefined;
         this.globalStateManager.setLastAliveTimestamp(key, now);
 
+        const nearestMultiple = elapsed !== undefined ? Math.round(elapsed / this.HEARTBEAT_INTERVAL_MS) : 0;
         const isRoutineHeartbeat = elapsed !== undefined &&
-            Math.abs(elapsed - this.HEARTBEAT_INTERVAL_MS) <= this.HEARTBEAT_TOLERANCE_MS;
+            nearestMultiple >= 1 &&
+            Math.abs(elapsed - (nearestMultiple * this.HEARTBEAT_INTERVAL_MS)) <= this.HEARTBEAT_TOLERANCE_MS;
 
         const elapsedStr = elapsed !== undefined ? `${(elapsed / 1000).toFixed(1)}s ago` : 'first time seen';
         const decision = isRoutineHeartbeat ? '🔇 suppressed' : '🔔 device-online';
