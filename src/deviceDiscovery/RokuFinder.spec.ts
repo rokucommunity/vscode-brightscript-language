@@ -460,7 +460,7 @@ describe('RokuFinder', () => {
                 expect(deviceOnlineSpy.calledOnce).to.be.true;
 
                 // 3 days plus 10 minutes — off schedule, device rebooted
-                clock.tick(3 * 24 * 60 * 60 * 1_000 + 10 * 60 * 1_000);
+                clock.tick((3 * 24 * 60 * 60 * 1_000) + (10 * 60 * 1_000));
                 (finder['server'] as any).emit('advertise-alive', aliveMessage);
                 expect(deviceOnlineSpy.calledTwice).to.be.true;
             } finally {
