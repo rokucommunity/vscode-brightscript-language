@@ -2238,6 +2238,12 @@
                         "description": "If set to true, the extension will also include devices that do not have their developer mode enabled that are found on the network.",
                         "scope": "resource"
                     },
+                    "brightscript.deviceDiscovery.heartbeatLogging": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Log every ssdp:alive heartbeat to the 'BrightScript Extension' output panel, including the serial number, time since last seen, and whether the device-online notification was suppressed or fired. Useful for verifying heartbeat suppression behavior. Leave disabled in normal use.",
+                        "scope": "resource"
+                    },
                     "brightscript.deviceDiscovery.concealDeviceInfo": {
                         "type": "boolean",
                         "default": false,
