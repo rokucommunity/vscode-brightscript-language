@@ -4,6 +4,7 @@ import type { BrightScriptTaskProvider, TaskConfig } from '../../BrightScriptTas
 import type { RokuProjectsViewProvider } from '../../viewProviders/RokuProjectsViewProvider';
 import { BrsConfigProjectProvider } from './BrsConfigProjectProvider';
 import { BsConfigProjectProvider } from './BsConfigProjectProvider';
+import { ManifestProjectProvider } from './ManifestProjectProvider';
 import { VscodeCommand } from '../../commands/VscodeCommand';
 import { util } from '../../util';
 
@@ -23,7 +24,8 @@ export class RokuProjectManager {
 
     private readonly providers: ProjectConfigProvider[] = [
         new BsConfigProjectProvider(),
-        new BrsConfigProjectProvider()
+        new BrsConfigProjectProvider(),
+        new ManifestProjectProvider()
     ];
 
     public register(context: vscode.ExtensionContext) {
