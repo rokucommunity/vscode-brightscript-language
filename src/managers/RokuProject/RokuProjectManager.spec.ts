@@ -281,6 +281,87 @@ describe('RokuProjectManager', () => {
     });
 
 
+    describe('scheduleResync + idempotency', () => {
+        it('re-registers a previously-suppressed manifest once the higher-priority project is unregistered and a sync runs', async () => {
+            const bsConfig = makeMockProvider();
+            const manifest = makeMockProvider();
+            (manager as any).providers = [bsConfig, manifest];
+
+            const bsConfigUri = makeUri('/workspace/bsconfig.json');
+            const manifestUri = makeUri('/workspace/manifest');
+            const bsConfigBuild = makeBuildResult('/workspace', bsConfigUri);
+            const manifestBuild = makeBuildResult('/workspace', manifestUri);
+
+            // Toggle the bsConfig "alive" state from the test so the same stubs respond differently
+            // before vs. after unregistration.
+            let bsConfigPresent = true;
+
+            (bsConfig.ownsConfig as sinon.SinonStub).callsFake((uri: any) => uri === bsConfigUri);
+            (bsConfig.createProject as sinon.SinonStub).returns(bsConfigBuild);
+            (bsConfig.findProjectConfigs as sinon.SinonStub).callsFake(() => Promise.resolve(bsConfigPresent ? [bsConfigUri] : []));
+            (bsConfig.findProjectConfigFromFile as sinon.SinonStub).callsFake((uri: any) => {
+                return Promise.resolve(bsConfigPresent && uri === manifestUri ? [bsConfigUri] : []);
+            });
+
+            (manifest.ownsConfig as sinon.SinonStub).callsFake((uri: any) => uri === manifestUri);
+            (manifest.createProject as sinon.SinonStub).returns(manifestBuild);
+            (manifest.findProjectConfigs as sinon.SinonStub).resolves([manifestUri]);
+
+            await (manager as any).syncProjects();
+
+            // Sanity: only bsConfig is registered, manifest got suppressed.
+            expect((manager as any).providerIndexByProjectDir.get('/workspace')).to.equal(0);
+            expect((manifest.afterConfigRegistered as sinon.SinonStub).called).to.be.false;
+
+            // Now bsConfig disappears (e.g. user renames brsconfig.json off-pattern).
+            (manager as any).unregisterProject(bsConfigUri);
+            bsConfigPresent = false;
+
+            // Resync (what scheduleResync ends up running on debounce timeout).
+            await (manager as any).syncProjects();
+
+            // The manifest should now be registered.
+            expect((manager as any).providerIndexByProjectDir.get('/workspace')).to.equal(1);
+            expect((manifest.afterConfigRegistered as sinon.SinonStub).calledOnceWith(manifestUri)).to.be.true;
+        });
+
+        it('registerProject is idempotent: a second register for the same project dir is a no-op', async () => {
+            const uri = makeUri('/workspace/project/bsconfig.json');
+            const result = makeBuildResult('/workspace/project', uri);
+
+            (mockProvider.ownsConfig as sinon.SinonStub).returns(true);
+            (mockProvider.createProject as sinon.SinonStub).returns(result);
+
+            await (manager as any).registerProject(uri);
+            const tasksBefore = taskRegistry.registerTask.callCount;
+            const afterRegisteredBefore = (mockProvider.afterConfigRegistered as sinon.SinonStub).callCount;
+
+            await (manager as any).registerProject(uri);
+
+            expect(taskRegistry.registerTask.callCount).to.equal(tasksBefore);
+            expect((mockProvider.afterConfigRegistered as sinon.SinonStub).callCount).to.equal(afterRegisteredBefore);
+        });
+
+        it('scheduleResync coalesces rapid calls into a single syncProjects after the debounce window', () => {
+            const clock = sinon.useFakeTimers();
+            const syncStub = sinon.stub(manager as any, 'syncProjects').resolves();
+
+            (manager as any).scheduleResync();
+            (manager as any).scheduleResync();
+            (manager as any).scheduleResync();
+
+            // Before the debounce expires, no sync has run yet.
+            expect(syncStub.called).to.be.false;
+
+            // Advance past the debounce window (resyncDebounceMs is 250).
+            clock.tick(300);
+
+            expect(syncStub.calledOnce).to.be.true;
+            clock.restore();
+        });
+    });
+
+
     describe('syncProjects', () => {
         it('calls findProjectConfigs on every provider and registers each URI', async () => {
             const uri1 = makeUri('/workspace/a/bsconfig.json');

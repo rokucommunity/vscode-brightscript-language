@@ -13,7 +13,16 @@ export class ManifestProjectProvider implements ProjectConfigProvider {
         { pattern: '**/manifest', scheme: 'file' }
     ];
 
-    public readonly excludePatterns = ['**/node_modules/**'];
+    // Roku build output trees often contain a staged copy of manifest + source/ + components/,
+    // which trips the looksLikeRokuProject signal and surfaces a phantom duplicate project.
+    // Excluding the common output dirs keeps discovery focused on the real source tree.
+    public readonly excludePatterns = [
+        '**/node_modules/**',
+        '**/out/**',
+        '**/.roku-deploy-staging/**',
+        '**/dist/**',
+        '**/build/**'
+    ];
 
     /** Tracks registered project dirs so findProjectConfigFromFile can answer ownership without FS walks. */
     private readonly configByProjectDir = new Map<string, vscode.Uri>();

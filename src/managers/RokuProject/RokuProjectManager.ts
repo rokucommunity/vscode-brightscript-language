@@ -57,6 +57,10 @@ export class RokuProjectManager {
                     watcher.onDidDelete(uri => {
                         if (!isExcluded(uri)) {
                             this.unregisterProject(uri);
+                            // A previously-suppressed lower-priority project (e.g. a manifest beside
+                            // the just-deleted bsconfig) may now be eligible. Debounced so a rapid
+                            // delete/create rename pair only triggers one resync.
+                            this.scheduleResync();
                         }
                     }),
                     watcher.onDidChange(uri => {
@@ -171,6 +175,12 @@ export class RokuProjectManager {
         const provider = this.providers[providerIndex];
         const { taskName, taskConfig, project } = provider.createProject(uri);
 
+        // Idempotent: another project (typically registered via refreshLowerPriorityRegistrations
+        // or a duplicate watcher event) already owns this dir. Skip without re-firing side effects.
+        if (this.discoveredProjects.has(project.projectDir)) {
+            return;
+        }
+
         if (await this.isSupersededByHigherPriorityProvider(uri, providerIndex, project.projectDir)) {
             return;
         }
@@ -183,6 +193,27 @@ export class RokuProjectManager {
         this.viewProvider?.setProjects(Array.from(this.discoveredProjects.values()));
         this.syncStatusBar();
         provider.afterConfigRegistered?.(uri);
+    }
+
+    /** Debounce window before a queued resync actually runs, to coalesce delete+create rename pairs and bursts of file events. */
+    private static readonly resyncDebounceMs = 250;
+    private resyncTimer: ReturnType<typeof setTimeout> | undefined;
+
+    /**
+     * Schedules a debounced syncProjects() so previously-suppressed lower-priority projects can
+     * surface after a higher-priority config is removed. Idempotency in registerProject keeps this
+     * safe — already-registered projects are no-ops.
+     */
+    private scheduleResync(): void {
+        if (this.resyncTimer) {
+            clearTimeout(this.resyncTimer);
+        }
+        this.resyncTimer = setTimeout(() => {
+            this.resyncTimer = undefined;
+            this.syncProjects().catch(err => {
+                console.error('Error during scheduled resync of Roku projects:', err);
+            });
+        }, RokuProjectManager.resyncDebounceMs);
     }
 
     /**
