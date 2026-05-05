@@ -46,7 +46,9 @@ export class ManifestProjectProvider implements ProjectConfigProvider {
         const files = [...BrightScriptDebugConfigurationProvider.defaultFiles];
         const matches: vscode.Uri[] = [];
         for (const [projectDir, configUri] of this.configByProjectDir) {
-            if (rokuDeploy.getDestPath(filePath, files, projectDir)) {
+            // Drive letters must be normalized on both sides — getDestPath does a case-sensitive
+            // comparison and Windows uri.fsPath casing isn't always consistent with path.dirname output.
+            if (rokuDeploy.getDestPath(filePath, files, bsUtil.driveLetterToLower(projectDir))) {
                 matches.push(configUri);
             }
         }
