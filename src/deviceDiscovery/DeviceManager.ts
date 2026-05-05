@@ -10,8 +10,10 @@ import { NetworkChangeMonitor, getNetworkHash } from './NetworkChangeMonitor';
 import { SystemSleepMonitor } from './SystemSleepMonitor';
 import { util } from '../util';
 import * as fsExtra from 'fs-extra';
+import * as path from 'path';
 import { vscodeContextManager } from '../managers/VscodeContextManager';
 import { debounce } from 'lodash';
+import * as os from 'os';
 
 export class DeviceManager {
     // #region constructor
@@ -47,6 +49,9 @@ export class DeviceManager {
                     this.deactivateMonitoring();
                 }
             }
+
+            // Re-read parent-dir config paths on every config change (settings or watched file)
+            this.parentRokuDevConfigPaths = this.findParentRokuDevConfigPaths();
 
             this.loadConfiguredDevices().catch(e => console.error(e));
 
@@ -94,7 +99,57 @@ export class DeviceManager {
         applyConfig();
     }
 
+    /**
+     * Walk upward from each workspace folder (deduped) looking for .roku/roku-dev-config.json files.
+     * Returns only paths that actually exist on disk.
+     */
+    public findParentRokuDevConfigPaths(): string[] {
+        const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+
+        // Collect unique starting directories: the immediate parent of each workspace folder.
+        // Deduping here means two sibling workspace folders sharing a parent only produce one walk.
+        const startDirs = new Set<string>();
+        for (const folder of workspaceFolders) {
+            startDirs.add(path.dirname(folder.uri.fsPath));
+        }
+
+        // Walk upward from each unique start dir, collecting candidate config paths (deduped)
+        const visitedDirs = new Set<string>();
+        const result: string[] = [];
+
+        for (const startDir of startDirs) {
+            let current = startDir;
+            while (true) {
+                if (visitedDirs.has(current)) {
+                    break;
+                }
+                visitedDirs.add(current);
+
+                const candidate = path.join(current, '.roku', 'roku-dev-config.json');
+                if (fsExtra.pathExistsSync(candidate)) {
+                    result.push(candidate);
+                }
+
+                const parent = path.dirname(current);
+                if (parent === current) {
+                    // reached filesystem root
+                    break;
+                }
+                current = parent;
+            }
+        }
+
+        return result;
+    }
+
+    /** Config files found by the workspace file watcher / findFiles (inside workspace) */
     private rokuDevConfigPaths = new Set<string>();
+
+    /** Config files found by walking upward from workspace folder parents */
+    private parentRokuDevConfigPaths: string[] = [];
+
+    /** Tracks last seen parse error per config path so we don't spam the same warning on every reload */
+    private rokuDevConfigLoadErrors = new Map<string, string>();
 
     private setupWindowFocusHandling() {
         this.context.subscriptions.push(
@@ -713,7 +768,13 @@ export class DeviceManager {
         const deviceMap = new Map<string, ConfiguredDeviceWithScope>();
 
         // Process .roku/roku-dev-config.json files first (lowest priority)
-        for (const configPath of this.rokuDevConfigPaths) {
+        // Combine watched workspace paths and upward-walked parent paths (parent paths come last = higher priority)
+        const allRokuDevConfigPaths = [
+            path.join(os.homedir(), 'roku-dev-config.json'),
+            ...this.rokuDevConfigPaths,
+            ...this.parentRokuDevConfigPaths
+        ];
+        for (const configPath of allRokuDevConfigPaths) {
             try {
                 if (!fsExtra.existsSync(configPath)) {
                     continue;
@@ -740,8 +801,17 @@ export class DeviceManager {
                     }
                 }
             } catch (e) {
-                console.error(`Failed to load roku-dev-config.json from ${configPath}:`, e);
+                // Dedupe per-path so a stale broken file doesn't spam on every settings/watcher event.
+                // Reset entry on success (below) so the warning can fire again if it breaks differently later.
+                const message = e instanceof Error ? e.message : String(e);
+                if (this.rokuDevConfigLoadErrors.get(configPath) !== message) {
+                    this.rokuDevConfigLoadErrors.set(configPath, message);
+                    console.warn(`Failed to load roku-dev-config.json from ${configPath}: ${message}`);
+                }
+                continue;
             }
+            // Successful read — clear any prior error so a future failure can re-warn
+            this.rokuDevConfigLoadErrors.delete(configPath);
         }
 
         // Process user settings (overrides rokuDevConfig)
