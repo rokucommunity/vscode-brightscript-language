@@ -67,6 +67,17 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             this.deviceManager.refresh();
         });
 
+        // Health check device when expanded (not on every getChildren/devices-changed)
+        treeView.onDidExpandElement(e => {
+            const element = e.element as DeviceTreeItem;
+            if (element?.contextValue === 'device' && element.key) {
+                const device = this.deviceManager.getDevice(element.key);
+                if (device) {
+                    this.deviceManager.healthCheckDevice(device).catch(() => { });
+                }
+            }
+        });
+
         this.deviceManager.on('scan-started', () => {
             this.showScanProgress();
         });
@@ -222,7 +233,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!device) {
                 return;
             }
-            this.deviceManager.healthCheckDevice(device).catch(() => { });
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(

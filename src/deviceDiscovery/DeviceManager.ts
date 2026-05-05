@@ -791,9 +791,7 @@ export class DeviceManager {
 
             // Only emit if state actually changed
             this.setDeviceState({ ip: device.ip, serialNumber: serial }, 'online');
-            if (currentStateObject.state !== 'online') {
-                this.emitDevicesChanged();
-            }
+            this.emitDevicesChanged();
             return true;
         } else {
             // Remove from discoveredDevices (ephemeral - offline devices are removed)
@@ -803,9 +801,7 @@ export class DeviceManager {
             // Use known serial if available for proper key management
             this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'offline');
 
-            if (currentStateObject.state !== 'offline') {
-                this.emitDevicesChanged();
-            }
+            this.emitDevicesChanged();
             return false;
         }
     }
