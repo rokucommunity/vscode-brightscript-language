@@ -130,6 +130,10 @@ export class BrightScriptCommands {
             await this.sendRemoteCommand('Home');
         });
 
+        this.registerCommand('restartDevApplication', async () => {
+            await this.restartDevApplication();
+        });
+
         this.registerCommand('pressUpButton', async () => {
             await this.sendRemoteCommand('Up');
         });
@@ -709,6 +713,54 @@ export class BrightScriptCommands {
         // Offset to first character of the value (after the opening quote)
         const valueOffset = match.index + match[0].length - match[1].length;
         return xmlDoc.positionAt(valueOffset);
+    }
+
+    public async restartDevApplication() {
+        await this.getRemoteHost();
+        const host = this.host;
+        if (!host) {
+            return;
+        }
+
+        await util.spinAsync('Restarting dev app', async () => {
+            const appsResponse = await util.httpGet(`http://${host}:8060/query/apps`, { timeout: 5_000 });
+            const appsParsed = await xml2js.parseStringPromise(appsResponse.body as string);
+            const appList: Array<{ $?: { id?: string } }> = appsParsed?.apps?.app ?? [];
+            const hasDev = appList.some(entry => entry.$?.id === 'dev');
+            if (!hasDev) {
+                await vscode.window.showErrorMessage(`No dev channel sideloaded on ${host}. Sideload your project before restarting.`);
+                return;
+            }
+
+            // First call suspends if dev is foregrounded with Instant Resume; second call terminates.
+            // Both are harmless if dev isn't running — the device just returns FAILED in the body.
+            await this.ecpPost(host, 'exit-app/dev');
+            await this.ecpPost(host, 'exit-app/dev');
+
+            const launchResponse = await this.ecpPost(host, 'launch/dev');
+            if (launchResponse.statusCode !== 200) {
+                await vscode.window.showErrorMessage(`Failed to launch dev channel on ${host} (HTTP ${launchResponse.statusCode}).`);
+                return;
+            }
+
+            await util.sleep(1000);
+            const verifyResponse = await util.httpGet(`http://${host}:8060/query/active-app`, { timeout: 5_000 });
+            const verifyParsed = await xml2js.parseStringPromise(verifyResponse.body as string);
+            const verifyAppId: string | undefined = verifyParsed?.['active-app']?.app?.[0]?.$?.id;
+            if (verifyAppId === 'dev') {
+                void util.showTimedNotification('Dev app restarted', 2000);
+            } else {
+                await vscode.window.showWarningMessage(`Sent the dev launch command, but the foreground app is "${verifyAppId ?? 'unknown'}". The dev app may still be loading.`);
+            }
+        });
+    }
+
+    private ecpPost(host: string, path: string) {
+        return new Promise<request.Response>((resolve, reject) => {
+            request.post(`http://${host}:8060/${path}`, (err: Error | null, response: request.Response) => {
+                return err ? reject(err) : resolve(response);
+            });
+        });
     }
 
     public async sendRemoteCommand(key: string, host?: string, literalCharacter = false) {

@@ -3243,6 +3243,11 @@
                 "category": "Brightscript"
             },
             {
+                "command": "extension.brightscript.restartDevApplication",
+                "title": "Restart the currently installed dev application on the Roku device",
+                "category": "Brightscript"
+            },
+            {
                 "command": "extension.brightscript.pressUpButton",
                 "title": "Press the Up button on the Roku remote",
                 "category": "Brightscript"
