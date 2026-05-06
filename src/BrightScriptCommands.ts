@@ -743,6 +743,7 @@ export class BrightScriptCommands {
                 return;
             }
 
+            // give a little bit of time to let the app boot up before checking its status
             await util.sleep(1000);
             const verifyResponse = await util.httpGet(`http://${host}:8060/query/active-app`, { timeout: 5_000 });
             const verifyParsed = await xml2js.parseStringPromise(verifyResponse.body as string);
