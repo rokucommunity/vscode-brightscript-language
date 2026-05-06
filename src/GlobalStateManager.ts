@@ -17,7 +17,8 @@ export class GlobalStateManager {
         debugProtocolPopupSnoozeValue: 'debugProtocolPopupSnoozeValue',
         lastSeenDevicesByNetwork: 'lastSeenDevicesByNetwork',
         deviceCache: 'deviceCache',
-        serialNumberByIpForNetwork: 'serialNumberByIpForNetwork'
+        serialNumberByIpForNetwork: 'serialNumberByIpForNetwork',
+        lastAliveTimestamp: 'lastAliveTimestamp'
     };
     private remoteTextHistoryLimit: number;
     private remoteTextHistoryEnabled: boolean;
@@ -297,6 +298,17 @@ export class GlobalStateManager {
             }
         }
         return networks;
+    }
+
+    public getLastAliveTimestamp(key: string): number | undefined {
+        const map = this.context.globalState.get<Record<string, number>>(this.keys.lastAliveTimestamp) || {};
+        return map[key];
+    }
+
+    public setLastAliveTimestamp(key: string, timestamp: number): void {
+        const map = this.context.globalState.get<Record<string, number>>(this.keys.lastAliveTimestamp) || {};
+        map[key] = timestamp;
+        void this.context.globalState.update(this.keys.lastAliveTimestamp, map);
     }
 
     /**

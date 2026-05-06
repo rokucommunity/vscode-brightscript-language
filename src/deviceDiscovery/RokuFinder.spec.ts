@@ -1,9 +1,19 @@
 import { expect } from 'chai';
 import * as sinon from 'sinon';
 import { RokuFinder } from './RokuFinder';
+import type { GlobalStateManager } from '../GlobalStateManager';
 
 describe('RokuFinder', () => {
     let finder: RokuFinder;
+    let mockGlobalStateManager: GlobalStateManager;
+
+    beforeEach(() => {
+        const timestampStore = new Map<string, number>();
+        mockGlobalStateManager = {
+            getLastAliveTimestamp: (key: string) => timestampStore.get(key),
+            setLastAliveTimestamp: (key: string, ts: number) => timestampStore.set(key, ts)
+        } as any;
+    });
 
     afterEach(() => {
         finder?.stop();
@@ -14,34 +24,34 @@ describe('RokuFinder', () => {
     describe('constructor', () => {
         it('creates without error', () => {
             expect(() => {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
             }).to.not.throw();
         });
     });
 
     describe('start/stop', () => {
         it('start sets running to true', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
             expect(finder['running']).to.be.true;
         });
 
         it('stop sets running to false', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
             finder.stop();
             expect(finder['running']).to.be.false;
         });
 
         it('start is idempotent', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
             await finder.start();
             expect(finder['running']).to.be.true;
         });
 
         it('stop is idempotent', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
             finder.stop();
             expect(() => finder.stop()).to.not.throw();
@@ -52,7 +62,7 @@ describe('RokuFinder', () => {
         it('sends multiple search requests', () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
                 const searchStub = sinon.stub(finder['client'], 'search');
 
                 finder.scan();
@@ -76,7 +86,7 @@ describe('RokuFinder', () => {
 
     describe('SSDP response handling', () => {
         it('emits "found" with IP string for Roku devices', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
 
             const foundSpy = sinon.spy();
             finder.on('found', foundSpy);
@@ -96,7 +106,7 @@ describe('RokuFinder', () => {
         });
 
         it('extracts serial number from USN header', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
 
             const foundSpy = sinon.spy();
             finder.on('found', foundSpy);
@@ -111,7 +121,7 @@ describe('RokuFinder', () => {
         });
 
         it('handles missing USN gracefully', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
 
             const foundSpy = sinon.spy();
             finder.on('found', foundSpy);
@@ -127,7 +137,7 @@ describe('RokuFinder', () => {
         });
 
         it('ignores non-Roku devices', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
 
             const foundSpy = sinon.spy();
             finder.on('found', foundSpy);
@@ -142,7 +152,7 @@ describe('RokuFinder', () => {
         });
 
         it('processes scan responses even when passive listener not started', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             // Don't call start() - passive listener is off, but scans should still work
 
             const foundSpy = sinon.spy();
@@ -160,8 +170,15 @@ describe('RokuFinder', () => {
     });
 
     describe('SSDP notify handling', () => {
+        let HEARTBEAT_INTERVAL_MS: number;
+        before(() => {
+            const tmp = new RokuFinder({ getLastAliveTimestamp: () => undefined, setLastAliveTimestamp: () => {} } as any);
+            HEARTBEAT_INTERVAL_MS = tmp['HEARTBEAT_INTERVAL_MS'];
+            tmp.dispose();
+        });
+
         it('emits "found" with IP string and serial number on ssdp:alive', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const foundSpy = sinon.spy();
@@ -181,8 +198,8 @@ describe('RokuFinder', () => {
             expect(options.serialNumber).to.equal('ABC123');
         });
 
-        it('emits "device-online" with IP and serial number on ssdp:alive', async () => {
-            finder = new RokuFinder();
+        it('emits "device-online" with IP and serial number the first time a device is seen', async () => {
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const deviceOnlineSpy = sinon.spy();
@@ -200,8 +217,399 @@ describe('RokuFinder', () => {
             expect(deviceOnlineSpy.firstCall.args[1]).to.equal('ABC123');
         });
 
+        it('suppresses "device-online" for a routine ~20-minute heartbeat', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive — fires (first time seen)
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Exactly 20 minutes later — routine heartbeat, suppressed
+                clock.tick(HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses "device-online" when alive arrives within ±10s of 20-minute schedule', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 9 seconds early (within ±10s tolerance) — suppressed
+                clock.tick((HEARTBEAT_INTERVAL_MS) - 9_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 9 seconds late from that timestamp (within ±10s tolerance) — suppressed
+                clock.tick((HEARTBEAT_INTERVAL_MS) + 9_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses "device-online" when alive arrives at an exact multiple of 20 minutes (e.g. skipped heartbeat)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 2× interval later — host missed one heartbeat, but this is still on-schedule
+                clock.tick(2 * HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed
+
+                // 3× interval from that timestamp — still on-schedule
+                clock.tick(3 * HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses after waking from 12-hour sleep (36 missed heartbeats)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 12 hours later — 36 missed heartbeats, device fires on schedule
+                clock.tick(36 * HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed
+            } finally {
+                clock.restore();
+            }
+        });
+
+        // Real-world data points from observed logs (elapsed values that must be suppressed)
+        const realWorldElapsedMs = [
+            1198.8, // 1× — standard heartbeat
+            2397.7, // 2× — one missed
+            3596.5, // 3× — two missed
+            4795.6, // 4× — three missed
+            5994.5, // 5× — four missed
+            7193.4, // 6× — five missed
+            8392.1, // 7× — six missed
+            9591.1 // 8× — seven missed (max within ±10s at 1198.86 cadence)
+        ].map(s => s * 1_000);
+
+        realWorldElapsedMs.forEach((elapsedMs) => {
+            it(`suppresses at real-world elapsed ${(elapsedMs / 1000).toFixed(1)}s (${(elapsedMs / (1198.86 * 1000)).toFixed(0)}× interval)`, () => {
+                const localFinder = new RokuFinder(mockGlobalStateManager);
+                const clock = sinon.useFakeTimers();
+                try {
+                    localFinder['running'] = true;
+
+                    const deviceOnlineSpy = sinon.spy();
+                    localFinder.on('device-online', deviceOnlineSpy);
+
+                    const aliveMessage = {
+                        NT: 'roku:ecp',
+                        NTS: 'ssdp:alive',
+                        LOCATION: 'http://192.168.1.100:8060',
+                        USN: 'uuid:roku:ecp:ABC123'
+                    };
+
+                    (localFinder['server'] as any).emit('advertise-alive', aliveMessage);
+                    expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                    clock.tick(elapsedMs);
+                    (localFinder['server'] as any).emit('advertise-alive', aliveMessage);
+                    expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed
+                } finally {
+                    clock.restore();
+                }
+            });
+        });
+
+        it('emits "device-online" again when alive arrives off the 20-minute schedule (e.g. reboot)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive — fires
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 10 seconds later — not on 20-min schedule, fires again (reboot scenario)
+                clock.tick(10_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses after a 3-day gap if the Roku fires on its regular schedule (host slept, Roku did not reboot)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 3 days = 216 heartbeat intervals — device stayed up, host was asleep
+                clock.tick(216 * HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true; // suppressed — on schedule
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('fires device-online after a 3-day gap if the Roku rebooted (alive arrives off schedule)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 3 days plus 10 minutes — off schedule, device rebooted
+                clock.tick((3 * 24 * 60 * 60 * 1_000) + (10 * 60 * 1_000));
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('suppresses the next routine heartbeat after a reboot (clock resets from the reboot alive)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First heartbeat
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Device reboots 10 minutes into the cycle — fires device-online
+                clock.tick(10 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+
+                // 20 minutes after the reboot — routine heartbeat, clock was reset from the reboot alive
+                clock.tick(HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true; // suppressed
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits "device-online" again when alive arrives at an off-schedule time (e.g. reboot mid-cycle)', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveMessage = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Routine 20-minute heartbeat — suppressed
+                clock.tick(HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // 7 minutes later (not on 20-min schedule) — fires again (device rebooted)
+                clock.tick(7 * 60 * 1_000);
+                (finder['server'] as any).emit('advertise-alive', aliveMessage);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('uses serial number (not IP) as the heartbeat key so IP changes do not reset the clock', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const aliveOldIp = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+                const aliveNewIp = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.200:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+
+                // First alive on old IP
+                (finder['server'] as any).emit('advertise-alive', aliveOldIp);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+
+                // Routine heartbeat on new IP — same serial, should still be suppressed
+                clock.tick(HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', aliveNewIp);
+                expect(deviceOnlineSpy.calledOnce).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('tracks heartbeat independently per device', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                finder = new RokuFinder(mockGlobalStateManager);
+                finder['running'] = true;
+
+                const deviceOnlineSpy = sinon.spy();
+                finder.on('device-online', deviceOnlineSpy);
+
+                const alive1 = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.100:8060',
+                    USN: 'uuid:roku:ecp:ABC123'
+                };
+                const alive2 = {
+                    NT: 'roku:ecp',
+                    NTS: 'ssdp:alive',
+                    LOCATION: 'http://192.168.1.101:8060',
+                    USN: 'uuid:roku:ecp:DEF456'
+                };
+
+                // Both devices seen for the first time
+                (finder['server'] as any).emit('advertise-alive', alive1);
+                (finder['server'] as any).emit('advertise-alive', alive2);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+
+                // Both send routine 20-min heartbeat — both suppressed
+                clock.tick(HEARTBEAT_INTERVAL_MS);
+                (finder['server'] as any).emit('advertise-alive', alive1);
+                (finder['server'] as any).emit('advertise-alive', alive2);
+                expect(deviceOnlineSpy.calledTwice).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
         it('emits "lost" on ssdp:byebye', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const lostSpy = sinon.spy();
@@ -219,7 +627,7 @@ describe('RokuFinder', () => {
         });
 
         it('ignores non-Roku notifications', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const foundSpy = sinon.spy();
@@ -239,7 +647,7 @@ describe('RokuFinder', () => {
         });
 
         it('debounces rapid ssdp:alive messages from same IP', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const foundSpy = sinon.spy();
@@ -264,7 +672,7 @@ describe('RokuFinder', () => {
         it('allows ssdp:alive after debounce period expires', async () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
                 await finder.start();
 
                 const foundSpy = sinon.spy();
@@ -293,7 +701,7 @@ describe('RokuFinder', () => {
         });
 
         it('debounces independently per IP address', async () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
             await finder.start();
 
             const foundSpy = sinon.spy();
@@ -328,7 +736,7 @@ describe('RokuFinder', () => {
         it('cleans up stale debounce entries after 5 minutes', async () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
                 await finder.start();
 
                 const aliveMessage = {
@@ -360,7 +768,7 @@ describe('RokuFinder', () => {
 
     describe('scan orchestration', () => {
         it('emits scan-started when scan begins', () => {
-            finder = new RokuFinder();
+            finder = new RokuFinder(mockGlobalStateManager);
 
             const scanStartedSpy = sinon.spy();
             finder.on('scan-started', scanStartedSpy);
@@ -373,7 +781,7 @@ describe('RokuFinder', () => {
         it('emits scan-ended after min duration and settle time', () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
 
                 const scanEndedSpy = sinon.spy();
                 finder.on('scan-ended', scanEndedSpy);
@@ -395,7 +803,7 @@ describe('RokuFinder', () => {
         it('waits for settle timer even after min duration', () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
 
                 const scanEndedSpy = sinon.spy();
                 finder.on('scan-ended', scanEndedSpy);
@@ -425,7 +833,7 @@ describe('RokuFinder', () => {
         it('does not start new scan if already scanning', () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
 
                 const scanStartedSpy = sinon.spy();
                 finder.on('scan-started', scanStartedSpy);
@@ -451,7 +859,7 @@ describe('RokuFinder', () => {
         it('resets settle timer when device found via ssdp:alive', () => {
             const clock = sinon.useFakeTimers();
             try {
-                finder = new RokuFinder();
+                finder = new RokuFinder(mockGlobalStateManager);
                 finder['running'] = true; // Simulate started
 
                 const scanEndedSpy = sinon.spy();

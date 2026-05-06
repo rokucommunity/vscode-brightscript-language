@@ -16,7 +16,8 @@ export class DeviceManager {
     // #region constructor
     constructor(
         private context: vscode.ExtensionContext,
-        private globalStateManager: GlobalStateManager
+        private globalStateManager: GlobalStateManager,
+        private extensionOutputChannel?: vscode.OutputChannel
     ) {
         this.networkId = getNetworkHash();
 
@@ -148,7 +149,7 @@ export class DeviceManager {
     private emitter = new EventEmitter();
     private systemSleepMonitor: SystemSleepMonitor;
     private networkChangeMonitor: NetworkChangeMonitor;
-    private finder = new RokuFinder();
+    private finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
 
     // Health check tracking and cooldowns
     private resolveDeviceSequence = new Map<string, number>();
@@ -564,6 +565,18 @@ export class DeviceManager {
      */
     private get showInfoMessages() {
         return util.getConfiguration('brightscript')?.deviceDiscovery?.showInfoMessages ?? true;
+    }
+
+    private get heartbeatLogging() {
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.heartbeatLogging ?? false;
+    }
+
+    private makeFinderLogger(): (msg: string) => void {
+        return (msg: string) => {
+            if (this.heartbeatLogging) {
+                this.extensionOutputChannel?.appendLine(`[heartbeat] ${msg}`);
+            }
+        };
     }
 
     /**
@@ -1223,7 +1236,7 @@ export class DeviceManager {
         const oldFinder = this.finder;
 
         // Create new finder instance
-        this.finder = new RokuFinder();
+        this.finder = new RokuFinder(this.globalStateManager, this.makeFinderLogger());
 
         // Re-attach event listeners
         this.setupFinderListeners();
@@ -1244,6 +1257,8 @@ export class DeviceManager {
      */
     private async startRokuFinder() {
         await this.finder.start();
+        const ts = new Date().toLocaleTimeString();
+        this.makeFinderLogger()(`[${ts}] RokuFinder started — passive ssdp:alive monitoring active`);
     }
 
     private stopRokuFinder() {
