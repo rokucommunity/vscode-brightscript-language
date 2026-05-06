@@ -374,6 +374,12 @@ export class DeviceManager {
         if (!force && !this.deviceDiscoveryEnabled) {
             return false;
         }
+
+        // Re-read parent-dir config paths on every config change (settings or watched file)
+        this.parentRokuDevConfigPaths = this.findParentRokuDevConfigPaths();
+
+        this.loadConfiguredDevices().catch(e => console.error(e));
+
         return this.discoverAll(force);
     }
 
@@ -401,6 +407,8 @@ export class DeviceManager {
         // Clear short-lived device info cache
         this.fetchDeviceThrottleData.clear();
 
+        this.findParentRokuDevConfigPaths();
+
         // Only clear lastUsedDeviceIp if it belonged to a discovered device that was removed
         if (this.lastUsedDeviceIp && !this.devices.some(d => d.ip === this.lastUsedDeviceIp)) {
             this.lastUsedDeviceIp = undefined;
@@ -408,6 +416,8 @@ export class DeviceManager {
 
         //clear the cache for the current list of devices
         this.globalStateManager.setLastSeenDevices(this.networkId, []);
+
+        this.loadConfiguredDevices().catch(e => console.error(e));
 
         this.emitDevicesChanged();
     }
