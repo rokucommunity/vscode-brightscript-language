@@ -6,6 +6,7 @@ import type { RokuDevice } from './DeviceManager';
 import { DeviceManager } from './DeviceManager';
 import * as NetworkChangeMonitorModule from './NetworkChangeMonitor';
 import { util } from '../util';
+import * as fsExtra from 'fs-extra';
 
 describe('DeviceManager', () => {
     let manager: DeviceManager;
@@ -1834,6 +1835,240 @@ describe('DeviceManager', () => {
                 expect(manager['devices'][0].configuredName).to.equal('Second Entry');
                 expect(manager['devices'][0].isConfigured).to.equal(true);
             });
+
+            describe('priority merging across all config sources', () => {
+                function makeInspect(userDevices: any[] = [], workspaceDevices: any[] = []) {
+                    (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                        get: () => undefined,
+                        inspect: () => ({
+                            globalValue: userDevices,
+                            workspaceValue: workspaceDevices
+                        })
+                    });
+                }
+
+                function stubFileReads(files: Record<string, any>) {
+                    sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p in files);
+                    sinon.stub(fsExtra, 'readJsonSync').callsFake((p: any) => files[p]);
+                }
+
+                /**
+                 * Stub findParentRokuDevConfigPaths on the prototype so any internal `applyConfig`
+                 * call (including the async findFiles callback) sees the same parent paths.
+                 */
+                function stubParentPaths(paths: string[]) {
+                    sinon.stub(DeviceManager.prototype, 'findParentRokuDevConfigPaths').returns(paths);
+                }
+
+                it('rokuDevConfig (workspace) is lowest priority — user settings override it', async () => {
+                    stubFileReads({
+                        '/ws/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.10', name: 'From Config', password: 'config-pass' }] }
+                    });
+                    makeInspect([{ host: '192.168.1.10', name: 'From User', password: 'user-pass' }]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/.roku/roku-dev-config.json');
+
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('From User');
+                    expect(manager['devices'][0].configuredPassword).to.equal('user-pass');
+                    expect(manager['devices'][0].configuredIn).to.include('user');
+                    expect(manager['devices'][0].configuredIn).to.include('rokuDevConfig');
+                });
+
+                it('workspace settings override user settings', async () => {
+                    makeInspect(
+                        [{ host: '192.168.1.20', name: 'From User', password: 'user-pass' }],
+                        [{ host: '192.168.1.20', name: 'From Workspace', password: 'ws-pass' }]
+                    );
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('From Workspace');
+                    expect(manager['devices'][0].configuredPassword).to.equal('ws-pass');
+                    expect(manager['devices'][0].configuredIn).to.include('user');
+                    expect(manager['devices'][0].configuredIn).to.include('workspace');
+                });
+
+                it('parent-dir rokuDevConfig is lower priority than user settings', async () => {
+                    stubFileReads({
+                        '/parent/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.30', name: 'From Parent', password: 'parent-pass' }] }
+                    });
+                    stubParentPaths(['/parent/.roku/roku-dev-config.json']);
+                    makeInspect([{ host: '192.168.1.30', name: 'From User', password: 'user-pass' }]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('From User');
+                    expect(manager['devices'][0].configuredPassword).to.equal('user-pass');
+                    expect(manager['devices'][0].configuredIn).to.include('user');
+                    expect(manager['devices'][0].configuredIn).to.include('rokuDevConfig');
+                });
+
+                it('devices from rokuDevConfig files are loaded when not in user/workspace settings', async () => {
+                    stubFileReads({
+                        '/ws/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.40', name: 'Only In Config' }] }
+                    });
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/.roku/roku-dev-config.json');
+
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('Only In Config');
+                    expect(manager['devices'][0].configuredIn).to.deep.equal(['rokuDevConfig']);
+                });
+
+                it('devices from parent-dir config are loaded when not in other sources', async () => {
+                    stubFileReads({
+                        '/parent/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.50', name: 'Only In Parent' }] }
+                    });
+                    stubParentPaths(['/parent/.roku/roku-dev-config.json']);
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('Only In Parent');
+                    expect(manager['devices'][0].configuredIn).to.deep.equal(['rokuDevConfig']);
+                });
+
+                it('multiple rokuDevConfig files are all loaded, later entries win for same IP', async () => {
+                    stubFileReads({
+                        '/ws/a/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.60', name: 'Config A', password: 'pass-a' }] },
+                        '/ws/b/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.60', name: 'Config B', password: 'pass-b' }] }
+                    });
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/a/.roku/roku-dev-config.json');
+                    manager['rokuDevConfigPaths'].add('/ws/b/.roku/roku-dev-config.json');
+
+                    await manager['loadConfiguredDevices']();
+
+                    // Both files for the same IP — last one processed wins (non-deterministic Set order for tie-break, but IP is deduped)
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].ip).to.equal('192.168.1.60');
+                    expect(manager['devices'][0].configuredIn).to.deep.equal(['rokuDevConfig']);
+                });
+
+                it('deterministic priority order: rokuDevConfig < parentRokuDevConfig < user < workspace', async () => {
+                    // Same device IP in all four sources — workspace should win
+                    stubFileReads({
+                        '/ws/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.70', name: 'WS Config', password: 'ws-cfg-pass' }] },
+                        '/parent/.roku/roku-dev-config.json': { devices: [{ ip: '192.168.1.70', name: 'Parent Config', password: 'parent-pass' }] }
+                    });
+                    stubParentPaths(['/parent/.roku/roku-dev-config.json']);
+                    makeInspect(
+                        [{ host: '192.168.1.70', name: 'User Settings', password: 'user-pass' }],
+                        [{ host: '192.168.1.70', name: 'Workspace Settings', password: 'ws-settings-pass' }]
+                    );
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/.roku/roku-dev-config.json');
+
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(1);
+                    expect(manager['devices'][0].configuredName).to.equal('Workspace Settings');
+                    expect(manager['devices'][0].configuredPassword).to.equal('ws-settings-pass');
+                    expect(manager['devices'][0].configuredIn).to.include('rokuDevConfig');
+                    expect(manager['devices'][0].configuredIn).to.include('user');
+                    expect(manager['devices'][0].configuredIn).to.include('workspace');
+                });
+
+                it('skips rokuDevConfig entries without an ip field', async () => {
+                    stubFileReads({
+                        '/ws/.roku/roku-dev-config.json': { devices: [{ name: 'No IP Device' }] }
+                    });
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/.roku/roku-dev-config.json');
+
+                    await manager['loadConfiguredDevices']();
+
+                    expect(manager['devices'].length).to.equal(0);
+                });
+
+                it('handles missing or malformed rokuDevConfig file gracefully', async () => {
+                    sinon.stub(fsExtra, 'existsSync').returns(true);
+                    sinon.stub(fsExtra, 'readJsonSync').throws(new Error('Invalid JSON'));
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add('/ws/.roku/roku-dev-config.json');
+
+                    // Should not throw
+                    await manager['loadConfiguredDevices']();
+                    expect(manager['devices'].length).to.equal(0);
+                });
+
+                it('dedupes parse error logs for the same file with the same error', async () => {
+                    const targetPath = '/ws/.roku/roku-dev-config.json';
+                    sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p === targetPath);
+                    sinon.stub(fsExtra, 'readJsonSync').throws(new Error('Invalid JSON'));
+                    const warnSpy = sinon.stub(console, 'warn');
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add(targetPath);
+
+                    await manager['loadConfiguredDevices']();
+                    await manager['loadConfiguredDevices']();
+                    await manager['loadConfiguredDevices']();
+
+                    expect(warnSpy.callCount).to.equal(1);
+                });
+
+                it('re-warns when the parse error message changes', async () => {
+                    const targetPath = '/ws/.roku/roku-dev-config.json';
+                    sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p === targetPath);
+                    const readStub = sinon.stub(fsExtra, 'readJsonSync');
+                    readStub.onCall(0).throws(new Error('Invalid JSON: position 5'));
+                    readStub.onCall(1).throws(new Error('Invalid JSON: position 12'));
+                    const warnSpy = sinon.stub(console, 'warn');
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add(targetPath);
+
+                    await manager['loadConfiguredDevices']();
+                    await manager['loadConfiguredDevices']();
+
+                    expect(warnSpy.callCount).to.equal(2);
+                });
+
+                it('re-warns after a successful load if the file later breaks again', async () => {
+                    const targetPath = '/ws/.roku/roku-dev-config.json';
+                    sinon.stub(fsExtra, 'existsSync').callsFake((p: any) => p === targetPath);
+                    const readStub = sinon.stub(fsExtra, 'readJsonSync');
+                    readStub.onCall(0).throws(new Error('Invalid JSON'));
+                    readStub.onCall(1).returns({ devices: [] }); // success clears the error tracker
+                    readStub.onCall(2).throws(new Error('Invalid JSON'));
+                    const warnSpy = sinon.stub(console, 'warn');
+                    makeInspect([]);
+
+                    manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                    manager['rokuDevConfigPaths'].add(targetPath);
+
+                    await manager['loadConfiguredDevices']();
+                    await manager['loadConfiguredDevices']();
+                    await manager['loadConfiguredDevices']();
+
+                    expect(warnSpy.callCount).to.equal(2);
+                });
+            });
         });
 
         describe('loadLastSeenDevices', () => {
@@ -2786,6 +3021,141 @@ describe('DeviceManager', () => {
 
             expect(manager['rokuDevConfigPaths'].has(keepPath)).to.be.true;
             expect(manager['rokuDevConfigPaths'].has(deletePath)).to.be.false;
+        });
+
+        it('a watched file change triggers re-read of parent-directory config paths', () => {
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+
+            // Stub pathExistsSync so the parent-dir walk finds a config above the workspace folder
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                return p === '/parent/.roku/roku-dev-config.json';
+            });
+
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/parent/workspace' } }
+            ];
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Initially parentRokuDevConfigPaths is populated from findParentRokuDevConfigPaths
+            expect(manager['parentRokuDevConfigPaths']).to.include('/parent/.roku/roku-dev-config.json');
+
+            // Simulate file change — stub should now return a different value to detect re-read
+            (fsExtra.pathExistsSync as sinon.SinonStub).callsFake((p: any) => {
+                return p === '/parent/.roku/roku-dev-config.json' || p === '/other/.roku/roku-dev-config.json';
+            });
+
+            // Trigger watched file change
+            watcherCallbacks.onChange(makeUri('/workspace/something/.roku/roku-dev-config.json'));
+
+            // Parent paths must have been re-evaluated (findParentRokuDevConfigPaths was called again)
+            expect(manager['parentRokuDevConfigPaths']).to.include('/parent/.roku/roku-dev-config.json');
+        });
+    });
+
+    describe('findParentRokuDevConfigPaths', () => {
+        beforeEach(() => {
+            sinon.stub(vscode.workspace, 'createFileSystemWatcher').returns({
+                onDidCreate: () => { },
+                onDidChange: () => { },
+                onDidDelete: () => { }
+            } as any);
+            sinon.stub(vscode.workspace, 'findFiles').resolves([]);
+        });
+
+        it('returns empty array when there are no workspace folders', () => {
+            (vscode.workspace as any).workspaceFolders = [];
+            sinon.stub(fsExtra, 'pathExistsSync').returns(false);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const result = manager.findParentRokuDevConfigPaths();
+
+            expect(result).to.deep.equal([]);
+        });
+
+        it('walks upward from workspace folder parent and finds config', () => {
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/home/user/projects/myapp' } }
+            ];
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                return p === '/home/user/.roku/roku-dev-config.json';
+            });
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const result = manager.findParentRokuDevConfigPaths();
+
+            expect(result).to.include('/home/user/.roku/roku-dev-config.json');
+        });
+
+        it('does not include workspace folder itself, only its parents', () => {
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/home/user/myapp' } }
+            ];
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                // Config exists inside the workspace folder (should NOT be returned — watcher handles that)
+                return p === '/home/user/myapp/.roku/roku-dev-config.json';
+            });
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const result = manager.findParentRokuDevConfigPaths();
+
+            expect(result).to.not.include('/home/user/myapp/.roku/roku-dev-config.json');
+        });
+
+        it('deduplicates parent paths across multiple workspace folders sharing ancestors', () => {
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/shared/parent/project-a' } },
+                { uri: { fsPath: '/shared/parent/project-b' } }
+            ];
+            const visited: string[] = [];
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                visited.push(p as string);
+                return p === '/shared/.roku/roku-dev-config.json';
+            });
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Reset to count only the explicit call below (constructor invokes this method internally)
+            visited.length = 0;
+            const result = manager.findParentRokuDevConfigPaths();
+
+            // Only one entry for the shared ancestor
+            expect(result.filter(p => p === '/shared/.roku/roku-dev-config.json').length).to.equal(1);
+
+            // /shared/parent was only visited once despite two workspace folders having it as ancestor
+            const parentChecks = visited.filter(p => p === '/shared/parent/.roku/roku-dev-config.json');
+            expect(parentChecks.length).to.equal(1);
+        });
+
+        it('returns configs from multiple independent parent chains', () => {
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/team-a/proj' } },
+                { uri: { fsPath: '/team-b/proj' } }
+            ];
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                return p === '/team-a/.roku/roku-dev-config.json' || p === '/team-b/.roku/roku-dev-config.json';
+            });
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const result = manager.findParentRokuDevConfigPaths();
+
+            expect(result).to.include('/team-a/.roku/roku-dev-config.json');
+            expect(result).to.include('/team-b/.roku/roku-dev-config.json');
+        });
+
+        it('returns multiple configs along the same ancestor chain', () => {
+            (vscode.workspace as any).workspaceFolders = [
+                { uri: { fsPath: '/a/b/c/proj' } }
+            ];
+            sinon.stub(fsExtra, 'pathExistsSync').callsFake((p: any) => {
+                return p === '/a/b/c/.roku/roku-dev-config.json' || p === '/a/.roku/roku-dev-config.json';
+            });
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+            const result = manager.findParentRokuDevConfigPaths();
+
+            expect(result).to.include('/a/b/c/.roku/roku-dev-config.json');
+            expect(result).to.include('/a/.roku/roku-dev-config.json');
         });
     });
 });
