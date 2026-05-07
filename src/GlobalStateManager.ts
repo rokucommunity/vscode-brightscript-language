@@ -195,20 +195,22 @@ export class GlobalStateManager {
 
     /**
      * Save IP→serialNumber mapping for the specified network. Called when a device is successfully resolved.
-     * Any previous entries for the same serial number in this network are removed so that only the most
-     * recent IP mapping is kept.
+     * Ensures uniqueness: removes any existing entry with the same serial number (device moved IPs).
+     * IP uniqueness is implicit since IP is the key.
      */
     public setSerialNumberForIp(networkId: string, ip: string, serialNumber: string): void {
         const map = this.context.globalState.get<IpToSerialNumberMap>(this.keys.serialNumberByIpForNetwork) || {};
         if (!map[networkId]) {
             map[networkId] = {};
         }
-        // Purge stale entries for this serial in the same network so only the most recent IP is kept
+
+        // Remove any existing entry with the same serial number (device moved IPs)
         for (const existingIp in map[networkId]) {
-            if (existingIp !== ip && map[networkId][existingIp]?.serialNumber === serialNumber) {
+            if (map[networkId][existingIp].serialNumber === serialNumber && existingIp !== ip) {
                 delete map[networkId][existingIp];
             }
         }
+
         map[networkId][ip] = { serialNumber: serialNumber, timestamp: Date.now() };
         void this.context.globalState.update(this.keys.serialNumberByIpForNetwork, map);
     }

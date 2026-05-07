@@ -30,13 +30,11 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
         // Pre-populate devices and decorations so they're ready before first render
-        this.devices = this.deviceManager.getAllDevices();
+        this.devices = this.deviceManager.getDevicesForUI();
         this.decorationProvider.updateDevices(this.devices);
 
         this.deviceManager.on('devices-changed', () => {
-            this.devices = this.deviceManager.getAllDevices();
-            this.decorationProvider.updateDevices(this.devices);
-            this._onDidChangeTreeData.fire(null);
+            this.handleDevicesChanged();
         });
 
         this.deviceManager.on('scanNeeded-changed', () => {
@@ -67,6 +65,17 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                 return;
             }
             this.deviceManager.refresh();
+        });
+
+        // Health check device when expanded (not on every getChildren/devices-changed)
+        treeView.onDidExpandElement(e => {
+            const element = e.element as DeviceTreeItem;
+            if (element?.contextValue === 'device' && element.key) {
+                const device = this.deviceManager.getDevice(element.key);
+                if (device) {
+                    this.deviceManager.healthCheckDevice(device).catch(() => { });
+                }
+            }
         });
 
         this.deviceManager.on('scan-started', () => {
@@ -103,6 +112,12 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         }
     }
 
+    private handleDevicesChanged(): void {
+        this.devices = this.deviceManager.getDevicesForUI();
+        this.decorationProvider.updateDevices(this.devices);
+        this._onDidChangeTreeData.fire(null);
+    }
+
     /**
      * Should the unique info about a device be obfuscated (i.e. randomly modified to protect the data)?
      */
@@ -128,7 +143,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         if (!element) {
             // Fetch directly if devices haven't been populated yet (avoids debounce delay on initial load)
             if (this.devices.length === 0) {
-                this.devices = this.deviceManager.getAllDevices();
+                this.devices = this.deviceManager.getDevicesForUI();
                 this.decorationProvider.updateDevices(this.devices);
             }
             if (this.devices) {
@@ -156,7 +171,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         if (hasCache) {
                             treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
                         } else {
-                            treeItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
+                            treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
                         }
                     } else if (device.deviceState === 'pending') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
@@ -218,7 +233,6 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             if (!device) {
                 return;
             }
-            this.deviceManager.checkDeviceHealth(device).catch(() => { });
 
             if (device.deviceInfo?.['is-tv'] === 'true') {
                 result.unshift(

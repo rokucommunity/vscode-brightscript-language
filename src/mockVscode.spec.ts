@@ -200,7 +200,9 @@ export let vscode = {
         onDidChangeWindowState: () => { },
         registerFileDecorationProvider: () => ({ dispose: () => { } }),
         createTreeView: () => ({
-            onDidChangeVisibility: () => { }
+            onDidChangeVisibility: () => { },
+            onDidExpandElement: () => { },
+            onDidCollapseElement: () => { }
         }),
         createQuickPick: () => {
             class QuickPick {

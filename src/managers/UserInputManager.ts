@@ -38,8 +38,7 @@ export class UserInputManager {
             const probed = await vscode.window.withProgress(
                 { location: vscode.ProgressLocation.Notification, title: `Contacting ${value}...` },
                 async () => {
-                    await this.deviceManager.processDiscoveredIp(value);
-                    return this.deviceManager.getDevice({ ip: value });
+                    return this.deviceManager.validateAndAddDevice(value);
                 }
             );
             if (probed) {
@@ -118,7 +117,7 @@ export class UserInputManager {
                         const device = (selectedDevice as any).device as RokuDevice;
                         // if the selected device isn't healthy, show an error and keep the picker open so they can select a different device
                         setBusy(true);
-                        const isHealthy = await this.deviceManager.checkDeviceHealth(device, true, false);
+                        const isHealthy = await this.deviceManager.healthCheckDevice(device, true, false);
                         setBusy(false);
                         if (!isHealthy) {
                             await vscode.window.showErrorMessage(`The selected device (${device.ip}) is not responding.`);
@@ -135,8 +134,7 @@ export class UserInputManager {
             } else if (quickPick.value) {
                 const typedValue = quickPick.value;
                 setBusy(true);
-                await this.deviceManager.processDiscoveredIp(typedValue);
-                const probed = this.deviceManager.getDevice({ ip: typedValue });
+                const probed = await this.deviceManager.validateAndAddDevice(typedValue);
                 setBusy(false);
                 if (!probed) {
                     await vscode.window.showErrorMessage(`Unable to connect to a Roku at ${typedValue}. Check the IP and confirm developer mode is enabled.`);
@@ -184,7 +182,7 @@ export class UserInputManager {
 
         const refreshList = () => {
             const items = this.createHostQuickPickList(
-                this.deviceManager.getAllDevices(),
+                this.deviceManager.getDevicesForUI(),
                 this.deviceManager.getLastUsedDeviceIp(),
                 itemCache
             );
