@@ -457,7 +457,7 @@ export class DeviceManager {
      * Clear discovered devices from the device list, keeping configured devices.
      * Useful for refreshing the network scan without losing user-configured devices.
      */
-    public clearCurrentDeviceList() {
+    public async clearCurrentDeviceList() {
         // Clear discovered devices (ephemeral)
         this.discoveredDevices = [];
 
@@ -474,7 +474,9 @@ export class DeviceManager {
         //clear the cache for the current list of devices
         this.globalStateManager.setLastSeenDevices(this.networkId, []);
 
+        await this.healthCheckAllDevices(false, false).catch(() => { });
         this.emitDevicesChanged();
+
     }
 
     public clearAllCache() {
@@ -492,7 +494,7 @@ export class DeviceManager {
         this.deviceStates.clear();
 
         // Clear discovered devices
-        this.clearCurrentDeviceList();
+        this.clearCurrentDeviceList().catch(() => { });
     }
 
     public async healthCheckDevice(deviceOrLookup: RokuDevice | { ip?: string; serialNumber?: string }, force = false, doSyntheticDelay = true): Promise<boolean> {
@@ -750,7 +752,10 @@ export class DeviceManager {
         // Try to find cached data via serial number
         const serialForCache = knownSerial ?? this.globalStateManager.getSerialNumberForIp(device.ip, this.networkId);
         const cached = serialForCache ? this.globalStateManager.getCachedDevice(serialForCache) : undefined;
-        const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS);
+        // Check if the serial was last seen at this IP (don't trust cache if device moved)
+        const cachedIp = serialForCache ? this.globalStateManager.getIpForSerial(serialForCache, this.networkId) : undefined;
+        const cacheIsFresh = cached && (Date.now() - cached.createdAt < this.DEVICE_INFO_CACHE_MS) && cachedIp === device.ip;
+        console.log('[TRACE] resolveDevice', device.ip, 'serialForCache=', serialForCache, 'cachedIp=', cachedIp, 'cacheIsFresh=', cacheIsFresh);
 
         // Use cache only if:
         // - Not forced

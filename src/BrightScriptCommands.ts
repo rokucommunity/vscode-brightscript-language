@@ -339,8 +339,9 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearCurrentDeviceList', async () => {
-            this.deviceManager.clearCurrentDeviceList();
-            await util.showTimedNotification('Clearing device list');
+            const toatsPromise = util.showTimedNotification('Clearing device list');
+            await this.deviceManager.clearCurrentDeviceList();
+            await toatsPromise;
         });
 
         this.registerCommand('enableDeviceDiscovery', async () => {

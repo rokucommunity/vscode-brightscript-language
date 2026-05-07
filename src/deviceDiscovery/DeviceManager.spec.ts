@@ -1618,7 +1618,7 @@ describe('DeviceManager', () => {
             expect(getDeviceInfoStub.callCount).to.equal(2);
         });
 
-        it('uses cached data on network change when serial is known', async () => {
+        it('refetches on network change even when serial is known (IP mapping is network-specific)', async () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
 
             // Device with known serial (from config or previous discovery)
@@ -1650,10 +1650,12 @@ describe('DeviceManager', () => {
             // Re-add device (network change clears discovered devices)
             addDevice(device);
 
-            // Device info cache is keyed by serial, not network.
-            // Since we know the serial, we can use cached data even on new network.
+            // IP→serial mapping is network-specific and gets cleared on network change.
+            // Even though device info cache is keyed by serial, we validate that the
+            // cached IP matches the device's current IP. After network change, this
+            // validation fails so we must refetch to confirm the device is still at this IP.
             await manager['resolveDevice'](device, false);
-            expect(getDeviceInfoStub.callCount).to.equal(1); // Still uses cache
+            expect(getDeviceInfoStub.callCount).to.equal(2); // Refetches after network change
         });
     });
 
