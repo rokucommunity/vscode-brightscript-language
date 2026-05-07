@@ -171,7 +171,7 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         if (hasCache) {
                             treeItem.iconPath = new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('disabledForeground'));
                         } else {
-                            treeItem.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('disabledForeground'));
+                            treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
                         }
                     } else if (device.deviceState === 'pending') {
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
