@@ -2,7 +2,6 @@ import { util as bslangUtil } from 'brighterscript';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fsExtra from 'fs-extra';
-import { DefaultFiles } from 'roku-deploy';
 import * as rta from 'roku-test-automation';
 import type {
     CancellationToken,
@@ -27,6 +26,29 @@ import type { CredentialStore } from './managers/CredentialStore';
 
 
 export class BrightScriptDebugConfigurationProvider implements DebugConfigurationProvider {
+
+    /**
+     * Canonical default `files` glob list for a Roku channel launch configuration.
+     * Other providers (e.g. ManifestProjectProvider) reference this so the project's
+     * notion of "what to deploy" stays in one place.
+     *
+     * Backed by Roku's documented channel package layout:
+     *   - manifest, source/, components/, images/ — listed as standard folders in
+     *     https://developer.roku.com/dev/docs/hello-world
+     *   - locale/ — auto-loaded for translations and localized images per
+     *     https://developer.roku.com/dev/docs/localization
+     *   - fonts/ — TrueType/OpenType files loaded via roFontRegistry
+     *   - componentLibraries/ — output dir for component-library builds bundled with the channel
+     */
+    public static readonly defaultFiles: ReadonlyArray<string> = [
+        'source/**/*.*',
+        'componentLibraries/**/*.*',
+        'components/**/*.*',
+        'images/**/*.*',
+        'locale/**/*',
+        'fonts/**/*',
+        'manifest'
+    ];
 
     public constructor(
         private context: ExtensionContext,
@@ -67,7 +89,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         enableDebuggerAutoRecovery: false,
         stopDebuggerOnAppExit: false,
         autoRunSgDebugCommands: [],
-        files: [...DefaultFiles],
+        files: [...BrightScriptDebugConfigurationProvider.defaultFiles],
         enableSourceMaps: true,
         rewriteDevicePathsInLogs: true,
         packagePort: 80,
@@ -254,7 +276,7 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
 
             for (let library of config.componentLibraries as any) {
                 library.rootDir = this.util.ensureTrailingSlash(library.rootDir);
-                library.files = library.files ? library.files : [...DefaultFiles];
+                library.files = library.files ? library.files : [...BrightScriptDebugConfigurationProvider.defaultFiles];
             }
         } else {
             //create an empty array so it's easier to reason with downstream
