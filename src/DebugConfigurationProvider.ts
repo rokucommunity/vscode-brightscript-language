@@ -243,10 +243,11 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             throw new Error('Cannot determine which workspace to use for brightscript debugging');
         }
 
-        //load the bsconfig settings (if available)
-        let bsconfig = this.getBsConfig(folderUri);
-        if (bsconfig) {
-            config = { ...bsconfig, ...config };
+        //merge config layers, lowest to highest priority: brsconfig < bsconfig < launch.json
+        const brsconfig = this.getBrsConfig(config, folderUri);
+        const bsconfig = this.getBsConfig(folderUri);
+        if (brsconfig || bsconfig) {
+            config = { ...(brsconfig ?? {}), ...(bsconfig ?? {}), ...config };
         }
 
         config.cwd = folderUri.fsPath;
@@ -757,6 +758,44 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
+     * Loads a brsconfig.json file and returns the subset of properties relevant to launch config merging.
+     * Returns undefined if brsconfigPath is not set. Throws if the file exists but cannot be parsed.
+     */
+    public getBrsConfig(config: BrightScriptLaunchConfiguration, workspaceFolder: vscode.Uri): Partial<BrightScriptLaunchConfiguration> | undefined {
+        let brsconfigPath = config.brsconfigPath;
+        if (!brsconfigPath) {
+            return undefined;
+        }
+
+        // Resolve ${workspaceFolder} variable
+        const workspaceFolderPath = bslangUtil.uriToPath(workspaceFolder.toString());
+        brsconfigPath = brsconfigPath.replace(/\$\{workspaceFolder\}/g, workspaceFolderPath);
+
+        // Resolve relative paths against the workspace folder
+        brsconfigPath = path.resolve(workspaceFolderPath, brsconfigPath);
+
+        try {
+            const raw = JSON.parse(fsExtra.readFileSync(brsconfigPath, 'utf8'));
+            const result: Partial<BrightScriptLaunchConfiguration> = {};
+            if (raw.files !== undefined) {
+                result.files = raw.files;
+            }
+            if (raw.rootDir !== undefined) {
+                result.rootDir = raw.rootDir;
+            }
+            if (raw.cwd !== undefined) {
+                result.cwd = raw.cwd;
+            }
+            if (raw.logLevel !== undefined) {
+                result.logLevel = raw.logLevel;
+            }
+            return result;
+        } catch (e) {
+            throw new Error(`Could not load brsconfig file at "${brsconfigPath}": ${(e as Error).message}`);
+        }
+    }
+
+    /**
      * Get the bsconfig file, if available
      */
     public getBsConfig(workspaceFolder: vscode.Uri) {
@@ -837,4 +876,10 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
      * @default { activateOnSessionStart: false, deactivateOnSessionEnd: false }
      */
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
+
+    /**
+     * Path to a brsconfig.json file. When set, `files`, `rootDir`, `cwd`, and `logLevel` from that file
+     * are used as base values, with launch.json properties taking precedence.
+     */
+    brsconfigPath?: string;
 }
