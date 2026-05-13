@@ -133,7 +133,7 @@ You would create the following `brsconfig.json`:
 
 ### Sharing brsconfig.json with your debugger
 
-Point your `launch.json` at it via the `brsconfigPath` property so you don't have to duplicate `files` / `rootDir` / `cwd` / `logLevel` in both places. See [Debugging: Using `brsconfig.json` for vanilla BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-vanilla-brightscript-projects).
+Point your `launch.json` at it via the `brsconfigPath` property so you don't have to duplicate `files` / `rootDir` / `cwd` / `logLevel` in both places. See [Debugging: Using `brsconfig.json` for standard BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-standard-brightscript-projects).
 
 ## bsconfig.json
 If you're using BrighterScript, you already have a `bsconfig.json` for the compiler — the language server reads it directly, so you don't need a separate `brsconfig.json`.

@@ -59,9 +59,9 @@ then you would need change `rootDir` in your launch config to look like this:
 
 When launching a debug session, this extension will first read all configurations from `bsconfig.json`. Then, it will overwrite any options from the selected configuration from `launch.json`. So, it is advised to keep all common settings in `bsconfig.json`, and only add values you wish to override in `launch.json`.
 
-## Using `brsconfig.json` for vanilla BrightScript projects
+## Using `brsconfig.json` for standard BrightScript projects
 
-`brsconfig.json` is a lightweight config file for **vanilla BrightScript** projects (i.e., projects that do **not** use BrighterScript). It is not a compiler config — it describes project structure so the language server and debugger can understand your project. See [Editing: Choosing a config file](../Editing/index.md#choosing-a-config-file-brsconfigjson-vs-bsconfigjson) for how the same file drives the language server (intellisense, navigation, diagnostics).
+`brsconfig.json` is a lightweight config file for **standard BrightScript** projects (i.e., projects that do **not** use BrighterScript). It is not a compiler config — it describes project structure so the language server and debugger can understand your project. See [Editing: brsconfig.json](../Editing/index.md#brsconfigjson) for how the same file drives the language server (intellisense, navigation, diagnostics).
 
 > **Note:** `brsconfig.json` is distinct from `bsconfig.json`. `bsconfig.json` is the BrighterScript compiler config. `brsconfig.json` has no compiler; it only carries project-structure metadata for plain `.brs` projects.
 
