@@ -793,8 +793,11 @@ describe('DeviceManager', () => {
             manager = new DeviceManager(vscode.context, mockGlobalStateManager);
             (vscode.window as any).state = { focused: true };
 
+            // Use a configured-only device so it persists when offline (discovered-only devices are removed)
             const device = createMockDevice({
                 serialNumber: 'device-123',
+                isConfigured: true,
+                isDiscovered: false,
                 deviceInfo: { 'default-device-name': 'My Roku' }
             });
             addDevice(device);
@@ -808,7 +811,7 @@ describe('DeviceManager', () => {
             expect(cached).to.exist;
             expect(cached.deviceInfo['default-device-name']).to.equal('My Roku');
 
-            // Device should be offline
+            // Device should be offline (configured devices persist with state)
             expect(manager.getDeviceState({ serialNumber: 'device-123' }).state).to.equal('offline');
         });
 
@@ -2914,6 +2917,106 @@ describe('DeviceManager', () => {
                 expect(manager.getAllDevices()[0].isConfigured).to.equal(true);
                 expect(manager.getAllDevices()[0].configuredName).to.equal('Living Room Roku');
                 expect(manager.getAllDevices()[0].configuredPassword).to.equal('secret');
+            });
+
+            it('shows online when configured at wrong IP and discovered at correct IP resolve concurrently', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+                sinon.stub(manager as any, 'refresh').resolves();
+
+                // Configured device XYZ at wrong IP (192.168.1.100)
+                const configuredDevice = createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.100',
+                    isConfigured: true,
+                    isDiscovered: false,
+                    configuredName: 'My Roku'
+                });
+                addDevice(configuredDevice);
+
+                // Discovered device XYZ at correct IP (192.168.1.50)
+                const discoveredDevice = createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.50',
+                    isConfigured: false,
+                    isDiscovered: true
+                });
+                addDevice(discoveredDevice);
+
+                // Stub: IP .100 fails (wrong IP), IP .50 succeeds (correct IP)
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve both concurrently (simulating race condition)
+                await Promise.all([
+                    manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any),
+                    manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any)
+                ]);
+
+                // Should have ONE merged device showing ONLINE (discovered state wins)
+                const devices = manager.getAllDevices();
+                expect(devices.length).to.equal(1);
+                expect(devices[0].serialNumber).to.equal('XYZ');
+                expect(devices[0].deviceState).to.equal('online');
+                expect(devices[0].ip).to.equal('192.168.1.50'); // discovered IP wins
+                expect(devices[0].configuredName).to.equal('My Roku'); // configured name preserved
+            });
+
+            it('shows online regardless of which concurrent health check completes first', async () => {
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+                sinon.stub(manager as any, 'randomDelay').resolves();
+                sinon.stub(manager as any, 'refresh').resolves();
+
+                // Same setup: configured at wrong IP, discovered at correct IP
+                addDevice(createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.100',
+                    isConfigured: true,
+                    isDiscovered: false
+                }));
+                addDevice(createMockDevice({
+                    serialNumber: 'XYZ',
+                    ip: '192.168.1.50',
+                    isConfigured: false,
+                    isDiscovered: true
+                }));
+
+                const getDeviceInfoStub = sinon.stub(rokuDeploy, 'getDeviceInfo');
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                // Resolve in OPPOSITE order: wrong IP first, then correct IP
+                await manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any);
+                await manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any);
+
+                // Should still show online
+                expect(manager.getAllDevices().length).to.equal(1);
+                expect(manager.getAllDevices()[0].deviceState).to.equal('online');
+
+                // Now test the reverse order: correct IP first, then wrong IP
+                getDeviceInfoStub.reset();
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.100' })).rejects(new Error('Unreachable'));
+                getDeviceInfoStub.withArgs(sinon.match({ host: '192.168.1.50' })).resolves({
+                    'serial-number': 'XYZ',
+                    'device-id': 'XYZ',
+                    'default-device-name': 'Roku Express'
+                } as any);
+
+                await manager['resolveDevice']({ ip: '192.168.1.50', serialNumber: 'XYZ', isDiscovered: true } as any);
+                await manager['resolveDevice']({ ip: '192.168.1.100', serialNumber: 'XYZ', isDiscovered: false } as any);
+
+                // Should still show online (discovered state wins, not affected by configured failure)
+                expect(manager.getAllDevices().length).to.equal(1);
+                expect(manager.getAllDevices()[0].deviceState).to.equal('online');
             });
         });
 

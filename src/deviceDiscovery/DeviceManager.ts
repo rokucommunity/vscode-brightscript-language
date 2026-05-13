@@ -95,10 +95,13 @@ export class DeviceManager {
         this.networkChangeMonitor = new NetworkChangeMonitor(() => {
             this.networkId = getNetworkHash();
 
-            //reset all device states to pending - need to re-verify on new network
-            this.deviceStates.clear();
+            //reset all configured device states to pending - need to re-verify on new network
+            for (const entry of this.configuredDevices) {
+                entry.state = 'pending';
+                entry.stateLastUpdated = Date.now();
+            }
 
-            //clear and reload discovered devices anytime this network changes
+            //clear and reload discovered devices anytime this network changes (state goes with them)
             this.discoveredDevices = [];
             this.loadLastSeenDevices();
 
@@ -141,7 +144,6 @@ export class DeviceManager {
     // Core state and dependencies
     private configuredDevices: ConfiguredDeviceEntry[] = [];
     private discoveredDevices: DiscoveredDeviceEntry[] = [];
-    private deviceStates = new Map<DeviceStateKey, DeviceStateEntry>();
     private scanNeeded = false;
     private lastUsedDeviceIp: string | undefined = undefined;
     private networkId: string;
@@ -333,50 +335,46 @@ export class DeviceManager {
 
     // #region Device State Management
     /**
-     * Get the state key for a device lookup.
-     * Prefers serial number over IP for stable identity.
-     * @returns Key in format "s:{serial}" or "i:{ip}"
-     */
-    private getStateKey(lookup: { serialNumber?: string; ip?: string }): DeviceStateKey {
-        if (lookup.serialNumber) {
-            return `s:${lookup.serialNumber}`;
-        }
-        return `i:${lookup.ip}`;
-    }
-
-    /**
-     * Get device state from the separate state map.
+     * Get device state from inline state on entries.
+     * Priority: discovered > configured > default pending
+     * Searches by IP first (if provided), then by serial number
      * @param lookup - Device lookup by serial and/or IP
      * @returns The device state, defaulting to 'pending' if not found
      */
     public getDeviceState(lookup: { serialNumber?: string; ip?: string }): DeviceStateEntry {
-        // Try serial key first (most stable)
-        if (lookup.serialNumber) {
-            const serialEntry = this.deviceStates.get(`s:${lookup.serialNumber}`);
-            if (serialEntry) {
-                return serialEntry;
-            }
+        // Find discovered entry (by IP first, then by serial)
+        let discoveredEntry = lookup.ip
+            ? this.discoveredDevices.find(d => d.ip === lookup.ip)
+            : undefined;
+        if (!discoveredEntry && lookup.serialNumber) {
+            discoveredEntry = this.discoveredDevices.find(d => d.serialNumber === lookup.serialNumber);
+        }
+        if (discoveredEntry?.state) {
+            return { state: discoveredEntry.state, lastUpdated: discoveredEntry.stateLastUpdated ?? Date.now() };
         }
 
-        // Try IP key as fallback
-        if (lookup.ip) {
-            const ipEntry = this.deviceStates.get(`i:${lookup.ip}`);
-            if (ipEntry) {
-                return ipEntry;
-            }
+        // Find configured entry (by IP first, then by serial)
+        let configuredEntry = lookup.ip
+            ? this.configuredDevices.find(d => d.host === lookup.ip || d.resolvedIp === lookup.ip)
+            : undefined;
+        if (!configuredEntry && lookup.serialNumber) {
+            configuredEntry = this.configuredDevices.find(d => d.serialNumber === lookup.serialNumber);
+        }
+        if (configuredEntry?.state) {
+            return { state: configuredEntry.state, lastUpdated: configuredEntry.stateLastUpdated ?? Date.now() };
         }
 
         return { state: 'pending', lastUpdated: Date.now() };
     }
 
     /**
-     * Set device state in the separate state map.
+     * Set device state directly on entries that match the IP.
+     * Updates all configured and discovered entries at the given IP.
      * When called without explicit state, uses intelligent defaults:
      * - If already online, stays online
      * - Else checks cache freshness (5 min threshold) to determine online vs pending
-     * Handles key migration: when serial becomes known, migrates i:{ip} entry to s:{serial}
      *
-     * @param lookup - Device lookup by serial and/or IP
+     * @param lookup - Device lookup by IP (and optionally serial for cache lookup)
      * @param state - Explicit state to set, or undefined for intelligent default
      */
     public setDeviceState(lookup: { serialNumber?: string; ip?: string }, state?: DeviceState): void {
@@ -405,18 +403,26 @@ export class DeviceManager {
             }
         }
 
-        // Handle key migration: when serial becomes known, migrate from IP key to serial key
-        if (lookup.serialNumber && lookup.ip) {
-            const ipKey = `i:${lookup.ip}` as DeviceStateKey;
-            if (this.deviceStates.has(ipKey)) {
-                // Remove the old IP-based entry
-                this.deviceStates.delete(ipKey);
+        // Update configured entries at this IP that match the serial (or have no serial conflict)
+        for (const entry of this.configuredDevices) {
+            const ipMatches = entry.host === lookup.ip || entry.resolvedIp === lookup.ip;
+            // Only update if IP matches AND (no serial conflict OR serials match)
+            const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
+            if (ipMatches && !serialConflict) {
+                entry.state = resolvedState;
+                entry.stateLastUpdated = now;
             }
         }
 
-        // Set state using preferred key (serial if available, else IP)
-        const key = this.getStateKey(lookup);
-        this.deviceStates.set(key, { state: resolvedState, lastUpdated: now });
+        // Update discovered entries at this IP that match the serial (or have no serial conflict)
+        for (const entry of this.discoveredDevices) {
+            const ipMatches = entry.ip === lookup.ip;
+            const serialConflict = lookup.serialNumber && entry.serialNumber && entry.serialNumber !== lookup.serialNumber;
+            if (ipMatches && !serialConflict) {
+                entry.state = resolvedState;
+                entry.stateLastUpdated = now;
+            }
+        }
     }
     // #endregion
 
@@ -491,9 +497,14 @@ export class DeviceManager {
         // Clear all timestamps and per-device state
         this.lastScanDate = null;
         this.resolveDeviceSequence.clear();
-        this.deviceStates.clear();
 
-        // Clear discovered devices
+        // Reset configured device states to pending
+        for (const entry of this.configuredDevices) {
+            entry.state = 'pending';
+            entry.stateLastUpdated = Date.now();
+        }
+
+        // Clear discovered devices (state goes with them)
         this.clearCurrentDeviceList().catch(() => { });
     }
 
@@ -815,8 +826,7 @@ export class DeviceManager {
             // Remove from discoveredDevices (ephemeral - offline devices are removed)
             this.removeDiscoveredDevice(device.ip);
 
-            // Set state to offline (configured devices persist with offline state)
-            // Use known serial if available for proper key management
+            // Set state to offline on any remaining entries at this IP (configured devices persist)
             this.setDeviceState({ ip: device.ip, serialNumber: knownSerial }, 'offline');
 
             this.emitDevicesChanged();
@@ -877,7 +887,9 @@ export class DeviceManager {
             const hasDifferentSerial = entry.serialNumber && serialNumber && entry.serialNumber !== serialNumber;
 
             if (isAtThisIp && hasDifferentSerial) {
-                this.setDeviceState({ serialNumber: entry.serialNumber }, 'offline');
+                // Mark the configured entry directly as offline
+                entry.state = 'offline';
+                entry.stateLastUpdated = Date.now();
             }
         }
     }
@@ -1136,7 +1148,8 @@ export class DeviceManager {
             discoveredEntry?.serialNumber ??
             this.globalStateManager.getSerialNumberForIp(ip, this.networkId);
 
-        const deviceState = this.getDeviceState({ serialNumber: serialNumber, ip: ip }).state;
+        // Determine state: discovered > configured > pending (discovered is ground truth)
+        const deviceState = discoveredEntry?.state ?? configuredEntry?.state ?? 'pending';
 
         // Build key
         const key = serialNumber ? `s:${serialNumber}` : `i:${ip}`;
@@ -1329,6 +1342,14 @@ interface ConfiguredDeviceEntry extends ConfiguredDevice {
      * Which settings scopes this device is configured in
      */
     configuredIn?: ConfigurationScope[];
+    /**
+     * Current device state (inline on entry)
+     */
+    state?: DeviceState;
+    /**
+     * Timestamp of last state update
+     */
+    stateLastUpdated?: number;
 }
 
 /**
@@ -1344,15 +1365,18 @@ interface DiscoveredDeviceEntry {
      * Serial number from device-info response
      */
     serialNumber?: string;
+    /**
+     * Current device state (inline on entry)
+     */
+    state?: DeviceState;
+    /**
+     * Timestamp of last state update
+     */
+    stateLastUpdated?: number;
 }
 
 /**
- * Key format for device state map: "s:{serial}" or "i:{ip}"
- */
-type DeviceStateKey = `s:${string}` | `i:${string}`;
-
-/**
- * Entry in the device state map
+ * Device state with timestamp, returned by getDeviceState
  */
 interface DeviceStateEntry {
     state: DeviceState;
