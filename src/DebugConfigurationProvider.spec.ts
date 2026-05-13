@@ -900,18 +900,52 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(s`${config.rootDir}`).to.contain('myapp');
         });
 
-        it('merges in priority order: brsconfig < bsconfig < launch.json', async () => {
+        it('does NOT auto-load bsconfig.json when brsconfigPath is set', async () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'from-brsconfig',
+                logLevel: 'info'
+            });
+
+            //getBsConfig should never be called when brsconfigPath is set
+            (configProvider.getBsConfig as any).returns({
+                rootDir: 'from-bsconfig',
+                logLevel: 'warn'
+            });
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript',
+                brsconfigPath: brsconfigPath
+            });
+
+            // brsconfig values win — bsconfig was ignored entirely
+            expect(s`${config.rootDir}`).to.contain('from-brsconfig');
+            expect(config.logLevel).to.equal('info');
+            expect((configProvider.getBsConfig as any).called).to.be.false;
+        });
+
+        it('still auto-loads bsconfig.json when brsconfigPath is NOT set', async () => {
+            (configProvider.getBsConfig as any).returns({
+                rootDir: 'from-bsconfig',
+                logLevel: 'warn'
+            });
+
+            const config = await configProvider.resolveDebugConfiguration(folder, <any>{
+                host: '127.0.0.1',
+                type: 'brightscript'
+            });
+
+            expect(s`${config.rootDir}`).to.contain('from-bsconfig');
+            expect(config.logLevel).to.equal('warn');
+        });
+
+        it('launch.json values override brsconfig.json values', async () => {
             const brsconfigPath = s`${rootDir}/brsconfig.json`;
             fsExtra.outputJsonSync(brsconfigPath, {
                 rootDir: 'from-brsconfig',
                 files: ['from-brsconfig'],
                 logLevel: 'info'
-            });
-
-            //override the default getBsConfig stub (set in outer beforeEach) to return a non-empty bsconfig
-            (configProvider.getBsConfig as any).returns({
-                rootDir: 'from-bsconfig',
-                logLevel: 'warn'
             });
 
             const config = await configProvider.resolveDebugConfiguration(folder, <any>{
@@ -921,11 +955,10 @@ describe('BrightScriptConfigurationProvider', () => {
                 logLevel: 'debug'
             });
 
-            // bsconfig overrides brsconfig
-            expect(s`${config.rootDir}`).to.contain('from-bsconfig');
-            // launch.json overrides bsconfig
+            // launch.json wins on logLevel
             expect(config.logLevel).to.equal('debug');
-            // brsconfig provides values when neither bsconfig nor launch.json set them
+            // brsconfig fills in everything launch.json didn't set
+            expect(s`${config.rootDir}`).to.contain('from-brsconfig');
             expect(config.files).to.deep.equal(['from-brsconfig']);
         });
 

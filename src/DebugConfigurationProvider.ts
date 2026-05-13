@@ -243,11 +243,17 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             throw new Error('Cannot determine which workspace to use for brightscript debugging');
         }
 
-        //merge config layers, lowest to highest priority: brsconfig < bsconfig < launch.json
+        //merge config from brsconfig.json (if brsconfigPath is set) OR bsconfig.json — never both.
+        //brsconfigPath is an explicit opt-in to standard BrightScript mode and takes precedence;
+        //bsconfig.json is only auto-loaded when brsconfigPath is NOT set.
         const brsconfig = this.getBrsConfig(config, folderUri);
-        const bsconfig = this.getBsConfig(folderUri);
-        if (brsconfig || bsconfig) {
-            config = { ...(brsconfig ?? {}), ...(bsconfig ?? {}), ...config };
+        if (brsconfig) {
+            config = { ...brsconfig, ...config };
+        } else {
+            const bsconfig = this.getBsConfig(folderUri);
+            if (bsconfig) {
+                config = { ...bsconfig, ...config };
+            }
         }
 
         config.cwd = folderUri.fsPath;

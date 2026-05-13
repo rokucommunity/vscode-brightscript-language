@@ -105,6 +105,8 @@ Set `brsconfigPath` in your `launch.json` to pull `files`, `rootDir`, `cwd`, and
 
 The merge order from lowest to highest priority is: extension defaults → `brsconfig.json` (via `brsconfigPath`) → `launch.json`.
 
+> **Note:** When `brsconfigPath` is set, `bsconfig.json` is **not** auto-loaded. `brsconfigPath` is an explicit opt-in for standard BrightScript projects, so the extension uses `brsconfig.json` exclusively and skips the usual `bsconfig.json` lookup.
+
 ## Breakpoints
 
 Roku devices currently do not have a way to dynamically insert breakpoints during a running application. So, in order to use breakpoints, this extension will inject a `STOP` statement into the code for each breakpoint before the app is deployed. This means that anytime you add/remove a breakpoint, you will need to stop your current debug session and start a new one.
