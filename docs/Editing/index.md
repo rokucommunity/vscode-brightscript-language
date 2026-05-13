@@ -28,6 +28,21 @@ C:/Projects/YourAwesomeApp/
 ```
 
 
+## Choosing a config file: `brsconfig.json` vs `bsconfig.json`
+
+If your project structure doesn't match the Roku defaults (or you want extra files, a subdirectory layout, etc.), you'll need a config file so the language server understands your project. There are two options, and which one you use depends on whether your project is vanilla BrightScript or BrighterScript:
+
+- **`brsconfig.json`** — for **vanilla BrightScript** projects (no BrighterScript compiler). Carries project-structure metadata only — `files`, `rootDir`, `cwd`, `logLevel`. Nothing else.
+- **`bsconfig.json`** — for **BrighterScript** projects. The full compiler config, including everything in `brsconfig.json` plus many more options.
+
+If you're not using BrighterScript, use `brsconfig.json` to keep things lightweight. The sections below describe `bsconfig.json`, but the same `files` / `rootDir` examples apply identically to `brsconfig.json`.
+
+> **Note:** A file named `brsconfig.json` previously existed in older versions of this extension with a different meaning. Today it has the specific, narrower purpose described above.
+
+### Using `brsconfig.json` with your debugger
+
+If you set up a `brsconfig.json` for the language server, you can also point your `launch.json` at it via the `brsconfigPath` property to avoid duplicating `files` / `rootDir` / `cwd` / `logLevel` between the two files. See [Debugging: Using `brsconfig.json` for vanilla BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-vanilla-brightscript-projects).
+
 ## bsconfig.json
 In all other situations, you will need to create a `bsconfig.json` file at the root of your project. The following sections describe the various settings you can utilize to help VSCode to better understand your project
 

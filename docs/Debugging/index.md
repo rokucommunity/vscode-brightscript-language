@@ -61,7 +61,7 @@ When launching a debug session, this extension will first read all configuration
 
 ## Using `brsconfig.json` for vanilla BrightScript projects
 
-`brsconfig.json` is a lightweight config file for **vanilla BrightScript** projects (i.e., projects that do **not** use BrighterScript). It is not a compiler config — it describes project structure so the language server and debugger can understand your project.
+`brsconfig.json` is a lightweight config file for **vanilla BrightScript** projects (i.e., projects that do **not** use BrighterScript). It is not a compiler config — it describes project structure so the language server and debugger can understand your project. See [Editing: Choosing a config file](../Editing/index.md#choosing-a-config-file-brsconfigjson-vs-bsconfigjson) for how the same file drives the language server (intellisense, navigation, diagnostics).
 
 > **Note:** `brsconfig.json` is distinct from `bsconfig.json`. `bsconfig.json` is the BrighterScript compiler config. `brsconfig.json` has no compiler; it only carries project-structure metadata for plain `.brs` projects.
 
