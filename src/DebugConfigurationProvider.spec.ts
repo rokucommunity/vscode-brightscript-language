@@ -794,21 +794,30 @@ describe('BrightScriptConfigurationProvider', () => {
             expect(result).to.be.undefined;
         });
 
-        it('reads files, rootDir, cwd, and logLevel from brsconfig.json', () => {
+        it('reads files, rootDir, and logLevel from brsconfig.json', () => {
             const brsconfigPath = s`${rootDir}/brsconfig.json`;
             fsExtra.outputJsonSync(brsconfigPath, {
                 files: ['manifest', 'source/**/*.brs'],
                 rootDir: 'src',
-                cwd: '/some/cwd',
                 logLevel: 'info'
             });
             const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
             expect(result).to.deep.equal({
                 files: ['manifest', 'source/**/*.brs'],
                 rootDir: 'src',
-                cwd: '/some/cwd',
                 logLevel: 'info'
             });
+        });
+
+        it('ignores cwd in brsconfig.json (brsconfig paths resolve relative to the file)', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(brsconfigPath, {
+                rootDir: 'src',
+                cwd: '/some/cwd'
+            });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            expect(result).not.to.have.property('cwd');
+            expect(result).to.deep.equal({ rootDir: 'src' });
         });
 
         it('omits properties not present in brsconfig.json', () => {
@@ -817,7 +826,6 @@ describe('BrightScriptConfigurationProvider', () => {
             const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
             expect(result).to.deep.equal({ rootDir: 'src' });
             expect(result).not.to.have.property('files');
-            expect(result).not.to.have.property('cwd');
             expect(result).not.to.have.property('logLevel');
         });
 

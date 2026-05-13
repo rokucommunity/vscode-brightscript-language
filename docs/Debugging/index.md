@@ -71,12 +71,11 @@ When launching a debug session, this extension will first read all configuration
 |---|---|
 | `files` | File globs describing which files belong to the project. Used by the LSP and merged into the launch config when `brsconfigPath` is set. |
 | `rootDir` | The root directory of the project (must contain `manifest`). |
-| `cwd` | Working directory override. |
 | `logLevel` | Logging verbosity: `off`, `error`, `warn`, `log`, `info`, `debug`, or `trace`. |
 
 ### Avoiding duplication with `brsconfigPath`
 
-Set `brsconfigPath` in your `launch.json` to pull `files`, `rootDir`, `cwd`, and `logLevel` from your `brsconfig.json` automatically. Values explicitly set in `launch.json` always win.
+Set `brsconfigPath` in your `launch.json` to pull `files`, `rootDir`, and `logLevel` from your `brsconfig.json` automatically. Values explicitly set in `launch.json` always win.
 
 ```json
 // brsconfig.json

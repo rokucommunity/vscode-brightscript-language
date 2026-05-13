@@ -789,9 +789,6 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
             if (raw.rootDir !== undefined) {
                 result.rootDir = raw.rootDir;
             }
-            if (raw.cwd !== undefined) {
-                result.cwd = raw.cwd;
-            }
             if (raw.logLevel !== undefined) {
                 result.logLevel = raw.logLevel;
             }
@@ -884,7 +881,7 @@ export interface BrightScriptLaunchConfiguration extends LaunchConfiguration {
     remoteControlMode?: { activateOnSessionStart?: boolean; deactivateOnSessionEnd?: boolean };
 
     /**
-     * Path to a brsconfig.json file. When set, `files`, `rootDir`, `cwd`, and `logLevel` from that file
+     * Path to a brsconfig.json file. When set, `files`, `rootDir`, and `logLevel` from that file
      * are used as base values, with launch.json properties taking precedence.
      */
     brsconfigPath?: string;

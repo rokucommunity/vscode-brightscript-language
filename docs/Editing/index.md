@@ -35,7 +35,6 @@ Supported properties:
 
 - `files` — file globs describing which files belong to the project
 - `rootDir` — the project root (must contain `manifest`)
-- `cwd` — working directory override
 - `logLevel` — `off` | `error` | `warn` | `log` | `info` | `debug` | `trace`
 
 > **Note:** A file named `brsconfig.json` previously existed in older versions of this extension with a different meaning. Today it has the specific, narrower purpose described here. If you're using BrighterScript, see [bsconfig.json](#bsconfigjson) below instead.
@@ -133,9 +132,9 @@ You would create the following `brsconfig.json`:
 
 ### Sharing brsconfig.json with your debugger
 
-Point your `launch.json` at it via the `brsconfigPath` property so you don't have to duplicate `files` / `rootDir` / `cwd` / `logLevel` in both places. See [Debugging: Using `brsconfig.json` for standard BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-standard-brightscript-projects).
+Point your `launch.json` at it via the `brsconfigPath` property so you don't have to duplicate `files` / `rootDir` / `logLevel` in both places. See [Debugging: Using `brsconfig.json` for standard BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-standard-brightscript-projects).
 
 ## bsconfig.json
 If you're using BrighterScript, you already have a `bsconfig.json` for the compiler — the language server reads it directly, so you don't need a separate `brsconfig.json`.
 
-For project structure, `bsconfig.json` supports the same `files`, `rootDir`, `cwd`, and `logLevel` properties shown in the [brsconfig.json](#brsconfigjson) examples above — just use `bsconfig.json` as the filename. On top of that, it carries the full BrighterScript compiler config. See [the BrighterScript docs](https://github.com/rokucommunity/brighterscript#bsconfigjson-options) for the complete list of options.
+For project structure, `bsconfig.json` supports the same `files`, `rootDir`, and `logLevel` properties shown in the [brsconfig.json](#brsconfigjson) examples above — just use `bsconfig.json` as the filename. On top of that, it carries the full BrighterScript compiler config. See [the BrighterScript docs](https://github.com/rokucommunity/brighterscript#bsconfigjson-options) for the complete list of options.

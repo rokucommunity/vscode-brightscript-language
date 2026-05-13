@@ -979,7 +979,7 @@
                             },
                             "brsconfigPath": {
                                 "type": "string",
-                                "description": "Path to a brsconfig.json file for standard BrightScript projects. When set, the `files`, `rootDir`, `cwd`, and `logLevel` properties from that file are used as base values, with any properties explicitly set in launch.json taking precedence. Supports ${workspaceFolder}."
+                                "description": "Path to a brsconfig.json file for standard BrightScript projects. When set, the `files`, `rootDir`, and `logLevel` properties from that file are used as base values, with any properties explicitly set in launch.json taking precedence. Supports ${workspaceFolder}."
                             },
                             "consoleOutput": {
                                 "type": "string",
