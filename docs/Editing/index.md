@@ -28,26 +28,20 @@ C:/Projects/YourAwesomeApp/
 ```
 
 
-## Choosing a config file: `brsconfig.json` vs `bsconfig.json`
+## brsconfig.json
+If your standard BrightScript project doesn't match the layout above — extra folders, a subdirectory layout, etc. — create a `brsconfig.json` at the root of your project. It tells the language server where your files live so intellisense, navigation, and diagnostics work correctly.
 
-If your project structure doesn't match the Roku defaults (or you want extra files, a subdirectory layout, etc.), you'll need a config file so the language server understands your project. There are two options, and which one you use depends on whether your project is vanilla BrightScript or BrighterScript:
+Supported properties:
 
-- **`brsconfig.json`** — for **vanilla BrightScript** projects (no BrighterScript compiler). Carries project-structure metadata only — `files`, `rootDir`, `cwd`, `logLevel`. Nothing else.
-- **`bsconfig.json`** — for **BrighterScript** projects. The full compiler config, including everything in `brsconfig.json` plus many more options.
+- `files` — file globs describing which files belong to the project
+- `rootDir` — the project root (must contain `manifest`)
+- `cwd` — working directory override
+- `logLevel` — `off` | `error` | `warn` | `log` | `info` | `debug` | `trace`
 
-If you're not using BrighterScript, use `brsconfig.json` to keep things lightweight. The sections below describe `bsconfig.json`, but the same `files` / `rootDir` examples apply identically to `brsconfig.json`.
+> **Note:** A file named `brsconfig.json` previously existed in older versions of this extension with a different meaning. Today it has the specific, narrower purpose described here. If you're using BrighterScript, see [bsconfig.json](#bsconfigjson) below instead.
 
-> **Note:** A file named `brsconfig.json` previously existed in older versions of this extension with a different meaning. Today it has the specific, narrower purpose described above.
-
-### Using `brsconfig.json` with your debugger
-
-If you set up a `brsconfig.json` for the language server, you can also point your `launch.json` at it via the `brsconfigPath` property to avoid duplicating `files` / `rootDir` / `cwd` / `logLevel` between the two files. See [Debugging: Using `brsconfig.json` for vanilla BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-vanilla-brightscript-projects).
-
-## bsconfig.json
-In all other situations, you will need to create a `bsconfig.json` file at the root of your project. The following sections describe the various settings you can utilize to help VSCode to better understand your project
-
-## Extra folders
-If your project has folders not part of the standard Roku structure, then you will need to specify all of the necessary files in the 
+### Extra folders
+If your project has folders not part of the standard Roku structure, specify all of the necessary files via `files`.
 
 Consider this project that includes a `config/` folder:
 ```text
@@ -66,7 +60,7 @@ C:/Projects/YourAwesomeApp/
     └─ prod.json
 ```
 
-You would create the following `bsconfig.json`
+You would create the following `brsconfig.json`:
 ```javascript
 {
     "files": [
@@ -81,8 +75,8 @@ You would create the following `bsconfig.json`
 }
 ```
 
-## Subdirectory
-If your project lives in a subdirectory, you should add a `rootDir` property to the `bsconfig.json`. 
+### Subdirectory
+If your project lives in a subdirectory, set `rootDir`.
 
 Consider this project:
 
@@ -96,9 +90,9 @@ C:/Projects/YourAwesomeApp/
     | └─ HomeScene.xml
     └─ source/
       └─ main.brs
-``` 
+```
 
-You would have the following `bsconfig.json`:
+You would create the following `brsconfig.json`:
 
 ```javascript
 {
@@ -106,9 +100,9 @@ You would have the following `bsconfig.json`:
 }
 ```
 
-## Subdirectory and Extra Folders
+### Subdirectory and Extra Folders
 
-If your code is in a subdirectory and you have extra folders
+If your code is in a subdirectory and you have extra folders:
 ```text
 C:/Projects/YourAwesomeApp/
   ├─ docs/
@@ -123,9 +117,9 @@ C:/Projects/YourAwesomeApp/
       ├─ dev.json
       ├─ test.json
       └─ prod.json
-``` 
+```
 
-You would have the following `bsconfig.json`:
+You would create the following `brsconfig.json`:
 
 ```json
 {
@@ -137,5 +131,11 @@ You would have the following `bsconfig.json`:
 }
 ```
 
-## Additional Options
-This project relies heavily on the [brighterscript](https://github.com/rokucommunity/brighterscript) project for language server support. See [this link](https://github.com/rokucommunity/brighterscript#bsconfigjson-options) to view all of the available `bsconfig.json` options.
+### Sharing brsconfig.json with your debugger
+
+Point your `launch.json` at it via the `brsconfigPath` property so you don't have to duplicate `files` / `rootDir` / `cwd` / `logLevel` in both places. See [Debugging: Using `brsconfig.json` for vanilla BrightScript projects](../Debugging/index.md#using-brsconfigjson-for-vanilla-brightscript-projects).
+
+## bsconfig.json
+If you're using BrighterScript, you already have a `bsconfig.json` for the compiler — the language server reads it directly, so you don't need a separate `brsconfig.json`.
+
+For project structure, `bsconfig.json` supports the same `files`, `rootDir`, `cwd`, and `logLevel` properties shown in the [brsconfig.json](#brsconfigjson) examples above — just use `bsconfig.json` as the filename. On top of that, it carries the full BrighterScript compiler config. See [the BrighterScript docs](https://github.com/rokucommunity/brighterscript#bsconfigjson-options) for the complete list of options.
