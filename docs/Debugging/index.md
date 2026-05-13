@@ -70,8 +70,9 @@ When launching a debug session, this extension will first read all configuration
 | Property | Description |
 |---|---|
 | `files` | File globs describing which files belong to the project. Used by the LSP and merged into the launch config when `brsconfigPath` is set. |
-| `rootDir` | The root directory of the project (must contain `manifest`). |
+| `rootDir` | The root directory of the project (must contain `manifest`); resolved relative to the `brsconfig.json` file's location. |
 | `logLevel` | Logging verbosity: `off`, `error`, `warn`, `log`, `info`, `debug`, or `trace`. |
+| `extends` | Path to another `brsconfig.json` to inherit from. Comments and trailing commas (JSONC) are also supported. |
 
 ### Avoiding duplication with `brsconfigPath`
 

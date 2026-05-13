@@ -34,8 +34,11 @@ If your standard BrightScript project doesn't match the layout above — extra f
 Supported properties:
 
 - `files` — file globs describing which files belong to the project
-- `rootDir` — the project root (must contain `manifest`)
+- `rootDir` — the project root (must contain `manifest`); resolved relative to the `brsconfig.json` file's location
 - `logLevel` — `off` | `error` | `warn` | `log` | `info` | `debug` | `trace`
+- `extends` — path to another `brsconfig.json` to inherit from
+
+Comments and trailing commas are allowed (JSONC). The file is loaded with the same parser BrighterScript uses for `bsconfig.json`, so `extends` chains work the same way.
 
 > **Note:** A file named `brsconfig.json` previously existed in older versions of this extension with a different meaning. Today it has the specific, narrower purpose described here. If you're using BrighterScript, see [bsconfig.json](#bsconfigjson) below instead.
 

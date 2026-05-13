@@ -802,11 +802,10 @@ describe('BrightScriptConfigurationProvider', () => {
                 logLevel: 'info'
             });
             const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
-            expect(result).to.deep.equal({
-                files: ['manifest', 'source/**/*.brs'],
-                rootDir: 'src',
-                logLevel: 'info'
-            });
+            //rootDir is resolved to absolute relative to the config file's location
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.files).to.deep.equal(['manifest', 'source/**/*.brs']);
+            expect(result.logLevel).to.equal('info');
         });
 
         it('ignores cwd in brsconfig.json (brsconfig paths resolve relative to the file)', () => {
@@ -817,14 +816,14 @@ describe('BrightScriptConfigurationProvider', () => {
             });
             const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
             expect(result).not.to.have.property('cwd');
-            expect(result).to.deep.equal({ rootDir: 'src' });
+            expect(Object.keys(result)).to.deep.equal(['rootDir']);
         });
 
         it('omits properties not present in brsconfig.json', () => {
             const brsconfigPath = s`${rootDir}/brsconfig.json`;
             fsExtra.outputJsonSync(brsconfigPath, { rootDir: 'src' });
             const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
-            expect(result).to.deep.equal({ rootDir: 'src' });
+            expect(Object.keys(result)).to.deep.equal(['rootDir']);
             expect(result).not.to.have.property('files');
             expect(result).not.to.have.property('logLevel');
         });
@@ -836,7 +835,7 @@ describe('BrightScriptConfigurationProvider', () => {
                 <any>{ brsconfigPath: '${workspaceFolder}/brsconfig.json' },
                 workspaceFolderUri
             );
-            expect(result).to.deep.equal({ rootDir: 'src' });
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
         });
 
         it('resolves relative brsconfigPath against workspace folder', () => {
@@ -847,6 +846,37 @@ describe('BrightScriptConfigurationProvider', () => {
                 workspaceFolderUri
             );
             expect(result).to.deep.equal({ files: ['manifest'] });
+        });
+
+        it('supports `extends` inheritance via brighterscript loadConfigFile', () => {
+            const basePath = s`${rootDir}/brsconfig.base.json`;
+            const childPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputJsonSync(basePath, {
+                rootDir: 'src',
+                files: ['manifest', 'source/**/*'],
+                logLevel: 'warn'
+            });
+            //child overrides logLevel and adds nothing else; rootDir + files inherited from base
+            fsExtra.outputJsonSync(childPath, {
+                extends: 'brsconfig.base.json',
+                logLevel: 'debug'
+            });
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: childPath }, workspaceFolderUri);
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.files).to.deep.equal(['manifest', 'source/**/*']);
+            expect(result.logLevel).to.equal('debug');
+        });
+
+        it('supports JSONC (comments and trailing commas) in brsconfig.json', () => {
+            const brsconfigPath = s`${rootDir}/brsconfig.json`;
+            fsExtra.outputFileSync(brsconfigPath, `{
+                // this is the project root
+                "rootDir": "src",
+                "logLevel": "info",
+            }`);
+            const result = configProvider.getBrsConfig(<any>{ brsconfigPath: brsconfigPath }, workspaceFolderUri);
+            expect(s`${result.rootDir}`).to.equal(s`${rootDir}/src`);
+            expect(result.logLevel).to.equal('info');
         });
 
         it('throws a clear error when brsconfig file is missing', () => {

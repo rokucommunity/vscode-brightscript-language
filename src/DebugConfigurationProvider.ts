@@ -764,7 +764,8 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
     }
 
     /**
-     * Loads a brsconfig.json file and returns the subset of properties relevant to launch config merging.
+     * Loads a brsconfig.json file (via brighterscript's loader, so `extends` chains and JSONC are
+     * supported) and returns the subset of properties relevant to launch config merging.
      * Returns undefined if brsconfigPath is not set. Throws if the file exists but cannot be parsed.
      */
     public getBrsConfig(config: BrightScriptLaunchConfiguration, workspaceFolder: vscode.Uri): Partial<BrightScriptLaunchConfiguration> | undefined {
@@ -780,22 +781,27 @@ export class BrightScriptDebugConfigurationProvider implements DebugConfiguratio
         // Resolve relative paths against the workspace folder
         brsconfigPath = path.resolve(workspaceFolderPath, brsconfigPath);
 
+        let raw: any;
         try {
-            const raw = JSON.parse(fsExtra.readFileSync(brsconfigPath, 'utf8'));
-            const result: Partial<BrightScriptLaunchConfiguration> = {};
-            if (raw.files !== undefined) {
-                result.files = raw.files;
-            }
-            if (raw.rootDir !== undefined) {
-                result.rootDir = raw.rootDir;
-            }
-            if (raw.logLevel !== undefined) {
-                result.logLevel = raw.logLevel;
-            }
-            return result;
+            raw = bslangUtil.loadConfigFile(brsconfigPath, undefined, workspaceFolderPath);
         } catch (e) {
-            throw new Error(`Could not load brsconfig file at "${brsconfigPath}": ${(e as Error).message}`);
+            const message = (e as Error)?.message ?? JSON.stringify(e);
+            throw new Error(`Could not load brsconfig file at "${brsconfigPath}": ${message}`);
         }
+        if (!raw) {
+            throw new Error(`Could not load brsconfig file at "${brsconfigPath}"`);
+        }
+        const result: Partial<BrightScriptLaunchConfiguration> = {};
+        if (raw.files !== undefined) {
+            result.files = raw.files;
+        }
+        if (raw.rootDir !== undefined) {
+            result.rootDir = raw.rootDir;
+        }
+        if (raw.logLevel !== undefined) {
+            result.logLevel = raw.logLevel;
+        }
+        return result;
     }
 
     /**
