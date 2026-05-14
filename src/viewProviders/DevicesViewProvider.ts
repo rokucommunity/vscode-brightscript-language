@@ -173,7 +173,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
                         } else {
                             treeItem.iconPath = new vscode.ThemeIcon('question', new vscode.ThemeColor('disabledForeground'));
                         }
-                    } else if (device.deviceState === 'pending') {
+                    } else if (device.deviceState === 'pending' && this.deviceManager.isScanning) {
+                        // Only show pending dot when a scan is actively in progress
                         treeItem.iconPath = new vscode.ThemeIcon('circle-small', new vscode.ThemeColor('disabledForeground'));
                     } else {
                         treeItem.iconPath = icons.getDeviceType(device.deviceInfo);
