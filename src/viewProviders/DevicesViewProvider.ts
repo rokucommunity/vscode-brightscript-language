@@ -16,16 +16,63 @@ let treeItemKeySequence = 0;
  */
 const DEVICE_URI_SCHEME = 'roku-device';
 
+/**
+ * workspaceState key for the user's selected filters in the Devices view
+ */
+const DEVICES_VIEW_FILTERS_STATE_KEY = 'brightscript.devicesView.filters';
+
+/**
+ * Context key prefix VS Code reads to decide which menu entry (checked vs
+ * unchecked) to show for each filter facet in the title-bar submenu.
+ */
+const DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX = 'brightscript.devicesView.filter.';
+
+export interface DevicesViewFilters {
+    devModeEnabled: boolean;
+    devModeDisabled: boolean;
+    tv: boolean;
+    setTopBox: boolean;
+    stick: boolean;
+    online: boolean;
+    offline: boolean;
+}
+
+export const DEVICES_VIEW_FILTER_KEYS: Array<keyof DevicesViewFilters> = [
+    'devModeEnabled',
+    'devModeDisabled',
+    'tv',
+    'setTopBox',
+    'stick',
+    'online',
+    'offline'
+];
+
+const DEFAULT_FILTERS: DevicesViewFilters = {
+    devModeEnabled: true,
+    devModeDisabled: false,
+    tv: true,
+    setTopBox: true,
+    stick: true,
+    online: true,
+    offline: false
+};
+
 export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
     public readonly id = ViewProviderId.devicesView;
 
     private decorationProvider: DeviceDecorationProvider;
 
+    private filters: DevicesViewFilters;
+
     constructor(
         private deviceManager: DeviceManager,
-        private credentialStore: CredentialStore
+        private credentialStore: CredentialStore,
+        private context: vscode.ExtensionContext
     ) {
+        this.filters = this.loadFilters();
+        void this.pushFilterContextKeys();
+
         this.decorationProvider = new DeviceDecorationProvider();
         vscode.window.registerFileDecorationProvider(this.decorationProvider);
 
@@ -148,7 +195,8 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
             }
             if (this.devices) {
                 let items: DeviceTreeItem[] = [];
-                for (const device of this.devices) {
+                const visibleDevices = this.applyFilters(this.devices);
+                for (const device of visibleDevices) {
                     // Make a rook item for each device
                     let treeItem = new DeviceTreeItem(
                         this.makeName(device),
@@ -450,6 +498,92 @@ export class DevicesViewProvider implements vscode.TreeDataProvider<vscode.TreeI
         } else {
             return value;
         }
+    }
+
+    /**
+     * Filter the device list to only those matching every enabled facet
+     * (form factor, connectivity, dev-mode). Unchecking any facet strictly
+     * hides devices with that attribute.
+     */
+    private applyFilters(devices: RokuDevice[]): RokuDevice[] {
+        const filters = this.filters;
+        return devices.filter(device => {
+            const info = device.deviceInfo ?? {};
+            const isTv = info['is-tv'] === 'true';
+            const isStick = info['is-stick'] === 'true';
+            const isSetTopBox = !isTv && !isStick;
+            if (isTv && !filters.tv) {
+                return false;
+            }
+            if (isStick && !filters.stick) {
+                return false;
+            }
+            if (isSetTopBox && !filters.setTopBox) {
+                return false;
+            }
+
+            // Treat pending the same as online — it's mid-handshake, not actually offline yet
+            const isOffline = device.deviceState === 'offline';
+            if (isOffline && !filters.offline) {
+                return false;
+            }
+            if (!isOffline && !filters.online) {
+                return false;
+            }
+
+            // developer-enabled may be missing on older firmware or before the first health check;
+            // treat unknown as enabled so we don't hide working devices.
+            const devEnabled = info['developer-enabled'] !== 'false';
+            if (devEnabled && !filters.devModeEnabled) {
+                return false;
+            }
+            if (!devEnabled && !filters.devModeDisabled) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    private loadFilters(): DevicesViewFilters {
+        const stored = this.context?.workspaceState.get<Partial<DevicesViewFilters>>(DEVICES_VIEW_FILTERS_STATE_KEY);
+        return { ...DEFAULT_FILTERS, ...(stored ?? {}) };
+    }
+
+    /**
+     * Push per-facet context keys plus the aggregate hasActiveFilters key so
+     * the title-bar submenu can choose which entry to render for each filter.
+     */
+    private pushFilterContextKeys(): Thenable<unknown> {
+        const tasks: Thenable<unknown>[] = [];
+        for (const key of DEVICES_VIEW_FILTER_KEYS) {
+            tasks.push(vscode.commands.executeCommand('setContext', `${DEVICES_VIEW_FILTER_CONTEXT_KEY_PREFIX}${key}`, this.filters[key]));
+        }
+        return Promise.all(tasks);
+    }
+
+    /**
+     * Flip a single filter facet, persist the new state, and refresh the tree.
+     * Only the keys that differ from defaults are written to workspaceState — once the
+     * user toggles a facet back to its default value, that key drops out of storage.
+     */
+    public async toggleFilter(key: keyof DevicesViewFilters): Promise<void> {
+        if (!DEVICES_VIEW_FILTER_KEYS.includes(key)) {
+            return;
+        }
+        this.filters = { ...this.filters, [key]: !this.filters[key] };
+
+        const overrides: Partial<DevicesViewFilters> = {};
+        for (const filterKey of DEVICES_VIEW_FILTER_KEYS) {
+            if (this.filters[filterKey] !== DEFAULT_FILTERS[filterKey]) {
+                overrides[filterKey] = this.filters[filterKey];
+            }
+        }
+        const storedValue = Object.keys(overrides).length > 0 ? overrides : undefined;
+        await this.context.workspaceState.update(DEVICES_VIEW_FILTERS_STATE_KEY, storedValue);
+
+        await this.pushFilterContextKeys();
+        this._onDidChangeTreeData.fire(null);
     }
 }
 
