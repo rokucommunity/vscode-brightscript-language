@@ -213,7 +213,8 @@ describe('BrightScriptFileUtils ', () => {
             httpGetStub = sinon.stub(utilProto, 'httpGet');
             sleepStub = sinon.stub(utilProto, 'sleep').resolves();
             showTimedNotificationStub = sinon.stub(utilProto, 'showTimedNotification').resolves();
-            ecpPostStub = sinon.stub(commands as any, 'ecpPost').resolves({ statusCode: 200, body: '' });
+            ecpPostStub = sinon.stub(commands as any, 'ecpPost');
+            ecpPostStub.resolves({ statusCode: 200, body: '' });
             showErrorStub = sinon.stub(vscode.window, 'showErrorMessage').resolves();
             showWarningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves();
         });
