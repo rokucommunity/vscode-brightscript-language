@@ -190,6 +190,84 @@ describe('BrightScriptFileUtils ', () => {
         });
     });
 
+    describe('restartDevApplication', () => {
+        let utilProto: any;
+        let httpGetStub: sinon.SinonStub;
+        let sleepStub: sinon.SinonStub;
+        let spinAsyncStub: sinon.SinonStub;
+        let showTimedNotificationStub: sinon.SinonStub;
+        let ecpPostStub: sinon.SinonStub;
+        let showErrorStub: sinon.SinonStub;
+        let showWarningStub: sinon.SinonStub;
+
+        const appsResponseWithDev = { body: '<apps><app id="dev">My App</app></apps>' };
+        const activeAppResponseDev = { body: '<active-app><app id="dev">My App</app></active-app>' };
+
+        beforeEach(() => {
+            utilProto = Object.getPrototypeOf(util);
+            sinon.stub(commands, 'getRemoteHost').callsFake(() => {
+                commands.host = '1.2.3.4';
+                return Promise.resolve(commands.host);
+            });
+            spinAsyncStub = sinon.stub(utilProto, 'spinAsync').callsFake((_message: string, callback: () => Promise<any>) => callback());
+            httpGetStub = sinon.stub(utilProto, 'httpGet');
+            sleepStub = sinon.stub(utilProto, 'sleep').resolves();
+            showTimedNotificationStub = sinon.stub(utilProto, 'showTimedNotification').resolves();
+            ecpPostStub = sinon.stub(commands as any, 'ecpPost').resolves({ statusCode: 200, body: '' });
+            showErrorStub = sinon.stub(vscode.window, 'showErrorMessage').resolves();
+            showWarningStub = sinon.stub(vscode.window, 'showWarningMessage').resolves();
+        });
+
+        afterEach(() => {
+            (commands.getRemoteHost as any).restore();
+            spinAsyncStub.restore();
+            httpGetStub.restore();
+            sleepStub.restore();
+            showTimedNotificationStub.restore();
+            ecpPostStub.restore();
+            showErrorStub.restore();
+            showWarningStub.restore();
+        });
+
+        it('terminates dev with exit-app/dev/true and relaunches', async () => {
+            httpGetStub.onFirstCall().resolves(appsResponseWithDev);
+            httpGetStub.onSecondCall().resolves(activeAppResponseDev);
+
+            await commands.restartDevApplication();
+
+            const exitCalls = ecpPostStub.getCalls().filter(call => call.args[1] === 'exit-app/dev/true');
+            assert.equal(exitCalls.length, 1, 'should call exit-app/dev/true exactly once');
+            assert.equal(exitCalls[0].args[0], '1.2.3.4');
+
+            const launchCalls = ecpPostStub.getCalls().filter(call => call.args[1] === 'launch/dev');
+            assert.equal(launchCalls.length, 1, 'should call launch/dev once');
+
+            assert.isFalse(ecpPostStub.getCalls().some(call => call.args[1] === 'exit-app/dev'), 'should not call the non-forced exit-app/dev');
+            assert.isTrue(showTimedNotificationStub.calledOnce);
+            assert.isFalse(showErrorStub.called);
+            assert.isFalse(showWarningStub.called);
+        });
+
+        it('shows an error and skips launch when no dev channel is sideloaded', async () => {
+            httpGetStub.onFirstCall().resolves({ body: '<apps><app id="12345">Netflix</app></apps>' });
+
+            await commands.restartDevApplication();
+
+            assert.isFalse(ecpPostStub.called, 'should not send any ecp calls when dev is missing');
+            assert.isTrue(showErrorStub.calledOnce);
+        });
+
+        it('warns when the dev app is not foregrounded after launch', async () => {
+            httpGetStub.onFirstCall().resolves(appsResponseWithDev);
+            httpGetStub.onSecondCall().resolves({ body: '<active-app><app id="12345">Netflix</app></active-app>' });
+
+            await commands.restartDevApplication();
+
+            assert.isTrue(showWarningStub.calledOnce);
+            assert.isFalse(showTimedNotificationStub.called);
+        });
+    });
+
     describe('onToggleXml ', () => {
         it('does nothing when no active document', () => {
             vscode.window.activeTextEditor = undefined;
