@@ -357,7 +357,7 @@ export class BrightScriptCommands {
         });
 
         this.registerCommand('clearLastSeenDevices', async () => {
-            new GlobalStateManager(this.context).clearLastSeenDevices();
+            this.deviceManager.clearLastSeenDevices();
             await vscode.window.showInformationMessage('Last seen devices cleared');
         });
 

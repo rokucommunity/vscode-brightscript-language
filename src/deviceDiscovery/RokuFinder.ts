@@ -1,11 +1,11 @@
 import { EventEmitter } from 'eventemitter3';
 import type { SsdpHeaders } from 'node-ssdp';
 import { Client, Server } from 'node-ssdp';
-import type { GlobalStateManager } from '../GlobalStateManager';
+import type { HeartbeatProvider } from './DeviceStorageManager';
 
 export class RokuFinder extends EventEmitter {
     constructor(
-        private globalStateManager: GlobalStateManager,
+        private heartbeatProvider: HeartbeatProvider,
         private log: (msg: string) => void = () => { }
     ) {
         super();
@@ -42,7 +42,7 @@ export class RokuFinder extends EventEmitter {
      * Heartbeat suppression: Roku devices send ssdp:alive on a ~20-minute schedule.
      * We emit device-online only when the alive does NOT arrive on schedule — meaning
      * the device just woke up or rebooted
-     * Timestamps are persisted via GlobalStateManager so the clock survives restarts.
+     * Timestamps are persisted via HeartbeatProvider so the clock survives restarts.
      * Keyed by serial number so a DHCP IP change doesn't reset the clock.
      *
      * Roku devices actually fire slightly less than 20minute interval. So use that value to help avoid overnight clock drift
@@ -261,9 +261,9 @@ export class RokuFinder extends EventEmitter {
      */
     private maybeEmitDeviceOnline(ip: string, serialNumber: string | undefined, now: number): void {
         const key = serialNumber ?? ip;
-        const lastTs = this.globalStateManager.getLastAliveTimestamp(key);
+        const lastTs = this.heartbeatProvider.getLastAliveTimestamp(key);
         const elapsed = lastTs !== undefined ? now - lastTs : undefined;
-        this.globalStateManager.setLastAliveTimestamp(key, now);
+        this.heartbeatProvider.setLastAliveTimestamp(key, now);
 
         const nearestMultiple = elapsed !== undefined ? Math.round(elapsed / this.HEARTBEAT_INTERVAL_MS) : 0;
         const isRoutineHeartbeat = elapsed !== undefined &&

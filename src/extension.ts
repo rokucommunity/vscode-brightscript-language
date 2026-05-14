@@ -82,7 +82,7 @@ export class Extension {
         this.telemetryManager.sendStartupEvent();
         this.extensionOutputChannel = util.createOutputChannel('BrightScript Extension', this.writeExtensionLog.bind(this));
         this.extensionOutputChannel.appendLine('Extension startup');
-        this.deviceManager = new DeviceManager(context, this.globalStateManager, this.extensionOutputChannel);
+        this.deviceManager = new DeviceManager(context, this.extensionOutputChannel);
         let userInputManager = new UserInputManager(
             this.deviceManager
         );
