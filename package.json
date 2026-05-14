@@ -334,6 +334,11 @@
                     "group": "1_devices@2"
                 },
                 {
+                    "command": "extension.brightscript.editHiddenDevices",
+                    "when": "view == devicesView",
+                    "group": "2_visibility@1"
+                },
+                {
                     "command": "extension.brightscript.rokuRegistry.refreshRegistry",
                     "when": "view == rokuRegistryView && brightscript.isOnDeviceComponentAvailable",
                     "group": "navigation@1"
@@ -499,6 +504,16 @@
                     "command": "extension.brightscript.editDeviceInWorkspaceSettings",
                     "when": "view == devicesView && (viewItem == 'device-workspace' || viewItem == 'device-user-workspace')",
                     "group": "settings@2"
+                },
+                {
+                    "command": "extension.brightscript.hideDevice",
+                    "when": "view == devicesView && viewItem =~ /^device/",
+                    "group": "visibility@1"
+                },
+                {
+                    "command": "extension.brightscript.editHiddenDevices",
+                    "when": "view == devicesView && viewItem =~ /^device/",
+                    "group": "visibility@2"
                 }
             ],
             "explorer/context": [
@@ -2250,6 +2265,21 @@
                         "description": "If set to true, the extension will randomize the numbers and letters in the following fields (useful for hiding your sensitive device fields when creating public screenshots or demos). ['udn', 'device-id', 'advertising-id', 'wifi-mac', 'ethernet-mac', 'serial-number', 'keyed-developer-id']",
                         "scope": "resource"
                     },
+                    "brightscript.deviceDiscovery.hiddenDevices": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "default": [],
+                        "description": "List of device serial numbers to hide from the device panel",
+                        "scope": "resource"
+                    },
+                    "brightscript.deviceDiscovery.showOfflineDevices": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show offline devices in the device panel",
+                        "scope": "resource"
+                    },
                     "brightscript.devices": {
                         "type": "array",
                         "default": [],
@@ -3517,6 +3547,16 @@
             {
                 "command": "extension.brightscript.editDeviceInWorkspaceSettings",
                 "title": "Edit in Workspace Settings",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.hideDevice",
+                "title": "Hide Device",
+                "category": "BrightScript"
+            },
+            {
+                "command": "extension.brightscript.editHiddenDevices",
+                "title": "Edit Hidden Devices...",
                 "category": "BrightScript"
             },
             {

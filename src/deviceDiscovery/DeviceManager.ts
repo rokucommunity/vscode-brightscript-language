@@ -58,6 +58,12 @@ export class DeviceManager {
                 this.emitDevicesChanged();
             }
 
+            //if the `hiddenDevices` or `showOfflineDevices` settings were changed, refresh the UI
+            if (event?.affectsConfiguration('brightscript.deviceDiscovery.hiddenDevices') ||
+                event?.affectsConfiguration('brightscript.deviceDiscovery.showOfflineDevices')) {
+                this.emitDevicesChanged();
+            }
+
             //if the `devices` setting was changed, re-apply configured devices and health check them
             if (event?.affectsConfiguration('brightscript.devices')) {
                 this.loadConfiguredDevices().then(() => {
@@ -543,6 +549,19 @@ export class DeviceManager {
         this.lastUsedDeviceIp = value;
     }
 
+    /**
+     * Add a device to the hidden devices list by serial number.
+     * Updates the user settings to persist the change.
+     */
+    public async hideDevice(serialNumber: string): Promise<void> {
+        const config = vscode.workspace.getConfiguration('brightscript.deviceDiscovery');
+        const hidden = config.get<string[]>('hiddenDevices') ?? [];
+        if (!hidden.includes(serialNumber)) {
+            hidden.push(serialNumber);
+            await config.update('hiddenDevices', hidden, vscode.ConfigurationTarget.Global);
+        }
+    }
+
     public dispose() {
         this.deactivateMonitoring();
         this.systemSleepMonitor?.dispose?.();
@@ -587,14 +606,40 @@ export class DeviceManager {
     }
 
     /**
+     * List of device serial numbers to hide from the device panel.
+     */
+    private get hiddenDevices(): string[] {
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.hiddenDevices ?? [];
+    }
+
+    /**
+     * Should offline devices be shown in the device panel?
+     */
+    private get showOfflineDevices(): boolean {
+        return util.getConfiguration('brightscript')?.deviceDiscovery?.showOfflineDevices !== false;
+    }
+
+    /**
      * Should this device be shown via public API?
-     * Filters based on includeNonDeveloperDevices setting.
+     * Filters based on hiddenDevices, showOfflineDevices, and includeNonDeveloperDevices settings.
      */
     private shouldShowDevice(device: RokuDevice): boolean {
-        if (this.includeNonDeveloperDevices) {
-            return true;
+        // Hidden devices blacklist
+        if (device.serialNumber && this.hiddenDevices.includes(device.serialNumber)) {
+            return false;
         }
-        return device?.deviceInfo?.['developer-enabled'] !== 'false';
+
+        // Offline device filtering
+        if (!this.showOfflineDevices && device.deviceState === 'offline') {
+            return false;
+        }
+
+        // Non-developer device filtering
+        if (!this.includeNonDeveloperDevices && device?.deviceInfo?.['developer-enabled'] === 'false') {
+            return false;
+        }
+
+        return true;
     }
 
     /**

@@ -1342,6 +1342,219 @@ describe('DeviceManager', () => {
                 clock.restore();
             }
         });
+
+        it('filters devices in hiddenDevices list', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    hiddenDevices: ['ABC123']
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a device that's in the hidden list
+            const device = createMockDevice({
+                serialNumber: 'ABC123',
+                ip: '192.168.1.100'
+            });
+            addDevice(device);
+
+            // Device should be filtered out from getDevicesForUI
+            expect(manager.getDevicesForUI().length).to.equal(0);
+            // But still available via getAllDevices (unfiltered)
+            expect(manager.getAllDevices().length).to.equal(1);
+        });
+
+        it('shows devices not in hiddenDevices list', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    hiddenDevices: ['OTHER123']
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add a device that's NOT in the hidden list
+            const device = createMockDevice({
+                serialNumber: 'ABC123',
+                ip: '192.168.1.100'
+            });
+            addDevice(device);
+
+            expect(manager.getDevicesForUI().length).to.equal(1);
+        });
+
+        it('filters offline devices when showOfflineDevices is false', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    showOfflineDevices: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add an offline device
+            manager['discoveredDevices'].push({
+                ip: '192.168.1.100',
+                serialNumber: 'ABC123'
+            });
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+
+            // Device should be filtered out from getDevicesForUI
+            expect(manager.getDevicesForUI().length).to.equal(0);
+            // But still available via getAllDevices (unfiltered)
+            expect(manager.getAllDevices().length).to.equal(1);
+        });
+
+        it('shows offline devices when showOfflineDevices is true (default)', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    showOfflineDevices: true
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add an offline device
+            manager['discoveredDevices'].push({
+                ip: '192.168.1.100',
+                serialNumber: 'ABC123'
+            });
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'offline');
+
+            expect(manager.getDevicesForUI().length).to.equal(1);
+        });
+
+        it('shows online devices regardless of showOfflineDevices setting', () => {
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: () => undefined,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    showOfflineDevices: false
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            // Add an online device
+            manager['discoveredDevices'].push({
+                ip: '192.168.1.100',
+                serialNumber: 'ABC123'
+            });
+            manager['setDeviceState']({ ip: '192.168.1.100', serialNumber: 'ABC123' }, 'online');
+
+            // Online devices should always be shown
+            expect(manager.getDevicesForUI().length).to.equal(1);
+        });
+
+        it('emits devices-changed when hiddenDevices setting changes', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                // Capture the onDidChangeConfiguration callback
+                let configChangeCallback: (event: any) => void;
+                (vscode.workspace.onDidChangeConfiguration as any) = (callback: any) => {
+                    configChangeCallback = callback;
+                    return { dispose: () => { } };
+                };
+
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
+                    inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                    deviceDiscovery: {
+                        enabled: false,
+                        showInfoMessages: false
+                    }
+                } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                // Reset the spy after initial setup
+                clock.tick(100);
+                devicesChangedSpy.resetHistory();
+
+                // Simulate config change
+                configChangeCallback({
+                    affectsConfiguration: (key: string) => key === 'brightscript.deviceDiscovery.hiddenDevices'
+                });
+
+                // Advance past debounce period (50ms)
+                clock.tick(100);
+
+                // Should have emitted devices-changed
+                expect(devicesChangedSpy.called).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
+
+        it('emits devices-changed when showOfflineDevices setting changes', () => {
+            const clock = sinon.useFakeTimers();
+            try {
+                // Capture the onDidChangeConfiguration callback
+                let configChangeCallback: (event: any) => void;
+                (vscode.workspace.onDidChangeConfiguration as any) = (callback: any) => {
+                    configChangeCallback = callback;
+                    return { dispose: () => { } };
+                };
+
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: () => undefined,
+                    inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                    deviceDiscovery: {
+                        enabled: false,
+                        showInfoMessages: false
+                    }
+                } as any);
+
+                manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+                const devicesChangedSpy = sinon.spy();
+                manager.on('devices-changed', devicesChangedSpy);
+
+                // Reset the spy after initial setup
+                clock.tick(100);
+                devicesChangedSpy.resetHistory();
+
+                // Simulate config change
+                configChangeCallback({
+                    affectsConfiguration: (key: string) => key === 'brightscript.deviceDiscovery.showOfflineDevices'
+                });
+
+                // Advance past debounce period (50ms)
+                clock.tick(100);
+
+                // Should have emitted devices-changed
+                expect(devicesChangedSpy.called).to.be.true;
+            } finally {
+                clock.restore();
+            }
+        });
     });
 
     describe('handleDeviceOnline', () => {
@@ -3169,6 +3382,64 @@ describe('DeviceManager', () => {
                 expect(discoveredDevice.isDiscovered).to.be.true;
                 expect(discoveredDevice.deviceState).to.equal('online');
             });
+        });
+    });
+
+    describe('hideDevice', () => {
+        it('adds serial number to hiddenDevices setting', async () => {
+            const updateStub = sinon.stub().resolves();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: (key: string) => {
+                    if (key === 'hiddenDevices') {
+                        return [];
+                    }
+                    return undefined;
+                },
+                update: updateStub,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    hiddenDevices: []
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            await manager.hideDevice('ABC123');
+
+            expect(updateStub.calledOnce).to.be.true;
+            expect(updateStub.firstCall.args[0]).to.equal('hiddenDevices');
+            expect(updateStub.firstCall.args[1]).to.deep.equal(['ABC123']);
+            expect(updateStub.firstCall.args[2]).to.equal(vscode.ConfigurationTarget.Global);
+        });
+
+        it('does not add duplicate serial number to hiddenDevices', async () => {
+            const updateStub = sinon.stub().resolves();
+            (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                get: (key: string) => {
+                    if (key === 'hiddenDevices') {
+                        return ['ABC123'];
+                    }
+                    return undefined;
+                },
+                update: updateStub,
+                inspect: () => ({ workspaceValue: [], globalValue: [] }),
+                deviceDiscovery: {
+                    enabled: false,
+                    showInfoMessages: false,
+                    includeNonDeveloperDevices: true,
+                    hiddenDevices: ['ABC123']
+                }
+            } as any);
+
+            manager = new DeviceManager(vscode.context, mockGlobalStateManager);
+
+            await manager.hideDevice('ABC123');
+
+            // Should not call update since serial is already in list
+            expect(updateStub.called).to.be.false;
         });
     });
 
