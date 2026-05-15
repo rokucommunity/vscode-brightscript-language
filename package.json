@@ -3535,19 +3535,19 @@
                 "command": "extension.brightscript.rokuRegistry.clearRegistry",
                 "title": "Clear Registry",
                 "category": "BrightScript",
-                "icon": "$(trash)"
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.importRegistry",
-                "title": "Import Registry",
+                "title": "Upload Registry",
                 "category": "BrightScript",
-                "icon": "$(arrow-down)"
+                "icon": "$(cloud-upload)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.exportRegistry",
-                "title": "Export Registry",
+                "title": "Download Registry",
                 "category": "BrightScript",
-                "icon": "$(browser)"
+                "icon": "$(cloud-download)"
             },
             {
                 "command": "extension.brightscript.openRegistryInBrowser",
