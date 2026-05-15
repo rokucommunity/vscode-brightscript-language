@@ -3535,7 +3535,7 @@
                 "command": "extension.brightscript.rokuRegistry.clearRegistry",
                 "title": "Clear Registry",
                 "category": "BrightScript",
-                "icon": "$(trash)"
+                "icon": "$(clear-all)"
             },
             {
                 "command": "extension.brightscript.rokuRegistry.importRegistry",
