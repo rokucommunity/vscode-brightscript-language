@@ -1,7 +1,7 @@
 <script lang="ts">
     window.vscode = acquireVsCodeApi();
     import { odc, intermediary } from '../../ExtensionIntermediary';
-    import JSONTreePage from './JSONTreePage/JSONTreePage.svelte';
+    import RegistryTree from './RegistryTree.svelte';
     import { registryView } from './RokuRegistryView';
     import OdcSetupSteps from '../../shared/OdcSetupSteps.svelte';
     import Loader from '../../shared/Loader.svelte';
@@ -41,5 +41,14 @@
 {:else if loading}
     <Loader />
 {:else if Object.keys(registryValues).length > 0}
-    <JSONTreePage registryValues={registryValues} />
+    <RegistryTree bind:registryValues />
+{:else}
+    <p class="empty-state">Registry is empty.</p>
 {/if}
+
+<style>
+    .empty-state {
+        padding: 10px;
+        opacity: 0.7;
+    }
+</style>
